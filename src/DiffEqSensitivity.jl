@@ -20,7 +20,7 @@ end
 function (S::ODELocalSensitvityFunction)(t,u,du)
   y = @view u[1:S.numindvar] # These are the independent variables
   S.f(t,y,@view du[1:S.numindvar]) # Make the first part be the ODE
-  S.f(t,y,S.J,:Jac) # Calculate the parameter Jacobian into J
+  S.f(Val{:Jac},t,y,S.J) # Calculate the Jacobian into J
   for i in eachindex(S.f.params)
     Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
     S.f(t,y,getfield(S.f,S.f.params[i]),S.df,S.f.params[i],:Deriv) # Calculate the parameter derivatives into df
@@ -30,7 +30,7 @@ end
 
 type ODELocalSensitivityProblem{uType,uEltype} <: AbstractODEProblem
   f::ODELocalSensitvityFunction{uEltype}
-  u₀::uType
+  u0::uType
   analytic::Function
   knownanalytic::Bool
   numvars::Int
