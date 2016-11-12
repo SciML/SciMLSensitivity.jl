@@ -23,26 +23,24 @@ function (S::ODELocalSensitvityFunction)(t,u,du)
   S.f(Val{:Jac},t,y,S.J) # Calculate the Jacobian into J
   for i in eachindex(S.f.params)
     Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
-    S.f(t,y,getfield(S.f,S.f.params[i]),S.df,S.f.params[i],:Deriv) # Calculate the parameter derivatives into df
+    S.f(Val{S.f.params[i]},Val{:Deriv},t,y,getfield(S.f,S.f.params[i]),S.df) # Calculate the parameter derivatives into df
     du[i*S.numindvar+1:(i+1)*S.numindvar] = S.J*Sj + S.df
   end
 end
 
-type ODELocalSensitivityProblem{uType,uEltype} <: AbstractODEProblem
-  f::ODELocalSensitvityFunction{uEltype}
+type ODELocalSensitivityProblem{uType,tType,isinplace,F} <: AbstractODEProblem{uType,tType,isinplace,F}
+  f::F
   u0::uType
-  analytic::Function
-  knownanalytic::Bool
-  numvars::Int
-  isinplace::Bool
+  tspan::Tuple{tType,tType}
+  indvars::Int
 end
 
-function ODELocalSensitivityProblem(f::Function,u0)
+function ODELocalSensitivityProblem(f::Function,u0,tspan)
   isinplace = numparameters(f)>=3
-  numvars = length(u0)
+  indvars = length(u0)
   sense = ODELocalSensitvityFunction(f,u0)
-  sense_u0 = [u0;zeros(numvars*sense.numparams)]
-  ODELocalSensitivityProblem{typeof(u0),eltype(u0)}(sense,sense_u0,(t,u,du)->0,false,numvars,isinplace)
+  sense_u0 = [u0;zeros(indvars*sense.numparams)]
+  ODELocalSensitivityProblem{typeof(u0),typeof(tspan[1]),Val{isinplace},typeof(sense)}(sense,sense_u0,tspan,indvars)
 end
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem
