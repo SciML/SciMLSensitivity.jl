@@ -40,7 +40,7 @@ function ODELocalSensitivityProblem(f::Function,u0,tspan)
   indvars = length(u0)
   sense = ODELocalSensitvityFunction(f,u0)
   sense_u0 = [u0;zeros(indvars*sense.numparams)]
-  ODELocalSensitivityProblem{typeof(u0),typeof(tspan[1]),Val{isinplace},typeof(sense)}(sense,sense_u0,tspan,indvars)
+  ODELocalSensitivityProblem{typeof(u0),typeof(tspan[1]),isinplace,typeof(sense)}(sense,sense_u0,tspan,indvars)
 end
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem
