@@ -26,7 +26,7 @@ function (S::ODELocalSensitvityFunction)(t,u,du)
   S.f(Val{:jac},t,y,S.J) # Calculate the Jacobian into J
   for i in eachindex(S.f.params)
     Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
-    S.f(Val{S.f.params[i]},Val{:deriv},t,y,getfield(S.f,S.f.params[i]),S.df) # Calculate the parameter derivatives into df
+    S.f(Val{:deriv},Val{S.f.params[i]},t,y,getfield(S.f,S.f.params[i]),S.df) # Calculate the parameter derivatives into df
     du[i*S.numindvar+1:(i+1)*S.numindvar] = S.J*Sj + S.df
   end
 end
