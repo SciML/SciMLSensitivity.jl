@@ -33,7 +33,7 @@ function (S::ODELocalSensitvityFunction)(t,u,du)
   end
 end
 
-type ODELocalSensitivityProblem{uType,tType,isinplace,F} <: AbstractODEProblem{uType,tType,isinplace,F}
+type ODELocalSensitivityProblem{uType,tType,isinplace,F} <: AbstractODEProblem{uType,tType,isinplace}
   f::F
   u0::uType
   tspan::Tuple{tType,tType}
