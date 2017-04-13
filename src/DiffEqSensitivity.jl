@@ -33,19 +33,22 @@ function (S::ODELocalSensitvityFunction)(t,u,du)
   end
 end
 
-type ODELocalSensitivityProblem{uType,tType,isinplace,F} <: AbstractODEProblem{uType,tType,isinplace}
+type ODELocalSensitivityProblem{uType,tType,isinplace,F,C} <: AbstractODEProblem{uType,tType,isinplace}
   f::F
   u0::uType
   tspan::Tuple{tType,tType}
   indvars::Int
+  callback::C
 end
 
-function ODELocalSensitivityProblem(f,u0,tspan)
-  isinplace = numparameters(f)>=3
+function ODELocalSensitivityProblem(f,u0,tspan;callback=CallbackSet())
+  isinplace = numargs(f)>=3
   indvars = length(u0)
   sense = ODELocalSensitvityFunction(f,u0)
   sense_u0 = [u0;zeros(indvars*sense.numparams)]
-  ODELocalSensitivityProblem{typeof(u0),typeof(tspan[1]),isinplace,typeof(sense)}(sense,sense_u0,tspan,indvars)
+  ODELocalSensitivityProblem{typeof(u0),typeof(tspan[1]),
+                             isinplace,typeof(sense),typeof(callback)}(
+                             sense,sense_u0,tspan,indvars,callback)
 end
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem, SensitivityFunction
