@@ -2,9 +2,9 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase
+using DiffEqBase, Compat
 
-abstract SensitivityFunction
+@compat abstract type SensitivityFunction end
 
 immutable ODELocalSensitvityFunction{F,uEltype} <: SensitivityFunction
   f::F
