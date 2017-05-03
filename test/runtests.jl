@@ -22,9 +22,9 @@ da=[sol[i][sol.prob.indvars+1:sol.prob.indvars*2] for i in 1:length(sol)]
 db=[sol[i][sol.prob.indvars*2+1:sol.prob.indvars*3] for i in 1:length(sol)]
 dc=[sol[i][sol.prob.indvars*3+1:sol.prob.indvars*4] for i in 1:length(sol)]
 
-@test (abs(da[end]) .> abs.(da[length(sol)÷2])) == [false;true]
-@test (abs(db[end]) .> abs.(db[length(sol)÷2])) == [true;true]
-@test (abs(dc[end]) .> abs.(dc[length(sol)÷2])) == [false;true]
+@test (abs.(da[end]) .> abs.(da[length(sol)÷2])) == [false;true]
+@test (abs.(db[end]) .> abs.(db[length(sol)÷2])) == [true;true]
+@test (abs.(dc[end]) .> abs.(dc[length(sol)÷2])) == [false;true]
 #using Plots
 #gr()
 #plot(sol.t,vecvec_to_mat(x))
