@@ -6,6 +6,9 @@
 [![Coverage Status](https://coveralls.io/repos/github/JuliaDiffEq/DiffEqSensitivity.jl/badge.svg)](https://coveralls.io/github/JuliaDiffEq/DiffEqSensitivity.jl)
 [![codecov.io](http://codecov.io/github/JuliaDiffEq/DiffEqSensitivity.jl/coverage.svg?branch=master)](http://codecov.io/github/JuliaDiffEq/DiffEqSensitivity.jl?branch=master)
 
+[![DiffEqSensitivity](http://pkg.julialang.org/badges/DiffEqSensitivity_0.5.svg)](http://pkg.julialang.org/?pkg=DiffEqSensitivity)
+[![DiffEqSensitivity](http://pkg.julialang.org/badges/DiffEqSensitivity_0.6.svg)](http://pkg.julialang.org/?pkg=DiffEqSensitivity)
+
 DiffEqSensitivity.jl is a component package in the DifferentialEquations ecosystem. It holds the
 sensitivity analysis utilities. Users interested in using this
 functionality should check out [DifferentialEquations.jl](https://github.com/JuliaDiffEq/DifferentialEquations.jl).
