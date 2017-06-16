@@ -8,11 +8,11 @@ end a=>1.5 b=>1 c=>3 d=1
 
 prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,30.0))
 sol = solve(prob,DP8())
-x = vecvec_to_mat([sol[i][1:sol.prob.indvars] for i in 1:length(sol)])
+x = vecarr_to_arr([sol[i][1:sol.prob.indvars] for i in 1:length(sol)])
 
 prob2 = ODEProblem(f,[1.0;1.0],(0.0,30.0))
 sol2 = solve(prob2,DP8(),adaptive=true,abstol=1,tstops=sol.t)
-x2 = vecvec_to_mat(sol2[:])
+x2 = vecarr_to_arr(sol2[:])
 
 @test maximum(x2-x) < 1e-12 # Solve the same problem
 
@@ -27,7 +27,7 @@ dc=[sol[i][sol.prob.indvars*3+1:sol.prob.indvars*4] for i in 1:length(sol)]
 @test (abs.(dc[end]) .> abs.(dc[length(sol)÷2])) == [false;true]
 #using Plots
 #gr()
-#plot(sol.t,vecvec_to_mat(x))
-#plot(sol.t,vecvec_to_mat(da))
-#plot(sol.t,vecvec_to_mat(db))
-#plot(sol.t,vecvec_to_mat(dc))
+#plot(sol.t,vecarr_to_arr(x))
+#plot(sol.t,vecarr_to_arr(da))
+#plot(sol.t,vecarr_to_arr(db))
+#plot(sol.t,vecarr_to_arr(dc))
