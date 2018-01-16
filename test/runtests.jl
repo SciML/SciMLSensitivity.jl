@@ -1,20 +1,15 @@
-using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions, RecursiveArrayTools, DiffEqBase
+using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
+      RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus
 using Base.Test
 
 f = @ode_def_nohes LotkaVolterra begin
   dx = a*x - b*x*y
   dy = -c*y + d*x*y
-end a=>1.5 b=>1 c=>3 d=1
+end a=>1.5 b=>1.0 c=>3.0 d=1
 
-prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,30.0))
-sol = solve(prob,DP8())
+prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0))
+sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.indvars,:]
-
-prob2 = ODEProblem(f,[1.0;1.0],(0.0,30.0))
-sol2 = solve(prob2,DP8(),adaptive=true,abstol=1,tstops=sol.t)
-x2 = convert(Array,sol2)
-
-@test maximum(x2-x) < 1e-12 # Solve the same problem
 
 # Get the sensitivities
 
@@ -22,12 +17,45 @@ da = sol[sol.prob.indvars+1:sol.prob.indvars*2,:]
 db = sol[sol.prob.indvars*2+1:sol.prob.indvars*3,:]
 dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
 
-@test (abs.(da[:,end]) .> abs.(da[:,length(sol)÷2])) == [false;true]
-@test (abs.(db[:,end]) .> abs.(db[:,length(sol)÷2])) == [true;true]
-@test (abs.(dc[:,end]) .> abs.(dc[:,length(sol)÷2])) == [false;true]
-#using Plots
-#gr()
-#plot(sol.t,x')
-#plot(sol.t,da')
-#plot(sol.t,db')
-#plot(sol.t,dc')
+sense_res = [da[:,end] db[:,end] dc[:,end]]
+
+function test_f(p)
+  pf = ParameterizedFunction(f,p)
+  prob = ODEProblem(pf,eltype(p).([1.0,1.0]),eltype(p).((0.0,10.0)))
+  solve(prob,Vern9(),abstol=1e-14,reltol=1e-14,save_everystep=false)[end]
+end
+
+p = [1.5,1.0,3.0]
+fd_res = ForwardDiff.jacobian(test_f,p)
+calc_res = Calculus.finite_difference_jacobian(test_f,p)
+
+@test sense_res ≈ fd_res
+@test sense_res ≈ calc_res
+
+################################################################################
+
+# Now do from a plain parameterized function
+
+function f2(t,u,p,du)
+  du[1] = p[1] * u[1] - p[2] * u[1]*u[2]
+  du[2] = -p[3] * u[2] + u[1]*u[2]
+end
+pf = ParameterizedFunction(f2,[1.5,1.0,3.0])
+prob = ODELocalSensitivityProblem(pf,[1.0;1.0],(0.0,10.0))
+sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+x = sol[1:sol.prob.indvars,:]
+
+# Get the sensitivities
+
+da = sol[sol.prob.indvars+1:sol.prob.indvars*2,:]
+db = sol[sol.prob.indvars*2+1:sol.prob.indvars*3,:]
+dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
+
+sense_res = [da[:,end] db[:,end] dc[:,end]]
+
+p = [1.5,1.0,3.0]
+fd_res = ForwardDiff.jacobian(test_f,p)
+calc_res = Calculus.finite_difference_jacobian(test_f,p)
+
+@test sense_res ≈ fd_res
+@test sense_res ≈ calc_res
