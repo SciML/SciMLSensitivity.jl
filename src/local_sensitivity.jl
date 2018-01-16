@@ -91,3 +91,20 @@ function ODELocalSensitivityProblem(f,u0,tspan,alg=SensitivityAlg();
                              typeof(mass_matrix)}(
                              sense,sense_u0,tspan,indvars,callback,mass_matrix)
 end
+
+
+function extract_local_sensitivities(sol)
+  x = sol[1:sol.prob.indvars,:]
+  x,[sol[sol.prob.indvars*j+1:sol.prob.indvars*(j+1),:] for j in 1:(num_params(sol.prob.f.f))]
+end
+
+function extract_local_sensitivities(sol,i::Integer)
+  x = sol[1:sol.prob.indvars,i]
+  x,[sol[sol.prob.indvars*j+1:sol.prob.indvars*(j+1),i] for j in 1:(num_params(sol.prob.f.f))]
+end
+
+function extract_local_sensitivities(sol,t)
+  tmp = sol(t)
+  x = tmp[1:sol.prob.indvars]
+  x,[tmp[sol.prob.indvars*j+1:sol.prob.indvars*(j+1)] for j in 1:(num_params(sol.prob.f.f))]
+end
