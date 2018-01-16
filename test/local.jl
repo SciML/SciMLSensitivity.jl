@@ -73,3 +73,6 @@ sense_res2 = hcat(dp...)
 sense_res == sense_res2
 
 extract_local_sensitivities(sol,sol.t[3]) == extract_local_sensitivities(sol,3)
+
+tmp = similar(sol[1])
+extract_local_sensitivities(tmp,sol,sol.t[3]) == extract_local_sensitivities(sol,3)

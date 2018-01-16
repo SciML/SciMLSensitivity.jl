@@ -108,3 +108,9 @@ function extract_local_sensitivities(sol,t)
   x = tmp[1:sol.prob.indvars]
   x,[tmp[sol.prob.indvars*j+1:sol.prob.indvars*(j+1)] for j in 1:(num_params(sol.prob.f.f))]
 end
+
+function extract_local_sensitivities(tmp,sol,t)
+  sol(tmp,t)
+  x = @view tmp[1:sol.prob.indvars]
+  x,[@view(tmp[sol.prob.indvars*j+1:sol.prob.indvars*(j+1)]) for j in 1:(num_params(sol.prob.f.f))]
+end
