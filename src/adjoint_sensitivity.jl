@@ -42,13 +42,13 @@ function (S::ODEAdjointSensitvityFunction)(t,u,du)
   A_mul_B!(du,u,S.J); du .*= -one(eltype(u))
 
   if !S.discrete
-    if dg != nothing
-      S.dg(S.dg_val,t,y,S.p)
+    if S.dg != nothing
+      S.dg(S.dg_val',t,y,S.p)
     else
       S.g.t = t
       gradient!(S.dg_val, S.g, y, S.f_cache, S.alg, S.g_gradient_config)
-      du .-= dg_val
     end
+    du .+= S.dg_val
   end
 
 end
@@ -100,19 +100,23 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                                        λ,alg,discrete,
                                        y,sol,dg)
 
-  cur_time = Ref(length(t)-1)
-  function time_choice(integrator)
-    cur_time[]-=1
-    t[cur_time[]+1]
-  end
-  function affect!(integrator)
-    g(λ',y,cur_time[])
-    integrator.u .+= λ
-    u_modified!(integrator,true)
-  end
-  cb = IterativeCallback(time_choice,affect!,eltype(tspan);initial_affect=true)
+  if discrete
+    cur_time = Ref(length(t)-1)
+    function time_choice(integrator)
+      cur_time[]-=1
+      t[cur_time[]+1]
+    end
+    function affect!(integrator)
+      g(λ',y,cur_time[])
+      integrator.u .+= λ
+      u_modified!(integrator,true)
+    end
+    cb = IterativeCallback(time_choice,affect!,eltype(tspan);initial_affect=true)
 
-  _cb = CallbackSet(cb,callback)
+    _cb = CallbackSet(cb,callback)
+  else
+    _cb = callback
+  end
 
   ODEAdjointProblem{typeof(u0),typeof(tspan[1]),
                              isinplace,typeof(sense),typeof(_cb),
