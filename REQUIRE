@@ -3,3 +3,4 @@ DiffEqBase 0.15.0
 Compat 0.17.0
 ForwardDiff
 DiffEqDiffTools
+DiffEqCallbacks

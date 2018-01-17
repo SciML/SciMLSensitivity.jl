@@ -38,7 +38,6 @@ function (S::ODELocalSensitvityFunction)(t,u,du)
 
   if has_paramjac(S.f)
     S.f(Val{:paramjac},t,y,S.p,S.pJ) # Calculate the parameter Jacobian into pJ
-    #S.f(Val{:deriv},Val{S.f.params[i]},t,y,getfield(S.f,S.f.params[i]),S.df) # Calculate the parameter derivatives into df
   else
     S.pf.t = t
     S.pf.u .= y
