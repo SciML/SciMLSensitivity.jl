@@ -94,7 +94,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   end
 
   u0 = zeros(sol.prob.u0)'
-  y = sol(tspan[1]) # TODO: Has to start at interpolation value!
+  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   λ = similar(u0)
   sense = ODEAdjointSensitvityFunction(f,uf,pg,u0,jac_config,pg_config,p,
                                        λ,alg,discrete,
@@ -176,4 +176,18 @@ end
 function (S::AdjointSensitivityIntegrand)(t)
   out = similar(S.p)
   S(out,t)
+end
+
+
+function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
+                               abstol=1e-6,reltol=1e-3,
+                               iabstol = abstol, ireltol=reltol,
+                               kwargs...)
+
+  adj_prob = ODEAdjointProblem(sol,g,t,dg)
+  adj_sol = solve(adj_prob,alg,abstol=abstol,reltol=reltol)
+  integrand = AdjointSensitivityIntegrand(sol,adj_sol)
+  res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
+                   abstol=iabstol,reltol=ireltol)
+  res
 end

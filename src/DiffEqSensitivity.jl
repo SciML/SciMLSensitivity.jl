@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks
+using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks, QuadGK
 
 abstract type SensitivityFunction end
 
@@ -13,5 +13,6 @@ include("adjoint_sensitivity.jl")
 export extract_local_sensitivities
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem, SensitivityFunction,
-       ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand
+       ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
+       adjoint_sensitivities
 end # module

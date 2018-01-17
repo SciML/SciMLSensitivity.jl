@@ -4,3 +4,4 @@ Compat 0.17.0
 ForwardDiff
 DiffEqDiffTools
 DiffEqCallbacks
+QuadGK
