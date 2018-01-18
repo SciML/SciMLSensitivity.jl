@@ -24,7 +24,7 @@ adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-12)
 
-@test norm(res - easy_res) < 1e-14
+@test norm(res - easy_res) < 1e-10
 
 function G(p)
   tmp_prob = problem_new_parameters(prob,p)
