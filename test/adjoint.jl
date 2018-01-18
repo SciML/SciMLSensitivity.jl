@@ -26,7 +26,6 @@ res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-12)
 
 @test norm(res - easy_res) < 1e-14
 
-t_short = 0.5:0.5:10.0
 function G(p)
   tmp_prob = problem_new_parameters(prob,p)
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)

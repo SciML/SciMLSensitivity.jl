@@ -187,7 +187,16 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
   adj_prob = ODEAdjointProblem(sol,g,t,dg)
   adj_sol = solve(adj_prob,alg,abstol=abstol,reltol=reltol)
   integrand = AdjointSensitivityIntegrand(sol,adj_sol)
-  res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
+
+  if t== nothing
+    res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
                    abstol=iabstol,reltol=ireltol)
+  else
+    res = zeros(integrand.p)'
+    for i in 1:length(t)-1
+      res .+= quadgk(integrand,t[i],t[i+1],
+                     abstol=iabstol,reltol=ireltol)[1]
+    end
+  end
   res
 end
