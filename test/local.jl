@@ -3,12 +3,13 @@ using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
 using Base.Test
 
 
-f = @ode_def_nohes LotkaVolterra begin
+f = @ode_def LotkaVolterra begin
   dx = a*x - b*x*y
-  dy = -c*y + d*x*y
-end a=>1.5 b=>1.0 c=>3.0 d=1
+  dy = -c*y + x*y
+end a b c
 
-prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0))
+p = [1.5,1.0,3.0]
+prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.indvars,:]
 
@@ -21,8 +22,7 @@ dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
 sense_res = [da[:,end] db[:,end] dc[:,end]]
 
 function test_f(p)
-  pf = ParameterizedFunction(f,p)
-  prob = ODEProblem(pf,eltype(p).([1.0,1.0]),eltype(p).((0.0,10.0)))
+  prob = ODEProblem(f,eltype(p).([1.0,1.0]),eltype(p).((0.0,10.0)),p)
   solve(prob,Vern9(),abstol=1e-14,reltol=1e-14,save_everystep=false)[end]
 end
 
@@ -37,12 +37,12 @@ calc_res = Calculus.finite_difference_jacobian(test_f,p)
 
 # Now do from a plain parameterized function
 
-function f2(t,u,p,du)
+function f2(du,u,p,t)
   du[1] = p[1] * u[1] - p[2] * u[1]*u[2]
   du[2] = -p[3] * u[2] + u[1]*u[2]
 end
-pf = ParameterizedFunction(f2,[1.5,1.0,3.0])
-prob = ODELocalSensitivityProblem(pf,[1.0;1.0],(0.0,10.0))
+p = [1.5,1.0,3.0]
+prob = ODELocalSensitivityProblem(f2,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 res = sol[1:sol.prob.indvars,:]
 

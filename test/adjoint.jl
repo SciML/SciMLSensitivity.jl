@@ -2,12 +2,13 @@ using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK
 using Base.Test
 
-f = @ode_def_nohes LotkaVolterra begin
+f = @ode_def LotkaVolterra begin
   dx = a*x - b*x*y
-  dy = -c*y + d*x*y
-end a=>1.5 b=>1.0 c=>3.0 d=1
+  dy = -c*y + x*y
+end a b c
 
-prob = ODEProblem(f,[1.0;1.0],(0.0,10.0))
+p = [1.5,1.0,3.0]
+prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 
 # Do a discrete adjoint problem
@@ -24,7 +25,7 @@ adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-12)
 
-@test norm(res - easy_res) < 1e-14
+@test norm(res - easy_res) < 1e-10
 
 function G(p)
   tmp_prob = problem_new_parameters(prob,p)
@@ -42,9 +43,9 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 # Do a continuous adjoint problem
 
 # Energy calculation
-g(t,u,p) = (sum(u).^2) ./ 2
+g(u,p,t) = (sum(u).^2) ./ 2
 # Gradient of (u1 + u2)^2 / 2
-function dg(out,t,u,p)
+function dg(out,u,p,t)
   out[1]= u[1] + u[2]
   out[2]= u[1] + u[2]
 end
