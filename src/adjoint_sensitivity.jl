@@ -76,6 +76,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   p = sol.prob.p
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
+  
+  u0 = zeros(sol.prob.u0)'
 
   if has_jac(f)
     jac_config = nothing
@@ -93,7 +95,6 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     pg_config = nothing
   end
 
-  u0 = zeros(sol.prob.u0)'
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   λ = similar(u0)
   sense = ODEAdjointSensitvityFunction(f,uf,pg,u0,jac_config,pg_config,
