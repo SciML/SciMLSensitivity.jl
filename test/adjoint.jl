@@ -15,7 +15,7 @@ sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 
 t = 0.0:0.5:10.0 # TODO: Add end point handling for callback
 # g(t,u,i) = (1-u)^2/2, L2 away from 1
-dg(out,u,i) = (out.=1.0.-u)
+dg(out,u,p,i) = (out.=1.0.-u)
 
 easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
