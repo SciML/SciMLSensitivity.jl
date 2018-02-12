@@ -107,7 +107,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
       t[cur_time[]+1]
     end
     function affect!(integrator)
-      g(λ',y,p,cur_time[])
+      g(λ',y,p,t[cur_time[]],cur_time[])
       integrator.u .+= λ
       u_modified!(integrator,true)
     end
