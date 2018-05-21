@@ -9,6 +9,7 @@ abstract type SensitivityFunction end
 include("derivative_wrappers.jl")
 include("local_sensitivity.jl")
 include("adjoint_sensitivity.jl")
+include("morris_sensitivity.jl")
 
 export extract_local_sensitivities
 
