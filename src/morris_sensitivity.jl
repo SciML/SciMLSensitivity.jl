@@ -1,5 +1,5 @@
 struct MatSpread
-    mat::Array{Array{Float64}}
+    mat::Vector{Vector{Float64}}
     spread::Float64
 end
 
@@ -7,22 +7,17 @@ function generate_design_matrix(prob::DEProblem,p_range,p_steps;k = 10)
     ps = [linspace(p_range[i][1],p_range[i][2],p_steps[i]) for i in 1:length(p_range)]
     indices = [rand(1:i) for i in p_steps]
     all_idxs = Vector{typeof(indices)}(k)
-    i = 1
-    while i <= k
+
+    for i in 1:k
         flag = 0
         j = rand(1:length(p_range))
         indices[j] += (rand() < 0.5 ? -1 : 1)
         if indices[j] > p_steps[j] 
-            flag = 1
-            indices[j] -=1 
+            indices[j] -= 2 
         elseif indices[j] < 1.0
-            flag = 1
-            indices[j] =1
+            indices[j] += 2
         end
-        if flag == 0
-            all_idxs[i] = copy(indices)
-            i = i+1
-        end
+        all_idxs[i] = copy(indices)       
     end
 
     B = Array{Array{Float64}}(k)
