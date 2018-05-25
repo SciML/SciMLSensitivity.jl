@@ -3,6 +3,12 @@ struct MatSpread
     spread::Float64
 end
 
+struct MorrisSensitivity
+    means
+    variances
+    elementary_effects
+end
+
 function generate_design_matrix(p_range,p_steps;k = 10)
     ps = [linspace(p_range[i][1],p_range[i][2],p_steps[i]) for i in 1:length(p_range)]
     indices = [rand(1:i) for i in p_steps]
@@ -51,8 +57,12 @@ end
 function MorrisGlobalSensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
     effects = [Float64[] for i in 1:length(prob.p)]
+    prob2 = remake(prob;p=design_matrices[1][1])
+    y1 = solve(prob2,alg;saveat=t)
     for i in design_matrices
-        for j in 1:2:length(i)
+        for j in 1:length(i)-1
+            y2 = y1
+            prob1 = remake(prob;p=i[j+1]) 
             del = i[j+1] - i[j]
             change_index = 0
             for k in 1:length(del)
@@ -62,10 +72,7 @@ function MorrisGlobalSensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...
                 end
             end
             del = sum(del)
-            prob1 = remake(prob;p=i[j+1])
-            prob2 = remake(prob;p=i[j])
             y1 = solve(prob1,alg;saveat=t)
-            y2 = solve(prob2,alg;saveat=t)
             elem_effect = abs(sum(y1-y2)/del)
             push!(effects[change_index],elem_effect)
         end
@@ -76,5 +83,5 @@ function MorrisGlobalSensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...
         push!(means,mean(i))
         push!(variances,var(i))
     end
-    means,variances
+    MorrisSensitivity(means,variances,effects)
 end
