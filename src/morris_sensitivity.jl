@@ -54,34 +54,46 @@ function sample_matrices(p_range,p_steps;k=10,simulations=50,r=10)
     matrices
 end
 
-function MorrisGlobalSensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
-    design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-    effects = [Float64[] for i in 1:length(prob.p)]
-    prob2 = remake(prob;p=design_matrices[1][1])
-    y1 = solve(prob2,alg;saveat=t)
-    for i in design_matrices
-        for j in 1:length(i)-1
-            y2 = y1
-            prob1 = remake(prob;p=i[j+1]) 
-            del = i[j+1] - i[j]
-            change_index = 0
-            for k in 1:length(del)
-                if abs(del[k]) > 0
-                    change_index = k
-                    break
+function MorrisGlobalSensitivity(prob::DEProblem,alg,t;kwargs...)
+    sensitivity_function= function(p_range,p_steps;kwargs...)
+        design_matrices = sample_matrices(p_range,p_steps;kwargs...)
+        effects = [Array{Float64}[] for i in 1:length(prob.p)]
+        prob2 = remake(prob;p=design_matrices[1][1])
+        y1 = solve(prob2,alg;saveat=t)
+        for i in design_matrices
+            for j in 1:length(i)-1
+                y2 = y1
+                prob1 = remake(prob;p=i[j+1]) 
+                del = i[j+1] - i[j]
+                change_index = 0
+                for k in 1:length(del)
+                    if abs(del[k]) > 0
+                        change_index = k
+                        break
+                    end
+                end
+                del = sum(del)
+                y1 = solve(prob1,alg;saveat=t)
+                elem_effect = (y1-y2)/del
+                push!(effects[change_index],elem_effect)
+            end
+        end
+        means = []
+        variances = [[] for j in 1:length(prob.p)]
+        for i in effects
+            push!(means,mean(i))
+        end
+        for i in 1:length(effects)
+            u = VectorOfArray(effects[i])
+            vars = [[] for i in 1:length(prob.u0)]
+            for j in 1:length(prob.u0)
+                for k in 1:length(t)
+                    push!(vars[j],var(u[j,k,:]))
                 end
             end
-            del = sum(del)
-            y1 = solve(prob1,alg;saveat=t)
-            elem_effect = abs(sum(y1-y2)/del)
-            push!(effects[change_index],elem_effect)
+            push!(variances[i],vars)
         end
+        variances = VectorOfArray(variances)'
+        MorrisSensitivity(means,variances,effects)
     end
-    means = Float64[]
-    variances = Float64[]
-    for i in effects
-        push!(means,mean(i))
-        push!(variances,var(i))
-    end
-    MorrisSensitivity(means,variances,effects)
 end

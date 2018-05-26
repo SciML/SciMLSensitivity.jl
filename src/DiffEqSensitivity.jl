@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks, QuadGK
+using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks, QuadGK, RecursiveArrayTools
 
 abstract type SensitivityFunction end
 
