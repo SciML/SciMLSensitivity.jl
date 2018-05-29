@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks, QuadGK
+using DiffEqBase, Compat, ForwardDiff, DiffEqDiffTools, DiffEqCallbacks, QuadGK, RecursiveArrayTools
 
 abstract type SensitivityFunction end
 
@@ -15,5 +15,6 @@ export extract_local_sensitivities
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
-       adjoint_sensitivities
+       adjoint_sensitivities, morris_sensitivity, MorrisSensitivity
+
 end # module
