@@ -42,15 +42,18 @@ function calculate_spread(matrix)
     spread
 end
 
-function sample_matrices(p_range,p_steps;k=10,simulations=50,r=10)
+function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,total_num_trajectory=5*num_trajectory)
     matrix_array = []
-    for i in 1:simulations
-        mat = generate_design_matrix(p_range,p_steps;k=k)
+    if total_num_trajectory<num_trajectory
+        error("total_num_trajectory should be greater than num_trajectory preferably atleast 3-4 times higher")
+    end
+    for i in 1:total_num_trajectory
+        mat = generate_design_matrix(p_range,p_steps;k=len_trajectory)
         spread = calculate_spread(mat)
         push!(matrix_array,MatSpread(mat,spread))
     end
     sort!(matrix_array,by = x -> x.spread,rev=true)
-    matrices = [i.mat for i in matrix_array[1:r]]
+    matrices = [i.mat for i in matrix_array[1:num_trajectory]]
     matrices
 end
 
@@ -62,7 +65,7 @@ function morris_sensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
     morris_sensitivity(f,p_range,p_steps;kwargs...)
 end
 
-function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
+function morris_sensitivity(f,p_range,p_steps,relative_scale=false;kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
     y1 = f(design_matrices[1][1])
     effects = [typeof(y1)[] for i in 1:length(p_range)]
