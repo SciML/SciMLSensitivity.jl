@@ -18,12 +18,12 @@ function generate_design_matrix(p_range,p_steps;k = 10)
         flag = 0
         j = rand(1:length(p_range))
         indices[j] += (rand() < 0.5 ? -1 : 1)
-        if indices[j] > p_steps[j] 
-            indices[j] -= 2 
+        if indices[j] > p_steps[j]
+            indices[j] -= 2
         elseif indices[j] < 1.0
             indices[j] += 2
         end
-        all_idxs[i] = copy(indices)       
+        all_idxs[i] = copy(indices)
     end
 
     B = Array{Array{Float64}}(k)
@@ -54,46 +54,53 @@ function sample_matrices(p_range,p_steps;k=10,simulations=50,r=10)
     matrices
 end
 
-function MorrisGlobalSensitivity(prob::DEProblem,alg,t;kwargs...)
-    sensitivity_function= function(p_range,p_steps;kwargs...)
-        design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-        effects = [Array{Float64}[] for i in 1:length(prob.p)]
-        prob2 = remake(prob;p=design_matrices[1][1])
-        y1 = solve(prob2,alg;saveat=t)
-        for i in design_matrices
-            for j in 1:length(i)-1
-                y2 = y1
-                prob1 = remake(prob;p=i[j+1]) 
-                del = i[j+1] - i[j]
-                change_index = 0
-                for k in 1:length(del)
-                    if abs(del[k]) > 0
-                        change_index = k
-                        break
-                    end
-                end
-                del = sum(del)
-                y1 = solve(prob1,alg;saveat=t)
-                elem_effect = (y1-y2)/del
-                push!(effects[change_index],elem_effect)
-            end
-        end
-        means = []
-        variances = [[] for j in 1:length(prob.p)]
-        for i in effects
-            push!(means,mean(i))
-        end
-        for i in 1:length(effects)
-            u = VectorOfArray(effects[i])
-            vars = [[] for i in 1:length(prob.u0)]
-            for j in 1:length(prob.u0)
-                for k in 1:length(t)
-                    push!(vars[j],var(u[j,k,:]))
-                end
-            end
-            push!(variances[i],vars)
-        end
-        variances = VectorOfArray(variances)'
-        MorrisSensitivity(means,variances,effects)
+function morris_sensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
+    f = function (p)
+      prob1 = remake(prob;p=p)
+      y1 = solve(prob1,alg;saveat=t)
     end
+    morris_sensitivity(f,p_range,p_steps;kwargs...)
+end
+
+function morris_sensitivity(f,p_range,p_steps;kwargs...)
+    design_matrices = sample_matrices(p_range,p_steps;kwargs...)
+    effects = [Array{Float64}[] for i in 1:length(p_range)]
+    y1 = f(design_matrices[1][1])
+    for i in design_matrices
+        for j in 1:length(i)-1
+            y2 = y1
+            del = i[j+1] - i[j]
+            change_index = 0
+            for k in 1:length(del)
+                if abs(del[k]) > 0
+                    change_index = k
+                    break
+                end
+            end
+            del = sum(del)
+            y1 = f(i[j+1])
+            elem_effect = (y1-y2)/del
+            push!(effects[change_index],elem_effect)
+        end
+    end
+    effects
+    #=
+    means = []
+    variances = [[] for j in 1:length(p_range)]
+    for i in effects
+        push!(means,mean(i))
+    end
+    for i in 1:length(effects)
+        u = VectorOfArray(effects[i])
+        vars = [[] for i in 1:length(p_range)]
+        for j in 1:length(p_range)
+            for k in 1:length(effects[j])
+                push!(vars[j],var(u[j,k,:]))
+            end
+        end
+        push!(variances[i],vars)
+    end
+    variances = VectorOfArray(variances)'
+    MorrisSensitivity(means,variances,effects)
+    =#
 end

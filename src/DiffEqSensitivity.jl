@@ -16,4 +16,5 @@ export extract_local_sensitivities
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities
+
 end # module
