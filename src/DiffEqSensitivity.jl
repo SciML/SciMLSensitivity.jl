@@ -15,6 +15,6 @@ export extract_local_sensitivities
 
 export ODELocalSensitvityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
-       adjoint_sensitivities
+       adjoint_sensitivities, morris_sensitivity, MorrisSensitivity
 
 end # module

@@ -62,7 +62,7 @@ function morris_sensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
     morris_sensitivity(f,p_range,p_steps;kwargs...)
 end
 
-function morris_sensitivity(f,p_range,p_steps;kwargs...)
+function morris_sensitivity(f,p_range,p_steps,relative_scale=false;kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
     y1 = f(design_matrices[1][1])
     effects = [typeof(y1)[] for i in 1:length(p_range)]
@@ -79,7 +79,15 @@ function morris_sensitivity(f,p_range,p_steps;kwargs...)
             end
             del = sum(del)
             y1 = f(i[j+1])
-            elem_effect = (y1-y2)/del
+            if relative_scale == false
+                elem_effect = @. abs((y1-y2)/(del))
+            else
+                if del > 0
+                    elem_effect = @. abs((y1-y2)/(y2*del))
+                else 
+                    elem_effect = @. abs((y1-y2)/(y1*del))
+                end
+            end
             push!(effects[change_index],elem_effect)
         end
     end
