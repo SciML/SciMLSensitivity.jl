@@ -67,6 +67,7 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
     y1 = f(design_matrices[1][1])
     effects = [typeof(y1)[] for i in 1:length(p_range)]
     for i in design_matrices
+        y1 = f(i[1])
         for j in 1:length(i)-1
             y2 = y1
             del = i[j+1] - i[j]
@@ -84,7 +85,7 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
             else
                 if del > 0
                     elem_effect = @. abs((y1-y2)/(y2*del))
-                else 
+                else
                     elem_effect = @. abs((y1-y2)/(y1*del))
                 end
             end
