@@ -20,6 +20,6 @@ m = DiffEqSensitivity.morris_sensitivity(f,[[1,5],[1,5]],[10,10],k =1500,simulat
 @test m.means[2] ≈ A[:,2] atol=1e-2
 @test m.variances ≈ [[0,0],[0,0]] atol=1e-1
 
-m = DiffEqSensitivity.morris_sensitivity(f,[[1,5],[1,5]],[10,10],true,k =2000,simulations=1000,r=150)
+m = DiffEqSensitivity.morris_sensitivity(f,[[1,5],[1,5]],[10,10],relative_scale=true,k =2000,simulations=1000,r=150)
 @test m.means[1][2] = A[2] atol=1e-2
 @test m.variances ≈ [[0,0],[0,0]] atol=1e-1
