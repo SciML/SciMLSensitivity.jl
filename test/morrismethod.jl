@@ -10,3 +10,17 @@ t = collect(linspace(0,10,200))
 prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
 m = DiffEqSensitivity.morris_sensitivity(prob,Tsit5(),t,[[1,2],[1,2],[2,4]],[10,10,10],simulations=100)
 println(m)
+
+
+
+
+
+
+
+
+
+
+
+x = mean(m[1])
+mean(y->y.^2,m[1].-(x,))
+var(m[1])

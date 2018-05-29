@@ -64,8 +64,8 @@ end
 
 function morris_sensitivity(f,p_range,p_steps;kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-    effects = [Array{Float64}[] for i in 1:length(p_range)]
-    y1 = f(design_matrices[1][1])
+    y1 = Array(f(design_matrices[1][1]))
+    effects = [typeof(y1)[] for i in 1:length(p_range)]
     for i in design_matrices
         for j in 1:length(i)-1
             y2 = y1
@@ -84,23 +84,12 @@ function morris_sensitivity(f,p_range,p_steps;kwargs...)
         end
     end
     effects
-    #=
-    means = []
-    variances = [[] for j in 1:length(p_range)]
-    for i in effects
-        push!(means,mean(i))
+    means = eltype(effects[1])[]
+    variances = eltype(effects[1])[]
+    for k in 1:length(effects)
+      sense_series = [effects[k][i][j] for i in 1:length(effects[k]), j in 1:length(effects[k][1])]
+      push!(means,reshape(mean(sense_series,1),size(effects[k][1])))
+      push!(variances,reshape(var(sense_series,1),size(effects[k][1])))
     end
-    for i in 1:length(effects)
-        u = VectorOfArray(effects[i])
-        vars = [[] for i in 1:length(p_range)]
-        for j in 1:length(p_range)
-            for k in 1:length(effects[j])
-                push!(vars[j],var(u[j,k,:]))
-            end
-        end
-        push!(variances[i],vars)
-    end
-    variances = VectorOfArray(variances)'
     MorrisSensitivity(means,variances,effects)
-    =#
 end
