@@ -57,14 +57,14 @@ end
 function morris_sensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
     f = function (p)
       prob1 = remake(prob;p=p)
-      y1 = solve(prob1,alg;saveat=t)
+      Array(solve(prob1,alg;saveat=t))
     end
     morris_sensitivity(f,p_range,p_steps;kwargs...)
 end
 
 function morris_sensitivity(f,p_range,p_steps;kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-    y1 = Array(f(design_matrices[1][1]))
+    y1 = f(design_matrices[1][1])
     effects = [typeof(y1)[] for i in 1:length(p_range)]
     for i in design_matrices
         for j in 1:length(i)-1
@@ -83,7 +83,6 @@ function morris_sensitivity(f,p_range,p_steps;kwargs...)
             push!(effects[change_index],elem_effect)
         end
     end
-    effects
     means = eltype(effects[1])[]
     variances = eltype(effects[1])[]
     for k in 1:length(effects)
