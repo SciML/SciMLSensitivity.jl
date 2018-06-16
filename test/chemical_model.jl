@@ -4,9 +4,9 @@ f = @ode_def_nohes chem_model begin
     dy1 = -k1*y1
     dy2 = k1*y1 - k2*(y2^2)
     dy3 = k2*(y2^2)
-end k1 k2 k3
+end k1 k2
 
-p = [1.0,1.0,1.0]
+p = [1.0,1.0]
 u0 = [1.0,0.0,0.0]
 prob1 = ODEProblem(f,u0,(0.0,10.0),p)
 prob1
