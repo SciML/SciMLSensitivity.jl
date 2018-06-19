@@ -86,9 +86,15 @@ function sobol_sensitivity(f,p_range,N,p_fixed,order=1)
     y0,v = calc_mean_var(f,p_range,N)
     if order == 1
         first_order = first_order_var(f,p_range,N,y0,p_fixed)
+        for i in 1:length(first_order)
+            first_order[i] = first_order[i] ./ v
+        end
         first_order
     else 
         second_order = second_order_var(f,p_range,N,y0,p_fixed)
+        for i in 1:length(second_order)
+            second_order[i] = second_order[i] ./ v
+        end
         second_order
     end
 end
@@ -96,7 +102,7 @@ end
 function sobol_sensitivity(prob::DEProblem,alg,t,p_range,N,p_fixed,order=1)
     f = function (p)
         prob1 = remake(prob;p=p)
-        Array(solve(prob,alg;saveat=t))
+        Array(solve(prob1,alg;saveat=t))
     end
     @assert length(prob.p) == length(p_range) == length(p_fixed)
     sobol_sensitivity(f,p_range,N,p_fixed,order)
