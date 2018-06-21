@@ -1,6 +1,6 @@
-function give_rand_y(f,p_range,p_fixed=nothing,indices=nothing)
+function give_rand_p(f,p_range,p_fixed=nothing,indices=nothing)
     if p_fixed == nothing
-        p = [rand(p_range[j][1]:1e-6:p_range[j][2]) for j in 1:length(p_range)]
+        p = [(p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] for j in 1:length(p_range)]
     else
         p = [0.0 for i in p_range]
         j = 1
@@ -9,12 +9,11 @@ function give_rand_y(f,p_range,p_fixed=nothing,indices=nothing)
                 p[i] = p_fixed[j]
                 j += 1
             else
-                p[i] = rand(p_range[i][1]:1e-6:p_range[i][2])
+                p[i] = (p_range[i][2] -p_range[i][1])*rand() + p_range[i][1]
             end
         end
     end
-    y1 = f(p)
-    Array(y1)
+    p
 end
 
 function calc_mean_var(f,p_range,N)
@@ -37,7 +36,7 @@ function calc_mean_var(f,p_range,N)
     y0,v
 end
 
-function first_order_var(f,p_range,N,y0,p_fixed)
+function first_order_var(f,p_range,N,y0)
     ys = []
     for i in 1:length(p_range)
         y = [0.0 for i in 1:length(y0)]
@@ -45,7 +44,9 @@ function first_order_var(f,p_range,N,y0,p_fixed)
             y = reshape(y,size(y0)[1],size(y0)[2])
         end
         for j in 1:N
-            yer = give_rand_y(f,p_range,[p_fixed[i]],[i]) .* give_rand_y(f,p_range)
+            p2 = give_rand_p(f,p_range)
+            p1 = give_rand_p(f,p_range,[p2[i]],[i])
+            yer = Array(f(p1)) .* Array(f(p2))
             y .+= yer
         end
         y = y./N - y0.^2
@@ -54,7 +55,7 @@ function first_order_var(f,p_range,N,y0,p_fixed)
     ys
 end
 
-function second_order_var(f,p_range,N,y0,p_fixed)
+function second_order_var(f,p_range,N,y0)
     ys = []
     for i in 1:length(p_range)
         for j in i+1:length(p_range)
@@ -63,15 +64,15 @@ function second_order_var(f,p_range,N,y0,p_fixed)
                 y = reshape(y,size(y0)[1],size(y0)[2])
             end
             for k in 1:N
-                y1 = give_rand_y(f,p_range,[p_fixed[i],p_fixed[j]],[i,j])
-                y2 = give_rand_y(f,p_range)
-                y .+=  y1 .* y2 
+                p2 = give_rand_p(f,p_range)
+                p1 = give_rand_p(f,p_range,[p2[i],p2[j]],[i,j])
+                y .+=  Array(f(p1)) .* Array(f(p2)) 
             end
             y = y./N - y0.^2
             push!(ys,copy(y))
         end
     end
-    ys_frst_order = first_order_var(f,p_range,N,y0,p_fixed)
+    ys_frst_order = first_order_var(f,p_range,N,y0)
     j = 1
     for i in 1:length(p_range)
         for k in i+1:length(p_range)
@@ -82,24 +83,58 @@ function second_order_var(f,p_range,N,y0,p_fixed)
     ys
 end
 
-function sobol_sensitivity(f,p_range,N,p_fixed,order=1)
+
+function total_var(f,p_range,N,y0)
+    ys = []
+    for i in 1:length(p_range)
+        y = [0.0 for i in 1:length(y0)]
+        if length(size(y0)) != 1
+            y = reshape(y,size(y0)[1],size(y0)[2])
+        end
+        for j in 1:N
+            p_fixed_all = []
+            p_fixed_indices = []
+            p2 = give_rand_p(f,p_range)
+            for j in 1:length(p2)
+                if j != i
+                    push!(p_fixed_all,p2[j])
+                    push!(p_fixed_indices,j)
+                end
+            end
+            p1 = give_rand_p(f,p_range,p_fixed_all,p_fixed_indices) 
+            yer = Array(f(p1)) .* Array(f(p2))
+            y .+= yer
+        end
+        y = y./N - y0.^2
+        push!(ys,copy(y))
+    end
+    ys
+end
+
+function sobol_sensitivity(f,p_range,N,order=0)
     y0,v = calc_mean_var(f,p_range,N)
     if order == 1
-        first_order = first_order_var(f,p_range,N,y0,p_fixed)
+        first_order = first_order_var(f,p_range,N,y0)
         for i in 1:length(first_order)
             first_order[i] = first_order[i] ./ v
         end
         first_order
-    else 
-        second_order = second_order_var(f,p_range,N,y0,p_fixed)
+    elseif order == 2
+        second_order = second_order_var(f,p_range,N,y0)
         for i in 1:length(second_order)
             second_order[i] = second_order[i] ./ v
         end
         second_order
+    else
+        total_indices = total_var(f,p_range,N,y0)
+        for i in 1:length(total_indices)
+            total_indices[i] = 1 .- (total_indices[i] ./ v)
+        end
+        total_indices
     end
 end
 
-function sobol_sensitivity(prob::DEProblem,alg,t,p_range,N,p_fixed,order=1)
+function sobol_sensitivity(prob::DEProblem,alg,t,p_range,N,order=0)
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))
