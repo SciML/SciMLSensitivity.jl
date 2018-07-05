@@ -18,12 +18,8 @@ end
 
 function calc_mean_var(f,p_range,N)
     y1 = Array(f(give_rand_p(p_range)))
-    y0 = zeros(length(y1))
-    v = zeros(length(y1))
-    if length(size(y1)) != 1
-        y0 = reshape(y0,size(y1)[1],size(y1)[2])
-        v = reshape(v,size(y1)[1],size(y1)[2])
-    end
+    y0 = zeros(y1)
+    v = zeros(y1)
     for i in 1:N
         y1 = Array(f(give_rand_p(p_range)))
         @. y0 += y1
@@ -36,12 +32,9 @@ function calc_mean_var(f,p_range,N)
 end
 
 function first_order_var(f,p_range,N,y0)
-    ys = []
+    ys = Array{typeof(y0)}(length(p_range))
     for i in 1:length(p_range)
-        y = zeros(length(y0))
-        if length(size(y0)) != 1
-            y = reshape(y,size(y0)[1],size(y0)[2])
-        end
+        y = zeros(y0)
         for j in 1:N
             p2 = give_rand_p(p_range)
             p1 = give_rand_p(p_range,[p2[i]],[i])
@@ -49,26 +42,25 @@ function first_order_var(f,p_range,N,y0)
             @. y += yer
         end
         y = @. y/N - y0^2
-        push!(ys,copy(y))
+        ys[i] = copy(y)
     end
     ys
 end
 
 function second_order_var(f,p_range,N,y0)
-    ys = []
+    ys = Array{typeof(y0)}(Int((length(p_range)*(length(p_range)-1))/2))
+    curr = 1
     for i in 1:length(p_range)
         for j in i+1:length(p_range)
-            y = zeros(length(y0))
-            if length(size(y0)) != 1
-                y = reshape(y,size(y0)[1],size(y0)[2])
-            end
+            y = zeros(y0)
             for k in 1:N
                 p2 = give_rand_p(p_range)
                 p1 = give_rand_p(p_range,[p2[i],p2[j]],[i,j])
-                @. y +=  Array(f(p1)) * Array(f(p2)) 
+                y .+=  Array(f(p1)) .* Array(f(p2)) 
             end
             y = @. y/N - y0^2
-            push!(ys,copy(y))
+            ys[curr] = copy(y)
+            curr += 1
         end
     end
     ys_frst_order = first_order_var(f,p_range,N,y0)
@@ -84,12 +76,9 @@ end
 
 
 function total_var(f,p_range,N,y0)
-    ys = []
+    ys = Array{typeof(y0)}(length(p_range))
     for i in 1:length(p_range)
-        y = zeros(length(y0))
-        if length(size(y0)) != 1
-            y = reshape(y,size(y0)[1],size(y0)[2])
-        end
+        y = zeros(y0)
         for j in 1:N
             p_fixed_all = []
             p_fixed_indices = []
@@ -105,7 +94,7 @@ function total_var(f,p_range,N,y0)
             @. y += yer
         end
         y = @. y/N - y0^2
-        push!(ys,copy(y))
+        ys[i] = copy(y)
     end
     ys
 end
@@ -117,19 +106,19 @@ function sobol_sensitivity(f,p_range,N,order=2)
         for i in 1:length(first_order)
             first_order[i] = @. first_order[i] / v
         end
-        first_order[2:end]
+        first_order
     elseif order == 2
         second_order = second_order_var(f,p_range,N,y0)
         for i in 1:length(second_order)
             second_order[i] = @. second_order[i] / v
         end
-        second_order[2:end]
+        second_order
     else
         total_indices = total_var(f,p_range,N,y0)
         for i in 1:length(total_indices)
             total_indices[i] = @. 1 - (total_indices[i] / v)
         end
-        total_indices[2:end]
+        total_indices
     end
 end
 
