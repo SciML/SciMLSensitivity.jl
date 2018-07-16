@@ -52,7 +52,7 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
 
 end
 
-type ODEAdjointProblem{uType,tType,isinplace,P,F,C,MM} <: AbstractODEProblem{uType,tType,isinplace}
+mutable struct ODEAdjointProblem{uType,tType,isinplace,P,F,C,MM} <: AbstractODEProblem{uType,tType,isinplace}
   f::F
   u0::uType
   tspan::Tuple{tType,tType}
