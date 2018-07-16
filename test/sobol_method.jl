@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, ParameterizedFunctions, Base.Test
+using DiffEqSensitivity, OrdinaryDiffEq, ParameterizedFunctions, Test
 
 A = [1,0,2,3]
 function f_sobol(p)

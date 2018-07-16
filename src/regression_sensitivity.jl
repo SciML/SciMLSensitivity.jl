@@ -110,7 +110,7 @@ function pcc_f(x_lm,yis)
         formula *= "x$j +"
     end
     formula = formula[1:end-1] * ")"
-    ols_x = lm(eval(parse(formula)),df)
+    ols_x = lm(eval(Meta.parse(formula)),df)
     x_cap = x_lm .- predict(ols_x)
     y_caps = []
     for k in 1:size(yis)[1]
@@ -129,7 +129,7 @@ function pcc_f(x_lm,yis)
                 formula *= "x$j +"
             end
             formula = formula[1:end-1] * ")"
-            ols_y = lm(eval(parse(formula)),df)
+            ols_y = lm(eval(Meta.parse(formula)),df)
             y_cap = yis[k,j,:] .- predict(ols_y)
             push!(y_cps,y_cap)
         end

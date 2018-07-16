@@ -1,6 +1,6 @@
 using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK
-using Base.Test
+using Test
 
 f = @ode_def LotkaVolterra begin
   dx = a*x - b*x*y

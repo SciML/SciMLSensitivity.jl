@@ -10,7 +10,7 @@ struct MorrisSensitivity
 end
 
 function generate_design_matrix(p_range,p_steps;k = 10)
-    ps = [linspace(p_range[i][1],p_range[i][2],p_steps[i]) for i in 1:length(p_range)]
+    ps = [range(p_range[i][1], stop=p_range[i][2], length=p_steps[i]) for i in 1:length(p_range)]
     indices = [rand(1:i) for i in p_steps]
     all_idxs = Vector{typeof(indices)}(k)
 
