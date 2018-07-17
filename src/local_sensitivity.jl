@@ -1,4 +1,4 @@
-immutable ODELocalSensitvityFunction{F,UF,PF,JC,PJC,A,fc,uEltype} <: SensitivityFunction
+struct ODELocalSensitvityFunction{F,UF,PF,JC,PJC,A,fc,uEltype} <: SensitivityFunction
   f::F
   uf::UF
   pf::PF
@@ -53,7 +53,7 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   end
 end
 
-type ODELocalSensitivityProblem{uType,tType,isinplace,P,F,C,MM} <: AbstractODEProblem{uType,tType,isinplace}
+mutable struct ODELocalSensitivityProblem{uType,tType,isinplace,P,F,C,MM} <: AbstractODEProblem{uType,tType,isinplace}
   f::F
   u0::uType
   tspan::Tuple{tType,tType}
