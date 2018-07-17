@@ -29,14 +29,14 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   # Now do sensitivities
   # Compute the Jacobian
 
-  if has_jac(S.f)
+  if DiffEqBase.has_jac(S.f)
     S.f(Val{:jac},S.J,y,p,t) # Calculate the Jacobian into J
   else
     S.uf.t = t
     jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
   end
 
-  if has_paramjac(S.f)
+  if DiffEqBase.has_paramjac(S.f)
     S.f(Val{:paramjac},S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
   else
     S.pf.t = t
@@ -53,7 +53,7 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   end
 end
 
-mutable struct ODELocalSensitivityProblem{uType,tType,isinplace,P,F,C,MM} <: AbstractODEProblem{uType,tType,isinplace}
+mutable struct ODELocalSensitivityProblem{uType,tType,isinplace,P,F,C,MM} <: DiffEqBase.AbstractODEProblem{uType,tType,isinplace}
   f::F
   u0::uType
   tspan::Tuple{tType,tType}
@@ -71,13 +71,13 @@ function ODELocalSensitivityProblem(f,u0,tspan,p=nothing,alg=SensitivityAlg();
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(u0))
-  if has_jac(f)
+  if DiffEqBase.has_jac(f)
     jac_config = nothing
   else
     jac_config = build_jac_config(alg,uf,u0)
   end
 
-  if has_paramjac(f)
+  if DiffEqBase.has_paramjac(f)
     paramjac_config = nothing
   else
     paramjac_config = build_param_jac_config(alg,pf,u0,p)

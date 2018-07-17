@@ -1,4 +1,4 @@
-struct SensitivityAlg{CS,AD,FDT} <: DEAlgorithm end
+struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm end
 Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central})
   SensitivityAlg{chunk_size,autodiff,typeof(diff_type)}()
 end

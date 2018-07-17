@@ -57,7 +57,7 @@ function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,tot
     matrices
 end
 
-function morris_sensitivity(prob::DEProblem,alg,t,p_range,p_steps;kwargs...)
+function morris_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,p_steps;kwargs...)
     f = function (p)
       prob1 = remake(prob;p=p)
       Array(solve(prob1,alg;saveat=t))
