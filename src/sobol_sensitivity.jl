@@ -122,7 +122,7 @@ function sobol_sensitivity(f,p_range,N,order=2)
     end
 end
 
-function sobol_sensitivity(prob::DEProblem,alg,t,p_range,N,order=2)
+function sobol_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,N,order=2)
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))

@@ -148,7 +148,7 @@ function pcc_f(x_lm,yis)
     pcc 
 end
 
-function regression_sensitivity(prob::DEProblem,alg,t,p_range,p_fixed,n;coeffs=:rank)
+function regression_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,p_fixed,n;coeffs=:rank)
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))
