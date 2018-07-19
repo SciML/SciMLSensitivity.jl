@@ -31,7 +31,7 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
   y = S.y
   S.sol(y,t)
 
-  if has_jac(S.f)
+  if DiffEqBase.has_jac(S.f)
     S.f(Val{:jac},S.J,y,p,t) # Calculate the Jacobian into J
   else
     S.uf.t = t
@@ -76,10 +76,10 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   p = sol.prob.p
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
-  
+
   u0 = zeros(sol.prob.u0)'
 
-  if has_jac(f)
+  if DiffEqBase.has_jac(f)
     jac_config = nothing
   else
     jac_config = build_jac_config(alg,uf,u0)
@@ -149,7 +149,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   f_cache = similar(y)
   pJ = Matrix{eltype(sol.prob.u0)}(length(sol.prob.u0),length(p))
 
-  if has_paramjac(f)
+  if DiffEqBase.has_paramjac(f)
     paramjac_config = nothing
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
@@ -164,7 +164,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   S.adj_sol(λ,t)
   λ .*= -one(eltype(λ))
 
-  if has_paramjac(S.f)
+  if DiffEqBase.has_paramjac(S.f)
     S.f(Val{:paramjac},S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
   else
     S.pf.t = t

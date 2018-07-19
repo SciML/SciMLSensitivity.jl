@@ -5,3 +5,4 @@ ForwardDiff
 DiffEqDiffTools 0.3.0
 DiffEqCallbacks
 QuadGK
+RecursiveArrayTools
