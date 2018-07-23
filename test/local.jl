@@ -11,13 +11,13 @@ end a b c
 p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
-x = sol[1:sol.prob.indvars,:]
+x = sol[1:sol.prob.f.numindvar,:]
 
 # Get the sensitivities
 
-da = sol[sol.prob.indvars+1:sol.prob.indvars*2,:]
-db = sol[sol.prob.indvars*2+1:sol.prob.indvars*3,:]
-dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
+da = sol[sol.prob.f.numindvar+1:sol.prob.f.numindvar*2,:]
+db = sol[sol.prob.f.numindvar*2+1:sol.prob.f.numindvar*3,:]
+dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 
 sense_res = [da[:,end] db[:,end] dc[:,end]]
 
@@ -44,13 +44,13 @@ end
 p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f2,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
-res = sol[1:sol.prob.indvars,:]
+res = sol[1:sol.prob.f.numindvar,:]
 
 # Get the sensitivities
 
-da = sol[sol.prob.indvars+1:sol.prob.indvars*2,:]
-db = sol[sol.prob.indvars*2+1:sol.prob.indvars*3,:]
-dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
+da = sol[sol.prob.f.numindvar+1:sol.prob.f.numindvar*2,:]
+db = sol[sol.prob.f.numindvar*2+1:sol.prob.f.numindvar*3,:]
+dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 
 sense_res = [da[:,end] db[:,end] dc[:,end]]
 

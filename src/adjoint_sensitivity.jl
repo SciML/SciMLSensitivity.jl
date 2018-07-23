@@ -38,7 +38,7 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
     jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
   end
 
-  A_mul_B!(du,u,S.J); du .*= -one(eltype(u))
+  mul!(du,u,S.J); du .*= -one(eltype(u))
 
   if !S.discrete
     if S.dg != nothing
@@ -171,7 +171,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     S.pf.u .= y
     jacobian!(S.pJ, S.pf, S.p, S.f_cache, S.alg, S.paramjac_config)
   end
-  A_mul_B!(out',λ,S.pJ)
+  mul!(out',λ,S.pJ)
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
