@@ -99,8 +99,8 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
     variances = eltype(effects[1])[]
     for k in 1:length(effects)
       sense_series = [effects[k][i][j] for i in 1:length(effects[k]), j in 1:length(effects[k][1])]
-      push!(means,reshape(mean(sense_series,1),size(effects[k][1])))
-      push!(variances,reshape(var(sense_series,1),size(effects[k][1])))
+      push!(means,reshape(mean(sense_series,dims=1),size(effects[k][1])))
+      push!(variances,reshape(var(sense_series,dims=1),size(effects[k][1])))
     end
     MorrisSensitivity(means,variances,effects)
 end

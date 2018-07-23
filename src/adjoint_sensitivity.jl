@@ -179,7 +179,7 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                kwargs...)
 
   adj_prob = ODEAdjointProblem(sol,g,t,dg)
-  adj_sol = solve(adj_prob,alg,abstol=abstol,reltol=reltol)
+  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,kwargs...)
   integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 
   if t== nothing

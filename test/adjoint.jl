@@ -24,7 +24,7 @@ easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
-res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-12)
+res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
 @test norm(res - easy_res) < 1e-10
 
@@ -33,7 +33,7 @@ function G(p)
                     tspan=eltype(p).(prob.tspan))
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
   A = convert(Array,sol)
-  sum(((1.-A).^2)./2)
+  sum(((1 .- A).^2)./2)
 end
 G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
@@ -55,7 +55,7 @@ end
 adj_prob = ODEAdjointProblem(sol,g,nothing,dg)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-10)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
-res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-10)
+res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 
 easy_res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
