@@ -1,8 +1,9 @@
 using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
-      RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK
+      RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK,
+      LinearAlgebra
 using Test
 
-f = @ode_def LotkaVolterra begin
+f = @ode_def LotkaVolterra2 begin
   dx = a*x - b*x*y
   dy = -c*y + x*y
 end a b c
@@ -28,17 +29,18 @@ res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-12)
 @test norm(res - easy_res) < 1e-10
 
 function G(p)
-  tmp_prob = problem_new_parameters(prob,p)
+  tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
+                    tspan=eltype(p).(prob.tspan))
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
   A = convert(Array,sol)
-  sum(((1-A).^2)./2)
+  sum(((1.-A).^2)./2)
 end
 G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
-@test norm(res' - res2) < 1e-8
-@test norm(res' - res3) < 1e-6
+@test norm(res' .- res2) < 1e-8
+@test norm(res' .- res3) < 1e-6
 
 # Do a continuous adjoint problem
 
@@ -58,10 +60,11 @@ res,err = quadgk(integrand,0.0,10.0,abstol=1e-14,reltol=1e-10)
 easy_res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
-@test norm(easy_res - res) < 1e-8
+@test norm(easy_res .- res) < 1e-8
 
 function G(p)
-  tmp_prob = problem_new_parameters(prob,p)
+  tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
+                    tspan=eltype(p).(prob.tspan))
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14)
   res,err = quadgk((t)-> (sum(sol(t)).^2)./2,0.0,10.0,abstol=1e-14,reltol=1e-10)
   res
@@ -69,5 +72,5 @@ end
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
-@test norm(res' - res2) < 1e-8
-@test norm(res' - res3) < 1e-6
+@test norm(res' .- res2) < 1e-8
+@test norm(res' .- res3) < 1e-6

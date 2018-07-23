@@ -126,5 +126,5 @@ end
 function extract_local_sensitivities(tmp,sol,t)
   sol(tmp,t)
   x = @view tmp[1:sol.prob.f.numindvar]
-  x,[@view(tmp[sol.prob.f.numindvar*j+1:sol.f.prob.f.numindvar*(j+1)]) for j in 1:(length(sol.prob.p))]
+  x,[@view(tmp[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1)]) for j in 1:(length(sol.prob.p))]
 end

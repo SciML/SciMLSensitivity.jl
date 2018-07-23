@@ -12,7 +12,7 @@ end
 function generate_design_matrix(p_range,p_steps;k = 10)
     ps = [range(p_range[i][1], stop=p_range[i][2], length=p_steps[i]) for i in 1:length(p_range)]
     indices = [rand(1:i) for i in p_steps]
-    all_idxs = Vector{typeof(indices)}(k)
+    all_idxs = Vector{typeof(indices)}(undef,k)
 
     for i in 1:k
         flag = 0
@@ -26,7 +26,7 @@ function generate_design_matrix(p_range,p_steps;k = 10)
         all_idxs[i] = copy(indices)
     end
 
-    B = Array{Array{Float64}}(k)
+    B = Array{Array{Float64}}(undef,k)
     for j in 1:k
         cur_p = [ps[u][(all_idxs[j][u])] for u in 1:length(p_range)]
         B[j] = cur_p

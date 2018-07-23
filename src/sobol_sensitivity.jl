@@ -2,7 +2,7 @@ function give_rand_p(p_range,p_fixed=nothing,indices=nothing)
     if p_fixed == nothing
         p = [(p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] for j in 1:length(p_range)]
     else
-        p =  zeros(length(p_range))
+        p =  zero(length(p_range))
         j = 1
         for i in 1:length(p_range)
             if i in indices
@@ -18,8 +18,8 @@ end
 
 function calc_mean_var(f,p_range,N)
     y1 = Array(f(give_rand_p(p_range)))
-    y0 = zeros(y1)
-    v = zeros(y1)
+    y0 = zero(y1)
+    v = zero(y1)
     for i in 1:N
         y1 = Array(f(give_rand_p(p_range)))
         @. y0 += y1
@@ -32,9 +32,9 @@ function calc_mean_var(f,p_range,N)
 end
 
 function first_order_var(f,p_range,N,y0)
-    ys = Array{typeof(y0)}(length(p_range))
+    ys = Array{typeof(y0)}(undef,length(p_range))
     for i in 1:length(p_range)
-        y = zeros(y0)
+        y = zero(y0)
         for j in 1:N
             p2 = give_rand_p(p_range)
             p1 = give_rand_p(p_range,[p2[i]],[i])
@@ -48,15 +48,15 @@ function first_order_var(f,p_range,N,y0)
 end
 
 function second_order_var(f,p_range,N,y0)
-    ys = Array{typeof(y0)}(Int((length(p_range)*(length(p_range)-1))/2))
+    ys = Array{typeof(y0)}(undef,Int((length(p_range)*(length(p_range)-1))/2))
     curr = 1
     for i in 1:length(p_range)
         for j in i+1:length(p_range)
-            y = zeros(y0)
+            y = zero(y0)
             for k in 1:N
                 p2 = give_rand_p(p_range)
                 p1 = give_rand_p(p_range,[p2[i],p2[j]],[i,j])
-                y .+=  Array(f(p1)) .* Array(f(p2)) 
+                y .+=  Array(f(p1)) .* Array(f(p2))
             end
             y = @. y/N - y0^2
             ys[curr] = copy(y)
@@ -76,9 +76,9 @@ end
 
 
 function total_var(f,p_range,N,y0)
-    ys = Array{typeof(y0)}(length(p_range))
+    ys = Array{typeof(y0)}(undef,length(p_range))
     for i in 1:length(p_range)
-        y = zeros(y0)
+        y = zero(y0)
         for j in 1:N
             p_fixed_all = []
             p_fixed_indices = []
@@ -89,7 +89,7 @@ function total_var(f,p_range,N,y0)
                     push!(p_fixed_indices,j)
                 end
             end
-            p1 = give_rand_p(p_range,p_fixed_all,p_fixed_indices) 
+            p1 = give_rand_p(p_range,p_fixed_all,p_fixed_indices)
             yer =  Array(f(p1)) .* Array(f(p2))
             @. y += yer
         end

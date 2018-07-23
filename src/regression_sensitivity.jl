@@ -9,7 +9,7 @@ struct Regression_Sensitivity_Coefficients
 end
 
 function regression_sensitivity(f,p_range,p_fixed,n;coeffs=:rank)
-    
+
     pearson_coeffs = []
     src_coeffs = []
     partial_coeffs = []
@@ -48,7 +48,7 @@ function regression_sensitivity(f,p_range,p_fixed,n;coeffs=:rank)
         x_rnk_var = var(x_rnk)
         pcs,srcs = pcs_and_srcs(yis,x_lm,x_vrs,x_var)
         pcc = pcc_f(x_lm,yis)
-        yis_rnk = zeros(yis)
+        yis_rnk = zero(yis)
         for k in 1:size(yis)[1]
             for j in 1:size(yis)[2]
                 yis_rnk[k,j,:] = sortperm(yis[k,j,:])
@@ -145,7 +145,7 @@ function pcc_f(x_lm,yis)
         end
         push!(pcc,pcc_)
     end
-    pcc 
+    pcc
 end
 
 function regression_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,p_fixed,n;coeffs=:rank)

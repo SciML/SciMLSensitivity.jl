@@ -1,9 +1,12 @@
-struct ODEAdjointSensitvityFunction{F,UF,G,JC,GC,A,fc,SType,DG,uEltype} <: SensitivityFunction
+struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype} <: SensitivityFunction
   f::F
+  analytic::AN
+  jac::J
+  paramjac::PJ
   uf::UF
   g::G
   J::Matrix{uEltype}
-  dg_val::RowVector{uEltype,Vector{uEltype}}
+  dg_val::Adjoint{uEltype,Vector{uEltype}}
   jac_config::JC
   g_grad_config::GC
   alg::A
@@ -16,14 +19,17 @@ struct ODEAdjointSensitvityFunction{F,UF,G,JC,GC,A,fc,SType,DG,uEltype} <: Sensi
   dg::DG
 end
 
-function ODEAdjointSensitvityFunction(f,uf,g,u0,jac_config,g_grad_config,
+function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,u0,
+                                      jac_config,g_grad_config,
                                       p,f_cache,alg,discrete,y,sol,dg)
   numparams = length(p)
   numindvar = length(u0)
-  J = Matrix{eltype(u0)}(numindvar,numindvar)
-  dg_val = RowVector{eltype(u0)}(numindvar) # number of funcs size
-  ODEAdjointSensitvityFunction(f,uf,g,J,dg_val,jac_config,g_grad_config,
-                             alg,numparams,numindvar,f_cache,discrete,y,sol,dg)
+  J = Matrix{eltype(u0)}(undef,numindvar,numindvar)
+  dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
+  ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,J,dg_val,
+                               jac_config,g_grad_config,
+                               alg,numparams,numindvar,f_cache,
+                               discrete,y,sol,dg)
 end
 
 # u = λ'
@@ -32,7 +38,7 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
   S.sol(y,t)
 
   if DiffEqBase.has_jac(S.f)
-    S.f(Val{:jac},S.J,y,p,t) # Calculate the Jacobian into J
+    S.f.jac(S.J,y,p,t) # Calculate the Jacobian into J
   else
     S.uf.t = t
     jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
@@ -52,16 +58,6 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
 
 end
 
-mutable struct ODEAdjointProblem{uType,tType,isinplace,P,F,C,MM} <: DiffEqBase.AbstractODEProblem{uType,tType,isinplace}
-  f::F
-  u0::uType
-  tspan::Tuple{tType,tType}
-  p::P
-  indvars::Int
-  callback::C
-  mass_matrix::MM
-end
-
 # g is either g(t,u,p) or discrete g(t,u,i)
 function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                                       alg=SensitivityAlg();
@@ -72,12 +68,11 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   discrete = t != nothing
 
   isinplace = DiffEqBase.isinplace(sol.prob)
-  indvars = length(sol.prob.u0)
   p = sol.prob.p
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
 
-  u0 = zeros(sol.prob.u0)'
+  u0 = zero(sol.prob.u0)'
 
   if DiffEqBase.has_jac(f)
     jac_config = nothing
@@ -97,7 +92,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   λ = similar(u0)
-  sense = ODEAdjointSensitvityFunction(f,uf,pg,u0,jac_config,pg_config,
+  sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
+                                       uf,pg,u0,jac_config,pg_config,
                                        λ,p,alg,discrete,
                                        y,sol,dg)
 
@@ -119,10 +115,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  ODEAdjointProblem{typeof(u0),typeof(tspan[1]),
-                             isinplace,typeof(p),typeof(sense),typeof(_cb),
-                             typeof(mass_matrix)}(
-                             sense,u0,tspan,p,indvars,_cb,mass_matrix)
+  ODEProblem(sense,u0,tspan,p,callback=_cb,mass_matrix=mass_matrix)
 end
 
 struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A}
@@ -131,7 +124,7 @@ struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A}
   f::F
   p::Vector{uEltype}
   y::Vector{uEltype}
-  λ::RowVector{uEltype,Vector{uEltype}}
+  λ::Adjoint{uEltype,Vector{uEltype}}
   pf::PF
   f_cache::Vector{uEltype}
   pJ::Matrix{uEltype}
@@ -147,7 +140,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   λ = similar(adj_sol.prob.u0)
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(y))
   f_cache = similar(y)
-  pJ = Matrix{eltype(sol.prob.u0)}(length(sol.prob.u0),length(p))
+  pJ = Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
 
   if DiffEqBase.has_paramjac(f)
     paramjac_config = nothing
@@ -165,7 +158,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   λ .*= -one(eltype(λ))
 
   if DiffEqBase.has_paramjac(S.f)
-    S.f(Val{:paramjac},S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
+    S.f.paramjac(S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
   else
     S.pf.t = t
     S.pf.u .= y
@@ -191,12 +184,12 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
 
   if t== nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
-                   abstol=iabstol,reltol=ireltol)
+                   atol=iabstol,rtol=ireltol)
   else
-    res = zeros(integrand.p)'
+    res = zero(integrand.p)'
     for i in 1:length(t)-1
       res .+= quadgk(integrand,t[i],t[i+1],
-                     abstol=iabstol,reltol=ireltol)[1]
+                     atol=iabstol,rtol=ireltol)[1]
     end
   end
   res
