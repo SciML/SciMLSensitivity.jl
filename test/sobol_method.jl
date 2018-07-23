@@ -12,5 +12,5 @@ total = sobol_sensitivity(f_sobol,p_range,N,0)
 first_order = sobol_sensitivity(f_sobol,p_range,N,1)
 second_order = sobol_sensitivity(f_sobol,p_range,N,2)
 
-@test [total[1][1],total[2][1]] ≈ [first_order[1][1],first_order[2][1]] + second_order[1][1] atol=1e-1
-@test [total[1][2],total[2][2]] ≈ [first_order[1][2],first_order[2][2]] + second_order[1][2] atol=1e-1
+@test [total[1][1],total[2][1]] ≈ [first_order[1][1],first_order[2][1]] .+ second_order[1][1] atol=1e-1
+@test [total[1][2],total[2][2]] ≈ [first_order[1][2],first_order[2][2]] .+ second_order[1][2] atol=1e-1
