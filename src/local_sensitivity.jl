@@ -1,4 +1,4 @@
-struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,fc,uEltype} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   jac::J
@@ -9,13 +9,14 @@ struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,fc,uEltype} <: DiffE
   pJ::Matrix{uEltype}
   jac_config::JC
   paramjac_config::PJC
+  alg::Alg
   numparams::Int
   numindvar::Int
   f_cache::fc
 end
 
 function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
-                                    jac_config,paramjac_config,p,f_cache)
+                                    jac_config,paramjac_config,alg,p,f_cache)
   numparams = length(p)
   numindvar = length(u0)
   J = Matrix{eltype(u0)}(undef,numindvar,numindvar)
@@ -23,9 +24,10 @@ function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
   ODELocalSensitvityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(jac),typeof(paramjac),typeof(uf),
                              typeof(pf),typeof(jac_config),
-                             typeof(paramjac_config),typeof(f_cache),
+                             typeof(paramjac_config),typeof(alg),
+                             typeof(f_cache),
                              eltype(u0)}(f,analytic,jac,paramjac,uf,pf,J,pJ,
-                             jac_config,paramjac_config,
+                             jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache)
 end
 
@@ -74,7 +76,8 @@ ODELocalSensitivityProblem(;f,u0,tspan,p,callback,mass_matrix) =
 ODELocalSensitivityProblem(f,u0,tspan,p,callback,mass_matrix)
 
 function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
-                                    tspan,p=nothing;
+                                    tspan,p=nothing,
+                                    alg = SensitivityAlg();
                                     callback=CallbackSet(),mass_matrix=I)
   isinplace = DiffEqBase.isinplace(f)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
@@ -94,7 +97,8 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
 
   sense = ODELocalSensitvityFunction(f,f.analytic,f.jac,f.paramjac,
                                      uf,pf,u0,jac_config,
-                                     paramjac_config,p,similar(u0))
+                                     paramjac_config,alg,
+                                     p,similar(u0))
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
   ODEProblem(sense,sense_u0,tspan,p;callback=callback,mass_matrix=mass_matrix)
 end
@@ -105,22 +109,22 @@ end
 
 function extract_local_sensitivities(sol)
   x = sol[1:sol.prob.f.numindvar,:]
-  x,[sol[sol.prob.numindvar*j+1:sol.prob.f.numindvar*(j+1),:] for j in 1:(length(sol.prob.p))]
+  x,[sol[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1),:] for j in 1:(length(sol.prob.p))]
 end
 
 function extract_local_sensitivities(sol,i::Integer)
   x = sol[1:sol.prob.f.numindvar,i]
-  x,[sol[sol.prob.numindvar*j+1:sol.prob.f.numindvar*(j+1),i] for j in 1:(length(sol.prob.p))]
+  x,[sol[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1),i] for j in 1:(length(sol.prob.p))]
 end
 
 function extract_local_sensitivities(sol,t)
   tmp = sol(t)
   x = tmp[1:sol.prob.f.numindvar]
-  x,[tmp[sol.prob.numindvar*j+1:sol.prob.f.numindvar*(j+1)] for j in 1:(length(sol.prob.p))]
+  x,[tmp[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1)] for j in 1:(length(sol.prob.p))]
 end
 
 function extract_local_sensitivities(tmp,sol,t)
   sol(tmp,t)
   x = @view tmp[1:sol.prob.f.numindvar]
-  x,[@view(tmp[sol.prob.numindvar*j+1:sol.f.prob.numindvar*(j+1)]) for j in 1:(length(sol.prob.p))]
+  x,[@view(tmp[sol.prob.f.numindvar*j+1:sol.f.prob.f.numindvar*(j+1)]) for j in 1:(length(sol.prob.p))]
 end
