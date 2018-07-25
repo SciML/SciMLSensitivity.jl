@@ -63,18 +63,6 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   end
 end
 
-struct ODELocalSensitivityProblem{uType,tupType,isinplace,P,F,C,MM} <: DiffEqBase.AbstractODEProblem{uType,tupType,isinplace}
-  f::F
-  u0::uType
-  tspan::tupType
-  p::P
-  callback::C
-  mass_matrix::MM
-end
-
-ODELocalSensitivityProblem(;f,u0,tspan,p,callback,mass_matrix) =
-ODELocalSensitivityProblem(f,u0,tspan,p,callback,mass_matrix)
-
 function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg = SensitivityAlg();
