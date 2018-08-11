@@ -1,4 +1,4 @@
-struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype} <: SensitivityFunction
+struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype,MM} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -17,11 +17,12 @@ struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype} 
   y::Vector{uEltype}
   sol::SType
   dg::DG
+  mass_matrix::MM
 end
 
 function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,u0,
                                       jac_config,g_grad_config,
-                                      p,f_cache,alg,discrete,y,sol,dg)
+                                      p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
   numindvar = length(u0)
   J = Matrix{eltype(u0)}(undef,numindvar,numindvar)
@@ -29,7 +30,7 @@ function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,u0,
   ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,J,dg_val,
                                jac_config,g_grad_config,
                                alg,numparams,numindvar,f_cache,
-                               discrete,y,sol,dg)
+                               discrete,y,sol,dg,mm)
 end
 
 # u = λ'
@@ -95,7 +96,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
                                        uf,pg,u0,jac_config,pg_config,
                                        λ,p,alg,discrete,
-                                       y,sol,dg)
+                                       y,sol,dg,mass_matrix)
 
   if discrete
     cur_time = Ref(length(t)-1)
@@ -115,7 +116,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  ODEProblem(sense,u0,tspan,p,callback=_cb,mass_matrix=mass_matrix)
+  ODEProblem(sense,u0,tspan,p,callback=_cb)
 end
 
 struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A}

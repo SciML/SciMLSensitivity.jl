@@ -66,7 +66,7 @@ function G(p)
   tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
                     tspan=eltype(p).(prob.tspan))
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14)
-  res,err = quadgk((t)-> (sum(sol(t)).^2)./2,0.0,10.0,abstol=1e-14,reltol=1e-10)
+  res,err = quadgk((t)-> (sum(sol(t)).^2)./2,0.0,10.0,atol=1e-14,rtol=1e-10)
   res
 end
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])

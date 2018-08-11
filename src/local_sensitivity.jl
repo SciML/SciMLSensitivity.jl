@@ -1,4 +1,4 @@
-struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype,MM} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   jac::J
@@ -13,10 +13,11 @@ struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype} <: D
   numparams::Int
   numindvar::Int
   f_cache::fc
+  mass_matrix::MM
 end
 
 function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
-                                    jac_config,paramjac_config,alg,p,f_cache)
+                                    jac_config,paramjac_config,alg,p,f_cache,mm)
   numparams = length(p)
   numindvar = length(u0)
   J = Matrix{eltype(u0)}(undef,numindvar,numindvar)
@@ -26,9 +27,10 @@ function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
-                             eltype(u0)}(f,analytic,jac,paramjac,uf,pf,J,pJ,
+                             eltype(u0),typeof(mm)}(
+                             f,analytic,jac,paramjac,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
-                             numparams,numindvar,f_cache)
+                             numparams,numindvar,f_cache,mm)
 end
 
 function (S::ODELocalSensitvityFunction)(du,u,p,t)
@@ -86,9 +88,9 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   sense = ODELocalSensitvityFunction(f,f.analytic,f.jac,f.paramjac,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
-                                     p,similar(u0))
+                                     p,similar(u0),mass_matrix)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
-  ODEProblem(sense,sense_u0,tspan,p;callback=callback,mass_matrix=mass_matrix)
+  ODEProblem(sense,sense_u0,tspan,p;callback=callback)
 end
 
 function ODELocalSensitivityProblem(f,args...;kwargs...)
