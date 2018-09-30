@@ -49,7 +49,7 @@ end
 function build_param_jac_config(alg,uf,u,p)
   if alg_autodiff(alg)
     jac_config = ForwardDiff.JacobianConfig(uf,u,p,
-                 ForwardDiff.Chunk{determine_chunksize(u,alg)}())
+                 ForwardDiff.Chunk{determine_chunksize(p,alg)}())
   else
     if alg.diff_type != Val{:complex}
       jac_config = DiffEqDiffTools.JacobianCache(similar(p),similar(u),
