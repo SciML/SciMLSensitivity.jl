@@ -95,7 +95,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   λ = similar(u0)
   sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
                                        uf,pg,u0,jac_config,pg_config,
-                                       λ,deepcopy(p),alg,discrete,
+                                       λ,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
 
   if discrete
