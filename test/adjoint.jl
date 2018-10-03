@@ -74,3 +74,11 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
 @test norm(res' .- res2) < 1e-8
 @test norm(res' .- res3) < 1e-6
+
+# Buffer length test
+f = (du, u, p, t) -> du .= 0
+p = zeros(3); u = zeros(50)
+prob = ODEProblem(f,u,(0.0,10.0),p)
+sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+@test_nowarn res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
