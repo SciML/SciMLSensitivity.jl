@@ -14,13 +14,15 @@ struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype,MM} <
   numindvar::Int
   f_cache::fc
   mass_matrix::MM
+  isautojacvec::Bool
 end
 
 function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
-                                    jac_config,paramjac_config,alg,p,f_cache,mm)
+                                    jac_config,paramjac_config,alg,p,f_cache,mm,
+                                    isautojacvec)
   numparams = length(p)
   numindvar = length(u0)
-  J = Matrix{eltype(u0)}(undef,numindvar,numindvar)
+  J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
   ODELocalSensitvityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(jac),typeof(paramjac),typeof(uf),
@@ -30,7 +32,7 @@ function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
                              eltype(u0),typeof(mm)}(
                              f,analytic,jac,paramjac,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
-                             numparams,numindvar,f_cache,mm)
+                             numparams,numindvar,f_cache,mm,isautojacvec)
 end
 
 function (S::ODELocalSensitvityFunction)(du,u,p,t)
@@ -41,11 +43,14 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   # Now do sensitivities
   # Compute the Jacobian
 
-  if DiffEqBase.has_jac(S.f)
-    S.jac(S.J,y,p,t) # Calculate the Jacobian into J
-  else
-    S.uf.t = t
-    jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
+  # TODO: priority
+  if !S.isautojacvec
+    if DiffEqBase.has_jac(S.f)
+      S.jac(S.J,y,p,t) # Calculate the Jacobian into J
+    else
+      S.uf.t = t
+      jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
+    end
   end
 
   if DiffEqBase.has_paramjac(S.f)
@@ -60,7 +65,12 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   for i in eachindex(p)
     Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
     dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
-    mul!(dp,S.J,Sj)
+    if S.isautojacvec
+      mul!(dp,S.J,Sj)
+      jacobianvec!(dp, S.uf, y, Sj, S.f_cache, S.alg, S.jac_config)
+    else
+      mul!(dp,S.J,Sj)
+    end
     dp .+= @view S.pJ[:,i]
   end
 end
@@ -70,11 +80,15 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     alg = SensitivityAlg();
                                     callback=CallbackSet(),mass_matrix=I)
   isinplace = DiffEqBase.isinplace(f)
+  isautojacvec = get_jacvec(alg)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
-  uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
+  uf = isautojacvec ? nothing : DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if DiffEqBase.has_jac(f)
     jac_config = nothing
+  elseif isautojacvec
+    jac_config = ForwardDiff.Dual{:___jac_tag}.(u0,u0)
+    jac_config = jac_config, similar(jac_config)
   else
     jac_config = build_jac_config(alg,uf,u0)
   end
@@ -88,7 +102,8 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   sense = ODELocalSensitvityFunction(f,f.analytic,f.jac,f.paramjac,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
-                                     p,similar(u0),mass_matrix)
+                                     p,similar(u0),mass_matrix,
+                                     isautojacvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
   ODEProblem(sense,sense_u0,tspan,p;callback=callback)
 end
