@@ -1,6 +1,6 @@
-struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central})
-  SensitivityAlg{chunk_size,autodiff,typeof(diff_type)}()
+struct SensitivityAlg{CS,AD,FDT,Jv} <: DiffEqBase.DEAlgorithm end
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=false)
+  SensitivityAlg{chunk_size,autodiff,typeof(diff_type),autojacvec}()
 end
 
 Base.@pure function determine_chunksize(u,alg::SensitivityAlg)
@@ -15,9 +15,10 @@ Base.@pure function determine_chunksize(u,CS)
   end
 end
 
-Base.@pure alg_autodiff(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = AD
-Base.@pure get_chunksize(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = CS
-Base.@pure diff_type(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = FDT
+Base.@pure alg_autodiff(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = AD
+Base.@pure get_chunksize(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = CS
+Base.@pure diff_type(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = FDT
+Base.@pure get_jacvec(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = Jv
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::AbstractArray{<:Number}, alg::SensitivityAlg, jac_config)
@@ -27,6 +28,25 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
       DiffEqDiffTools.finite_difference_jacobian!(J, f, x, jac_config)
     end
     nothing
+end
+
+"""
+  jacobianvec!(Jv, J, f, x, v, alg, (buffer, seed)) -> nothing
+
+``Jv <- J(f(x))v``
+"""
+function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
+                      v, alg::SensitivityAlg, (buffer, seed))
+  if alg_autodiff(alg)
+    TD = typeof(first(seed))
+    T  = typeof(first(seed).partials)
+    @. seed = TD(x, T(tuple(v)))
+    f(buffer, seed)
+    Jv .= ForwardDiff.partials.(buffer, 1)
+  else
+      error("Jacobian*vector computation is for automatic differentiation only!")
+  end
+  nothing
 end
 
 function build_jac_config(alg,uf,u)
