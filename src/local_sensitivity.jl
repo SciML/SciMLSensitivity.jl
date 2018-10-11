@@ -1,12 +1,12 @@
-struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,uEltype,MM} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   jac::J
   paramjac::PJ
   uf::UF
   pf::PF
-  J::Matrix{uEltype}
-  pJ::Matrix{uEltype}
+  J::JM
+  pJ::pJM
   jac_config::JC
   paramjac_config::PJC
   alg::Alg
@@ -29,7 +29,7 @@ function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
-                             eltype(u0),typeof(mm)}(
+                             typeof(J),typeof(pJ),typeof(mm)}(
                              f,analytic,jac,paramjac,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec)
@@ -43,7 +43,6 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
   # Now do sensitivities
   # Compute the Jacobian
 
-  # TODO: priority
   if !S.isautojacvec
     if DiffEqBase.has_jac(S.f)
       S.jac(S.J,y,p,t) # Calculate the Jacobian into J
@@ -66,8 +65,7 @@ function (S::ODELocalSensitvityFunction)(du,u,p,t)
     Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
     dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
     if S.isautojacvec
-      mul!(dp,S.J,Sj)
-      jacobianvec!(dp, S.uf, y, Sj, S.f_cache, S.alg, S.jac_config)
+      jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
     else
       mul!(dp,S.J,Sj)
     end
@@ -80,15 +78,19 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     alg = SensitivityAlg();
                                     callback=CallbackSet(),mass_matrix=I)
   isinplace = DiffEqBase.isinplace(f)
-  isautojacvec = get_jacvec(alg)
+  # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
-  uf = isautojacvec ? nothing : DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
+  uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if DiffEqBase.has_jac(f)
     jac_config = nothing
   elseif isautojacvec
-    jac_config = ForwardDiff.Dual{:___jac_tag}.(u0,u0)
-    jac_config = jac_config, similar(jac_config)
+    # if we are using automatic `jac*vec`, then we need to use a `jac_config`
+    # that is a tuple in the form of `(seed, buffer)`
+    jac_config_seed = ForwardDiff.Dual{:___jac_tag}.(u0,u0)
+    jac_config_buffer = similar(jac_config_seed)
+    jac_config = jac_config_seed, jac_config_buffer
   else
     jac_config = build_jac_config(alg,uf,u0)
   end

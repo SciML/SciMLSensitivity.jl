@@ -22,7 +22,7 @@ dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 
 sense_res1 = [da[:,end] db[:,end] dc[:,end]]
 
-prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p,SensitivityAlg(autojacvec=false))
+prob = ODELocalSensitivityProblem(f.f,[1.0;1.0],(0.0,10.0),p,SensitivityAlg(autojacvec=true))
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.f.numindvar,:]
 

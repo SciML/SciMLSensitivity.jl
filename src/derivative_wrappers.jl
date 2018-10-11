@@ -1,5 +1,5 @@
 struct SensitivityAlg{CS,AD,FDT,Jv} <: DiffEqBase.DEAlgorithm end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=false)
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=true)
   SensitivityAlg{chunk_size,autodiff,typeof(diff_type),autojacvec}()
 end
 
@@ -36,7 +36,8 @@ end
 ``Jv <- J(f(x))v``
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
-                      v, alg::SensitivityAlg, (buffer, seed))
+                      v, alg::SensitivityAlg, config)
+  buffer, seed = config
   if alg_autodiff(alg)
     TD = typeof(first(seed))
     T  = typeof(first(seed).partials)
