@@ -29,8 +29,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test norm(res - easy_res) < 1e-10
 
 function G(p)
-  tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
-                    tspan=eltype(p).(prob.tspan))
+  tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
   A = convert(Array,sol)
   sum(((1 .- A).^2)./2)
@@ -39,8 +38,16 @@ G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
+using Flux
+res4 = Flux.Tracker.gradient(G,[1.5,1.0,3.0])[1].data
+
+using ReverseDiff
+res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
+
 @test norm(res' .- res2) < 1e-8
 @test norm(res' .- res3) < 1e-6
+@test norm(res' .- res4) < 1e-6
+@test norm(res' .- res5) < 1e-6
 
 # Do a continuous adjoint problem
 
