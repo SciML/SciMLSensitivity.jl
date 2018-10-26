@@ -3,6 +3,10 @@ using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       LinearAlgebra
 using Test
 
+fb = @ode_def_bare LotkaVolterra2 begin
+  dx = a*x - b*x*y
+  dy = -c*y + x*y
+end a b c
 f = @ode_def LotkaVolterra2 begin
   dx = a*x - b*x*y
   dy = -c*y + x*y
@@ -11,6 +15,8 @@ end a b c
 p = [1.5,1.0,3.0]
 prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+probb = ODEProblem(fb,[1.0;1.0],(0.0,10.0),p)
+solb = solve(probb,Vern9(),abstol=1e-14,reltol=1e-14)
 
 # Do a discrete adjoint problem
 
@@ -20,13 +26,16 @@ dg(out,u,p,t,i) = (out.=1.0.-u)
 
 easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res2 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
-@test norm(res - easy_res) < 1e-10
+@test isapprox(res, easy_res, rtol = 1e-10)
+@test isapprox(res, easy_res2, rtol = 1e-10)
 
 function G(p)
   tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,

@@ -22,16 +22,16 @@ Base.@pure get_jacvec(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = 
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::AbstractArray{<:Number}, alg::SensitivityAlg, jac_config)
-    if alg_autodiff(alg)
-      ForwardDiff.jacobian!(J, f, fx, x, jac_config)
-    else
-      DiffEqDiffTools.finite_difference_jacobian!(J, f, x, jac_config)
-    end
-    nothing
+  if alg_autodiff(alg)
+    ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+  else
+    DiffEqDiffTools.finite_difference_jacobian!(J, f, x, jac_config)
+  end
+  nothing
 end
 
 """
-  jacobianvec!(Jv, J, f, x, v, alg, (buffer, seed)) -> nothing
+  jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 
 ``Jv <- J(f(x))v``
 """
@@ -48,6 +48,22 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
       error("Jacobian*vector computation is for automatic differentiation only!")
   end
   nothing
+end
+
+"""
+  vecjacobian!(vJ, v, f, x, alg, config) -> nothing
+
+``Jv <- v'J(f(x))``
+"""
+function vecjacobian!(vJ::AbstractArray{<:Number}, v, f, x::AbstractArray{<:Number},
+                      alg::SensitivityAlg, config)
+  tp = ReverseDiff.InstructionTape()
+  tx = ReverseDiff.track(x, tp)
+  ty = f(tx)
+  ReverseDiff.increment_deriv!(ty, v)
+  ReverseDiff.reverse_pass!(tp)
+  copyto!(vJ, ReverseDiff.deriv(tx))
+  return nothing
 end
 
 function build_jac_config(alg,uf,u)
