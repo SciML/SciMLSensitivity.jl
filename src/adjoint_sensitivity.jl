@@ -150,7 +150,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   p = sol.prob.p
   y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
-  pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(y))
+  # we need to alias `y`
+  pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
   pJ = Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
 
@@ -169,18 +170,17 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   S.adj_sol(λ,t)
   λ .*= -one(eltype(λ))
   isautojacvec = DiffEqBase.has_paramjac(S.f) ? false : get_jacvec(S.alg)
+  # y is aliased
+  S.pf.t = t
 
   if !isautojacvec
     if DiffEqBase.has_paramjac(S.f)
       S.f.paramjac(S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
     else
-      S.pf.t = t
-      S.pf.u .= y
       jacobian!(S.pJ, S.pf, S.p, S.f_cache, S.alg, S.paramjac_config)
     end
     mul!(out',λ,S.pJ)
   else
-    copyto!(S.pf.u, y)
     vecjacobian!(out, λ', S.pf, S.p, S.alg, S.paramjac_config)
   end
   out'
