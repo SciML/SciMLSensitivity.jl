@@ -67,6 +67,7 @@ adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-10)
 integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 
+println("Test the `adjoint_sensitivities` utility function")
 easy_res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
