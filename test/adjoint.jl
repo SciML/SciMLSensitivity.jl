@@ -37,6 +37,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 
+println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
                     tspan=eltype(p).(prob.tspan))
@@ -71,6 +72,7 @@ easy_res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-14,
 
 @test norm(easy_res .- res) < 1e-8
 
+println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
                     tspan=eltype(p).(prob.tspan))
