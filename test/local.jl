@@ -1,6 +1,7 @@
 using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus
 using Test
+using DiffEqSensitivity: SensitivityAlg
 
 
 f = @ode_def LotkaVolterra begin
@@ -19,7 +20,19 @@ da = sol[sol.prob.f.numindvar+1:sol.prob.f.numindvar*2,:]
 db = sol[sol.prob.f.numindvar*2+1:sol.prob.f.numindvar*3,:]
 dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 
-sense_res = [da[:,end] db[:,end] dc[:,end]]
+sense_res1 = [da[:,end] db[:,end] dc[:,end]]
+
+prob = ODELocalSensitivityProblem(f.f,[1.0;1.0],(0.0,10.0),p,SensitivityAlg(autojacvec=true))
+sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+x = sol[1:sol.prob.f.numindvar,:]
+
+# Get the sensitivities
+
+da = sol[sol.prob.f.numindvar+1:sol.prob.f.numindvar*2,:]
+db = sol[sol.prob.f.numindvar*2+1:sol.prob.f.numindvar*3,:]
+dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
+
+sense_res2 = [da[:,end] db[:,end] dc[:,end]]
 
 function test_f(p)
   prob = ODEProblem(f,eltype(p).([1.0,1.0]),eltype(p).((0.0,10.0)),p)
@@ -30,8 +43,8 @@ p = [1.5,1.0,3.0]
 fd_res = ForwardDiff.jacobian(test_f,p)
 calc_res = Calculus.finite_difference_jacobian(test_f,p)
 
-@test sense_res ≈ fd_res
-@test sense_res ≈ calc_res
+@test sense_res1 ≈ sense_res2 ≈ fd_res
+@test sense_res1 ≈ sense_res2 ≈ calc_res
 
 ################################################################################
 
