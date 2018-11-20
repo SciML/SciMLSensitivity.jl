@@ -50,7 +50,8 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
     end
     mul!(du,u,S.J)
   else
-    vecjacobian!(du, u, S.uf, y, S.alg, S.jac_config)
+    tape = S.jac_config
+    vecjacobian!(du, u, tape, y)
   end
 
   du .*= -one(eltype(u))
@@ -74,6 +75,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
+  t != nothing && (tspan = (t[end],t[1]))
   discrete = t != nothing
 
   isinplace = DiffEqBase.isinplace(sol.prob)
@@ -88,6 +90,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   if DiffEqBase.has_jac(f)
     jac_config = nothing
+  elseif isautojacvec
+    jac_config = ReverseDiff.compile(ReverseDiff.GradientTape(uf, u0))
   else
     jac_config = build_jac_config(alg,uf,u0)
   end
@@ -95,6 +99,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   if !discrete
     if dg != nothing
       pg_config = nothing
+    elseif isautojacvec
+      pg_config = ReverseDiff.compile(ReverseDiff.GradientTape(pg, p))
     else
       pg_config = build_grad_config(alg,pg,u0,p)
     end
@@ -130,7 +136,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   ODEProblem(sense,u0,tspan,p,callback=_cb)
 end
 
-struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A}
+struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A,PJT}
   sol::S
   adj_sol::AS
   f::F
@@ -139,7 +145,7 @@ struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A}
   λ::Adjoint{uEltype,Vector{uEltype}}
   pf::PF
   f_cache::Vector{uEltype}
-  pJ::Matrix{uEltype}
+  pJ::PJT
   paramjac_config::PJC
   alg::A
 end
@@ -153,10 +159,14 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   # we need to alias `y`
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
-  pJ = Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
+  isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
+  pJ = isautojacvec ? nothing : Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
 
   if DiffEqBase.has_paramjac(f)
     paramjac_config = nothing
+  elseif isautojacvec
+    pf′ = VJacobianWrapper(f, tspan[1])
+    paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (y, p)))
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
@@ -181,7 +191,8 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     end
     mul!(out',λ,S.pJ)
   else
-    vecjacobian!(out, λ', S.pf, S.p, S.alg, S.paramjac_config)
+    tape = S.paramjac_config
+    vecjacobian!(out, λ, tape, y, S.p)
   end
   out'
 end
