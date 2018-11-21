@@ -50,19 +50,51 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   nothing
 end
 
+mutable struct VJacobianWrapper{fType,tType} <: Function
+  f::fType
+  t::tType
+end
+function (ff::VJacobianWrapper)(u, p)
+  du1 = similar(p, size(u))
+  ff.f(du1,u,p,ff.t)
+  return du1
+end
+
+#https://gist.github.com/jrevels/c165ed338cc7159085238aa54a763fe2
+#https://gist.github.com/jrevels/664e2926c01abb15ac6d92fd4a4788c8
 """
   vecjacobian!(vJ, v, f, x, alg, config) -> nothing
 
 ``Jv <- v'J(f(x))``
 """
-function vecjacobian!(vJ::AbstractArray{<:Number}, v, f, x::AbstractArray{<:Number},
-                      alg::SensitivityAlg, config)
-  tp = ReverseDiff.InstructionTape()
-  tx = ReverseDiff.track(x, tp)
-  ty = f(tx)
-  ReverseDiff.increment_deriv!(ty, v)
-  ReverseDiff.reverse_pass!(tp)
-  copyto!(vJ, ReverseDiff.deriv(tx))
+function vecjacobian!(vJ, v, tape, x)
+  input = ReverseDiff.input_hook(tape)
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.unseed!(input) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.value!(input, x)
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, v)
+  ReverseDiff.reverse_pass!(tape)
+  # Note; we could just say `ReverseDiff.deriv(input)` *is* our `vJ`, in which
+  # case we could remove this line, and the caller could just query `vJ` from
+  # the tape directly via `ReverseDiff.deriv(ReverseDiff.input_hook(tape))`.
+  copyto!(vJ, ReverseDiff.deriv(input))
+  return nothing
+end
+function vecjacobian!(vJ, v, tape, u, p)
+  tu, tp = ReverseDiff.input_hook(tape)
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.unseed!(tp)
+  ReverseDiff.value!(tu, u)
+  ReverseDiff.value!(tp, p)
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, v)
+  ReverseDiff.reverse_pass!(tape)
+  # Note; we could just say `ReverseDiff.deriv(input)` *is* our `vJ`, in which
+  # case we could remove this line, and the caller could just query `vJ` from
+  # the tape directly via `ReverseDiff.deriv(ReverseDiff.input_hook(tape))`.
+  copyto!(vJ, ReverseDiff.deriv(tp))
   return nothing
 end
 
