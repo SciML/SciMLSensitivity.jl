@@ -75,6 +75,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
   discrete = t != nothing
+  discrete && (tspan = (last(t), first(t)))
 
   isinplace = DiffEqBase.isinplace(sol.prob)
   p = sol.prob.p
