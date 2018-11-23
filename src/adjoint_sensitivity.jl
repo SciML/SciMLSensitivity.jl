@@ -86,7 +86,9 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
 
-  u0 = zero(sol.prob.u0)'
+  # we need to initialize `u0` because later we will compile the tape which
+  # uses it
+  u0 = deepcopy(sol.prob.u0)'
 
   if DiffEqBase.has_jac(f)
     jac_config = nothing
@@ -154,7 +156,9 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   f = sol.prob.f
   tspan = sol.prob.tspan
   p = sol.prob.p
-  y = similar(sol.prob.u0)
+  # we need to copy here, because later, we will call
+  # `ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (y, p)))`
+  y = deepcopy(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
