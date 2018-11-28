@@ -3,11 +3,11 @@ using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       LinearAlgebra
 using Test
 
-fb = @ode_def_bare LotkaVolterra2 begin
+fb = @ode_def_bare begin
   dx = a*x - b*x*y
   dy = -c*y + x*y
 end a b c
-f = @ode_def LotkaVolterra2 begin
+f = @ode_def begin
   dx = a*x - b*x*y
   dy = -c*y + x*y
 end a b c
