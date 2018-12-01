@@ -37,7 +37,6 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 
-@test_skip begin
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
@@ -102,4 +101,3 @@ prob = ODEProblem(f,u,(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 @test_nowarn res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-end # test_skip

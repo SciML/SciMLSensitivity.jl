@@ -86,14 +86,12 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
 
-  # we need to initialize `u0` because later we will compile the tape which
-  # uses it
-  u0 = deepcopy(sol.prob.u0)'
+  u0 = zero(sol.prob.u0)'
 
   if DiffEqBase.has_jac(f)
     jac_config = nothing
   elseif isautojacvec
-    jac_config = ReverseDiff.compile(ReverseDiff.GradientTape(uf, u0))
+    jac_config = ReverseDiff.compile(ReverseDiff.GradientTape(uf, sol.prob.u0))
   else
     jac_config = build_jac_config(alg,uf,u0)
   end
@@ -158,7 +156,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   p = sol.prob.p
   # we need to copy here, because later, we will call
   # `ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (y, p)))`
-  y = deepcopy(sol.prob.u0)
+  y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
@@ -170,7 +168,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
     paramjac_config = nothing
   elseif isautojacvec
     pf′ = VJacobianWrapper(f, tspan[1])
-    paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (y, p)))
+    paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
