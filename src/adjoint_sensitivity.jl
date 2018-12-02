@@ -118,7 +118,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   if discrete
     cur_time = Ref(length(t))
     function time_choice(integrator)
-      t[cur_time[]]
+      cur_time[] > 0 ? t[cur_time[]] : nothing
     end
     function affect!(integrator)
       g(λ',y,p,t[cur_time[]],cur_time[])

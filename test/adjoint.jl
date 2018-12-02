@@ -22,7 +22,10 @@ solb = solve(probb,Vern9(),abstol=1e-14,reltol=1e-14)
 println("Calculate discrete adjoint sensitivities")
 t = 0.0:0.5:10.0 # TODO: Add end point handling for callback
 # g(t,u,i) = (1-u)^2/2, L2 away from 1
-dg(out,u,p,t,i) = (out.=1.0.-u)
+function dg(out,u,p,t,i)
+  @show t,i
+  (out.=1.0.-u)
+end
 
 easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
