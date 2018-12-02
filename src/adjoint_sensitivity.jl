@@ -116,15 +116,15 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                                        y,sol,dg,mass_matrix)
 
   if discrete
-    cur_time = Ref(length(t)-1)
+    cur_time = Ref(length(t))
     function time_choice(integrator)
-      cur_time[]-=1
-      t[cur_time[]+1]
+      t[cur_time[]]
     end
     function affect!(integrator)
       g(λ',y,p,t[cur_time[]],cur_time[])
       integrator.u .+= λ
       u_modified!(integrator,true)
+      cur_time[] -= 1
     end
     cb = IterativeCallback(time_choice,affect!,eltype(tspan);initial_affect=true)
 
