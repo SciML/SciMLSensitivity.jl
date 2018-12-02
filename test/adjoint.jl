@@ -19,7 +19,7 @@ probb = ODEProblem(fb,[1.0;1.0],(0.0,10.0),p)
 solb = solve(probb,Vern9(),abstol=1e-14,reltol=1e-14)
 
 # Do a discrete adjoint problem
-
+println("Calculate discrete adjoint sensitivities")
 t = 0.0:0.5:10.0 # TODO: Add end point handling for callback
 # g(t,u,i) = (1-u)^2/2, L2 away from 1
 dg(out,u,p,t,i) = (out.=1.0.-u)
