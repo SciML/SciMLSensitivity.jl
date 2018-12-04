@@ -1,6 +1,6 @@
-struct SensitivityAlg{CS,AD,FDT,Jv} <: DiffEqBase.DEAlgorithm end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=true)
-  SensitivityAlg{chunk_size,autodiff,typeof(diff_type),autojacvec}()
+struct SensitivityAlg{CS,AD,FDT,Jv,Quad} <: DiffEqBase.DEAlgorithm end
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=true,quad=true)
+  SensitivityAlg{chunk_size,autodiff,typeof(diff_type),autojacvec,quad}()
 end
 
 Base.@pure function determine_chunksize(u,alg::SensitivityAlg)
@@ -15,10 +15,11 @@ Base.@pure function determine_chunksize(u,CS)
   end
 end
 
-Base.@pure alg_autodiff(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = AD
-Base.@pure get_chunksize(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = CS
-Base.@pure diff_type(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = FDT
-Base.@pure get_jacvec(alg::SensitivityAlg{CS,AD,FDT,Jv}) where {CS,AD,FDT,Jv} = Jv
+Base.@pure alg_autodiff(alg::SensitivityAlg{CS,AD,FDT,Jv,Quad}) where {CS,AD,FDT,Jv,Quad} = AD
+Base.@pure get_chunksize(alg::SensitivityAlg{CS,AD,FDT,Jv,Quad}) where {CS,AD,FDT,Jv,Quad} = CS
+Base.@pure diff_type(alg::SensitivityAlg{CS,AD,FDT,Jv,Quad}) where {CS,AD,FDT,Jv,Quad} = FDT
+Base.@pure get_jacvec(alg::SensitivityAlg{CS,AD,FDT,Jv,Quad}) where {CS,AD,FDT,Jv,Quad} = Jv
+Base.@pure isquad(alg::SensitivityAlg{CS,AD,FDT,Jv,Quad}) where {CS,AD,FDT,Jv,Quad} = Quad
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::AbstractArray{<:Number}, alg::SensitivityAlg, jac_config)
