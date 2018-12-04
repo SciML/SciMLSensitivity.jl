@@ -1,9 +1,10 @@
-struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
   paramjac::PJ
   uf::UF
+  pf::PF
   g::G
   J::TJ
   pJ::PJT
@@ -22,7 +23,7 @@ struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,G,JC,GC,A,fc,SType,DG,uEltype,M
   mass_matrix::MM
 end
 
-function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,u0,
+function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
@@ -36,7 +37,7 @@ function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,u0,
     nothing
   end
   dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
-  ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,g,J,pJ,dg_val,
+  ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm)
@@ -88,7 +89,7 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
       if DiffEqBase.has_paramjac(S.f)
         S.f.paramjac(S.pJ,y,S.sol.prob.p,t) # Calculate the parameter Jacobian into pJ
       else
-        jacobian!(S.pJ, S.pf, S.p, S.f_cache, S.alg, S.paramjac_config)
+        jacobian!(S.pJ, S.pf, S.sol.prob.p, S.f_cache, S.alg, S.paramjac_config)
       end
       mul!(dgrad,λ,S.pJ)
     else
@@ -140,13 +141,16 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   end
 
   paramjac_config = nothing
+  pf = nothing
   if !isquad(alg)
+    y = similar(sol.prob.u0)
     if DiffEqBase.has_paramjac(f)
       paramjac_config = nothing
     elseif isautojacvec
       pf′ = VJacobianWrapper(f, tspan[1])
       paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
     else
+      pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
       paramjac_config = build_param_jac_config(alg,pf,y,p)
     end
   end
@@ -155,7 +159,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)'
   sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
-                                       uf,pg,u0,jac_config,pg_config,paramjac_config,
+                                       uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
 
