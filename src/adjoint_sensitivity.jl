@@ -140,10 +140,10 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     pg_config = nothing
   end
 
+  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   paramjac_config = nothing
   pf = nothing
   if !isquad(alg)
-    y = similar(sol.prob.u0)
     if DiffEqBase.has_paramjac(f)
       paramjac_config = nothing
     elseif isautojacvec
@@ -155,7 +155,6 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     end
   end
 
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)'
   sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
