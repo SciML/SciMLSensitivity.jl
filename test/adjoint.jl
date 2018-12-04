@@ -30,6 +30,8 @@ easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 easy_res2 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res3 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false))
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
@@ -38,6 +40,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
+@test isapprox(res, easy_res3, rtol = 1e-10)
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -79,8 +82,11 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 println("Test the `adjoint_sensitivities` utility function")
 easy_res = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res2 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false))
 
 @test norm(easy_res .- res) < 1e-8
+@test norm(easy_res2 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
