@@ -1,8 +1,9 @@
-struct ODELocalSensitvityFunction{iip,F,A,Tt,J,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitvityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   tgrad::Tt
   jac::J
+  jac_prototype::JP
   paramjac::PJ
   invW::TW
   invW_t::TWt
@@ -20,7 +21,7 @@ struct ODELocalSensitvityFunction{iip,F,A,Tt,J,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,
   isautojacvec::Bool
 end
 
-function ODELocalSensitvityFunction(f,analytic,tgrad,jac,paramjac,invW,invW_t,uf,pf,u0,
+function ODELocalSensitvityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec)
   numparams = length(p)
@@ -28,7 +29,7 @@ function ODELocalSensitvityFunction(f,analytic,tgrad,jac,paramjac,invW,invW_t,uf
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
   ODELocalSensitvityFunction{isinplace(f),typeof(f),typeof(analytic),
-                             typeof(tgrad),typeof(jac),typeof(paramjac),
+                             typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(paramjac),
                              typeof(invW),typeof(invW_t),typeof(uf),
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
