@@ -9,10 +9,19 @@ f = @ode_def LotkaVolterra begin
   dy = -c*y + x*y
 end a b c
 
+function LotkaVolt!(du, u, p, t)
+  du[1] = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = -p[3]*u[2] + u[1]*u[2]
+end
+
 p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
+probInpl = ODELocalSensitivityProblem(LotkaVolt!,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+solInpl = solve(probInpl,Rodas4(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.f.numindvar,:]
+
+@test sol(5.0) ≈ solInpl(5.0)
 
 # Get the sensitivities
 
