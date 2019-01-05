@@ -35,7 +35,7 @@ function ODELocalSensitvityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
                              typeof(J),typeof(pJ),typeof(mm)}(
-                             f,analytic,tgrad,jac,paramjac,invW,invW_t,uf,pf,J,pJ,
+                             f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec)
 end
@@ -106,7 +106,7 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     paramjac_config = build_param_jac_config(alg,pf,u0,p)
   end
 
-  sense = ODELocalSensitvityFunction(f,f.analytic,f.tgrad,f.jac,f.paramjac,f.invW,f.invW_t,
+  sense = ODELocalSensitvityFunction(f,f.analytic,f.tgrad,f.jac,f.jac_prototype,f.paramjac,f.invW,f.invW_t,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mass_matrix,
