@@ -45,17 +45,28 @@ end
 
 # u = λ'
 function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
+  idx = length(S.y)
   y = S.y
-  S.sol(y,t)
-  if isquad(S.alg)
-    λ     = u
-    dλ    = du
-  else
-    idx   = length(y)
+  if isbcksol(S.alg)
     λ     = Transpose(@view u[1:idx])
     dλ    = Transpose(@view du[1:idx])
-    grad  = Transpose(@view u[idx+1:end])
-    dgrad = Transpose(@view du[idx+1:end])
+    grad  = Transpose(@view u[idx+1:end-idx])
+    dgrad = Transpose(@view du[idx+1:end-idx])
+    _y    = @view u[end-idx+1:end]
+    dy    = @view du[end-idx+1:end]
+    S.sol.prob.f(dy, _y, p, t)
+    copyto!(y, _y)
+  else
+    S.sol(y,t)
+    if isquad(S.alg)
+      λ     = u
+      dλ    = du
+    else
+      λ     = Transpose(@view u[1:idx])
+      dλ    = Transpose(@view du[1:idx])
+      grad  = Transpose(@view u[idx+1:end])
+      dgrad = Transpose(@view du[idx+1:end])
+    end
   end
 
   isautojacvec = DiffEqBase.has_jac(S.f) ? false : get_jacvec(S.alg)
@@ -103,7 +114,7 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                            alg=SensitivityAlg();
-                           callback=CallbackSet(),mass_matrix=I)
+                           callback=CallbackSet(),mass_matrix=I,kwargs...)
 
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
@@ -189,7 +200,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  ODEProblem(sense,zero(λ),tspan,p,callback=_cb)
+  z0 = isbcksol(alg) ? [zero(λ'); conj(y)]' : zero(λ)
+  ODEProblem(sense,z0,tspan,p,callback=_cb)
 end
 
 struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A,PJT}
@@ -269,7 +281,7 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg)
   isq = isquad(sensealg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=isq,kwargs...)
-  !isq && return adj_sol[end][end-length(sol.prob.p)+1:end]'
+  !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
   integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 
   if t == nothing
