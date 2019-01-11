@@ -114,7 +114,7 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                            alg=SensitivityAlg();
-                           callback=CallbackSet(),mass_matrix=I,kwargs...)
+                           callback=CallbackSet(),mass_matrix=I)
 
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
