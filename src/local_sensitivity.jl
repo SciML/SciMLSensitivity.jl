@@ -106,7 +106,8 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     paramjac_config = build_param_jac_config(alg,pf,u0,p)
   end
 
-  sense = ODELocalSensitvityFunction(f,f.analytic,f.tgrad,f.jac,f.jac_prototype,f.paramjac,f.invW,f.invW_t,
+  # TODO: Use user tgrad. iW can be safely ignored here.
+  sense = ODELocalSensitvityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mass_matrix,

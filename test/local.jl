@@ -18,7 +18,10 @@ p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODELocalSensitivityProblem(LotkaVolt!,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
-solInpl = solve(probInpl,Rodas4(),abstol=1e-14,reltol=1e-14)
+@test_broken solInpl = solve(probInpl,KenCarp4(),abstol=1e-14,reltol=1e-14)
+@test_broken solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-14,reltol=1e-14)
+solInpl = solve(probInpl,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
+solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.f.numindvar,:]
 
 @test sol(5.0) ≈ solInpl(5.0)
