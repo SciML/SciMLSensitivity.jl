@@ -1,4 +1,4 @@
-struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitivityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   jac::J
@@ -17,14 +17,14 @@ struct ODELocalSensitvityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <:
   isautojacvec::Bool
 end
 
-function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
+function ODELocalSensitivityFunction(f,analytic,jac,paramjac,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec)
   numparams = length(p)
   numindvar = length(u0)
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
-  ODELocalSensitvityFunction{isinplace(f),typeof(f),typeof(analytic),
+  ODELocalSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(jac),typeof(paramjac),typeof(uf),
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
@@ -35,7 +35,7 @@ function ODELocalSensitvityFunction(f,analytic,jac,paramjac,uf,pf,u0,
                              numparams,numindvar,f_cache,mm,isautojacvec)
 end
 
-function (S::ODELocalSensitvityFunction)(du,u,p,t)
+function (S::ODELocalSensitivityFunction)(du,u,p,t)
   y = @view u[1:S.numindvar] # These are the independent variables
   dy = @view du[1:S.numindvar]
   S.f(dy,y,p,t) # Make the first part be the ODE
@@ -101,7 +101,7 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     paramjac_config = build_param_jac_config(alg,pf,u0,p)
   end
 
-  sense = ODELocalSensitvityFunction(f,f.analytic,f.jac,f.paramjac,
+  sense = ODELocalSensitivityFunction(f,f.analytic,f.jac,f.paramjac,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mass_matrix,

@@ -1,4 +1,4 @@
-struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -23,7 +23,7 @@ struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltyp
   mass_matrix::MM
 end
 
-function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
+function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
@@ -37,14 +37,14 @@ function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
     nothing
   end
   dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
-  ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
+  ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm)
 end
 
 # u = λ'
-function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
+function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   idx = length(S.y)
   y = S.y
   if isbcksol(S.alg)
@@ -168,7 +168,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)'
-  sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
+  sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
