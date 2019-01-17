@@ -1,4 +1,4 @@
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -10,7 +10,6 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
   pJ::PJT
   dg_val::Adjoint{uEltype,Vector{uEltype}}
   jac_config::JC
-  g_grad_config::GC
   paramjac_config::PJC
   alg::A
   numparams::Int
@@ -24,7 +23,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
 end
 
 function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
-                                      jac_config,g_grad_config,paramjac_config,
+                                      jac_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
   numindvar = length(u0)
@@ -38,7 +37,7 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
   end
   dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
   ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
-                               jac_config,g_grad_config,paramjac_config,
+                               jac_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm)
 end
@@ -139,18 +138,6 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     jac_config = build_jac_config(alg,uf,u0)
   end
 
-  if !discrete
-    if dg != nothing
-      pg_config = nothing
-    elseif isautojacvec
-      pg_config = ReverseDiff.compile(ReverseDiff.GradientTape(pg, p))
-    else
-      pg_config = build_grad_config(alg,pg,u0,p)
-    end
-  else
-    pg_config = nothing
-  end
-
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   paramjac_config = nothing
   pf = nothing
@@ -169,7 +156,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)'
   sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
-                                       uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
+                                       uf,pf,pg,u0,jac_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
 
