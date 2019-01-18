@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC}
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
