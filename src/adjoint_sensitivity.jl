@@ -1,4 +1,6 @@
-struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+using Flux.Tracker: gradient
+
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -10,7 +12,6 @@ struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltyp
   pJ::PJT
   dg_val::Adjoint{uEltype,Vector{uEltype}}
   jac_config::JC
-  g_grad_config::GC
   paramjac_config::PJC
   alg::A
   numparams::Int
@@ -23,8 +24,8 @@ struct ODEAdjointSensitvityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltyp
   mass_matrix::MM
 end
 
-function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
-                                      jac_config,g_grad_config,paramjac_config,
+function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
+                                      jac_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
   numindvar = length(u0)
@@ -37,14 +38,14 @@ function ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
     nothing
   end
   dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
-  ODEAdjointSensitvityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
-                               jac_config,g_grad_config,paramjac_config,
+  ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
+                               jac_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm)
 end
 
 # u = λ'
-function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
+function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   idx = length(S.y)
   y = S.y
   if isbcksol(S.alg)
@@ -79,8 +80,12 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
     end
     mul!(dλ,λ,S.J)
   else
-    tape = S.jac_config
-    vecjacobian!(dλ, λ, tape, y)
+    _, back = Tracker.forward(y) do u
+      out_ = map(zero, u)
+      S.f(out_, u, p, t)
+      Tracker.collect(out_)
+    end
+    dλ[:] = Tracker.data(back(λ)[1])
   end
 
   dλ .*= -one(eltype(λ))
@@ -104,8 +109,12 @@ function (S::ODEAdjointSensitvityFunction)(du,u,p,t)
       end
       mul!(dgrad,λ,S.pJ)
     else
-      tape = S.paramjac_config
-      vecjacobian!(dgrad, λ, tape, y, S.sol.prob.p)
+      _, back = Tracker.forward(y, S.sol.prob.p) do u, p
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      end
+      dgrad[:] = Tracker.data(back(λ)[2])
     end
   end
   nothing
@@ -131,35 +140,18 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   u0 = zero(sol.prob.u0)'
 
-  if DiffEqBase.has_jac(f)
+  if DiffEqBase.has_jac(f) || isautojacvec
     jac_config = nothing
-  elseif isautojacvec
-    jac_config = ReverseDiff.compile(ReverseDiff.GradientTape(uf, sol.prob.u0))
   else
     jac_config = build_jac_config(alg,uf,u0)
-  end
-
-  if !discrete
-    if dg != nothing
-      pg_config = nothing
-    elseif isautojacvec
-      pg_config = ReverseDiff.compile(ReverseDiff.GradientTape(pg, p))
-    else
-      pg_config = build_grad_config(alg,pg,u0,p)
-    end
-  else
-    pg_config = nothing
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
   paramjac_config = nothing
   pf = nothing
   if !isquad(alg)
-    if DiffEqBase.has_paramjac(f)
+    if DiffEqBase.has_paramjac(f) || isautojacvec
       paramjac_config = nothing
-    elseif isautojacvec
-      pf′ = VJacobianWrapper(f, tspan[1])
-      paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
     else
       pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
       paramjac_config = build_param_jac_config(alg,pf,y,p)
@@ -168,8 +160,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)'
-  sense = ODEAdjointSensitvityFunction(f,nothing,f.jac,f.paramjac,
-                                       uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
+  sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
+                                       uf,pf,pg,u0,jac_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
 
@@ -232,11 +224,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
   pJ = isautojacvec ? nothing : Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
 
-  if DiffEqBase.has_paramjac(f)
+  if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
-  elseif isautojacvec
-    pf′ = VJacobianWrapper(f, tspan[1])
-    paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
@@ -261,8 +250,12 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     end
     mul!(out',λ,S.pJ)
   else
-    tape = S.paramjac_config
-    vecjacobian!(out, λ, tape, y, S.p)
+    _, back = Tracker.forward(y, S.p) do u, p
+      out_ = map(zero, u)
+      S.f(out_, u, p, t)
+      Tracker.collect(out_)
+    end
+    out[:] = Tracker.data(back(λ)[2])
   end
   out'
 end
@@ -277,7 +270,6 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
                                iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(),
                                kwargs...)
-
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg)
   isq = isquad(sensealg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=isq,kwargs...)
