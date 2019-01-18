@@ -1,8 +1,12 @@
-struct ODELocalSensitivityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
+  tgrad::Tt
   jac::J
+  jac_prototype::JP
   paramjac::PJ
+  invW::TW
+  invW_t::TWt
   uf::UF
   pf::PF
   J::JM
@@ -17,7 +21,7 @@ struct ODELocalSensitivityFunction{iip,F,A,J,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <
   isautojacvec::Bool
 end
 
-function ODELocalSensitivityFunction(f,analytic,jac,paramjac,uf,pf,u0,
+function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec)
   numparams = length(p)
@@ -25,12 +29,13 @@ function ODELocalSensitivityFunction(f,analytic,jac,paramjac,uf,pf,u0,
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
   ODELocalSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
-                             typeof(jac),typeof(paramjac),typeof(uf),
+                             typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(paramjac),
+                             typeof(invW),typeof(invW_t),typeof(uf),
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
                              typeof(J),typeof(pJ),typeof(mm)}(
-                             f,analytic,jac,paramjac,uf,pf,J,pJ,
+                             f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec)
 end
@@ -101,7 +106,8 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     paramjac_config = build_param_jac_config(alg,pf,u0,p)
   end
 
-  sense = ODELocalSensitivityFunction(f,f.analytic,f.jac,f.paramjac,
+  # TODO: Use user tgrad. iW can be safely ignored here.
+  sense = ODELocalSensitivityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mass_matrix,
