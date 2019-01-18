@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, Compat, ForwardDiff, ReverseDiff, Flux, DiffEqDiffTools, Statistics
+using DiffEqBase, Compat, ForwardDiff, Flux, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 
 abstract type SensitivityFunction end
