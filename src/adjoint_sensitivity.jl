@@ -109,8 +109,12 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       end
       mul!(dgrad,λ,S.pJ)
     else
-      tape = S.paramjac_config
-      vecjacobian!(dgrad, λ, tape, y, S.sol.prob.p)
+      _, back = Tracker.forward(y, S.sol.prob.p) do u, p
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      end
+      dgrad[:] = Tracker.data(back(λ)[2])
     end
   end
   nothing
@@ -146,11 +150,8 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   paramjac_config = nothing
   pf = nothing
   if !isquad(alg)
-    if DiffEqBase.has_paramjac(f)
+    if DiffEqBase.has_paramjac(f) || isautojacvec
       paramjac_config = nothing
-    elseif isautojacvec
-      pf′ = VJacobianWrapper(f, tspan[1])
-      paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
     else
       pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
       paramjac_config = build_param_jac_config(alg,pf,y,p)
@@ -223,11 +224,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
   pJ = isautojacvec ? nothing : Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
 
-  if DiffEqBase.has_paramjac(f)
+  if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
-  elseif isautojacvec
-    pf′ = VJacobianWrapper(f, tspan[1])
-    paramjac_config = ReverseDiff.compile(ReverseDiff.GradientTape(pf′, (sol.prob.u0, p)))
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
