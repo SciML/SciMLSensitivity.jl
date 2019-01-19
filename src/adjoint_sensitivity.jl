@@ -10,7 +10,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,
   g::G
   J::TJ
   pJ::PJT
-  dg_val::Adjoint{uEltype,Vector{uEltype}}
+  dg_val::Vector{uEltype}
   jac_config::JC
   paramjac_config::PJC
   alg::A
@@ -31,13 +31,13 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
-  J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
+  J = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numindvar)
   pJ = if !isquad(alg)
-    isautojacvec ? nothing : Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
+    isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numparams)
   else
     nothing
   end
-  dg_val = Vector{eltype(u0)}(undef,numindvar)' # number of funcs size
+  dg_val = similar(u0, numindvar) # number of funcs size
   ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
@@ -49,10 +49,10 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   idx = length(S.y)
   y = S.y
   if isbcksol(S.alg)
-    λ     = Transpose(@view u[1:idx])
-    dλ    = Transpose(@view du[1:idx])
-    grad  = Transpose(@view u[idx+1:end-idx])
-    dgrad = Transpose(@view du[idx+1:end-idx])
+    λ     = @view u[1:idx]
+    dλ    = @view du[1:idx]
+    grad  = @view u[idx+1:end-idx]
+    dgrad = @view du[idx+1:end-idx]
     _y    = @view u[end-idx+1:end]
     dy    = @view du[end-idx+1:end]
     S.sol.prob.f(dy, _y, p, t)
@@ -63,10 +63,10 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       λ     = u
       dλ    = du
     else
-      λ     = Transpose(@view u[1:idx])
-      dλ    = Transpose(@view du[1:idx])
-      grad  = Transpose(@view u[idx+1:end])
-      dgrad = Transpose(@view du[idx+1:end])
+      λ     = @view u[1:idx]
+      dλ    = @view du[1:idx]
+      grad  = @view u[idx+1:end]
+      dgrad = @view du[idx+1:end]
     end
   end
 
@@ -78,7 +78,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       S.uf.t = t
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
     end
-    mul!(dλ,λ,S.J)
+    mul!(dλ',λ',S.J)
   else
     _, back = Tracker.forward(y) do u
       out_ = map(zero, u)
@@ -92,7 +92,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
 
   if !S.discrete
     if S.dg != nothing
-      S.dg(S.dg_val',y,p,t)
+      S.dg(S.dg_val,y,p,t)
     else
       S.g.t = t
       gradient!(S.dg_val, S.g, y, S.f_cache, S.alg, S.g_gradient_config)
@@ -107,7 +107,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       else
         jacobian!(S.pJ, S.pf, S.sol.prob.p, S.f_cache, S.alg, S.paramjac_config)
       end
-      mul!(dgrad,λ,S.pJ)
+      mul!(dgrad',λ',S.pJ)
     else
       _, back = Tracker.forward(y, S.sol.prob.p) do u, p
         out_ = map(zero, u)
@@ -138,7 +138,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
   pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
 
-  u0 = zero(sol.prob.u0)'
+  u0 = zero(sol.prob.u0)
 
   if DiffEqBase.has_jac(f) || isautojacvec
     jac_config = nothing
@@ -159,7 +159,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   end
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
-  λ = similar(u0, len)'
+  λ = similar(u0, len)
   sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
@@ -173,13 +173,13 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     affect! = let isq = isquad(alg), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(u0)
       function (integrator)
         p, u = integrator.p, integrator.u
-        λ  = isq ? λ : Transpose(@view(λ[1:idx]))
-        g(λ',y,p,t[cur_time[]],cur_time[])
+        λ  = isq ? λ : @view(λ[1:idx])
+        g(λ,y,p,t[cur_time[]],cur_time[])
         if isq
           u .+= λ
         else
-          u = Transpose(@view u[1:idx])
-          u .= λ .+ Transpose(@view integrator.u[1:idx])
+          u = @view u[1:idx]
+          u .= λ .+ @view integrator.u[1:idx]
         end
         u_modified!(integrator,true)
         cur_time[] -= 1
@@ -192,7 +192,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  z0 = isbcksol(alg) ? [zero(λ'); conj(y)]' : zero(λ)
+  z0 = isbcksol(alg) ? [λ; y] : zero(λ)
   ODEProblem(sense,z0,tspan,p,callback=_cb)
 end
 
@@ -202,7 +202,7 @@ struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A,PJT}
   f::F
   p::Vector{uEltype}
   y::Vector{uEltype}
-  λ::Adjoint{uEltype,Vector{uEltype}}
+  λ::Vector{uEltype}
   pf::PF
   f_cache::Vector{uEltype}
   pJ::PJT
@@ -248,7 +248,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     else
       jacobian!(S.pJ, S.pf, S.p, S.f_cache, S.alg, S.paramjac_config)
     end
-    mul!(out',λ,S.pJ)
+    mul!(out',λ',S.pJ)
   else
     _, back = Tracker.forward(y, S.p) do u, p
       out_ = map(zero, u)
