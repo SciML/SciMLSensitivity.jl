@@ -80,13 +80,20 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
     end
     mul!(dλ',λ',S.J)
-  else
+  elseif isquad(S.alg)
     _, back = Tracker.forward(y) do u
       out_ = map(zero, u)
       S.f(out_, u, p, t)
       Tracker.collect(out_)
     end
     dλ[:] = Tracker.data(back(λ)[1])
+  else
+    _, back = Tracker.forward(y, S.sol.prob.p) do u, p
+      out_ = map(zero, u)
+      S.f(out_, u, p, t)
+      Tracker.collect(out_)
+    end
+    dλ[:], dgrad[:] = map(Tracker.data, back(λ))
   end
 
   dλ .*= -one(eltype(λ))
@@ -101,22 +108,13 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     dλ .+= S.dg_val
   end
 
-  if !isquad(S.alg)
-    if !isautojacvec
-      if DiffEqBase.has_paramjac(S.f)
-        S.f.paramjac(S.pJ,y,S.sol.prob.p,t) # Calculate the parameter Jacobian into pJ
-      else
-        jacobian!(S.pJ, S.pf, S.sol.prob.p, S.f_cache, S.alg, S.paramjac_config)
-      end
-      mul!(dgrad',λ',S.pJ)
+  if !isquad(S.alg) && !isautojacvec
+    if DiffEqBase.has_paramjac(S.f)
+      S.f.paramjac(S.pJ,y,S.sol.prob.p,t) # Calculate the parameter Jacobian into pJ
     else
-      _, back = Tracker.forward(y, S.sol.prob.p) do u, p
-        out_ = map(zero, u)
-        S.f(out_, u, p, t)
-        Tracker.collect(out_)
-      end
-      dgrad[:] = Tracker.data(back(λ)[2])
+      jacobian!(S.pJ, S.pf, S.sol.prob.p, S.f_cache, S.alg, S.paramjac_config)
     end
+    mul!(dgrad',λ',S.pJ)
   end
   nothing
 end
