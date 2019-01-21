@@ -49,6 +49,8 @@ end
 function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   idx = length(S.y)
   y = S.y
+  isautojacvec = DiffEqBase.has_jac(S.f) ? false : get_jacvec(S.alg)
+
   if isbcksol(S.alg)
     λ     = @view u[1:idx]
     dλ    = @view du[1:idx]
@@ -56,8 +58,8 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     dgrad = @view du[idx+1:end-idx]
     _y    = @view u[end-idx+1:end]
     dy    = @view du[end-idx+1:end]
-    S.sol.prob.f(dy, _y, p, t)
     copyto!(y, _y)
+    isautojacvec || S.sol.prob.f(dy, _y, p, t)
   else
     S.sol(y,t)
     if isquad(S.alg)
@@ -71,7 +73,6 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     end
   end
 
-  isautojacvec = DiffEqBase.has_jac(S.f) ? false : get_jacvec(S.alg)
   if !isautojacvec
     if DiffEqBase.has_jac(S.f)
       S.f.jac(S.J,y,p,t) # Calculate the Jacobian into J
@@ -81,19 +82,21 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     end
     mul!(dλ',λ',S.J)
   elseif isquad(S.alg)
-    _, back = Tracker.forward(y) do u
+    _dy, back = Tracker.forward(y) do u
       out_ = map(zero, u)
       S.f(out_, u, p, t)
       Tracker.collect(out_)
     end
     dλ[:] = Tracker.data(back(λ)[1])
+    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
   else
-    _, back = Tracker.forward(y, S.sol.prob.p) do u, p
+    _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
       out_ = map(zero, u)
       S.f(out_, u, p, t)
       Tracker.collect(out_)
     end
     dλ[:], dgrad[:] = map(Tracker.data, back(λ))
+    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
   end
 
   dλ .*= -one(eltype(λ))
