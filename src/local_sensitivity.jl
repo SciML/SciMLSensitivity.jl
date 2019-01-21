@@ -55,14 +55,14 @@ function (S::ODELocalSensitivityFunction)(du,u,p,t)
       S.uf.t = t
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
     end
+  end
 
-    if DiffEqBase.has_paramjac(S.f)
-      S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
-    else
-      S.pf.t = t
-      S.pf.u .= y
-      jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
-    end
+  if DiffEqBase.has_paramjac(S.f)
+    S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
+  else
+    S.pf.t = t
+    S.pf.u .= y
+    jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
   end
 
   # Compute the parameter derivatives
@@ -100,7 +100,7 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     jac_config = build_jac_config(alg,uf,u0)
   end
 
-  if DiffEqBase.has_paramjac(f) || isautojacvec
+  if DiffEqBase.has_paramjac(f)
     paramjac_config = nothing
   else
     paramjac_config = build_param_jac_config(alg,pf,u0,p)

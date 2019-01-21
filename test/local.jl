@@ -26,11 +26,11 @@ solInpl = solve(probInpl,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solnoad = solve(probnoad,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 
-probInpl.f.alg
-
 x = sol[1:sol.prob.f.numindvar,:]
 
+@test sol(5.0) ≈ solnoad(5.0)
 @test sol(5.0) ≈ solInpl(5.0)
+@test solInpl(5.0) ≈ solInpl2(5.0)
 
 # Get the sensitivities
 
