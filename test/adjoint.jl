@@ -60,7 +60,7 @@ res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
 using Flux
-res4 = Flux.Tracker.gradient_(G,[1.5,1.0,3.0])[1]
+res4 = Flux.Tracker.gradient(G,[1.5,1.0,3.0])[1]
 
 using ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
@@ -89,10 +89,17 @@ println("Test the `adjoint_sensitivities` utility function")
 easy_res = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 easy_res2 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false))
-
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(quad=false))
+easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res4 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(autodiff=false))
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
+@test norm(easy_res3 .- res) < 1e-8
+@test norm(easy_res4 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)

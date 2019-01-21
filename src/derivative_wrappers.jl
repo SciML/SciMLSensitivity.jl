@@ -3,10 +3,20 @@ struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm
   quad::Bool
   backsolve::Bool
 end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=true,quad=true,backsolve=false)
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,quad=true,backsolve=false)
   backsolve && (quad = false)
-  SensitivityAlg{chunk_size,autodiff,typeof(diff_type)}(autojacvec,quad,backsolve)
+  SensitivityAlg{chunk_size,autodiff,diff_type}(autojacvec,quad,backsolve)
 end
+
+# Not in DiffEqDiffTools because `u` -> scalar isn't used anywhere else,
+# but could be upstreamed.
+mutable struct UGradientWrapper{fType,tType,P} <: Function
+  f::fType
+  t::tType
+  p::P
+end
+
+(ff::UGradientWrapper)(uprev) = ff.f(uprev,ff.p,ff.t)
 
 Base.@pure function determine_chunksize(u,alg::SensitivityAlg)
   determine_chunksize(u,get_chunksize(alg))
@@ -37,6 +47,17 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
   nothing
 end
 
+function gradient!(df::AbstractArray{<:Number}, f,
+                   x::Union{Number,AbstractArray{<:Number}},
+                   alg::SensitivityAlg, grad_config)
+    if alg_autodiff(alg)
+        ForwardDiff.gradient!(df, f, x, grad_config)
+    else
+        DiffEqDiffTools.finite_difference_gradient!(df, f, x, grad_config)
+    end
+    nothing
+end
+
 """
   jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 
@@ -62,7 +83,7 @@ function build_jac_config(alg,uf,u)
     jac_config = ForwardDiff.JacobianConfig(uf,u,u,
                  ForwardDiff.Chunk{determine_chunksize(u,alg)}())
   else
-    if alg.diff_type != Val{:complex}
+    if diff_type(alg) != Val{:complex}
       jac_config = DiffEqDiffTools.JacobianCache(similar(u),similar(u),
                                                  similar(u),diff_type(alg))
     else
@@ -79,7 +100,7 @@ function build_param_jac_config(alg,uf,u,p)
     jac_config = ForwardDiff.JacobianConfig(uf,u,p,
                  ForwardDiff.Chunk{determine_chunksize(p,alg)}())
   else
-    if alg.diff_type != Val{:complex}
+    if diff_type(alg) != Val{:complex}
       jac_config = DiffEqDiffTools.JacobianCache(similar(p),similar(u),
                                                  similar(u),diff_type(alg))
     else
@@ -89,4 +110,14 @@ function build_param_jac_config(alg,uf,u,p)
     end
   end
   jac_config
+end
+
+function build_grad_config(alg,tf,du1,t)
+  if alg_autodiff(alg)
+    grad_config = ForwardDiff.GradientConfig(tf,du1,
+                                    ForwardDiff.Chunk{determine_chunksize(du1,alg)}())
+  else
+    grad_config = DiffEqDiffTools.GradientCache(du1,t,diff_type(alg))
+  end
+  grad_config
 end

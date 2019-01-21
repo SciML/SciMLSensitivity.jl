@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -12,6 +12,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,
   pJ::PJT
   dg_val::Vector{uEltype}
   jac_config::JC
+  g_grad_config::GC
   paramjac_config::PJC
   alg::A
   numparams::Int
@@ -25,7 +26,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,A,fc,SType,DG,uEltype,
 end
 
 function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
-                                      jac_config,paramjac_config,
+                                      jac_config,g_grad_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm)
   numparams = length(p)
   numindvar = length(u0)
@@ -39,7 +40,7 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
   end
   dg_val = similar(u0, numindvar) # number of funcs size
   ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
-                               jac_config,paramjac_config,
+                               jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm)
 end
@@ -95,7 +96,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       S.dg(S.dg_val,y,p,t)
     else
       S.g.t = t
-      gradient!(S.dg_val, S.g, y, S.f_cache, S.alg, S.g_gradient_config)
+      gradient!(S.dg_val, S.g, y, S.alg, S.g_grad_config)
     end
     dλ .+= S.dg_val
   end
@@ -136,7 +137,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
-  pg = DiffEqDiffTools.UJacobianWrapper(g,tspan[2],p)
+  pg = UGradientWrapper(g,tspan[2],p)
 
   u0 = zero(sol.prob.u0)
 
@@ -144,6 +145,16 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     jac_config = nothing
   else
     jac_config = build_jac_config(alg,uf,u0)
+  end
+
+  if !discrete
+    if dg != nothing || isautojacvec
+      pg_config = nothing
+    else
+      pg_config = build_grad_config(alg,pg,u0,p)
+    end
+  else
+    pg_config = nothing
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
@@ -161,7 +172,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)
   sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
-                                       uf,pf,pg,u0,jac_config,paramjac_config,
+                                       uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix)
 
