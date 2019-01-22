@@ -36,6 +36,8 @@ easy_res4 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
+easy_res6 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(checkpointing=true))
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
@@ -47,6 +49,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res3, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-9)
+@test isapprox(res, easy_res6, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -69,6 +72,7 @@ res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 @test norm(res' .- res3) < 1e-6
 @test norm(res' .- res4) < 1e-6
 @test norm(res' .- res5) < 1e-6
+@test norm(res' .- res6) < 1e-6
 
 # Do a continuous adjoint problem
 
@@ -96,10 +100,14 @@ easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
 easy_res4 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(autodiff=false))
+easy_res5 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true))
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
 @test norm(easy_res3 .- res) < 1e-8
 @test norm(easy_res4 .- res) < 1e-8
+@test norm(easy_res5 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
