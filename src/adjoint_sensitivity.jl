@@ -199,6 +199,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)
+  fill!(λ, zero(eltype(λ)))
   sense = ODEAdjointSensitivityFunction(f,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
