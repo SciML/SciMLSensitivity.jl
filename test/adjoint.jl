@@ -37,7 +37,8 @@ easy_res4 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res6 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(checkpointing=true))
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(checkpointing=true),
+                                  checkpoints=sol.t[1:5:end])
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
