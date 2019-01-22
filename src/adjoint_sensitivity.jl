@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
   f::F
   analytic::AN
   jac::J
@@ -23,11 +23,13 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
   sol::SType
   dg::DG
   mass_matrix::MM
+  checkpoints::CP
+  integrator::INT
 end
 
 function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
-                                      p,f_cache,alg,discrete,y,sol,dg,mm)
+                                      p,f_cache,alg,discrete,y,sol,dg,mm,checkpoints)
   numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -38,11 +40,18 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
   else
     nothing
   end
+  integrator = if ischeckpointing(alg)
+    integ = init(sol.prob, sol.alg, save_on=false)
+    integ.u = y
+    integ
+  else
+    nothing
+  end
   dg_val = similar(u0, numindvar) # number of funcs size
   ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
-                               discrete,y,sol,dg,mm)
+                               discrete,y,sol,dg,mm,checkpoints,integrator)
 end
 
 # u = λ'
@@ -59,7 +68,27 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     S.sol.prob.f(dy, _y, p, t)
     copyto!(y, _y)
   else
-    S.sol(y,t)
+    if ischeckpointing(S.alg)
+      # assuming that in the forward direction `t0` < `t1`, and the
+      # `checkpoints` vector is sorted with respect to the forward direction
+      idx = findlast(x->x < t, S.checkpoints)
+      # if `idx` is nothing, that implies `t ≤ x, ∀ x ∈ checkpoints`, hence t₀
+      # must be the first checkpoint, else it will error
+      t0 = idx === nothing ? S.checkpoints[1] : S.checkpoints[idx]
+      dt = t-t0
+      integrator = S.integrator
+      if abs(dt) > integrator.opts.dtmin
+        S.sol(integrator.u, t0)
+        integrator.t = t0
+        u_modified!(integrator, true)
+        step!(integrator, t, true, true)
+        # `integrator.u` is aliased to `y`
+      else
+        S.sol(y,t)
+      end
+    else
+      S.sol(y,t)
+    end
     if isquad(S.alg)
       λ     = u
       dλ    = du
@@ -122,6 +151,7 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                            alg=SensitivityAlg();
+                           checkpoints=sol.t,
                            callback=CallbackSet(),mass_matrix=I)
 
   f = sol.prob.f
@@ -172,7 +202,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
   sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
-                                       y,sol,dg,mass_matrix)
+                                       y,sol,dg,mass_matrix,checkpoints)
 
   if discrete
     cur_time = Ref(length(t))
@@ -278,8 +308,9 @@ end
 function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
                                iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(),
+                               checkpoints=sol.t,
                                kwargs...)
-  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg)
+  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
   isq = isquad(sensealg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'

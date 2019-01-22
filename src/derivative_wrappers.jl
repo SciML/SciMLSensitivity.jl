@@ -2,10 +2,13 @@ struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm
   autojacvec::Bool
   quad::Bool
   backsolve::Bool
+  checkpointing::Bool
 end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,quad=true,backsolve=false)
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},
+                                   autojacvec=autodiff,quad=true,backsolve=false,checkpointing=false)
+  checkpointing && (backsolve=false)
   backsolve && (quad = false)
-  SensitivityAlg{chunk_size,autodiff,diff_type}(autojacvec,quad,backsolve)
+  SensitivityAlg{chunk_size,autodiff,diff_type}(autojacvec,quad,backsolve,checkpointing)
 end
 
 # Not in DiffEqDiffTools because `u` -> scalar isn't used anywhere else,
@@ -36,6 +39,7 @@ Base.@pure diff_type(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = FDT
 Base.@pure get_jacvec(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.autojacvec
 Base.@pure isquad(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.quad
 Base.@pure isbcksol(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.backsolve
+Base.@pure ischeckpointing(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.checkpointing
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::AbstractArray{<:Number}, alg::SensitivityAlg, jac_config)
