@@ -1,8 +1,7 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,J,PJ,UF,PF,G,JC,GC,A,SType,DG,uEltype,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
   f::F
-  analytic::AN
   jac::J
   paramjac::PJ
   uf::UF
@@ -17,17 +16,19 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
   alg::A
   numparams::Int
   numindvar::Int
-  f_cache::fc
+  f_cache::Vector{uEltype}
   discrete::Bool
   y::Vector{uEltype}
   sol::SType
   dg::DG
   mass_matrix::MM
+  checkpoints::CP
+  integrator::INT
 end
 
-function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
+function ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
-                                      p,f_cache,alg,discrete,y,sol,dg,mm)
+                                      p,f_cache,alg,discrete,y,sol,dg,mm,checkpoints)
   numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -38,11 +39,18 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
   else
     nothing
   end
+  integrator = if ischeckpointing(alg)
+    integ = init(sol.prob, sol.alg, save_on=false)
+    integ.u = y
+    integ
+  else
+    nothing
+  end
   dg_val = similar(u0, numindvar) # number of funcs size
-  ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
+  ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
-                               discrete,y,sol,dg,mm)
+                               discrete,y,sol,dg,mm,checkpoints,integrator)
 end
 
 # u = λ'
@@ -61,7 +69,28 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     copyto!(y, _y)
     isautojacvec || S.sol.prob.f(dy, _y, p, t)
   else
-    S.sol(y,t)
+    if ischeckpointing(S.alg)
+      # assuming that in the forward direction `t0` < `t1`, and the
+      # `checkpoints` vector is sorted with respect to the forward direction
+      tidx = findlast(x->x <= t, S.checkpoints)
+      t0 = S.checkpoints[tidx]
+      dt = t-t0
+      integrator = S.integrator
+      if abs(dt) > integrator.opts.dtmin
+        S.sol(integrator.u, t0)
+        copyto!(integrator.uprev, integrator.u)
+        integrator.t = t0
+        # set `iter` to some arbitrary integer so that there won't be max maxiters error
+        integrator.iter=100
+        u_modified!(integrator, true)
+        step!(integrator, dt, true)
+        # `integrator.u` is aliased to `y`
+      else
+        S.sol(y,t)
+      end
+    else
+      S.sol(y,t)
+    end
     if isquad(S.alg)
       λ     = u
       dλ    = du
@@ -125,6 +154,7 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                            alg=SensitivityAlg();
+                           checkpoints=sol.t,
                            callback=CallbackSet(),mass_matrix=I)
 
   f = sol.prob.f
@@ -172,10 +202,10 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)
-  sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
+  sense = ODEAdjointSensitivityFunction(f,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
-                                       y,sol,dg,mass_matrix)
+                                       y,sol,dg,mass_matrix,checkpoints)
 
   if discrete
     cur_time = Ref(length(t))
@@ -204,7 +234,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  z0 = isbcksol(alg) ? [λ; y] : zero(λ)
+  z0 = isbcksol(alg) ? [zero(λ); y] : zero(λ)
   ODEProblem(sense,z0,tspan,p,callback=_cb)
 end
 
@@ -280,9 +310,10 @@ end
 
 function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
-                               iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(),
+                               iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(checkpointing=!sol.dense),
+                               checkpoints=sol.t,
                                kwargs...)
-  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg)
+  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
   isq = isquad(sensealg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'

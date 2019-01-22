@@ -29,13 +29,21 @@ end
 easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 easy_res2 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=true,backsolve=false))
 easy_res3 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false))
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false,backsolve=false))
 easy_res4 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
+easy_res6 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true,quad=true),
+                                  checkpoints=sol.t[1:5:end])
+easy_res7 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true,quad=false),
+                                  checkpoints=sol.t[1:5:end])
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
@@ -47,6 +55,8 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res3, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-9)
+@test isapprox(res, easy_res6, rtol = 1e-9)
+@test isapprox(res, easy_res7, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -96,10 +106,14 @@ easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
 easy_res4 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(autodiff=false))
+easy_res5 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true))
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
 @test norm(easy_res3 .- res) < 1e-8
 @test norm(easy_res4 .- res) < 1e-8
+@test norm(easy_res5 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
