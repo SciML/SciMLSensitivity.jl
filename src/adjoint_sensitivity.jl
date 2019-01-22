@@ -1,8 +1,7 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uEltype,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{F,J,PJ,UF,PF,G,JC,GC,A,SType,DG,uEltype,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
   f::F
-  analytic::AN
   jac::J
   paramjac::PJ
   uf::UF
@@ -17,7 +16,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
   alg::A
   numparams::Int
   numindvar::Int
-  f_cache::fc
+  f_cache::Vector{uEltype}
   discrete::Bool
   y::Vector{uEltype}
   sol::SType
@@ -27,7 +26,7 @@ struct ODEAdjointSensitivityFunction{F,AN,J,PJ,UF,PF,G,JC,GC,A,fc,SType,DG,uElty
   integrator::INT
 end
 
-function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
+function ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
                                       p,f_cache,alg,discrete,y,sol,dg,mm,checkpoints)
   numparams = length(p)
@@ -48,7 +47,7 @@ function ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,u0,
     nothing
   end
   dg_val = similar(u0, numindvar) # number of funcs size
-  ODEAdjointSensitivityFunction(f,analytic,jac,paramjac,uf,pf,g,J,pJ,dg_val,
+  ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
                                alg,numparams,numindvar,f_cache,
                                discrete,y,sol,dg,mm,checkpoints,integrator)
@@ -200,7 +199,7 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
 
   len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)
-  sense = ODEAdjointSensitivityFunction(f,nothing,f.jac,f.paramjac,
+  sense = ODEAdjointSensitivityFunction(f,f.jac,f.paramjac,
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
                                        y,sol,dg,mass_matrix,checkpoints)
