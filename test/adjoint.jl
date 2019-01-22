@@ -29,15 +29,16 @@ end
 easy_res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 easy_res2 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=true,backsolve=false))
 easy_res3 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false))
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false,backsolve=false))
 easy_res4 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res6 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(checkpointing=true),
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true,quad=true),
                                   checkpoints=sol.t[1:5:end])
 easy_res7 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
@@ -78,7 +79,6 @@ res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 @test norm(res' .- res3) < 1e-6
 @test norm(res' .- res4) < 1e-6
 @test norm(res' .- res5) < 1e-6
-@test norm(res' .- res6) < 1e-6
 
 # Do a continuous adjoint problem
 
