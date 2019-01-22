@@ -70,8 +70,8 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     if ischeckpointing(S.alg)
       # assuming that in the forward direction `t0` < `t1`, and the
       # `checkpoints` vector is sorted with respect to the forward direction
-      idx = findlast(x->x <= t, S.checkpoints)
-      t0 = S.checkpoints[idx]
+      tidx = findlast(x->x <= t, S.checkpoints)
+      t0 = S.checkpoints[tidx]
       dt = t-t0
       integrator = S.integrator
       if abs(dt) > integrator.opts.dtmin

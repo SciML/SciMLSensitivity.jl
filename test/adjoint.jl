@@ -39,6 +39,10 @@ easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=
 easy_res6 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(checkpointing=true),
                                   checkpoints=sol.t[1:5:end])
+easy_res7 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(checkpointing=true,quad=false),
+                                  checkpoints=sol.t[1:5:end])
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Vern9(),abstol=1e-14,reltol=1e-14)
@@ -51,6 +55,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res4, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-9)
 @test isapprox(res, easy_res6, rtol = 1e-9)
+@test isapprox(res, easy_res7, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
