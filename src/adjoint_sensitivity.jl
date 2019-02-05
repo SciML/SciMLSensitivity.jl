@@ -307,6 +307,17 @@ function (S::AdjointSensitivityIntegrand)(t)
   S(out,t)
 end
 
+function adjoint_sensitivities_u0(sol,alg,g,t=nothing,dg=nothing;
+                                  abstol=1e-6,reltol=1e-3,
+                                  iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(checkpointing=!sol.dense,quad=false),
+                                  checkpoints=sol.t,
+                                  kwargs...)
+  isquad(sensealg) && error("Can't get sensitivities of u0 with quadrature.")
+  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
+  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=false,kwargs...)
+  -adj_sol[end][1:length(sol.prob.u0)],
+    adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
+end
 
 function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
