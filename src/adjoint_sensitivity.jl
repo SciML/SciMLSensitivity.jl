@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{F,J,PJ,UF,PF,G,JC,GC,A,SType,DG,uEltype,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{dgType,rateType,uType,F,J,PJ,UF,PF,G,JC,GC,A,SType,DG,MM,TJ,PJT,PJC,CP,INT} <: SensitivityFunction
   f::F
   jac::J
   paramjac::PJ
@@ -9,16 +9,16 @@ struct ODEAdjointSensitivityFunction{F,J,PJ,UF,PF,G,JC,GC,A,SType,DG,uEltype,MM,
   g::G
   J::TJ
   pJ::PJT
-  dg_val::Vector{uEltype}
+  dg_val::dgType
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
   alg::A
   numparams::Int
   numindvar::Int
-  f_cache::Vector{uEltype}
+  f_cache::rateType
   discrete::Bool
-  y::Vector{uEltype}
+  y::uType
   sol::SType
   dg::DG
   mass_matrix::MM
@@ -234,19 +234,19 @@ function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
     _cb = callback
   end
 
-  z0 = isbcksol(alg) ? [zero(λ); y] : zero(λ)
+  z0 = isbcksol(alg) ? [vec(zero(λ)); vec(y)] : vec(zero(λ))
   ODEProblem(sense,z0,tspan,p,callback=_cb)
 end
 
-struct AdjointSensitivityIntegrand{S,AS,F,PF,PJC,uEltype,A,PJT}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,F,PF,PJC,A,PJT}
   sol::S
   adj_sol::AS
   f::F
-  p::Vector{uEltype}
-  y::Vector{uEltype}
-  λ::Vector{uEltype}
+  p::pType
+  y::uType
+  λ::uType
   pf::PF
-  f_cache::Vector{uEltype}
+  f_cache::rateType
   pJ::PJT
   paramjac_config::PJC
   alg::A
