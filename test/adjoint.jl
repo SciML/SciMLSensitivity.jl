@@ -136,3 +136,19 @@ prob = ODEProblem(f,u,(0.0,10.0),p)
 sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 @test_nowarn res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+using DiffEqSensitivity: adjoint_sensitivities_u0
+
+function dg(out,u,p,t,i)
+  out .= 1 .- u
+end
+
+ū0 = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
+                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)[1]
+
+ū0 ≈ ForwardDiff.gradient(prob.u0) do u0
+  tmp_prob = remake(prob,u0=u0)
+  sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
+  A = convert(Array,sol)
+  sum(((1 .- A).^2)./2)
+end
