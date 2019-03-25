@@ -1,6 +1,3 @@
-using Distributions
-using ForwardDiff
-using Statistics
 
 """
 The inputs to the function DGSM are as follows:
@@ -14,7 +11,6 @@ The inputs to the function DGSM are as follows:
 3.distri:
     Array of distribution of respective variables
 """
-
 mutable struct dgsm
     a::Float64
     absa::Float64
