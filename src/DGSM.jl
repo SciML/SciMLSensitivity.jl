@@ -1,4 +1,10 @@
 
+mutable struct dgsm
+    a::Float64
+    absa::Float64
+    asq::Float64
+end
+
 """
 The inputs to the function DGSM are as follows:
 1.f: 
@@ -10,13 +16,9 @@ The inputs to the function DGSM are as follows:
     a = partial derivative of f wrt x_i
 3.distri:
     Array of distribution of respective variables
+    Eg- dist = [Normal(5,6),Uniform(2,3)]
+	for two variables
 """
-mutable struct dgsm
-    a::Float64
-    absa::Float64
-    asq::Float64
-end
-
 function DGSM_Gen(f,samples,distr)
     
     k = length(distr)
