@@ -1,4 +1,4 @@
-using Test, DiffEqSensitivity
+using Test, DiffEqSensitivity, Distributions
 
 samples = 2000000
 
