@@ -1,5 +1,5 @@
 
-mutable struct dgsm
+mutable struct Dgsm
     a::Float64
     absa::Float64
     asq::Float64
@@ -41,7 +41,7 @@ function DGSM_Gen(f,samples,distr)
     
     #Evaluating E(a) E(|a|) and E(a^2)
     
-    DGSM = [dgsm(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
+    DGSM = [Dgsm(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
     
     #This function finally returns an array of structures, consisting a, absa and asq
     #respectively for the k independent parameters
