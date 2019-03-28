@@ -4,7 +4,7 @@ module DiffEqSensitivity
 
 using DiffEqBase, Compat, ForwardDiff, Flux, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DataFrames, GLM, RecursiveArrayTools, Distributions
+using DataFrames, GLM, RecursiveArrayTools
 
 abstract type SensitivityFunction end
 
