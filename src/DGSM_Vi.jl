@@ -6,7 +6,7 @@ mutable struct Dgsm
 end
 
 """
-The inputs to the function DGSM are as follows:
+The inputs to the function DGSM_Vi are as follows:
 1.f: 
     This is the input function based on which the values of DGSM are to be evaluated
     Eg- f(x) = x[1]+x[2]^2
@@ -19,7 +19,7 @@ The inputs to the function DGSM are as follows:
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
 """
-function DGSM_Gen(f,samples,distr)
+function DGSM_Vi(f,samples,distr)
     
     k = length(distr)
     

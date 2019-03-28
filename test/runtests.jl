@@ -7,6 +7,6 @@ using Test
 @testset "Adjoint Sensitivity" begin include("adjoint.jl") end
 @testset "Morris Method" begin include("morris_method.jl") end
 @testset "Sobol Method" begin include("sobol_method.jl") end
-@testset "DGSM Method" begin include("DGSM.jl") end
+@testset "DGSM_Vi Method" begin include("DGSM_Vi.jl") end
 
 end
