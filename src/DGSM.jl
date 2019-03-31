@@ -34,8 +34,7 @@ function DGSM(f,samples,distr)
     #Evaluating the derivatives with AD
     
     dfdx = [grad(XX[i]) for i = 1:samples]
-    dfdx = reduce(vcat,dfdx)
-    dfdx = reshape(dfdx,k,samples)
+    dfdx = reduce(hcat,dfdx)
     dfdx = dfdx'
     
     
