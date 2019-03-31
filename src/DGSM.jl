@@ -1,12 +1,12 @@
 
-mutable struct DGSM_Vi
+mutable struct DGSM
     a::Float64
     absa::Float64
     asq::Float64
 end
 
 """
-The inputs to the function DGSM_Vi are as follows:
+The inputs to the function DGSM are as follows:
 1.f: 
     This is the input function based on which the values of DGSM are to be evaluated
     Eg- f(x) = x[1]+x[2]^2
@@ -19,7 +19,7 @@ The inputs to the function DGSM_Vi are as follows:
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
 """
-function DGSM_Vi(f,samples,distr)
+function DGSM(f,samples,distr)
     
     k = length(distr)
     
@@ -41,10 +41,10 @@ function DGSM_Vi(f,samples,distr)
     
     #Evaluating E(a) E(|a|) and E(a^2)
     
-    DGSM = [DGSM_Vi(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
+    DGSM_Vi = [DGSM(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
     
     #This function finally returns an array of structures, consisting a, absa and asq
     #respectively for the k independent parameters
     
-    return DGSM
+    return DGSM_Vi
 end
