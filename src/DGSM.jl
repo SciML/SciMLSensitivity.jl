@@ -19,7 +19,7 @@ The inputs to the function DGSM are as follows:
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
 """
-function DGSM(f,samples,distr)
+function DGSM(f,samples::Int,distr::AbstractArray)
     
     k = length(distr)
     
