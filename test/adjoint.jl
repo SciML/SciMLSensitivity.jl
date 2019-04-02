@@ -98,14 +98,18 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 println("Test the `adjoint_sensitivities` utility function")
 easy_res = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+println("2")
 easy_res2 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(quad=false))
+println("3")
 easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+println("4")
 easy_res4 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(autodiff=false))
+println("5")
 easy_res5 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(checkpointing=true))
