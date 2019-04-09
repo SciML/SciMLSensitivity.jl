@@ -19,7 +19,7 @@ prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODELocalSensitivityProblem(LotkaVolt!,[1.0;1.0],(0.0,10.0),p)
 probnoad = ODELocalSensitivityProblem(LotkaVolt!,[1.0;1.0],(0.0,10.0),p,
                                       SensitivityAlg(autodiff=false))
-sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 @test_broken solInpl = solve(probInpl,KenCarp4(),abstol=1e-14,reltol=1e-14)
 @test_broken solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solInpl = solve(probInpl,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
@@ -41,7 +41,7 @@ dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 sense_res1 = [da[:,end] db[:,end] dc[:,end]]
 
 prob = ODELocalSensitivityProblem(f.f,[1.0;1.0],(0.0,10.0),p,SensitivityAlg(autojacvec=true))
-sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.f.numindvar,:]
 
 # Get the sensitivities
@@ -54,7 +54,7 @@ sense_res2 = [da[:,end] db[:,end] dc[:,end]]
 
 function test_f(p)
   prob = ODEProblem(f,eltype(p).([1.0,1.0]),(0.0,10.0),p)
-  solve(prob,Vern9(),abstol=1e-14,reltol=1e-14,save_everystep=false)[end]
+  solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14,save_everystep=false)[end]
 end
 
 p = [1.5,1.0,3.0]
@@ -74,7 +74,7 @@ function f2(du,u,p,t)
 end
 p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f2,[1.0;1.0],(0.0,10.0),p)
-sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
+sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 res = sol[1:sol.prob.f.numindvar,:]
 
 # Get the sensitivities
