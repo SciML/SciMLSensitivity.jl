@@ -314,7 +314,7 @@ function adjoint_sensitivities_u0(sol,alg,g,t=nothing,dg=nothing;
                                   kwargs...)
   isquad(sensealg) && error("Can't get sensitivities of u0 with quadrature.")
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
-  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=false,kwargs...)
+  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=false,save_start=false,kwargs...)
   -adj_sol[end][1:length(sol.prob.u0)],
     adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
 end
@@ -326,7 +326,8 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                kwargs...)
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
   isq = isquad(sensealg)
-  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,save_everystep=isq,kwargs...)
+  adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
+                               save_everystep=isq,save_start=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
   integrand = AdjointSensitivityIntegrand(sol,adj_sol)
 

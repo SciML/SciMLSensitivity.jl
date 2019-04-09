@@ -58,6 +58,13 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res7, rtol = 1e-9)
 
+easy_res8 = adjoint_sensitivities(solb,Vern9(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  save_everystep=false,save_start=false,
+                                  sensealg=SensitivityAlg(backsolve=true))
+
+@test isapprox(res, easy_res8, rtol = 1e-9)
+
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
@@ -141,18 +148,42 @@ sol = solve(prob,Vern9(),abstol=1e-14,reltol=1e-14)
 @test_nowarn res = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
-using DiffEqSensitivity: adjoint_sensitivities_u0
+println("Adjoints of u0")
 
 function dg(out,u,p,t,i)
   out .= 1 .- u
 end
 
-ū0 = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
-                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)[1]
+ū0,adj = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
+                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
-ū0 ≈ ForwardDiff.gradient(prob.u0) do u0
+adj2 = adjoint_sensitivities(sol,Vern9(),dg,t,abstol=1e-14,
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū02,adj3 = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
+                         sensealg=SensitivityAlg(backsolve=true),
+                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū03,adj4 = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
+                        save_everystep=false, save_start=false,
+                        sensealg=SensitivityAlg(backsolve=true),
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū03,adj4 = adjoint_sensitivities_u0(sol,Vern9(),dg,t,abstol=1e-14,
+                        save_everystep=false, save_start=false,
+                        sensealg=SensitivityAlg(backsolve=true),
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+                        
+res = ForwardDiff.gradient(prob.u0) do u0
   tmp_prob = remake(prob,u0=u0)
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
   A = convert(Array,sol)
   sum(((1 .- A).^2)./2)
 end
+
+@test ū0 ≈ res rtol = 1e-10
+@test ū02 ≈ res rtol = 1e-10
+@test ū03 ≈ res rtol = 1e-10
+@test adj ≈ adj2 rtol = 1e-10
+@test adj ≈ adj3 rtol = 1e-10
+@test adj ≈ adj4 rtol = 1e-10
