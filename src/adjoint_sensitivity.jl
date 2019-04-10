@@ -180,15 +180,15 @@ end
 
   if !discrete
     if dg != nothing || isautojacvec
-      pg_config = nothing
       pg = nothing
+      pg_config = nothing
     else
-      pg_config = build_grad_config(alg,pg,u0,p)
       pg = UGradientWrapper(g,tspan[2],p)
+      pg_config = build_grad_config(alg,pg,u0,p)
     end
   else
-    pg_config = nothing
     pg = nothing
+    pg_config = nothing
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
