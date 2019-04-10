@@ -8,5 +8,6 @@ using Test
 @testset "Morris Method" begin include("morris_method.jl") end
 @testset "Sobol Method" begin include("sobol_method.jl") end
 @testset "DGSM Method" begin include("DGSM.jl") end
+@testset "DGSM_Crossed Method" begin include("DGSM_Crossed.jl") end
 
 end

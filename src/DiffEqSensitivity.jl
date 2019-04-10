@@ -5,6 +5,7 @@ module DiffEqSensitivity
 using DiffEqBase, Compat, ForwardDiff, Flux, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools
+using ForwardDiff
 
 abstract type SensitivityFunction end
 
@@ -15,6 +16,7 @@ include("morris_sensitivity.jl")
 include("sobol_sensitivity.jl")
 include("regression_sensitivity.jl")
 include("DGSM.jl")
+include("DGSM_Crossed.jl")
 
 export extract_local_sensitivities
 
@@ -22,7 +24,8 @@ export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunct
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0,
        morris_sensitivity, MorrisSensitivity, sobol_sensitivity, 
-       SensitivityAlg, regression_sensitivity, DGSM
+       SensitivityAlg, regression_sensitivity, DGSM,
+       DGSM_Crossed
 
 
 end # module
