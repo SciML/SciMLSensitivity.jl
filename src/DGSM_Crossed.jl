@@ -14,7 +14,7 @@ The inputs to the function DGSM_Crossed are as follows:
 2.samples:
     Depicts the number of sampling set of points to be used for evaluation of E(c), E(|c|) and E(c^2)
     c = partial derivative of 2nd order of f wrt x_i,x_j. 
-3.distri:
+3.distr:
     Array of distribution of respective variables
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
