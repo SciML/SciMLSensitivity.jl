@@ -9,7 +9,7 @@ using Test, DiffEqSensitivity, Distributions
 
 samples = 1000000
 
-f2(x) = sin(x[1]) + 7sin(x[2])^2 + 0.1* (x[3]^4) *sin(x[1]) 
+f2(x) = sin(x[1]) + 7*sin(x[2])^2 + 0.1* (x[3]^4) *sin(x[1]) 
 dist2 = [Uniform(-pi,pi),Uniform(-pi,pi),Uniform(-pi,pi)]
 c = DGSM_Crossed(f2,samples,dist2)
 @test [c["X1:X2"].crossedsq] ≈ [0.0] atol= 20e-1
