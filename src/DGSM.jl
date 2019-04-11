@@ -28,7 +28,7 @@ The inputs to the function DGSM are as follows:
     A boolean value which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
 """
-function DGSM(f,samples::Int64,distr::AbstractArray, crossed::Bool)
+function DGSM(f,samples::Int64,distr::AbstractArray, crossed::String)
     
     k = length(distr)
     
