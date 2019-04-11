@@ -63,9 +63,24 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     
     DGSM_Vi = DGSM(a, absa, asq, cross1, cross2, cross3)
     return DGSM_Vi
-    
+    #returns a struct of 6 elements i.e. a,absa,asq(all 3 arrays) and cross1(crossed), cross2(abscrossed),cross3(crossedsq) (all 3 matrices)
 end
 
+
+"""
+The inputs to the function DGSM_Crossed are as follows:
+1.f: 
+    This is the input function based on which the values of Crossed DGSM are to be evaluated
+    Eg- f(x) = x[1]+x[2]^2
+        This is function in 2 variables
+2.samples:
+    Depicts the number of sampling set of points to be used for evaluation of E(c), E(|c|) and E(c^2)
+    c = partial derivative of 2nd order of f wrt x_i,x_j. 
+3.distr:
+    Array of distribution of respective variables
+    Eg- dist = [Normal(5,6),Uniform(2,3)]
+	for two variables
+"""
 function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
     
     k = length(distr)
@@ -84,7 +99,9 @@ function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
     crossed = zeros(Float64,k,k)
     crossedsq = zeros(Float64,k,k)
     abscrossed = zeros(Float64,k,k)
-        
+    
+    #computing the elements of crossed, crossedsq, abscrossed
+    
     for a in 1:k
         for b in a+1:k
             crossed[b + (a-1)*k] = mean(dfdxdy[i][b + (a-1)*k] for i in 1:samples)
@@ -96,6 +113,7 @@ function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
         end
     end
     
+    #returns a tuple of 3 matrices consisting of crossed, abscrossed, crossedsq
     return crossed, abscrossed, crossedsq
 end
 
