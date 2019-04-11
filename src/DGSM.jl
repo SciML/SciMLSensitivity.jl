@@ -25,7 +25,7 @@ The inputs to the function DGSM are as follows:
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
 4.crossed:
-    A boolean value which act as indicator for computation of DGSM crossed indices
+    A string(True/False) which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
 """
 function DGSM(f,samples::Int64,distr::AbstractArray, crossed::String)
