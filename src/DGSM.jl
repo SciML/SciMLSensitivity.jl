@@ -28,7 +28,7 @@ The inputs to the function DGSM are as follows:
     A string(True/False) which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
 """
-function DGSM(f,samples::Int64,distr::AbstractArray, crossed::String)
+function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     
     k = length(distr)
     
@@ -51,7 +51,7 @@ function DGSM(f,samples::Int64,distr::AbstractArray, crossed::String)
     
     DGSM_Vi = [DGSM(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
     
-    if crossed == "True"
+    if crossed == true
     	cross = DGSM_Crossed(f,samples,distr)
 	return DGSM_Vi, cross
     end
@@ -59,7 +59,7 @@ function DGSM(f,samples::Int64,distr::AbstractArray, crossed::String)
     return DGSM_Vi
 end
 
-function DGSM_Crossed(f,samples::Int64,distr::AbstractArray)
+function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
     
     k = length(distr)
     
