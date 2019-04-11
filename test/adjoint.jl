@@ -36,8 +36,8 @@ easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false,backsolve=false))
 easy_res4 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
-easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-14,
-                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
+easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-12,
+                                 reltol=1e-10,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
 easy_res6 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(checkpointing=true,quad=true),
@@ -56,7 +56,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res3, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
-@test isapprox(res, easy_res5, rtol = 1e-9)
+@test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res7, rtol = 1e-9)
 
