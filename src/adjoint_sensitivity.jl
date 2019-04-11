@@ -332,7 +332,7 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=isq,save_start=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
-  integrand = AdjointSensitivityIntegrand(sol,adj_sol)
+  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
 
   if t === nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
