@@ -5,6 +5,12 @@ mutable struct DGSM
     asq::Float64
 end
 
+mutable struct DGSM_Crossed
+    crossedsq::Float64
+    crossed::Float64
+    abscrossed::Float64
+end
+
 """
 The inputs to the function DGSM are as follows:
 1.f: 
@@ -19,7 +25,7 @@ The inputs to the function DGSM are as follows:
     Eg- dist = [Normal(5,6),Uniform(2,3)]
 	for two variables
 """
-function DGSM(f,samples::Int,distr::AbstractArray)
+function DGSM(f,samples::Int64,distr::AbstractArray, crossed::Bool)
     
     k = length(distr)
     
@@ -42,8 +48,40 @@ function DGSM(f,samples::Int,distr::AbstractArray)
     
     DGSM_Vi = [DGSM(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
     
-    #This function finally returns an array of structures, consisting a, absa and asq
-    #respectively for the k independent parameters
+    if crossed == "True"
+    	cross = DGSM_Crossed(f,samples,distr)
+	return DGSM_Vi, cross
+    end
     
     return DGSM_Vi
 end
+
+function DGSM_Crossed(f,samples::Int64,distr::AbstractArray)
+    
+    k = length(distr)
+    
+    #XX is the matrix consisting of 'samples' number of sampling based on respective 
+    #distributions of variables
+    
+    XX = [rand.(distr) for x = 1 : samples]
+    
+    #function to evaluate hessian of f wrt x
+    hess(x) = ForwardDiff.hessian(f,x)
+    
+    #Evaluating the derivatives with AD
+    dfdxdy = [hess(XX[i]) for i in 1 : samples]
+    
+    #creating a dicitionay which is returned
+    crossed = Dict{String, DGSM_Crossed}()
+    
+    #assigning elements of dictionary, the key would be of the form "XiXj" and the data would be of type struct DGSM_Crossed
+    #which consists of E(c), E(|c|) and E(c^2) where c is partial derivative of 2nd order of f wrt x_i,x_j. 
+    for a in 1:k
+        for b in a+1:k
+            crossed["X$a:X$b"] = DGSM_Crossed(mean(dfdxdy[i][a+(b-1)*k]^2 for i in 1:samples),mean(dfdxdy[i][a+(b-1)*k] for i in 1:samples),mean(abs(dfdxdy[i][a+(b-1)*k]) for i in 1:samples))
+        end
+    end
+    
+    return crossed
+end
+
