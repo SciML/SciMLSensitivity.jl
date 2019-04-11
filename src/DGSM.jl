@@ -1,10 +1,10 @@
 mutable struct DGSM
-    a::Array
-    absa::Array
-    asq::Array
-    crossed::Array
-    abscrossed::Array
-    crossedsq::Array
+    a::Array{Float64,1}
+    absa::Array{Float64,1}
+    asq::Array{Float64,1}
+    crossed::Array{Float64,2}
+    abscrossed::Array{Float64,2}
+    crossedsq::Array{Float64,2}
 end
 
 
