@@ -1,15 +1,12 @@
-
 mutable struct DGSM
-    a::Float64
-    absa::Float64
-    asq::Float64
+    a::Array
+    absa::Array
+    asq::Array
+    crossed::Array
+    abscrossed::Array
+    crossedsq::Array
 end
 
-mutable struct DGSM_Crossed
-    crossedsq::Float64
-    crossed::Float64
-    abscrossed::Float64
-end
 
 """
 The inputs to the function DGSM are as follows:
@@ -23,7 +20,7 @@ The inputs to the function DGSM are as follows:
 3.distri:
     Array of distribution of respective variables
     Eg- dist = [Normal(5,6),Uniform(2,3)]
-	for two variables
+    for two variables
 4.crossed:
     A string(True/False) which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
@@ -48,15 +45,25 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     
     
     #Evaluating E(a) E(|a|) and E(a^2)
+
+    a = [mean(dfdx[:,i]) for i in 1:k]
+    asq = [mean(dfdx[:,i].^2) for i in 1:k]
+    absa = [mean(abs.(dfdx[:,i])) for i in 1:k]
     
-    DGSM_Vi = [DGSM(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
+    cross1 = zeros(Float64,0,0)
+    cross2 = zeros(Float64,0,0)
+    cross3 = zeros(Float64,0,0)
     
     if crossed == true
-    	cross = DGSM_Crossed(f,samples,distr)
-	return DGSM_Vi, cross
+        cross = DGSM_Crossed(f,samples,distr)
+        cross1 = cross[1]
+        cross2 = cross[2]
+        cross3 = cross[3]
     end
     
+    DGSM_Vi = DGSM(a, absa, asq, cross1, cross2, cross3)
     return DGSM_Vi
+    
 end
 
 function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
@@ -74,17 +81,21 @@ function DGSM_Crossed(f,samples::Int,distr::AbstractArray)
     #Evaluating the derivatives with AD
     dfdxdy = [hess(XX[i]) for i in 1 : samples]
     
-    #creating a dicitionay which is returned
-    crossed = Dict{String, DGSM_Crossed}()
-    
-    #assigning elements of dictionary, the key would be of the form "XiXj" and the data would be of type struct DGSM_Crossed
-    #which consists of E(c), E(|c|) and E(c^2) where c is partial derivative of 2nd order of f wrt x_i,x_j. 
+    crossed = zeros(Float64,k,k)
+    crossedsq = zeros(Float64,k,k)
+    abscrossed = zeros(Float64,k,k)
+        
     for a in 1:k
         for b in a+1:k
-            crossed["X$a:X$b"] = DGSM_Crossed(mean(dfdxdy[i][a+(b-1)*k]^2 for i in 1:samples),mean(dfdxdy[i][a+(b-1)*k] for i in 1:samples),mean(abs(dfdxdy[i][a+(b-1)*k]) for i in 1:samples))
+            crossed[b + (a-1)*k] = mean(dfdxdy[i][b + (a-1)*k] for i in 1:samples)
+            crossed[a + (b-1)*k] = crossed[b + (a-1)*k]
+            crossedsq[b + (a-1)*k] = mean(dfdxdy[i][b + (a-1)*k]^2 for i in 1:samples)
+            crossedsq[a + (b-1)*k] = crossedsq[b + (a-1)*k]
+            abscrossed[b + (a-1)*k] = mean(abs(dfdxdy[i][b + (a-1)*k]) for i in 1:samples)
+            abscrossed[a + (b-1)*k] = crossed[b + (a-1)*k]
         end
     end
     
-    return crossed
+    return crossed, abscrossed, crossedsq
 end
 
