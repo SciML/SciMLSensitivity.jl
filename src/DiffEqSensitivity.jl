@@ -23,7 +23,7 @@ export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunct
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0,
        morris_sensitivity, MorrisSensitivity, sobol_sensitivity, 
-       SensitivityAlg, regression_sensitivity, DGSM
+       SensitivityAlg, regression_sensitivity, DGSM, DGSM_res
 
 
 end # module

@@ -1,10 +1,10 @@
-mutable struct DGSM
+mutable struct DGSM_res
     a::Array{Float64,1}
     absa::Array{Float64,1}
     asq::Array{Float64,1}
-    crossed::Array{Float64,2}
-    abscrossed::Array{Float64,2}
-    crossedsq::Array{Float64,2}
+    crossed::Union{Nothing,Array{Float64,2}}
+    abscrossed::Union{Nothing,Array{Float64,2}}
+    crossedsq::Union{Nothing,Array{Float64,2}}
 end
 
 
@@ -78,12 +78,11 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
         end
         
     else
-        crossed = zeros(Float64,0,0)
-        crossedsq = zeros(Float64,0,0)
-        abscrossed = zeros(Float64,0,0)
+    	DGSM_Vi = DGSM_res(a, absa, asq, nothing, nothing, nothing)
+    	return DGSM_Vi    
     end
     
-    DGSM_Vi = DGSM(a, absa, asq, crossed, abscrossed, crossedsq)
+    DGSM_Vi = DGSM_res(a, absa, asq, crossed, abscrossed, crossedsq)
     return DGSM_Vi
     #returns a struct of 6 elements i.e. a,absa,asq(all 3 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
 end
