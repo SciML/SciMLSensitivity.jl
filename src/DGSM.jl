@@ -56,6 +56,8 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     
     sigma = zeros(Float64,k)
 
+    #Evaluating sigma_i for all input parameters
+
     for i in 1:k
         for j in 1:samples
             sigma[i] += 0.5*(XX[j][i])*(1-XX[j][i])*dfdx[j + (i-1)*samples]^2
@@ -90,7 +92,7 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     end
     
     return DGSM(a, absa, asq, sigma, crossed, abscrossed, crossedsq)
-    #returns a struct of 6 elements i.e. a,absa,asq(all 3 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
+    #returns a struct of 7 elements i.e. a, absa, asq, sigma(all 4 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
 end
 
 
