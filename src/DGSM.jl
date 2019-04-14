@@ -1,9 +1,12 @@
-
-mutable struct DGSM
-    a::Float64
-    absa::Float64
-    asq::Float64
+mutable struct DGSM{T}
+    a::Array{T,1}
+    absa::Array{T,1}
+    asq::Array{T,1}
+    crossed::Union{Nothing,Array{T,2}}
+    abscrossed::Union{Nothing,Array{T,2}}
+    crossedsq::Union{Nothing,Array{T,2}}
 end
+
 
 """
 The inputs to the function DGSM are as follows:
@@ -17,9 +20,12 @@ The inputs to the function DGSM are as follows:
 3.distri:
     Array of distribution of respective variables
     Eg- dist = [Normal(5,6),Uniform(2,3)]
-	for two variables
+    for two variables
+4.crossed:
+    A string(True/False) which act as indicator for computation of DGSM crossed indices
+    Eg- a True value over there will lead to evauation of crossed indices
 """
-function DGSM(f,samples::Int,distr::AbstractArray)
+function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     
     k = length(distr)
     
@@ -31,6 +37,9 @@ function DGSM(f,samples::Int,distr::AbstractArray)
     #function to evaluate gradient of f wrt x
     grad(x)= ForwardDiff.gradient(f,x)
     
+    #function to evaluate hessian of f wrt x
+    hess(x) = ForwardDiff.hessian(f,x)
+    
     #Evaluating the derivatives with AD
     
     dfdx = [grad(XX[i]) for i = 1:samples]
@@ -39,11 +48,41 @@ function DGSM(f,samples::Int,distr::AbstractArray)
     
     
     #Evaluating E(a) E(|a|) and E(a^2)
+
+    a = [mean(dfdx[:,i]) for i in 1:k]
+    asq = [mean(dfdx[:,i].^2) for i in 1:k]
+    absa = [mean(abs.(dfdx[:,i])) for i in 1:k]
     
-    DGSM_Vi = [DGSM(mean(dfdx[:,i]),mean(abs.(dfdx[:,i])),mean(dfdx[:,i].^2)) for i in 1:k]
     
-    #This function finally returns an array of structures, consisting a, absa and asq
-    #respectively for the k independent parameters
     
-    return DGSM_Vi
+    if crossed == true
+        
+        #Evaluating the derivatives with AD
+        dfdxdy = [hess(XX[i]) for i in 1 : samples]
+    
+        crossed = zeros(Float64,k,k)
+        crossedsq = zeros(Float64,k,k)
+        abscrossed = zeros(Float64,k,k)
+    
+        #computing the elements of crossed, crossedsq, abscrossed
+    
+        for a in 1:k
+            for b in a+1:k
+                crossed[b + (a-1)*k] = mean(dfdxdy[i][b + (a-1)*k] for i in 1:samples)
+                crossed[a + (b-1)*k] = crossed[b + (a-1)*k]
+                crossedsq[b + (a-1)*k] = mean(dfdxdy[i][b + (a-1)*k]^2 for i in 1:samples)
+                crossedsq[a + (b-1)*k] = crossedsq[b + (a-1)*k]
+                abscrossed[b + (a-1)*k] = mean(abs(dfdxdy[i][b + (a-1)*k]) for i in 1:samples)
+                abscrossed[a + (b-1)*k] = abscrossed[b + (a-1)*k]
+            end
+        end
+        
+    else
+    	return DGSM(a, absa, asq, nothing, nothing, nothing)
+    end
+    
+    return DGSM(a, absa, asq, crossed, abscrossed, crossedsq)
+    #returns a struct of 6 elements i.e. a,absa,asq(all 3 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
 end
+
+
