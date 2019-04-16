@@ -113,19 +113,27 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     mul!(dλ',λ',S.J)
   elseif isquad(S.alg)
     _dy, back = Tracker.forward(y) do u
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
     dλ[:] = Tracker.data(back(λ)[1])
     isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   else
     _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
-    dλ[:], dgrad[:] = map(Tracker.data, back(λ))
+    dλ[:], dgrad[:] = Tracker.data.(back(λ))
     isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   end
 
@@ -296,9 +304,13 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     mul!(out',λ',S.pJ)
   else
     _, back = Tracker.forward(y, S.p) do u, p
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
     out[:] = vec(Tracker.data(back(λ)[2]))
   end
