@@ -118,7 +118,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       Tracker.collect(out_)
     end
     dλ[:] = Tracker.data(back(λ)[1])
-    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
+    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   else
     _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
       out_ = map(zero, u)
@@ -126,7 +126,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       Tracker.collect(out_)
     end
     dλ[:], dgrad[:] = map(Tracker.data, back(λ))
-    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
+    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   end
 
   dλ .*= -one(eltype(λ))
@@ -300,7 +300,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       S.f(out_, u, p, t)
       Tracker.collect(out_)
     end
-    out[:] = Tracker.data(back(λ)[2])
+    out[:] = vec(Tracker.data(back(λ)[2]))
   end
   out'
 end
