@@ -46,6 +46,12 @@ easy_res7 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(checkpointing=true,quad=false),
                                   checkpoints=sol.t[1:5:end])
+easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(quad=true,autojacvec=false))
+easy_res9 = adjoint_sensitivities(sol, Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=SensitivityAlg(quad=true,autojacvec=false))
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -59,6 +65,8 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res7, rtol = 1e-9)
+@test isapprox(res, easy_res8, rtol = 1e-9)
+@test isapprox(res, easy_res9, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 
