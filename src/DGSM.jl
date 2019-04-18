@@ -2,6 +2,8 @@ mutable struct DGSM{T}
     a::Array{T,1}
     absa::Array{T,1}
     asq::Array{T,1}
+    sigma::Array{T,1}
+    tao::Array{T,1}
     crossed::Union{Nothing,Array{T,2}}
     abscrossed::Union{Nothing,Array{T,2}}
     crossedsq::Union{Nothing,Array{T,2}}
@@ -53,7 +55,26 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
     asq = [mean(dfdx[:,i].^2) for i in 1:k]
     absa = [mean(abs.(dfdx[:,i])) for i in 1:k]
     
+    sigma = zeros(Float64,k)
+    tao = zeros(Float64,k)
+
+    #Evaluating tao_i for all input parameters
     
+    for i in 1:k
+        for j in 1:samples
+            tao[i] += (dfdx[j + (i-1)*samples]^2)*(1 - 3*XX[j][i] + XX[j][i]^2)/6
+        end
+        tao[i] = tao[i]/samples
+    end
+
+    #Evaluating sigma_i for all input parameters
+
+    for i in 1:k
+        for j in 1:samples
+            sigma[i] += 0.5*(XX[j][i])*(1-XX[j][i])*dfdx[j + (i-1)*samples]^2
+        end
+        sigma[i] = sigma[i]/samples
+    end
     
     if crossed == true
         
@@ -78,11 +99,11 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
         end
         
     else
-    	return DGSM(a, absa, asq, nothing, nothing, nothing)
+    	return DGSM(a, absa, asq, sigma, tao, nothing, nothing, nothing)
     end
     
-    return DGSM(a, absa, asq, crossed, abscrossed, crossedsq)
-    #returns a struct of 6 elements i.e. a,absa,asq(all 3 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
+    return DGSM(a, absa, asq, sigma, tao, crossed, abscrossed, crossedsq)
+    #returns a struct of 7 elements i.e. a, absa, asq, sigma(all 4 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
 end
 
 
