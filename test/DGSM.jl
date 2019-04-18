@@ -25,6 +25,9 @@ c = DGSM(f2,samples,dist2)
 @test [c.sigma[1]] ≈ [-14.7] atol= 10e-1
 @test [c.sigma[2]] ≈ [-38.7] atol= 10e-1
 @test [c.sigma[3]] ≈ [-42.0] atol= 10e-1
+@test [c.tao[1]] ≈ [6.13] atol= 10e-1
+@test [c.tao[2]] ≈ [16.94] atol= 10e-1
+@test [c.tao[3]] ≈ [15.91] atol= 10e-1
 
 #Some test functions from a paper
 #Reference:New methods for the sensitivity analysis of
