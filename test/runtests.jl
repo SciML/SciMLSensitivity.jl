@@ -1,12 +1,12 @@
-using DiffEqSensitivity
+using DiffEqSensitivity, SafeTestsets
 using Test
 
 @testset "DiffEqSensitivity" begin
 
-@testset "Local Sensitivity" begin include("local.jl") end
-@testset "Adjoint Sensitivity" begin include("adjoint.jl") end
-@testset "Morris Method" begin include("morris_method.jl") end
-@testset "Sobol Method" begin include("sobol_method.jl") end
-@testset "DGSM Method" begin include("DGSM.jl") end
+@safetestset "Local Sensitivity" begin include("local.jl") end
+@safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
+@safetestset "Morris Method" begin include("morris_method.jl") end
+@safetestset "Sobol Method" begin include("sobol_method.jl") end
+@safetestset "DGSM Method" begin include("DGSM.jl") end
 
 end

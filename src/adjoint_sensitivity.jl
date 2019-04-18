@@ -113,20 +113,28 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     mul!(dλ',λ',S.J)
   elseif isquad(S.alg)
     _dy, back = Tracker.forward(y) do u
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
     dλ[:] = Tracker.data(back(λ)[1])
-    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
+    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   else
     _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
-    dλ[:], dgrad[:] = map(Tracker.data, back(λ))
-    isbcksol(S.alg) && (dy[:] = Tracker.data(_dy))
+    dλ[:], dgrad[:] = Tracker.data.(back(λ))
+    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
   end
 
   dλ .*= -one(eltype(λ))
@@ -296,11 +304,15 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     mul!(out',λ',S.pJ)
   else
     _, back = Tracker.forward(y, S.p) do u, p
-      out_ = map(zero, u)
-      S.f(out_, u, p, t)
-      Tracker.collect(out_)
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = map(zero, u)
+        S.f(out_, u, p, t)
+        Tracker.collect(out_)
+      else
+        vec(S.f(u, p, t))
+      end
     end
-    out[:] = Tracker.data(back(λ)[2])
+    out[:] = vec(Tracker.data(back(λ)[2]))
   end
   out'
 end
@@ -332,7 +344,7 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=isq,save_start=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
-  integrand = AdjointSensitivityIntegrand(sol,adj_sol)
+  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
 
   if t === nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
