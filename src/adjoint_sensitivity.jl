@@ -174,8 +174,8 @@ end
     jac_config = nothing
     uf = nothing
   else
-    jac_config = build_jac_config(alg,uf,u0)
     uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
+    jac_config = build_jac_config(alg,uf,u0)
   end
 
   if !discrete
