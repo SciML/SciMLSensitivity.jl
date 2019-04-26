@@ -1,0 +1,20 @@
+name = "DiffEqSensitivity"
+uuid = "7169e6d0-6842-11e9-01f6-f32b943b6d3a"
+authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>"]
+version = "v3.2.1"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
+DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
+DiffEqDiffTools = "01453d9d-ee7c-5054-8395-0335cb756afa"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
+GLM = "38e38edf-8417-5370-95a0-9cbb8c7f171a"
+QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
+RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+
+[compat]
+DiffEqBase = ">= 3.0.0"
+DiffEqDiffTools = ">= 0.3.0"
+julia = ">= 1.0"
