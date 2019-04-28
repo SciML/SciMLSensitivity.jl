@@ -1,5 +1,5 @@
 name = "DiffEqSensitivity"
-uuid = "7169e6d0-6842-11e9-01f6-f32b943b6d3a"
+uuid = "41bf760c-e81c-5289-8e54-58b1f1f8abe2"
 authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>"]
 version = "v3.2.1"
 
