@@ -114,19 +114,19 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
         S.f(out_, u, p, t)
-        out_
+        copy(out_)
       else
         vec(S.f(u, p, t))
       end
     end
-    dλ[:] = back(λ)[1]
+    dλ[:] = vec(back(λ)[1])
     isbcksol(S.alg) && (dy[:] = vec(_dy))
   else
     _dy, back = Zygote.forward(y, S.sol.prob.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
         S.f(out_, u, p, t)
-        out_
+        vec(copy(out_))
       else
         vec(S.f(u, p, t))
       end
@@ -304,7 +304,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
         S.f(out_, u, p, t)
-        out_
+        copy(out_)
       else
         vec(S.f(u, p, t))
       end
