@@ -112,7 +112,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   elseif isquad(S.alg)
     _dy, back = Zygote.forward(y) do u
       if DiffEqBase.isinplace(S.sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         S.f(out_, u, p, t)
         out_
       else
@@ -124,7 +124,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   else
     _dy, back = Zygote.forward(y, S.sol.prob.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         S.f(out_, u, p, t)
         out_
       else
@@ -302,7 +302,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   else
     _, back = Zygote.forward(y, S.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         S.f(out_, u, p, t)
         out_
       else
