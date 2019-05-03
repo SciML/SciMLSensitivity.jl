@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, ForwardDiff, Flux, DiffEqDiffTools, Statistics
+using DiffEqBase, ForwardDiff, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools
 
@@ -22,7 +22,7 @@ export extract_local_sensitivities
 export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0,
-       morris_sensitivity, MorrisSensitivity, sobol_sensitivity, 
+       morris_sensitivity, MorrisSensitivity, sobol_sensitivity,
        SensitivityAlg, regression_sensitivity, DGSM
 
 

@@ -1,5 +1,3 @@
-using Flux.Tracker: gradient
-
 struct ODEAdjointSensitivityFunction{dgType,rateType,uType,F,J,PJ,UF,PF,G,JC,GC,A,DG,MM,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
   f::F
   jac::J
@@ -112,29 +110,29 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     end
     mul!(dλ',λ',S.J)
   elseif isquad(S.alg)
-    _dy, back = Tracker.forward(y) do u
+    _dy, back = Zygote.forward(y) do u
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
         S.f(out_, u, p, t)
-        Tracker.collect(out_)
+        out_
       else
         vec(S.f(u, p, t))
       end
     end
-    dλ[:] = Tracker.data(back(λ)[1])
-    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
+    dλ[:] = back(λ)[1]
+    isbcksol(S.alg) && (dy[:] = vec(_dy))
   else
-    _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
+    _dy, back = Zygote.forward(y, S.sol.prob.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
         S.f(out_, u, p, t)
-        Tracker.collect(out_)
+        out_
       else
         vec(S.f(u, p, t))
       end
     end
-    dλ[:], dgrad[:] = Tracker.data.(back(λ))
-    isbcksol(S.alg) && (dy[:] = vec(Tracker.data(_dy)))
+    dλ[:], dgrad[:] = back(λ)
+    isbcksol(S.alg) && (dy[:] = vec(_dy))
   end
 
   dλ .*= -one(eltype(λ))
@@ -302,16 +300,16 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     end
     mul!(out',λ',S.pJ)
   else
-    _, back = Tracker.forward(y, S.p) do u, p
+    _, back = Zygote.forward(y, S.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
         S.f(out_, u, p, t)
-        Tracker.collect(out_)
+        out_
       else
         vec(S.f(u, p, t))
       end
     end
-    out[:] = vec(Tracker.data(back(λ)[2]))
+    out[:] = vec(back(λ)[2])
   end
   out'
 end
