@@ -67,7 +67,7 @@ end
 
 function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-    effects = [[]]
+    effects = []
     for i in design_matrices
         y1 = f(i[1])
         for j in 1:length(i)-1
@@ -104,8 +104,8 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
     means = []
     variances = []
     for k in effects
-        push!(means,mean(convert(Array, VectorOfArray(k)),dims=2))
-        push!(variances,var(convert(Array, VectorOfArray(k)),dims=2))
+        push!(means,mean(k))
+        push!(variances,var(k))
     end
     MorrisSensitivity(means,variances,effects)
 end
