@@ -67,7 +67,6 @@ end
 
 function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
-    y1 = f(design_matrices[1][1])
     effects = [[]]
     for i in design_matrices
         y1 = f(i[1])
@@ -95,6 +94,9 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
             if length(effects) >= change_index && change_index > 0 
                 push!(effects[change_index],elem_effect)
             elseif change_index > 0
+                while(length(effects) < change_index-1)
+                    push!(effects,[])
+                end
                 push!(effects,[elem_effect])
             end
         end
