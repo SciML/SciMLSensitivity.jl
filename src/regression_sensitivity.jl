@@ -82,7 +82,7 @@ function pcs_and_srcs(yis,x_lm,x_vrs,x_var)
         pc = []
         src = []
         for j in 2:size(yis)[2]
-            pear_coeff_num = sum(x_vrs .* (yis[k,j,:] - mean(yis[k,j,:])))
+            pear_coeff_num = sum(x_vrs .* (yis[k,j,:] .- mean(yis[k,j,:])))
             pear_coeff_deno = sqrt(sum(x_vrs.^2)) * sqrt(sum((yis[k,j,:] .- mean(yis[k,j,:])).^2))
             pear_coeff = pear_coeff_num/pear_coeff_deno
             push!(pc,pear_coeff)
