@@ -69,15 +69,23 @@ end
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
                       v, alg::SensitivityAlg, config)
-  buffer, seed = config
   if alg_autodiff(alg)
+    buffer, seed = config
     TD = typeof(first(seed))
     T  = typeof(first(seed).partials)
     @. seed = TD(x, T(tuple(v)))
     f(buffer, seed)
     Jv .= ForwardDiff.partials.(buffer, 1)
   else
-      error("Jacobian*vector computation is for automatic differentiation only!")
+    buffer1, buffer2 = config
+    f(buffer1,x)
+    T = eltype(x)
+    # Should it be min? max? mean?
+    ϵ = sqrt(eps(real(T))) * max(one(real(T)), abs(norm(x)))
+    @. x += ϵ*v
+    f(buffer2,x)
+    @. x -= ϵ*v
+    @. du = (buffer2 - buffer1)/ϵ
   end
   nothing
 end
