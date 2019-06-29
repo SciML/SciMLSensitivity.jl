@@ -4,7 +4,7 @@ struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm
   backsolve::Bool
   checkpointing::Bool
 end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:forward},
+Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},
                                    autojacvec=autodiff,quad=true,backsolve=false,checkpointing=false)
   checkpointing && (backsolve=false)
   backsolve && (quad = false)
