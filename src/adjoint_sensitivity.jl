@@ -1,37 +1,32 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{dgType,rateType,uType,F,J,PJ,UF,PF,G,JC,GC,A,DG,MM,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
-  f::F
-  jac::J
-  paramjac::PJ
+struct ODEAdjointSensitivityFunction{rateType,uType,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
   J::TJ
   pJ::PJT
-  dg_val::dgType
+  dg_val::uType
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
   alg::A
-  numparams::Int
-  numindvar::Int
   f_cache::rateType
   discrete::Bool
   y::uType
   sol::SType
   dg::DG
-  mass_matrix::MM
   checkpoints::CP
   integrator::INT
 end
 
-@noinline function ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,u0,
+@noinline function ODEAdjointSensitivityFunction(uf,pf,g,u0,
                                       jac_config,g_grad_config,paramjac_config,
-                                      p,f_cache,alg,discrete,y,sol,dg,mm,checkpoints)
-  numparams::Int = length(p)
-  numindvar::Int = length(u0)
+                                      p,f_cache,alg,discrete,y,sol,dg,checkpoints)
+  numparams = length(p)
+  numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
+  f = sol.prob.f
   isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
   J = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numindvar)
   pJ = if !isquad(alg)
@@ -47,18 +42,19 @@ end
     nothing
   end
   dg_val = similar(u0, numindvar) # number of funcs size
-  return ODEAdjointSensitivityFunction(f,jac,paramjac,uf,pf,g,J,pJ,dg_val,
+  return ODEAdjointSensitivityFunction(uf,pf,g,J,pJ,dg_val,
                                jac_config,g_grad_config,paramjac_config,
-                               alg,numparams,numindvar,f_cache,
-                               discrete,y,sol,dg,mm,checkpoints,integrator)
+                               alg,f_cache,
+                               discrete,y,sol,dg,checkpoints,integrator)
 end
 
 # u = λ'
 function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   idx = length(S.y)
   y = S.y
-  isautojacvec = DiffEqBase.has_jac(S.f) ? false : get_jacvec(S.alg)
   sol = S.sol
+  f = sol.prob.f
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(S.alg)
 
   if isbcksol(S.alg)
     λ     = @view u[1:idx]
@@ -68,7 +64,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     _y    = @view u[end-idx+1:end]
     dy    = @view du[end-idx+1:end]
     copyto!(y, _y)
-    isautojacvec || sol.prob.f(dy, _y, p, t)
+    isautojacvec || f(dy, _y, p, t)
   else
     if ischeckpointing(S.alg)
       # assuming that in the forward direction `t0` < `t1`, and the
@@ -104,8 +100,8 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   end
 
   if !isautojacvec
-    if DiffEqBase.has_jac(S.f)
-      S.f.jac(S.J,y,p,t) # Calculate the Jacobian into J
+    if DiffEqBase.has_jac(f)
+      f.jac(S.J,y,p,t) # Calculate the Jacobian into J
     else
       S.uf.t = t
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
@@ -115,10 +111,10 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     _dy, back = Tracker.forward(y) do u
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
-        S.f(out_, u, p, t)
+        f(out_, u, p, t)
         Tracker.collect(out_)
       else
-        vec(S.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
     dλ[:] = Tracker.data(back(λ)[1])
@@ -127,10 +123,10 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     _dy, back = Tracker.forward(y, S.sol.prob.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
-        S.f(out_, u, p, t)
+        f(out_, u, p, t)
         Tracker.collect(out_)
       else
-        vec(S.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
     dλ[:], dgrad[:] = Tracker.data.(back(λ))
@@ -150,8 +146,8 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   end
 
   if !isquad(S.alg) && !isautojacvec
-    if DiffEqBase.has_paramjac(S.f)
-      S.f.paramjac(S.pJ,y,S.sol.prob.p,t) # Calculate the parameter Jacobian into pJ
+    if DiffEqBase.has_paramjac(f)
+      f.paramjac(S.pJ,y,S.sol.prob.p,t) # Calculate the parameter Jacobian into pJ
     else
       jacobian!(S.pJ, S.pf, S.sol.prob.p, S.f_cache, S.alg, S.paramjac_config)
     end
@@ -164,7 +160,7 @@ end
 @noinline function ODEAdjointProblem(sol,g,t=nothing,dg=nothing,
                            alg=SensitivityAlg();
                            checkpoints=sol.t,
-                           callback=CallbackSet(),mass_matrix=I)
+                           callback=CallbackSet())
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
   discrete = t != nothing
@@ -210,12 +206,12 @@ end
     end
   end
 
-  len::Int = isquad(alg) ? length(u0) : length(u0)+length(p)
+  len = isquad(alg) ? length(u0) : length(u0)+length(p)
   λ = similar(u0, len)
-  sense = ODEAdjointSensitivityFunction(f,f.jac,f.paramjac,
+  sense = ODEAdjointSensitivityFunction(
                                        uf,pf,pg,u0,jac_config,pg_config,paramjac_config,
                                        p,deepcopy(u0),alg,discrete,
-                                       y,sol,dg,mass_matrix,checkpoints)
+                                       y,sol,dg,checkpoints)
 
   if discrete
     cur_time = Ref(length(t))
@@ -248,10 +244,9 @@ end
   ODEProblem(sense,z0,tspan,p,callback=_cb)
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,F,PF,PJC,A,PJT}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT}
   sol::S
   adj_sol::AS
-  f::F
   p::pType
   y::uType
   λ::uType
@@ -274,14 +269,14 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
   isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
-  pJ = isautojacvec ? nothing : Matrix{eltype(sol.prob.u0)}(undef,length(sol.prob.u0),length(p))
+  pJ = isautojacvec ? nothing : similar(sol.prob.u0,length(sol.prob.u0),length(p))
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,f,p,y,λ,pf,f_cache,pJ,paramjac_config,alg)
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
@@ -290,13 +285,14 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   λ = S.λ
   S.adj_sol(λ,t)
   λ .*= -one(eltype(λ))
-  isautojacvec = DiffEqBase.has_paramjac(S.f) ? false : get_jacvec(S.alg)
+  f = S.sol.prob.f
+  isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(S.alg)
   # y is aliased
   S.pf.t = t
 
   if !isautojacvec
-    if DiffEqBase.has_paramjac(S.f)
-      S.f.paramjac(S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
+    if DiffEqBase.has_paramjac(f)
+      f.paramjac(S.pJ,y,S.p,t) # Calculate the parameter Jacobian into pJ
     else
       jacobian!(S.pJ, S.pf, S.p, S.f_cache, S.alg, S.paramjac_config)
     end
@@ -305,10 +301,10 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     _, back = Tracker.forward(y, S.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = map(zero, u)
-        S.f(out_, u, p, t)
+        f(out_, u, p, t)
         Tracker.collect(out_)
       else
-        vec(S.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
     out[:] = vec(Tracker.data(back(λ)[2]))
