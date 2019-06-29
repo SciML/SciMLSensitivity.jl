@@ -167,7 +167,6 @@ end
                            callback=CallbackSet(),mass_matrix=I)
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
-  t != nothing && (tspan = (t[end],t[1]))
   discrete = t != nothing
 
   isinplace = DiffEqBase.isinplace(sol.prob)
@@ -353,6 +352,10 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
     res = zero(integrand.p)'
     for i in 1:length(t)-1
       res .+= quadgk(integrand,t[i],t[i+1],
+                     atol=iabstol,rtol=ireltol)[1]
+    end
+    if t[1] != sol.prob.tspan[1]
+      res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
                      atol=iabstol,rtol=ireltol)[1]
     end
   end

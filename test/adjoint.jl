@@ -1,6 +1,6 @@
 using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK,
-      LinearAlgebra
+      LinearAlgebra, Flux, ReverseDiff
 using Test
 
 fb = @ode_def_bare begin
@@ -94,11 +94,7 @@ end
 G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
-
-using Flux
 res4 = Flux.Tracker.gradient(G,[1.5,1.0,3.0])[1]
-
-using ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 
 @test norm(res' .- res2) < 1e-8
@@ -206,3 +202,37 @@ end
 @test adj ≈ adj2 rtol = 1e-10
 @test adj ≈ adj3 rtol = 1e-10
 @test adj ≈ adj4 rtol = 1e-10
+
+function ff(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + u[1]*u[2]
+end
+
+p = [1.5,1.0,3.0]
+prob = ODEProblem(ff,[1.0;1.0],(0.0,10.0),p)
+sol = solve(prob,Tsit5(),abstol=1e-10,reltol=1e-10)
+
+function dg(out,u,p,t,i)
+  out .= 1.0 .- u
+end
+t = collect(0.5:0.5:10.0)
+
+res = adjoint_sensitivities(sol,Tsit5(),dg,t;abstol=1e-14,reltol=1e-14,
+                            iabstol=1e-14,ireltol=1e-12)
+
+function GG(p)
+    tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
+    sol_i = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
+    A = convert(Array,sol_i)
+    sum(((1.0 .- A).^2)./2)
+end
+GG(p)
+res2 = ForwardDiff.gradient(GG,p)
+res3 = Calculus.gradient(GG,p)
+res4 = Flux.Tracker.gradient(GG,p)[1]
+res5 = ReverseDiff.gradient(GG,p)
+
+@test norm(res2 .- res') < 1e-8
+@test norm(res3 .- res') < 1e-6
+@test norm(res4 .- res') < 1e-8
+@test norm(res5 .- res') < 1e-8
