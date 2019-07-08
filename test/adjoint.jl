@@ -250,8 +250,8 @@ u0 = [1.0, 0, 0]
 tspan = (0.0,1.0)
 p = vec(Matrix{Float64}(I, 3, 3))
 
-ff = ODEFunction(fm, mass_matrix=M)
-prob = ODEProblem(ff, u0, tspan, p)
+fmm = ODEFunction(fm, mass_matrix=M)
+prob = ODEProblem(fmm, u0, tspan, p)
 sol = solve(prob, Rosenbrock23(),abstol=1e-14,reltol=1e-14)
 
 function dg(out,u,p,t,i)

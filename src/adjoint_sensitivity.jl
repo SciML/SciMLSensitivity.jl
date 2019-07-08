@@ -280,7 +280,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg();factorize=
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
   Mfact = f.mass_matrix === I ? I : factorize(Matrix(f.mass_matrix'))
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg,mass_matrix)
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg,Mfact)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
