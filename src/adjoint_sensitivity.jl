@@ -213,7 +213,8 @@ end
 
   cb = generate_callbacks(sense, g, λ, t, callback)
   z0 = isbcksol(alg) ? [vec(zero(λ)); vec(sense.y)] : vec(zero(λ))
-  ODEProblem(ODEFunction(sense, mass_matrix=f.mass_matrix'),z0,tspan,p,callback=cb)
+  mass_matrix = f.mass_matrix === I ? I : f.mass_matrix'
+  ODEProblem(ODEFunction(sense, mass_matrix=mass_matrix),z0,tspan,p,callback=cb)
 end
 
 function generate_callbacks(sensefun, g, λ, t, callback)
@@ -278,7 +279,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg();factorize=
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg,factorize(Matrix(f.mass_matrix')))
+  Mfact = f.mass_matrix === I ? I : factorize(Matrix(f.mass_matrix'))
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg,mass_matrix)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
@@ -286,7 +288,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   f = sol.prob.f
   sol(y,t)
   adj_sol(λ,t)
-  ldiv!(S.Mfact, λ)
+  S.Mfact === I || ldiv!(S.Mfact, λ)
   λ .*= -one(eltype(λ))
   isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
   # y is aliased
