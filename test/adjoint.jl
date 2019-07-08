@@ -1,6 +1,6 @@
 using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK,
-      LinearAlgebra, Flux, ReverseDiff
+      LinearAlgebra, Flux, ReverseDiff, Random
 using Test
 
 fb = @ode_def_bare begin
@@ -236,3 +236,36 @@ res5 = ReverseDiff.gradient(GG,p)
 @test norm(res3 .- res') < 1e-6
 @test norm(res4 .- res') < 1e-8
 @test norm(res5 .- res') < 1e-8
+
+println("Adjoint of mass matrix problem")
+
+function fm(du,u,p,t)
+  A = reshape(p, 3, 3)
+  du .= A * u
+end
+
+Random.seed!(111)
+M = rand(3, 3)
+u0 = [1.0, 0, 0]
+tspan = (0.0,1.0)
+p = vec(Matrix{Float64}(I, 3, 3))
+
+ff = ODEFunction(fm, mass_matrix=M)
+prob = ODEProblem(ff, u0, tspan, p)
+sol = solve(prob, Rosenbrock23(),abstol=1e-14,reltol=1e-14)
+
+function dg(out,u,p,t,i)
+  (out.=2.0.-u)
+end
+
+t = sol.t
+
+function G(p)
+  tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
+  sol = solve(tmp_prob,Rosenbrock23(),abstol=1e-14,reltol=1e-14,saveat=t)
+  A = convert(Array,sol)
+  sum(((2 .- A).^2)./2)
+end
+sol1 = ForwardDiff.gradient(G, p)
+sol2 = adjoint_sensitivities(sol,Rodas5(autodiff=false),dg,t,sensealg=SensitivityAlg(autojacvec=false))
+@test sol1 ≈ sol2' rtol=1e-8

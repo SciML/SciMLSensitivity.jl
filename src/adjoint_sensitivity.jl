@@ -213,7 +213,7 @@ end
 
   cb = generate_callbacks(sense, g, λ, t, callback)
   z0 = isbcksol(alg) ? [vec(zero(λ)); vec(sense.y)] : vec(zero(λ))
-  ODEProblem(sense,z0,tspan,p,callback=cb)
+  ODEProblem(ODEFunction(sense, mass_matrix=f.mass_matrix'),z0,tspan,p,callback=cb)
 end
 
 function generate_callbacks(sensefun, g, λ, t, callback)
@@ -248,7 +248,7 @@ function generate_callbacks(sensefun, g, λ, t, callback)
   return _cb
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT,MF}
   sol::S
   adj_sol::AS
   p::pType
@@ -259,9 +259,10 @@ struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT}
   pJ::PJT
   paramjac_config::PJC
   alg::A
+  Mfact::MF
 end
 
-function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
+function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg();factorize=factorize)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
   y = similar(sol.prob.u0)
@@ -277,7 +278,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,alg=SensitivityAlg())
   else
     paramjac_config = build_param_jac_config(alg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg)
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg,factorize(Matrix(f.mass_matrix')))
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
@@ -285,6 +286,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   f = sol.prob.f
   sol(y,t)
   adj_sol(λ,t)
+  ldiv!(S.Mfact, λ)
   λ .*= -one(eltype(λ))
   isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
   # y is aliased
@@ -333,13 +335,14 @@ function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
                                iabstol=abstol, ireltol=reltol,sensealg=SensitivityAlg(checkpointing=!sol.dense),
                                checkpoints=sol.t,
+                               factorize=factorize,
                                kwargs...)
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
   isq = isquad(sensealg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=isq,save_start=isq,kwargs...)
   !isq && return adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
-  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
+  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg;factorize=factorize)
 
   if t === nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
