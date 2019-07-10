@@ -14,3 +14,4 @@ if GROUP == "Downstream"
     using Pkg
     Pkg.test("DiffEqFlux")
 end
+end
