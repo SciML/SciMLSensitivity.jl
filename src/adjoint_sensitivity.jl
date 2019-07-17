@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{rateType,uType,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -13,7 +13,7 @@ struct ODEAdjointSensitivityFunction{rateType,uType,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJ
   alg::A
   f_cache::rateType
   discrete::Bool
-  y::uType
+  y::uType2
   sol::SType
   dg::DG
   checkpoints::CP
@@ -74,7 +74,6 @@ end
     nothing
   end
   dg_val = similar(u0, numindvar) # number of funcs size
-
   f_cache = deepcopy(u0)
 
   return ODEAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
