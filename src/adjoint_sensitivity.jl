@@ -96,7 +96,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     dgrad = @view du[idx+1:end-idx]
     _y    = @view u[end-idx+1:end]
     dy    = @view du[end-idx+1:end]
-    copyto!(y, _y)
+    copyto!(vec(y), _y)
     isautojacvec || f(dy, _y, p, t)
   else
     if ischeckpointing(alg)
