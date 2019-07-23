@@ -1,4 +1,4 @@
-struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   tgrad::Tt
@@ -19,6 +19,7 @@ struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc
   f_cache::fc
   mass_matrix::MM
   isautojacvec::Bool
+  colorvec::CV
 end
 
 function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,u0,
@@ -115,7 +116,7 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mass_matrix,
-                                     isautojacvec)
+                                     isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
   ODEProblem(sense,sense_u0,tspan,p;callback=callback)
 end
