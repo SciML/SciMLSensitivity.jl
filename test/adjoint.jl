@@ -234,5 +234,5 @@ res5 = ReverseDiff.gradient(GG,p)
 
 @test norm(res2 .- res') < 1e-8
 @test norm(res3 .- res') < 1e-6
-@test norm(res4 .- res') < 1e-8
+@test norm(res4 .- res') < 1e-7
 @test norm(res5 .- res') < 1e-8

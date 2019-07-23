@@ -24,7 +24,7 @@ end
 
 function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
-                                    isautojacvec)
+                                    isautojacvec,colorvec)
   numparams = length(p)
   numindvar = length(u0)
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
@@ -35,10 +35,10 @@ function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
-                             typeof(J),typeof(pJ),typeof(mm)}(
+                             typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
                              f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
-                             numparams,numindvar,f_cache,mm,isautojacvec)
+                             numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
 end
 
 function (S::ODELocalSensitivityFunction)(du,u,p,t)
