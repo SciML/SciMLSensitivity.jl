@@ -1,6 +1,6 @@
 using Flux.Tracker: gradient
 
-struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
+struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -18,9 +18,10 @@ struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ
   dg::DG
   checkpoints::CP
   integrator::INT
+  colorvec::CV
 end
 
-@noinline function ODEAdjointSensitivityFunction(g,u0,p,alg,discrete,sol,dg,checkpoints,tspan)
+@noinline function ODEAdjointSensitivityFunction(g,u0,p,alg,discrete,sol,dg,checkpoints,tspan,colorvec)
   numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -79,7 +80,7 @@ end
   return ODEAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                alg,f_cache,
-                               discrete,y,sol,dg,checkpoints,integrator)
+                               discrete,y,sol,dg,checkpoints,integrator,colorvec)
 end
 
 # u = λ'
@@ -208,7 +209,7 @@ end
   λ = similar(u0, len)
   sense = ODEAdjointSensitivityFunction(g,u0,
                                         p,alg,discrete,
-                                        sol,dg,checkpoints,tspan)
+                                        sol,dg,checkpoints,tspan,f.colorvec)
 
   cb = generate_callbacks(sense, g, λ, t, callback)
   z0 = isbcksol(alg) ? [vec(zero(λ)); vec(sense.y)] : vec(zero(λ))
