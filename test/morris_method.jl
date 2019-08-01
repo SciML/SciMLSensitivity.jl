@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, ParameterizedFunctions, DiffEqSensitivity
+using OrdinaryDiffEq, DiffEqSensitivity
 
 A = reshape([1,0,2,3],2,2)
 function f_morris(p)
