@@ -5,8 +5,8 @@ struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc
   jac::J
   jac_prototype::JP
   paramjac::PJ
-  invW::TW
-  invW_t::TWt
+  Wfact::TW
+  Wfact_t::TWt
   uf::UF
   pf::PF
   J::JM
@@ -22,7 +22,7 @@ struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc
   colorvec::CV
 end
 
-function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,u0,
+function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec,colorvec)
   numparams = length(p)
@@ -31,12 +31,12 @@ function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
   ODELocalSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(paramjac),
-                             typeof(invW),typeof(invW_t),typeof(uf),
+                             typeof(Wfact),typeof(Wfact_t),typeof(uf),
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
                              typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
-                             f,analytic,tgrad,jac,jac_prototype,paramjac,invW,invW_t,uf,pf,J,pJ,
+                             f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
 end

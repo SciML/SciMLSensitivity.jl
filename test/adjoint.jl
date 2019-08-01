@@ -1,16 +1,16 @@
-using DiffEqSensitivity,OrdinaryDiffEq, ParameterizedFunctions,
+using DiffEqSensitivity,OrdinaryDiffEq, ModelingToolkit,
       RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK,
-      LinearAlgebra, Flux, ReverseDiff
+      LinearAlgebra
 using Test
 
-fb = @ode_def_bare begin
-  dx = a*x - b*x*y
-  dy = -c*y + x*y
-end a b c
-f = @ode_def begin
-  dx = a*x - b*x*y
-  dy = -c*y + x*y
-end a b c
+@parameters t a b c
+@variables x(t) y(t)
+@derivatives D'~t
+eqs = [ D(x) ~  a*x - b*x*y
+        D(x) ~ -c*y + x*y]
+sys = ODESystem(eqs,t,[x,y],[a,b,c])
+fb = ODEFunction(sys,[x,y],[a,b,c],Val{false})
+f = ODEFunction(sys,[x,y],[a,b,c],jac=true,Val{false})
 
 p = [1.5,1.0,3.0]
 prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
@@ -46,12 +46,6 @@ easy_res7 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=SensitivityAlg(checkpointing=true,quad=false),
                                   checkpoints=sol.t[1:5:end])
-easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(quad=true,autojacvec=false))
-easy_res9 = adjoint_sensitivities(sol, Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(quad=true,autojacvec=false))
 
 adj_prob = ODEAdjointProblem(sol,dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -65,8 +59,6 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res7, rtol = 1e-9)
-@test isapprox(res, easy_res8, rtol = 1e-9)
-@test isapprox(res, easy_res9, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 
@@ -94,7 +86,11 @@ end
 G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
+
+using Flux
 res4 = Flux.Tracker.gradient(G,[1.5,1.0,3.0])[1]
+
+using ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 
 @test norm(res' .- res2) < 1e-8
@@ -202,37 +198,3 @@ end
 @test adj ≈ adj2 rtol = 1e-10
 @test adj ≈ adj3 rtol = 1e-10
 @test adj ≈ adj4 rtol = 1e-10
-
-function ff(du,u,p,t)
-  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  du[2] = dy = -p[3]*u[2] + u[1]*u[2]
-end
-
-p = [1.5,1.0,3.0]
-prob = ODEProblem(ff,[1.0;1.0],(0.0,10.0),p)
-sol = solve(prob,Tsit5(),abstol=1e-10,reltol=1e-10)
-
-function dg(out,u,p,t,i)
-  out .= 1.0 .- u
-end
-t = collect(0.5:0.5:10.0)
-
-res = adjoint_sensitivities(sol,Tsit5(),dg,t;abstol=1e-14,reltol=1e-14,
-                            iabstol=1e-14,ireltol=1e-12)
-
-function GG(p)
-    tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
-    sol_i = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=t)
-    A = convert(Array,sol_i)
-    sum(((1.0 .- A).^2)./2)
-end
-GG(p)
-res2 = ForwardDiff.gradient(GG,p)
-res3 = Calculus.gradient(GG,p)
-res4 = Flux.Tracker.gradient(GG,p)[1]
-res5 = ReverseDiff.gradient(GG,p)
-
-@test norm(res2 .- res') < 1e-8
-@test norm(res3 .- res') < 1e-6
-@test norm(res4 .- res') < 1e-7
-@test norm(res5 .- res') < 1e-8
