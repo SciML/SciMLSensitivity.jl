@@ -17,45 +17,48 @@ function give_rand_p(p_range,p_fixed=nothing,indices=nothing)
 end
 
 function calc_mean_var(f,p_range,N)
+    xs = [give_rand_p(p_range)]
     y1 = Array(f(give_rand_p(p_range)))
     y0 = zero(y1)
     v = zero(y1)
     for i in 1:N
-        y1 = Array(f(give_rand_p(p_range)))
+        x1 = give_rand_p(p_range)
+        y1 = Array(f(x1))
         @. y0 += y1
         @. v += y1^2
+        push!(xs, x1)
     end
     y0 = @. y0/N
     y0_sq = [i.^2 for i in y0]
     v = @. v/N - y0_sq
-    y0,v
+    y0,v,xs
 end
 
-function first_order_var(f,p_range,N,y0)
-    ys = Array{typeof(y0)}(undef,length(p_range))
+function first_order_var(f,p_range,N,y0,xs,b)
+    ys = [zero(y0) for i in 1:length(p_range)]
     for i in 1:length(p_range)
         y = zero(y0)
         for j in 1:N
-            p2 = give_rand_p(p_range)
-            p1 = give_rand_p(p_range,[p2[i]],[i])
+            p2 = xs[j]
+            p1 = vcat(b[j][1:i-1],xs[j][i],b[j][i+1:end])
             yer =  Array(f(p1)) .* Array(f(p2))
             @. y += yer
         end
-        y = @. y/N - y0^2
-        ys[i] = copy(y)
+        y = @. y/N - y0.^2
+        copyto!(ys[i],y)
     end
     ys
 end
 
-function second_order_var(f,p_range,N,y0)
+function second_order_var(f,p_range,N,y0,xs,b)
     ys = Array{typeof(y0)}(undef,Int((length(p_range)*(length(p_range)-1))/2))
     curr = 1
     for i in 1:length(p_range)
         for j in i+1:length(p_range)
             y = zero(y0)
             for k in 1:N
-                p2 = give_rand_p(p_range)
-                p1 = give_rand_p(p_range,[p2[i],p2[j]],[i,j])
+                p2 = b[k]
+                p1 = vcat(b[1:i-1],xs[i],b[i+1:j-1],xs[j],b[j+1:end])
                 y .+=  Array(f(p1)) .* Array(f(p2))
             end
             y = @. y/N - y0^2
@@ -63,7 +66,7 @@ function second_order_var(f,p_range,N,y0)
             curr += 1
         end
     end
-    ys_frst_order = first_order_var(f,p_range,N,y0)
+    ys_frst_order = first_order_var(f,p_range,N,y0,xs,b)
     j = 1
     for i in 1:length(p_range)
         for k in i+1:length(p_range)
@@ -100,15 +103,16 @@ function total_var(f,p_range,N,y0)
 end
 
 function sobol_sensitivity(f,p_range,N,order=2)
-    y0,v = calc_mean_var(f,p_range,N)
+    y0,v,xs = calc_mean_var(f,p_range,N)
+    b = [give_rand_p(p_range) for i in 1:N]
     if order == 1
-        first_order = first_order_var(f,p_range,N,y0)
+        first_order = first_order_var(f,p_range,N,y0,xs,b)
         for i in 1:length(first_order)
             first_order[i] = @. first_order[i] / v
         end
         first_order
     elseif order == 2
-        second_order = second_order_var(f,p_range,N,y0)
+        second_order = second_order_var(f,p_range,N,y0,xs,b)
         for i in 1:length(second_order)
             second_order[i] = @. second_order[i] / v
         end
