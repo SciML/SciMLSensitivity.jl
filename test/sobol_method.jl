@@ -7,7 +7,7 @@ function f_sobol(p)
     [x,y]
 end
 p_range = [[0.5,1.5],[0.5,1.5]]
-N = 1000000
+N = 1000
 total = sobol_sensitivity(f_sobol,p_range,N,0)
 first_order = sobol_sensitivity(f_sobol,p_range,N,1)
 second_order = sobol_sensitivity(f_sobol,p_range,N,2)
