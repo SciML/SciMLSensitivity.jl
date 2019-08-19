@@ -66,7 +66,7 @@ function second_order_var(f,p_range,N,y0,v)
             curr += 1
         end
     end
-    ys_frst_order = first_order_var(f,p_range,N,y0)
+    ys_frst_order = first_order_var(f,p_range,N,y0,v)
     j = 1
     for i in 1:length(p_range)
         for k in i+1:length(p_range)
@@ -145,7 +145,7 @@ function sobol_sensitivity(f,p_range,N,order=[0],conf_int=0.95)
         sobol_sens.S1_Conf_Int = [first_order - ci, first_order + ci]
     end
     if 2 in order
-        second_order = second_order_var(f,p_range,N,y0)
+        second_order = second_order_var(f,p_range,N,y0,v)
         sobol_sens.S2 = second_order
         ci = calc_ci(f,p_range,N,y0,v,conf_int,second_order_var)
         sobol_sens.S2_Conf_Int = [second_order - ci, second_order + ci]
