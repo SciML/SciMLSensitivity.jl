@@ -59,7 +59,8 @@ function second_order_var(f,p_range,N,y0,v)
             for k in 1:N
                 p2 = give_rand_p(p_range)
                 p1 = give_rand_p(p_range,[p2[i],p2[j]],[i,j])
-                y .+=  Array(f(p1)) .* Array(f(p2))
+                yer =  Array(f(p1)) .* Array(f(p2))
+                @. y += yer
             end
             y = @. y/(N-1) - (y0^2)*N/(N-1)
             ys[curr] = copy(y)
@@ -119,9 +120,9 @@ end
 
 function calc_ci(f,p_range,N,y0,v,conf_int,sa_func)
     conf_int_samples = [sa_func(f,p_range,N,y0,v) for i in 1:100]
-    elems_ = Array{eltype(conf_int_samples[1])}[]
+    elems_ = []
     for i in 1:length(conf_int_samples[1])
-        elems = eltype(conf_int_samples[1])[]
+        elems = []
         for k in 1:length(conf_int_samples[1][1])
             elem = eltype(conf_int_samples[1][1])[]
             for j in 1:length(conf_int_samples)
@@ -129,7 +130,7 @@ function calc_ci(f,p_range,N,y0,v,conf_int,sa_func)
             end
             push!(elems,elem)
         end
-        push!(elems_, elems)
+        push!(elems_,elems)
     end
     z = -quantile(Normal(), (1-conf_int)/2)
     S1_Conf_Int = [[z*std(sample) for sample in el] for el in elems_]
@@ -142,19 +143,19 @@ function sobol_sensitivity(f,p_range,N,order=[0],conf_int=0.95)
         first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
         ci = calc_ci(f,p_range,N,y0,v,conf_int,first_order_var)
-        sobol_sens.S1_Conf_Int = [first_order - ci, first_order + ci]
+        sobol_sens.S1_Conf_Int = [vec.(first_order) - ci, vec.(first_order) + ci]
     end
     if 2 in order
         second_order = second_order_var(f,p_range,N,y0,v)
         sobol_sens.S2 = second_order
         ci = calc_ci(f,p_range,N,y0,v,conf_int,second_order_var)
-        sobol_sens.S2_Conf_Int = [second_order - ci, second_order + ci]
+        sobol_sens.S2_Conf_Int = [vec.(second_order) - ci, vec.(second_order) + ci]
     end
     if 0 in order
         total_indices = total_var(f,p_range,N,y0,v)
         sobol_sens.ST = total_indices
         ci = calc_ci(f,p_range,N,y0,v,conf_int,total_var)
-        sobol_sens.ST_Conf_Int = [total_indices - ci, total_indices + ci]
+        sobol_sens.ST_Conf_Int = [vec.(total_indices) - ci, vec.(total_indices) + ci]
     end
     sobol_sens
 end
