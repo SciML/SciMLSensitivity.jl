@@ -87,9 +87,9 @@ function total_var(f,p_range,N,y0,v)
     for i in 1:length(p_range)
         y = zero(y0)
         for j in 1:N
-            p_fixed_all = []
-            p_fixed_indices = []
             p2 = give_rand_p(p_range)
+            p_fixed_all = eltype(p2)[]
+            p_fixed_indices = Int64[]
             for j in 1:length(p2)
                 if j != i
                     push!(p_fixed_all,p2[j])
@@ -109,13 +109,13 @@ function total_var(f,p_range,N,y0,v)
     ys
 end
 
-mutable struct SobolResult
-    S1
-    S1_Conf_Int
-    S2
-    S2_Conf_Int
-    ST
-    ST_Conf_Int
+mutable struct SobolResult{T1,T2}
+    S1::T1
+    S1_Conf_Int::T2
+    S2::T1
+    S2_Conf_Int::T2
+    ST::T1
+    ST_Conf_Int::T2
 end
 
 function calc_ci(f,p_range,N,y0,v,conf_int,sa_func)
@@ -138,7 +138,7 @@ end
 
 function sobol_sensitivity(f,p_range,N,order=[0],conf_int=0.95)
     y0,v = calc_mean_var(f,p_range,N)
-    sobol_sens = SobolResult(nothing,nothing,nothing,nothing,nothing,nothing)
+    sobol_sens = SobolResult(Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[])
     if 1 in order
         first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
