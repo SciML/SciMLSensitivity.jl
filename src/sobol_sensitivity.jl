@@ -38,11 +38,11 @@ function first_order_var(f,p_range,N,y0,v)
         for j in 1:N
             p2 = give_rand_p(p_range)
             p1 = give_rand_p(p_range,[p2[i]],[i])
-            yer =  Array(f(p1)) .* Array(f(p2))
+            p3 = give_rand_p(p_range,p1[1:end .!= i],[k for k in 1:length(p_range) if k != i])
+            yer =  Array(f(p2)) .* (Array(f(p1)) .- Array(f(p3)))
             @. y += yer
         end
-        y = @. y/(N-1) - (y0^2)*N/(N-1)
-        ys[i] = copy(y)
+        ys[i] = copy(y/N)
     end
     for i in 1:length(ys)
         ys[i] = @. ys[i] / v
@@ -88,23 +88,14 @@ function total_var(f,p_range,N,y0,v)
         y = zero(y0)
         for j in 1:N
             p2 = give_rand_p(p_range)
-            p_fixed_all = eltype(p2)[]
-            p_fixed_indices = Int64[]
-            for j in 1:length(p2)
-                if j != i
-                    push!(p_fixed_all,p2[j])
-                    push!(p_fixed_indices,j)
-                end
-            end
-            p1 = give_rand_p(p_range,p_fixed_all,p_fixed_indices)
-            yer =  Array(f(p1)) .* Array(f(p2))
+            p1 = give_rand_p(p_range,p2[1:end .!= i],[k for k in 1:length(p_range) if k != i])
+            yer =  (Array(f(p2)) .- Array(f(p1))).^2
             @. y += yer
         end
-        y = @. y/(N-1) - (y0^2)*N/(N-1)
-        ys[i] = copy(y)
+        ys[i] = copy(y/(2*N))
     end
     for i in 1:length(ys)
-        ys[i] = @. 1 - (ys[i] / v)
+        ys[i] = @. ys[i] / v
     end
     ys
 end
@@ -118,8 +109,8 @@ mutable struct SobolResult{T1,T2}
     ST_Conf_Int::T2
 end
 
-function calc_ci(f,p_range,N,y0,v,conf_int,sa_func)
-    conf_int_samples = [sa_func(f,p_range,N,y0,v) for i in 1:100]
+function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func)
+    conf_int_samples = [sa_func(f,p_range,N,y0,v) for i in 1:nboot]
     elems_ = []
     for i in 1:length(conf_int_samples[1])
         elems = []
@@ -136,26 +127,32 @@ function calc_ci(f,p_range,N,y0,v,conf_int,sa_func)
     S1_Conf_Int = [[z*std(sample) for sample in el] for el in elems_]
 end
 
-function sobol_sensitivity(f,p_range,N,order=[0],conf_int=0.95)
+function sobol_sensitivity(f,p_range,N,order=[0],nboot=100,conf_int=0.95)
     y0,v = calc_mean_var(f,p_range,N)
     sobol_sens = SobolResult(Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[])
     if 1 in order
         first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
-        ci = calc_ci(f,p_range,N,y0,v,conf_int,first_order_var)
-        sobol_sens.S1_Conf_Int = [vec.(first_order) - ci, vec.(first_order) + ci]
+        if nboot > 0
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_order_var)
+            sobol_sens.S1_Conf_Int = [vec.(first_order) - ci, vec.(first_order) + ci]
+        end
     end
     if 2 in order
         second_order = second_order_var(f,p_range,N,y0,v)
         sobol_sens.S2 = second_order
-        ci = calc_ci(f,p_range,N,y0,v,conf_int,second_order_var)
-        sobol_sens.S2_Conf_Int = [vec.(second_order) - ci, vec.(second_order) + ci]
+        if nboot > 0
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,second_order_var)
+            sobol_sens.S2_Conf_Int = [vec.(second_order) - ci, vec.(second_order) + ci]
+        end
     end
     if 0 in order
         total_indices = total_var(f,p_range,N,y0,v)
         sobol_sens.ST = total_indices
-        ci = calc_ci(f,p_range,N,y0,v,conf_int,total_var)
-        sobol_sens.ST_Conf_Int = [vec.(total_indices) - ci, vec.(total_indices) + ci]
+        if nboot > 0
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,total_var)
+            sobol_sens.ST_Conf_Int = [vec.(total_indices) - ci, vec.(total_indices) + ci]
+        end
     end
     sobol_sens
 end
