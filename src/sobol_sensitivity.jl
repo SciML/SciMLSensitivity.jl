@@ -58,23 +58,23 @@ function second_order_var(f,p_range,N,y0,v)
             y = zero(y0)
             for k in 1:N
                 p2 = give_rand_p(p_range)
-                p1 = give_rand_p(p_range,[p2[i],p2[j]],[i,j])
-                yer =  Array(f(p1)) .* Array(f(p2))
+                p1 = give_rand_p(p_range,p2[1:end .!= i],[k for k in 1:length(p_range) if k != i])
+                p3 = give_rand_p(p_range,p2[1:end .!= j],[k for k in 1:length(p_range) if k != j])
+                yer =  (Array(f(p1)) .- Array(f(p2))).^2
                 @. y += yer
             end
-            y = @. y/(N-1) - (y0^2)*N/(N-1)
-            ys[curr] = copy(y)
+            ys[curr] = copy(y/(2*N))
             curr += 1
         end
     end
-    ys_frst_order = first_order_var(f,p_range,N,y0,v)
-    j = 1
-    for i in 1:length(p_range)
-        for k in i+1:length(p_range)
-            ys[j] = @. ys[j] - ( ys_frst_order[i] + ys_frst_order[k] )
-            j += 1
-        end
-    end
+    # ys_frst_order = first_order_var(f,p_range,N,y0,v)
+    # j = 1
+    # for i in 1:length(p_range)
+    #     for k in i+1:length(p_range)
+    #         ys[j] = @. ys[j] - ( ys_frst_order[i] + ys_frst_order[k] )
+    #         j += 1
+    #     end
+    # end
     for i in 1:length(ys)
         ys[i] = @. ys[i] / v
     end
