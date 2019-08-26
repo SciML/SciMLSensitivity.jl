@@ -57,15 +57,7 @@ function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,tot
     matrices
 end
 
-function morris_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,p_steps;kwargs...)
-    f = function (p)
-      prob1 = remake(prob;p=p)
-      Array(solve(prob1,alg;saveat=t))
-    end
-    morris_sensitivity(f,p_range,p_steps;kwargs...)
-end
-
-function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
+function gsa(f,p_range::AbstractVector,method::Morris,p_steps::AbstractVector;relative_scale=false,kwargs...)
     design_matrices = sample_matrices(p_range,p_steps;kwargs...)
     effects = []
     for i in design_matrices
@@ -108,4 +100,12 @@ function morris_sensitivity(f,p_range,p_steps;relative_scale=false,kwargs...)
         push!(variances,var(k))
     end
     MorrisSensitivity(means,variances,effects)
+end
+
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris,p_steps::AbstractVector,args...;kwargs...)
+    f = function (p)
+      prob1 = remake(prob;p=p)
+      Array(solve(prob1,alg;saveat=t))
+    end
+    gsa(f,p_range,method,p_steps,args...;kwargs...)
 end

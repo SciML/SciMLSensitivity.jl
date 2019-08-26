@@ -58,9 +58,9 @@ function second_order_var(f,p_range,N,y0,v)
             y = zero(y0)
             for k in 1:N
                 p2 = give_rand_p(p_range)
-                p1 = give_rand_p(p_range,p2[1:end .!= i],[k for k in 1:length(p_range) if k != i])
-                p3 = give_rand_p(p_range,p2[1:end .!= j],[k for k in 1:length(p_range) if k != j])
-                yer =  (Array(f(p1)) .- Array(f(p2))).^2
+                p1 = give_rand_p(p_range,p2[1:end .!= i],[l for l in 1:length(p_range) if l != i])
+                p3 = give_rand_p(p_range,p2[1:end .!= j],[l for l in 1:length(p_range) if l != j])
+                yer =  (Array(f(p1)) .- Array(f(p3))).^2
                 @. y += yer
             end
             ys[curr] = copy(y/(2*N))
@@ -127,7 +127,7 @@ function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func)
     S1_Conf_Int = [[z*std(sample) for sample in el] for el in elems_]
 end
 
-function sobol_sensitivity(f,p_range,N,order=[0],nboot=100,conf_int=0.95)
+function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0],nboot=100,conf_int=0.95)
     y0,v = calc_mean_var(f,p_range,N)
     sobol_sens = SobolResult(Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[])
     if 1 in order
@@ -157,7 +157,7 @@ function sobol_sensitivity(f,p_range,N,order=[0],nboot=100,conf_int=0.95)
     sobol_sens
 end
 
-function sobol_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,N,order=2)
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Sobol,N::Int64,order=[0])
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))

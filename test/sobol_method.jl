@@ -1,5 +1,3 @@
-using DiffEqSensitivity, Test
-
 function ishi(X)
     A= 7
     B= 0.1
@@ -7,7 +5,7 @@ function ishi(X)
 end
 p_range = [[0.0,1.0] for i in 1:4]
 N = 60000
-sobol = sobol_sensitivity(ishi,p_range,N,[0,1,2],0)
+sobol = gsa(ishi,p_range,Sobol(),N,[0,1,2],0)
 
 for (first_order, r_sens) in zip(sobol.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
      @test first_order[1] ≈ r_sens atol=1e-2
