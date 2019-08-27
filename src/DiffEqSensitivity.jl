@@ -25,7 +25,7 @@ export extract_local_sensitivities
 
 export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
-       adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa
+       adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
        SensitivityAlg, regression_sensitivity, DGSM
 
 

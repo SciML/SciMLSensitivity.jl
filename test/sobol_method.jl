@@ -1,3 +1,5 @@
+using DiffEqSensitivity, Test
+
 function ishi(X)
     A= 7
     B= 0.1
