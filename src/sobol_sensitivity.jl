@@ -44,7 +44,7 @@ function first_order_var(f,p_range,N,y0,v)
             yer =  (f(p2)) .* ((f(p1)) .- (f(p3)))
             @. y += yer
         end
-        ys[i] = copy(y/N)
+        ys[i] = y/N
     end
     for i in 1:length(ys)
         ys[i] = @. ys[i] / v
@@ -97,7 +97,7 @@ function total_var(f,p_range,N,y0,v)
             yer =  (f(p2) .- f(p1)).^2
             @. y += yer
         end
-        ys[i] = copy(y/(2*N))
+        ys[i] = y/(2*N)
     end
     for i in 1:length(ys)
         ys[i] = @. ys[i] / v
