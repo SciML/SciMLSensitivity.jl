@@ -17,11 +17,11 @@ function give_rand_p(p_range,p_fixed=nothing,indices=nothing)
 end
 
 function calc_mean_var(f,p_range,N)
-    y1 = Array(f(give_rand_p(p_range)))
+    y1 = f(give_rand_p(p_range))
     y0 = zero(y1)
     v = zero(y1)
     for i in 1:N
-        y1 = Array(f(give_rand_p(p_range)))
+        y1 = f(give_rand_p(p_range))
         @. y0 += y1
         @. v += y1^2
     end
@@ -35,11 +35,13 @@ function first_order_var(f,p_range,N,y0,v)
     ys = Array{typeof(y0)}(undef,length(p_range))
     for i in 1:length(p_range)
         y = zero(y0)
+        indices = [k for k in 1:length(p_range) if k != i]
+        i_arr = [i]
         for j in 1:N
             p2 = give_rand_p(p_range)
-            p1 = give_rand_p(p_range,[p2[i]],[i])
-            p3 = give_rand_p(p_range,p1[1:end .!= i],[k for k in 1:length(p_range) if k != i])
-            yer =  Array(f(p2)) .* (Array(f(p1)) .- Array(f(p3)))
+            p1 = give_rand_p(p_range,[p2[i]],i_arr)
+            p3 = give_rand_p(p_range,@view(p1[indices]),indices)
+            yer =  (f(p2)) .* ((f(p1)) .- (f(p3)))
             @. y += yer
         end
         ys[i] = copy(y/N)
@@ -56,11 +58,13 @@ function second_order_var(f,p_range,N,y0,v)
     for i in 1:length(p_range)
         for j in i+1:length(p_range)
             y = zero(y0)
+            i_arr = [l for l in 1:length(p_range) if l != i]
+            j_arr = [l for l in 1:length(p_range) if l != j]
             for k in 1:N
                 p2 = give_rand_p(p_range)
-                p1 = give_rand_p(p_range,p2[1:end .!= i],[l for l in 1:length(p_range) if l != i])
-                p3 = give_rand_p(p_range,p2[1:end .!= j],[l for l in 1:length(p_range) if l != j])
-                yer =  (Array(f(p1)) .- Array(f(p3))).^2
+                p1 = give_rand_p(p_range,p2[i_arr],i_arr)
+                p3 = give_rand_p(p_range,p2[j_arr],j_arr)
+                yer =  (f(p1) .- f(p3)).^2
                 @. y += yer
             end
             ys[curr] = copy(y/(2*N))
@@ -86,10 +90,11 @@ function total_var(f,p_range,N,y0,v)
     ys = Array{typeof(y0)}(undef,length(p_range))
     for i in 1:length(p_range)
         y = zero(y0)
+        indices = [k for k in 1:length(p_range) if k != i]
         for j in 1:N
             p2 = give_rand_p(p_range)
-            p1 = give_rand_p(p_range,p2[1:end .!= i],[k for k in 1:length(p_range) if k != i])
-            yer =  (Array(f(p2)) .- Array(f(p1))).^2
+            p1 = give_rand_p(p_range,@view(p2[indices]),indices)
+            yer =  (f(p2) .- f(p1)).^2
             @. y += yer
         end
         ys[i] = copy(y/(2*N))
@@ -127,9 +132,9 @@ function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func)
     S1_Conf_Int = [[z*std(sample) for sample in el] for el in elems_]
 end
 
-function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0],nboot=100,conf_int=0.95)
+function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0,1,2],nboot=100,conf_int=0.95)
     y0,v = calc_mean_var(f,p_range,N)
-    sobol_sens = SobolResult(Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[],Array{Float64}[],Array{Array{Float64},1}[])
+    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])  
     if 1 in order
         first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
@@ -163,5 +168,5 @@ function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::A
         Array(solve(prob1,alg;saveat=t))
     end
     @assert length(prob.p) == length(p_range)
-    sobol_sensitivity(f,p_range,N,order)
+    gsa(f,p_range,method,N,order)
 end
