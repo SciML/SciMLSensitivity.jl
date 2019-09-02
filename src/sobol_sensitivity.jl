@@ -1,8 +1,9 @@
-function give_rand_p(p_range,p_fixed=nothing,indices=nothing)
+function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     if p_fixed === nothing
-        p = [(p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] for j in 1:length(p_range)]
+        for j in 1:length(p_range)
+            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] 
+        end
     else
-        p =  zeros(length(p_range))
         j = 1
         for i in 1:length(p_range)
             if i in indices
@@ -13,15 +14,17 @@ function give_rand_p(p_range,p_fixed=nothing,indices=nothing)
             end
         end
     end
-    p
 end
 
 function calc_mean_var(f,p_range,N)
-    y1 = f(give_rand_p(p_range))
+    p = Array{eltype(p_range[1])}(undef, length(p_range))
+    give_rand_p!(p_range,p)
+    y1 = f(p)
     y0 = zero(y1)
     v = zero(y1)
     for i in 1:N
-        y1 = f(give_rand_p(p_range))
+        give_rand_p!(p_range,p)
+        y1 = f(p)
         @. y0 += y1
         @. v += y1^2
     end
@@ -37,10 +40,13 @@ function first_order_var(f,p_range,N,y0,v)
         y = zero(y0)
         indices = [k for k in 1:length(p_range) if k != i]
         i_arr = [i]
+        p2 = Array{eltype(p_range[1])}(undef, length(p_range))
+        p1 = Array{eltype(p_range[1])}(undef, length(p_range))
+        p3 = Array{eltype(p_range[1])}(undef, length(p_range))
         for j in 1:N
-            p2 = give_rand_p(p_range)
-            p1 = give_rand_p(p_range,[p2[i]],i_arr)
-            p3 = give_rand_p(p_range,@view(p1[indices]),indices)
+            give_rand_p!(p_range,p2)
+            give_rand_p!(p_range,p1,[p2[i]],i_arr)
+            give_rand_p!(p_range,p3,@view(p1[indices]),indices)
             yer =  (f(p2)) .* ((f(p1)) .- (f(p3)))
             @. y += yer
         end
@@ -91,9 +97,11 @@ function total_var(f,p_range,N,y0,v)
     for i in 1:length(p_range)
         y = zero(y0)
         indices = [k for k in 1:length(p_range) if k != i]
+        p1 = Array{eltype(p_range[1])}(undef, length(p_range))
+        p2 = Array{eltype(p_range[1])}(undef, length(p_range))
         for j in 1:N
-            p2 = give_rand_p(p_range)
-            p1 = give_rand_p(p_range,@view(p2[indices]),indices)
+            give_rand_p!(p_range,p2)
+            give_rand_p!(p_range,p1,@view(p2[indices]),indices)
             yer =  (f(p2) .- f(p1)).^2
             @. y += yer
         end
