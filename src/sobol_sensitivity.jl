@@ -45,9 +45,9 @@ function first_order_var(f,p_range,N,y0,v)
         p3 = Array{eltype(p_range[1])}(undef, length(p_range))
         for j in 1:N
             give_rand_p!(p_range,p2)
-            give_rand_p!(p_range,p1,[p2[i]],i_arr)
+            give_rand_p!(p_range,p1,@view(p2[i:i]),i_arr)
             give_rand_p!(p_range,p3,@view(p1[indices]),indices)
-            yer =  (f(p2)) .* ((f(p1)) .- (f(p3)))
+            yer =  (f(p2)) .* (f(p1) .- f(p3))
             @. y += yer
         end
         ys[i] = y/N
@@ -113,6 +113,36 @@ function total_var(f,p_range,N,y0,v)
     ys
 end
 
+function first_total_var(f,p_range,N,y0,v)
+    ys_first = Array{typeof(y0)}(undef,length(p_range))
+    ys_tot = Array{typeof(y0)}(undef,length(p_range))
+    for i in 1:length(p_range)
+        y_first = zero(y0)
+        y_tot = zero(y0)
+        indices = [k for k in 1:length(p_range) if k != i]
+        i_arr = [i]
+        p2 = Array{eltype(p_range[1])}(undef, length(p_range))
+        p1 = Array{eltype(p_range[1])}(undef, length(p_range))
+        p3 = Array{eltype(p_range[1])}(undef, length(p_range))
+        for j in 1:N
+            give_rand_p!(p_range,p2)
+            give_rand_p!(p_range,p1,@view(p2[i:i]),i_arr)
+            give_rand_p!(p_range,p3,@view(p1[indices]),indices)
+            f_p1 = f(p1)
+            f_p3 = f(p3)
+            y_first +=  (f(p2)) .* (f_p1 .- f_p3)
+            y_tot +=  (f_p1 .- f_p3).^2
+        end
+        ys_first[i] = y_first/N
+        ys_tot[i] = y_tot/(2*N)
+    end
+    for i in 1:length(ys_tot)
+        ys_first[i] = @. ys_first[i] / v
+        ys_tot[i] = @. ys_tot[i] / v
+    end
+    [ys_first,ys_tot]
+end
+
 mutable struct SobolResult{T1,T2}
     S1::T1
     S1_Conf_Int::T2
@@ -143,12 +173,27 @@ end
 function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0,1,2],nboot=100,conf_int=0.95)
     y0,v = calc_mean_var(f,p_range,N)
     sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])  
-    if 1 in order
+    if 0 in order && 1 in order
+        first_total = first_total_var(f,p_range,N,y0,v)
+        sobol_sens.S1 = first_total[1]
+        sobol_sens.ST = first_total[2]
+        if nboot > 0
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var)
+            sobol_sens.S1_Conf_Int = [vec.(first_total) - ci, vec.(first_total) + ci]
+        end
+    elseif 1 in order
         first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_order_var)
             sobol_sens.S1_Conf_Int = [vec.(first_order) - ci, vec.(first_order) + ci]
+        end
+    elseif 0 in order
+        total_indices = total_var(f,p_range,N,y0,v)
+        sobol_sens.ST = total_indices
+        if nboot > 0
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,total_var)
+            sobol_sens.ST_Conf_Int = [vec.(total_indices) - ci, vec.(total_indices) + ci]
         end
     end
     if 2 in order
@@ -157,14 +202,6 @@ function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0,1,2],nboo
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,second_order_var)
             sobol_sens.S2_Conf_Int = [vec.(second_order) - ci, vec.(second_order) + ci]
-        end
-    end
-    if 0 in order
-        total_indices = total_var(f,p_range,N,y0,v)
-        sobol_sens.ST = total_indices
-        if nboot > 0
-            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,total_var)
-            sobol_sens.ST_Conf_Int = [vec.(total_indices) - ci, vec.(total_indices) + ci]
         end
     end
     sobol_sens
