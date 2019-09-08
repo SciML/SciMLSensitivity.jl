@@ -10,8 +10,6 @@ using Parameters: @unpack
 
 abstract type SensitivityFunction end
 abstract type GSAMethod end
-struct Sobol <: GSAMethod end
-struct Morris <: GSAMethod end
 
 include("derivative_wrappers.jl")
 include("local_sensitivity.jl")
