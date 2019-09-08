@@ -1,3 +1,10 @@
+Base.@kwdef struct Sobol <: GSAMethod 
+    N::Int64=1000
+    order::Array{Int64}=[0,1,2]
+    nboot::Int64=0
+    conf_int::Float64=0.95
+end
+
 function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     if p_fixed === nothing
         for j in 1:length(p_range)
@@ -159,7 +166,8 @@ function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func)
     S1_Conf_Int = [[z*std(sample) for sample in el] for el in elems_]
 end
 
-function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0,1,2],nboot=100,conf_int=0.95)
+function gsa(f,p_range::AbstractVector,method::Sobol)
+    @unpack N, order, nboot, conf_int = method
     y0,v = calc_mean_var(f,p_range,N)
     p2 = Array{eltype(p_range[1])}(undef, length(p_range))
     p1 = Array{eltype(p_range[1])}(undef, length(p_range))
@@ -199,11 +207,11 @@ function gsa(f,p_range::AbstractVector,method::Sobol,N::Int64,order=[0,1,2],nboo
     sobol_sens
 end
 
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Sobol,N::Int64,order=[0])
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Sobol)
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))
     end
     @assert length(prob.p) == length(p_range)
-    gsa(f,p_range,method,N,order)
+    gsa(f,p_range,method)
 end
