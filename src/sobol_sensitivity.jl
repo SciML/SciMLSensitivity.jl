@@ -1,7 +1,7 @@
 Base.@kwdef mutable struct Sobol <: GSAMethod 
-    N::Int64=1000
-    order::Array{Int64}=[0,1]
-    nboot::Int64=0
+    N::Int=1000
+    order::Array{Int}=[0,1]
+    nboot::Int=0
     conf_int::Float64=0.95
 end
 

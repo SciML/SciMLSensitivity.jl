@@ -1,10 +1,10 @@
 Base.@kwdef mutable struct Morris <: GSAMethod 
-    p_steps::Array{Int64,1}=Int64[]
+    p_steps::Array{Int,1}=Int[]
     relative_scale::Bool=false
-    len_trajectory::Int64=10
-    num_trajectory::Int64=10
-    total_num_trajectory::Int64=5*num_trajectory
-    k::Int64=10
+    len_trajectory::Int=10
+    num_trajectory::Int=10
+    total_num_trajectory::Int=5*num_trajectory
+    k::Int=10
 end
 
 struct MatSpread
