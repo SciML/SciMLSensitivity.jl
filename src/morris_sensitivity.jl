@@ -1,5 +1,5 @@
-Base.@kwdef struct Morris <: GSAMethod 
-    p_steps::AbstractVector
+Base.@kwdef mutable struct Morris <: GSAMethod 
+    p_steps::Array{Int64,1}=Int64[]
     relative_scale::Bool=false
     len_trajectory::Int64=10
     num_trajectory::Int64=10
@@ -67,8 +67,14 @@ end
 
 function gsa(f,p_range::AbstractVector,method::Morris)
     @unpack p_steps, relative_scale, len_trajectory, num_trajectory, total_num_trajectory, k  = method
+    if !(length(p_steps) == length(p_range))
+        for i in 1:length(p_range)-length(p_steps)
+            push!(p_steps,100)
+        end
+    end
+
     design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory, 
-                                        total_num_trajectory=total_num_trajectory,len_design_mat=k )
+                                        total_num_trajectory=total_num_trajectory,len_design_mat=k)
     effects = []
     for i in design_matrices
         y1 = f(i[1])
@@ -112,10 +118,10 @@ function gsa(f,p_range::AbstractVector,method::Morris)
     MorrisSensitivity(means,variances,effects)
 end
 
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris,p_steps::AbstractVector,args...;kwargs...)
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris)
     f = function (p)
       prob1 = remake(prob;p=p)
       Array(solve(prob1,alg;saveat=t))
     end
-    gsa(f,p_range,method,p_steps,args...;kwargs...)
+    gsa(f,p_range,method)
 end
