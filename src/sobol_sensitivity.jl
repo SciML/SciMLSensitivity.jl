@@ -60,7 +60,7 @@ function first_order_var(f,p_range,N,y0,v,p1,p2,p3)
     ys
 end
 
-function second_order_var(f,p_range,N,y0,v)
+function second_order_var(f,p_range,N,y0,v,p1,p2,p3)
     ys = Array{typeof(y0)}(undef,Int((length(p_range)*(length(p_range)-1))/2))
     curr = 1
     for i in 1:length(p_range)
@@ -69,24 +69,15 @@ function second_order_var(f,p_range,N,y0,v)
             i_arr = [l for l in 1:length(p_range) if l != i]
             j_arr = [l for l in 1:length(p_range) if l != j]
             for k in 1:N
-                p2 = give_rand_p(p_range)
-                p1 = give_rand_p(p_range,p2[i_arr],i_arr)
-                p3 = give_rand_p(p_range,p2[j_arr],j_arr)
-                yer =  (f(p1) .- f(p3)).^2
-                @. y += yer
+                give_rand_p!(p_range,p2)
+                give_rand_p!(p_range,p1,@view(p2[i_arr]),i_arr)
+                give_rand_p!(p_range,p3,@view(p2[j_arr]),j_arr)
+                y .+= (f(p1) .- f(p3)).^2 
             end
-            ys[curr] = copy(y/(2*N))
+            ys[curr] = y/(2*N)
             curr += 1
         end
     end
-    # ys_frst_order = first_order_var(f,p_range,N,y0,v)
-    # j = 1
-    # for i in 1:length(p_range)
-    #     for k in i+1:length(p_range)
-    #         ys[j] = @. ys[j] - ( ys_frst_order[i] + ys_frst_order[k] )
-    #         j += 1
-    #     end
-    # end
     for i in 1:length(ys)
         ys[i] = @. ys[i] / v
     end
@@ -197,7 +188,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         end
     end
     if 2 in order
-        second_order = second_order_var(f,p_range,N,y0,v)
+        second_order = second_order_var(f,p_range,N,y0,v,p1,p2,p3)
         sobol_sens.S2 = second_order
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,second_order_var)
