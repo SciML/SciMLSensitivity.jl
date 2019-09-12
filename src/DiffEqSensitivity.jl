@@ -2,7 +2,7 @@ __precompile__()
 
 module DiffEqSensitivity
 
-using DiffEqBase, ForwardDiff, Flux, DiffEqDiffTools, Statistics
+using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack
