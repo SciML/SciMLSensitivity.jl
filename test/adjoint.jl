@@ -87,8 +87,8 @@ G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 
-using Flux
-res4 = Flux.Tracker.gradient(G,[1.5,1.0,3.0])[1]
+using Tracker
+res4 = Tracker.gradient(G,[1.5,1.0,3.0])[1]
 
 using ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])

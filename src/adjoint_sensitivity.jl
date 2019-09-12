@@ -1,5 +1,3 @@
-using Flux.Tracker: gradient
-
 struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
   uf::UF
   pf::PF
