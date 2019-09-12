@@ -79,7 +79,7 @@ end_only_res = adjoint_sensitivities(sol_end,Tsit5(),dg,t,abstol=1e-14,
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
-  sol = solve(tmp_prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=t)
+  sol = solve(tmp_prob,Tsit5(),abstol=1e-10,reltol=1e-10,saveat=t)
   A = convert(Array,sol)
   sum(((2 .- A).^2)./2)
 end
@@ -94,7 +94,7 @@ using ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 
 @test norm(res' .- res2) < 1e-8
-@test norm(res' .- res3) < 1e-6
+@test norm(res' .- res3) < 1e-5
 @test norm(res' .- res4) < 1e-6
 @test norm(res' .- res5) < 1e-6
 

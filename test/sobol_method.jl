@@ -1,4 +1,5 @@
-using DiffEqSensitivity, Test
+using DiffEqSensitivity, Test, Random
+Random.seed!(123)
 
 function ishi(X)
     A= 7
@@ -10,17 +11,17 @@ N = 60000
 sobol = gsa(ishi,p_range,Sobol(N=N,order=[0,1,2]))
 
 for (first_order, r_sens) in zip(sobol.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
-     @test first_order[1] ≈ r_sens atol=1e-2
+     @test first_order[1] ≈ r_sens atol=2e-2
 end
 for (second_order, r_sens) in zip(sobol.S2,[ 0.999923,0.021941,0.021867,0.974586,0.974525,-0.004465])
-    @test second_order[1] ≈ r_sens atol=1e-2
-end 
+    @test second_order[1] ≈ r_sens atol=2e-2
+end
 for (total_order, r_sens) in zip(sobol.ST,[2.682048e-02,9.693216e-01,6.910431e-05,0.000000e+00])
-    @test total_order[1] ≈ r_sens atol=1e-2
-end 
+    @test total_order[1] ≈ r_sens atol=2e-2
+end
 
 ######################################################################
-#Model runs: 600000 
+#Model runs: 600000
 #
 #First order indices:
 #       original          bias   std. error     min. c.i.    max. c.i.
