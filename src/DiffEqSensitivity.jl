@@ -4,8 +4,13 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
+<<<<<<< refs/tags/v5.1.3
 using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack, @with_kw
+=======
+using DataFrames, GLM
+using Parameters: @unpack
+>>>>>>> Add eFAST implementation
 
 
 abstract type SensitivityFunction end
@@ -18,13 +23,14 @@ include("morris_sensitivity.jl")
 include("sobol_sensitivity.jl")
 include("regression_sensitivity.jl")
 include("DGSM.jl")
+include("eFAST.jl")
 
 export extract_local_sensitivities
 
 export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
-       SensitivityAlg, regression_sensitivity, DGSM
+       SensitivityAlg, regression_sensitivity, DGSM, fast
 
 
 end # module
