@@ -305,7 +305,6 @@ function (S::AdjointSensitivityIntegrand)(out,t)
         vec(f(u, p, t))
       end
     end
-    @show back(λ)
     out[:] = vec(back(λ)[2])
   end
   out'
