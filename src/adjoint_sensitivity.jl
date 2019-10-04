@@ -1,7 +1,4 @@
-struct ODEAdjointSensitivityFunction{dgType,rateType,uType,F,J,PJ,UF,PF,G,JC,GC,A,DG,MM,TJ,PJT,PJC,CP,SType,INT} <: SensitivityFunction
-  f::F
-  jac::J
-  paramjac::PJ
+struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -143,25 +140,25 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
     end
     mul!(dλ',λ',S.J)
   elseif isquad(S.alg)
-    _dy, back = Zygote.forward(y) do u
+    _dy, back = Zygote.pullback(y) do u
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
-        S.f.f(out_, u, p, t)
+        f(out_, u, p, t)
         copy(out_)
       else
-        vec(S.f.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
     dλ[:] = vec(back(λ)[1])
     isbcksol(S.alg) && (dy[:] = vec(_dy))
   else
-    _dy, back = Zygote.forward(y, S.sol.prob.p) do u, p
+    _dy, back = Zygote.pullback(y, S.sol.prob.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
-        S.f.f(out_, u, p, t)
+        f(out_, u, p, t)
         vec(copy(out_))
       else
-        vec(S.f.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
     dλ[:], dgrad[:] = back(λ)
@@ -299,15 +296,16 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     end
     mul!(out',λ',pJ)
   else
-    _, back = Zygote.forward(y, S.p) do u, p
+    _, back = Zygote.pullback(y, S.p) do u, p
       if DiffEqBase.isinplace(S.sol.prob)
         out_ = Zygote.Buffer(u)
-        S.f.f(out_, u, p, t)
+        f(out_, u, p, t)
         copy(out_)
       else
-        vec(S.f.f(u, p, t))
+        vec(f(u, p, t))
       end
     end
+    @show back(λ)
     out[:] = vec(back(λ)[2])
   end
   out'
