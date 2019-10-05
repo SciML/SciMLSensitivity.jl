@@ -139,8 +139,8 @@ mutable struct SobolResult{T1,T2}
     ST_Conf_Int::T2
 end
 
-function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func)
-    conf_int_samples = [sa_func(f,p_range,N,y0,v) for i in 1:nboot]
+function calc_ci(f,p_range,N,y0,v,nboot,conf_int,sa_func,p1,p2,p3)
+    conf_int_samples = [sa_func(f,p_range,N,y0,v,p1,p2,p3) for i in 1:nboot]
     elems_ = []
     for i in 1:length(conf_int_samples[1])
         elems = []
@@ -169,14 +169,14 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         sobol_sens.S1 = first_total[1]
         sobol_sens.ST = first_total[2]
         if nboot > 0
-            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var)
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var,p1,p2,p3)
             sobol_sens.S1_Conf_Int = [vec.(first_total) - ci, vec.(first_total) + ci]
         end
     elseif 1 in order
         first_order = first_order_var(f,p_range,N,y0,v,p1,p2,p3)
         sobol_sens.S1 = first_order
         if nboot > 0
-            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_order_var)
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_order_var,p1,p2,p3)
             sobol_sens.S1_Conf_Int = [vec.(first_order) - ci, vec.(first_order) + ci]
         end
     elseif 0 in order
@@ -191,7 +191,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         second_order = second_order_var(f,p_range,N,y0,v,p1,p2,p3)
         sobol_sens.S2 = second_order
         if nboot > 0
-            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,second_order_var)
+            ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,second_order_var,p1,p2,p3)
             sobol_sens.S2_Conf_Int = [vec.(second_order) - ci, vec.(second_order) + ci]
         end
     end
