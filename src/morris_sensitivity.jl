@@ -12,7 +12,7 @@ struct MatSpread
     spread::Float64
 end
 
-struct MorrisSensitivity{T1,T2}
+struct MorrisResult{T1,T2}
     means::T1
     variances::T1
     elementary_effects::T2
@@ -103,7 +103,7 @@ function gsa(f,p_range::AbstractVector,method::Morris)
                 push!(effects[change_index],elem_effect)
             elseif change_index > 0
                 while(length(effects) < change_index-1)
-                    push!(effects,[])
+                    push!(effects,typeof(elem_effect)[])
                 end
                 push!(effects,[elem_effect])
             end
@@ -112,10 +112,15 @@ function gsa(f,p_range::AbstractVector,method::Morris)
     means = eltype(effects[1])[]
     variances = eltype(effects[1])[]
     for k in effects
-        push!(means,mean(k))
-        push!(variances,var(k))
+        if !isempty(k)
+            push!(means,mean(k))
+            push!(variances,var(k))
+        else
+            push!(means,zero(effects[1][1]))
+            push!(variances,zero(effects[1][1]))
+        end
     end
-    MorrisSensitivity(means,variances,effects)
+    MorrisResult(means,variances,effects)
 end
 
 function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris)
