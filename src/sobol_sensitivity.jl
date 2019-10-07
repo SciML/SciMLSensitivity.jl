@@ -5,6 +5,11 @@ Base.@kwdef mutable struct Sobol <: GSAMethod
     conf_int::Float64=0.95
 end
 
+Base.@kwdef mutable struct SobolQuad <: GSAMethod 
+    order::Array{Int}=[1]
+    quadalg=HCubatureJL()
+end
+
 function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     if p_fixed === nothing
         for j in 1:length(p_range)
@@ -40,6 +45,15 @@ function calc_mean_var(f,p_range,N)
     y0,v
 end
 
+function calc_mean_var_quad(f,p_range,quadalg)
+    prob = QuadratureProblem(f, [p_range[i][1] for i in 1:length(p_range)],[p_range[i][2] for i in 1:length(p_range)])
+    E = solve(prob,quadalg)
+
+    prob1 = QuadratureProblem((x,p) -> (f(x,p)).^2, [p_range[i][1] for i in 1:length(p_range)],[p_range[i][2] for i in 1:length(p_range)])
+    V = solve(prob1,quadalg) .- E.^2
+    return E, V
+end
+
 function first_order_var(f,p_range,N,y0,v,p1,p2,p3)
     ys = Array{typeof(y0)}(undef,length(p_range))
     for i in 1:length(p_range)
@@ -53,6 +67,33 @@ function first_order_var(f,p_range,N,y0,v,p1,p2,p3)
             y .+= (f(p2)) .* (f(p1) .- f(p3))
         end
         ys[i] = y/N
+    end
+    for i in 1:length(ys)
+        @. ys[i] = ys[i] / v
+    end
+    ys
+end
+
+function first_order_quad(f,p_range,y0,v,p1,quadalg)
+    ys = Array{typeof(y0.u)}(undef,length(p_range))
+    for i in 1:length(p_range)
+        y = zero(y0)
+        indices = [k for k in 1:length(p_range) if k != i]
+         
+        function f_q(x,p)
+            p1[indices] = x
+            f(p1,p)
+        end
+        prob1 = QuadratureProblem(f_q,[p_range[i][1] for i in indices],[p_range[i][2] for i in indices])
+        
+        function f__(x,p)
+            p1[i] = x
+            solve(prob1,quadalg).^2
+        end
+        prob2 = QuadratureProblem(f__, p_range[i][1], p_range[i][2])
+        sol = solve(prob2,quadalg)
+        y = @. sol - y0^2
+        ys[i] = y
     end
     for i in 1:length(ys)
         @. ys[i] = ys[i] / v
@@ -199,7 +240,19 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
     sobol_sens
 end
 
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Sobol)
+function gsa(f,p_range::AbstractVector,method::SobolQuad)
+    @unpack order, quadalg = method
+    p1 = Array{eltype(p_range[1])}(undef, length(p_range))
+    E,V = calc_mean_var_quad(f,p_range,quadalg)
+    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])
+    if 1 in order
+        first_order = first_order_quad(f,p_range,E,V,p1,quadalg)
+        sobol_sens.S1 = first_order
+    end
+    sobol_sens
+end
+
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Union{Sobol,SobolQuad})
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))
