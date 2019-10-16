@@ -170,7 +170,8 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         sobol_sens.ST = first_total[2]
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var,p1,p2,p3)
-            sobol_sens.S1_Conf_Int = [vec.(first_total) - ci, vec.(first_total) + ci]
+            sobol_sens.S1_Conf_Int = [vec.(first_total[1]) - ci[1], vec.(first_total[1]) + ci[1]]
+            sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]        
         end
     elseif 1 in order
         first_order = first_order_var(f,p_range,N,y0,v,p1,p2,p3)
