@@ -18,7 +18,6 @@ include("morris_sensitivity.jl")
 include("sobol_sensitivity.jl")
 include("regression_sensitivity.jl")
 include("DGSM.jl")
-include("eFAST.jl")
 
 export extract_local_sensitivities
 
