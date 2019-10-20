@@ -1,11 +1,11 @@
-Base.@kwdef mutable struct Sobol <: GSAMethod 
+Base.@kwdef mutable struct Sobol <: GSAMethod
     N::Int=1000
     order::Array{Int}=[0,1]
     nboot::Int=0
     conf_int::Float64=0.95
 end
 
-Base.@kwdef mutable struct SobolQuad <: GSAMethod 
+Base.@kwdef mutable struct SobolQuad <: GSAMethod
     order::Array{Int}=[1]
     quadalg=HCubatureJL()
 end
@@ -13,7 +13,7 @@ end
 function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     if p_fixed === nothing
         for j in 1:length(p_range)
-            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] 
+            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1]
         end
     else
         j = 1
@@ -45,12 +45,18 @@ function calc_mean_var(f,p_range,N)
     y0,v
 end
 
-function calc_mean_var_quad(f,p_range,quadalg)
-    prob = QuadratureProblem(f, [p_range[i][1] for i in 1:length(p_range)],[p_range[i][2] for i in 1:length(p_range)])
-    E = solve(prob,quadalg)
+function calc_mean_var_quad(f,p_range,quadalg,batch,ireltol,iabstol,imaxiters)
+    prob = QuadratureProblem(f,
+                             [p_range[i][1] for i in 1:length(p_range)],
+                             [p_range[i][2] for i in 1:length(p_range)],
+                             batch=batch)
+    E = solve(prob,quadalg,reltol=ireltol,abstol=iabstol,maxiters=imaxiters)
 
-    prob1 = QuadratureProblem((x,p) -> (f(x,p)).^2, [p_range[i][1] for i in 1:length(p_range)],[p_range[i][2] for i in 1:length(p_range)])
-    V = solve(prob1,quadalg) .- E.^2
+    prob1 = QuadratureProblem((x,p) -> (f(x,p)).^2,
+                              [p_range[i][1] for i in 1:length(p_range)],
+                              [p_range[i][2] for i in 1:length(p_range)],
+                              batch = batch)
+    V = solve(prob1,quadalg,reltol=ireltol,abstol=iabstol,maxiters=imaxiters) .- E.^2
     return E, V
 end
 
@@ -74,24 +80,30 @@ function first_order_var(f,p_range,N,y0,v,p1,p2,p3)
     ys
 end
 
-function first_order_quad(f,p_range,y0,v,p1,quadalg)
+function first_order_quad(f,p_range,y0,v,p1,quadalg,
+                          batch,ireltol,iabstol,imaxiters)
     ys = Array{typeof(y0.u)}(undef,length(p_range))
     for i in 1:length(p_range)
         y = zero(y0)
         indices = [k for k in 1:length(p_range) if k != i]
-         
+
         function f_q(x,p)
             p1[indices] = x
             f(p1,p)
         end
-        prob1 = QuadratureProblem(f_q,[p_range[i][1] for i in indices],[p_range[i][2] for i in indices])
-        
-        function f__(x,p)
+        prob1 = QuadratureProblem(f_q,
+                                  [p_range[i][1] for i in indices],
+                                  [p_range[i][2] for i in indices],
+                                  batch = batch)
+
+        function __f(x,p)
             p1[i] = x
-            solve(prob1,quadalg).^2
+            solve(prob1,quadalg,reltol=ireltol,
+                                abstol=iabstol,maxiters=imaxiters).^2
         end
-        prob2 = QuadratureProblem(f__, p_range[i][1], p_range[i][2])
-        sol = solve(prob2,quadalg)
+        prob2 = QuadratureProblem(__f, p_range[i][1], p_range[i][2],batch=batch)
+        sol = solve(prob2,quadalg,reltol=ireltol,
+                          abstol=iabstol,maxiters=imaxiters)
         y = @. sol - y0^2
         ys[i] = y
     end
@@ -113,7 +125,7 @@ function second_order_var(f,p_range,N,y0,v,p1,p2,p3)
                 give_rand_p!(p_range,p2)
                 give_rand_p!(p_range,p1,@view(p2[i_arr]),i_arr)
                 give_rand_p!(p_range,p3,@view(p2[j_arr]),j_arr)
-                y .+= (f(p1) .- f(p3)).^2 
+                y .+= (f(p1) .- f(p3)).^2
             end
             ys[curr] = y/(2*N)
             curr += 1
@@ -204,7 +216,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
     p2 = Array{eltype(p_range[1])}(undef, length(p_range))
     p1 = Array{eltype(p_range[1])}(undef, length(p_range))
     p3 = Array{eltype(p_range[1])}(undef, length(p_range))
-    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])  
+    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])
     if 0 in order && 1 in order
         first_total = first_total_var(f,p_range,N,y0,v,p1,p2,p3)
         sobol_sens.S1 = first_total[1]
@@ -240,23 +252,34 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
     sobol_sens
 end
 
-function gsa(f,p_range::AbstractVector,method::SobolQuad)
+function gsa(f,p_range::AbstractVector,method::SobolQuad;
+             batch = 0,
+             ireltol = 1e-3, iabstol = 1e-3, imaxiters = 10_000)
     @unpack order, quadalg = method
     p1 = Array{eltype(p_range[1])}(undef, length(p_range))
-    E,V = calc_mean_var_quad(f,p_range,quadalg)
+    E,V = calc_mean_var_quad(f,p_range,quadalg,
+                             batch,ireltol,
+                             iabstol,imaxiters)
     sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])
     if 1 in order
-        first_order = first_order_quad(f,p_range,E,V,p1,quadalg)
+        first_order = first_order_quad(f,p_range,E,V,p1,quadalg,
+                                     batch,ireltol,
+                                     iabstol,imaxiters)
         sobol_sens.S1 = first_order
     end
     sobol_sens
 end
 
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Union{Sobol,SobolQuad})
+function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,
+             p_range::AbstractVector,method::Union{Sobol,SobolQuad};
+             batch = 0, ireltol = 1e-3,
+             iabstol = 1e-3, imaxiters = 10_000)
+
     f = function (p)
         prob1 = remake(prob;p=p)
         Array(solve(prob1,alg;saveat=t))
     end
     @assert length(prob.p) == length(p_range)
-    gsa(f,p_range,method)
+    gsa(f,p_range,method;batch=batch,ireltol=ireltol,
+                         iabstol=iabstol,imaxiters=imaxiters)
 end
