@@ -3,15 +3,19 @@ using DiffEqSensitivity,OrdinaryDiffEq, ModelingToolkit,
 using Test
 using DiffEqSensitivity: SensitivityAlg
 
-@parameters t a b c
-@variables x(t) y(t)
-@derivatives D'~t
-eqs = [ D(x) ~  a*x - b*x*y
-        D(x) ~ -c*y + x*y]
-sys = ODESystem(eqs,t,[x,y],[a,b,c])
-fb = ODEFunction(sys,[x,y],[a,b,c],Val{false})
-f = ODEFunction(sys,[x,y],[a,b,c],jac=true,Val{false})
+function fb(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + u[1]*u[2]
+end
+function jac(J,u,p,t)
+  (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
+  J[1,1] = a + y * b * -1
+  J[2,1] = y
+  J[1,2] = b * x * -1
+  J[2,2] = c * -1 + x
+end
 
+f = ODEFunction(fb,jac=jac)
 p = [1.5,1.0,3.0]
 prob = ODELocalSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODELocalSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p)
