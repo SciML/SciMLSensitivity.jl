@@ -27,7 +27,7 @@ sol_end = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,
 
 # Do a discrete adjoint problem
 println("Calculate discrete adjoint sensitivities")
-t = 0.0:0.5:10.0 # TODO: Add end point handling for callback
+t = 0.0:0.5:10.0
 # g(t,u,i) = (1-u)^2/2, L2 away from 1
 function dg(out,u,p,t,i)
   (out.=2.0.-u)
@@ -102,6 +102,33 @@ res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0,1.0])
 @test norm(res' .- res3) < 1e-5
 @test norm(res' .- res4) < 1e-6
 @test norm(res' .- res5) < 1e-6
+
+# check other t handling
+
+t2 = [0.5, 1.0]
+t3 = [0.0, 0.5, 1.0]
+t4 = [0.5, 1.0, 10.0]
+
+easy_res2 = adjoint_sensitivities(sol,Tsit5(),dg,t2,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res3 = adjoint_sensitivities(sol,Tsit5(),dg,t3,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res4 = adjoint_sensitivities(sol,Tsit5(),dg,t4,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+function G(p,ts)
+  tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
+  sol = solve(tmp_prob,Tsit5(),abstol=1e-10,reltol=1e-10,saveat=ts)
+  A = convert(Array,sol)
+  sum(((2 .- A).^2)./2)
+end
+res2 = ForwardDiff.gradient(p->G(p,t2),[1.5,1.0,3.0,1.0])
+res3 = ForwardDiff.gradient(p->G(p,t3),[1.5,1.0,3.0,1.0])
+res4 = ForwardDiff.gradient(p->G(p,t4),[1.5,1.0,3.0,1.0])
+
+@test easy_res2' ≈ res2
+@test easy_res3' ≈ res3
+@test easy_res4' ≈ res4
 
 # Do a continuous adjoint problem
 
