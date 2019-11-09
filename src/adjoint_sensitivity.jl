@@ -199,7 +199,7 @@ end
   discrete = t != nothing
 
   p = sol.prob.p
-  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
   u0 = zero(sol.prob.u0)
 
