@@ -111,7 +111,16 @@ tmp = similar(sol[1])
 @test extract_local_sensitivities(tmp,sol,sol.t[3]) == extract_local_sensitivities(sol,3)
 
 
+# asmatrix=true
+@test extract_local_sensitivities(sol, length(sol), true) == (x, sense_res2)
+@test extract_local_sensitivities(sol, sol.t[end], true) == (x, sense_res2)
+@test extract_local_sensitivities(tmp, sol, sol.t[end], true) == (x, sense_res2)
+
+
 # Return type inferred
 @inferred extract_local_sensitivities(sol, 1)
+@inferred extract_local_sensitivities(sol, 1, Val(true))
 @inferred extract_local_sensitivities(sol, sol.t[3])
+@inferred extract_local_sensitivities(sol, sol.t[3], Val(true))
 @inferred extract_local_sensitivities(tmp, sol, sol.t[3])
+@inferred extract_local_sensitivities(tmp, sol, sol.t[3], Val(true))
