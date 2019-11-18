@@ -1,6 +1,5 @@
-using DiffEqSensitivity,OrdinaryDiffEq, ModelingToolkit,
-      RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus, QuadGK,
-      LinearAlgebra
+using DiffEqSensitivity,OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra
 using Test
 
 function fb(du,u,p,t)
