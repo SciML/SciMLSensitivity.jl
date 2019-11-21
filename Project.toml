@@ -18,6 +18,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 
 [compat]
+RecursiveArrayTools = "1.0"
 DiffEqCallbacks = "2.9"
 DiffEqDiffTools = "1.4"
 Tracker = "0.2"
