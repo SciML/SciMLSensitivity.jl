@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct Morris <: GSAMethod 
+@with_kw mutable struct Morris <: GSAMethod 
     p_steps::Array{Int,1}=Int[]
     relative_scale::Bool=false
     len_trajectory::Int=10
@@ -73,7 +73,7 @@ function gsa(f,p_range::AbstractVector,method::Morris)
         end
     end
 
-    design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory, 
+    design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory,
                                         total_num_trajectory=total_num_trajectory,len_design_mat=k)
     effects = []
     for i in design_matrices
@@ -99,7 +99,7 @@ function gsa(f,p_range::AbstractVector,method::Morris)
                     elem_effect = @. abs((y1-y2)/(y1*del))
                 end
             end
-            if length(effects) >= change_index && change_index > 0 
+            if length(effects) >= change_index && change_index > 0
                 push!(effects[change_index],elem_effect)
             elseif change_index > 0
                 while(length(effects) < change_index-1)
