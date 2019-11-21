@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct Sobol <: GSAMethod 
+@with_kw mutable struct Sobol <: GSAMethod 
     N::Int=1000
     order::Array{Int}=[0,1]
     nboot::Int=0
@@ -8,7 +8,7 @@ end
 function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     if p_fixed === nothing
         for j in 1:length(p_range)
-            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1] 
+            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1]
         end
     else
         j = 1
@@ -72,7 +72,7 @@ function second_order_var(f,p_range,N,y0,v,p1,p2,p3)
                 give_rand_p!(p_range,p2)
                 give_rand_p!(p_range,p1,@view(p2[i_arr]),i_arr)
                 give_rand_p!(p_range,p3,@view(p2[j_arr]),j_arr)
-                y .+= (f(p1) .- f(p3)).^2 
+                y .+= (f(p1) .- f(p3)).^2
             end
             ys[curr] = y/(2*N)
             curr += 1
@@ -163,7 +163,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
     p2 = Array{eltype(p_range[1])}(undef, length(p_range))
     p1 = Array{eltype(p_range[1])}(undef, length(p_range))
     p3 = Array{eltype(p_range[1])}(undef, length(p_range))
-    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])  
+    sobol_sens = SobolResult(Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[],Array{T where T}[],Array{Array{T where T},1}[])
     if 0 in order && 1 in order
         first_total = first_total_var(f,p_range,N,y0,v,p1,p2,p3)
         sobol_sens.S1 = first_total[1]
@@ -171,7 +171,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var,p1,p2,p3)
             sobol_sens.S1_Conf_Int = [vec.(first_total[1]) - ci[1], vec.(first_total[1]) + ci[1]]
-            sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]        
+            sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]
         end
     elseif 1 in order
         first_order = first_order_var(f,p_range,N,y0,v,p1,p2,p3)
