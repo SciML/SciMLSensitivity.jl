@@ -1,11 +1,11 @@
-@with_kw mutable struct Sobol <: GSAMethod 
+@with_kw mutable struct Sobol <: GSAMethod
     N::Int=1000
     order::Array{Int}=[0,1]
     nboot::Int=0
     conf_int::Float64=0.95
 end
 
-Base.@kwdef mutable struct SobolQuad <: GSAMethod
+@with_kw mutable struct SobolQuad <: GSAMethod
     order::Array{Int}=[1]
     quadalg=HCubatureJL()
 end
