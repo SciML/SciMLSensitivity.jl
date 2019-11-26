@@ -1,22 +1,26 @@
 using DiffEqSensitivity, Test, Random
 Random.seed!(123)
 
-function ishi(X)
+function ishi(X,p=nothing)
     A= 7
     B= 0.1
     [sin(X[1]) + A*sin(X[2])^2+ B*sin(X[3])^4 *sin(X[1])]
 end
 p_range = [[0.0,1.0] for i in 1:4]
 N = 60000
-sobol = gsa(ishi,p_range,Sobol(N=N,order=[0,1,2]))
+sobol1 = gsa(ishi,p_range,Sobol(N=N,order=[0,1,2]))
+sobol2 = gsa(ishi,p_range,SobolQuad())
 
-for (first_order, r_sens) in zip(sobol.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
+for (first_order, r_sens) in zip(sobol1.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
      @test first_order[1] ≈ r_sens atol=2e-2
 end
-for (second_order, r_sens) in zip(sobol.S2,[ 0.999923,0.021941,0.021867,0.974586,0.974525,-0.004465])
+for (first_order, r_sens) in zip(sobol2.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
+     @test first_order[1] ≈ r_sens atol=2e-2
+end
+for (second_order, r_sens) in zip(sobol1.S2,[ 0.999923,0.021941,0.021867,0.974586,0.974525,-0.004465])
     @test second_order[1] ≈ r_sens atol=2e-2
 end
-for (total_order, r_sens) in zip(sobol.ST,[2.682048e-02,9.693216e-01,6.910431e-05,0.000000e+00])
+for (total_order, r_sens) in zip(sobol1.ST,[2.682048e-02,9.693216e-01,6.910431e-05,0.000000e+00])
     @test total_order[1] ≈ r_sens atol=2e-2
 end
 
