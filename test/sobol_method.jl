@@ -1,4 +1,5 @@
 using DiffEqSensitivity, Test, Random
+using Cubature, Quadrature
 Random.seed!(123)
 
 function ishi(X,p=nothing)
@@ -50,3 +51,14 @@ end
 #X24  0.974525   0.000154  0.974223  0.974827
 #X34 -0.004465   0.004083 -0.012468  0.003538
 ######################################################################
+
+# Batched interface tests
+function ishi_batch(X,p=nothing)
+    A= 7
+    B= 0.1
+    @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*sin(X[3,:])^4 *sin(X[1,:])
+end
+sobol3 = gsa(ishi_batch,p_range,SobolQuad(quadalg=CubatureJLh()),batch = 5)
+for (first_order, r_sens) in zip(sobol3.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
+     @test first_order[1] ≈ r_sens atol=2e-2
+end

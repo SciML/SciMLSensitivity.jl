@@ -4,6 +4,7 @@ authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>"]
 version = "4.3.0"
 
 [deps]
+Cubature = "667455a9-e2ce-5579-9412-b964f529a492"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
