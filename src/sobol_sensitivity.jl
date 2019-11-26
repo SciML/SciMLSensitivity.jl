@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct Sobol <: GSAMethod
+@with_kw mutable struct Sobol <: GSAMethod 
     N::Int=1000
     order::Array{Int}=[0,1]
     nboot::Int=0
@@ -224,7 +224,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_total_var,p1,p2,p3)
             sobol_sens.S1_Conf_Int = [vec.(first_total[1]) - ci[1], vec.(first_total[1]) + ci[1]]
-            sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]        
+            sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]
         end
     elseif 1 in order
         first_order = first_order_var(f,p_range,N,y0,v,p1,p2,p3)

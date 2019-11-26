@@ -1,5 +1,5 @@
-using DiffEqSensitivity,OrdinaryDiffEq, ModelingToolkit,
-      RecursiveArrayTools, DiffEqBase, ForwardDiff, Calculus
+using DiffEqSensitivity,OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
+      ForwardDiff, Calculus
 using Test
 using DiffEqSensitivity: SensitivityAlg
 

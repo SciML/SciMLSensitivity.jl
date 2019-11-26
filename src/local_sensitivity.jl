@@ -82,7 +82,7 @@ end
 function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg = SensitivityAlg(autojacvec=true);
-                                    callback=CallbackSet(),mass_matrix=I)
+                                    kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacvec = get_jacvec(alg)
@@ -115,10 +115,10 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   sense = ODELocalSensitivityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
-                                     p,similar(u0),mass_matrix,
+                                     p,similar(u0),f.mass_matrix,
                                      isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
-  ODEProblem(sense,sense_u0,tspan,p;callback=callback)
+  ODEProblem(sense,sense_u0,tspan,p;kwargs...)
 end
 
 function ODELocalSensitivityProblem(f,args...;kwargs...)

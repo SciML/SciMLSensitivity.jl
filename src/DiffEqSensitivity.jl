@@ -4,8 +4,8 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DataFrames, GLM, Quadrature
-using Parameters: @unpack
+using DataFrames, GLM, RecursiveArrayTools, Quadrature
+using Parameters: @unpack, @with_kw
 
 
 abstract type SensitivityFunction end
