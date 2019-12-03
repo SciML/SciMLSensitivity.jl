@@ -12,39 +12,37 @@ end
     quadalg=HCubatureJL()
 end
 
-function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
-    if p_fixed === nothing
-        for j in 1:length(p_range)
-            p[j] = (p_range[j][2] -p_range[j][1])*rand() + p_range[j][1]
-        end
-    else
-        j = 1
-        for i in 1:length(p_range)
-            if i in indices
-                p[i] = p_fixed[j]
-                j += 1
-            else
-                p[i] = (p_range[i][2] -p_range[i][1])*rand() + p_range[i][1]
-            end
-        end
-    end
-end
 
-function create_sols(p,f)
-    sols = typeof(f(p[1]))[]
-    for i in 1:length
-        push!(sols,f(p[i]))
+function create_sols(p,f,N)
+    sols = typeof(f(p[1,:]))[]
+    for i in 1:N
+        push!(sols,f(p[i,:]))
     end
     sols
 end
 
-function samples(p_range,N)
-    return [Surrogates.sample(N,p_range[1],p_range[2],SobolSample()) for i in 1:N]
+function samples(p_range,N,p_fixed=nothing,indices=nothing,p = zeros(N,length(p_range)))
+    if p_fixed === nothing
+        for j in 1:length(p_range)
+            p[:,j] = Surrogates.sample(N,p_range[j][1],p_range[j][2],SobolSample())
+        end
+    else
+        for i in 1:length(p_range)
+            j = 1
+            if i in indices
+                p[:,i] = p_fixed[:,j]
+                j += 1
+            else
+                p[:,i] = Surrogates.sample(N,p_range[i][1],p_range[i][2],SobolSample())
+            end
+        end
+    end
+    return p
 end
 
 function calc_mean_var(f,p_range,N)
     p = samples(p_range,N)
-    sols = create_sols(p,f)
+    sols = create_sols(p,f,N)
     y1 = sols[1]
     y0 = zero(y1)
     v = zero(y1)
@@ -72,20 +70,28 @@ function calc_mean_var_quad(f,p_range,quadalg,batch,ireltol,iabstol,imaxiters)
     return E, V
 end
 
-function first_order_var(f,p_range,N,y0,v,p1,p2,p3)
+function first_order_var(f,p_range,N,y0,v)
     ys = Array{typeof(y0)}(undef,length(p_range))
+    y = zero(y0)
+    p2 = samples(p_range,N)
+    p1 = []
+    p3 = []
     for i in 1:length(p_range)
-        y = zero(y0)
         indices = [k for k in 1:length(p_range) if k != i]
         i_arr = [i]
+        push!(p1, samples(p_range,N,p2[:,i],i_arr))
+        push!(p3 ,samples(p_range,N,p1[i][:,indices],indices))
+    end
+    fp2 = create_sols(p2,f,N)
+    fp1 = [create_sols(p1[i],f,N) for i in 1:length(p_range)]
+    fp3 = [create_sols(p3[i],f,N) for i in 1:length(p_range)]
+    for i in 1:length(p_range)
         for j in 1:N
-            give_rand_p!(p_range,p2)
-            give_rand_p!(p_range,p1,@view(p2[i:i]),i_arr)
-            give_rand_p!(p_range,p3,@view(p1[indices]),indices)
-            y .+= (f(p2)) .* (f(p1) .- f(p3))
+            y .+= fp2[j] .* (fp1[i][j] .- fp3[i][j])
         end
         ys[i] = y/N
     end
+
     for i in 1:length(ys)
         @. ys[i] = ys[i] / v
     end
@@ -239,7 +245,7 @@ function gsa(f,p_range::AbstractVector,method::Sobol)
             sobol_sens.ST_Conf_Int = [vec.(first_total[2]) - ci[2], vec.(first_total[2]) + ci[2]]
         end
     elseif 1 in order
-        first_order = first_order_var(f,p_range,N,y0,v,p1,p2,p3)
+        first_order = first_order_var(f,p_range,N,y0,v)
         sobol_sens.S1 = first_order
         if nboot > 0
             ci = calc_ci(f,p_range,N,y0,v,nboot,conf_int,first_order_var,p1,p2,p3)
