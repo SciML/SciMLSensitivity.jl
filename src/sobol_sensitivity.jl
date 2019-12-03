@@ -1,3 +1,5 @@
+using Surrogates
+
 @with_kw mutable struct Sobol <: GSAMethod
     N::Int=1000
     order::Array{Int}=[0,1]
@@ -28,15 +30,26 @@ function give_rand_p!(p_range,p,p_fixed=nothing,indices=nothing)
     end
 end
 
+function create_sols(p,f)
+    sols = typeof(f(p[1]))[]
+    for i in 1:length
+        push!(sols,f(p[i]))
+    end
+    sols
+end
+
+function samples(p_range,N)
+    return [Surrogates.sample(N,p_range[1],p_range[2],SobolSample()) for i in 1:N]
+end
+
 function calc_mean_var(f,p_range,N)
-    p = Array{eltype(p_range[1])}(undef, length(p_range))
-    give_rand_p!(p_range,p)
-    y1 = f(p)
+    p = samples(p_range,N)
+    sols = create_sols(p,f)
+    y1 = sols[1]
     y0 = zero(y1)
     v = zero(y1)
     for i in 1:N
-        give_rand_p!(p_range,p)
-        y1 = f(p)
+        y1 = sols[i]
         @. y0 += y1
         @. v += y1^2
     end
@@ -51,12 +64,11 @@ function calc_mean_var_quad(f,p_range,quadalg,batch,ireltol,iabstol,imaxiters)
                              [p_range[i][2] for i in 1:length(p_range)],
                              batch=batch)
     E = solve(prob,quadalg,reltol=ireltol,abstol=iabstol,maxiters=imaxiters)
-
     prob1 = QuadratureProblem((x,p) -> (f(x,p)).^2,
                               [p_range[i][1] for i in 1:length(p_range)],
                               [p_range[i][2] for i in 1:length(p_range)],
                               batch = batch)
-    V = solve(prob1,quadalg,reltol=ireltol,abstol=iabstol,maxiters=imaxiters) .- E.^2
+    V = solve(prob1,quadalg,reltol=ireltol,abstol=iabstol,maxiters=imaxiters).u .- E.u.^2
     return E, V
 end
 
