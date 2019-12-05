@@ -1,64 +1,42 @@
-using DiffEqSensitivity, Test, Random
-using Cubature, Quadrature
-Random.seed!(123)
+using DiffEqSensitivity, QuasiMonteCarlo, Test
 
-function ishi(X,p=nothing)
-    A= 7
-    B= 0.1
-    [sin(X[1]) + A*sin(X[2])^2+ B*X[3]^4 *sin(X[1])]
-end
-p_range = [[0.0,1.0] for i in 1:4]
-N = 60000
-sobol1 = gsa(ishi,p_range,Sobol(N=N,order=[0,1,2]))
-sobol2 = gsa(ishi,p_range,SobolQuad())
-
-for (first_order, r_sens) in zip(sobol1.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
-     @test first_order[1] ≈ r_sens atol=2e-2
-end
-for (first_order, r_sens) in zip(sobol2.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
-     @test first_order[1] ≈ r_sens atol=2e-2
-end
-for (second_order, r_sens) in zip(sobol1.S2,[ 0.999923,0.021941,0.021867,0.974586,0.974525,-0.004465])
-    @test second_order[1] ≈ r_sens atol=2e-2
-end
-for (total_order, r_sens) in zip(sobol1.ST,[2.682048e-02,9.693216e-01,6.910431e-05,0.000000e+00])
-    @test total_order[1] ≈ r_sens atol=2e-2
-end
-
-######################################################################
-#Model runs: 600000
-#
-#First order indices:
-#       original          bias   std. error     min. c.i.    max. c.i.
-#X1 0.0242498108 -6.038174e-05 1.130665e-03  0.0219442397 0.0266505624
-#X2 0.9801111059  1.318961e-03 9.755089e-03  0.9619890024 1.0038331890
-#X3 0.0000346274  1.564015e-06 7.342856e-05 -0.0001075782 0.0001843829
-#X4 0.0000000000  0.000000e+00 0.000000e+00  0.0000000000 0.0000000000
-#
-#Total indices:
-#       original          bias   std. error     min. c.i.    max. c.i.
-#X1 2.682048e-02  1.087146e-04 1.177283e-03  2.462456e-02 0.0294033066
-#X2 9.693216e-01 -7.482170e-04 7.634399e-03  9.550214e-01 0.9875516033
-#X3 6.910431e-05  8.949816e-06 7.376054e-05 -9.023791e-05 0.0002100689
-#X4 0.000000e+00  0.000000e+00 0.000000e+00  0.000000e+00 0.0000000000
-
-#Second order indices
-#     original std. error min. c.i. max. c.i.
-#X12  0.999923   0.000001  0.999922  0.999924
-#X13  0.021941   0.004076  0.013953  0.029929
-#X14  0.021867   0.004076  0.013878  0.029856
-#X23  0.974586   0.000154  0.974284  0.974888
-#X24  0.974525   0.000154  0.974223  0.974827
-#X34 -0.004465   0.004083 -0.012468  0.003538
-######################################################################
-
-# Batched interface tests
 function ishi_batch(X,p=nothing)
     A= 7
     B= 0.1
     @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*X[3,:]^4 *sin(X[1,:])
 end
-sobol3 = gsa(ishi_batch,p_range,SobolQuad(quadalg=CubatureJLh()),batch = 5)
-for (first_order, r_sens) in zip(sobol3.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
-     @test first_order[1] ≈ r_sens atol=2e-2
+function ishi(X,p=nothing)
+    A= 7
+    B= 0.1
+    sin(X[1]) + A*sin(X[2])^2+ B*X[3]^4 *sin(X[1])
 end
+
+n = 600000
+lb = -ones(4)*π
+ub = ones(4)*π
+sampler = SobolSample()
+A,B = QuasiMonteCarlo.generate_design_matrices(n,lb,ub,sampler)
+
+res1 = gsa(ishi,Sobol(),A,B)
+res2 = gsa(ishi_batch,Sobol(),A,B,batch=true)
+
+@test res1.S1 ≈ [0.3139335358797363, 0.44235918402206326, 0.0, 0.0] atol=1e-4
+@test res2.S1 ≈ [0.3139335358797363, 0.44235918402206326, 0.0, 0.0] atol=1e-4
+
+@test res1.ST ≈ [0.5576009081644232, 0.44237102330046346, 0.24366241588532553, 0.0] atol=1e-4
+@test res2.ST ≈ [0.5576009081644232, 0.44237102330046346, 0.24366241588532553, 0.0] atol=1e-4
+
+#=
+library(sensitivity)
+ishigami.fun <- function(X) {
+  A <- 7
+  B <- 0.1
+  sin(X[, 1]) + A * sin(X[, 2])^2 + B * X[, 3]^4 * sin(X[, 1])
+}
+n <- 600000
+X1 <- data.frame(matrix(runif(4 * n,-pi,pi), nrow = n))
+X2 <- data.frame(matrix(runif(4 * n,-pi,pi), nrow = n))
+sobol2007(ishigami.fun, X1, X2)
+sobolSalt(ishigami.fun, X1, X2, scheme="A")
+sobolSalt(ishigami.fun, X1, X2, scheme="B")
+=#
