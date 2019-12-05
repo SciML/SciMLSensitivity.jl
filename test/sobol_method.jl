@@ -5,7 +5,7 @@ Random.seed!(123)
 function ishi(X,p=nothing)
     A= 7
     B= 0.1
-    [sin(X[1]) + A*sin(X[2])^2+ B*sin(X[3])^4 *sin(X[1])]
+    [sin(X[1]) + A*sin(X[2])^2+ B*X[3]^4 *sin(X[1])]
 end
 p_range = [[0.0,1.0] for i in 1:4]
 N = 60000
@@ -56,7 +56,7 @@ end
 function ishi_batch(X,p=nothing)
     A= 7
     B= 0.1
-    @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*sin(X[3,:])^4 *sin(X[1,:])
+    @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*X[3,:]^4 *sin(X[1,:])
 end
 sobol3 = gsa(ishi_batch,p_range,SobolQuad(quadalg=CubatureJLh()),batch = 5)
 for (first_order, r_sens) in zip(sobol3.S1,[0.0242498108,0.9801111059,0.0000346274,0.0000000000])
