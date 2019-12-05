@@ -1,17 +1,17 @@
 using DiffEqSensitivity, QuasiMonteCarlo, Test
 
-function ishi_batch(X,p=nothing)
+function ishi_batch(X)
     A= 7
     B= 0.1
     @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*X[3,:]^4 *sin(X[1,:])
 end
-function ishi(X,p=nothing)
+function ishi(X)
     A= 7
     B= 0.1
     sin(X[1]) + A*sin(X[2])^2+ B*X[3]^4 *sin(X[1])
 end
 
-n = 600000
+n = 6000000
 lb = -ones(4)*π
 ub = ones(4)*π
 sampler = SobolSample()
