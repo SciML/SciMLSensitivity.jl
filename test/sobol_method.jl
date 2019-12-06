@@ -40,3 +40,20 @@ sobol2007(ishigami.fun, X1, X2)
 sobolSalt(ishigami.fun, X1, X2, scheme="A")
 sobolSalt(ishigami.fun, X1, X2, scheme="B")
 =#
+
+function ishi_linear(X)
+    A= 7
+    B= 0.1
+    [sin(X[1]) + A*sin(X[2])^2+ B*X[3]^4 *sin(X[1]),A*X[1]+B*X[2]]
+end
+
+function ishi_linear_batch(X)
+    A= 7
+    B= 0.1
+    X1 = @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*X[3,:]^4 *sin(X[1,:])
+    X2 = @. A*X[1,:]+B*X[2,:]
+    hcat(X1,X2)
+end
+
+res1 = gsa(ishi_linear,Sobol(),A,B)
+res2 = gsa(ishi_linear_batch,Sobol(),A,B,batch=true)
