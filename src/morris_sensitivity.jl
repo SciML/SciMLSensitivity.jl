@@ -1,4 +1,4 @@
-@with_kw mutable struct Morris <: GSAMethod 
+@with_kw mutable struct Morris <: GSAMethod
     p_steps::Array{Int,1}=Int[]
     relative_scale::Bool=false
     len_trajectory::Int=10
@@ -65,7 +65,7 @@ function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,tot
     matrices
 end
 
-function gsa(f,p_range::AbstractVector,method::Morris)
+function gsa(f,method::Morris,p_range::AbstractVector)
     @unpack p_steps, relative_scale, len_trajectory, num_trajectory, total_num_trajectory, k  = method
     if !(length(p_steps) == length(p_range))
         for i in 1:length(p_range)-length(p_steps)
@@ -121,12 +121,4 @@ function gsa(f,p_range::AbstractVector,method::Morris)
         end
     end
     MorrisResult(means,variances,effects)
-end
-
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris)
-    f = function (p)
-      prob1 = remake(prob;p=p)
-      Array(solve(prob1,alg;saveat=t))
-    end
-    gsa(f,p_range,method)
 end
