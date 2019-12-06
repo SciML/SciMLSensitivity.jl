@@ -97,15 +97,30 @@ calc_res = Calculus.finite_difference_jacobian(test_f,p)
 
 ## Check extraction
 
-x,dp = extract_local_sensitivities(sol)
-x == res
-dp[1] == da
+xall, dpall = extract_local_sensitivities(sol)
+@test xall == res
+@test dpall[1] == da
 
-x,dp = extract_local_sensitivities(sol,length(sol.t))
+x, dp = extract_local_sensitivities(sol,length(sol.t))
 sense_res2 = hcat(dp...)
-sense_res == sense_res2
+@test sense_res == sense_res2
 
-extract_local_sensitivities(sol,sol.t[3]) == extract_local_sensitivities(sol,3)
+@test extract_local_sensitivities(sol,sol.t[3]) == extract_local_sensitivities(sol,3)
 
 tmp = similar(sol[1])
-extract_local_sensitivities(tmp,sol,sol.t[3]) == extract_local_sensitivities(sol,3)
+@test extract_local_sensitivities(tmp,sol,sol.t[3]) == extract_local_sensitivities(sol,3)
+
+
+# asmatrix=true
+@test extract_local_sensitivities(sol, length(sol), true) == (x, sense_res2)
+@test extract_local_sensitivities(sol, sol.t[end], true) == (x, sense_res2)
+@test extract_local_sensitivities(tmp, sol, sol.t[end], true) == (x, sense_res2)
+
+
+# Return type inferred
+@inferred extract_local_sensitivities(sol, 1)
+@inferred extract_local_sensitivities(sol, 1, Val(true))
+@inferred extract_local_sensitivities(sol, sol.t[3])
+@inferred extract_local_sensitivities(sol, sol.t[3], Val(true))
+@inferred extract_local_sensitivities(tmp, sol, sol.t[3])
+@inferred extract_local_sensitivities(tmp, sol, sol.t[3], Val(true))
