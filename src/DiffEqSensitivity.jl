@@ -4,7 +4,7 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DataFrames, GLM, RecursiveArrayTools, Quadrature
+using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack, @with_kw
 
 
