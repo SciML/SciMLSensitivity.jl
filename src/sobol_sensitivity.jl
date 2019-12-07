@@ -23,30 +23,60 @@ function fuse_designs(A,B)
 end
 
 function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
-             batch=false)
+             batch=false,Ei_estimator = :Jansen1999)
     Aᵦ = fuse_designs(A,B)
     d,n = size(A)
+    multioutput = false
     all_points = hcat(A,B,reduce(hcat,Aᵦ))
 
     if batch
         all_y = f(all_points)
+        multioutput = all_y isa AbstractMatrix
     else
-        all_y = [f(all_points[:,i]) for i in 1:size(all_points,2)]
+        _y = [f(all_points[:,i])' for i in 1:size(all_points,2)]
+        multioutput = !(eltype(_y) <: Number)
+        all_y = multioutput ? reduce(vcat,_y) : _y
     end
 
-    Ey = mean(all_y[1:2n])
-    Vary = var(all_y[1:2n])
+    if !multioutput
 
-    fA = all_y[1:n]
-    fB = all_y[(n+1):(2n)]
-    fAⁱ= [all_y[(j*n+1):((j+1)*n)] for j in 2:(d+1)]
+        Ey = mean(all_y[1:2n])
+        Vary = var(all_y[1:2n])
 
-    Vᵢ = [sum(fB.*(fAⁱ[i].-fA)) for i in 1:d]./n
+        fA = all_y[1:n]
+        fB = all_y[(n+1):(2n)]
+        fAⁱ= [all_y[(j*n+1):((j+1)*n)] for j in 2:(d+1)]
 
-    Eᵢ = [Vary - sum(fA .* fAⁱ[i])./(n) + Ey^2 for i in 1:d]
-    Eᵢ = [sum(abs2,fA-fAⁱ[i]) for i in 1:d]./(2n)
-    Eᵢ = [sum(fA.*(fA.-fAⁱ[i])) for i in 1:d]./(n)
+        Vᵢ = [sum(fB.*(fAⁱ[i].-fA)) for i in 1:d]./n
 
+        if Ei_estimator == :Homma1996
+            Eᵢ = [Vary .- sum(fA .* fAⁱ[i])./(n) + Ey.^2 for i in 1:d]
+        elseif Ei_estimator == :Sobol2007
+            Eᵢ = [sum(abs2,fA-fAⁱ[i]) for i in 1:d]./(2n)
+        elseif Ei_estimator == :Jansen1999
+            Eᵢ = [sum(fA.*(fA.-fAⁱ[i])) for i in 1:d]./(n)
+        end
+
+    else
+
+        Ey = mean(all_y[1:2n,:],dims=1)
+        Vary = var(all_y[1:2n,:],dims=1)
+
+        fA = all_y[1:n,:]
+        fB = all_y[(n+1):(2n),:]
+        fAⁱ= [all_y[(j*n+1):((j+1)*n),:] for j in 2:(d+1)]
+
+        Vᵢ = reduce(vcat,[sum(fB.*(fAⁱ[i].-fA),dims=1) for i in 1:d]./n)
+
+        if Ei_estimator == :Homma1996
+            Eᵢ = reduce(vcat,[Vary .- sum(fA .* fAⁱ[i],dims=1)./(n) + Ey.^2 for i in 1:d])
+        elseif Ei_estimator == :Sobol2007
+            Eᵢ = reduce(vcat,[sum(abs2,fA-fAⁱ[i],dims=1) for i in 1:d]./(2n))
+        elseif Ei_estimator == :Jansen1999
+            Eᵢ = reduce(vcat,[sum(fA.*(fA.-fAⁱ[i]),dims=1) for i in 1:d]./(n))
+        end
+
+    end
     #Eᵢⱼ = [sum(abs2,fAⁱ[i] - fAⁱ[j]) for i in 1:d, j in 1:d]./(2n)
     #Vᵢⱼ = Vary .- Eᵢⱼ
     #Sᵢⱼ= Vᵢⱼ./Vary
