@@ -36,7 +36,6 @@ function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
         _y = [f(all_points[:,i]) for i in 1:size(all_points,2)]
         multioutput = !(eltype(_y) <: Number)
         all_y = multioutput ? reduce(hcat,_y) : _y
-        @show size(_y),size(all_y)
     end
 
     if !multioutput
@@ -81,8 +80,6 @@ function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
     #Eᵢⱼ = [sum(abs2,fAⁱ[i] - fAⁱ[j]) for i in 1:d, j in 1:d]./(2n)
     #Vᵢⱼ = Vary .- Eᵢⱼ
     #Sᵢⱼ= Vᵢⱼ./Vary
-
-    @show size(Vᵢ),size(Eᵢ),size(Vary)
 
     Sᵢ = Vᵢ ./Vary
     Tᵢ = Eᵢ ./Vary
