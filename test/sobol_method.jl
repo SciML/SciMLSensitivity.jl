@@ -85,7 +85,7 @@ function ishi_linear_batch(X)
     B= 0.1
     X1 = @. sin(X[1,:]) + A*sin(X[2,:])^2+ B*X[3,:]^4 *sin(X[1,:])
     X2 = @. A*X[1,:]+B*X[2,:]
-    hcat(X1,X2)
+    vcat(X1',X2')
 end
 
 res1 = gsa(ishi_linear,Sobol(),A,B)
