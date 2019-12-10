@@ -33,9 +33,9 @@ function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
         all_y = f(all_points)
         multioutput = all_y isa AbstractMatrix
     else
-        _y = [f(all_points[:,i])' for i in 1:size(all_points,2)]
+        _y = [f(all_points[:,i]) for i in 1:size(all_points,2)]
         multioutput = !(eltype(_y) <: Number)
-        all_y = multioutput ? reduce(vcat,_y) : _y
+        all_y = multioutput ? reduce(hcat,_y) : _y
     end
 
     if !multioutput
@@ -59,21 +59,21 @@ function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
 
     else
 
-        Ey = mean(all_y[1:2n,:],dims=1)
-        Vary = var(all_y[1:2n,:],dims=1)
+        Ey = mean(all_y[:,1:2n],dims=2)
+        Vary = var(all_y[:,1:2n],dims=2)
 
-        fA = all_y[1:n,:]
-        fB = all_y[(n+1):(2n),:]
-        fAⁱ= [all_y[(j*n+1):((j+1)*n),:] for j in 2:(d+1)]
+        fA = all_y[:,1:n]
+        fB = all_y[:,(n+1):(2n)]
+        fAⁱ= [all_y[:,(j*n+1):((j+1)*n)] for j in 2:(d+1)]
 
-        Vᵢ = reduce(vcat,[sum(fB.*(fAⁱ[i].-fA),dims=1) for i in 1:d]./n)
+        Vᵢ = reduce(hcat,[sum(fB.*(fAⁱ[i].-fA),dims=2) for i in 1:d]./n)
 
         if Ei_estimator == :Homma1996
-            Eᵢ = reduce(vcat,[Vary .- sum(fA .* fAⁱ[i],dims=1)./(n) + Ey.^2 for i in 1:d])
+            Eᵢ = reduce(hcat,[Vary .- sum(fA .* fAⁱ[i],dims=2)./(n) + Ey.^2 for i in 1:d])
         elseif Ei_estimator == :Sobol2007
-            Eᵢ = reduce(vcat,[sum(abs2,fA-fAⁱ[i],dims=1) for i in 1:d]./(2n))
+            Eᵢ = reduce(hcat,[sum(abs2,fA-fAⁱ[i],dims=2) for i in 1:d]./(2n))
         elseif Ei_estimator == :Jansen1999
-            Eᵢ = reduce(vcat,[sum(fA.*(fA.-fAⁱ[i]),dims=1) for i in 1:d]./(n))
+            Eᵢ = reduce(hcat,[sum(fA.*(fA.-fAⁱ[i]),dims=2) for i in 1:d]./(n))
         end
 
     end
