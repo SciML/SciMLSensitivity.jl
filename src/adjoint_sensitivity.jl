@@ -142,7 +142,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   elseif isquad(alg)
     _dy, back = Tracker.forward(y) do u
       if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         f(out_, u, p, t)
         Tracker.collect(out_)
       else
@@ -154,7 +154,7 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
   else
     _dy, back = Tracker.forward(y, sol.prob.p) do u, p
       if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         f(out_, u, p, t)
         Tracker.collect(out_)
       else
@@ -299,7 +299,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   else
     _, back = Tracker.forward(y, p) do u, p
       if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
+        out_ = false .* u
         f(out_, u, p, t)
         Tracker.collect(out_)
       else
