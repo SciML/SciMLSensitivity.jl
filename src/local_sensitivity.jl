@@ -82,7 +82,7 @@ end
 function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg = SensitivityAlg(autojacvec=true);
-                                    callback=CallbackSet(),mass_matrix=I)
+                                    kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacvec = get_jacvec(alg)
@@ -115,34 +115,50 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   sense = ODELocalSensitivityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
-                                     p,similar(u0),mass_matrix,
+                                     p,similar(u0),f.mass_matrix,
                                      isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
-  ODEProblem(sense,sense_u0,tspan,p;callback=callback)
+  ODEProblem(sense,sense_u0,tspan,p;kwargs...)
 end
 
 function ODELocalSensitivityProblem(f,args...;kwargs...)
   ODELocalSensitivityProblem(ODEFunction(f),args...;kwargs...)
 end
 
+
+# Get ODE u vector and sensitivity values from all time points
 function extract_local_sensitivities(sol)
-  x = sol[1:sol.prob.f.numindvar,:]
-  x,[sol[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1),:] for j in 1:(length(sol.prob.p))]
+  ni = sol.prob.f.numindvar
+  u = sol[1:ni, :]
+  du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
+  return u, du
 end
 
-function extract_local_sensitivities(sol,i::Integer)
-  x = sol[1:sol.prob.f.numindvar,i]
-  x,[sol[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1),i] for j in 1:(length(sol.prob.p))]
+
+extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol[i], asmatrix)
+extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())
+extract_local_sensitivities(sol, t, asmatrix::Val=Val(false)) = _extract(sol, sol(t), asmatrix)
+extract_local_sensitivities(sol, t, asmatrix::Bool) = extract_local_sensitivities(sol, t, Val{asmatrix}())
+extract_local_sensitivities(tmp, sol, t, asmatrix::Val=Val(false)) = _extract(sol, sol(tmp, t), asmatrix)
+extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensitivities(tmp, sol, t, Val{asmatrix}())
+
+
+# Get ODE u vector and sensitivity values from sensitivity problem u vector
+function _extract(sol, su::Vector, asmatrix::Val = Val(false))
+  u = view(su, 1:sol.prob.f.numindvar)
+  du = _extract_du(sol, su, asmatrix)
+  return u, du
 end
 
-function extract_local_sensitivities(sol,t)
-  tmp = sol(t)
-  x = tmp[1:sol.prob.f.numindvar]
-  x,[tmp[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1)] for j in 1:(length(sol.prob.p))]
+# Get sensitivity values from sensitivity problem u vector (nested form)
+function _extract_du(sol, su::Vector, ::Val{false})
+  ni = sol.prob.f.numindvar
+  return [view(su, ni*j+1:ni*(j+1)) for j in 1:sol.prob.f.numparams]
 end
 
-function extract_local_sensitivities(tmp,sol,t)
-  sol(tmp,t)
-  x = @view tmp[1:sol.prob.f.numindvar]
-  x,[@view(tmp[sol.prob.f.numindvar*j+1:sol.prob.f.numindvar*(j+1)]) for j in 1:(length(sol.prob.p))]
+# Get sensitivity values from sensitivity problem u vector (matrix form)
+function _extract_du(sol, su::Vector, ::Val{true})
+  ni = sol.prob.f.numindvar
+  np = sol.prob.f.numparams
+  return view(reshape(su, ni, np+1), :, 2:np+1)
 end

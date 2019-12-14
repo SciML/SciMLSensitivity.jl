@@ -1,4 +1,4 @@
-Base.@kwdef mutable struct Morris <: GSAMethod 
+@with_kw mutable struct Morris <: GSAMethod
     p_steps::Array{Int,1}=Int[]
     relative_scale::Bool=false
     len_trajectory::Int=10
@@ -12,7 +12,7 @@ struct MatSpread
     spread::Float64
 end
 
-struct MorrisSensitivity{T1,T2}
+struct MorrisResult{T1,T2}
     means::T1
     variances::T1
     elementary_effects::T2
@@ -65,7 +65,7 @@ function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,tot
     matrices
 end
 
-function gsa(f,p_range::AbstractVector,method::Morris)
+function gsa(f,method::Morris,p_range::AbstractVector)
     @unpack p_steps, relative_scale, len_trajectory, num_trajectory, total_num_trajectory, k  = method
     if !(length(p_steps) == length(p_range))
         for i in 1:length(p_range)-length(p_steps)
@@ -73,7 +73,7 @@ function gsa(f,p_range::AbstractVector,method::Morris)
         end
     end
 
-    design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory, 
+    design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory,
                                         total_num_trajectory=total_num_trajectory,len_design_mat=k)
     effects = []
     for i in design_matrices
@@ -99,11 +99,11 @@ function gsa(f,p_range::AbstractVector,method::Morris)
                     elem_effect = @. abs((y1-y2)/(y1*del))
                 end
             end
-            if length(effects) >= change_index && change_index > 0 
+            if length(effects) >= change_index && change_index > 0
                 push!(effects[change_index],elem_effect)
             elseif change_index > 0
                 while(length(effects) < change_index-1)
-                    push!(effects,[])
+                    push!(effects,typeof(elem_effect)[])
                 end
                 push!(effects,[elem_effect])
             end
@@ -112,16 +112,13 @@ function gsa(f,p_range::AbstractVector,method::Morris)
     means = eltype(effects[1])[]
     variances = eltype(effects[1])[]
     for k in effects
-        push!(means,mean(k))
-        push!(variances,var(k))
+        if !isempty(k)
+            push!(means,mean(k))
+            push!(variances,var(k))
+        else
+            push!(means,zero(effects[1][1]))
+            push!(variances,zero(effects[1][1]))
+        end
     end
-    MorrisSensitivity(means,variances,effects)
-end
-
-function gsa(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,t,p_range::AbstractVector,method::Morris)
-    f = function (p)
-      prob1 = remake(prob;p=p)
-      Array(solve(prob1,alg;saveat=t))
-    end
-    gsa(f,p_range,method)
+    MorrisResult(means,variances,effects)
 end

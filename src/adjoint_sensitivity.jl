@@ -199,7 +199,7 @@ end
   discrete = t != nothing
 
   p = sol.prob.p
-  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
   u0 = zero(sol.prob.u0)
 
@@ -209,12 +209,13 @@ end
                                         p,alg,discrete,
                                         sol,dg,checkpoints,tspan,f.colorvec)
 
-  cb = generate_callbacks(sense, g, λ, t, callback)
+  init_cb = t !== nothing && sol.prob.tspan[2] == t[end]
+  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = isbcksol(alg) ? [vec(zero(λ)); vec(sense.y)] : vec(zero(λ))
   ODEProblem(sense,z0,tspan,p,callback=cb)
 end
 
-function generate_callbacks(sensefun, g, λ, t, callback)
+function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   if sensefun.discrete
     @unpack alg, y, sol = sensefun
     prob = sol.prob
@@ -237,7 +238,7 @@ function generate_callbacks(sensefun, g, λ, t, callback)
         cur_time[] -= 1
       end
     end
-    cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=true)
+    cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=init_cb)
 
     _cb = CallbackSet(cb,callback)
   else
