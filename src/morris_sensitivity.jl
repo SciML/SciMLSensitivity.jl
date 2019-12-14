@@ -1,10 +1,9 @@
 @with_kw mutable struct Morris <: GSAMethod
     p_steps::Array{Int,1}=Int[]
     relative_scale::Bool=false
-    len_trajectory::Int=10
     num_trajectory::Int=10
     total_num_trajectory::Int=5*num_trajectory
-    k::Int=10
+    len_design_mat::Int=10
 end
 
 struct MatSpread
@@ -50,7 +49,7 @@ function calculate_spread(matrix)
     spread
 end
 
-function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,total_num_trajectory=5*num_trajectory,len_design_mat=10)
+function sample_matrices(p_range,p_steps;num_trajectory=10,total_num_trajectory=5*num_trajectory,len_design_mat=10)
     matrix_array = []
     if total_num_trajectory<num_trajectory
         error("total_num_trajectory should be greater than num_trajectory preferably atleast 3-4 times higher")
@@ -66,15 +65,15 @@ function sample_matrices(p_range,p_steps;len_trajectory=10,num_trajectory=10,tot
 end
 
 function gsa(f,method::Morris,p_range::AbstractVector)
-    @unpack p_steps, relative_scale, len_trajectory, num_trajectory, total_num_trajectory, k  = method
+    @unpack p_steps, relative_scale, num_trajectory, total_num_trajectory, len_design_mat  = method
     if !(length(p_steps) == length(p_range))
         for i in 1:length(p_range)-length(p_steps)
             push!(p_steps,100)
         end
     end
 
-    design_matrices = sample_matrices(p_range,p_steps;len_trajectory=len_trajectory, num_trajectory=num_trajectory,
-                                        total_num_trajectory=total_num_trajectory,len_design_mat=k)
+    design_matrices = sample_matrices(p_range,p_steps;num_trajectory=num_trajectory,
+                                        total_num_trajectory=total_num_trajectory,len_design_mat=len_design_mat)
     effects = []
     for i in design_matrices
         y1 = f(i[1])
