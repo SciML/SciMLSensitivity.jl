@@ -7,7 +7,7 @@
 end
 
 struct MatSpread
-    mat::Vector{Vector{Float64}}
+    mat::AbstractMatrix
     spread::Float64
 end
 
@@ -38,13 +38,13 @@ function generate_design_matrix(p_range,p_steps;len_design_mat = 10)
         cur_p = [ps[u][(all_idxs[j][u])] for u in 1:length(p_range)]
         B[j] = cur_p
     end
-    B
+    reduce(hcat, B) 
 end
 
 function calculate_spread(matrix)
     spread = 0.0
-    for i in 2:length(matrix)
-        spread += sqrt(sum(abs2.(matrix[i] - matrix[i-1])))
+    for i in 2:size(matrix,2)
+        spread += sqrt(sum(abs2.(matrix[:,i] - matrix[:,i-1])))
     end
     spread
 end
@@ -61,10 +61,10 @@ function sample_matrices(p_range,p_steps;num_trajectory=10,total_num_trajectory=
     end
     sort!(matrix_array,by = x -> x.spread,rev=true)
     matrices = [i.mat for i in matrix_array[1:num_trajectory]]
-    matrices
+    reduce(hcat,matrices)
 end
 
-function gsa(f,method::Morris,p_range::AbstractVector)
+function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
     @unpack p_steps, relative_scale, num_trajectory, total_num_trajectory, len_design_mat  = method
     if !(length(p_steps) == length(p_range))
         for i in 1:length(p_range)-length(p_steps)
@@ -74,12 +74,24 @@ function gsa(f,method::Morris,p_range::AbstractVector)
 
     design_matrices = sample_matrices(p_range,p_steps;num_trajectory=num_trajectory,
                                         total_num_trajectory=total_num_trajectory,len_design_mat=len_design_mat)
+
+    multioutput = false
+
+    if batch
+        all_y = f(design_matrices)
+        multioutput = all_y isa AbstractMatrix
+    else
+        _y = [f(design_matrices[:,i]) for i in 1:size(design_matrices,2)]
+        multioutput = !(eltype(_y) <: Number)
+        all_y = multioutput ? reduce(hcat,_y) : _y
+    end
+
     effects = []
-    for i in design_matrices
-        y1 = f(i[1])
-        for j in 1:length(i)-1
+    for i in 1:num_trajectory
+        y1 = multioutput ? all_y[:,(i-1)*len_design_mat+1] : all_y[(i-1)*len_design_mat+1]
+        for j in (i-1)*len_design_mat+1:(i*len_design_mat)-1
             y2 = y1
-            del = i[j+1] - i[j]
+            del = design_matrices[:,j+1] - design_matrices[:,j]
             change_index = 0
             for k in 1:length(del)
                 if abs(del[k]) > 0
@@ -88,14 +100,17 @@ function gsa(f,method::Morris,p_range::AbstractVector)
                 end
             end
             del = sum(del)
-            y1 = f(i[j+1])
+            y1 = multioutput ? all_y[:,j+1] : all_y[j+1]
             if relative_scale == false
-                elem_effect = @. abs((y1-y2)/(del))
+                effect = @. abs((y1-y2)/(del))
+                elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
             else
                 if del > 0
-                    elem_effect = @. abs((y1-y2)/(y2*del))
+                    effect = @. abs((y1-y2)/(y2*del))
+                    elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
                 else
-                    elem_effect = @. abs((y1-y2)/(y1*del))
+                    effect = @. abs((y1-y2)/(y1*del))
+                    elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
                 end
             end
             if length(effects) >= change_index && change_index > 0
@@ -119,5 +134,5 @@ function gsa(f,method::Morris,p_range::AbstractVector)
             push!(variances,zero(effects[1][1]))
         end
     end
-    MorrisResult(means,variances,effects)
+    MorrisResult(reduce(hcat, means),reduce(hcat, variances),effects)
 end
