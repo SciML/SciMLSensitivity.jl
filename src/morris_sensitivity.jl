@@ -6,9 +6,9 @@
     len_design_mat::Int=10
 end
 
-struct MatSpread
-    mat::AbstractMatrix
-    spread::Float64
+struct MatSpread{T1,T2}
+    mat::T1
+    spread::T2
 end
 
 struct MorrisResult{T1,T2}

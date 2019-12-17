@@ -22,21 +22,6 @@ function fuse_designs(A,B)
     Aᵦ
 end
 
-
-# function fuse_designs_second(A,B)
-#     d = size(A,1)
-#     Aᵦ = [copy(A) for i in 1:(d*(d-1))/2]
-#     k = 1
-#     for i in 1:d
-#         for j in i+1:d
-#             Aᵦ[k][i,:] = B[i,:]
-#             Aᵦ[k][j,:] = B[j,:]
-#             k += 1
-#         end
-#     end
-#     Aᵦ
-# end
-
 function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
              batch=false,Ei_estimator = :Jansen1999)
     Aᵦ = fuse_designs(A,B)
