@@ -44,14 +44,16 @@ m = gsa(f_morris,Morris(p_steps=[10,10],relative_scale=true,total_num_trajectory
 @test m.variances[2,1] ≈ 0 atol=1e-12
 @test m.means[1,2] < m.means[2,2]
 
-m = gsa(ishi, Morris(num_trajectory=10000), [[lb[i],ub[i]] for i in 1:4])
-@test m.means ≈ [ 2.23463  4.41884  2.5193  0.0] atol = 1e-2
-
 m = gsa(linear_batch,Morris(p_steps=[10,10],num_trajectory=10000),[[1,5],[1,5]],batch=true)
 @test m.means ≈ [7.0  0.1] atol = 1e-2
 
-m = gsa(ishi_linear,Morris(p_steps=[10,10],relative_scale=false,num_trajectory=100),[[lb[i],ub[i]] for i in 1:4])
+m = gsa(ishi, Morris(num_trajectory=100000), [[lb[i],ub[i]] for i in 1:4])
+@test m.means[1,:] ≈ [2.25341,4.40246,2.5049,0.0] atol = 5e-2
+
+m = gsa(ishi_linear,Morris(num_trajectory=100000),[[lb[i],ub[i]] for i in 1:4])
+@test m.means[1,:] ≈ [2.25341,4.40246,2.5049,0.0] atol = 5e-2
 @test m.means[2,:] ≈ [7.0,0.1,0.0,0.0] rtol = 1e-12
 
-m = gsa(ishi_linear_batch,Morris(p_steps=[10,10],relative_scale=false,num_trajectory=100),[[lb[i],ub[i]] for i in 1:4])
+m = gsa(ishi_linear_batch,Morris(num_trajectory=100000),[[lb[i],ub[i]] for i in 1:4],batch=true)
+@test m.means[1,:] ≈ [2.25341,4.40246,2.5049,0.0] atol = 5e-2
 @test m.means[2,:] ≈ [7.0,0.1,0.0,0.0] rtol = 1e-12
