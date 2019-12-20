@@ -73,7 +73,7 @@ function gsa(f,method::Sobol,A::AbstractMatrix,B::AbstractMatrix;
         Vᵢ = reduce(hcat,[sum(fB.*(fAⁱ[i].-fA),dims=2) for i in 1:d]./n)
 
         if 2 in method.order 
-            Vᵢⱼ = reduce(hcat, [sum(abs2, fAⁱ[i] - fAⁱ[j]) for i in 1:d for j in i+1:d]./(2n))
+            Vᵢⱼ = reduce(hcat, [sum(abs2, fAⁱ[i] - fAⁱ[j],dims=2) for i in 1:d for j in i+1:d]./(2n))
         end
         if Ei_estimator == :Homma1996
             Eᵢ = reduce(hcat,[Vary .- sum(fA .* fAⁱ[i],dims=2)./(n) + Ey.^2 for i in 1:d])
