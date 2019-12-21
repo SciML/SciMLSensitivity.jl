@@ -16,6 +16,10 @@ end
 
 if GROUP == "Downstream"
     using Pkg
+    if is_TRAVIS
+      using Pkg
+      Pkg.add("DiffEqFlux")
+    end
     Pkg.test("DiffEqFlux")
 end
 end
