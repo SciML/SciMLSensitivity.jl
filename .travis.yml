@@ -9,7 +9,7 @@ julia:
 #    - julia: nightly
 env:
   - GROUP=Core
-  - GROUP=Downstream
+  - GROUP=DiffEqFlux
 notifications:
   email: false
 # uncomment the following lines to override the default test script
