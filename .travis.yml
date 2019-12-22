@@ -3,13 +3,13 @@ language: julia
 os:
   - linux
 julia:
-  - 1.1
+  - 1
 #matrix:
 #  allow_failures:
 #    - julia: nightly
 env:
   - GROUP=Core
-  - GROUP=Downstream
+  - GROUP=DiffEqFlux
 notifications:
   email: false
 # uncomment the following lines to override the default test script
