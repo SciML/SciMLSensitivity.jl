@@ -11,6 +11,7 @@ using Parameters: @unpack, @with_kw
 abstract type SensitivityFunction end
 abstract type GSAMethod end
 
+include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("forward_sensitivity.jl")
 include("adjoint_sensitivity.jl")

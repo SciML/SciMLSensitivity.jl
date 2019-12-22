@@ -83,7 +83,7 @@ end
 
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
-                                    alg = ForwardSensitivity(autojacvec=true);
+                                    alg::ForwardSensitivity = ForwardSensitivity();
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -114,7 +114,9 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   end
 
   # TODO: Use user tgrad. iW can be safely ignored here.
-  sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
+  sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,
+                                     f.jac_prototype,f.paramjac,
+                                     nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),f.mass_matrix,
