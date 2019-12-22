@@ -81,6 +81,14 @@ end
 
 @deprecate ODELocalSensitivityProblem(args...;kwargs) ODEForwardSensitivityProblem(args...;kwargs...)
 
+function ODEForwardSensitivityProblem(f,args...;kwargs...)
+  ODEForwardSensitivityProblem(ODEFunction(f),args...;kwargs...)
+end
+
+function ODEForwardSensitivityProblem(prob::ODEProblem,alg;kwargs...)
+  ODEForwardSensitivityProblem(prob.f,prob.u0,prob.tspan,prob.p,alg;kwargs...)
+end
+
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg::ForwardSensitivity = ForwardSensitivity();
@@ -125,10 +133,26 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   ODEProblem(sense,sense_u0,tspan,p;kwargs...)
 end
 
-function ODEForwardSensitivityProblem(f,args...;kwargs...)
-  ODEForwardSensitivityProblem(ODEFunction(f),args...;kwargs...)
+function seed_duals(x::AbstractArray{V},::Type{T},
+                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x,typemax(Int64)),
+                    ) where {V,T,N}
+  seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N,V})
+  duals = [Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
 end
 
+function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
+                                      tspan,p,alg::ForwardDiffSensitivity;
+                                      kwargs...)
+  MyTag = typeof(f)
+  pdual = seed_duals(p,MyTag)
+  u0dual = convert.(eltype(pdual),u0)
+  if convert_tspan(alg)
+    tspandual = convert.(eltype(pdual),tspan)
+  else
+    tspandual = tspan
+  end
+  prob_dual = ODEProblem(f,u0dual,tspan,pdual;kwargs...)
+end
 
 # Get ODE u vector and sensitivity values from all time points
 function extract_local_sensitivities(sol)
@@ -137,7 +161,6 @@ function extract_local_sensitivities(sol)
   du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
   return u, du
 end
-
 
 extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol[i], asmatrix)
 extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())

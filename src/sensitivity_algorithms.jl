@@ -21,6 +21,13 @@ Base.@pure function ForwardSensitivity(;
   ForwardSensitivity{chunk_size,autodiff,diff_type}(autojacvec)
 end
 
+struct ForwardDiffSensitivity{CS,CTS} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,Nothing,Nothing}
+end
+Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=true)
+  ForwardDiffSensitivity{chunk_size,convert_tspan}()
+end
+
+@inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
 @inline get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = CS
 @inline diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = FDT
