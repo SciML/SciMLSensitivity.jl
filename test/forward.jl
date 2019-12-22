@@ -1,7 +1,7 @@
 using DiffEqSensitivity,OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
       ForwardDiff, Calculus
 using Test
-using DiffEqSensitivity: ForwardSensitivityAlg
+using DiffEqSensitivity: ForwardSensitivity
 
 function fb(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
@@ -20,7 +20,7 @@ p = [1.5,1.0,3.0]
 prob = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p)
 probnoad = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
-                                        ForwardSensitivityAlg(autodiff=false))
+                                        ForwardSensitivity(autodiff=false))
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 @test_broken solInpl = solve(probInpl,KenCarp4(),abstol=1e-14,reltol=1e-14)
 @test_broken solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-14,reltol=1e-14)
@@ -43,7 +43,7 @@ dc = sol[sol.prob.f.numindvar*3+1:sol.prob.f.numindvar*4,:]
 sense_res1 = [da[:,end] db[:,end] dc[:,end]]
 
 prob = ODEForwardSensitivityProblem(f.f,[1.0;1.0],(0.0,10.0),p,
-                                    ForwardSensitivityAlg(autojacvec=true))
+                                    ForwardSensitivity(autojacvec=true))
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 x = sol[1:sol.prob.f.numindvar,:]
 

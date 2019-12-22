@@ -79,7 +79,7 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   end
 end
 
-@deprecate ODELocalSensitivityProblem(args...;kwargs) = ODEForwardSensitivityProblem(args...;kwargs...)
+@deprecate ODELocalSensitivityProblem(args...;kwargs) ODEForwardSensitivityProblem(args...;kwargs...)
 
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,

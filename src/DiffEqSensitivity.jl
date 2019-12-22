@@ -12,7 +12,7 @@ abstract type SensitivityFunction end
 abstract type GSAMethod end
 
 include("derivative_wrappers.jl")
-include("local_sensitivity.jl")
+include("forward_sensitivity.jl")
 include("adjoint_sensitivity.jl")
 include("morris_sensitivity.jl")
 include("sobol_sensitivity.jl")
