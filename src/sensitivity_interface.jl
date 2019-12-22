@@ -1,3 +1,8 @@
+ZygoteRules.@adjoint solve(prob,alg,args...;sensealg=QuadratureAdjoint(),kwargs...)
+  sol = solve(prob,alg,args...;kwargs...)
+  _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)
+end
+
 function adjoint_sensitivities_u0(sol,args...;
                                   sensealg=QuadratureAdjoint(),
                                   kwargs...)
@@ -30,7 +35,6 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                save_everystep=false,save_start=false,kwargs...)
   adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
 end
-
 
 ### Common utils
 

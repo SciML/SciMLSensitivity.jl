@@ -6,7 +6,7 @@ using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack, @with_kw
-
+import ZygoteRules
 
 abstract type SensitivityFunction end
 abstract type GSAMethod end
