@@ -1,4 +1,4 @@
-struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.DEAlgorithm
+struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
   quad::Bool
   backsolve::Bool
@@ -11,6 +11,16 @@ Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:ce
   SensitivityAlg{chunk_size,autodiff,diff_type}(autojacvec,quad,backsolve,checkpointing)
 end
 
+struct ForwardSensitivity{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::Bool
+end
+Base.@pure function ForwardSensitivity(;
+                                       chunk_size=0,autodiff=true,
+                                       diff_type=Val{:central},
+                                       autojacvec=autodiff)
+  ForwardSensitivity{chunk_size,autodiff,diff_type}(autojacvec)
+end
+
 # Not in DiffEqDiffTools because `u` -> scalar isn't used anywhere else,
 # but could be upstreamed.
 mutable struct UGradientWrapper{fType,tType,P} <: Function
@@ -21,7 +31,7 @@ end
 
 (ff::UGradientWrapper)(uprev) = ff.f(uprev,ff.p,ff.t)
 
-Base.@pure function determine_chunksize(u,alg::SensitivityAlg)
+Base.@pure function determine_chunksize(u,alg::AbstractSensitivityAlgorithm)
   determine_chunksize(u,get_chunksize(alg))
 end
 
@@ -33,16 +43,16 @@ Base.@pure function determine_chunksize(u,CS)
   end
 end
 
-@inline alg_autodiff(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = AD
-@inline get_chunksize(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = CS
-@inline diff_type(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = FDT
-@inline get_jacvec(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.autojacvec
-@inline isquad(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.quad
-@inline isbcksol(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.backsolve
-@inline ischeckpointing(alg::SensitivityAlg{CS,AD,FDT}) where {CS,AD,FDT} = alg.checkpointing
+@inline alg_autodiff(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
+@inline get_chunksize(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = CS
+@inline diff_type(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = FDT
+@inline get_jacvec(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.autojacvec
+@inline isquad(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.quad
+@inline isbcksol(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.backsolve
+@inline ischeckpointing(alg::AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.checkpointing
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                   fx::AbstractArray{<:Number}, alg::SensitivityAlg, jac_config)
+                   fx::AbstractArray{<:Number}, alg::AbstractSensitivityAlgorithm, jac_config)
   if alg_autodiff(alg)
     ForwardDiff.jacobian!(J, f, fx, x, jac_config)
   else
@@ -53,7 +63,7 @@ end
 
 function gradient!(df::AbstractArray{<:Number}, f,
                    x::Union{Number,AbstractArray{<:Number}},
-                   alg::SensitivityAlg, grad_config)
+                   alg::AbstractSensitivityAlgorithm, grad_config)
     if alg_autodiff(alg)
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
@@ -68,7 +78,7 @@ end
 ``Jv <- J(f(x))v``
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
-                      v, alg::SensitivityAlg, config)
+                      v, alg::AbstractSensitivityAlgorithm, config)
   if alg_autodiff(alg)
     buffer, seed = config
     TD = typeof(first(seed))

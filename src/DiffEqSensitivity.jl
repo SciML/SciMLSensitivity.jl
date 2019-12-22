@@ -21,7 +21,7 @@ include("DGSM.jl")
 
 export extract_local_sensitivities
 
-export ODELocalSensitivityFunction, ODELocalSensitivityProblem, SensitivityFunction,
+export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
        SensitivityAlg, regression_sensitivity, DGSM
