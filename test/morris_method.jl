@@ -11,7 +11,6 @@ function linear_batch(X)
     @. A*X[1,:]+B*X[2,:]
 end
 
-# #138
 function neg_linear_batch(X)
     A= -7
     B= 0.1
@@ -60,7 +59,6 @@ m = gsa(linear_batch,Morris(p_steps=[10,10],num_trajectory=10000),[[1,5],[1,5]],
 @test m.means_star ≈ [7.0  0.1] atol = 1e-2
 @test m.variances ≈ reshape([0,0], 1, 2) atol=1e-12
 
-# #138
 m = gsa(neg_linear_batch,Morris(p_steps=[10,10],num_trajectory=10000),[[1,5],[1,5]],batch=true)
 @test m.means ≈ [-7.0  0.1] atol = 1e-2
 @test m.means_star ≈ [7.0  0.1] atol = 1e-2
