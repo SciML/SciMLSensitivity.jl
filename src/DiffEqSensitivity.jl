@@ -15,10 +15,10 @@ include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("forward_sensitivity.jl")
 include("adjoint_sensitivity.jl")
-include("morris_sensitivity.jl")
-include("sobol_sensitivity.jl")
-include("regression_sensitivity.jl")
-include("DGSM.jl")
+include("GSA/morris_sensitivity.jl")
+include("GSA/sobol_sensitivity.jl")
+include("GSA/regression_sensitivity.jl")
+include("GSA/DGSM.jl")
 
 export extract_local_sensitivities
 

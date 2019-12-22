@@ -1,15 +1,4 @@
-struct SensitivityAlg{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
-  autojacvec::Bool
-  quad::Bool
-  backsolve::Bool
-  checkpointing::Bool
-end
-Base.@pure function SensitivityAlg(;chunk_size=0,autodiff=true,diff_type=Val{:central},
-                                   autojacvec=autodiff,quad=true,backsolve=false,checkpointing=false)
-  checkpointing && (backsolve=false)
-  backsolve && (quad = false)
-  SensitivityAlg{chunk_size,autodiff,diff_type}(autojacvec,quad,backsolve,checkpointing)
-end
+SensitivityAlg(args..;kwargs...) = @error("The SensitivtyAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
 
 struct ForwardSensitivity{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
@@ -25,6 +14,35 @@ struct ForwardDiffSensitivity{CS,CTS} <: DiffEqBase.AbstractSensitivityAlgorithm
 end
 Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=true)
   ForwardDiffSensitivity{chunk_size,convert_tspan}()
+end
+
+struct BacksolveAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::Bool
+end
+Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
+                                      diff_type=Val{:central},
+                                      autojacvec=autodiff)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
+end
+
+struct InterpolatingAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::Bool
+  checkpointing::Bool
+end
+Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
+                                         diff_type=Val{:central},
+                                         autojacvec=autodiff,
+                                         checkpointing=false)
+  InterpolatingAdjoint{chunk_size,autodiff,diff_type}(autojacvec,checkpointing)
+end
+
+struct QuadratureAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::Bool
+end
+Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
+                                         diff_type=Val{:central},
+                                         autojacvec=autodiff)
+  QuadratureAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
 end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
