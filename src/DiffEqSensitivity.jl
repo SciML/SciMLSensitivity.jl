@@ -4,17 +4,9 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-<<<<<<< refs/tags/v5.1.3
-<<<<<<< refs/tags/v5.1.3
 using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack, @with_kw
-=======
-using DataFrames, GLM
-=======
-using DataFrames, GLM, FFTW, Distributions
->>>>>>> Code cleanup and some fixes
-using Parameters: @unpack
->>>>>>> Add eFAST implementation
+using FFTW, Distributions
 
 
 abstract type SensitivityFunction end
