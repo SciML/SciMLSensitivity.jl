@@ -12,7 +12,7 @@ if GROUP == "All" || GROUP == "Core" || GROUP == "Downstream"
     @safetestset "Morris Method" begin include("morris_method.jl") end
     @safetestset "Sobol Method" begin include("sobol_method.jl") end
     @safetestset "DGSM Method" begin include("DGSM.jl") end
-    @safetestset "eFAST Method" begin include("eFAST.jl") end
+    @safetestset "eFAST Method" begin include("eFAST_method.jl") end
 end
 
 if GROUP == "DiffEqFlux"
