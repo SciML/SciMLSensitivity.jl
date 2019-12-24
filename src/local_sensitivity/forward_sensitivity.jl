@@ -1,4 +1,4 @@
-struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   tgrad::Tt
@@ -22,14 +22,14 @@ struct ODELocalSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc
   colorvec::CV
 end
 
-function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,u0,
+function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec,colorvec)
   numparams = length(p)
   numindvar = length(u0)
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
-  ODELocalSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
+  ODEForwardSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(paramjac),
                              typeof(Wfact),typeof(Wfact_t),typeof(uf),
                              typeof(pf),typeof(jac_config),
@@ -41,7 +41,7 @@ function ODELocalSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
 end
 
-function (S::ODELocalSensitivityFunction)(du,u,p,t)
+function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   y = @view u[1:S.numindvar] # These are the independent variables
   dy = @view du[1:S.numindvar]
   S.f(dy,y,p,t) # Make the first part be the ODE
@@ -79,9 +79,19 @@ function (S::ODELocalSensitivityFunction)(du,u,p,t)
   end
 end
 
-function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
+@deprecate ODELocalSensitivityProblem(args...;kwargs) ODEForwardSensitivityProblem(args...;kwargs...)
+
+function ODEForwardSensitivityProblem(f,args...;kwargs...)
+  ODEForwardSensitivityProblem(ODEFunction(f),args...;kwargs...)
+end
+
+function ODEForwardSensitivityProblem(prob::ODEProblem,alg;kwargs...)
+  ODEForwardSensitivityProblem(prob.f,prob.u0,prob.tspan,prob.p,alg;kwargs...)
+end
+
+function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
-                                    alg = SensitivityAlg(autojacvec=true);
+                                    alg::ForwardSensitivity = ForwardSensitivity();
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -112,7 +122,9 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   end
 
   # TODO: Use user tgrad. iW can be safely ignored here.
-  sense = ODELocalSensitivityFunction(f,f.analytic,nothing,f.jac,f.jac_prototype,f.paramjac,nothing,nothing,
+  sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,
+                                     f.jac_prototype,f.paramjac,
+                                     nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),f.mass_matrix,
@@ -121,10 +133,26 @@ function ODELocalSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   ODEProblem(sense,sense_u0,tspan,p;kwargs...)
 end
 
-function ODELocalSensitivityProblem(f,args...;kwargs...)
-  ODELocalSensitivityProblem(ODEFunction(f),args...;kwargs...)
+function seed_duals(x::AbstractArray{V},::Type{T},
+                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x,typemax(Int64)),
+                    ) where {V,T,N}
+  seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N,V})
+  duals = [Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
 end
 
+function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
+                                      tspan,p,alg::ForwardDiffSensitivity;
+                                      kwargs...)
+  MyTag = typeof(f)
+  pdual = seed_duals(p,MyTag)
+  u0dual = convert.(eltype(pdual),u0)
+  if convert_tspan(alg)
+    tspandual = convert.(eltype(pdual),tspan)
+  else
+    tspandual = tspan
+  end
+  prob_dual = ODEProblem(f,u0dual,tspan,pdual;kwargs...)
+end
 
 # Get ODE u vector and sensitivity values from all time points
 function extract_local_sensitivities(sol)
@@ -133,7 +161,6 @@ function extract_local_sensitivities(sol)
   du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
   return u, du
 end
-
 
 extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol[i], asmatrix)
 extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())

@@ -17,6 +17,7 @@ QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
+ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 DataFrames = "0.19, 0.20"
