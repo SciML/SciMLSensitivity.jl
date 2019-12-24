@@ -4,6 +4,7 @@ using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools
 using Parameters: @unpack, @with_kw
+using FFTW, Distributions
 import ZygoteRules
 
 abstract type SensitivityFunction end
@@ -20,13 +21,14 @@ include("global_sensitivity/morris_sensitivity.jl")
 include("global_sensitivity/sobol_sensitivity.jl")
 include("global_sensitivity/regression_sensitivity.jl")
 include("global_sensitivity/DGSM.jl")
+include("global_sensitivity/eFAST.jl")
 
 export extract_local_sensitivities
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
-       SensitivityAlg, regression_sensitivity, DGSM
+       SensitivityAlg, regression_sensitivity, DGSM, eFAST
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint, ForwardSensitivity,
        ForwardDiffSensitivity

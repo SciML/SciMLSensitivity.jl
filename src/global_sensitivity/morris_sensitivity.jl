@@ -13,6 +13,7 @@ end
 
 struct MorrisResult{T1,T2}
     means::T1
+    means_star::T1
     variances::T1
     elementary_effects::T2
 end
@@ -38,7 +39,7 @@ function generate_design_matrix(p_range,p_steps;len_design_mat = 10)
         cur_p = [ps[u][(all_idxs[j][u])] for u in 1:length(p_range)]
         B[j] = cur_p
     end
-    reduce(hcat, B) 
+    reduce(hcat, B)
 end
 
 function calculate_spread(matrix)
@@ -102,14 +103,14 @@ function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
             del = sum(del)
             y1 = multioutput ? all_y[:,j+1] : all_y[j+1]
             if relative_scale == false
-                effect = @. abs((y1-y2)/(del))
+                effect = @. (y1-y2)/(del)
                 elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
             else
                 if del > 0
-                    effect = @. abs((y1-y2)/(y2*del))
+                    effect = @. (y1-y2)/(y2*del)
                     elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
                 else
-                    effect = @. abs((y1-y2)/(y1*del))
+                    effect = @. (y1-y2)/(y1*del)
                     elem_effect = typeof(y1) <: Number ? effect : mean(effect, dims = 2)
                 end
             end
@@ -124,15 +125,18 @@ function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
         end
     end
     means = eltype(effects[1])[]
+    means_star = eltype(effects[1])[]
     variances = eltype(effects[1])[]
     for k in effects
         if !isempty(k)
-            push!(means,mean(k))
-            push!(variances,var(k))
+            push!(means, mean(k))
+            push!(means_star, mean(x -> abs.(x), k))
+            push!(variances, var(k))
         else
-            push!(means,zero(effects[1][1]))
-            push!(variances,zero(effects[1][1]))
+            push!(means, zero(effects[1][1]))
+            push!(means_star, zero(effects[1][1]))
+            push!(variances, zero(effects[1][1]))
         end
     end
-    MorrisResult(reduce(hcat, means),reduce(hcat, variances),effects)
+    MorrisResult(reduce(hcat, means),reduce(hcat, means_star),reduce(hcat, variances),effects)
 end
