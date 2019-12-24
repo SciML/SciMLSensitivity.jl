@@ -20,8 +20,8 @@ include("local_sensitivity/quadrature_adjoint.jl")
 include("global_sensitivity/morris_sensitivity.jl")
 include("global_sensitivity/sobol_sensitivity.jl")
 include("global_sensitivity/regression_sensitivity.jl")
-include("global_sensitivity/DGSM.jl")
-include("global_sensitivity/eFAST.jl")
+include("global_sensitivity/DGSM_sensitivity.jl")
+include("global_sensitivity/eFAST_sensitivity.jl")
 
 export extract_local_sensitivities
 
