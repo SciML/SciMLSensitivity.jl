@@ -1,4 +1,4 @@
-struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,CP,SType,CV} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -8,7 +8,7 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
-  sensealg::A
+  sensealg::BacksolveAdjoint
   f_cache::rateType
   discrete::Bool
   y::uType2

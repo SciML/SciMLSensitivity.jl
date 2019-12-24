@@ -1,11 +1,11 @@
-struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,A,DG,TJ,SType,CV} <: SensitivityFunction
+struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,DG,TJ,SType,CV} <: SensitivityFunction
   uf::UF
   g::G
   J::TJ
   dg_val::uType
   jac_config::JC
   g_grad_config::GC
-  sensealg::A
+  sensealg::QuadratureAdjoint
   f_cache::rateType
   discrete::Bool
   y::uType2
