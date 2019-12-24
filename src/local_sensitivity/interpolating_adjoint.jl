@@ -14,6 +14,7 @@ struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,
   y::uType2
   sol::SType
   dg::DG
+  checkpointing::Bool
   checkpoints::CP
   integrator::INT
   colorvec::CV
@@ -24,6 +25,7 @@ end
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
+  checkpointing = sensealg.checkpointing isa Bool ? sensealg.checkpointing : !sol.dense
   isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
@@ -60,7 +62,7 @@ end
 
   pJ = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numparams)
 
-  integrator = if ischeckpointing(sensealg)
+  integrator = if checkpointing
     integ = init(sol.prob, sol.alg, save_on=false)
     integ.u = y
     integ
@@ -73,17 +75,17 @@ end
   return ODEInterpolatingAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpoints,integrator,colorvec)
+                               discrete,y,sol,dg,checkpointing,checkpoints,integrator,colorvec)
 end
 
 # u = λ'
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, J, uf, sensealg, checkpointing, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
   idx = length(y)
   f = sol.prob.f
   isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
 
-  if ischeckpointing(sensealg)
+  if checkpointing
     @unpack integrator, checkpoints = S
     # assuming that in the forward direction `t0` < `t1`, and the
     # `checkpoints` vector is sorted with respect to the forward direction

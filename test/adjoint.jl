@@ -24,6 +24,8 @@ solb = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14)
 sol_end = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,
           save_everystep=false,save_start=false)
 
+sol_nodense = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,dense=false)
+
 # Do a discrete adjoint problem
 println("Calculate discrete adjoint sensitivities")
 t = 0.0:0.5:10.0
@@ -41,31 +43,33 @@ easy_res22 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   sensealg=QuadratureAdjoint(autojacvec=false))
 easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
 easy_res32 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  reltol=1e-14,
                                   sensealg=InterpolatingAdjoint(autojacvec=false))
 easy_res4 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  reltol=1e-14,
                                   sensealg=BacksolveAdjoint())
 easy_res42 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   reltol=1e-14,
                                    sensealg=BacksolveAdjoint(autojacvec=false))
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),
                                  dg,t,abstol=1e-12,
-                                 reltol=1e-10,iabstol=1e-14,ireltol=1e-12,
+                                 reltol=1e-10,
                                  sensealg=BacksolveAdjoint())
-easy_res6 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+easy_res6 = adjoint_sensitivities(sol_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
                                   sensealg=InterpolatingAdjoint(checkpointing=true),
                                   checkpoints=sol.t[1:5:end])
-easy_res62 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+easy_res62 = adjoint_sensitivities(sol_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
                                    sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
                                    checkpoints=sol.t[1:5:end])
-easy_res7 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,dense=false,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+
+# It should automatically be checkpointing since the solution isn't dense
+easy_res7 = adjoint_sensitivities(sol_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
                                   sensealg=InterpolatingAdjoint(),
                                   checkpoints=sol.t[1:5:end])
 
@@ -84,7 +88,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res62, rtol = 1e-9)
-@test_broken isapprox(easy_res6, easy_res7, rtol = 1e-14) # should be the same!
+@test all(easy_res6 .== easy_res7)  # should be the same!
 
 println("Calculate adjoint sensitivities ")
 

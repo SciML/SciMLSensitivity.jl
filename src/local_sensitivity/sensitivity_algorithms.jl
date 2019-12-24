@@ -27,12 +27,12 @@ end
 
 struct InterpolatingAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
-  checkpointing::Bool
+  checkpointing::Union{Nothing,Bool}
 end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=autodiff,
-                                         checkpointing=false)
+                                         checkpointing=nothing)
   InterpolatingAdjoint{chunk_size,autodiff,diff_type}(autojacvec,checkpointing)
 end
 
