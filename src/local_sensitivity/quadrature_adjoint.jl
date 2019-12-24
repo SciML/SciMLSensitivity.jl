@@ -1,20 +1,16 @@
-struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,SType,INT,CV} <: SensitivityFunction
+struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,A,DG,TJ,SType,CV} <: SensitivityFunction
   uf::UF
-  pf::PF
   g::G
   J::TJ
-  pJ::PJT
   dg_val::uType
   jac_config::JC
   g_grad_config::GC
-  paramjac_config::PJC
   sensealg::A
   f_cache::rateType
   discrete::Bool
   y::uType2
   sol::SType
   dg::DG
-  integrator::INT
   colorvec::CV
 end
 
@@ -48,18 +44,14 @@ end
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
-  paramjac_config = nothing
-  pf = nothing
-  pJ = nothing
-  integrator = nothing
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 
-  return ODEQuadratureAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
-                                       jac_config,pg_config,paramjac_config,
+  return ODEQuadratureAdjointSensitivityFunction(uf,pg,J,dg_val,
+                                       jac_config,pg_config,
                                        sensealg,f_cache,
                                        discrete,y,sol,dg,
-                                       integrator,colorvec)
+                                       colorvec)
 end
 
 # u = λ'

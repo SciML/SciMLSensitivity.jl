@@ -1,4 +1,4 @@
-struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,CV} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -15,7 +15,6 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,
   sol::SType
   dg::DG
   checkpoints::CP
-  integrator::INT
   colorvec::CV
 end
 
@@ -49,11 +48,10 @@ end
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
-  paramjac_config = nothing
-  pf = nothing
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
+    pf = nothing
   else
     pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
@@ -61,14 +59,13 @@ end
 
   pJ = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numparams)
 
-  integrator = nothing
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 
   return ODEBacksolveSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpoints,integrator,colorvec)
+                               discrete,y,sol,dg,checkpoints,colorvec)
 end
 
 # u = λ'

@@ -51,10 +51,10 @@ end
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
-  paramjac_config = nothing
-  pf = nothing
+
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
+    pf = nothing
   else
     pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
