@@ -1,4 +1,4 @@
-using DiffEqSensitivity,OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
+using DiffEqSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
       ForwardDiff, Calculus, QuadGK, LinearAlgebra
 using Test
 
@@ -35,48 +35,70 @@ end
 easy_res = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 easy_res2 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=true,backsolve=false))
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                 sensealg=QuadratureAdjoint())
+easy_res22 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=QuadratureAdjoint(autojacvec=false))
 easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(quad=false,backsolve=false))
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=InterpolatingAdjoint())
+easy_res32 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=InterpolatingAdjoint(autojacvec=false))
 easy_res4 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
-easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),dg,t,abstol=1e-12,
-                                 reltol=1e-10,iabstol=1e-14,ireltol=1e-12,sensealg=SensitivityAlg(backsolve=true))
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=BacksolveAdjoint())
+easy_res42 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint(autojacvec=false))
+easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),
+                                 dg,t,abstol=1e-12,
+                                 reltol=1e-10,iabstol=1e-14,ireltol=1e-12,
+                                 sensealg=BacksolveAdjoint())
 easy_res6 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(checkpointing=true,quad=true),
+                                  sensealg=InterpolatingAdjoint(checkpointing=true),
                                   checkpoints=sol.t[1:5:end])
-easy_res7 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+easy_res62 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
+                                   checkpoints=sol.t[1:5:end])
+easy_res7 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,dense=false,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(checkpointing=true,quad=false),
+                                  sensealg=InterpolatingAdjoint(),
                                   checkpoints=sol.t[1:5:end])
 
-adj_prob = ODEAdjointProblem(sol,dg,t)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(),dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol)
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint())
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
+@test isapprox(res, easy_res22, rtol = 1e-10)
 @test isapprox(res, easy_res3, rtol = 1e-10)
+@test isapprox(res, easy_res32, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
+@test isapprox(res, easy_res42, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
-@test isapprox(res, easy_res7, rtol = 1e-9)
+@test isapprox(res, easy_res62, rtol = 1e-9)
+@test_broken isapprox(easy_res6, easy_res7, rtol = 1e-14) # should be the same!
 
 println("Calculate adjoint sensitivities ")
 
 easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   save_everystep=false,save_start=false,
-                                  sensealg=SensitivityAlg(backsolve=true))
+                                  sensealg=BacksolveAdjoint())
 
 @test isapprox(res, easy_res8, rtol = 1e-9)
 
 end_only_res = adjoint_sensitivities(sol_end,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   save_everystep=false,save_start=false,
-                                  sensealg=SensitivityAlg(backsolve=true))
+                                  sensealg=BacksolveAdjoint())
 
 @test isapprox(res, end_only_res, rtol = 1e-9)
 
@@ -129,7 +151,80 @@ res4 = ForwardDiff.gradient(p->G(p,t4),[1.5,1.0,3.0,1.0])
 @test easy_res3' ≈ res3
 @test easy_res4' ≈ res4
 
-# Do a continuous adjoint problem
+println("Adjoints of u0")
+
+function dg(out,u,p,t,i)
+  out .= 1 .- u
+end
+
+ū0,adj = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+adjnou0 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū02,adj2 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=BacksolveAdjoint(),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū022,adj22 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=BacksolveAdjoint(autojacvec=false),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū03,adj3 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=InterpolatingAdjoint(),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū032,adj32 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=InterpolatingAdjoint(autojacvec=false),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū04,adj4 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=InterpolatingAdjoint(checkpointing=true),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū042,adj42 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū0args,adjargs = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                        save_everystep=false, save_start=false,
+                        sensealg=BacksolveAdjoint(),
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū0args2,adjargs2 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                        save_everystep=false, save_start=false,
+                        sensealg=InterpolatingAdjoint(),
+                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+res = ForwardDiff.gradient(prob.u0) do u0
+  tmp_prob = remake(prob,u0=u0)
+  sol = solve(tmp_prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=t)
+  A = convert(Array,sol)
+  sum(((1 .- A).^2)./2)
+end
+
+@test ū0 ≈ res rtol = 1e-10
+@test ū02 ≈ res rtol = 1e-10
+@test ū022 ≈ res rtol = 1e-10
+@test ū03 ≈ res rtol = 1e-10
+@test ū032 ≈ res rtol = 1e-10
+@test ū04 ≈ res rtol = 1e-10
+@test ū042 ≈ res rtol = 1e-10
+@test adj ≈ adjnou0 rtol = 1e-10
+@test adj ≈ adj2 rtol = 1e-10
+@test adj ≈ adj22 rtol = 1e-10
+@test adj ≈ adj3 rtol = 1e-10
+@test adj ≈ adj32 rtol = 1e-10
+@test adj ≈ adj4 rtol = 1e-10
+@test adj ≈ adj42 rtol = 1e-10
+
+@test ū0args ≈ res rtol = 1e-10
+@test adjargs ≈ adj rtol = 1e-10
+@test ū0args2 ≈ res rtol = 1e-10
+@test adjargs2 ≈ adj rtol = 1e-10
+
+println("Do a continuous adjoint problem")
 
 # Energy calculation
 g(u,p,t) = (sum(u).^2) ./ 2
@@ -139,9 +234,9 @@ function dg(out,u,p,t)
   out[2]= u[1] + u[2]
 end
 
-adj_prob = ODEAdjointProblem(sol,g,nothing,dg)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(),g,nothing,dg)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-10)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol)
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint())
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 
 println("Test the `adjoint_sensitivities` utility function")
@@ -150,23 +245,77 @@ easy_res = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
 println("2")
 easy_res2 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(quad=false))
+                                  sensealg=InterpolatingAdjoint())
+easy_res22 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=InterpolatingAdjoint(autojacvec=false))
+println("23")
+easy_res23 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=QuadratureAdjoint())
+easy_res24 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=QuadratureAdjoint(autojacvec=false))
+println("25")
+easy_res25 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint())
+easy_res26 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint(autojacvec=false))
+println("27")
+easy_res27 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=InterpolatingAdjoint(checkpointing=true))
+easy_res28 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
 println("3")
 easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
-                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-println("4")
-easy_res4 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(autodiff=false))
-println("5")
-easy_res5 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                  sensealg=InterpolatingAdjoint())
+easy_res32 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=InterpolatingAdjoint(autojacvec=false))
+println("33")
+easy_res33 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=QuadratureAdjoint())
+easy_res34 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=QuadratureAdjoint(autojacvec=false))
+println("35")
+easy_res35 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint())
+easy_res36 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint(autojacvec=false))
+println("37")
+easy_res37 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
-                                  sensealg=SensitivityAlg(checkpointing=true))
+                                  sensealg=InterpolatingAdjoint(checkpointing=true))
+easy_res38 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
+
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
+@test norm(easy_res22 .- res) < 1e-8
+@test norm(easy_res23 .- res) < 1e-8
+@test norm(easy_res24 .- res) < 1e-8
+@test norm(easy_res25 .- res) < 1e-8
+@test norm(easy_res26 .- res) < 1e-8
+@test norm(easy_res27 .- res) < 1e-8
+@test norm(easy_res28 .- res) < 1e-8
 @test norm(easy_res3 .- res) < 1e-8
-@test norm(easy_res4 .- res) < 1e-8
-@test norm(easy_res5 .- res) < 1e-8
+@test norm(easy_res32 .- res) < 1e-8
+@test norm(easy_res33 .- res) < 1e-8
+@test norm(easy_res34 .- res) < 1e-8
+@test norm(easy_res35 .- res) < 1e-8
+@test norm(easy_res36 .- res) < 1e-8
+@test norm(easy_res37 .- res) < 1e-8
+@test norm(easy_res38 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -189,43 +338,3 @@ prob = ODEProblem(f,u,(0.0,10.0),p)
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 @test_nowarn res = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-println("Adjoints of u0")
-
-function dg(out,u,p,t,i)
-  out .= 1 .- u
-end
-
-ū0,adj = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
-                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-adj2 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
-                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-ū02,adj3 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
-                         sensealg=SensitivityAlg(backsolve=true),
-                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-ū03,adj4 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
-                        save_everystep=false, save_start=false,
-                        sensealg=SensitivityAlg(backsolve=true),
-                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-ū03,adj4 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
-                        save_everystep=false, save_start=false,
-                        sensealg=SensitivityAlg(backsolve=true),
-                        reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-
-res = ForwardDiff.gradient(prob.u0) do u0
-  tmp_prob = remake(prob,u0=u0)
-  sol = solve(tmp_prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=t)
-  A = convert(Array,sol)
-  sum(((1 .- A).^2)./2)
-end
-
-@test ū0 ≈ res rtol = 1e-10
-@test ū02 ≈ res rtol = 1e-10
-@test ū03 ≈ res rtol = 1e-10
-@test adj ≈ adj2 rtol = 1e-10
-@test adj ≈ adj3 rtol = 1e-10
-@test adj ≈ adj4 rtol = 1e-10

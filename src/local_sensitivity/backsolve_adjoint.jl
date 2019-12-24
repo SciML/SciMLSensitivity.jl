@@ -8,7 +8,7 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
-  alg::A
+  sensealg::A
   f_cache::rateType
   discrete::Bool
   y::uType2
@@ -19,12 +19,12 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,
   colorvec::CV
 end
 
-@noinline function ODEBacksolveSensitivityFunction(g,u0,p,alg,discrete,sol,dg,checkpoints,tspan,colorvec)
+@noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
   numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
@@ -33,7 +33,7 @@ end
       pg_config = nothing
     else
       pg = UGradientWrapper(g,tspan[2],p)
-      pg_config = build_grad_config(alg,pg,u0,p)
+      pg_config = build_grad_config(sensealg,pg,u0,p)
     end
   else
     pg = nothing
@@ -45,7 +45,7 @@ end
     uf = nothing
   else
     uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
-    jac_config = build_jac_config(alg,uf,u0)
+    jac_config = build_jac_config(sensealg,uf,u0)
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
@@ -56,7 +56,7 @@ end
     paramjac_config = nothing
   else
     pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
-    paramjac_config = build_param_jac_config(alg,pf,y,p)
+    paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
 
   pJ = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numparams)
@@ -67,16 +67,16 @@ end
 
   return ODEBacksolveSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
-                               alg,f_cache,
+                               sensealg,f_cache,
                                discrete,y,sol,dg,checkpoints,integrator,colorvec)
 end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, alg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
 
   λ     = @view u[1:idx]
   dλ    = @view du[1:idx]
@@ -92,7 +92,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
       f.jac(J,y,p,t) # Calculate the Jacobian into J
     else
       uf.t = t
-      jacobian!(J, uf, y, f_cache, alg, jac_config)
+      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
   else
@@ -116,7 +116,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
       dg(dg_val,y,p,t)
     else
       g.t = t
-      gradient!(dg_val, g, y, alg, g_grad_config)
+      gradient!(dg_val, g, y, sensealg, g_grad_config)
     end
     dλ .+= dg_val
   end
@@ -126,7 +126,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     if DiffEqBase.has_paramjac(f)
       f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
     else
-      jacobian!(pJ, pf, sol.prob.p, f_cache, alg, paramjac_config)
+      jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
     end
     mul!(dgrad',λ',pJ)
   end
@@ -134,8 +134,8 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
-                                     g,t=nothing,dg=nothing,
+@noinline function ODEAdjointProblem(sol,sensesensealg::BacksolveAdjoint,
+                                     g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet())
   f = sol.prob.f
@@ -150,7 +150,7 @@ end
   len = length(u0)+length(p)
   λ = similar(u0, len)
   sense = ODEBacksolveSensitivityFunction(g,u0,
-                                        p,alg,discrete,
+                                        p,sensesensealg,discrete,
                                         sol,dg,checkpoints,tspan,f.colorvec)
 
   init_cb = t !== nothing && sol.prob.tspan[2] == t[end]

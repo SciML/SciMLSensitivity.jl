@@ -1,16 +1,16 @@
-ZygoteRules.@adjoint solve(prob,alg,args...;sensealg=QuadratureAdjoint(),kwargs...)
+ZygoteRules.@adjoint function solve(prob,alg,args...;sensealg=InterpolatingAdjoint(),kwargs...)
   sol = solve(prob,alg,args...;kwargs...)
   _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)
 end
 
 function adjoint_sensitivities_u0(sol,args...;
-                                  sensealg=QuadratureAdjoint(),
+                                  sensealg=InterpolatingAdjoint(),
                                   kwargs...)
   _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)
 end
 
 function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
-                                  kwargs...)
+                                   checkpoints=sol.t,kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints)
   adj_sol = solve(adj_prob,alg;kwargs...,
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[])
@@ -20,7 +20,7 @@ function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
 end
 
 function adjoint_sensitivities(sol,args...;
-                               sensealg=QuadratureAdjoint(),
+                               sensealg=InterpolatingAdjoint(),
                                kwargs...)
   _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
 end
@@ -40,13 +40,13 @@ end
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   if sensefun.discrete
-    @unpack alg, y, sol = sensefun
+    @unpack sensealg, y, sol = sensefun
     prob = sol.prob
     cur_time = Ref(length(t))
     function time_choice(integrator)
       cur_time[] > 0 ? t[cur_time[]] : nothing
     end
-    affect! = let isq = isquad(alg), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0)
+    affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0)
       function (integrator)
         p, u = integrator.p, integrator.u
         λ  = isq ? λ : @view(λ[1:idx])

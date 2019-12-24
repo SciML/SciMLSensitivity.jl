@@ -1,4 +1,4 @@
-struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
+struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ,PJT,PJC,SType,INT,CV} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -8,7 +8,7 @@ struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
-  alg::A
+  sensealg::A
   f_cache::rateType
   discrete::Bool
   y::uType2
@@ -18,12 +18,12 @@ struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,
   colorvec::CV
 end
 
-@noinline function ODEQuadratureAdjointSensitivityFunction(g,u0,p,alg,discrete,sol,dg,tspan,colorvec)
+@noinline function ODEQuadratureAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,tspan,colorvec)
   numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
@@ -32,19 +32,19 @@ end
       pg_config = nothing
     else
       pg = UGradientWrapper(g,tspan[2],p)
-      pg_config = build_grad_config(alg,pg,u0,p)
+      pg_config = build_grad_config(sensealg,pg,u0,p)
     end
   else
     pg = nothing
     pg_config = nothing
   end
 
-  if DiffEqBase.has_jac(f) || isautojacvec
+  if isautojacvec
     jac_config = nothing
     uf = nothing
   else
     uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
-    jac_config = build_jac_config(alg,uf,u0)
+    jac_config = build_jac_config(sensealg,uf,u0)
   end
 
   y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
@@ -57,17 +57,17 @@ end
 
   return ODEQuadratureAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                        jac_config,pg_config,paramjac_config,
-                                       alg,f_cache,
+                                       sensealg,f_cache,
                                        discrete,y,sol,dg,
                                        integrator,colorvec)
 end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, alg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(alg)
+  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   sol(y,t)
   λ     = u
   dλ    = du
@@ -77,7 +77,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
       f.jac(J,y,p,t) # Calculate the Jacobian into J
     else
       uf.t = t
-      jacobian!(J, uf, y, f_cache, alg, jac_config)
+      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
   else
@@ -100,7 +100,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
       dg(dg_val,y,p,t)
     else
       g.t = t
-      gradient!(dg_val, g, y, alg, g_grad_config)
+      gradient!(dg_val, g, y, sensealg, g_grad_config)
     end
     dλ .+= dg_val
   end
@@ -109,7 +109,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol,alg::QuadratureAdjoint,g,
+@noinline function ODEAdjointProblem(sol,sensealg::QuadratureAdjoint,g,
                                      t=nothing,dg=nothing,
                                      callback=CallbackSet())
   f = sol.prob.f
@@ -124,7 +124,7 @@ end
   len = length(u0)
   λ = similar(u0, len)
   sense = ODEQuadratureAdjointSensitivityFunction(g,u0,
-                                        p,alg,discrete,
+                                        p,sensealg,discrete,
                                         sol,dg,tspan,f.colorvec)
 
   init_cb = t !== nothing && sol.prob.tspan[2] == t[end]
@@ -133,7 +133,7 @@ end
   ODEProblem(sense,z0,tspan,p,callback=cb)
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT}
   sol::S
   adj_sol::AS
   p::pType
@@ -143,10 +143,10 @@ struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,A,PJT}
   f_cache::rateType
   pJ::PJT
   paramjac_config::PJC
-  alg::A
+  sensealg::QuadratureAdjoint
 end
 
-function AdjointSensitivityIntegrand(sol,adj_sol)
+function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
   y = similar(sol.prob.u0)
@@ -154,24 +154,24 @@ function AdjointSensitivityIntegrand(sol,adj_sol)
   # we need to alias `y`
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
-  isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
+  isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),length(p))
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
   else
-    paramjac_config = build_param_jac_config(alg,pf,y,p)
+    paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,alg)
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
-  @unpack y, λ, pJ, pf, p, f_cache, paramjac_config, alg, sol, adj_sol = S
+  @unpack y, λ, pJ, pf, p, f_cache, paramjac_config, sensealg, sol, adj_sol = S
   f = sol.prob.f
   sol(y,t)
   adj_sol(λ,t)
   λ .*= -one(eltype(λ))
-  isautojacvec = DiffEqBase.has_paramjac(f) ? false : get_jacvec(alg)
+  isautojacvec = get_jacvec(sensealg)
   # y is aliased
   pf.t = t
 
@@ -179,7 +179,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     if DiffEqBase.has_paramjac(f)
       f.paramjac(pJ,y,p,t) # Calculate the parameter Jacobian into pJ
     else
-      jacobian!(pJ, pf, p, f_cache, alg, paramjac_config)
+      jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
   else
@@ -211,7 +211,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                                 abstol=1e-6,reltol=1e-3,
                                 iabstol=abstol, ireltol=reltol,
                                 kwargs...)
-  adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg)
+  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=true,save_start=true,kwargs...)
   integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
