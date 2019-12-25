@@ -2,7 +2,7 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DataFrames, GLM, RecursiveArrayTools
+using DataFrames, GLM, RecursiveArrayTools, QuasiMonteCarlo
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions
 import ZygoteRules
