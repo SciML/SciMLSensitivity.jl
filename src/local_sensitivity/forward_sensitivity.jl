@@ -81,6 +81,10 @@ end
 
 @deprecate ODELocalSensitivityProblem(args...;kwargs) ODEForwardSensitivityProblem(args...;kwargs...)
 
+struct ODEForwardSensitivityProblem{iip,A} <: DiffEqBase.AbstractODEProblem{nothing,nothing,iip}
+  sensealg::A
+end
+
 function ODEForwardSensitivityProblem(f,args...;kwargs...)
   ODEForwardSensitivityProblem(ODEFunction(f),args...;kwargs...)
 end
@@ -130,14 +134,17 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                      p,similar(u0),f.mass_matrix,
                                      isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
-  ODEProblem(sense,sense_u0,tspan,p;kwargs...)
+  ODEProblem(sense,sense_u0,tspan,p;
+             problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
+                                                       typeof(alg)}(alg),
+             kwargs...)
 end
 
 function seed_duals(x::AbstractArray{V},::Type{T},
                     ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x,typemax(Int64)),
                     ) where {V,T,N}
   seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N,V})
-  duals = [Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
+  duals = [ForwardDiff.Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
 end
 
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
@@ -151,41 +158,67 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   else
     tspandual = tspan
   end
-  prob_dual = ODEProblem(f,u0dual,tspan,pdual;kwargs...)
+  prob_dual = ODEProblem(f,u0dual,tspan,pdual;
+                         problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
+                                                                   typeof(alg)}(alg),
+                         kwargs...)
 end
 
+extract_local_sensitivities(sol) = extract_local_sensitivities(sol,sol.prob.problem_type.sensealg)
+extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol.prob.problem_type.sensealg, sol[i], asmatrix)
+extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())
+extract_local_sensitivities(sol, t::Union{Number,AbstractVector}, asmatrix::Val=Val(false)) = _extract(sol, sol.prob.problem_type.sensealg, sol(t), asmatrix)
+extract_local_sensitivities(sol, t, asmatrix::Bool) = extract_local_sensitivities(sol, t, Val{asmatrix}())
+extract_local_sensitivities(tmp, sol, t::Union{Number,AbstractVector}, asmatrix::Val=Val(false)) = _extract(sol, sol.prob.problem_type.sensealg, sol(tmp, t), asmatrix)
+extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensitivities(tmp, sol, t, Val{asmatrix}())
+
 # Get ODE u vector and sensitivity values from all time points
-function extract_local_sensitivities(sol)
+function extract_local_sensitivities(sol,::ForwardSensitivity)
   ni = sol.prob.f.numindvar
   u = sol[1:ni, :]
   du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
   return u, du
 end
 
-extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol[i], asmatrix)
-extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())
-extract_local_sensitivities(sol, t, asmatrix::Val=Val(false)) = _extract(sol, sol(t), asmatrix)
-extract_local_sensitivities(sol, t, asmatrix::Bool) = extract_local_sensitivities(sol, t, Val{asmatrix}())
-extract_local_sensitivities(tmp, sol, t, asmatrix::Val=Val(false)) = _extract(sol, sol(tmp, t), asmatrix)
-extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensitivities(tmp, sol, t, Val{asmatrix}())
-
+function extract_local_sensitivities(sol,::ForwardDiffSensitivity)
+  _sol = Array(sol)
+  u = ForwardDiff.value.(_sol)
+  du_full = ForwardDiff.partials.(_sol)
+  return u, [[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])]
+end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector
-function _extract(sol, su::Vector, asmatrix::Val = Val(false))
+function _extract(sol, sensealg::ForwardSensitivity, su::AbstractVector, asmatrix::Val = Val(false))
   u = view(su, 1:sol.prob.f.numindvar)
-  du = _extract_du(sol, su, asmatrix)
+  du = _extract_du(sol, sensealg, su, asmatrix)
+  return u, du
+end
+
+function _extract(sol, sensealg::ForwardDiffSensitivity, su::AbstractVector, asmatrix::Val = Val(false))
+  u = ForwardDiff.value.(su)
+  du = _extract_du(sol, sensealg, su, asmatrix)
   return u, du
 end
 
 # Get sensitivity values from sensitivity problem u vector (nested form)
-function _extract_du(sol, su::Vector, ::Val{false})
+function _extract_du(sol, ::ForwardSensitivity, su::Vector, ::Val{false})
   ni = sol.prob.f.numindvar
   return [view(su, ni*j+1:ni*(j+1)) for j in 1:sol.prob.f.numparams]
 end
 
+function _extract_du(sol, ::ForwardDiffSensitivity, su::Vector, ::Val{false})
+  du_full = ForwardDiff.partials.(su)
+  return [[du_full[i][j] for i in 1:size(du_full,1)] for j in 1:length(du_full[1])]
+end
+
 # Get sensitivity values from sensitivity problem u vector (matrix form)
-function _extract_du(sol, su::Vector, ::Val{true})
+function _extract_du(sol, ::ForwardSensitivity, su::Vector, ::Val{true})
   ni = sol.prob.f.numindvar
   np = sol.prob.f.numparams
   return view(reshape(su, ni, np+1), :, 2:np+1)
+end
+
+function _extract_du(sol, ::ForwardDiffSensitivity, su::Vector, ::Val{true})
+  du_full = ForwardDiff.partials.(su)
+  return [du_full[i][j] for i in 1:size(du_full,1), j in 1:length(du_full[1])]
 end
