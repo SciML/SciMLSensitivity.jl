@@ -94,7 +94,7 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
 end
 
 
-function gsa(f,method::Sobol,p_range::AbstractVector; N=1000, kwargs...)
+function gsa(f,method::Sobol,p_range::AbstractVector; N, kwargs...)
     A,B = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample())
     gsa(f, method, A, B; kwargs...)
 end
