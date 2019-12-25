@@ -1,6 +1,6 @@
 ## High level
 
-function concrete_solve(prob::DEProblem,alg::DiffEqBase.DEAlgorithm,
+function concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
                         u0=prob.u0,p=prob.p,args...;kwargs...)
    sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
    RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
