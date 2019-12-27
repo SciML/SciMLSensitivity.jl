@@ -2,8 +2,13 @@
 
 function concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
                         u0=prob.u0,p=prob.p,args...;kwargs...)
-   sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
-   RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
+  _concrete_solve(prob,alg,u0,p,args...;kwargs...)
+end
+
+function _concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
+                        u0=prob.u0,p=prob.p,args...;kwargs...)
+  sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
+  RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
 end
 
 ZygoteRules.@adjoint function concrete_solve(prob,alg,u0,p,args...;
@@ -68,4 +73,33 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAl
      (nothing,nothing,Δ'*du,nothing,ntuple(_->nothing, length(args))...)
    end
    DiffEqArray(u,sol.t),forward_sensitivity_backpass
+end
+
+function _concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
+                                 u0,p,args...;kwargs...)
+    Zygote.pullback(_concrete_solve,prob,alg,u0,p,args...;kwargs...)
+end
+
+function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
+                                 u0,p,args...;kwargs...)
+
+  function tracker_adjoint_forwardpass(u0,p)
+    if DiffEqBase.isinplace(prob)
+      # use Array{TrackedReal} for mutation to work
+      # Recurse to all Array{TrackedArray}
+      _prob = remake(prob,u0=map(identity,u0),p=p)
+    else
+      # use TrackedArray for efficiency of the tape
+      _prob = remake(prob,u0=u0,p=p)
+    end
+    solve(_prob,args...;kwargs...)
+  end
+
+  sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
+  function tracker_adjoint_backpass(ybar)
+    u0bar,pbar = pullback(ybar)
+    _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
+    (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
+  end
+  DiffEqArray(Tracker.data(sol),sol.t),tracker_adjoint_backpass
 end
