@@ -1,6 +1,9 @@
 SensitivityAlg(args...;kwargs...) = @error("The SensitivtyAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
 
-struct ForwardSensitivity{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+abstract type AbstractForwardSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
+abstract type AbstractAdjointSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
+
+struct ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
 end
 Base.@pure function ForwardSensitivity(;
@@ -10,13 +13,13 @@ Base.@pure function ForwardSensitivity(;
   ForwardSensitivity{chunk_size,autodiff,diff_type}(autojacvec)
 end
 
-struct ForwardDiffSensitivity{CS,CTS} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,Nothing,Nothing}
+struct ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
 end
 Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=true)
   ForwardDiffSensitivity{chunk_size,convert_tspan}()
 end
 
-struct BacksolveAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+struct BacksolveAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
@@ -25,7 +28,7 @@ Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
   BacksolveAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
 end
 
-struct InterpolatingAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+struct InterpolatingAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
   checkpointing::Union{Nothing,Bool}
 end
@@ -36,7 +39,7 @@ Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
   InterpolatingAdjoint{chunk_size,autodiff,diff_type}(autojacvec,checkpointing)
 end
 
-struct QuadratureAdjoint{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}
+struct QuadratureAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
 end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
@@ -44,6 +47,9 @@ Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          autojacvec=autodiff)
   QuadratureAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
 end
+
+struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
+struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD

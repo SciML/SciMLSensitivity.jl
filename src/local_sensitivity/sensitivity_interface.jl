@@ -1,26 +1,3 @@
-## High level
-
-function concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
-                        u0=prob.u0,p=prob.p,args...;kwargs...)
-   sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
-   RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
-end
-
-ZygoteRules.@adjoint function concrete_solve(prob,alg,u0,p,args...;
-                                             sensealg=nothing,kwargs...)
-  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
-_concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...) =
-  _concrete_solve_adjoint(prob,alg,InterpolatingAdjoint(),u0,p,args...;kwargs...)
-
-function _concrete_solve_adjoint(prob,alg,sensealg::DiffEqBase.AbstractSensitivityAlgorithm,
-                                 u0,p,args...;kwargs...)
-  sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
-  out = RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
-  out,(nothing,nothing,_adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...),ntuple(_->nothing, length(args))...)
-end
-
 ## Direct calls
 
 function adjoint_sensitivities_u0(sol,args...;
