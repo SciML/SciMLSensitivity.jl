@@ -90,7 +90,8 @@ function _concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAl
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
    u,du = extract_local_sensitivities(sol,Val(true))
-   function _concrete_solve_pushforward(Δself, nothing, nothing, nothing, Δp, args...)
+   function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
+     x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
      du * Δp
    end
    DiffEqArray(u,sol.t),_concrete_solve_pushforward
