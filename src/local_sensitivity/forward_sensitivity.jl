@@ -164,7 +164,8 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                          kwargs...)
 end
 
-extract_local_sensitivities(sol) = extract_local_sensitivities(sol,sol.prob.problem_type.sensealg)
+extract_local_sensitivities(sol, asmatrix::Val=Val(false)) = extract_local_sensitivities(sol,sol.prob.problem_type.sensealg, asmatrix)
+extract_local_sensitivities(sol, asmatrix::Bool) = extract_local_sensitivities(sol, Val{asmatrix}())
 extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) = _extract(sol, sol.prob.problem_type.sensealg, sol[i], asmatrix)
 extract_local_sensitivities(sol, i::Integer, asmatrix::Bool) = extract_local_sensitivities(sol, i, Val{asmatrix}())
 extract_local_sensitivities(sol, t::Union{Number,AbstractVector}, asmatrix::Val=Val(false)) = _extract(sol, sol.prob.problem_type.sensealg, sol(t), asmatrix)
@@ -173,18 +174,28 @@ extract_local_sensitivities(tmp, sol, t::Union{Number,AbstractVector}, asmatrix:
 extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensitivities(tmp, sol, t, Val{asmatrix}())
 
 # Get ODE u vector and sensitivity values from all time points
-function extract_local_sensitivities(sol,::ForwardSensitivity)
+function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{false})
   ni = sol.prob.f.numindvar
   u = sol[1:ni, :]
   du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
   return u, du
 end
 
-function extract_local_sensitivities(sol,::ForwardDiffSensitivity)
+function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
   _sol = Array(sol)
   u = ForwardDiff.value.(_sol)
   du_full = ForwardDiff.partials.(_sol)
   return u, [[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])]
+end
+
+function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
+  ni = sol.prob.f.numindvar
+  sol[1:ni, :],sol[(ni+1):end, :]
+end
+
+function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
+  _sol = Array(sol)
+  ForwardDiff.value.(_sol),ForwardDiff.partials.(_sol)
 end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector
