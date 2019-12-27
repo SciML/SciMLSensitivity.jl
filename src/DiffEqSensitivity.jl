@@ -5,7 +5,7 @@ using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools, QuasiMonteCarlo
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions
-import ZygoteRules
+import ZygoteRules, ChainRulesCore
 
 abstract type SensitivityFunction end
 abstract type GSAMethod end
