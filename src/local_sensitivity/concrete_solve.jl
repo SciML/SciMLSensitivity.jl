@@ -11,12 +11,12 @@ function _concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
   RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
 end
 
-ChainRulesCore.frule(::typeof(concrete_solve),prob,alg,u0,p,args...;
+function ChainRulesCore.frule(::typeof(concrete_solve),prob,alg,u0,p,args...;
                      sensealg=nothing,kwargs...)
   _concrete_solve_forward(prob,alg,sensealg,u0,p,args...;kwargs...)
 end
 
-ChainRulesCore.rrule(::typeof(concrete_solve),prob,alg,u0,p,args...;
+function ChainRulesCore.rrule(::typeof(concrete_solve),prob,alg,u0,p,args...;
                      sensealg=nothing,kwargs...)
   _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
 end
