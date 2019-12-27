@@ -11,6 +11,16 @@ function _concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
   RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
 end
 
+ChainRulesCore.frule(::typeof(concrete_solve),prob,alg,u0,p,args...;
+                     sensealg=nothing,kwargs...)
+  _concrete_solve_forward(prob,alg,sensealg,u0,p,args...;kwargs...)
+end
+
+ChainRulesCore.rrule(::typeof(concrete_solve),prob,alg,u0,p,args...;
+                     sensealg=nothing,kwargs...)
+  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
+end
+
 ZygoteRules.@adjoint function concrete_solve(prob,alg,u0,p,args...;
                                              sensealg=nothing,kwargs...)
   _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
@@ -73,6 +83,17 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAl
      (nothing,nothing,Δ'*du,nothing,ntuple(_->nothing, length(args))...)
    end
    DiffEqArray(u,sol.t),forward_sensitivity_backpass
+end
+
+function _concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+                                 u0,p,args...;kwargs...)
+   _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
+   sol = solve(_prob,args...;kwargs...)
+   u,du = extract_local_sensitivities(sol,Val(true))
+   function _concrete_solve_pushforward(Δself, nothing, nothing, nothing, Δp, args...)
+     du * Δp
+   end
+   DiffEqArray(u,sol.t),_concrete_solve_pushforward
 end
 
 function _concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
