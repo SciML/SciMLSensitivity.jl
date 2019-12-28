@@ -20,7 +20,8 @@ struct ODEAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,A,DG,TJ
 end
 
 @noinline function ODEAdjointSensitivityFunction(g,u0,p,alg,discrete,sol,dg,checkpoints,tspan,colorvec)
-  numparams = length(p)
+  p = p isa Params ? vcat(vec.(p)...) : p
+  numparams = p isa Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
@@ -161,7 +162,29 @@ function (S::ODEAdjointSensitivityFunction)(du,u,p,t)
         vec(f(u, p, t))
       end
     end
-    dλ[:], dgrad[:] = back(λ)
+
+    _idy, iback = Zygote.pullback(S.sol.prob.p) do
+      if DiffEqBase.isinplace(S.sol.prob)
+        out_ = Zygote.Buffer(u)
+        f(out_, u, p, t)
+        vec(copy(out_))
+      else
+        vec(f(u, p, t))
+      end
+    end
+
+    igs = iback(λ)
+    vs = zeros(Float32, sum(length.(S.sol.prob.p)) - length(y))
+    i = 1
+    for p in S.sol.prob.p
+      g = igs[p]
+      g isa AbstractArray || continue
+      vs[i:i+length(g)-1] = g
+      i += length(g)
+    end
+    eback = back(λ)
+    dλ[:] = eback[1]
+    dgrad[:] = vcat(eback[1], vs)
     isbcksol(S.alg) && (dy[:] = vec(_dy))
   end
 
@@ -203,7 +226,7 @@ end
 
   u0 = zero(sol.prob.u0)
 
-  len = isquad(alg) ? length(u0) : length(u0)+length(p)
+  len = isquad(alg) ? length(u0) : p isa Params ? length(u0)+sum(length.(p)) : length(u0) + length(p)
   λ = similar(u0, len)
   sense = ODEAdjointSensitivityFunction(g,u0,
                                         p,alg,discrete,
@@ -325,8 +348,9 @@ function adjoint_sensitivities_u0(sol,alg,g,t=nothing,dg=nothing;
   adj_prob = ODEAdjointProblem(sol,g,t,dg,sensealg,checkpoints=checkpoints)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,kwargs...,save_everystep=false,save_start=false,saveat=eltype(sol[1])[])
 
+  l = sol.prob.p isa Params ? sum(length.(sol.prob.p)) : length(sol.prob.p)
   -adj_sol[end][1:length(sol.prob.u0)],
-    adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
+    adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 end
 
 function adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
