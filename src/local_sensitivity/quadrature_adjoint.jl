@@ -15,7 +15,6 @@ struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,
 end
 
 @noinline function ODEQuadratureAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,tspan,colorvec)
-  numparams = length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
@@ -110,6 +109,7 @@ end
 
   p = sol.prob.p
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+  p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
 
   u0 = zero(sol.prob.u0)
 
@@ -141,13 +141,14 @@ end
 function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
+  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`
   pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
   isautojacvec = get_jacvec(sensealg)
-  pJ = isautojacvec ? nothing : similar(u0,length(u0),length(p))
+  pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing

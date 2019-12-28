@@ -19,7 +19,7 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ
 end
 
 @noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
-  numparams = length(p)
+  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
@@ -131,7 +131,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol,sensesensealg::BacksolveAdjoint,
+@noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet())
@@ -141,13 +141,14 @@ end
 
   p = sol.prob.p
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+  p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
+  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
 
   u0 = zero(sol.prob.u0)
-
-  len = length(u0)+length(p)
+  len = length(u0)+numparams
   λ = similar(u0, len)
   sense = ODEBacksolveSensitivityFunction(g,u0,
-                                        p,sensesensealg,discrete,
+                                        p,sensealg,discrete,
                                         sol,dg,checkpoints,tspan,f.colorvec)
 
   init_cb = t !== nothing && sol.prob.tspan[2] == t[end]
