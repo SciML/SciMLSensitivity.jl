@@ -12,8 +12,9 @@ function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
   adj_sol = solve(adj_prob,alg;kwargs...,
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[])
 
+  l = sol.prob.p isa Zygote.Params ? sum(length.(sol.prob.p)) : length(sol.prob.p)
   -adj_sol[end][1:length(sol.prob.u0)],
-    adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
+    adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 end
 
 function adjoint_sensitivities(sol,args...;
@@ -30,7 +31,8 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=false,save_start=false,kwargs...)
-  adj_sol[end][(1:length(sol.prob.p)) .+ length(sol.prob.u0)]'
+  l = sol.prob.p isa Zygote.Params ? sum(length.(sol.prob.p)) : length(sol.prob.p)
+  adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 end
 
 ### Common utils

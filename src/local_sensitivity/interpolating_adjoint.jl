@@ -21,7 +21,7 @@ struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,
 end
 
 @noinline function ODEInterpolatingAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
-  numparams = length(p)
+  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
@@ -122,16 +122,46 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     end
     mul!(dλ',λ',J)
   else
-    _dy, back = Tracker.forward(y, sol.prob.p) do u, p
-      if DiffEqBase.isinplace(sol.prob)
+    if DiffEqBase.isinplace(sol.prob)
+      _dy, back = Tracker.forward(y, sol.prob.p) do u, p
         out_ = map(zero, u)
         f(out_, u, p, t)
         Tracker.collect(out_)
-      else
+      end
+      dλ[:], dgrad[:] = Tracker.data.(back(λ))
+    elseif !(sol.prob.p isa Zygote.Params)
+      _dy, back = Zygote.pullback(y, sol.prob.p) do u, p
         vec(f(u, p, t))
       end
+      tmp1,tmp2 = back(λ)
+      dλ[:] = tmp1
+      dgrad[:] = tmp2
+    else # Not in-place and p is a Params
+
+      # This is the hackiest hack of the west specifically to get Zygote
+      # Implicit parameters to work. This should go away ASAP!
+
+      _dy, back = Zygote.pullback(y, S.sol.prob.p) do u, p
+        vec(f(u, p, t))
+      end
+
+      _idy, iback = Zygote.pullback(S.sol.prob.p) do
+        vec(f(y, p, t))
+      end
+
+      igs = iback(λ)
+      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
+      i = 1
+      for p in S.sol.prob.p
+        g = igs[p]
+        g isa AbstractArray || continue
+        vs[i:i+length(g)-1] = g
+        i += length(g)
+      end
+      eback = back(λ)
+      dλ[:] = eback[1]
+      dgrad[:] = vec(vs)
     end
-    dλ[:], dgrad[:] = Tracker.data.(back(λ))
   end
 
   dλ .*= -one(eltype(λ))
@@ -169,10 +199,12 @@ end
 
   p = sol.prob.p
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+  p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
+  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
 
   u0 = zero(sol.prob.u0)
 
-  len = length(u0)+length(p)
+  len = length(u0)+numparams
   λ = similar(u0, len)
   sense = ODEInterpolatingAdjointSensitivityFunction(g,u0,
                                                      p,sensealg,discrete,
