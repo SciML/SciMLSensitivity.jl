@@ -100,7 +100,9 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       integrator.iter=100
       u_modified!(integrator, true)
       step!(integrator, dt, true)
-      # `integrator.u` is aliased to `y`
+      if !DiffEqBase.isinplace(sol.prob) # `integrator.u` is aliased to `y`
+        y .= integrator.u
+      end
     else
       sol(y,t)
     end

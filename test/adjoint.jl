@@ -137,11 +137,11 @@ easy_res5 = adjoint_sensitivities(soloop,Kvaerno5(nlsolve=NLAnderson(), smooth_e
 easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint(checkpointing=true),
-                                  checkpoints=sol.t[1:5:end])
+                                  checkpoints=soloop_nodense.t[1:5:end])
 @test_broken easy_res62 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
-                                   checkpoints=sol.t[1:5:end])
+                                   checkpoints=soloop_nodense.t[1:5:end])
 
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
@@ -151,7 +151,7 @@ easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
 @test isapprox(res, easy_res4, rtol = 1e-10)
 @test isapprox(res, easy_res42, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-9)
-@test_broken isapprox(res, easy_res6, rtol = 1e-9)
+@test isapprox(res, easy_res6, rtol = 1e-10)
 @test isapprox(res, easy_res62, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
