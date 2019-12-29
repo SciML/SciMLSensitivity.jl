@@ -1,5 +1,5 @@
 using DiffEqSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus, QuadGK, LinearAlgebra
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote
 using Test
 
 function fb(du,u,p,t)
@@ -40,7 +40,7 @@ function foop_zygote(u,p,t)
   dy = -_p[3]*u[2] + _p[4]*u[1]*u[2]
   [dx,dy]
 end
-pp = Zygote.Params(_p)
+pp = Zygote.Params([_p])
 prob_zygote = ODEProblem(foop_zygote,u0,(0.0,10.0),pp)
 soloop_zygote = solve(prob_zygote,Tsit5(),abstol=1e-14,reltol=1e-14)
 
