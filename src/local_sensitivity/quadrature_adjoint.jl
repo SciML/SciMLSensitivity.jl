@@ -177,17 +177,17 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     mul!(out',λ',pJ)
   else
     if DiffEqBase.isinplace(sol.prob)
-      _, back = Tracker.forward(y, p) do u, p
+      _, back = Tracker.forward(y,p) do u,p
         out_ = map(zero, u)
-        f(out_, u, p, t)
+        f(out_, y, p, t)
         Tracker.collect(out_)
       end
       out[:] = vec(Tracker.data(back(λ)[2]))
     else
-      _, back = Zygote.pullback(p) do
-        vec(f(u, p, t))
+      _, back = Zygote.pullback(p) do p
+        vec(f(y, p, t))
       end
-      out[:] = vec(back(λ)[2])
+      out[:] = vec(back(λ)[1])
     end
   end
   out'

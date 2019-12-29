@@ -123,7 +123,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
       end
 
       igs = iback(λ)
-      vs = zeros(Float32, sum(length.(S.sol.prob.p)) - length(y))
+      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
       i = 1
       for p in S.sol.prob.p
         g = igs[p]
@@ -133,7 +133,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
       end
       eback = back(λ)
       dλ[:] = eback[1]
-      dgrad[:] = vcat(eback[1], vs)
+      dgrad[:] = vec(vs)
       dy[:] = vec(_dy)
     end
   end

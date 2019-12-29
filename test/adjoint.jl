@@ -1,10 +1,15 @@
 using DiffEqSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus, QuadGK, LinearAlgebra
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Flux
 using Test
 
 function fb(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
   du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+end
+function foop(u,p,t)
+  dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+  [dx,dy]
 end
 function jac(J,u,p,t)
   (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
@@ -15,16 +20,29 @@ function jac(J,u,p,t)
 end
 
 f = ODEFunction(fb,jac=jac)
-p = [1.5,1.0,3.0,1.0]
-prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
+p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
+prob = ODEProblem(f,u0,(0.0,10.0),p)
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-probb = ODEProblem(fb,[1.0;1.0],(0.0,10.0),p)
+probb = ODEProblem(fb,u0,(0.0,10.0),p)
+proboop = ODEProblem(foop,u0,(0.0,10.0),p)
 
 solb = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14)
 sol_end = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,
           save_everystep=false,save_start=false)
 
 sol_nodense = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,dense=false)
+soloop = solve(proboop,Tsit5(),abstol=1e-14,reltol=1e-14)
+soloop_nodense = solve(proboop,Tsit5(),abstol=1e-14,reltol=1e-14,dense=false)
+
+_p = copy(p)
+function foop_zygote(u,p,t)
+  dx = _p[1]*u[1] - _p[2]*u[1]*u[2]
+  dy = -_p[3]*u[2] + _p[4]*u[1]*u[2]
+  [dx,dy]
+end
+pp = Flux.params(p)
+prob_zygote = ODEProblem(foop_zygote,u0,(0.0,10.0),pp)
+soloop_zygote = solve(prob_zygote,Tsit5(),abstol=1e-14,reltol=1e-14)
 
 # Do a discrete adjoint problem
 println("Calculate discrete adjoint sensitivities")
@@ -90,6 +108,52 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res62, rtol = 1e-9)
 @test all(easy_res6 .== easy_res7)  # should be the same!
 
+println("OOP adjoint sensitivities ")
+
+easy_res = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+easy_res2 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                 reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                 sensealg=QuadratureAdjoint())
+@test_broken easy_res22 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  sensealg=QuadratureAdjoint(autojacvec=false)) isa AbstractArray
+easy_res3 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=InterpolatingAdjoint())
+@test_broken easy_res32 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=InterpolatingAdjoint(autojacvec=false)) isa AbstractArray
+easy_res4 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=BacksolveAdjoint())
+@test_broken easy_res42 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=BacksolveAdjoint(autojacvec=false)) isa AbstractArray
+easy_res5 = adjoint_sensitivities(soloop,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),
+                                 dg,t,abstol=1e-12,
+                                 reltol=1e-10,
+                                 sensealg=BacksolveAdjoint())
+easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=InterpolatingAdjoint(checkpointing=true),
+                                  checkpoints=sol.t[1:5:end])
+@test_broken easy_res62 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
+                                   checkpoints=sol.t[1:5:end])
+
+@test isapprox(res, easy_res, rtol = 1e-10)
+@test isapprox(res, easy_res2, rtol = 1e-10)
+@test isapprox(res, easy_res22, rtol = 1e-10)
+@test isapprox(res, easy_res3, rtol = 1e-10)
+@test isapprox(res, easy_res32, rtol = 1e-10)
+@test isapprox(res, easy_res4, rtol = 1e-10)
+@test isapprox(res, easy_res42, rtol = 1e-10)
+@test isapprox(res, easy_res5, rtol = 1e-9)
+@test_broken isapprox(res, easy_res6, rtol = 1e-9)
+@test isapprox(res, easy_res62, rtol = 1e-9)
+
 println("Calculate adjoint sensitivities ")
 
 easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
@@ -117,10 +181,10 @@ G([1.5,1.0,3.0,1.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0,1.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0,1.0])
 
-using Tracker
+import Tracker
 res4 = Tracker.gradient(G,[1.5,1.0,3.0,1.0])[1]
 
-using ReverseDiff
+import ReverseDiff
 res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0,1.0])
 
 @test norm(res' .- res2) < 1e-8
@@ -227,6 +291,20 @@ end
 @test adjargs ≈ adj rtol = 1e-10
 @test ū0args2 ≈ res rtol = 1e-10
 @test adjargs2 ≈ adj rtol = 1e-10
+
+println("Zygote OOP adjoint sensitivities ")
+
+zy_ū0, zy_adj = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,abstol=1e-14,
+                                        reltol=1e-14)
+
+zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,abstol=1e-14,
+                                    reltol=1e-14,
+                                    sensealg=BacksolveAdjoint())
+
+@test zy_ū0 ≈ res rtol = 1e-10
+@test zy_ū02 ≈ res rtol = 1e-10
+@test_broken zy_adj ≈ adjnou0 rtol = 1e-10
+@test_broken zy_adj2 ≈ adjnou0 rtol = 1e-10
 
 println("Do a continuous adjoint problem")
 

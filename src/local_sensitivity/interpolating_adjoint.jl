@@ -134,8 +134,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
         vec(f(u, p, t))
       end
       tmp1,tmp2 = back(λ)
-      dλ[:] .= tmp1
-      dgrad[:] .= tmp2
+      dλ[:] = tmp1
+      dgrad[:] = tmp2
     else # Not in-place and p is a Params
 
       # This is the hackiest hack of the west specifically to get Zygote
@@ -150,7 +150,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       end
 
       igs = iback(λ)
-      vs = zeros(Float32, sum(length.(S.sol.prob.p)) - length(y))
+      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
       i = 1
       for p in S.sol.prob.p
         g = igs[p]
@@ -160,7 +160,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       end
       eback = back(λ)
       dλ[:] = eback[1]
-      dgrad[:] = vcat(eback[1], vs)
+      dgrad[:] = vec(vs)
     end
   end
 
