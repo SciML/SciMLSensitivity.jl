@@ -40,7 +40,7 @@ function foop_zygote(u,p,t)
   dy = -_p[3]*u[2] + _p[4]*u[1]*u[2]
   [dx,dy]
 end
-pp = Flux.params(p)
+pp = Flux.params(_p)
 prob_zygote = ODEProblem(foop_zygote,u0,(0.0,10.0),pp)
 soloop_zygote = solve(prob_zygote,Tsit5(),abstol=1e-14,reltol=1e-14)
 
@@ -294,17 +294,17 @@ end
 
 println("Zygote OOP adjoint sensitivities ")
 
-zy_ū0, zy_adj = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,abstol=1e-14,
-                                        reltol=1e-14)
+zy_ū0, zy_adj = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
+                                         abstol=1e-10,reltol=1e-10)
 
-zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,abstol=1e-14,
-                                    reltol=1e-14,
-                                    sensealg=BacksolveAdjoint())
+zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
+                                           abstol=1e-10,reltol=1e-10,
+                                           sensealg=BacksolveAdjoint())
 
-@test zy_ū0 ≈ res rtol = 1e-10
-@test zy_ū02 ≈ res rtol = 1e-10
-@test_broken zy_adj ≈ adjnou0 rtol = 1e-10
-@test_broken zy_adj2 ≈ adjnou0 rtol = 1e-10
+@test zy_ū0 ≈ res rtol = 1e-8
+@test zy_ū02 ≈ res rtol = 1e-8
+@test zy_adj ≈ adjnou0 rtol = 1e-8
+@test zy_adj2 ≈ adjnou0 rtol = 1e-8
 
 println("Do a continuous adjoint problem")
 
