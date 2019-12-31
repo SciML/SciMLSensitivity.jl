@@ -198,11 +198,7 @@ function (S::AdjointSensitivityIntegrand)(t)
   S(out,t)
 end
 
-function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,args...;kwargs...)
-  error("Can't get sensitivities of u0 with quadrature.")
-end
-
-function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
+function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
                                 abstol=1e-6,reltol=1e-3,
                                 iabstol=abstol, ireltol=reltol,
@@ -226,5 +222,10 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                      atol=iabstol,rtol=ireltol)[1]
     end
   end
-  res
+  -adj_sol[end],res
+end
+
+function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,args...;
+                                kwargs...)
+  _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)[2]
 end

@@ -255,6 +255,14 @@ ū042,adj42 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
+ū05,adj5 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=QuadratureAdjoint(),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+ū052,adj52 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=QuadratureAdjoint(autojacvec=false),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
 ū0args,adjargs = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                         save_everystep=false, save_start=false,
                         sensealg=BacksolveAdjoint(),
@@ -279,6 +287,8 @@ end
 @test ū032 ≈ res rtol = 1e-10
 @test ū04 ≈ res rtol = 1e-10
 @test ū042 ≈ res rtol = 1e-10
+@test ū05 ≈ res rtol = 1e-10
+@test ū052 ≈ res rtol = 1e-10
 @test adj ≈ adjnou0 rtol = 1e-10
 @test adj ≈ adj2 rtol = 1e-10
 @test adj ≈ adj22 rtol = 1e-10
@@ -286,6 +296,8 @@ end
 @test adj ≈ adj32 rtol = 1e-10
 @test adj ≈ adj4 rtol = 1e-10
 @test adj ≈ adj42 rtol = 1e-10
+@test adj ≈ adj5 rtol = 1e-10
+@test adj ≈ adj52 rtol = 1e-10
 
 @test ū0args ≈ res rtol = 1e-10
 @test adjargs ≈ adj rtol = 1e-10
@@ -301,7 +313,12 @@ zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
                                            abstol=1e-10,reltol=1e-10,
                                            sensealg=BacksolveAdjoint())
 
+zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
+                                           abstol=1e-10,reltol=1e-10,
+                                           sensealg=QuadratureAdjoint())
+
 @test zy_ū0 ≈ res rtol = 1e-8
+@test zy_ū02 ≈ res rtol = 1e-8
 @test zy_ū02 ≈ res rtol = 1e-8
 @test zy_adj ≈ adjnou0 rtol = 1e-8
 @test zy_adj2 ≈ adjnou0 rtol = 1e-8
