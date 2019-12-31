@@ -79,6 +79,7 @@ end
 end
 
 # u = λ'
+# add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   @unpack y, sol, J, uf, sensealg, checkpointing, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
   idx = length(y)

@@ -16,6 +16,7 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ
   dg::DG
   checkpoints::CP
   colorvec::CV
+  isautojacvec::Bool
 end
 
 @noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
@@ -65,26 +66,15 @@ end
   return ODEBacksolveSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpoints,colorvec)
+                               discrete,y,sol,dg,checkpoints,colorvec,
+                               isautojacvec)
 end
 
-# u = λ'
-function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
-  idx = length(y)
+function vecjacobian!(dλ, λ, p, t, S, dgrad=nothing, dy=nothing)
+  @unpack isautojacvec, y, sol = S
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
-
-  λ     = @view u[1:idx]
-  dλ    = @view du[1:idx]
-  grad  = @view u[idx+1:end-idx]
-  dgrad = @view du[idx+1:end-idx]
-  _y    = @view u[end-idx+1:end]
-  dy    = @view du[end-idx+1:end]
-  copyto!(vec(y), _y)
-  isautojacvec || f(dy, _y, p, t)
-
   if !isautojacvec
+    @unpack J, uf, f_cache, jac_config, sensealg = S
     if DiffEqBase.has_jac(f)
       f.jac(J,y,p,t) # Calculate the Jacobian into J
     else
@@ -137,6 +127,25 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
       dy[:] = vec(_dy)
     end
   end
+  return nothing
+end
+
+# u = λ'
+function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
+  @unpack y, sol, sensealg, discrete, dg, dg_val, g, g_grad_config, isautojacvec = S
+  idx = length(y)
+  f = sol.prob.f
+
+  λ     = @view u[1:idx]
+  dλ    = @view du[1:idx]
+  grad  = @view u[idx+1:end-idx]
+  dgrad = @view du[idx+1:end-idx]
+  _y    = @view u[end-idx+1:end]
+  dy    = @view du[end-idx+1:end]
+  copyto!(vec(y), _y)
+  isautojacvec || f(dy, _y, p, t)
+
+  vecjacobian!(dλ, λ, p, t, S, dgrad, dy)
 
   dλ .*= -one(eltype(λ))
 
@@ -151,7 +160,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   end
 
   if !isautojacvec
-    @unpack pJ, pf, paramjac_config = S
+    @unpack pJ, pf, paramjac_config, f_cache = S
     if DiffEqBase.has_paramjac(f)
       f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
     else
