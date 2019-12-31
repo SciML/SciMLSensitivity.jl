@@ -63,27 +63,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   λ     = u
   dλ    = du
 
-  if !isautojacvec
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-    end
-    mul!(dλ',λ',J)
-  else
-    _dy, back = Tracker.forward(y) do u
-      if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      else
-        vec(f(u, p, t))
-      end
-    end
-    dλ[:] = Tracker.data(back(λ)[1])
-  end
-
+  vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
   if !discrete

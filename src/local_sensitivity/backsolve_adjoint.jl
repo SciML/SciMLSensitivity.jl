@@ -16,7 +16,6 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ
   dg::DG
   checkpoints::CP
   colorvec::CV
-  isautojacvec::Bool
 end
 
 @noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
@@ -24,7 +23,7 @@ end
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
+  isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
@@ -66,73 +65,13 @@ end
   return ODEBacksolveSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpoints,colorvec,
-                               isautojacvec)
-end
-
-function vecjacobian!(dλ, λ, p, t, S, dgrad=nothing, dy=nothing)
-  @unpack isautojacvec, y, sol = S
-  f = sol.prob.f
-  if !isautojacvec
-    @unpack J, uf, f_cache, jac_config, sensealg = S
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-    end
-    mul!(dλ',λ',J)
-  else
-    if DiffEqBase.isinplace(sol.prob)
-      _dy, back = Tracker.forward(y, sol.prob.p) do u, p
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      end
-      dλ[:], dgrad[:] = Tracker.data.(back(λ))
-      dy[:] = vec(Tracker.data(_dy))
-    elseif !(sol.prob.p isa Zygote.Params)
-      _dy, back = Zygote.pullback(y, sol.prob.p) do u, p
-        vec(f(u, p, t))
-      end
-      tmp1,tmp2 = back(λ)
-      dλ[:] .= tmp1
-      dgrad[:] .= tmp2
-      dy[:] .= vec(_dy)
-    else # Not in-place and p is a Params
-
-      # This is the hackiest hack of the west specifically to get Zygote
-      # Implicit parameters to work. This should go away ASAP!
-
-      _dy, back = Zygote.pullback(y, S.sol.prob.p) do u, p
-        vec(f(u, p, t))
-      end
-
-      _idy, iback = Zygote.pullback(S.sol.prob.p) do
-        vec(f(y, p, t))
-      end
-
-      igs = iback(λ)
-      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
-      i = 1
-      for p in S.sol.prob.p
-        g = igs[p]
-        g isa AbstractArray || continue
-        vs[i:i+length(g)-1] = g
-        i += length(g)
-      end
-      eback = back(λ)
-      dλ[:] = eback[1]
-      dgrad[:] = vec(vs)
-      dy[:] = vec(_dy)
-    end
-  end
-  return nothing
+                               discrete,y,sol,dg,checkpoints,colorvec)
 end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, sensealg, discrete, dg, dg_val, g, g_grad_config, isautojacvec = S
+  @unpack y, sol, sensealg, discrete, dg, dg_val, g, g_grad_config = S
+  isautojacvec = get_jacvec(sensealg)
   idx = length(y)
   f = sol.prob.f
 
@@ -145,7 +84,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   copyto!(vec(y), _y)
   isautojacvec || f(dy, _y, p, t)
 
-  vecjacobian!(dλ, λ, p, t, S, dgrad, dy)
+  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
 
   dλ .*= -one(eltype(λ))
 
