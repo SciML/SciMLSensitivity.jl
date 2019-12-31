@@ -8,7 +8,7 @@ end
 function _concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
                         u0=prob.u0,p=prob.p,args...;kwargs...)
   sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
-  RecursiveArrayTools.DiffEqArray(reduce(hcat,sol.u),sol.t)
+  RecursiveArrayTools.DiffEqArray(sol.u,sol.t)
 end
 
 function ChainRulesCore.frule(::typeof(concrete_solve),prob,alg,u0,p,args...;
@@ -26,8 +26,12 @@ ZygoteRules.@adjoint function concrete_solve(prob,alg,u0,p,args...;
   _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
 end
 
-_concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...) =
-  _concrete_solve_adjoint(prob,alg,InterpolatingAdjoint(),u0,p,args...;kwargs...)
+# Here is where we can add a default algorithm for computing sensitivities
+# Based on problem information!
+function _concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+  default_sensealg = InterpolatingAdjoint()
+  _concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+end
 
 function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,kwargs...)
@@ -43,7 +47,7 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
   if haskey(kwargs, :callback_adj)
     kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
   end
-  sol = solve(_prob,args...;save_start=true,save_end=true,kwargs...)
+  sol = solve(_prob,alg,args...;save_start=true,save_end=true,kwargs...)
 
   no_start = !save_start
   no_end = !save_end
@@ -66,23 +70,23 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
     end
 
     ts = sol.t[sol_idxs]
-    du0, dp = adjoint_sensitivities_u0(sol,args...,df,ts;
+    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts;
                     kwargs_adj...)
 
-    (nothing,nothing,reshape(dp,size(p)), reshape(du0,size(u0)), ntuple(_->nothing, length(args))...)
+    (nothing,nothing,reshape(du0,size(u0)), reshape(dp',size(p)), ntuple(_->nothing, length(args))...)
   end
-  RecursiveArrayTools.DiffEqArray(out,sol.t), adjoint_sensitivity_backpass
+  out, adjoint_sensitivity_backpass
 end
 
 function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,args...;kwargs...)
-   u,du = extract_local_sensitivities(sol,Val(true))
+   sol = solve(_prob,alg,args...;kwargs...)
+   u,du = extract_local_sensitivities(sol)
    function forward_sensitivity_backpass(Δ)
-     (nothing,nothing,Δ'*du,nothing,ntuple(_->nothing, length(args))...)
+     (nothing,nothing,nothing,[sum(du[i]*Δ') for i in 1:length(du)],ntuple(_->nothing, length(args))...)
    end
-   DiffEqArray(u,sol.t),forward_sensitivity_backpass
+   u,forward_sensitivity_backpass
 end
 
 function _concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
@@ -99,12 +103,13 @@ end
 
 function _concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
-    Zygote.pullback(_concrete_solve,prob,alg,u0,p,args...;kwargs...)
+    Zygote.pullback((u0,p)->_concrete_solve(prob,alg,u0,p,args...;kwargs...),u0,p)
 end
 
 function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
                                  u0,p,args...;kwargs...)
 
+  t = eltype(prob.tspan)[]
   function tracker_adjoint_forwardpass(u0,p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
@@ -114,7 +119,9 @@ function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       # use TrackedArray for efficiency of the tape
       _prob = remake(prob,u0=u0,p=p)
     end
-    solve(_prob,args...;kwargs...)
+    sol = solve(_prob,alg,args...;kwargs...)
+    t = sol.t
+    sol
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
@@ -123,5 +130,5 @@ function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
   end
-  DiffEqArray(Tracker.data(sol),sol.t),tracker_adjoint_backpass
+  Tracker.data(sol),tracker_adjoint_backpass
 end

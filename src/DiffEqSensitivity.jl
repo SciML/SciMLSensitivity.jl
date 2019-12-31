@@ -31,7 +31,8 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
        SensitivityAlg, regression_sensitivity, DGSM, eFAST
 
-export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint, ForwardSensitivity,
-       ForwardDiffSensitivity
+export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
+       TrackerAdjoint, ZygoteAdjoint,
+       ForwardSensitivity, ForwardDiffSensitivity
 
 end # module
