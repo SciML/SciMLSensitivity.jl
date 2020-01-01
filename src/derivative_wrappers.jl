@@ -69,7 +69,8 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   nothing
 end
 
-function vecjacobian!(dλ, λ, p, t, S; dgrad=nothing, dy=nothing)
+function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
+                      dgrad=nothing, dy=nothing)
   @unpack y, sol, sensealg = S
   f = sol.prob.f
   isautojacvec = get_jacvec(sensealg)
@@ -86,7 +87,8 @@ function vecjacobian!(dλ, λ, p, t, S; dgrad=nothing, dy=nothing)
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S
       if DiffEqBase.has_paramjac(f)
-        f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,sol.prob.p,t)
       else
         jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
       end
@@ -140,6 +142,18 @@ function vecjacobian!(dλ, λ, p, t, S; dgrad=nothing, dy=nothing)
       dy !== nothing && (dy[:] = vec(_dy))
     end
   end
+  return nothing
+end
+
+function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
+  @unpack dg, dg_val, g, g_grad_config, sensealg = S
+  if dg != nothing
+    dg(dg_val,y,p,t)
+  else
+    g.t = t
+    gradient!(dg_val, g, y, sensealg, g_grad_config)
+  end
+  dλ .+= dg_val
   return nothing
 end
 

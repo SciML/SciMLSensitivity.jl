@@ -70,8 +70,7 @@ end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, sensealg, discrete, dg, dg_val, g, g_grad_config = S
-  isautojacvec = get_jacvec(sensealg)
+  @unpack y, sol, discrete = S
   idx = length(y)
   f = sol.prob.f
 
@@ -87,15 +86,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
 
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
   return nothing
 end
 

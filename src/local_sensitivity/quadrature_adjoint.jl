@@ -55,10 +55,9 @@ end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, discrete = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   sol(y,t)
   λ     = u
   dλ    = du
@@ -66,15 +65,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
   return nothing
 end
 

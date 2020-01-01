@@ -81,10 +81,9 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, checkpointing, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, checkpointing, discrete = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
 
   if checkpointing
     @unpack integrator, checkpoints = S
@@ -120,15 +119,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
 
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
   return nothing
 end
 
