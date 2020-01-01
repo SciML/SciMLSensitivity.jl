@@ -7,10 +7,10 @@ struct eFASTResult{T1}
     total_order::T1
 end
 
-function gsa(f,method::eFAST,p_range::AbstractVector;N::Int,batch=false)
+function gsa(f,method::eFAST,p_range::AbstractVector;samples::Int,batch=false)
     @unpack num_harmonics = method
     num_params = length(p_range)
-    omega = [floor((N-1)/(2*num_harmonics))]
+    omega = [floor((samples-1)/(2*num_harmonics))]
     m = floor(omega[1]/(2*num_harmonics))
 
     if m>= num_params-1
@@ -22,13 +22,13 @@ function gsa(f,method::eFAST,p_range::AbstractVector;N::Int,batch=false)
     omega_temp = similar(omega)
     first_order = []
     total_order = []
-    s = collect((2*pi/N) * (0:N-1))
-    ps = zeros(num_params,N*num_params)
+    s = collect((2*pi/samples) * (0:samples-1))
+    ps = zeros(num_params,samples*num_params)
 
     for i in 1:num_params
         omega_temp[i] = omega[1]
         omega_temp[[k for k in 1:num_params if k != i]] = omega[2:end]
-        l = collect((i-1)*N+1:i*N)
+        l = collect((i-1)*samples+1:i*samples)
         phi = 2*pi*rand()
         for j in 1:num_params
             x =  0.5 .+ (1/pi) .*(asin.(sin.(omega_temp[j]*s .+ phi)))
@@ -47,14 +47,14 @@ function gsa(f,method::eFAST,p_range::AbstractVector;N::Int,batch=false)
 
     for i in 1:num_params
         if !multioutput
-            ft = (fft(all_y[(i-1)*N+1:i*N]))[2:Int(floor((N/2)))]
-            ys = ((abs.(ft))./N).^2 
+            ft = (fft(all_y[(i-1)*samples+1:i*samples]))[2:Int(floor((samples/2)))]
+            ys = ((abs.(ft))./samples).^2 
             varnce = 2*sum(ys)
             push!(first_order,2*sum(ys[(1:num_harmonics)*Int(omega[1])])/varnce)
             push!(total_order,1 .- 2*sum(ys[1:Int(omega[1]/2)])/varnce)
         else
-            ft = [(fft(all_y[j,(i-1)*N+1:i*N]))[2:Int(floor((N/2)))] for j in 1:size(all_y,1)]
-            ys = [((abs.(ff))./N).^2 for ff in ft]
+            ft = [(fft(all_y[j,(i-1)*samples+1:i*samples]))[2:Int(floor((samples/2)))] for j in 1:size(all_y,1)]
+            ys = [((abs.(ff))./samples).^2 for ff in ft]
             varnce = 2*sum.(ys)
             push!(first_order, map((y,var) -> 2*sum(y[(1:num_harmonics)*Int(omega[1])])./var, ys, varnce))
             push!(total_order, map((y,var) -> 1 .- 2*sum(y[1:Int(omega[1]/2)])./var, ys, varnce))
