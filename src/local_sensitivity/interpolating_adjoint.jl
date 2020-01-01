@@ -1,4 +1,4 @@
-struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,CP,SType,INT,CV} <: SensitivityFunction
+struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,CP,SType,INT,CV,Alg<:InterpolatingAdjoint} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -8,7 +8,7 @@ struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
-  sensealg::InterpolatingAdjoint
+  sensealg::Alg
   f_cache::rateType
   discrete::Bool
   y::uType2
@@ -75,7 +75,8 @@ end
   return ODEInterpolatingAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpointing,checkpoints,integrator,colorvec)
+                               discrete,y,sol,dg,checkpointing,checkpoints,
+                               integrator,colorvec)
 end
 
 # u = λ'
