@@ -18,11 +18,11 @@ end
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
+  isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
-    if dg != nothing || isautojacvec
+    if dg != nothing
       pg = nothing
       pg_config = nothing
     else
@@ -55,48 +55,18 @@ end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, discrete = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   sol(y,t)
   λ     = u
   dλ    = du
 
-  if !isautojacvec
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-    end
-    mul!(dλ',λ',J)
-  else
-    _dy, back = Tracker.forward(y) do u
-      if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      else
-        vec(f(u, p, t))
-      end
-    end
-    dλ[:] = Tracker.data(back(λ)[1])
-  end
-
+  vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
-
-  nothing
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
+  return nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)

@@ -23,11 +23,11 @@ end
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
+  isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
-    if dg != nothing || isautojacvec
+    if dg != nothing
       pg = nothing
       pg_config = nothing
     else
@@ -70,10 +70,9 @@ end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, discrete = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
 
   λ     = @view u[1:idx]
   dλ    = @view du[1:idx]
@@ -82,84 +81,13 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   _y    = @view u[end-idx+1:end]
   dy    = @view du[end-idx+1:end]
   copyto!(vec(y), _y)
-  isautojacvec || f(dy, _y, p, t)
 
-  if !isautojacvec
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-    end
-    mul!(dλ',λ',J)
-  else
-    if DiffEqBase.isinplace(sol.prob)
-      _dy, back = Tracker.forward(y, sol.prob.p) do u, p
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      end
-      dλ[:], dgrad[:] = Tracker.data.(back(λ))
-      dy[:] = vec(Tracker.data(_dy))
-    elseif !(sol.prob.p isa Zygote.Params)
-      _dy, back = Zygote.pullback(y, sol.prob.p) do u, p
-        vec(f(u, p, t))
-      end
-      tmp1,tmp2 = back(λ)
-      dλ[:] .= tmp1
-      dgrad[:] .= tmp2
-      dy[:] .= vec(_dy)
-    else # Not in-place and p is a Params
-
-      # This is the hackiest hack of the west specifically to get Zygote
-      # Implicit parameters to work. This should go away ASAP!
-
-      _dy, back = Zygote.pullback(y, S.sol.prob.p) do u, p
-        vec(f(u, p, t))
-      end
-
-      _idy, iback = Zygote.pullback(S.sol.prob.p) do
-        vec(f(y, p, t))
-      end
-
-      igs = iback(λ)
-      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
-      i = 1
-      for p in S.sol.prob.p
-        g = igs[p]
-        g isa AbstractArray || continue
-        vs[i:i+length(g)-1] = g
-        i += length(g)
-      end
-      eback = back(λ)
-      dλ[:] = eback[1]
-      dgrad[:] = vec(vs)
-      dy[:] = vec(_dy)
-    end
-  end
+  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
 
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
-
-  if !isautojacvec
-    @unpack pJ, pf, paramjac_config = S
-    if DiffEqBase.has_paramjac(f)
-      f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
-    else
-      jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
-    end
-    mul!(dgrad',λ',pJ)
-  end
-  nothing
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
+  return nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
