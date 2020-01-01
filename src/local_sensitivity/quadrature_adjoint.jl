@@ -18,11 +18,11 @@ end
   numindvar = length(u0)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
+  isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
-    if dg != nothing || isautojacvec
+    if dg != nothing
       pg = nothing
       pg_config = nothing
     else
@@ -75,8 +75,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
     end
     dλ .+= dg_val
   end
-
-  nothing
+  return nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)

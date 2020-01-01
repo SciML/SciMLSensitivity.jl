@@ -30,7 +30,7 @@ end
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
 
   if !discrete
-    if dg != nothing || isautojacvec
+    if dg != nothing
       pg = nothing
       pg_config = nothing
     else
@@ -129,17 +129,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     end
     dλ .+= dg_val
   end
-
-  if !isautojacvec
-    @unpack pJ, pf, paramjac_config = S
-    if DiffEqBase.has_paramjac(f)
-      f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
-    else
-      jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
-    end
-    mul!(dgrad',λ',pJ)
-  end
-  nothing
+  return nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)

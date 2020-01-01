@@ -82,6 +82,17 @@ function vecjacobian!(dλ, λ, p, t, S; dgrad=nothing, dy=nothing)
       jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
+
+    if dgrad !== nothing
+      @unpack pJ, pf, paramjac_config = S
+      if DiffEqBase.has_paramjac(f)
+        f.paramjac(pJ,y,sol.prob.p,t) # Calculate the parameter Jacobian into pJ
+      else
+        jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
+      end
+      mul!(dgrad',λ',pJ)
+    end
+    dy !== nothing && f(dy, y, p, t)
   else
     if DiffEqBase.isinplace(sol.prob)
       _dy, back = Tracker.forward(y, sol.prob.p) do u, p
