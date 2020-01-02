@@ -313,12 +313,11 @@ zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
                                            abstol=1e-10,reltol=1e-10,
                                            sensealg=BacksolveAdjoint())
 
-zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
-                                           abstol=1e-10,reltol=1e-10,
-                                           sensealg=QuadratureAdjoint())
+@test_broken adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
+                                      abstol=1e-10,reltol=1e-10,
+                                      sensealg=QuadratureAdjoint()) isa Tuple
 
 @test zy_ū0 ≈ res rtol = 1e-8
-@test zy_ū02 ≈ res rtol = 1e-8
 @test zy_ū02 ≈ res rtol = 1e-8
 @test zy_adj ≈ adjnou0 rtol = 1e-8
 @test zy_adj2 ≈ adjnou0 rtol = 1e-8
