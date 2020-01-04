@@ -93,7 +93,7 @@ end
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
-                                     callback=CallbackSet())
+                                     callback=CallbackSet(),kwargs...)
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
   discrete = t != nothing

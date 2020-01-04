@@ -18,13 +18,14 @@ struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,
   colorvec::CV
 end
 
-mutable struct CheckpointSolution{S,I}
+mutable struct CheckpointSolution{S,I,T}
   cpsol::S # solution in a checkpoint interval
   intervals::I # checkpoint intervals
   cursor::Int # sol.prob.tspan = intervals[cursor]
+  tols::T
 end
 
-@noinline function ODEInterpolatingAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,prob,colorvec)
+@noinline function ODEInterpolatingAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,prob,colorvec,tols)
   numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
   @unpack f, tspan = prob
@@ -67,14 +68,13 @@ end
   pJ = isautojacvec ? nothing : similar(prob.u0, numindvar, numparams)
 
   checkpoint_sol = if checkpointing
-    # TODO: `reltol` and `abstol`
     intervals = map(tuple, @view(checkpoints[1:end-1]), @view(checkpoints[2:end]))
     interval_end = intervals[end][end]
     prob.tspan[1] > interval_end && push!(intervals, (interval_end, prob.tspan[1]))
     cursor = lastindex(intervals)
     interval = intervals[cursor]
-    cpsol = solve(remake(prob, tspan=interval, u0=sol(interval[1])), sol.alg)
-    CheckpointSolution(cpsol, intervals, cursor)
+    cpsol = solve(remake(prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
+    CheckpointSolution(cpsol, intervals, cursor, tols)
   else
     nothing
   end
@@ -114,7 +114,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       cpsol_t = checkpoint_sol.cpsol.t
       sol(y, interval[1])
       prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
-      cpsol′ = solve(prob′, sol.alg, dt=abs(cpsol_t[end] - cpsol_t[end-1]))
+      cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
       checkpoint_sol.cpsol = cpsol′
       checkpoint_sol.cursor = cursor′
     end
@@ -138,7 +138,9 @@ end
 @noinline function ODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=nothing,
-                                     callback=CallbackSet())
+                                     callback=CallbackSet(),
+                                     reltol=nothing, abstol=nothing,
+                                     kwargs...)
   prob = remake(sol.prob, tspan=reverse(sol.prob.tspan))
   f = prob.f
   discrete = t != nothing
@@ -155,7 +157,8 @@ end
   sense = ODEInterpolatingAdjointSensitivityFunction(g,u0,
                                                      p,sensealg,discrete,
                                                      sol,dg,checkpoints,prob,
-                                                     f.colorvec)
+                                                     f.colorvec,
+                                                     (reltol=reltol,abstol=abstol))
 
   init_cb = t !== nothing && prob.tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
