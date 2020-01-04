@@ -2,8 +2,13 @@
 
 function adjoint_sensitivities_u0(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
+                                  checkpoints=nothing,
                                   kwargs...)
-  _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)
+  tstops = checkpoints === nothing ? similar(sol.t, 0) : checkpoints
+  _adjoint_sensitivities_u0(sol,sensealg,args...;
+                            tstops=tstops,
+                            checkpoints=checkpoints,
+                            kwargs...)
 end
 
 function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
@@ -19,8 +24,13 @@ end
 
 function adjoint_sensitivities(sol,args...;
                                sensealg=InterpolatingAdjoint(),
+                               checkpoints=nothing,
                                kwargs...)
-  _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
+  tstops = checkpoints === nothing ? similar(sol.t, 0) : checkpoints
+  _adjoint_sensitivities(sol,sensealg,args...;
+                         tstops=tstops,
+                         checkpoints=checkpoints,
+                         kwargs...)
 end
 
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
