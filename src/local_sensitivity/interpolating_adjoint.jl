@@ -89,6 +89,13 @@ end
                                checkpoint_sol,colorvec)
 end
 
+function findcursor(checkpoint_sol, t)
+  # equivalent with `findfirst(x->x[1] <= t <= x[2], checkpoint_sol.intervals)`
+  intervals = checkpoint_sol.intervals
+  lt(x, t) = <(x[2], t)
+  return searchsortedfirst(intervals, t, lt=lt)
+end
+
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
@@ -102,8 +109,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
     if !(interval[1] <= t <= interval[2])
-      # TODO: binary search like `find`
-      cursor′ = findfirst(x->x[1] <= t <= x[2], checkpoint_sol.intervals)
+      cursor′ = findcursor(checkpoint_sol, t)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
       sol(y, interval[1])
