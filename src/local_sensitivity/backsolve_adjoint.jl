@@ -46,7 +46,7 @@ end
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
+  y = copy(sol.u[end])
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing

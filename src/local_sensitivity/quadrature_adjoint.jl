@@ -41,7 +41,7 @@ end
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
+  y = copy(sol.u[end])
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 
