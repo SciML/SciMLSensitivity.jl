@@ -1,11 +1,11 @@
-struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,DG,TJ,SType,CV} <: SensitivityFunction
+struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,DG,TJ,SType,CV,Alg<:QuadratureAdjoint} <: SensitivityFunction
   uf::UF
   g::G
   J::TJ
   dg_val::uType
   jac_config::JC
   g_grad_config::GC
-  sensealg::QuadratureAdjoint
+  sensealg::Alg
   f_cache::rateType
   discrete::Bool
   y::uType2
@@ -16,7 +16,6 @@ end
 
 @noinline function ODEQuadratureAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,tspan,colorvec)
   numindvar = length(u0)
-  # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
   isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
@@ -42,7 +41,7 @@ end
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
+  y = copy(sol.u[end])
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 

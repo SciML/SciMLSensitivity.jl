@@ -1,4 +1,4 @@
-struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,CP,SType,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,CP,SType,CV,Alg<:BacksolveAdjoint} <: SensitivityFunction
   uf::UF
   pf::PF
   g::G
@@ -8,7 +8,7 @@ struct ODEBacksolveSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ
   jac_config::JC
   g_grad_config::GC
   paramjac_config::PJC
-  sensealg::BacksolveAdjoint
+  sensealg::Alg
   f_cache::rateType
   discrete::Bool
   y::uType2
@@ -21,7 +21,6 @@ end
 @noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
   numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
-  # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
   isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
@@ -47,7 +46,7 @@ end
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
+  y = copy(sol.u[end])
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
     paramjac_config = nothing
@@ -94,7 +93,7 @@ end
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
-                                     callback=CallbackSet())
+                                     callback=CallbackSet(),kwargs...)
   f = sol.prob.f
   tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
   discrete = t != nothing
