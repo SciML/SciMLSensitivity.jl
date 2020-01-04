@@ -249,10 +249,12 @@ ū032,adj32 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
 
 ū04,adj4 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=InterpolatingAdjoint(checkpointing=true),
+                                    checkpoints=sol.t[1:10:end],
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
 ū042,adj42 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
+                                    checkpoints=sol.t[1:10:end],
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
 ū0args,adjargs = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
@@ -348,9 +350,11 @@ easy_res26 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
 println("27")
 easy_res27 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  checkpoints=sol.t[1:10:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true))
 easy_res28 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  checkpoints=sol.t[1:10:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
 println("3")
 easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
@@ -376,9 +380,11 @@ easy_res36 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
 println("37")
 easy_res37 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  checkpoints=sol.t[1:10:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true))
 easy_res38 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                  checkpoints=sol.t[1:10:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
 
 @test norm(easy_res .- res) < 1e-8
