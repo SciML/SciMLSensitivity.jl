@@ -64,55 +64,54 @@ end
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
 
-  pJ = isautojacvec ? nothing : similar(sol.prob.u0, numindvar, numparams)
+  pJ = isautojacvec ? nothing : similar(prob.u0, numindvar, numparams)
 
-  integrator = if checkpointing
-    integ = init(sol.prob, sol.alg, save_on=false)
-    integ.u = y
-    integ
+  checkpoint_sol = if checkpointing
+    # TODO: `reltol` and `abstol`
+    intervals = map(tuple, @view(checkpoints[1:end-1]), @view(checkpoints[2:end]))
+    interval_end = intervals[end][end]
+    prob.tspan[1] > interval_end && push!(intervals, (interval_end, prob.tspan[1]))
+    cursor = lastindex(intervals)
+    interval = intervals[cursor]
+    cpsol = solve(remake(prob, tspan=interval, u0=sol(interval[1])), sol.alg)
+    CheckpointSolution(cpsol, intervals, cursor)
   else
     nothing
   end
+
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 
   return ODEInterpolatingAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
                                jac_config,pg_config,paramjac_config,
                                sensealg,f_cache,
-                               discrete,y,sol,dg,checkpointing,checkpoints,
-                               integrator,colorvec)
+                               discrete,y,sol,dg,
+                               checkpoint_sol,colorvec)
 end
 
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, checkpointing, discrete = S
+  @unpack y, sol, checkpoint_sol, discrete = S
   idx = length(y)
   f = sol.prob.f
 
-  if checkpointing
-    @unpack integrator, checkpoints = S
-    # assuming that in the forward direction `t0` < `t1`, and the
-    # `checkpoints` vector is sorted with respect to the forward direction
-    tidx = findlast(x->x <= t, checkpoints)
-    t0 = checkpoints[tidx]
-    dt = t-t0
-    if abs(dt) > integrator.opts.dtmin
-      sol(integrator.u, t0)
-      copyto!(integrator.uprev, integrator.u)
-      integrator.t = t0
-      # set `iter` to some arbitrary integer so that there won't be max maxiters error
-      integrator.iter=100
-      u_modified!(integrator, true)
-      step!(integrator, dt, true)
-      if !DiffEqBase.isinplace(sol.prob) # `integrator.u` is aliased to `y`
-        y .= integrator.u
-      end
-    else
-      sol(y,t)
-    end
-  else
+  if checkpoint_sol === nothing
     sol(y,t)
+  else
+    intervals = checkpoint_sol.intervals
+    interval = intervals[checkpoint_sol.cursor]
+    if !(interval[1] <= t <= interval[2])
+      cursor′ = checkpoint_sol.cursor - 1
+      interval = intervals[cursor′]
+      cpsol_t = checkpoint_sol.cpsol.t
+      sol(y, interval[1])
+      prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
+      cpsol′ = solve(prob′, sol.alg, dt=abs(cpsol_t[end] - cpsol_t[end-1]))
+      checkpoint_sol.cpsol = cpsol′
+      checkpoint_sol.cursor = cursor′
+    end
+    checkpoint_sol.cpsol(y, t)
   end
 
   λ     = @view u[1:idx]
