@@ -102,7 +102,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
     if !(interval[1] <= t <= interval[2])
-      cursor′ = checkpoint_sol.cursor - 1
+      # TODO: binary search like `find`
+      cursor′ = findfirst(x->x[1] <= t <= x[2], checkpoint_sol.intervals)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
       sol(y, interval[1])
@@ -111,7 +112,6 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       checkpoint_sol.cpsol = cpsol′
       checkpoint_sol.cursor = cursor′
     end
-    interval[1] <= t <= interval[2] || error("A step rejection (around t=$t) happened at a checkpoint, please coarsen the checkpoints to resolve this error.")
     checkpoint_sol.cpsol(y, t)
   end
 
