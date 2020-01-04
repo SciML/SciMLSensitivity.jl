@@ -21,7 +21,6 @@ end
 @noinline function ODEBacksolveSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,tspan,colorvec)
   numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
   numindvar = length(u0)
-  # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   f = sol.prob.f
   isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
