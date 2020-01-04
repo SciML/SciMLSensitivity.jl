@@ -111,6 +111,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       checkpoint_sol.cpsol = cpsol′
       checkpoint_sol.cursor = cursor′
     end
+    interval[1] <= t <= interval[2] || error("A step rejection (around t=$t) happened at a checkpoint, please coarsen the checkpoints to resolve this error.")
     checkpoint_sol.cpsol(y, t)
   end
 

@@ -252,6 +252,11 @@ ū04,adj4 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     checkpoints=sol.t[1:10:end],
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
+@test_throws Any adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                         sensealg=InterpolatingAdjoint(checkpointing=true),
+                         checkpoints=sol.t[1:5:end],
+                         reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
 ū042,adj42 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
                                     checkpoints=sol.t[1:10:end],
