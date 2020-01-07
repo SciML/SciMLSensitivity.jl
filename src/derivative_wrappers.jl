@@ -107,7 +107,7 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       dλ[:] = tmp1
       dgrad !== nothing && (dgrad[:] = tmp2)
       dy !== nothing && (dy[:] = vec(Tracker.data(_dy)))
-    elseif !(prob.p isa Zygote.Params)
+    else
       _dy, back = Zygote.pullback(y, prob.p) do u, p
         vec(f(u, p, t))
       end
@@ -115,32 +115,6 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       dλ[:] .= tmp1
       dgrad !== nothing && (dgrad[:] .= tmp2)
       dy !== nothing && (dy[:] .= vec(_dy))
-    else # Not in-place and p is a Params
-
-      # This is the hackiest hack of the west specifically to get Zygote
-      # Implicit parameters to work. This should go away ASAP!
-
-      _dy, back = Zygote.pullback(y, prob.p) do u, p
-        vec(f(u, p, t))
-      end
-
-      _idy, iback = Zygote.pullback(prob.p) do
-        vec(f(y, p, t))
-      end
-
-      igs = iback(λ)
-      vs = zeros(Float32, sum(length.(prob.p)))
-      i = 1
-      for p in prob.p
-        g = igs[p]
-        g isa AbstractArray || continue
-        vs[i:i+length(g)-1] = g
-        i += length(g)
-      end
-      eback = back(λ)
-      dλ[:] = eback[1]
-      dgrad !== nothing && (dgrad[:] = vec(vs))
-      dy !== nothing && (dy[:] = vec(_dy))
     end
   end
   return nothing
