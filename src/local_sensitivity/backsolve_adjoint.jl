@@ -1,9 +1,9 @@
-struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,SType,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
-  sol::SType
+  prob::pType
   colorvec::CV
 end
 
@@ -11,14 +11,14 @@ function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol,colorvec)
+                                         y,sol.prob,colorvec)
 end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, discrete = S
+  @unpack y, prob, discrete = S
   idx = length(y)
-  f = sol.prob.f
+  f = prob.f
 
   λ     = @view u[1:idx]
   dλ    = @view du[1:idx]
@@ -58,27 +58,27 @@ end
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
-    cb = backsolve_checkpoint_callbacks(sense, checkpoints, cb)
+    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb)
   end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
   ODEProblem(sense,z0,tspan,p,callback=cb)
 end
 
-function backsolve_checkpoint_callbacks(sensefun, checkpoints, callback)
-  sol = sensefun.sol; prob = sol.prob
+function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
+  prob = sol.prob
   cur_time = Ref(length(checkpoints))
   condition = let checkpoints=checkpoints
-    function (u,t,integrator)
+    (u,t,integrator) ->
       checkpoints !== nothing && ((idx = searchsortedfirst(checkpoints, t)) <= length(checkpoints)) && checkpoints[idx] == t
-    end
   end
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)
-      _y    = @view integrator.u[end-idx+1:end]
+      _y = @view integrator.u[end-idx+1:end]
       sol(_y, integrator.t)
       u_modified!(integrator,true)
       cur_time[] -= 1
+      return nothing
     end
   end
   cb = DiscreteCallback(condition,affect!)

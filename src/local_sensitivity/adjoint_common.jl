@@ -66,6 +66,8 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
                           f_cache,dg), y)
 end
 
+getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
+
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   if sensefun.discrete
     @unpack sensealg, y, sol = sensefun
