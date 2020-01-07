@@ -72,6 +72,9 @@ easy_res4 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
 easy_res42 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=BacksolveAdjoint(autojacvec=false))
+easy_res43 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=BacksolveAdjoint(autojacvec=false,checkpointing=false))
 easy_res5 = adjoint_sensitivities(sol,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),
                                  dg,t,abstol=1e-12,
                                  reltol=1e-10,
@@ -103,6 +106,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res32, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
 @test isapprox(res, easy_res42, rtol = 1e-10)
+@test isapprox(res, easy_res43, rtol = 1e-10)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res62, rtol = 1e-9)
@@ -160,8 +164,13 @@ easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                   save_everystep=false,save_start=false,
                                   sensealg=BacksolveAdjoint())
+easy_res82 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   save_everystep=false,save_start=false,
+                                   sensealg=BacksolveAdjoint(checkpointing=false))
 
 @test isapprox(res, easy_res8, rtol = 1e-9)
+@test isapprox(res, easy_res82, rtol = 1e-9)
 
 end_only_res = adjoint_sensitivities(sol_end,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
@@ -239,6 +248,10 @@ ū022,adj22 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=BacksolveAdjoint(autojacvec=false),
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 
+ū023,adj23 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=BacksolveAdjoint(autojacvec=false,checkpointing=false),
+                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
 ū03,adj3 = adjoint_sensitivities_u0(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=InterpolatingAdjoint(),
                                     reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
@@ -290,6 +303,7 @@ end
 @test ū0 ≈ res rtol = 1e-10
 @test ū02 ≈ res rtol = 1e-10
 @test ū022 ≈ res rtol = 1e-10
+@test ū023 ≈ res rtol = 1e-10
 @test ū03 ≈ res rtol = 1e-10
 @test ū032 ≈ res rtol = 1e-10
 @test ū04 ≈ res rtol = 1e-10
@@ -299,6 +313,7 @@ end
 @test adj ≈ adjnou0 rtol = 1e-10
 @test adj ≈ adj2 rtol = 1e-10
 @test adj ≈ adj22 rtol = 1e-10
+@test adj ≈ adj23 rtol = 1e-10
 @test adj ≈ adj3 rtol = 1e-10
 @test adj ≈ adj32 rtol = 1e-10
 @test adj ≈ adj4 rtol = 1e-10
@@ -368,6 +383,9 @@ easy_res25 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
 easy_res26 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                    reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
                                    sensealg=BacksolveAdjoint(autojacvec=false))
+easy_res262 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
+                                   sensealg=BacksolveAdjoint(autojacvec=false,checkpointing=false))
 println("27")
 easy_res27 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12,
@@ -415,6 +433,7 @@ easy_res38 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
 @test norm(easy_res24 .- res) < 1e-8
 @test norm(easy_res25 .- res) < 1e-8
 @test norm(easy_res26 .- res) < 1e-8
+@test norm(easy_res262 .- res) < 1e-8
 @test norm(easy_res27 .- res) < 1e-8
 @test norm(easy_res28 .- res) < 1e-8
 @test norm(easy_res3 .- res) < 1e-8
