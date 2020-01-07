@@ -10,6 +10,7 @@ end
 
 function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+  checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
                                          y,sol,checkpoints,colorvec)
@@ -27,6 +28,12 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   dgrad = @view du[idx+1:end-idx]
   _y    = @view u[end-idx+1:end]
   dy    = @view du[end-idx+1:end]
+
+  # if we hit a checkpoint
+  if S.checkpoints !== nothing && ((idx = searchsortedfirst(S.checkpoints, t)) <= length(S.checkpoints)) && S.checkpoints[idx] == t
+    # then we copy the state at this checkpoint to `y`
+    sol(_y, t)
+  end
   copyto!(vec(y), _y)
 
   vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)

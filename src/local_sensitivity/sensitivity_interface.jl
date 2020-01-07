@@ -8,11 +8,11 @@ end
 
 function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    abstol=1e-6,reltol=1e-3,
-                                   checkpoints=nothing,
+                                   checkpoints=sol.t,
                                    kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
-  tstops = checkpoints === nothing ? similar(sol.t, 0) : checkpoints
+  tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
                   tstops=tstops,abstol=abstol,reltol=reltol,kwargs...)
@@ -32,11 +32,11 @@ end
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
                                iabstol=abstol, ireltol=reltol,
-                               checkpoints=nothing,
+                               checkpoints=sol.t,
                                kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
-  tstops = checkpoints === nothing ? similar(sol.t, 0) : checkpoints
+  tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                   tstops=tstops,save_everystep=false,save_start=false,kwargs...)
   l = sol.prob.p isa Zygote.Params ? sum(length.(sol.prob.p)) : length(sol.prob.p)
