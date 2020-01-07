@@ -16,9 +16,9 @@ mutable struct CheckpointSolution{S,I,T}
   tols::T
 end
 
-@noinline function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
+function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
   tspan = reverse(sol.prob.tspan)
-  checkpointing = sensealg.checkpointing isa Bool ? sensealg.checkpointing : !sol.dense
+  checkpointing = sensealg.checkpointing
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
 
   checkpoint_sol = if checkpointing
@@ -88,7 +88,7 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
                                      g,t=nothing,dg=nothing;
-                                     checkpoints=nothing,
+                                     checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
                                      kwargs...)

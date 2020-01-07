@@ -8,7 +8,7 @@ end
 
 function _adjoint_sensitivities_u0(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    abstol=1e-6,reltol=1e-3,
-                                   checkpoints=nothing,
+                                   checkpoints=sol.t,
                                    kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
@@ -32,7 +32,7 @@ end
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                abstol=1e-6,reltol=1e-3,
                                iabstol=abstol, ireltol=reltol,
-                               checkpoints=nothing,
+                               checkpoints=sol.t,
                                kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
