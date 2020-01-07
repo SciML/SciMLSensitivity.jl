@@ -1,5 +1,5 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
-                                                  uType,SType,CPS<:CheckpointSolution,CV} <: SensitivityFunction
+                                                  uType,SType,CPS,CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
@@ -16,12 +16,6 @@ mutable struct CheckpointSolution{S,I,T}
   tols::T
 end
 
-function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec)
-
-  return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol,checkpoints,colorvec;quad=false)
-end
-
 @noinline function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
   tspan = reverse(sol.prob.tspan)
   checkpointing = sensealg.checkpointing isa Bool ? sensealg.checkpointing : !sol.dense
@@ -33,7 +27,7 @@ end
     tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
     cursor = lastindex(intervals)
     interval = intervals[cursor]
-    cpsol = solve(remake(prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
+    cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
     CheckpointSolution(cpsol, intervals, cursor, tols)
   else
     nothing

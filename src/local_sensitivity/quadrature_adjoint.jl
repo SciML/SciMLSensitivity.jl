@@ -12,7 +12,7 @@ function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colo
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=true)
 
   return ODEQuadratureAdjointSensitivityFunction(diffcache,sensealg,discrete,
-                                                 y,sol,dg,colorvec)
+                                                 y,sol,colorvec)
 end
 
 # u = λ'
