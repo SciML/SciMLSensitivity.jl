@@ -17,7 +17,7 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g,sensealg,discrete,sol,dg)
+function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   prob = sol.prob
   @unpack f, u0, p, tspan = prob
   numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
@@ -48,7 +48,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg)
 
   y = copy(sol.u[end])
 
-  if DiffEqBase.has_paramjac(f) || isautojacvec
+  if DiffEqBase.has_paramjac(f) || isautojacvec || quad
     paramjac_config = nothing
     pf = nothing
   else
@@ -56,7 +56,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
 
-  pJ = isautojacvec ? nothing : similar(u0, numindvar, numparams)
+  pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
 
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)

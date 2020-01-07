@@ -75,7 +75,7 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
   f = sol.prob.f
   isautojacvec = get_jacvec(sensealg)
   if !isautojacvec
-    @unpack J, uf, f_cache, jac_config = S
+    @unpack J, uf, f_cache, jac_config = S.diffcache
     if DiffEqBase.has_jac(f)
       f.jac(J,y,p,t) # Calculate the Jacobian into J
     else
@@ -85,7 +85,7 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
     mul!(dλ',λ',J)
 
     if dgrad !== nothing
-      @unpack pJ, pf, paramjac_config = S
+      @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
         f.paramjac(pJ,y,sol.prob.p,t)
@@ -146,12 +146,12 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
 end
 
 function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
-  @unpack dg, dg_val, g, g_grad_config, sensealg = S
+  @unpack dg, dg_val, g, g_grad_config = S.diffcache
   if dg != nothing
     dg(dg_val,y,p,t)
   else
     g.t = t
-    gradient!(dg_val, g, y, sensealg, g_grad_config)
+    gradient!(dg_val, g, y, S.sensealg, g_grad_config)
   end
   dλ .+= dg_val
   return nothing

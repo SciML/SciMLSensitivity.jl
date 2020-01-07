@@ -9,7 +9,7 @@ struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint
 end
 
 function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec)
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
                                          y,sol,checkpoints,colorvec)
