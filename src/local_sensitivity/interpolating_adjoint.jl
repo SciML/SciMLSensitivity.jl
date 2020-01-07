@@ -1,19 +1,10 @@
-struct ODEInterpolatingAdjointSensitivityFunction{rateType,uType,uType2,UF,PF,G,JC,GC,DG,TJ,PJT,PJC,SType,CPS,CV,Alg<:InterpolatingAdjoint} <: SensitivityFunction
-  uf::UF
-  pf::PF
-  g::G
-  J::TJ
-  pJ::PJT
-  dg_val::uType
-  jac_config::JC
-  g_grad_config::GC
-  paramjac_config::PJC
+struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
+                                                  uType,SType,CPS,CV} <: SensitivityFunction
+  diffcache::C
   sensealg::Alg
-  f_cache::rateType
   discrete::Bool
-  y::uType2
+  y::uType
   sol::SType
-  dg::DG
   checkpoint_sol::CPS
   colorvec::CV
 end
@@ -25,68 +16,28 @@ mutable struct CheckpointSolution{S,I,T}
   tols::T
 end
 
-@noinline function ODEInterpolatingAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,checkpoints,prob,colorvec,tols)
-  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
-  numindvar = length(u0)
-  @unpack f, tspan = prob
+@noinline function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
+  tspan = reverse(sol.prob.tspan)
   checkpointing = sensealg.checkpointing isa Bool ? sensealg.checkpointing : !sol.dense
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
-  J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
-
-  if !discrete
-    if dg != nothing
-      pg = nothing
-      pg_config = nothing
-    else
-      pg = UGradientWrapper(g,tspan[1],p)
-      pg_config = build_grad_config(sensealg,pg,u0,p)
-    end
-  else
-    pg = nothing
-    pg_config = nothing
-  end
-
-  if DiffEqBase.has_jac(f) || isautojacvec
-    jac_config = nothing
-    uf = nothing
-  else
-    uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
-    jac_config = build_jac_config(sensealg,uf,u0)
-  end
-
-  y = copy(sol.u[end])
-
-  if DiffEqBase.has_paramjac(f) || isautojacvec
-    paramjac_config = nothing
-    pf = nothing
-  else
-    pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
-    paramjac_config = build_param_jac_config(sensealg,pf,y,p)
-  end
-
-  pJ = isautojacvec ? nothing : similar(prob.u0, numindvar, numparams)
 
   checkpoint_sol = if checkpointing
     intervals = map(tuple, @view(checkpoints[1:end-1]), @view(checkpoints[2:end]))
     interval_end = intervals[end][end]
-    prob.tspan[1] > interval_end && push!(intervals, (interval_end, prob.tspan[1]))
+    tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
     cursor = lastindex(intervals)
     interval = intervals[cursor]
-    cpsol = solve(remake(prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
+    cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
     CheckpointSolution(cpsol, intervals, cursor, tols)
   else
     nothing
   end
 
-  dg_val = similar(u0, numindvar) # number of funcs size
-  f_cache = deepcopy(u0)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg)
 
-  return ODEInterpolatingAdjointSensitivityFunction(uf,pf,pg,J,pJ,dg_val,
-                               jac_config,pg_config,paramjac_config,
-                               sensealg,f_cache,
-                               discrete,y,sol,dg,
-                               checkpoint_sol,colorvec)
+  return ODEInterpolatingAdjointSensitivityFunction(diffcache,sensealg,
+                                                    discrete,y,sol,
+                                                    checkpoint_sol,colorvec)
 end
 
 function findcursor(checkpoint_sol, t)
@@ -141,27 +92,22 @@ end
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
                                      kwargs...)
-  prob = remake(sol.prob, tspan=reverse(sol.prob.tspan))
-  f = prob.f
+  @unpack f, p, u0, tspan = sol.prob
+  tspan = reverse(tspan)
   discrete = t != nothing
 
-  p = prob.p
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
   p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
   numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
 
-  u0 = zero(prob.u0)
-
   len = length(u0)+numparams
   λ = similar(u0, len)
-  sense = ODEInterpolatingAdjointSensitivityFunction(g,u0,
-                                                     p,sensealg,discrete,
-                                                     sol,dg,checkpoints,prob,
-                                                     f.colorvec,
+  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
+                                                     checkpoints,f.colorvec,
                                                      (reltol=reltol,abstol=abstol))
 
-  init_cb = t !== nothing && prob.tspan[1] == t[end]
+  init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  ODEProblem(sense,z0,prob.tspan,p,callback=cb)
+  ODEProblem(sense,z0,tspan,p,callback=cb)
 end
