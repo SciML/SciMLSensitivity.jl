@@ -21,11 +21,13 @@ end
 
 struct BacksolveAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
+  checkpointing::Bool
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
-                                      autojacvec=autodiff)
-  BacksolveAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
+                                      autojacvec=autodiff,
+                                      checkpointing=true)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type}(autojacvec,checkpointing)
 end
 
 struct InterpolatingAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -55,5 +57,5 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
 @inline get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = CS
 @inline diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = FDT
-@inline get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.autojacvec
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = alg.checkpointing
+@inline get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm) = alg.autojacvec
+@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = isdefined(alg, :checkpointing) ? alg.checkpointing : false
