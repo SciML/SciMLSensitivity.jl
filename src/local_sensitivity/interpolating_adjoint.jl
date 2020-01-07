@@ -18,7 +18,7 @@ end
 
 function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
   tspan = reverse(sol.prob.tspan)
-  checkpointing = sensealg.checkpointing
+  checkpointing = ischeckpointing(sensealg, sol)
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
 
   checkpoint_sol = if checkpointing

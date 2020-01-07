@@ -58,4 +58,5 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing
 @inline get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = CS
 @inline diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = FDT
 @inline get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm) = alg.autojacvec
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = isdefined(alg, :checkpointing) ? alg.checkpointing : false
+@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Any) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
+@inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
