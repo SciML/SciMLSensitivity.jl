@@ -40,9 +40,8 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,c
                                                     checkpoint_sol,colorvec)
 end
 
-function findcursor(checkpoint_sol, t)
-  # equivalent with `findfirst(x->x[1] <= t <= x[2], checkpoint_sol.intervals)`
-  intervals = checkpoint_sol.intervals
+function findcursor(intervals, t)
+  # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
   lt(x, t) = <(x[2], t)
   return searchsortedfirst(intervals, t, lt=lt)
 end
@@ -60,7 +59,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
     if !(interval[1] <= t <= interval[2])
-      cursor′ = findcursor(checkpoint_sol, t)
+      cursor′ = findcursor(intervals, t)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
       sol(y, interval[1])
