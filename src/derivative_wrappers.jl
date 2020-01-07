@@ -71,8 +71,9 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  @unpack y, sol, sensealg = S
-  f = sol.prob.f
+  @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
   isautojacvec = get_jacvec(sensealg)
   if !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
@@ -88,16 +89,16 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
-        f.paramjac(pJ,y,sol.prob.p,t)
+        f.paramjac(pJ,y,prob.p,t)
       else
-        jacobian!(pJ, pf, sol.prob.p, f_cache, sensealg, paramjac_config)
+        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
       end
       mul!(dgrad',λ',pJ)
     end
     dy !== nothing && f(dy, y, p, t)
   else
-    if DiffEqBase.isinplace(sol.prob)
-      _dy, back = Tracker.forward(y, sol.prob.p) do u, p
+    if DiffEqBase.isinplace(prob)
+      _dy, back = Tracker.forward(y, prob.p) do u, p
         out_ = map(zero, u)
         f(out_, u, p, t)
         Tracker.collect(out_)
@@ -106,8 +107,8 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       dλ[:] = tmp1
       dgrad !== nothing && (dgrad[:] = tmp2)
       dy !== nothing && (dy[:] = vec(Tracker.data(_dy)))
-    elseif !(sol.prob.p isa Zygote.Params)
-      _dy, back = Zygote.pullback(y, sol.prob.p) do u, p
+    elseif !(prob.p isa Zygote.Params)
+      _dy, back = Zygote.pullback(y, prob.p) do u, p
         vec(f(u, p, t))
       end
       tmp1,tmp2 = back(λ)
@@ -119,18 +120,18 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       # This is the hackiest hack of the west specifically to get Zygote
       # Implicit parameters to work. This should go away ASAP!
 
-      _dy, back = Zygote.pullback(y, S.sol.prob.p) do u, p
+      _dy, back = Zygote.pullback(y, prob.p) do u, p
         vec(f(u, p, t))
       end
 
-      _idy, iback = Zygote.pullback(S.sol.prob.p) do
+      _idy, iback = Zygote.pullback(prob.p) do
         vec(f(y, p, t))
       end
 
       igs = iback(λ)
-      vs = zeros(Float32, sum(length.(S.sol.prob.p)))
+      vs = zeros(Float32, sum(length.(prob.p)))
       i = 1
-      for p in S.sol.prob.p
+      for p in prob.p
         g = igs[p]
         g isa AbstractArray || continue
         vs[i:i+length(g)-1] = g

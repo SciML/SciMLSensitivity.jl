@@ -65,3 +65,34 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
                           jac_config,pg_config,paramjac_config,
                           f_cache,dg), y)
 end
+
+getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
+
+function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
+  sensefun.discrete || return callback
+
+  @unpack sensealg, y = sensefun
+  prob = getprob(sensefun)
+  cur_time = Ref(length(t))
+  time_choice = let cur_time=cur_time, t=t
+    integrator -> cur_time[] > 0 ? t[cur_time[]] : nothing
+  end
+  affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0)
+    function (integrator)
+      p, u = integrator.p, integrator.u
+      λ  = isq ? λ : @view(λ[1:idx])
+      g(λ,y,p,t[cur_time[]],cur_time[])
+      if isq
+        u .+= λ
+      else
+        u = @view u[1:idx]
+        u .= λ .+ @view integrator.u[1:idx]
+      end
+      u_modified!(integrator,true)
+      cur_time[] -= 1
+      return nothing
+    end
+  end
+  cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=init_cb)
+  return CallbackSet(cb,callback)
+end

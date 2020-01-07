@@ -489,11 +489,21 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   easy_res2 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
                                     reltol=1e-9,
                                     sensealg=InterpolatingAdjoint())
+  easy_res3 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                    reltol=1e-9,
+                                    sensealg=BacksolveAdjoint(),
+                                    checkpoints=sol_lorenz.t[1:10:end])
+  easy_res4 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                    reltol=1e-9,
+                                    sensealg=BacksolveAdjoint(),
+                                    checkpoints=sol_lorenz.t[1:20:end])
   # cannot finish in a reasonable amount of time
   @test_skip adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
                                    reltol=1e-9,
                                    sensealg=BacksolveAdjoint(checkpointing=false))
-  @test easy_res1 ≈ easy_res2 rtol=1e-5
+  @test easy_res2 ≈ easy_res1 rtol=1e-5
+  @test easy_res2 ≈ easy_res3 rtol=1e-5
+  @test easy_res2 ≈ easy_res4 rtol=1e-4
 
   ū1,adj1 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
                                      reltol=1e-9,
@@ -501,10 +511,22 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   ū2,adj2 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
                                      reltol=1e-9,
                                      sensealg=InterpolatingAdjoint())
+  ū3,adj3 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                     reltol=1e-9,
+                                     sensealg=BacksolveAdjoint(),
+                                     checkpoints=sol_lorenz.t[1:10:end])
+  ū4,adj4 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                     reltol=1e-9,
+                                     sensealg=BacksolveAdjoint(),
+                                     checkpoints=sol_lorenz.t[1:20:end])
   # cannot finish in a reasonable amount of time
   @test_skip adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
                                       reltol=1e-9,
                                       sensealg=BacksolveAdjoint(checkpointing=false))
-  @test ū1 ≈ ū2 rtol=1e-5
-  @test adj1 ≈ adj2 rtol=1e-5
+  @test ū2 ≈ ū1 rtol=1e-5
+  @test adj2 ≈ adj1 rtol=1e-5
+  @test ū2 ≈ ū3 rtol=1e-5
+  @test adj2 ≈ adj3 rtol=1e-5
+  @test ū2 ≈ ū4 rtol=1e-4
+  @test adj2 ≈ adj4 rtol=1e-4
 end
