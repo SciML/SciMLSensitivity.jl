@@ -466,3 +466,45 @@ prob = ODEProblem(f,u,(0.0,10.0),p)
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 @test_nowarn res = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+
+@testset "Checkpointed backsolve" begin
+  using DiffEqSensitivity, OrdinaryDiffEq
+  tf = 10.0
+  function lorenz(du,u,p,t)
+    σ, ρ, β = p
+    du[1] = σ*(u[2]-u[1])
+    du[2] = u[1]*(ρ-u[3]) - u[2]
+    du[3] = u[1]*u[2] - β*u[3]
+    return nothing
+  end
+  prob_lorenz = ODEProblem(lorenz, [1.0, 0.0, 0.0], (0, tf), [10, 28, 8/3])
+  sol_lorenz = solve(prob_lorenz,Tsit5(),reltol=1e-6,abstol=1e-9)
+  function dg(out,u,p,t,i)
+    (out.=2.0.-u)
+  end
+  t = 0:0.1:tf
+  easy_res1 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                    reltol=1e-9,
+                                    sensealg=BacksolveAdjoint())
+  easy_res2 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                    reltol=1e-9,
+                                    sensealg=InterpolatingAdjoint())
+  # cannot finish in a reasonable amount of time
+  @test_skip adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                   reltol=1e-9,
+                                   sensealg=BacksolveAdjoint(checkpointing=false))
+  @test easy_res1 ≈ easy_res2 rtol=1e-5
+
+  ū1,adj1 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                     reltol=1e-9,
+                                     sensealg=BacksolveAdjoint())
+  ū2,adj2 = adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                     reltol=1e-9,
+                                     sensealg=InterpolatingAdjoint())
+  # cannot finish in a reasonable amount of time
+  @test_skip adjoint_sensitivities_u0(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,
+                                      reltol=1e-9,
+                                      sensealg=BacksolveAdjoint(checkpointing=false))
+  @test ū1 ≈ ū2 rtol=1e-5
+  @test adj1 ≈ adj2 rtol=1e-5
+end
