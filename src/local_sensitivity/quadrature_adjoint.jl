@@ -1,125 +1,51 @@
-struct ODEQuadratureAdjointSensitivityFunction{rateType,uType,uType2,UF,G,JC,GC,DG,TJ,SType,CV} <: SensitivityFunction
-  uf::UF
-  g::G
-  J::TJ
-  dg_val::uType
-  jac_config::JC
-  g_grad_config::GC
-  sensealg::QuadratureAdjoint
-  f_cache::rateType
+struct ODEQuadratureAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:QuadratureAdjoint,
+                                               uType,SType,CV} <: SensitivityFunction
+  diffcache::C
+  sensealg::Alg
   discrete::Bool
-  y::uType2
+  y::uType
   sol::SType
-  dg::DG
   colorvec::CV
 end
 
-@noinline function ODEQuadratureAdjointSensitivityFunction(g,u0,p,sensealg,discrete,sol,dg,tspan,colorvec)
-  numindvar = length(u0)
-  # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
-  f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
-  J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
+function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=true)
 
-  if !discrete
-    if dg != nothing || isautojacvec
-      pg = nothing
-      pg_config = nothing
-    else
-      pg = UGradientWrapper(g,tspan[2],p)
-      pg_config = build_grad_config(sensealg,pg,u0,p)
-    end
-  else
-    pg = nothing
-    pg_config = nothing
-  end
-
-  if isautojacvec
-    jac_config = nothing
-    uf = nothing
-  else
-    uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
-    jac_config = build_jac_config(sensealg,uf,u0)
-  end
-
-  y = copy(sol(tspan[1])) # TODO: Has to start at interpolation value!
-  dg_val = similar(u0, numindvar) # number of funcs size
-  f_cache = deepcopy(u0)
-
-  return ODEQuadratureAdjointSensitivityFunction(uf,pg,J,dg_val,
-                                       jac_config,pg_config,
-                                       sensealg,f_cache,
-                                       discrete,y,sol,dg,
-                                       colorvec)
+  return ODEQuadratureAdjointSensitivityFunction(diffcache,sensealg,discrete,
+                                                 y,sol,colorvec)
 end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, J, uf, sensealg, f_cache, jac_config, discrete, dg, dg_val, g, g_grad_config = S
+  @unpack y, sol, discrete = S
   idx = length(y)
   f = sol.prob.f
-  isautojacvec = DiffEqBase.has_jac(f) ? false : get_jacvec(sensealg)
   sol(y,t)
   λ     = u
   dλ    = du
 
-  if !isautojacvec
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-    end
-    mul!(dλ',λ',J)
-  else
-    _dy, back = Tracker.forward(y) do u
-      if DiffEqBase.isinplace(sol.prob)
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      else
-        vec(f(u, p, t))
-      end
-    end
-    dλ[:] = Tracker.data(back(λ)[1])
-  end
-
+  vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
-  if !discrete
-    if dg != nothing
-      dg(dg_val,y,p,t)
-    else
-      g.t = t
-      gradient!(dg_val, g, y, sensealg, g_grad_config)
-    end
-    dλ .+= dg_val
-  end
-
-  nothing
+  discrete || accumulate_dgdu!(dλ, y, p, t, S)
+  return nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::QuadratureAdjoint,g,
                                      t=nothing,dg=nothing,
                                      callback=CallbackSet())
-  f = sol.prob.f
-  tspan = (sol.prob.tspan[2],sol.prob.tspan[1])
+  @unpack f, p, u0, tspan = sol.prob
+  tspan = reverse(tspan)
   discrete = t != nothing
 
-  p = sol.prob.p
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
-  p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
-
-  u0 = zero(sol.prob.u0)
 
   len = length(u0)
   λ = similar(u0, len)
-  sense = ODEQuadratureAdjointSensitivityFunction(g,u0,
-                                        p,sensealg,discrete,
-                                        sol,dg,tspan,f.colorvec)
+  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
 
-  init_cb = t !== nothing && sol.prob.tspan[2] == t[end]
+  init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
   ODEProblem(sense,z0,tspan,p,callback=cb)
@@ -141,7 +67,7 @@ end
 function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
-  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
+  numparams = length(p)
   y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`
@@ -198,11 +124,7 @@ function (S::AdjointSensitivityIntegrand)(t)
   S(out,t)
 end
 
-function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,args...;kwargs...)
-  error("Can't get sensitivities of u0 with quadrature.")
-end
-
-function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
+function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
                                 abstol=1e-6,reltol=1e-3,
                                 iabstol=abstol, ireltol=reltol,
@@ -226,5 +148,10 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                      atol=iabstol,rtol=ireltol)[1]
     end
   end
-  res
+  -adj_sol[end],res
+end
+
+function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,args...;
+                                kwargs...)
+  _adjoint_sensitivities_u0(sol,sensealg,args...;kwargs...)[2]
 end

@@ -69,6 +69,69 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   nothing
 end
 
+function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
+                      dgrad=nothing, dy=nothing)
+  @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  if !isautojacvec
+    @unpack J, uf, f_cache, jac_config = S.diffcache
+    if DiffEqBase.has_jac(f)
+      f.jac(J,y,p,t) # Calculate the Jacobian into J
+    else
+      uf.t = t
+      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+    end
+    mul!(dλ',λ',J)
+
+    if dgrad !== nothing
+      @unpack pJ, pf, paramjac_config = S.diffcache
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,prob.p,t)
+      else
+        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+      end
+      mul!(dgrad',λ',pJ)
+    end
+    dy !== nothing && f(dy, y, p, t)
+  else
+    if DiffEqBase.isinplace(prob)
+      _dy, back = Tracker.forward(y, prob.p) do u, p
+        out_ = map(zero, u)
+        f(out_, u, p, t)
+        Tracker.collect(out_)
+      end
+      tmp1, tmp2 = Tracker.data.(back(λ))
+      dλ[:] .= vec(tmp1)
+      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+      dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+    else
+      _dy, back = Zygote.pullback(y, prob.p) do u, p
+        vec(f(u, p, t))
+      end
+      tmp1,tmp2 = back(λ)
+      dλ[:] .= vec(tmp1)
+      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+      dy !== nothing && (dy[:] .= vec(_dy))
+    end
+  end
+  return nothing
+end
+
+function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
+  @unpack dg, dg_val, g, g_grad_config = S.diffcache
+  if dg != nothing
+    dg(dg_val,y,p,t)
+  else
+    g.t = t
+    gradient!(dg_val, g, y, S.sensealg, g_grad_config)
+  end
+  dλ .+= vec(dg_val)
+  return nothing
+end
+
 function build_jac_config(alg,uf,u)
   if alg_autodiff(alg)
     jac_config = ForwardDiff.JacobianConfig(uf,u,u,
