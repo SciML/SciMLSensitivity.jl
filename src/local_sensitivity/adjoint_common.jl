@@ -20,7 +20,7 @@ return (AdjointDiffCache, y)
 function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   prob = sol.prob
   @unpack f, u0, p, tspan = prob
-  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
+  numparams = length(p)
   numindvar = length(u0)
   isautojacvec = get_jacvec(sensealg)
   J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)

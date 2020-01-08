@@ -40,7 +40,6 @@ end
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
-  p isa Zygote.Params && sensealg.autojacvec == false && error("Use of Zygote.Params requires autojacvec=true")
 
   len = length(u0)
   λ = similar(u0, len)
@@ -68,7 +67,7 @@ end
 function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
-  numparams = p isa Zygote.Params ? sum(length.(p)) : length(p)
+  numparams = length(p)
   y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`

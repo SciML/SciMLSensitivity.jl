@@ -34,16 +34,6 @@ sol_nodense = solve(probb,Tsit5(),abstol=1e-14,reltol=1e-14,dense=false)
 soloop = solve(proboop,Tsit5(),abstol=1e-14,reltol=1e-14)
 soloop_nodense = solve(proboop,Tsit5(),abstol=1e-14,reltol=1e-14,dense=false)
 
-_p = copy(p)
-function foop_zygote(u,p,t)
-  dx = _p[1]*u[1] - _p[2]*u[1]*u[2]
-  dy = -_p[3]*u[2] + _p[4]*u[1]*u[2]
-  [dx,dy]
-end
-pp = Zygote.Params([_p])
-prob_zygote = ODEProblem(foop_zygote,u0,(0.0,10.0),pp)
-soloop_zygote = solve(prob_zygote,Tsit5(),abstol=1e-14,reltol=1e-14)
-
 # Do a discrete adjoint problem
 println("Calculate discrete adjoint sensitivities")
 t = 0.0:0.5:10.0
@@ -325,24 +315,6 @@ end
 @test adjargs ≈ adj rtol = 1e-10
 @test ū0args2 ≈ res rtol = 1e-10
 @test adjargs2 ≈ adj rtol = 1e-10
-
-println("Zygote OOP adjoint sensitivities ")
-
-zy_ū0, zy_adj = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
-                                         abstol=1e-10,reltol=1e-10)
-
-zy_ū02, zy_adj2 = adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
-                                           abstol=1e-10,reltol=1e-10,
-                                           sensealg=BacksolveAdjoint())
-
-@test_broken adjoint_sensitivities_u0(soloop_zygote,Tsit5(),dg,t,
-                                      abstol=1e-10,reltol=1e-10,
-                                      sensealg=QuadratureAdjoint()) isa Tuple
-
-@test zy_ū0 ≈ res rtol = 1e-8
-@test zy_ū02 ≈ res rtol = 1e-8
-@test zy_adj ≈ adjnou0 rtol = 1e-8
-@test zy_adj2 ≈ adjnou0 rtol = 1e-8
 
 println("Do a continuous adjoint problem")
 
