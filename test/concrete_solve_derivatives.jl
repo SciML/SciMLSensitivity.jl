@@ -3,7 +3,7 @@ using DiffEqSensitivity: concrete_solve
 using RecursiveArrayTools: DiffEqArray
 using Test
 
-function f(du,u,p,t)
+function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
   du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
 end
@@ -14,7 +14,7 @@ function foop(u,p,t)
 end
 
 p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
-prob = ODEProblem(f,u0,(0.0,10.0),p)
+prob = ODEProblem(fiip,u0,(0.0,10.0),p)
 proboop = ODEProblem(foop,u0,(0.0,10.0),p)
 
 sol = concrete_solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -51,8 +51,9 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1
 ### forward
 ###
 
-du06,dp6 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=ForwardSensitivity())),u0,p)
-du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=ForwardDiffSensitivity())),u0,p)
+du06,dp6 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=sol.t,sensealg=ForwardSensitivity())),u0,p)
+du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=sol.t,sensealg=ForwardDiffSensitivity())),u0,p)
 
-prob_fs = ODEForwardSensitivityProblem(prob.f, prob.u0, prob.tspan, p)
-sol_fs = solve(prob_fs,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=sol.t)
+@test du06 === du07 === nothing
+@test adj ≈ dp6' rtol=1e-12
+@test adj ≈ dp7' rtol=1e-12
