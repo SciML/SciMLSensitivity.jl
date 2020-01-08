@@ -32,17 +32,17 @@ sumsol = sum(sol)
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 ū0,adj = adjoint_sensitivities_u0(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),sol.t,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
-#du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=QuadratureAdjoint())),u0,p) # Can't get sensitivities of u0 with quadrature.
+du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=QuadratureAdjoint())),u0,p)
 du02,dp2 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint())),u0,p)
 du03,dp3 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint())),u0,p)
 du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=TrackerAdjoint())),u0,p)
 @test_broken Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
 
-#@test ū0 ≈ du01 rtol=1e-15
+@test ū0 === nothing # Can't get sensitivities of u0 with quadrature.
 @test ū0 == du02
 @test ū0 ≈ du03 rtol=1e-12
 @test_broken ū0 ≈ du04 rtol=1e-12
-#@test adj ≈ dp1' rtol=1e-15
+@test adj ≈ dp1' rtol=1e-12
 @test adj == dp2'
 @test adj ≈ dp3' rtol=1e-12
 @test_broken adj ≈ dp4' rtol=1e-12

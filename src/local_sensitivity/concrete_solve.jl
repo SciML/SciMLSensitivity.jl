@@ -70,10 +70,18 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
     end
 
     ts = sol.t[sol_idxs]
-    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
-                    kwargs_adj...)
+    if sensealg isa QuadratureAdjoint
+      du0, dp = nothing, adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
+                      kwargs_adj...)
+    else
+      du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
+                      kwargs_adj...)
+      du0 = reshape(du0,size(u0))
+    end
 
-    (nothing,nothing,reshape(du0,size(u0)), reshape(dp',size(p)), ntuple(_->nothing, length(args))...)
+    dp = reshape(dp',size(p))
+
+    (nothing,nothing,du0,dp,ntuple(_->nothing, length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
