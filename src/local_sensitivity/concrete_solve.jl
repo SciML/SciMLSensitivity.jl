@@ -70,7 +70,7 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
     end
 
     ts = sol.t[sol_idxs]
-    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts;
+    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
                     kwargs_adj...)
 
     (nothing,nothing,reshape(du0,size(u0)), reshape(dp',size(p)), ntuple(_->nothing, length(args))...)

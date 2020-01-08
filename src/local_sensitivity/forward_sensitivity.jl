@@ -189,8 +189,13 @@ function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
 end
 
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
-  ni = sol.prob.f.numindvar
-  sol[1:ni, :],sol[(ni+1):end, :]
+  prob = sol.prob
+  ni = prob.f.numindvar
+  pn = prob.f.numparams
+  jsize = (ni, pn)
+  sol[1:ni, :], map(sol.u) do u
+    collect(reshape((@view u[ni+1:end]), jsize))
+  end
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
