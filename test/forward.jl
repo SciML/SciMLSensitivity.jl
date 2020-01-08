@@ -74,7 +74,7 @@ xall, dpall = extract_local_sensitivities(sol)
 @test dpall[1] == da
 
 _,dpall_matrix = extract_local_sensitivities(sol,Val(true))
-@test reduce(vcat,dpall) == dpall_matrix
+@test mapreduce(x->x[:, 2], hcat, dpall) == dpall_matrix[2]
 
 
 x, dp = extract_local_sensitivities(sol,length(sol.t))
@@ -109,10 +109,10 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
 xall, dpall = extract_local_sensitivities(sol)
 @test xall ≈ res
-@test dpall[1] ≈ da atol=1e-1
+@test dpall[1] ≈ da atol=1e-10
 
 _,dpall_matrix = extract_local_sensitivities(sol,Val(true))
-@test reduce(vcat,dpall) == dpall_matrix
+@test mapreduce(x->x[:, 2], hcat, dpall) == dpall_matrix[2]
 
 x, dp = extract_local_sensitivities(sol,length(sol.t))
 sense_res2 = reduce(hcat,dp)
