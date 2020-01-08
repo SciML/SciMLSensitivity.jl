@@ -104,16 +104,16 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
         Tracker.collect(out_)
       end
       tmp1, tmp2 = Tracker.data.(back(λ))
-      dλ[:] = tmp1
-      dgrad !== nothing && (dgrad[:] = tmp2)
-      dy !== nothing && (dy[:] = vec(Tracker.data(_dy)))
+      dλ[:] .= vec(tmp1)
+      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+      dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
     else
       _dy, back = Zygote.pullback(y, prob.p) do u, p
         vec(f(u, p, t))
       end
       tmp1,tmp2 = back(λ)
-      dλ[:] .= tmp1
-      dgrad !== nothing && (dgrad[:] .= tmp2)
+      dλ[:] .= vec(tmp1)
+      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
       dy !== nothing && (dy[:] .= vec(_dy))
     end
   end
@@ -128,7 +128,7 @@ function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
     g.t = t
     gradient!(dg_val, g, y, S.sensealg, g_grad_config)
   end
-  dλ .+= dg_val
+  dλ .+= vec(dg_val)
   return nothing
 end
 
