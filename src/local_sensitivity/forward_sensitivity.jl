@@ -199,9 +199,16 @@ function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
-  _sol = Array(sol)
-  du_full = ForwardDiff.partials.(_sol)
-  ForwardDiff.value.(_sol),reduce(vcat,[[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])])
+  retu = ForwardDiff.value.(Array(sol))
+  jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
+  du = map(sol.u) do u
+    du_i = similar(retu, jsize)
+    for i in eachindex(u)
+      du_i[i, :] = ForwardDiff.partials(u[i])
+    end
+    du_i
+  end
+  retu, du
 end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector

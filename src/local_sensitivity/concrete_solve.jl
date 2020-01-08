@@ -82,9 +82,14 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAl
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
-   u,du = extract_local_sensitivities(sol)
+   u,du = extract_local_sensitivities(sol, Val(true))
    function forward_sensitivity_backpass(Δ)
-     (nothing,nothing,nothing,[sum(du[i]*Δ') for i in 1:length(du)],ntuple(_->nothing, length(args))...)
+     adj = sum(eachindex(du)) do i
+       J = du[i]
+       v = @view Δ[:, i]
+       J'v
+     end
+     (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
    end
    u,forward_sensitivity_backpass
 end
