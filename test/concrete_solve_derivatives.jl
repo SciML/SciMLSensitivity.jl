@@ -38,7 +38,7 @@ du03,dp3 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1
 du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=TrackerAdjoint())),u0,p)
 @test_broken Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
 
-@test ū0 === nothing # Can't get sensitivities of u0 with quadrature.
+@test ū0 ≈ du01 rtol=1e-12
 @test ū0 == du02
 @test ū0 ≈ du03 rtol=1e-12
 @test_broken ū0 ≈ du04 rtol=1e-12
