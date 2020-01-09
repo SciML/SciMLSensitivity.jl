@@ -189,13 +189,26 @@ function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
 end
 
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
-  ni = sol.prob.f.numindvar
-  sol[1:ni, :],sol[(ni+1):end, :]
+  prob = sol.prob
+  ni = prob.f.numindvar
+  pn = prob.f.numparams
+  jsize = (ni, pn)
+  sol[1:ni, :], map(sol.u) do u
+    collect(reshape((@view u[ni+1:end]), jsize))
+  end
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
-  _sol = Array(sol)
-  ForwardDiff.value.(_sol),ForwardDiff.partials.(_sol)
+  retu = ForwardDiff.value.(Array(sol))
+  jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
+  du = map(sol.u) do u
+    du_i = similar(retu, jsize)
+    for i in eachindex(u)
+      du_i[i, :] = ForwardDiff.partials(u[i])
+    end
+    du_i
+  end
+  retu, du
 end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector
