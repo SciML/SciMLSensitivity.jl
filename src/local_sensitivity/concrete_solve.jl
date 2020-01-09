@@ -39,7 +39,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
     out = sol(ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
-  elseif !isempty(saveat)
+  elseif isempty(saveat)
     no_start = !save_start
     no_end = !save_end
     sol_idxs = 1:length(sol)
