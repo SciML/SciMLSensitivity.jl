@@ -33,8 +33,11 @@ function _concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs.
   _concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
-function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAlgorithm,
-                                 u0,p,args...;save_start=true,save_end=true,kwargs...)
+function _concrete_solve_adjoint(prob,alg,
+                                 sensealg::AbstractAdjointSensitivityAlgorithm,
+                                 u0,p,args...;save_start=true,save_end=true,
+                                 saveat = eltype(prob.tspan)[],
+                                 kwargs...)
   _prob = remake(prob,u0=u0,p=p)
 
   # Force `save_start` and `save_end` in the forward pass This forces the
@@ -47,7 +50,12 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
   if haskey(kwargs, :callback_adj)
     kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
   end
-  sol = solve(_prob,alg,args...;save_start=true,save_end=true,kwargs...)
+
+  if ischeckpointing(sensealg)
+    sol = solve(_prob,alg,args...;save_start=true,save_end=true,saveat=saveat,kwargs...)
+  else
+    sol = solve(_prob,alg,args...;save_start=true,save_end=true,kwargs...)
+  end
 
   no_start = !save_start
   no_end = !save_end
@@ -69,9 +77,20 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractAdjointSensitivityAl
       end
     end
 
-    ts = sol.t[sol_idxs]
-      du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
-                      kwargs_adj...)
+    if saveat isa Number
+      if _prob.tspan[2] > _prob.tspan[1]
+        ts = _prob.tspan[1]:abs(saveat):_prob.tspan[2]
+      else
+        ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
+      end
+    elseif !isempty(saveat)
+      ts = sol.t[sol_idxs]
+    else
+      ts = saveat
+    end
+
+    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
+                                       kwargs_adj...)
 
     du0 = reshape(du0,size(u0))
     dp = reshape(dp',size(p))
@@ -129,12 +148,12 @@ function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
-    sol
+    reduce(hcat,vec.(Tracker.collect.(sol.u)))
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar,pbar = pullback(ybar)
+    u0bar, pbar = pullback(ybar')
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
   end
