@@ -151,7 +151,7 @@ function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
-    reduce(hcat,vec.(Tracker.collect.(sol.u)))
+    DiffEqArray(Tracker.collect.(sol.u),sol.t)
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
