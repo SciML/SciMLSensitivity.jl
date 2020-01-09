@@ -57,16 +57,29 @@ function _concrete_solve_adjoint(prob,alg,
     sol = solve(_prob,alg,args...;save_start=true,save_end=true,kwargs...)
   end
 
-  no_start = !save_start
-  no_end = !save_end
-  sol_idxs = 1:length(sol)
-  no_start && (sol_idxs = sol_idxs[2:end])
-  no_end && (sol_idxs = sol_idxs[1:end-1])
-  # If didn't save start, take off first. If only wanted the end, return vector
-  only_end = length(sol_idxs) <= 1
-  u = sol[sol_idxs]
-  only_end && (sol_idxs = length(sol))
-  out = only_end ? sol[end] : reduce((x,y)->cat(x,y,dims=ndims(u)),u.u)
+  if saveat isa Number
+    if _prob.tspan[2] > _prob.tspan[1]
+      ts = _prob.tspan[1]:abs(saveat):_prob.tspan[2]
+    else
+      ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
+    end
+    out = sol(ts)
+  elseif !isempty(saveat)
+    no_start = !save_start
+    no_end = !save_end
+    sol_idxs = 1:length(sol)
+    no_start && (sol_idxs = sol_idxs[2:end])
+    no_end && (sol_idxs = sol_idxs[1:end-1])
+    # If didn't save start, take off first. If only wanted the end, return vector
+    only_end = length(sol_idxs) <= 1
+    u = sol[sol_idxs]
+    only_end && (sol_idxs = length(sol))
+    out = only_end ? sol[end] : reduce((x,y)->cat(x,y,dims=ndims(u)),u.u)
+    ts = sol.t[sol_idxs]
+  else
+    ts = saveat
+    out = sol(ts)
+  end
 
   function adjoint_sensitivity_backpass(Δ)
     function df(out, u, p, t, i)
@@ -75,18 +88,6 @@ function _concrete_solve_adjoint(prob,alg,
       else
         out[:] .= -reshape(Δ, :, size(Δ)[end])[:, i]
       end
-    end
-
-    if saveat isa Number
-      if _prob.tspan[2] > _prob.tspan[1]
-        ts = _prob.tspan[1]:abs(saveat):_prob.tspan[2]
-      else
-        ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
-      end
-    elseif !isempty(saveat)
-      ts = sol.t[sol_idxs]
-    else
-      ts = saveat
     end
 
     du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
