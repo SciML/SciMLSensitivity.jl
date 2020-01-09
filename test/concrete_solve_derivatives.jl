@@ -1,5 +1,4 @@
 using DiffEqSensitivity, OrdinaryDiffEq, Zygote
-using DiffEqSensitivity: concrete_solve
 using RecursiveArrayTools: DiffEqArray
 using Test
 import Tracker
@@ -30,7 +29,6 @@ sumsol = sum(sol)
 @test sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=ForwardDiffSensitivity())) == sumsol
 @test sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint())) == sumsol
 
-
 ###
 ### adjoint
 ###
@@ -59,6 +57,40 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1
 
 du06,dp6 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardSensitivity())),u0,p)
 du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity())),u0,p)
+
+@test du06 === du07 === nothing
+@test adj ≈ dp6' rtol=1e-12
+@test adj ≈ dp7' rtol=1e-12
+
+###
+### OOPs
+###
+
+###
+### adjoint
+###
+
+du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),u0,p)
+du02,dp2 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),u0,p)
+du03,dp3 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
+du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=TrackerAdjoint())),u0,p)
+@test_broken Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
+
+@test ū0 ≈ du01 rtol=1e-12
+@test ū0 ≈ du02 rtol=1e-12
+@test ū0 ≈ du03 rtol=1e-12
+@test ū0 ≈ du04 rtol=1e-12
+@test adj ≈ dp1' rtol=1e-12
+@test adj ≈ dp2' rtol=1e-12
+@test adj ≈ dp3' rtol=1e-12
+@test adj ≈ dp4' rtol=1e-12
+
+###
+### forward
+###
+
+@test_broken Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardSensitivity())),u0,p) isa Tuple
+du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity())),u0,p)
 
 @test du06 === du07 === nothing
 @test adj ≈ dp6' rtol=1e-12

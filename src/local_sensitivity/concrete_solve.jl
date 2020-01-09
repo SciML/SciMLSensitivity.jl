@@ -1,39 +1,13 @@
 ## High level
 
-function concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
-                        u0=prob.u0,p=prob.p,args...;kwargs...)
-  _concrete_solve(prob,alg,u0,p,args...;kwargs...)
-end
-
-function _concrete_solve(prob::DiffEqBase.DEProblem,alg::DiffEqBase.DEAlgorithm,
-                        u0=prob.u0,p=prob.p,args...;kwargs...)
-  sol = solve(remake(prob,u0=u0,p=p),alg,args...;kwargs...)
-  RecursiveArrayTools.DiffEqArray(sol.u,sol.t)
-end
-
-function ChainRulesCore.frule(::typeof(concrete_solve),prob,alg,u0,p,args...;
-                     sensealg=nothing,kwargs...)
-  _concrete_solve_forward(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
-function ChainRulesCore.rrule(::typeof(concrete_solve),prob,alg,u0,p,args...;
-                     sensealg=nothing,kwargs...)
-  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
-ZygoteRules.@adjoint function concrete_solve(prob,alg,u0,p,args...;
-                                             sensealg=nothing,kwargs...)
-  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
-function _concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
   default_sensealg = InterpolatingAdjoint()
-  _concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
-function _concrete_solve_adjoint(prob,alg,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
@@ -103,7 +77,7 @@ function _concrete_solve_adjoint(prob,alg,
   out, adjoint_sensitivity_backpass
 end
 
-function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
@@ -119,7 +93,7 @@ function _concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAl
    u,forward_sensitivity_backpass
 end
 
-function _concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+function DiffEqBase._concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
@@ -131,12 +105,12 @@ function _concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAl
    DiffEqArray(u,sol.t),_concrete_solve_pushforward
 end
 
-function _concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
     Zygote.pullback((u0,p)->_concrete_solve(prob,alg,u0,p,args...;kwargs...),u0,p)
 end
 
-function _concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
                                  u0,p,args...;kwargs...)
 
   t = eltype(prob.tspan)[]
