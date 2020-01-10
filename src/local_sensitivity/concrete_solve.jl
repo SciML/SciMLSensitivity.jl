@@ -66,8 +66,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       end
     end
 
-    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
-                                       kwargs_adj...)
+    du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
+                                    kwargs_adj...)
 
     du0 = reshape(du0,size(u0))
     dp = reshape(dp',size(p))
