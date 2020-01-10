@@ -78,7 +78,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 end
 
 # Prefer this route since it works better with callback AD
-function DiffEqBase._concrete_solve_adjoint(prob::ODEProblem,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
@@ -110,7 +110,8 @@ end
 # Generic Fallback for ForwardDiff
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;saveat=eltype(prob.tspan)[],
+                                 kwargs...)
 
   MyTag = typeof(prob.f)
   pdual = seed_duals(p,MyTag)
@@ -121,35 +122,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     tspandual = prob.tspan
   end
   _prob = remake(prob,u0=u0dual,p=pdual,tspan=tspandual)
-  sol = solve(_prob,alg,args...;kwargs...)
 
-  u,du = extract_local_sensitivities(sol, sensealg, Val(true))
-  function forward_sensitivity_backpass(Δ)
-    adj = sum(eachindex(du)) do i
-      J = du[i]
-      v = @view Δ[:, i]
-      J'v
-    end
-    (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
-  end
-  u,forward_sensitivity_backpass
-end
-
-# Ambiguity fix
-function DiffEqBase._concrete_solve_adjoint(prob::ODEProblem,alg,
-                                 sensealg::ForwardDiffSensitivity,
-                                 u0,p,args...;kwargs...)
-
-  MyTag = typeof(prob.f)
-  pdual = seed_duals(p,MyTag)
-  u0dual = convert.(eltype(pdual),u0)
-  if convert_tspan(sensealg)
-    tspandual = convert.(eltype(pdual),prob.tspan)
+  if saveat isa Number
+    _saveat = prob.tspan[1]:saveat:prob.tspan[2]
   else
-    tspandual = prob.tspan
+    _saveat = saveat
   end
-  _prob = remake(prob,u0=u0dual,p=pdual,tspan=tspandual)
-  sol = solve(_prob,alg,args...;kwargs...)
+
+  sol = solve(_prob,alg,args...;saveat=_saveat,kwargs...)
 
   u,du = extract_local_sensitivities(sol, sensealg, Val(true))
   function forward_sensitivity_backpass(Δ)
