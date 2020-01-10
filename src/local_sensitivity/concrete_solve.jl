@@ -77,7 +77,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   out, adjoint_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::ODEProblem,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
@@ -93,7 +93,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::ODEProblem,alg,sensealg::Abstr
    u,forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_forward(prob::ODEProblem,alg,
+function DiffEqBase._concrete_solve_forward(prob,alg,
                                  sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
