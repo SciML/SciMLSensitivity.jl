@@ -43,11 +43,14 @@ end
 
 struct QuadratureAdjoint{CS,AD,FDT} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
+  abstol::Float64
+  reltol::Float64
 end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
-                                         autojacvec=autodiff)
-  QuadratureAdjoint{chunk_size,autodiff,diff_type}(autojacvec)
+                                         autojacvec=autodiff,abstol=1e-6,
+                                         reltol=1e-3)
+  QuadratureAdjoint{chunk_size,autodiff,diff_type}(autojacvec,abstol,reltol)
 end
 
 struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end

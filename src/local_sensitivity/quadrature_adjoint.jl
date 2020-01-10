@@ -127,7 +127,6 @@ end
 function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
                                 abstol=1e-6,reltol=1e-3,
-                                iabstol=abstol, ireltol=reltol,
                                 kwargs...)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
@@ -136,16 +135,16 @@ function _adjoint_sensitivities_u0(sol,sensealg::QuadratureAdjoint,alg,g,
 
   if t === nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
-                   atol=iabstol,rtol=ireltol)
+                     atol=sensealg.abstol,rtol=sensealg.reltol)
   else
     res = zero(integrand.p)'
     for i in 1:length(t)-1
       res .+= quadgk(integrand,t[i],t[i+1],
-                     atol=iabstol,rtol=ireltol)[1]
+                     atol=sensealg.abstol,rtol=sensealg.reltol)[1]
     end
     if t[1] != sol.prob.tspan[1]
       res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
-                     atol=iabstol,rtol=ireltol)[1]
+                     atol=sensealg.abstol,rtol=sensealg.reltol)[1]
     end
   end
   -adj_sol[end],res
