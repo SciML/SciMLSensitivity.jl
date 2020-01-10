@@ -111,9 +111,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
-                                 u0,p,args...;kwargs...)
+                                            u0,p,args...;kwargs...)
 
   t = eltype(prob.tspan)[]
+  u = typeof(u0)[]
   function tracker_adjoint_forwardpass(u0,p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
@@ -125,14 +126,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
-    DiffEqArray(Tracker.collect.(sol.u),sol.t)
+    if DiffEqBase.isinplace(prob)
+      u = map.(Tracker.data,sol.u)
+    else
+      u = map(Tracker.data,sol.u)
+    end
+    Array(sol)
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar, pbar = pullback(ybar')
+    u0bar, pbar = pullback(ybar)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
   end
-  Tracker.data(sol),tracker_adjoint_backpass
+  DiffEqArray(u,t),tracker_adjoint_backpass
 end
