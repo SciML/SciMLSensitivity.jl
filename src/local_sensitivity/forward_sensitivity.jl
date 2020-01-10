@@ -182,7 +182,7 @@ function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{false})
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
-  _sol = Array(sol)
+  _sol = adapt(eltype(sol.u),sol)
   u = ForwardDiff.value.(_sol)
   du_full = ForwardDiff.partials.(_sol)
   return u, [[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])]
@@ -199,7 +199,7 @@ function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
-  retu = ForwardDiff.value.(Array(sol))
+  retu = ForwardDiff.value.(adapt(eltype(sol.u),sol))
   jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
   du = map(sol.u) do u
     du_i = similar(retu, jsize)

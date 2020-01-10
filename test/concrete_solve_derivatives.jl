@@ -34,7 +34,7 @@ sumsol = sum(sol)
 ###
 
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-ū0,adj = adjoint_sensitivities_u0(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,
+ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,
                                   reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
 du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),u0,p)
 du02,dp2 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),u0,p)

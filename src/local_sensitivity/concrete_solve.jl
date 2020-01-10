@@ -66,8 +66,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       end
     end
 
-    du0, dp = adjoint_sensitivities_u0(sol,alg,args...,df,ts; sensealg=sensealg,
-                                       kwargs_adj...)
+    du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
+                                    kwargs_adj...)
 
     du0 = reshape(du0,size(u0))
     dp = reshape(dp',size(p))
@@ -77,6 +77,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   out, adjoint_sensitivity_backpass
 end
 
+# Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
@@ -93,7 +94,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
    u,forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_forward(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
+function DiffEqBase._concrete_solve_forward(prob,alg,
+                                 sensealg::AbstractForwardSensitivityAlgorithm,
                                  u0,p,args...;kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
@@ -105,15 +107,52 @@ function DiffEqBase._concrete_solve_forward(prob,alg,sensealg::AbstractForwardSe
    DiffEqArray(u,sol.t),_concrete_solve_pushforward
 end
 
+# Generic Fallback for ForwardDiff
+function DiffEqBase._concrete_solve_adjoint(prob,alg,
+                                 sensealg::ForwardDiffSensitivity,
+                                 u0,p,args...;saveat=eltype(prob.tspan)[],
+                                 kwargs...)
+
+  MyTag = typeof(prob.f)
+  pdual = seed_duals(p,MyTag)
+  u0dual = convert.(eltype(pdual),u0)
+  if convert_tspan(sensealg)
+    tspandual = convert.(eltype(pdual),prob.tspan)
+  else
+    tspandual = prob.tspan
+  end
+  _prob = remake(prob,u0=u0dual,p=pdual,tspan=tspandual)
+
+  if saveat isa Number
+    _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+  else
+    _saveat = saveat
+  end
+
+  sol = solve(_prob,alg,args...;saveat=_saveat,kwargs...)
+
+  u,du = extract_local_sensitivities(sol, sensealg, Val(true))
+  function forward_sensitivity_backpass(Δ)
+    adj = sum(eachindex(du)) do i
+      J = du[i]
+      v = @view Δ[:, i]
+      J'v
+    end
+    (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
+  end
+  u,forward_sensitivity_backpass
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
     Zygote.pullback((u0,p)->_concrete_solve(prob,alg,u0,p,args...;kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
-                                 u0,p,args...;kwargs...)
+                                            u0,p,args...;kwargs...)
 
   t = eltype(prob.tspan)[]
+  u = typeof(u0)[]
   function tracker_adjoint_forwardpass(u0,p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
@@ -125,14 +164,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
-    DiffEqArray(Tracker.collect.(sol.u),sol.t)
+    if DiffEqBase.isinplace(prob)
+      u = map.(Tracker.data,sol.u)
+    else
+      u = map(Tracker.data,sol.u)
+    end
+    adapt(typeof(u0),sol)
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar, pbar = pullback(ybar')
+    u0bar, pbar = pullback(ybar)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
   end
-  Tracker.data(sol),tracker_adjoint_backpass
+  DiffEqArray(u,t),tracker_adjoint_backpass
 end
