@@ -153,6 +153,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
+
   function tracker_adjoint_forwardpass(u0,p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
@@ -160,7 +161,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       _prob = remake(prob,u0=map(identity,u0),p=p)
     else
       # use TrackedArray for efficiency of the tape
-      _prob = remake(prob,u0=u0,p=p)
+      _f(args...) = Tracker.collect(prob.f(args...))
+      _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=u0,p=p)
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
