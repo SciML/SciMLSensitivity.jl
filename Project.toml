@@ -5,7 +5,6 @@ version = "6.5.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
@@ -26,7 +25,6 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 Adapt = "1.0"
-ChainRulesCore = "0.4"
 DataFrames = "0.19, 0.20"
 DiffEqBase = "6.12"
 DiffEqCallbacks = "2.9"
