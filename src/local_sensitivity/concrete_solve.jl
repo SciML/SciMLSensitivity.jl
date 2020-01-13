@@ -162,7 +162,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     else
       # use TrackedArray for efficiency of the tape
       _f(args...) = Tracker.collect(prob.f(args...))
-      _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=u0,p=p)
+      if prob isa SDEProblem
+        _g(args...) = Tracker.collect(prob.g(args...))
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=u0,p=p)
+      else
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=u0,p=p)
+      end
     end
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
