@@ -71,7 +71,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   y = similar(sol.prob.u0)
   λ = similar(adj_sol.prob.u0)
   # we need to alias `y`
-  pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
+  pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = similar(y)
   isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)

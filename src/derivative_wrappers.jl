@@ -1,4 +1,4 @@
-# Not in DiffEqDiffTools because `u` -> scalar isn't used anywhere else,
+# Not in FiniteDiff because `u` -> scalar isn't used anywhere else,
 # but could be upstreamed.
 mutable struct UGradientWrapper{fType,tType,P} <: Function
   f::fType
@@ -25,7 +25,7 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
   if alg_autodiff(alg)
     ForwardDiff.jacobian!(J, f, fx, x, jac_config)
   else
-    DiffEqDiffTools.finite_difference_jacobian!(J, f, x, jac_config)
+    FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
   end
   nothing
 end
@@ -36,7 +36,7 @@ function gradient!(df::AbstractArray{<:Number}, f,
     if alg_autodiff(alg)
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
-        DiffEqDiffTools.finite_difference_gradient!(df, f, x, grad_config)
+        FiniteDiff.finite_difference_gradient!(df, f, x, grad_config)
     end
     nothing
 end
@@ -138,12 +138,12 @@ function build_jac_config(alg,uf,u)
                  ForwardDiff.Chunk{determine_chunksize(u,alg)}())
   else
     if diff_type(alg) != Val{:complex}
-      jac_config = DiffEqDiffTools.JacobianCache(similar(u),similar(u),
+      jac_config = FiniteDiff.JacobianCache(similar(u),similar(u),
                                                  similar(u),diff_type(alg))
     else
       tmp = Complex{eltype(u)}.(u)
       du1 = Complex{eltype(u)}.(du1)
-      jac_config = DiffEqDiffTools.JacobianCache(tmp,du1,nothing,diff_type(alg))
+      jac_config = FiniteDiff.JacobianCache(tmp,du1,nothing,diff_type(alg))
     end
   end
   jac_config
@@ -155,12 +155,12 @@ function build_param_jac_config(alg,uf,u,p)
                  ForwardDiff.Chunk{determine_chunksize(p,alg)}())
   else
     if diff_type(alg) != Val{:complex}
-      jac_config = DiffEqDiffTools.JacobianCache(similar(p),similar(u),
+      jac_config = FiniteDiff.JacobianCache(similar(p),similar(u),
                                                  similar(u),diff_type(alg))
     else
       tmp = Complex{eltype(p)}.(p)
       du1 = Complex{eltype(u)}.(u)
-      jac_config = DiffEqDiffTools.JacobianCache(tmp,du1,nothing,diff_type(alg))
+      jac_config = FiniteDiff.JacobianCache(tmp,du1,nothing,diff_type(alg))
     end
   end
   jac_config
@@ -171,7 +171,7 @@ function build_grad_config(alg,tf,du1,t)
     grad_config = ForwardDiff.GradientConfig(tf,du1,
                                     ForwardDiff.Chunk{determine_chunksize(du1,alg)}())
   else
-    grad_config = DiffEqDiffTools.GradientCache(du1,t,diff_type(alg))
+    grad_config = FiniteDiff.GradientCache(du1,t,diff_type(alg))
   end
   grad_config
 end

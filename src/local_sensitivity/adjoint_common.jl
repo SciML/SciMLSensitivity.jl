@@ -42,7 +42,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     jac_config = nothing
     uf = nothing
   else
-    uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[2],p)
+    uf = DiffEqBase.UJacobianWrapper(f,tspan[2],p)
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
@@ -52,7 +52,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     paramjac_config = nothing
     pf = nothing
   else
-    pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],y)
+    pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
 

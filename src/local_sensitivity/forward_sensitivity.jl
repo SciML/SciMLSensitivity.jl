@@ -101,8 +101,8 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacvec = get_jacvec(alg)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
-  uf = DiffEqDiffTools.UJacobianWrapper(f,tspan[1],p)
-  pf = DiffEqDiffTools.ParamJacobianWrapper(f,tspan[1],copy(u0))
+  uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
+  pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if isautojacvec
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
