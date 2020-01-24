@@ -1,6 +1,6 @@
 module DiffEqSensitivity
 
-using DiffEqBase, ForwardDiff, Tracker, DiffEqDiffTools, Statistics
+using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DataFrames, GLM, RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
