@@ -133,7 +133,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                      paramjac_config,alg,
                                      p,similar(u0),f.mass_matrix,
                                      isautojacvec,f.colorvec)
-  sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
+  sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
   ODEProblem(sense,sense_u0,tspan,p;
              problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                                        typeof(alg)}(alg),
