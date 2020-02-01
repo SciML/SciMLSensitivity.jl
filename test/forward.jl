@@ -137,3 +137,13 @@ tmp = similar(sol[1])
 @inferred extract_local_sensitivities(sol, sol.t[3], Val(true))
 @inferred extract_local_sensitivities(tmp, sol, sol.t[3])
 @inferred extract_local_sensitivities(tmp, sol, sol.t[3], Val(true))
+
+# Test Float32
+
+function f(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + u[1]*u[2]
+end
+p = [1.5f0,1.0f0,3.0f0]
+prob = ODEForwardSensitivityProblem(f,[1.0f0;1.0f0],(0.0f0,10.0f0),p)
+sol = solve(prob,Tsit5())
