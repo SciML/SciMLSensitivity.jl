@@ -1,157 +1,93 @@
-using RecursiveArrayTools, DataFrames, GLM
-struct Regression_Sensitivity_Coefficients
-    Pearson
-    Standard_Regression
-    Partial_Correlation
-    Spearman
-    Standard_Rank_Regression
-    Partial_Rank_Correlation
+"""
+    Regression(rank) <: GSAMethod
+
+Regression methods for global sensitivity analysis. Providing this to `gsa` results
+in a calculation of the following statistics, provided as a `RegressionResult`. If
+the function f to be analyzed is of dimensionality f: R^n -> R^m, then these coefficients
+are returned as a matrix, with the corresponding statistic in the (i, j) entry.
+
+- `pearson`: This is equivalent to the correlation coefficient matrix between input and output
+- `standard_regression`: Standard regression coefficients, also known as sigma-normalized
+derivatives
+- `partial_correlation`: Partial correlation coefficients, related to the precision matrix
+and a measure of the correlation of linear models of the
+
+# Arguments
+- `rank::Bool = false`: Flag determining whether to also run a rank regression analysis
+"""
+@with_kw mutable struct Regression <: GSAMethod
+    rank::Bool = false
 end
 
-function regression_sensitivity(f,p_range,p_fixed,n;coeffs=:rank)
+struct RegressionResult{T, TR}
+    pearson::T
+    standard_regression::T
+    partial_correlation::T
+    pearson_rank::TR
+    standard_rank_regression::TR
+    partial_rank_correlation::TR
+end
 
-    pearson_coeffs = []
-    src_coeffs = []
-    partial_coeffs = []
-    spearman_coeffs = []
-    srr_coeffs = []
-    partial_rank_coeffs = []
+function gsa(f, method::Regression, p_range::AbstractVector, samples::Int=1000, batch::Bool = false)
+    lb = [i[1] for i in p_range]
+    ub = [i[1] for i in p_range]
+    X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())
 
-    for i in 1:length(p_range)
-        pcs = []
-        srcs = []
-        params = []
-        for j in 1:length(p_range)
-            if i != j
-                push!(params,p_fixed[j])
-            else
-                push!(params,0)
-            end
-        end
-        xis = []
-        yis = Array{Float64}[]
-        for j in 1:n
-            params[i] = (p_range[i][2]-p_range[i][1])*rand() + p_range[i][1]
-            x = params
-            y = f(params)
-            push!(xis,copy(x))
-            push!(yis,copy(y))
-        end
-        yis = VectorOfArray(yis)
-        x_mean = mean(xis)
-        x_vrs = [sum(xis[i] - x_mean) for o in 1:length(xis)]
-        x_lm = [j[i] for j in xis]
-        x_rnk = sortperm(x_lm)
-        x_rnk_mean = mean(x_rnk)
-        x_rnk_vrs = [x_rnk[i] - x_rnk_mean for o in 1:length(x_rnk)]
-        x_var = var(x_lm)
-        x_rnk_var = var(x_rnk)
-        pcs,srcs = pcs_and_srcs(yis,x_lm,x_vrs,x_var)
-        pcc = pcc_f(x_lm,yis)
-        yis_rnk = zero(yis)
-        for k in 1:size(yis)[1]
-            for j in 1:size(yis)[2]
-                yis_rnk[k,j,:] = sortperm(yis[k,j,:])
-            end
-        end
-        if coeffs == :rank
-            prcc = pcc_f(x_rnk,yis_rnk)
-            spear_rcc, srrc = pcs_and_srcs(yis_rnk,x_rnk,x_rnk_vrs,x_rnk_var)
-        end
-        push!(pearson_coeffs,pcs)
-        push!(src_coeffs,srcs)
-        push!(partial_coeffs,pcc)
-        if coeffs == :rank
-            push!(partial_rank_coeffs,prcc)
-            push!(spearman_coeffs,spear_rcc)
-            push!(srr_coeffs,srrc)
-        end
-    end
-    if coeffs == :rank
-        regre_coeff = Regression_Sensitivity_Coefficients(pearson_coeffs,src_coeffs,partial_coeffs,spearman_coeffs,partial_rank_coeffs,srr_coeffs)
+    if batch
+        all_y = f(X)
+        multioutput = all_y isa AbstractMatrix
     else
-        regre_coeff = Regression_Sensitivity_Coefficients(pearson_coeffs,src_coeffs,partial_coeffs,nothing,nothing,nothing)
+        _y = [f(X[:,j]) for j in axes(X, 2)]
+        multioutput = !(eltype(_y) <: Number)
+        all_y = multioutput ? reduce(hcat,_y) : _y
     end
-    regre_coeff
+
+    srcs = _calculate_standard_regression_coefficients(X, all_y)
+    corr = _calculate_correlation_matrix(X, all_y)
+    partials = _calculate_partial_correlation_coefficients(corr)
+
+    if method.rank
+        X_rank = vcat((sortperm(view(X, i, :))' for i in axes(X, 1))...)
+        Y_rank = vcat((sortperm(view(all_y, i, :))' for i in axes(Y, 1))...)
+
+        srcs_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
+        corr_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
+        partials_rank = _calculate_partial_correlation_coefficients(corr)
+
+        return RegressionResult(
+            corr,
+            srcs,
+            partials,
+            corr_rank,
+            srcs_rank,
+            partials_rank
+        )
+    end
+
+    return RegressionResult(
+        corr,
+        srcs,
+        partials,
+        nothing, nothing, nothing
+    )
 end
 
-function pcs_and_srcs(yis,x_lm,x_vrs,x_var)
-    pcs = []
-    srcs = []
-    for k in 1:size(yis)[1]
-        pc = []
-        src = []
-        for j in 2:size(yis)[2]
-            pear_coeff_num = sum(x_vrs .* (yis[k,j,:] .- mean(yis[k,j,:])))
-            pear_coeff_deno = sqrt(sum(x_vrs.^2)) * sqrt(sum((yis[k,j,:] .- mean(yis[k,j,:])).^2))
-            pear_coeff = pear_coeff_num/pear_coeff_deno
-            push!(pc,pear_coeff)
-            df = DataFrame(X=x_lm,Y=yis[k,j,:])
-            lin_model = lm(@formula(Y ~ X),df)
-            push!(src,coef(lin_model)[2].*sqrt.(x_var ./ var(yis[k,j,:])))
-        end
-        push!(pcs,pc)
-        push!(srcs,src)
-    end
-    pcs,srcs
+function _calculate_standard_regression_coefficients(X, Y)
+    β̂ = X' \ Y'
+    β̂ .* std(X, dims = 2) ./ std(Y, dims = 2)
+    return srcs
 end
 
-function pcc_f(x_lm,yis)
-    df_arr = Array{Float64}[Float64[] for i in 1:length(x_lm)]
-    for o in 1:length(x_lm)
-        for j in 1:length(x_lm)
-            push!(df_arr[o],x_lm[(j+o)%length(x_lm)+1])
-        end
-    end
-    df = DataFrame(df_arr)
-    last_ind = length(x_lm)
-    formula = "@formula(x$last_ind ~ "
-    for j in 1:length(x_lm)-1
-        formula *= "x$j +"
-    end
-    formula = formula[1:end-1] * ")"
-    ols_x = lm(eval(Meta.parse(formula)),df)
-    x_cap = x_lm .- predict(ols_x)
-    y_caps = []
-    for k in 1:size(yis)[1]
-        y_cps = []
-        for j in 2:size(yis)[2]
-            df_arr = Array{Float64}[Float64[] for i in 1:length(yis[k,j,:])]
-            for o in 1:length(yis[k,j,:])
-                for l in 1:length(yis[k,j,:])
-                    push!(df_arr[o],yis[k,j,:][(l+o)%length(yis[k,j,:])+1])
-                end
-            end
-            df = DataFrame(df_arr)
-            last_ind = length(yis[k,j,:])
-            formula = "@formula(x$last_ind ~ "
-            for j in 1:length(yis[k,j,:])-1
-                formula *= "x$j +"
-            end
-            formula = formula[1:end-1] * ")"
-            ols_y = lm(eval(Meta.parse(formula)),df)
-            y_cap = yis[k,j,:] .- predict(ols_y)
-            push!(y_cps,y_cap)
-        end
-        push!(y_caps,y_cps)
-    end
-    pcc = []
-    for k in 1:length(y_caps)
-        pcc_ = []
-        for j in 1:length(y_caps[k])
-            num = sum(x_cap .* y_caps[k][j])
-            deno = sqrt(sum(x_cap.^2)*sum(y_caps[k][j].^2))
-            push!(pcc_,num/deno)
-        end
-        push!(pcc,pcc_)
-    end
-    pcc
+function _calculate_correlation_matrix(X, Y)
+    corr = cov(X, Y, dims = 2) ./ (std(X, dims = 2) .* std(Y, dims = 2)')
+    return corr
 end
 
-function regression_sensitivity(prob::DiffEqBase.DEProblem,alg,t,p_range,p_fixed,n;coeffs=:rank)
-    f = function (p)
-        prob1 = remake(prob;p=p)
-        Array(solve(prob1,alg;saveat=t))
-    end
-    regression_sensitivity(f,p_range,p_fixed,n,coeffs=coeffs)
+function _calculate_partial_correlation_coefficients(X, Y)
+    XY = vcat(X, Y)
+    corr = cov(XY, dims = 2) ./ (std(XY, dims = 2) .* std(XY, dims = 2)')
+    prec = inv(corr) # precision matrix
+    pcc_XY = -prec ./ sqrt.(diag(prec) .* diag(prec)')
+    # return partial correlation matrix relating f: X -> Y model values
+    return pcc_XY[axes(X, 1), lastindex(X) .+ axes(Y, 1)]
 end
