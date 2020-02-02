@@ -30,29 +30,29 @@ end
 
 function gsa(f, method::Regression, p_range::AbstractVector, samples::Int=1000, batch::Bool = false)
     lb = [i[1] for i in p_range]
-    ub = [i[1] for i in p_range]
+    ub = [i[2] for i in p_range]
     X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())
 
     if batch
-        all_y = f(X)
-        multioutput = all_y isa AbstractMatrix
+        Y = f(X)
+        multioutput = Y isa AbstractMatrix
     else
         _y = [f(X[:,j]) for j in axes(X, 2)]
         multioutput = !(eltype(_y) <: Number)
-        all_y = multioutput ? reduce(hcat,_y) : _y
+        Y = multioutput ? reduce(hcat,_y) : _y
     end
 
-    srcs = _calculate_standard_regression_coefficients(X, all_y)
-    corr = _calculate_correlation_matrix(X, all_y)
-    partials = _calculate_partial_correlation_coefficients(corr)
+    srcs = _calculate_standard_regression_coefficients(X, Y)
+    corr = _calculate_correlation_matrix(X, Y)
+    partials = _calculate_partial_correlation_coefficients(X, Y)
 
     if method.rank
         X_rank = vcat((sortperm(view(X, i, :))' for i in axes(X, 1))...)
-        Y_rank = vcat((sortperm(view(all_y, i, :))' for i in axes(Y, 1))...)
+        Y_rank = vcat((sortperm(view(Y, i, :))' for i in axes(Y, 1))...)
 
         srcs_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
         corr_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
-        partials_rank = _calculate_partial_correlation_coefficients(corr)
+        partials_rank = _calculate_partial_correlation_coefficients(X_rank, Y_rank)
 
         return RegressionResult(
             corr,
@@ -74,7 +74,7 @@ end
 
 function _calculate_standard_regression_coefficients(X, Y)
     β̂ = X' \ Y'
-    β̂ .* std(X, dims = 2) ./ std(Y, dims = 2)
+    srcs = β̂ .* std(X, dims = 2) ./ std(Y, dims = 2)
     return srcs
 end
 
@@ -89,5 +89,5 @@ function _calculate_partial_correlation_coefficients(X, Y)
     prec = inv(corr) # precision matrix
     pcc_XY = -prec ./ sqrt.(diag(prec) .* diag(prec)')
     # return partial correlation matrix relating f: X -> Y model values
-    return pcc_XY[axes(X, 1), lastindex(X) .+ axes(Y, 1)]
+    return pcc_XY[axes(X, 1), lastindex(X, 1) .+ axes(Y, 1)]
 end
