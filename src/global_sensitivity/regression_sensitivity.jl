@@ -6,7 +6,8 @@ in a calculation of the following statistics, provided as a `RegressionResult`. 
 the function f to be analyzed is of dimensionality f: R^n -> R^m, then these coefficients
 are returned as a matrix, with the corresponding statistic in the (i, j) entry.
 
-- `pearson`: This is equivalent to the correlation coefficient matrix between input and output
+- `pearson`: This is equivalent to the correlation coefficient matrix between input and
+output. The rank version is known as the Spearman coefficient.
 - `standard_regression`: Standard regression coefficients, also known as sigma-normalized
 derivatives
 - `partial_correlation`: Partial correlation coefficients, related to the precision matrix
@@ -28,18 +29,19 @@ struct RegressionResult{T, TR}
     partial_rank_correlation::TR
 end
 
-function gsa(f, method::Regression, p_range::AbstractVector, samples::Int=1000, batch::Bool = false)
+function gsa(f, method::Regression, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false)
     lb = [i[1] for i in p_range]
     ub = [i[2] for i in p_range]
     X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())
 
     if batch
-        Y = f(X)
-        multioutput = Y isa AbstractMatrix
+        _y = f(X)
+        multioutput = _y isa AbstractMatrix
+        Y = multioutput ? _y : reshape(_y, 1, length(_y))
     else
-        _y = [f(X[:,j]) for j in axes(X, 2)]
+        _y = [f(X[:, j]) for j in axes(X, 2)]
         multioutput = !(eltype(_y) <: Number)
-        Y = multioutput ? reduce(hcat,_y) : _y
+        Y = multioutput ? reduce(hcat,_y) : reshape(_y, 1, length(_y))
     end
 
     srcs = _calculate_standard_regression_coefficients(X, Y)
@@ -51,7 +53,7 @@ function gsa(f, method::Regression, p_range::AbstractVector, samples::Int=1000, 
         Y_rank = vcat((sortperm(view(Y, i, :))' for i in axes(Y, 1))...)
 
         srcs_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
-        corr_rank = _calculate_standard_regression_coefficients(X_rank, Y_rank)
+        corr_rank = _calculate_correlation_matrix(X_rank, Y_rank)
         partials_rank = _calculate_partial_correlation_coefficients(X_rank, Y_rank)
 
         return RegressionResult(
@@ -74,7 +76,7 @@ end
 
 function _calculate_standard_regression_coefficients(X, Y)
     β̂ = X' \ Y'
-    srcs = β̂ .* std(X, dims = 2) ./ std(Y, dims = 2)
+    srcs = β̂ .* std(X, dims = 2) ./ std(Y, dims = 2)'
     return srcs
 end
 
@@ -86,7 +88,7 @@ end
 function _calculate_partial_correlation_coefficients(X, Y)
     XY = vcat(X, Y)
     corr = cov(XY, dims = 2) ./ (std(XY, dims = 2) .* std(XY, dims = 2)')
-    prec = inv(corr) # precision matrix
+    prec = pinv(corr) # precision matrix
     pcc_XY = -prec ./ sqrt.(diag(prec) .* diag(prec)')
     # return partial correlation matrix relating f: X -> Y model values
     return pcc_XY[axes(X, 1), lastindex(X, 1) .+ axes(Y, 1)]
