@@ -1,8 +1,8 @@
 """
-    Regression(rank) <: GSAMethod
+    RegressionGSA(rank) <: GSAMethod
 
-Regression methods for global sensitivity analysis. Providing this to `gsa` results
-in a calculation of the following statistics, provided as a `RegressionResult`. If
+RegressionGSA methods for global sensitivity analysis. Providing this to `gsa` results
+in a calculation of the following statistics, provided as a `RegressionGSAResult`. If
 the function f to be analyzed is of dimensionality f: R^n -> R^m, then these coefficients
 are returned as a matrix, with the corresponding statistic in the (i, j) entry.
 
@@ -16,11 +16,11 @@ and a measure of the correlation of linear models of the
 # Arguments
 - `rank::Bool = false`: Flag determining whether to also run a rank regression analysis
 """
-@with_kw mutable struct Regression <: GSAMethod
+@with_kw mutable struct RegressionGSA <: GSAMethod
     rank::Bool = false
 end
 
-struct RegressionResult{T, TR}
+struct RegressionGSAResult{T, TR}
     pearson::T
     standard_regression::T
     partial_correlation::T
@@ -29,7 +29,7 @@ struct RegressionResult{T, TR}
     partial_rank_correlation::TR
 end
 
-function gsa(f, method::Regression, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false)
+function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false)
     lb = [i[1] for i in p_range]
     ub = [i[2] for i in p_range]
     X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())
@@ -56,7 +56,7 @@ function gsa(f, method::Regression, p_range::AbstractVector, samples::Int = 1000
         corr_rank = _calculate_correlation_matrix(X_rank, Y_rank)
         partials_rank = _calculate_partial_correlation_coefficients(X_rank, Y_rank)
 
-        return RegressionResult(
+        return RegressionGSAResult(
             corr,
             srcs,
             partials,
@@ -66,7 +66,7 @@ function gsa(f, method::Regression, p_range::AbstractVector, samples::Int = 1000
         )
     end
 
-    return RegressionResult(
+    return RegressionGSAResult(
         corr,
         srcs,
         partials,

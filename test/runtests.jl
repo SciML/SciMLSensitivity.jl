@@ -14,7 +14,7 @@ if GROUP == "All" || GROUP == "Core" || GROUP == "Downstream"
     @time @safetestset "Sobol Method" begin include("sobol_method.jl") end
     @time @safetestset "DGSM Method" begin include("DGSM.jl") end
     @time @safetestset "eFAST Method" begin include("eFAST_method.jl") end
-    @time @safetestset "Regression Method" begin include("regression_sensitivity.jl") end
+    @time @safetestset "RegressionGSA Method" begin include("regression_sensitivit.jl") end
 end
 
 if GROUP == "DiffEqFlux"

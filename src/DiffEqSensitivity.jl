@@ -30,7 +30,7 @@ export extract_local_sensitivities
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
-       SensitivityAlg, Regression, DGSM, eFAST
+       SensitivityAlg, RegressionGSA, DGSM, eFAST
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint,
