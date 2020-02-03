@@ -502,3 +502,30 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   @test ū2 ≈ ū4 rtol=1e-4
   @test adj2 ≈ adj4 rtol=1e-4
 end
+
+using Test
+@testset "Adjoint of differential algebric equations with mass matrix" begin
+  using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, Calculus
+  @info "symmetric mass matrix on linear ODE"
+  foo(du, u, A, t) = mul!(du, A, u)
+  mm = Hermitian([2 1; 1 2.0])
+  u0 = [1, 2.0]
+  p = [1 2; 3 4.0]
+  prob_sym_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
+  sol_sym_mm = solve(prob_sym_mm, Rodas5(), reltol=1e-7, abstol=1e-7)
+  ppp = ODEForwardSensitivityProblem(prob_sym_mm.f.f, u0, (0.0,1.0), p, ForwardSensitivity())
+
+  dg(out,u,p,t,i) = out.=2.0.-u
+  ts = sol_sym_mm.t
+  ū1, adj1 = adjoint_sensitivities(sol_sym_mm,Rodas5(autodiff=false),dg,ts,abstol=1e-7,
+                                   reltol=1e-7,sensealg=QuadratureAdjoint())
+  function G(p)
+    tmp_prob_sym_mm = remake(prob_sym_mm,u0=convert.(eltype(p),prob_sym_mm.u0),p=reshape(p, 2, 2))
+    sol = solve(tmp_prob_sym_mm,Rodas5(autodiff=false),abstol=1e-10,reltol=1e-10,saveat=ts)
+    A = convert(Array,sol)
+    sum(((2 .- A).^2)./2)
+  end
+  reference_sol = Calculus.gradient(G,vec(p))
+
+  adj1 - reference_sol
+end

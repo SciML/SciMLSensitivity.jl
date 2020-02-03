@@ -48,7 +48,8 @@ end
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  ODEProblem(sense,z0,tspan,p,callback=cb)
+  ODEProblem(ODEFunction(sense,mass_matrix=sol.prob.f.mass_matrix'),z0,tspan,p,callback=cb)
+  #ODEProblem(sense,z0,tspan,p,callback=cb)
 end
 
 struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT}
