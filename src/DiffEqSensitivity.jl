@@ -2,7 +2,7 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DataFrames, GLM, RecursiveArrayTools, QuasiMonteCarlo, Adapt
+using RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions
 import ZygoteRules, Zygote
@@ -30,7 +30,7 @@ export extract_local_sensitivities
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
-       SensitivityAlg, regression_sensitivity, DGSM, eFAST
+       SensitivityAlg, RegressionGSA, DGSM, eFAST
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint,
