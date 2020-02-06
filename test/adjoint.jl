@@ -505,27 +505,51 @@ end
 
 using Test
 @testset "Adjoint of differential algebric equations with mass matrix" begin
-  using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, Calculus
-  @info "symmetric mass matrix on linear ODE"
-  foo(du, u, A, t) = mul!(du, A, u)
-  mm = Hermitian([2 1; 1 2.0])
+  using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
+  A = [1 2; 3 4]
+  function foo(du, u, p, t)
+    mul!(du, A, u)
+    du .+= p
+    return nothing
+  end
+  mm = Hermitian([1 2; 3 4])
   u0 = [1, 2.0]
-  p = [1 2; 3 4.0]
+  p = [1.0, 2.0]
   prob_sym_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
-  sol_sym_mm = solve(prob_sym_mm, Rodas5(), reltol=1e-7, abstol=1e-7)
-  ppp = ODEForwardSensitivityProblem(prob_sym_mm.f.f, u0, (0.0,1.0), p, ForwardSensitivity())
+  sol_sym_mm = solve(prob_sym_mm, Rodas5(), reltol=1e-10, abstol=1e-10)
 
-  dg(out,u,p,t,i) = out.=2.0.-u
-  ts = sol_sym_mm.t
-  ū1, adj1 = adjoint_sensitivities(sol_sym_mm,Rodas5(autodiff=false),dg,ts,abstol=1e-7,
-                                   reltol=1e-7,sensealg=QuadratureAdjoint())
+  g_cont(u,p,t) = (sum(u).^2) ./ 2
+  dg_cont(out,u,p,t) = out .= sum(u)
+
+  adj_prob = ODEAdjointProblem(sol_sym_mm,QuadratureAdjoint(abstol=1e-10,reltol=1e-10),g_cont,nothing,dg_cont)
+  adj_sol = solve(adj_prob,Rodas5(autodiff=false),abstol=1e-10,reltol=1e-10)
+  integrand = AdjointSensitivityIntegrand(sol_sym_mm,adj_sol,QuadratureAdjoint(abstol=1e-10,reltol=1e-10))
+  res, err = quadgk(integrand,0.0,1.0,atol=1e-10,rtol=1e-12)
+  function G_cont(p)
+    tmp_prob_sym_mm = remake(prob_sym_mm,u0=eltype(p).(prob_sym_mm.u0),p=p,
+                      tspan=eltype(p).(prob_sym_mm.tspan))
+    sol = solve(tmp_prob_sym_mm,Rodas5(autodiff=false),abstol=1e-10,reltol=1e-10)
+    res,err = quadgk((t)-> (sum(sol(t)).^2)./2,0.0,1.0,atol=1e-10,rtol=1e-10)
+    return res
+  end
+  reference_sol = ForwardDiff.gradient(G_cont, p)
+  reference_sol
+  res
+end
+
+#=
+
+  dg(out,u,p,t,i) = out .= 1
+  ū1, adj1 = adjoint_sensitivities(sol_sym_mm,Rodas5(autodiff=false),dg,ts,abstol=1e-9,
+                                   reltol=1e-9,sensealg=QuadratureAdjoint())
   function G(p)
-    tmp_prob_sym_mm = remake(prob_sym_mm,u0=convert.(eltype(p),prob_sym_mm.u0),p=reshape(p, 2, 2))
+    tmp_prob_sym_mm = remake(prob_sym_mm,u0=convert.(eltype(p),prob_sym_mm.u0),p=p)
     sol = solve(tmp_prob_sym_mm,Rodas5(autodiff=false),abstol=1e-10,reltol=1e-10,saveat=ts)
     A = convert(Array,sol)
-    sum(((2 .- A).^2)./2)
+    sum(A)
   end
-  reference_sol = Calculus.gradient(G,vec(p))
+  reference_sol = ForwardDiff.gradient(G,vec(p))
 
-  adj1 - reference_sol
+  vec(adj1') - reference_sol
 end
+=#
