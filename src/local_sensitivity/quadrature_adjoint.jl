@@ -20,8 +20,8 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   @unpack y, sol, discrete = S
   f = sol.prob.f
   sol(y,t)
-  λ     = u
-  dλ    = du
+  λ  = u
+  dλ = du
 
   vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
