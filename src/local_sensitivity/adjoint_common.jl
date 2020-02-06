@@ -83,7 +83,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       λ  = isq ? λ : @view(λ[1:idx])
       g(λ,y,p,t[cur_time[]],cur_time[])
       if isq
-        u .+= λ
+        u .+= integrator.f.mass_matrix \ λ
       else
         u = @view u[1:idx]
         u .= λ .+ @view integrator.u[1:idx]

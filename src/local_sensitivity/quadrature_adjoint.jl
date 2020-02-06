@@ -18,11 +18,10 @@ end
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   @unpack y, sol, discrete = S
-  idx = length(y)
   f = sol.prob.f
   sol(y,t)
-  λ     = u
-  dλ    = du
+  λ  = u
+  dλ = du
 
   vecjacobian!(dλ, λ, p, t, S)
   dλ .*= -one(eltype(λ))
@@ -48,7 +47,8 @@ end
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  ODEProblem(sense,z0,tspan,p,callback=cb)
+  odefun = ODEFunction(sense,mass_matrix=sol.prob.f.mass_matrix')
+  return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
 struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT}
@@ -147,5 +147,5 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                      atol=sensealg.abstol,rtol=sensealg.reltol)[1]
     end
   end
-  -adj_sol[end],res
+  -adj_sol[end], res
 end
