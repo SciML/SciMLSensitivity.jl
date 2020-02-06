@@ -58,11 +58,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   end
 
   function adjoint_sensitivity_backpass(Δ)
-    function df(out, u, p, t, i)
+    function df(_out, u, p, t, i)
       if only_end
-        out[:] .= -vec(Δ)
+        _out[:] .= -vec(Δ)
       else
-        out[:] .= -reshape(Δ, :, size(Δ)[end])[:, i]
+        _out[:] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
       end
     end
 
@@ -154,19 +154,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
 
-  function tracker_adjoint_forwardpass(u0,p)
+  function tracker_adjoint_forwardpass(_u0,_p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
       # Recurse to all Array{TrackedArray}
-      _prob = remake(prob,u0=map(identity,u0),p=p)
+      _prob = remake(prob,u0=map(identity,_u0),p=_p)
     else
       # use TrackedArray for efficiency of the tape
       _f(args...) = Tracker.collect(prob.f(args...))
       if prob isa SDEProblem
         _g(args...) = Tracker.collect(prob.g(args...))
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=u0,p=p)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=u0,p=p)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
     sol = solve(_prob,alg,args...;kwargs...)
@@ -176,7 +176,17 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     else
       u = map(Tracker.data,sol.u)
     end
-    adapt(typeof(u0),sol)
+
+    if typeof(sol.u[1]) <: Array
+      return adapt(typeof(u0),sol)
+    else
+      tmp = vec(sol.u[1])
+      for i in 2:length(sol.u)
+        tmp = hcat(tmp,vec(sol.u[i]))
+      end
+      return reshape(tmp,size(sol.u[1])...,length(sol.u))
+    end
+    #adapt(typeof(u0),arr)
   end
 
   sol,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
