@@ -125,13 +125,23 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     paramjac_config = build_param_jac_config(alg,pf,u0,p)
   end
 
+  # TODO: make it better
+  if f.mass_matrix isa UniformScaling
+    mm = f.mass_matrix
+  else
+    nn = size(f.mass_matrix, 1)
+    mm = similar(f.mass_matrix, 2nn, 2nn)
+    mm[1:nn, 1:nn] = f.mass_matrix
+    mm[nn+1:2nn, nn+1:2nn] = f.mass_matrix
+  end
+
   # TODO: Use user tgrad. iW can be safely ignored here.
   sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,
                                      f.jac_prototype,f.paramjac,
                                      nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
-                                     p,similar(u0),f.mass_matrix,
+                                     p,similar(u0),mm,
                                      isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(sense.numindvar*sense.numparams)]
   ODEProblem(sense,sense_u0,tspan,p;
