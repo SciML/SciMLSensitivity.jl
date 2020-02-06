@@ -95,16 +95,3 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,absto
 @test du06 === du07 === nothing
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
-
-using Test
-@testset "Adjoint of differential algebric equations with mass matrix" begin
-  using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, Zygote
-  @info "symmetric mass matrix on linear ODE"
-  foo(du, u, A, t) = du .= reshape(A, 2, 2) * u
-  mm = Hermitian([2 1; 1 2.0])
-  u0 = [1, 2.0]
-  p = [1, 2, 3, 4.0]
-  prob_sym_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
-  sol_sym_mm = solve(prob_sym_mm, Rodas5(), reltol=1e-7, abstol=1e-7)
-  Zygote.gradient((u0,p)->sum(concrete_solve(prob_sym_mm,Rodas5(autodiff=false),u0,p,abstol=1e-7,reltol=1e-7,saveat=0.1,sensealg=ForwardSensitivity())),u0,p)
-end
