@@ -107,7 +107,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
       # that is a tuple in the form of `(seed, buffer)`
-      jac_config_seed = ForwardDiff.Dual{:___jac_tag}.(u0,u0)
+      jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(u0,u0)
       jac_config_buffer = similar(jac_config_seed)
       jac_config = jac_config_seed, jac_config_buffer
     else
