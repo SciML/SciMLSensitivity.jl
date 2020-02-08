@@ -505,6 +505,7 @@ end
 
 using Test
 @testset "Adjoint of differential algebric equations with mass matrix" begin
+  @info "discrete function"
   using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
   A = [1 2 3; 4 5 6; 7 8 9]
   function foo(du, u, p, t)
@@ -516,22 +517,38 @@ using Test
   mm = -[1 2 4; 2 3 7; 1 3 41]
   u0 = [1, 2.0, 3]
   p = [1.0, 2.0, 3]
-  prob_sym_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
-  sol_sym_mm = solve(prob_sym_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
+  prob_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
+  sol_mm = solve(prob_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
 
   ts = 0:0.01:1
   # TODO
   dg(out,u,p,t,i) = out .= -1
-  adj_prob = ODEAdjointProblem(sol_sym_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg,ts)
+  adj_prob = ODEAdjointProblem(sol_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg,ts)
   adj_sol = solve(adj_prob,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
-  integrand = AdjointSensitivityIntegrand(sol_sym_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
+  integrand = AdjointSensitivityIntegrand(sol_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
   res,err = quadgk(integrand,0.0,1.0,atol=1e-14,rtol=1e-14)
   function G(p)
-    tmp_prob_sym_mm = remake(prob_sym_mm,u0=convert.(eltype(p),prob_sym_mm.u0),p=p)
-    sol = solve(tmp_prob_sym_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14,saveat=ts)
+    tmp_prob_mm = remake(prob_mm,u0=convert.(eltype(p),prob_mm.u0),p=p)
+    sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14,saveat=ts)
     sum(sol)
   end
   reference_sol = ForwardDiff.gradient(G,vec(p))
 
   @test res' ≈ reference_sol rtol=1e-3
+
+  @info "continuous cost function"
+  g_cont(u,p,t) = (sum(u).^2) ./ 2
+  dg_cont(out,u,p,t) = out .= sum(u)
+  _,easy_res_cont = adjoint_sensitivities(sol_mm,Rodas5(autodiff=false),g_cont,nothing,
+                                   dg_cont,abstol=1e-10,reltol=1e-10,
+                                   sensealg=QuadratureAdjoint())
+  function G_cont(p)
+    tmp_prob_mm = remake(prob_mm,u0=eltype(p).(prob_mm.u0),p=p,
+                      tspan=eltype(p).(prob_mm.tspan))
+    sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
+    res,err = quadgk((t)-> (sum(sol(t)).^2)./2,prob_mm.tspan...,atol=1e-14,rtol=1e-10)
+    res
+  end
+  reference_sol_cont = ForwardDiff.gradient(G_cont, p)
+  @test easy_res_cont' ≈ reference_sol_cont rtol=1e-3
 end
