@@ -186,14 +186,14 @@ extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensiti
 # Get ODE u vector and sensitivity values from all time points
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{false})
   ni = sol.prob.f.numindvar
-  u = sol[1:ni, :]
+  u = [sol[i][1:ni] for i in 1:length(sol)]
   du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
   return u, du
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
   _sol = adapt(eltype(sol.u),sol)
-  u = ForwardDiff.value.(_sol)
+  u = map(x->map(ForwardDiff.value,x),sol.u)
   du_full = ForwardDiff.partials.(_sol)
   return u, [[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])]
 end
@@ -203,16 +203,16 @@ function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
   ni = prob.f.numindvar
   pn = prob.f.numparams
   jsize = (ni, pn)
-  sol[1:ni, :], map(sol.u) do u
+  [sol[i][1:ni] for i in 1:length(sol)], map(sol.u) do u
     collect(reshape((@view u[ni+1:end]), jsize))
   end
 end
 
 function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{true})
-  retu = ForwardDiff.value.(adapt(eltype(sol.u),sol))
+  retu = map(x->map(ForwardDiff.value,x),sol.u)
   jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
   du = map(sol.u) do u
-    du_i = similar(retu, jsize)
+    du_i = similar(retu[1], jsize)
     for i in eachindex(u)
       du_i[i, :] = ForwardDiff.partials(u[i])
     end
