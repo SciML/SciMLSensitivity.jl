@@ -45,12 +45,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     sol_idxs = 1:length(sol)
     no_start && (sol_idxs = sol_idxs[2:end])
     no_end && (sol_idxs = sol_idxs[1:end-1])
-    # If didn't save start, take off first. If only wanted the end, return vector
     only_end = length(sol_idxs) <= 1
-    u = sol[sol_idxs]
-    only_end && (sol_idxs = length(sol))
-    out = only_end ? sol[end] : reduce((x,y)->cat(x,y,dims=ndims(u)),u.u)
+    u = sol.u[sol_idxs]
     ts = sol.t[sol_idxs]
+    out = DiffEqArray(u,ts)
   else
     ts = saveat
     out = sol(ts)
@@ -91,7 +89,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
      end
      (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
    end
-   u,forward_sensitivity_backpass
+   DiffEqArray([u[:,i] for i in 1:size(u,2)],sol.t),forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_forward(prob,alg,
@@ -104,7 +102,7 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
      x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
      du * Δp
    end
-   DiffEqArray(u,sol.t),_concrete_solve_pushforward
+   DiffEqArray([u[:,i] for i in 1:size(u,2)],sol.t),_concrete_solve_pushforward
 end
 
 # Generic Fallback for ForwardDiff
@@ -140,7 +138,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
     (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
   end
-  u,forward_sensitivity_backpass
+  DiffEqArray([u[:,i] for i in 1:size(u,2)],sol.t),forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
