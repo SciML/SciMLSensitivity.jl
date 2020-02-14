@@ -103,6 +103,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
     mass_matrix = odefun.mass_matrix
     factorized_mass_matrix = _factorize(mass_matrix)
     issingular′ = issingular(factorized_mass_matrix)
+    issingular′ = true
     # check if the mass matrix is singular cheaply
     if issingular′
       factorized_mass_matrix = qr(odefun.mass_matrix, Val(true))
@@ -121,38 +122,34 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
     function (integrator)
       p, u = integrator.p, integrator.u
       λ  = isq ? λ : @view(λ[1:idx])
-      g(λ,y,p,t[cur_time[]],cur_time[])
+      gᵤ = similar(λ)
+      g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
         if issingular′
           du, tmp = DiffEqBase.get_tmp_cache(integrator)
-          # solve Δu such that
-          # M Δu = dgdu
-          # u+Δu is consistant => f(u+Δu) ∈ col(M) => {
-          #   du = f(u+Δu)
-          #   tmp = M \ du
-          #   M*tmp - du = 0
-          # }
-          function consistant_initialization_scaling!(residual, Δu)
-            g(Δu,y,p,t[cur_time[]],cur_time[])
-            ldiv!(factorized_mass_matrix, Δu) # just for readability
-            u .+= Δu
-            ldiv!(tmp, factorized_mass_matrix, u)
-            sensefun.sol.prob.f(du, u, p, t)
+          # solve u such that
+          # M u' = sense(λ) + dgdu(y) for some u', where y is constant
+          # Let du = sense(u) + dgdu(y)
+          # M (M\du) - du = 0
+          function consistant_initialization_scaling!(residual, u)
+            integrator.f(du, u, p, integrator.t)
+            du .+= gᵤ
+            ldiv!(tmp, factorized_mass_matrix, du)
             residual .= mass_matrix * tmp .- du
+            @show residual
             nothing
           end
-          sol = nlsolve(consistant_initialization_scaling!, λ)
-          @show sol # doesn't converge
-          λ = sol.zero
+          sol = nlsolve(consistant_initialization_scaling!, u)
+          u .= sol.zero
         else
           if factorized_mass_matrix !== nothing
-              F !== I && ldiv!(F, λ)
+              F !== I && ldiv!(F, gᵤ)
           end
+          u .+= gᵤ
         end
-        u .+= λ
       else
         u = @view u[1:idx]
-        u .= λ .+ @view integrator.u[1:idx]
+        u .= gᵤ .+ @view integrator.u[1:idx]
       end
       u_modified!(integrator,true)
       cur_time[] -= 1
