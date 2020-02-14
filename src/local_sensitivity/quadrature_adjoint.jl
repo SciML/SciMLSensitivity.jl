@@ -47,6 +47,8 @@ end
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
   odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
+  # TODO: hack
+  z0 = nullspace(odefun.mass_matrix)[:, 1]
   cb = generate_callbacks(odefun, g, λ, t, callback, init_cb)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end

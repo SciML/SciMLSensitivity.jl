@@ -88,8 +88,9 @@ end
 
 getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
 
+using NLsolve: nlsolve
 # handle UniformScaling
-_factorize(A) = lu(A) # use lu for now
+_factorize(A) = lu(A, check=false) # use lu for now
 _factorize(I::UniformScaling) = I
 issingular(F) = det(F) <= 1e-12 # not the best... but..., meh for now
 issingular(::UniformScaling) = false
@@ -99,11 +100,12 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   sensefun.discrete || return callback
 
   if odefun !== nothing
-    factorized_mass_matrix = _factorize(odefun.mass_matrix)
+    mass_matrix = odefun.mass_matrix
+    factorized_mass_matrix = _factorize(mass_matrix)
     issingular′ = issingular(factorized_mass_matrix)
     # check if the mass matrix is singular cheaply
     if issingular′
-      error("todo")
+      factorized_mass_matrix = qr(odefun.mass_matrix, Val(true))
     end
   else
     factorized_mass_matrix = nothing
@@ -121,11 +123,30 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       λ  = isq ? λ : @view(λ[1:idx])
       g(λ,y,p,t[cur_time[]],cur_time[])
       if isq
-        if factorized_mass_matrix !== nothing
-          if issingular′
-            error("todo")
-          else
-            F !== I && ldiv!(F, λ)
+        if issingular′
+          du, tmp = DiffEqBase.get_tmp_cache(integrator)
+          # solve Δu such that
+          # M Δu = dgdu
+          # u+Δu is consistant => f(u+Δu) ∈ col(M) => {
+          #   du = f(u+Δu)
+          #   tmp = M \ du
+          #   M*tmp - du = 0
+          # }
+          function consistant_initialization_scaling!(residual, Δu)
+            g(Δu,y,p,t[cur_time[]],cur_time[])
+            ldiv!(factorized_mass_matrix, Δu) # just for readability
+            u .+= Δu
+            ldiv!(tmp, factorized_mass_matrix, u)
+            sensefun.sol.prob.f(du, u, p, t)
+            residual .= mass_matrix * tmp .- du
+            nothing
+          end
+          sol = nlsolve(consistant_initialization_scaling!, λ)
+          @show sol # doesn't converge
+          λ = sol.zero
+        else
+          if factorized_mass_matrix !== nothing
+              F !== I && ldiv!(F, λ)
           end
         end
         u .+= λ
