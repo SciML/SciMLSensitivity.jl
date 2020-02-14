@@ -88,8 +88,26 @@ end
 
 getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
 
+# handle UniformScaling
+_factorize(A) = lu(A) # use lu for now
+_factorize(I::UniformScaling) = I
+issingular(F) = det(F) <= 1e-12 # not the best... but..., meh for now
+issingular(::UniformScaling) = false
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
+  # a trick to make other algorithms still work
+  odefun, sensefun = sensefun isa ODEFunction ? (sensefun, sensefun.f) : (nothing, sensefun)
   sensefun.discrete || return callback
+
+  if odefun !== nothing
+    factorized_mass_matrix = _factorize(odefun.mass_matrix)
+    issingular′ = issingular(factorized_mass_matrix)
+    # check if the mass matrix is singular cheaply
+    if issingular′
+      error("todo")
+    end
+  else
+    factorized_mass_matrix = nothing
+  end
 
   @unpack sensealg, y = sensefun
   prob = getprob(sensefun)
@@ -97,13 +115,20 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   time_choice = let cur_time=cur_time, t=t
     integrator -> cur_time[] > 0 ? t[cur_time[]] : nothing
   end
-  affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0)
+  affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0), F=factorized_mass_matrix
     function (integrator)
       p, u = integrator.p, integrator.u
       λ  = isq ? λ : @view(λ[1:idx])
       g(λ,y,p,t[cur_time[]],cur_time[])
       if isq
-        u .+= integrator.f.mass_matrix \ λ
+        if factorized_mass_matrix !== nothing
+          if issingular′
+            error("todo")
+          else
+            F !== I && ldiv!(F, λ)
+          end
+        end
+        u .+= λ
       else
         u = @view u[1:idx]
         u .= λ .+ @view integrator.u[1:idx]
