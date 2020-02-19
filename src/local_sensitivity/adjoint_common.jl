@@ -46,7 +46,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     jac_config = build_jac_config(sensealg,uf,u0)
   end
 
-  y = copy(sol.u[end])
+  y = DiffEqBase.dualcache(copy(sol.u[end]))
 
   if DiffEqBase.has_paramjac(f) || isautojacvec || quad
     paramjac_config = nothing

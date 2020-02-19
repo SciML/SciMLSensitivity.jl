@@ -71,7 +71,8 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  @unpack y, sensealg = S
+  @unpack sensealg = S
+  y = DiffEqBase.get_tmp(S.y,λ)
   prob = getprob(S)
   f = prob.f
   isautojacvec = get_jacvec(sensealg)

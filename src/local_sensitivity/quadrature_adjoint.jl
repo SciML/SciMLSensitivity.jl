@@ -17,7 +17,8 @@ end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, discrete = S
+  @unpack sol, discrete = S
+  y = DiffEqBase.get_tmp(S.y,u)
   f = sol.prob.f
   sol(y,t)
   λ  = u

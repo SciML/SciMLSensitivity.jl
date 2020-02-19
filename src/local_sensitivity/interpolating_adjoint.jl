@@ -49,7 +49,8 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, checkpoint_sol, discrete = S
+  @unpack sol, checkpoint_sol, discrete = S
+  y = DiffEqBase.get_tmp(S.y,u)
   idx = length(y)
   f = sol.prob.f
 

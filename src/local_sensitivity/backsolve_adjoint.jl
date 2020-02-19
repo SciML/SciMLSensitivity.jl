@@ -16,7 +16,8 @@ end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, prob, discrete = S
+  @unpack prob, discrete = S
+  y = DiffEqBase.get_tmp(S.y,u)
   idx = length(y)
   f = prob.f
 
