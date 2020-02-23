@@ -69,7 +69,7 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
   cur_time = Ref(length(checkpoints))
   condition = let checkpoints=checkpoints
     (u,t,integrator) ->
-      checkpoints !== nothing && ((idx = searchsortedfirst(checkpoints, t)) <= length(checkpoints)) && checkpoints[idx] == t
+      checkpoints !== nothing && ((idx = searchsortedlast(checkpoints, t)) <= length(checkpoints)) && checkpoints[idx] == t
   end
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)

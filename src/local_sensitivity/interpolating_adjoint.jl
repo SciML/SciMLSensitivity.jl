@@ -22,7 +22,8 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,c
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
 
   checkpoint_sol = if checkpointing
-    intervals = map(tuple, @view(checkpoints[1:end-1]), @view(checkpoints[2:end]))
+    _checkpoints = unique(checkpoints)
+    intervals = map(tuple, @view(_checkpoints[1:end-1]), @view(_checkpoints[2:end]))
     interval_end = intervals[end][end]
     tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
     cursor = lastindex(intervals)
