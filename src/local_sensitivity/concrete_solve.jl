@@ -182,7 +182,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       for i in 2:length(sol.u)
         tmp = hcat(tmp,vec(sol.u[i]))
       end
-      return reshape(tmp,size(sol.u[1])...,length(sol.u))
+      r = reshape(tmp,size(sol.u[1])...,length(sol.u))
+      return adapt(typeof(u0), r)
     end
     #adapt(typeof(u0),arr)
   end
