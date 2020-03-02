@@ -36,4 +36,5 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity
 
+export TrackerVJP, ZygoteVJP, ReverseDiffVJP
 end # module
