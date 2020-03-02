@@ -71,14 +71,14 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, get_jacvec(sensealg);
+  _vecjacobian!(dλ, λ, p, t, S, S.sensealg.autojacvec;
                         dgrad=dgrad, dy=dy)
   return
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool;
                       dgrad=nothing, dy=nothing)
-                      @unpack y, sensealg = S
+  @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
   if isautojacvec isa Bool && !isautojacvec
@@ -102,10 +102,10 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
     end
     dy !== nothing && f(dy, y, p, t)
   elseif DiffEqBase.isinplace(prob)
-    _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, TrackerVJP();
+    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP();
                           dgrad=nothing, dy=nothing)
   else
-    _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, ZygoteVJP();
+    _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP();
                           dgrad=nothing, dy=nothing)
   end
   return
@@ -113,6 +113,7 @@ end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP;
                       dgrad=nothing, dy=nothing)
+  @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
   isautojacvec = get_jacvec(sensealg)
@@ -140,6 +141,7 @@ end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP;
                       dgrad=nothing, dy=nothing)
+  @unpack y, sensealg = S
   if DiffEqBase.isinplace(prob)
     tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
       du1 = similar(p, size(u))
@@ -168,6 +170,7 @@ end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP;
                       dgrad=nothing, dy=nothing)
+  @unpack y, sensealg = S
   if DiffEqBase.isinplace(prob)
     _dy, back = Zygote.pullback(y, prob.p) do u, p
       out_ = Zygote.Buffer(u)
