@@ -84,15 +84,20 @@ _,easy_res7 = adjoint_sensitivities(sol_nodense,Tsit5(),dg,t,abstol=1e-14,
                                   sensealg=InterpolatingAdjoint(),
                                   checkpoints=sol.t[1:500:end])
 
-_,easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+_,easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
-_,easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+_,easy_res9 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
-_,easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+_,easy_res10 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
-                                    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+                                    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP())
+                                    )
+_,easy_res11 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                     reltol=1e-14,
+                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
+                                     )
 
 adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -111,6 +116,10 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res62, rtol = 1e-9)
 @test all(easy_res6 .== easy_res7)  # should be the same!
+@test isapprox(res, easy_res8, rtol = 1e-9)
+@test_broken isapprox(res, easy_res9, rtol = 1e-9)
+@test isapprox(res, easy_res10, rtol = 1e-9)
+@test isapprox(res, easy_res11, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -147,6 +156,21 @@ _,easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
                                    sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false),
                                    checkpoints=soloop_nodense.t[1:5:end])
 
+_,easy_res8 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+_,easy_res9 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+_,easy_res10 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                   reltol=1e-14,
+                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP())
+                                   )
+_,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                     reltol=1e-14,
+                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
+                                     )
+
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
@@ -157,6 +181,10 @@ _,easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
 @test isapprox(res, easy_res5, rtol = 1e-9)
 @test isapprox(res, easy_res6, rtol = 1e-10)
 @test isapprox(res, easy_res62, rtol = 1e-9)
+@test isapprox(res, easy_res8, rtol = 1e-9)
+@test isapprox(res, easy_res9, rtol = 1e-9)
+@test isapprox(res, easy_res10, rtol = 1e-9)
+@test isapprox(res, easy_res11, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 

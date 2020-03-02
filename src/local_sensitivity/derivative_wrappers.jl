@@ -71,13 +71,11 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  _vecjacobian!(dλ, λ, p, t, S, S.sensealg.autojacvec;
-                        dgrad=dgrad, dy=dy)
+  _vecjacobian!(dλ, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy)
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool;
-                      dgrad=nothing, dy=nothing)
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
   @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
@@ -102,17 +100,14 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
     end
     dy !== nothing && f(dy, y, p, t)
   elseif DiffEqBase.isinplace(prob)
-    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP();
-                          dgrad=nothing, dy=nothing)
+    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP(), dgrad, dy)
   else
-    _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP();
-                          dgrad=nothing, dy=nothing)
+    _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP(), dgrad, dy)
   end
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP;
-                      dgrad=nothing, dy=nothing)
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
   @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
@@ -139,26 +134,19 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Trac
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP;
-                      dgrad=nothing, dy=nothing)
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
   @unpack y, sensealg = S
-  if DiffEqBase.isinplace(prob)
-    tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
-      du1 = similar(p, size(u))
-      f(du1,u,p,t)
-      return vec(du1)
-    end)
-  else
-    tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
-      vec(f(u,p,t))
-    end)
-  end
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  tape = S.diffcache.paramjac_config
+  
   tu, tp = ReverseDiff.input_hook(tape)
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
   ReverseDiff.unseed!(tp)
-  ReverseDiff.value!(tu, u)
-  ReverseDiff.value!(tp, p)
+  ReverseDiff.value!(tu, y)
+  ReverseDiff.value!(tp, prob.p)
   ReverseDiff.forward_pass!(tape)
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)
@@ -168,12 +156,14 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP;
-                      dgrad=nothing, dy=nothing)
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
   @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
   if DiffEqBase.isinplace(prob)
     _dy, back = Zygote.pullback(y, prob.p) do u, p
-      out_ = Zygote.Buffer(u)
+      out_ = Zygote.Buffer(similar(u))
       f(out_, u, p, t)
       vec(copy(out_))
     end

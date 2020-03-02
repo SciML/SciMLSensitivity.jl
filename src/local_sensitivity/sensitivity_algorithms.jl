@@ -59,7 +59,9 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing
 abstract type VJPChoice end
 struct ZygoteVJP <: VJPChoice end
 struct TrackerVJP <: VJPChoice end
-struct ReverseDiffVJP <: VJPChoice end
+struct ReverseDiffVJP{compile} <: VJPChoice
+  ReverseDiffVJP(compile=false) = new{compile}()
+end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
@@ -70,3 +72,4 @@ struct ReverseDiffVJP <: VJPChoice end
 end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
