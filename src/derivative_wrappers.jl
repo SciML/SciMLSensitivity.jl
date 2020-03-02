@@ -71,10 +71,16 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  @unpack y, sensealg = S
+  _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, get_jacvec(sensealg);
+                        dgrad=dgrad, dy=dy)
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool;
+                      dgrad=nothing, dy=nothing)
+                      @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
-  isautojacvec = get_jacvec(sensealg)
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if DiffEqBase.has_jac(f)
@@ -84,7 +90,6 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
-
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
@@ -96,74 +101,93 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       mul!(dgrad',λ',pJ)
     end
     dy !== nothing && f(dy, y, p, t)
-  elseif isautojacvec === :Tracker || (DiffEqBase.isinplace(prob) && isautojacvec)
-    if DiffEqBase.isinplace(prob)
-      _dy, back = Tracker.forward(y, prob.p) do u, p
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      end
-      tmp1, tmp2 = Tracker.data.(back(λ))
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
-    else
-      _dy, back = Tracker.forward(y, prob.p) do u, p
-        Tracker.collect(f(u, p, t))
-      end
-      tmp1, tmp2 = Tracker.data.(back(λ))
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
-    end
-  elseif isautojacvec === :ReverseDiff || (DiffEqBase.isinplace(prob) && isautojacvec)
-    if DiffEqBase.isinplace(prob)
-      tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
-        du1 = similar(p, size(u))
-        f(du1,u,p,t)
-        return vec(du1)
-      end)
-    else
-      tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
-        vec(f(u,p,t))
-      end)
-    end
-    tu, tp = ReverseDiff.input_hook(tape)
-    output = ReverseDiff.output_hook(tape)
-    ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
-    ReverseDiff.unseed!(tp)
-    ReverseDiff.value!(tu, u)
-    ReverseDiff.value!(tp, p)
-    ReverseDiff.forward_pass!(tape)
-    ReverseDiff.increment_deriv!(output, λ)
-    ReverseDiff.reverse_pass!(tape)
-    copyto!(vec(dλ), ReverseDiff.deriv(tu))
-    dgrad !== nothing && copyto!(vec(dgrad), ReverseDiff.deriv(tp))
-    dy !== nothing && copyto!(vec(dy), ReverseDiff.value(output))
-  elseif isautojacvec === :Zygote || (!DiffEqBase.isinplace(prob) && isautojacvec)
-    if DiffEqBase.isinplace(prob)
-      _dy, back = Zygote.pullback(y, prob.p) do u, p
-        out_ = Zygote.Buffer(u)
-        f(out_, u, p, t)
-        vec(copy(out_))
-      end
-      tmp1,tmp2 = back(λ)
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(_dy))
-    else
-      _dy, back = Zygote.pullback(y, prob.p) do u, p
-        vec(f(u, p, t))
-      end
-      tmp1,tmp2 = back(λ)
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(_dy))
-    end
+  elseif DiffEqBase.isinplace(prob)
+    _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, TrackerVJP();
+                          dgrad=nothing, dy=nothing)
   else
-    throw(error("Invalid choice of autojacvec. Either choose a boolean, :Tracker, :Zygote, or :ReverseDiff"))
+    _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, ZygoteVJP();
+                          dgrad=nothing, dy=nothing)
   end
-  return nothing
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP;
+                      dgrad=nothing, dy=nothing)
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  if DiffEqBase.isinplace(prob)
+    _dy, back = Tracker.forward(y, prob.p) do u, p
+      out_ = map(zero, u)
+      f(out_, u, p, t)
+      Tracker.collect(out_)
+    end
+    tmp1, tmp2 = Tracker.data.(back(λ))
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+  else
+    _dy, back = Tracker.forward(y, prob.p) do u, p
+      Tracker.collect(f(u, p, t))
+    end
+    tmp1, tmp2 = Tracker.data.(back(λ))
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+  end
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP;
+                      dgrad=nothing, dy=nothing)
+  if DiffEqBase.isinplace(prob)
+    tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
+      du1 = similar(p, size(u))
+      f(du1,u,p,t)
+      return vec(du1)
+    end)
+  else
+    tape = ReverseDiff.compile(ReverseDiff.GradientTape((u, p)) do (u,p)
+      vec(f(u,p,t))
+    end)
+  end
+  tu, tp = ReverseDiff.input_hook(tape)
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.unseed!(tp)
+  ReverseDiff.value!(tu, u)
+  ReverseDiff.value!(tp, p)
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, λ)
+  ReverseDiff.reverse_pass!(tape)
+  copyto!(vec(dλ), ReverseDiff.deriv(tu))
+  dgrad !== nothing && copyto!(vec(dgrad), ReverseDiff.deriv(tp))
+  dy !== nothing && copyto!(vec(dy), ReverseDiff.value(output))
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP;
+                      dgrad=nothing, dy=nothing)
+  if DiffEqBase.isinplace(prob)
+    _dy, back = Zygote.pullback(y, prob.p) do u, p
+      out_ = Zygote.Buffer(u)
+      f(out_, u, p, t)
+      vec(copy(out_))
+    end
+    tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(_dy))
+  else
+    _dy, back = Zygote.pullback(y, prob.p) do u, p
+      vec(f(u, p, t))
+    end
+    tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(_dy))
+  end
+  return
 end
 
 function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
