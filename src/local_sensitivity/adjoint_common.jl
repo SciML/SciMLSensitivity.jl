@@ -48,7 +48,27 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
   y = copy(sol.u[end])
 
-  if DiffEqBase.has_paramjac(f) || isautojacvec || quad
+  if sensealg.autojacvec isa ReverseDiffVJP
+    if DiffEqBase.isinplace(prob)
+      tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+        du1 = similar(p, size(u))
+        f(du1,u,p,tspan[2])
+        return vec(du1)
+      end
+    else
+      tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+        vec(f(u,p,tspan[2]))
+      end
+    end
+
+    if compile_tape(sensealg.autojacvec)
+      paramjac_config = ReverseDiff.compile(tape)
+    else
+      paramjac_config = tape
+    end
+
+    pf = nothing
+  elseif DiffEqBase.has_paramjac(f) || isautojacvec || quad
     paramjac_config = nothing
     pf = nothing
   else

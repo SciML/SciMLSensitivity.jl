@@ -71,11 +71,15 @@ end
 
 function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
+  _vecjacobian!(dλ, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy)
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
   @unpack y, sensealg = S
   prob = getprob(S)
   f = prob.f
-  isautojacvec = get_jacvec(sensealg)
-  if !isautojacvec
+  if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if DiffEqBase.has_jac(f)
       f.jac(J,y,p,t) # Calculate the Jacobian into J
@@ -84,7 +88,6 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
-
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
@@ -96,28 +99,88 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
       mul!(dgrad',λ',pJ)
     end
     dy !== nothing && f(dy, y, p, t)
+  elseif DiffEqBase.isinplace(prob)
+    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP(), dgrad, dy)
   else
-    if DiffEqBase.isinplace(prob)
-      _dy, back = Tracker.forward(y, prob.p) do u, p
-        out_ = map(zero, u)
-        f(out_, u, p, t)
-        Tracker.collect(out_)
-      end
-      tmp1, tmp2 = Tracker.data.(back(λ))
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
-    else
-      _dy, back = Zygote.pullback(y, prob.p) do u, p
-        vec(f(u, p, t))
-      end
-      tmp1,tmp2 = back(λ)
-      dλ[:] .= vec(tmp1)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-      dy !== nothing && (dy[:] .= vec(_dy))
-    end
+    _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP(), dgrad, dy)
   end
-  return nothing
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
+  @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  if DiffEqBase.isinplace(prob)
+    _dy, back = Tracker.forward(y, prob.p) do u, p
+      out_ = map(zero, u)
+      f(out_, u, p, t)
+      Tracker.collect(out_)
+    end
+    tmp1, tmp2 = Tracker.data.(back(λ))
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+  else
+    _dy, back = Tracker.forward(y, prob.p) do u, p
+      Tracker.collect(f(u, p, t))
+    end
+    tmp1, tmp2 = Tracker.data.(back(λ))
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+  end
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
+  @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  tape = S.diffcache.paramjac_config
+  
+  tu, tp = ReverseDiff.input_hook(tape)
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.unseed!(tp)
+  ReverseDiff.value!(tu, y)
+  ReverseDiff.value!(tp, prob.p)
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, λ)
+  ReverseDiff.reverse_pass!(tape)
+  copyto!(vec(dλ), ReverseDiff.deriv(tu))
+  dgrad !== nothing && copyto!(vec(dgrad), ReverseDiff.deriv(tp))
+  dy !== nothing && copyto!(vec(dy), ReverseDiff.value(output))
+  return
+end
+
+function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
+  @unpack y, sensealg = S
+  prob = getprob(S)
+  f = prob.f
+  isautojacvec = get_jacvec(sensealg)
+  if DiffEqBase.isinplace(prob)
+    _dy, back = Zygote.pullback(y, prob.p) do u, p
+      out_ = Zygote.Buffer(similar(u))
+      f(out_, u, p, t)
+      vec(copy(out_))
+    end
+    tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(_dy))
+  else
+    _dy, back = Zygote.pullback(y, prob.p) do u, p
+      vec(f(u, p, t))
+    end
+    tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy[:] .= vec(_dy))
+  end
+  return
 end
 
 function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
