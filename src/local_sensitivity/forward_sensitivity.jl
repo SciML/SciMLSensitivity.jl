@@ -38,7 +38,7 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsi
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
                              typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
-                             f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
+                             f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
 end
