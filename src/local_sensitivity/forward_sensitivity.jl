@@ -159,13 +159,20 @@ function seed_duals(x::AbstractArray{V},::Type{T},
   duals = [ForwardDiff.Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
 end
 
+has_continuous_callback(cb::DiscreteCallback) = false
+has_continuous_callback(cb::ContinuousCallback) = true
+has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
+
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                       tspan,p,alg::ForwardDiffSensitivity;
                                       kwargs...)
   MyTag = typeof(f)
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
-  if convert_tspan(alg)
+
+  if convert_tspan(alg) === nothing
+    tspandual = haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback) 
+  elseif convert_tspan(alg)
     tspandual = convert.(eltype(pdual),tspan)
   else
     tspandual = tspan
