@@ -114,11 +114,17 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   MyTag = typeof(prob.f)
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
-  if convert_tspan(sensealg)
+
+  if (convert_tspan(sensealg) === nothing && (
+        (haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)) ||
+        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs.callback))
+        )) || convert_tspan(alg)
+
     tspandual = convert.(eltype(pdual),prob.tspan)
   else
     tspandual = prob.tspan
   end
+
   _prob = remake(prob,u0=u0dual,p=pdual,tspan=tspandual)
 
   if saveat isa Number

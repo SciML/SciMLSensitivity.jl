@@ -170,13 +170,14 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
 
-  if convert_tspan(alg) === nothing
-    tspandual = haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback) 
-  elseif convert_tspan(alg)
+  if (convert_tspan(alg) === nothing && 
+    haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)
+    ) || convert_tspan(alg)
     tspandual = convert.(eltype(pdual),tspan)
   else
     tspandual = tspan
   end
+
   prob_dual = ODEProblem(f,u0dual,tspan,pdual;
                          problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                                                    typeof(alg)}(alg),
