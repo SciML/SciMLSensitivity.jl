@@ -15,7 +15,7 @@ end
 
 struct ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
 end
-Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=true)
+Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
   ForwardDiffSensitivity{chunk_size,convert_tspan}()
 end
 
