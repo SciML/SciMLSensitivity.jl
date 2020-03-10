@@ -118,7 +118,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   if (convert_tspan(sensealg) === nothing && (
         (haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)) ||
         (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs.callback))
-        )) || convert_tspan(alg)
+        )) || (convert_tspan(alg) !== nothing && convert_tspan(alg))
 
     tspandual = convert.(eltype(pdual),prob.tspan)
   else

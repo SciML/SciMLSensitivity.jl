@@ -170,9 +170,9 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
 
-  if (convert_tspan(alg) === nothing && 
+  if (convert_tspan(alg) === nothing &&
     haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)
-    ) || convert_tspan(alg)
+    ) || (convert_tspan(alg) !== nothing && convert_tspan(alg))
     tspandual = convert.(eltype(pdual),tspan)
   else
     tspandual = tspan
