@@ -2,6 +2,7 @@ SensitivityAlg(args...;kwargs...) = @error("The SensitivtyAlg choice mechanism w
 
 abstract type AbstractForwardSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
 abstract type AbstractAdjointSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
+abstract type AbstractSecondOrderSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
 
 struct ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
@@ -73,3 +74,7 @@ end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
+
+struct ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}
+  adjalg::A
+end

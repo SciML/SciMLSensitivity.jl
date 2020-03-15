@@ -9,6 +9,7 @@ const is_TRAVIS = haskey(ENV,"TRAVIS")
 if GROUP == "All" || GROUP == "Core" || GROUP == "Downstream"
     @time @safetestset "Forward Sensitivity" begin include("forward.jl") end
     @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
+    @time @safetestset "Second Order Sensitivity" begin include("second_order.jl") end
     @time @safetestset "Concrete Solve Derivatives" begin include("concrete_solve_derivatives.jl") end
     @time @safetestset "Morris Method" begin include("morris_method.jl") end
     @time @safetestset "Sobol Method" begin include("sobol_method.jl") end

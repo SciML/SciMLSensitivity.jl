@@ -21,3 +21,15 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
   -adj_sol[end][1:length(sol.prob.u0)],
     adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 end
+
+function second_order_sensitivities(loss,prob,alg,args...;
+                                    sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
+                                    kwargs...)
+  _second_order_sensitivities(loss,prob,alg,sensealg,args...;kwargs...)
+end
+
+function second_order_sensitivity_product(loss,v,prob,alg,args...;
+                                          sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
+                                          kwargs...)
+  _second_order_sensitivity_product(loss,v,prob,alg,sensealg,args...;kwargs...)
+end
