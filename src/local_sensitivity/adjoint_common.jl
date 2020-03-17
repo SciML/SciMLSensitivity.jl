@@ -89,11 +89,9 @@ end
 getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
 
 using NLsolve: nlsolve
-# handle UniformScaling
-_factorize(A) = lu(A, check=false) # use lu for now
-_factorize(I::UniformScaling) = I
-issingular(F) = det(F) <= 1e-12 # not the best... but..., meh for now
-issingular(::UniformScaling) = false
+## handle UniformScaling
+#issingular(F) = det(F) <= 1e-12 # not the best... but..., meh for now
+#issingular(::UniformScaling) = false
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   # a trick to make other algorithms still work
   odefun, sensefun = sensefun isa ODEFunction ? (sensefun, sensefun.f) : (nothing, sensefun)
@@ -101,12 +99,13 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
   if odefun !== nothing
     mass_matrix = odefun.mass_matrix
-    factorized_mass_matrix = _factorize(mass_matrix)
-    issingular′ = issingular(factorized_mass_matrix)
-    issingular′ = true
-    # check if the mass matrix is singular cheaply
-    if issingular′
-      factorized_mass_matrix = qr(odefun.mass_matrix, Val(true))
+    if mass_matrix isa UniformScaling
+      factorized_mass_matrix = mass_matrix
+    else
+      diffvar_idxs = 1:findlast(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
+      algevar_idxs = diffvar_idxs[end]+1:size(mass_matrix, 1)
+      M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+      factorized_mass_matrix = lu(M̃, check=false)
     end
   else
     factorized_mass_matrix = nothing
@@ -125,28 +124,25 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       gᵤ = similar(λ)
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
-        if issingular′
-          du, tmp = DiffEqBase.get_tmp_cache(integrator)
-          # solve u such that
-          # M u' = sense(λ) + dgdu(y) for some u', where y is constant
-          # Let du = sense(u) + dgdu(y)
-          # M (M\du) - du = 0
-          function consistant_initialization_scaling!(residual, u)
-            integrator.f(du, u, p, integrator.t)
-            du .+= gᵤ
-            ldiv!(tmp, factorized_mass_matrix, du)
-            residual .= mass_matrix * tmp .- du
-            @show residual
-            nothing
-          end
-          sol = nlsolve(consistant_initialization_scaling!, u)
-          u .= sol.zero
+        # TODO: doesn't lead to stable solution
+        if !isempty(algevar_idxs)
+          origin_f = integrator.f.f.sol.prob.f
+          uf = DiffEqBase.UJacobianWrapper(origin_f,integrator.t,integrator.p)
+          J = ForwardDiff.jacobian(uf, u)
+          dfdd = J[diffvar_idxs, diffvar_idxs]
+          dhdd = J[algevar_idxs, diffvar_idxs]
+          dfda = J[diffvar_idxs, algevar_idxs]
+          dhda = J[algevar_idxs, algevar_idxs]
+          Δλa = -dhda'\gᵤ[algevar_idxs]
+          Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
+          u[algevar_idxs] .+= Δλa
         else
-          if factorized_mass_matrix !== nothing
-              F !== I && ldiv!(F, gᵤ)
-          end
-          u .+= gᵤ
+          Δλd = gᵤ
         end
+        if factorized_mass_matrix !== nothing
+          F !== I && ldiv!(F, Δλd)
+        end
+        u[diffvar_idxs] .+= Δλd
       else
         u = @view u[1:idx]
         u .= gᵤ .+ @view integrator.u[1:idx]
