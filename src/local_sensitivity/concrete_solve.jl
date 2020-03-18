@@ -50,7 +50,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     ts = sol.t[sol_idxs]
     out = DiffEqArray(u,ts)
   else
-    ts = saveat
+    _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
+    ts = _saveat
     out = sol(ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   end
