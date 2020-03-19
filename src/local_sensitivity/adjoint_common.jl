@@ -135,7 +135,8 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
           dhda = J[algevar_idxs, algevar_idxs]
           Δλa = -dhda'\gᵤ[algevar_idxs]
           Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
-          u[algevar_idxs] .+= Δλa
+          #u[algevar_idxs] .+= Δλa
+          @show J
         else
           Δλd = gᵤ
         end

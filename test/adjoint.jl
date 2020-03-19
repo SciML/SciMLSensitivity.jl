@@ -610,8 +610,9 @@ using Test
   dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
 
   adj_prob = ODEAdjointProblem(sol_singular_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg_singular,ts)
-  adj_sol = solve(adj_prob,Rodas5(autodiff=false),abstol=1e-8,reltol=1e-8)
+  adj_sol = solve(adj_prob,Rodas5(autodiff=false))
   integrand = AdjointSensitivityIntegrand(sol_singular_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
-  res,err = quadgk(integrand,0.0,1.0,atol=1e-14,rtol=1e-14)
-  reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)),vec(p))
+  res,err = quadgk(integrand,0.0,ts,atol=1e-14,rtol=1e-14)
+  reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sol.u[end][end]),vec(p))
+  @test res' ≈ reference_sol rtol = 1e-2
 end
