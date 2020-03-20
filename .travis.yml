@@ -9,6 +9,7 @@ julia:
 #    - julia: nightly
 env:
   - GROUP=Core
+  - GROUP=GSA
   - GROUP=DiffEqFlux
 notifications:
   email: false
