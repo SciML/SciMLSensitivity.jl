@@ -1,4 +1,4 @@
-struct AdjointDiffCache{UF,PF,G,TJ,PJT,uType,JC,GC,PJC,rateType,DG}
+struct AdjointDiffCache{UF,PF,G,TJ,PJT,uType,JC,GC,PJC,rateType,DG,DI,AI,FM}
   uf::UF
   pf::PF
   g::G
@@ -10,10 +10,14 @@ struct AdjointDiffCache{UF,PF,G,TJ,PJT,uType,JC,GC,PJC,rateType,DG}
   paramjac_config::PJC
   f_cache::rateType
   dg::DG
+  diffvar_idxs::DI
+  algevar_idxs::AI
+  factorized_mass_matrix::FM
+  issemiexplicitdae::Bool
 end
 
 """
-    adjointdiffcache(g,sensealg,discrete,sol,dg)
+    adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
 return (AdjointDiffCache, y)
 """
@@ -23,7 +27,26 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   numparams = length(p)
   numindvar = length(u0)
   isautojacvec = get_jacvec(sensealg)
-  J = isautojacvec ? nothing : similar(u0, numindvar, numindvar)
+
+  issemiexplicitdae = false
+  mass_matrix = sol.prob.f.mass_matrix'
+  if mass_matrix isa UniformScaling
+    factorized_mass_matrix = mass_matrix
+  else
+    # TODO: generalize
+    diffvar_idxs = 1:findlast(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
+    algevar_idxs = diffvar_idxs[end]+1:size(mass_matrix, 1)
+    M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+    factorized_mass_matrix = lu(M̃, check=false)
+    issuccess(factorized_mass_matrix) || error("The submatrix corresponding to the differential variables of the mass matrix must be nonsingular!")
+    isempty(algevar_idxs) || (issemiexplicitdae = true)
+  end
+  if !issemiexplicitdae
+    diffvar_idxs = eachindex(u0)
+    algevar_idxs = 1:0
+  end
+
+  J = (issemiexplicitdae || !isautojacvec) ? similar(u0, numindvar, numindvar) : nothing
 
   if !discrete
     if dg != nothing
@@ -38,7 +61,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     pg_config = nothing
   end
 
-  if DiffEqBase.has_jac(f) || isautojacvec
+  if DiffEqBase.has_jac(f) || (J === nothing)
     jac_config = nothing
     uf = nothing
   else
@@ -81,39 +104,21 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   dg_val = similar(u0, numindvar) # number of funcs size
   f_cache = deepcopy(u0)
 
-  return (AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,
+  adjoint_cache = AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,
                           jac_config,pg_config,paramjac_config,
-                          f_cache,dg), y)
+                          f_cache,dg,diffvar_idxs,algevar_idxs,
+                          factorized_mass_matrix,issemiexplicitdae)
+
+  return adjoint_cache, y
 end
 
 getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
 
-using NLsolve: nlsolve
-## handle UniformScaling
-#issingular(F) = det(F) <= 1e-12 # not the best... but..., meh for now
-#issingular(::UniformScaling) = false
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
-  # a trick to make other algorithms still work
-  odefun, sensefun = sensefun isa ODEFunction ? (sensefun, sensefun.f) : (nothing, sensefun)
   sensefun.discrete || return callback
 
-  diffvar_idxs = eachindex(λ)
-  algevar_idxs = 1:0
-  if odefun !== nothing
-    mass_matrix = odefun.mass_matrix
-    if mass_matrix isa UniformScaling
-      factorized_mass_matrix = mass_matrix
-    else
-      diffvar_idxs = 1:findlast(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
-      algevar_idxs = diffvar_idxs[end]+1:size(mass_matrix, 1)
-      M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
-      factorized_mass_matrix = lu(M̃, check=false)
-    end
-  else
-    factorized_mass_matrix = nothing
-  end
-
   @unpack sensealg, y = sensefun
+  @unpack diffvar_idxs, algevar_idxs, factorized_mass_matrix, J, uf, f_cache, jac_config = sensefun.diffcache
   prob = getprob(sensefun)
   cur_time = Ref(length(t))
   time_choice = let cur_time=cur_time, t=t
@@ -127,9 +132,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
         if !isempty(algevar_idxs)
-          origin_f = integrator.f.f.sol.prob.f
-          uf = DiffEqBase.UJacobianWrapper(origin_f,integrator.t,integrator.p)
-          J = ForwardDiff.jacobian(uf, u)
+          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
           dhdd = J[algevar_idxs, diffvar_idxs]
           dhda = J[algevar_idxs, algevar_idxs]
           # TODO: maybe need a `conj`
