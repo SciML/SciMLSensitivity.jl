@@ -33,9 +33,8 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   if mass_matrix isa UniformScaling
     factorized_mass_matrix = mass_matrix
   else
-    # TODO: generalize
-    diffvar_idxs = 1:findlast(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
-    algevar_idxs = diffvar_idxs[end]+1:size(mass_matrix, 1)
+    diffvar_idxs = findall(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
+    algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
     M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
     factorized_mass_matrix = lu(M̃, check=false)
     issuccess(factorized_mass_matrix) || error("The submatrix corresponding to the differential variables of the mass matrix must be nonsingular!")
