@@ -97,6 +97,8 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   odefun, sensefun = sensefun isa ODEFunction ? (sensefun, sensefun.f) : (nothing, sensefun)
   sensefun.discrete || return callback
 
+  diffvar_idxs = eachindex(λ)
+  algevar_idxs = 1:0
   if odefun !== nothing
     mass_matrix = odefun.mass_matrix
     if mass_matrix isa UniformScaling
@@ -124,19 +126,15 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       gᵤ = similar(λ)
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
-        # TODO: doesn't lead to stable solution
         if !isempty(algevar_idxs)
           origin_f = integrator.f.f.sol.prob.f
           uf = DiffEqBase.UJacobianWrapper(origin_f,integrator.t,integrator.p)
           J = ForwardDiff.jacobian(uf, u)
-          dfdd = J[diffvar_idxs, diffvar_idxs]
           dhdd = J[algevar_idxs, diffvar_idxs]
-          dfda = J[diffvar_idxs, algevar_idxs]
           dhda = J[algevar_idxs, algevar_idxs]
+          # TODO: maybe need a `conj`
           Δλa = -dhda'\gᵤ[algevar_idxs]
           Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
-          #u[algevar_idxs] .+= Δλa
-          @show J
         else
           Δλd = gᵤ
         end
@@ -145,8 +143,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
         end
         u[diffvar_idxs] .+= Δλd
       else
-        u = @view u[1:idx]
-        u .= gᵤ .+ @view integrator.u[1:idx]
+        @view(u[1:idx]) .+= gᵤ
       end
       u_modified!(integrator,true)
       cur_time[] -= 1
