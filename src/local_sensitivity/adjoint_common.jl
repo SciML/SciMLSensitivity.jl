@@ -117,7 +117,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   sensefun.discrete || return callback
 
   @unpack sensealg, y = sensefun
-  @unpack diffvar_idxs, algevar_idxs, factorized_mass_matrix, J, uf, f_cache, jac_config = sensefun.diffcache
+  @unpack diffvar_idxs, algevar_idxs, factorized_mass_matrix, issemiexplicitdae, J, uf, f_cache, jac_config = sensefun.diffcache
   prob = getprob(sensefun)
   cur_time = Ref(length(t))
   time_choice = let cur_time=cur_time, t=t
@@ -130,7 +130,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       gᵤ = similar(λ)
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
-        if !isempty(algevar_idxs)
+        if issemiexplicitdae
           jacobian!(J, uf, y, f_cache, sensealg, jac_config)
           dhdd = J[algevar_idxs, diffvar_idxs]
           dhda = J[algevar_idxs, algevar_idxs]
