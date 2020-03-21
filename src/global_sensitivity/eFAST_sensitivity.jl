@@ -51,13 +51,13 @@ function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
             ys = ((abs.(ft))./n).^2 
             varnce = 2*sum(ys)
             push!(first_order,2*sum(ys[(1:num_harmonics)*Int(omega[1])])/varnce)
-            push!(total_order,1 .- 2*sum(ys[1:Int(omega[1]/2)])/varnce)
+            push!(total_order,1 .- 2*sum(ys[1:Int(floor(omega[1]/2))])/varnce)
         else
             ft = [(fft(all_y[j,(i-1)*n+1:i*n]))[2:Int(floor((n/2)))] for j in 1:size(all_y,1)]
             ys = [((abs.(ff))./n).^2 for ff in ft]
             varnce = 2*sum.(ys)
             push!(first_order, map((y,var) -> 2*sum(y[(1:num_harmonics)*Int(omega[1])])./var, ys, varnce))
-            push!(total_order, map((y,var) -> 1 .- 2*sum(y[1:Int(omega[1]/2)])./var, ys, varnce))
+            push!(total_order, map((y,var) -> 1 .- 2*sum(y[1:Int(floor(omega[1]/2))])./var, ys, varnce))
         end
     end
 
