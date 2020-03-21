@@ -604,14 +604,15 @@ using Test
   f = ODEFunction(rober,mass_matrix=M)
   p = [0.04,3e7,1e4]
 
-  Alg = Rosenbrock23 # Rodas5 fails because of the interpolation weirdness of third order Hermite. Maybe because this problem is very stiff?
+  Alg = Rodas5
   prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
   sol_singular_mm = solve(prob_singular_mm,Alg(),reltol=1e-8,abstol=1e-8)
   ts = [50, sol_singular_mm.t[end]]
   dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
 
   adj_prob = ODEAdjointProblem(sol_singular_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg_singular,ts)
-  adj_sol = solve(adj_prob,Alg(autodiff=false))
+   # Rodas5 fails with default tolerances, because it steps for too long, and Hermite cannot keep up due to stiffness
+  adj_sol = solve(adj_prob,Alg(autodiff=false),reltol=1e-5,abstol=1e-5)
   integrand = AdjointSensitivityIntegrand(sol_singular_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
   res,err = quadgk(integrand,0.0,ts[end])
   reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
