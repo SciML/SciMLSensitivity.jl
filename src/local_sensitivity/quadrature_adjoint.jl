@@ -45,9 +45,9 @@ end
   sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  odefun = ODEFunction(sense,mass_matrix=sol.prob.f.mass_matrix')
+  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 

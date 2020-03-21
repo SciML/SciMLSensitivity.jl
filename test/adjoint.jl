@@ -565,12 +565,12 @@ using Test
   adj_sol = solve(adj_prob,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
   integrand = AdjointSensitivityIntegrand(sol_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
   res,err = quadgk(integrand,0.0,1.0,atol=1e-14,rtol=1e-14)
-  function G(p)
-    tmp_prob_mm = remake(prob_mm,u0=convert.(eltype(p),prob_mm.u0),p=p)
+  function G(p, prob, ts, cost)
+    tmp_prob_mm = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
     sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14,saveat=ts)
-    sum(sol)
+    cost(sol)
   end
-  reference_sol = ForwardDiff.gradient(G,vec(p))
+  reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
 
   @test res' ≈ reference_sol rtol=1e-3
 
@@ -589,4 +589,31 @@ using Test
   end
   reference_sol_cont = ForwardDiff.gradient(G_cont, p)
   @test easy_res_cont' ≈ reference_sol_cont rtol=1e-3
+
+  function rober(du,u,p,t)
+    y₁,y₂,y₃ = u
+    k₁,k₂,k₃ = p
+    du[1] = -k₁*y₁+k₃*y₂*y₃
+    du[2] =  k₁*y₁-k₂*y₂^2-k₃*y₂*y₃
+    du[3] =  y₁ + y₂ + y₃ - 1
+    nothing
+  end
+  M = [1. 0  0
+       0  1. 0
+       0  0  0]
+  f = ODEFunction(rober,mass_matrix=M)
+  p = [0.04,3e7,1e4]
+
+  Alg = Rosenbrock23 # Rodas5 fails because of the interpolation weirdness of third order Hermite. Maybe because this problem is very stiff?
+  prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
+  sol_singular_mm = solve(prob_singular_mm,Alg(),reltol=1e-8,abstol=1e-8)
+  ts = [50, sol_singular_mm.t[end]]
+  dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
+
+  adj_prob = ODEAdjointProblem(sol_singular_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg_singular,ts)
+  adj_sol = solve(adj_prob,Alg(autodiff=false))
+  integrand = AdjointSensitivityIntegrand(sol_singular_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
+  res,err = quadgk(integrand,0.0,ts[end])
+  reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
+  @test res' ≈ reference_sol rtol = 1e-2
 end
