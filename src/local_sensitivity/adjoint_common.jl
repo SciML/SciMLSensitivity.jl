@@ -35,6 +35,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   else
     diffvar_idxs = findall(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
     algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
+    # TODO: operator
     M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
     factorized_mass_matrix = lu(M̃, check=false)
     issuccess(factorized_mass_matrix) || error("The submatrix corresponding to the differential variables of the mass matrix must be nonsingular!")
@@ -126,8 +127,8 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0), F=factorized_mass_matrix
     function (integrator)
       p, u = integrator.p, integrator.u
-      λ  = isq ? λ : @view(λ[1:idx])
-      gᵤ = similar(λ)
+      # Warning: alias here! Be care with λ
+      gᵤ = isq ? λ : @view(λ[1:idx])
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
       if isq
         if issemiexplicitdae

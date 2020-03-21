@@ -604,7 +604,7 @@ using Test
   f = ODEFunction(rober,mass_matrix=M)
   p = [0.04,3e7,1e4]
 
-  Alg = Rosenbrock23 # Rodas5 fails because of interpolation weirdness. Maybe because this problem is very stiff? But that is very much unexpected.
+  Alg = Rosenbrock23 # Rodas5 fails because of the interpolation weirdness of third order Hermite. Maybe because this problem is very stiff?
   prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
   sol_singular_mm = solve(prob_singular_mm,Alg(),reltol=1e-8,abstol=1e-8)
   ts = [50, sol_singular_mm.t[end]]
