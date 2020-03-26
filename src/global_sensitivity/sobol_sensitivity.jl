@@ -27,6 +27,7 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
     Aᵦ = fuse_designs(A, B)
     d,n = size(A)
     multioutput = false
+    desol = false
     all_points = hcat(A, B, reduce(hcat,Aᵦ))
 
     if batch
@@ -35,6 +36,11 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
     else
         _y = [f(all_points[:, i]) for i in 1:size(all_points, 2)]
         multioutput = !(eltype(_y) <: Number)
+        if eltype(_y) <: DiffEqBase.DESolution
+            y_size = size(_y[1])
+            _y = vec.(_y)
+            desol = true
+        end
         all_y = multioutput ? reduce(hcat, _y) : _y
     end
 
@@ -90,6 +96,14 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
 
     Sᵢ = Vᵢ ./Vary
     Tᵢ = Eᵢ ./Vary
+    if desol 
+        f_shape = x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]  
+        Sᵢ = f_shape(Sᵢ)
+        if 2 in method.order
+            Sᵢⱼ = f_shape(Sᵢⱼ)
+        end
+        Tᵢ = f_shape(Tᵢ)
+    end
     SobolResult(Sᵢ, nothing, 2 in method.order ? Sᵢⱼ : nothing, nothing, Tᵢ, nothing)
 end
 
