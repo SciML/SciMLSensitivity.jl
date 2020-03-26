@@ -549,6 +549,7 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
     sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14,saveat=ts)
     cost(sol)
   end
+  alg = Rodas5(autodiff=false)
   @testset "Fully ranked mass matrix" begin
     @info "discrete cost"
     A = [1 2 3; 4 5 6; 7 8 9]
@@ -563,7 +564,6 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
     p = [1.0, 2.0, 3]
     prob_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
     sol_mm = solve(prob_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
-    alg = Rodas5(autodiff=false)
 
     ts = 0:0.01:1
     dg(out,u,p,t,i) = out .= -1
