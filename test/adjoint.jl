@@ -612,4 +612,6 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 
   _, res_interp = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
   @test res_interp ≈ res rtol = 1e-2
+  _, res_interp2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t[1:10:end])
+  @test res_interp2 ≈ res rtol = 1e-2
 end
