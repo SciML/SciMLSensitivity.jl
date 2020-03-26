@@ -571,6 +571,17 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
     reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
     @test res' ≈ reference_sol rtol=1e-3
 
+    _, res_interp = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
+    @test res_interp ≈ res rtol = 1e-2
+    _, res_interp2 = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_mm.t[1:10:end])
+    @test res_interp2 ≈ res rtol = 1e-2
+
+    # backsolve doesn't work
+    _, res_bs = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=false))
+    @test res_bs ≈ res rtol = 1e-2
+    _, res_bs2 = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_mm.t)
+    @test res_bs2 ≈ res rtol = 1e-2
+
     @info "continuous cost"
     g_cont(u,p,t) = (sum(u).^2) ./ 2
     dg_cont(out,u,p,t) = out .= sum(u)
