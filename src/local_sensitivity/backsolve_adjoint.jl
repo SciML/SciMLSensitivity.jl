@@ -21,10 +21,10 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   f = prob.f
 
   λ     = @view u[1:idx]
-  dλ    = @view du[1:idx]
   grad  = @view u[idx+1:end-idx]
-  dgrad = @view du[idx+1:end-idx]
   _y    = @view u[end-idx+1:end]
+  dλ    = @view du[1:idx]
+  dgrad = @view du[idx+1:end-idx]
   dy    = @view du[end-idx+1:end]
 
   copyto!(vec(y), _y)
@@ -47,6 +47,7 @@ end
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+  numstates = length(u0)
   numparams = length(p)
 
   len = length(u0)+numparams
@@ -61,7 +62,22 @@ end
   end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
-  ODEProblem(sense,z0,tspan,p,callback=cb)
+
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I
+    mm = I
+  else
+    len2 = length(z0)
+    mm = zeros(len2, len2)
+    idx = 1:numstates
+    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix')
+    idx = numstates+1:numstates+1+numparams
+    copyto!(@view(mm[idx, idx]), I)
+    idx = len+1:len2
+    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix)
+  end
+  odefun = ODEFunction(sense, mass_matrix=mm)
+  return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
 function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)

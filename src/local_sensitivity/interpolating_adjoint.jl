@@ -109,9 +109,13 @@ end
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
-  mm = zeros(len, len)
-  copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
-  copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
+  if original_mm === I
+    mm = I
+  else
+    mm = zeros(len, len)
+    copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
+    copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
+  end
   odefun = ODEFunction(sense, mass_matrix=mm)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
