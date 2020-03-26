@@ -67,6 +67,7 @@ end
   if original_mm === I
     mm = I
   else
+    sense.diffcache.issemiexplicitdae && @warn "`BacksolveAdjoint` is likely to fail on semi-explicit DAEs, if memory is a concern, please consider using InterpolatingAdjoint(checkpoint=true) instead."
     len2 = length(z0)
     mm = zeros(len2, len2)
     idx = 1:numstates
