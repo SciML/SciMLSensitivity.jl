@@ -43,7 +43,7 @@ function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
     else
         _y = [f(ps[:,j]) for j in 1:size(ps,2)]
         multioutput = !(eltype(_y) <: Number)
-        if eltype(_y) <: DiffEqBase.DESolution
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
             y_size = size(_y[1])
             _y = vec.(_y)
             desol = true

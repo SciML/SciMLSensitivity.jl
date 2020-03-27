@@ -36,7 +36,7 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
     else
         _y = [f(all_points[:, i]) for i in 1:size(all_points, 2)]
         multioutput = !(eltype(_y) <: Number)
-        if eltype(_y) <: DiffEqBase.DESolution
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
             y_size = size(_y[1])
             _y = vec.(_y)
             desol = true

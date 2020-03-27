@@ -85,7 +85,7 @@ function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
     else
         _y = [f(design_matrices[:,i]) for i in 1:size(design_matrices,2)]
         multioutput = !(eltype(_y) <: Number)
-        if eltype(_y) <: DiffEqBase.DESolution
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
             y_size = size(_y[1])
             _y = vec.(_y)
             desol = true

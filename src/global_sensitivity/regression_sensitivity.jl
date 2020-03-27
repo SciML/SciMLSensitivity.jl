@@ -42,7 +42,7 @@ function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1
     else
         _y = [f(X[:, j]) for j in axes(X, 2)]
         multioutput = !(eltype(_y) <: Number)
-        if eltype(_y) <: DiffEqBase.DESolution
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
             y_size = size(_y[1])
             _y = vec.(_y)
             desol = true
