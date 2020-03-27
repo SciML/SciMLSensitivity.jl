@@ -542,79 +542,95 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 end
 
 using Test
+using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 @testset "Adjoint of differential algebric equations with mass matrix" begin
-  @info "discrete function"
-  using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
-  A = [1 2 3; 4 5 6; 7 8 9]
-  function foo(du, u, p, t)
-    mul!(du, A, u)
-    du .= du .+ p
-    du[2] += sum(p)
-    return nothing
-  end
-  mm = -[1 2 4; 2 3 7; 1 3 41]
-  u0 = [1, 2.0, 3]
-  p = [1.0, 2.0, 3]
-  prob_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
-  sol_mm = solve(prob_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
-
-  ts = 0:0.01:1
-  # TODO
-  dg(out,u,p,t,i) = out .= -1
-  adj_prob = ODEAdjointProblem(sol_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg,ts)
-  adj_sol = solve(adj_prob,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
-  integrand = AdjointSensitivityIntegrand(sol_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
-  res,err = quadgk(integrand,0.0,1.0,atol=1e-14,rtol=1e-14)
   function G(p, prob, ts, cost)
     tmp_prob_mm = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
     sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14,saveat=ts)
     cost(sol)
   end
-  reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
+  alg = Rodas5(autodiff=false)
+  @testset "Fully ranked mass matrix" begin
+    @info "discrete cost"
+    A = [1 2 3; 4 5 6; 7 8 9]
+    function foo(du, u, p, t)
+      mul!(du, A, u)
+      du .= du .+ p
+      du[2] += sum(p)
+      return nothing
+    end
+    mm = -[1 2 4; 2 3 7; 1 3 41]
+    u0 = [1, 2.0, 3]
+    p = [1.0, 2.0, 3]
+    prob_mm = ODEProblem(ODEFunction(foo, mass_matrix=mm), u0, (0, 1.0), p)
+    sol_mm = solve(prob_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
 
-  @test res' ≈ reference_sol rtol=1e-3
+    ts = 0:0.01:1
+    dg(out,u,p,t,i) = out .= -1
+    _, res = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=QuadratureAdjoint())
+    reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
+    @test res' ≈ reference_sol rtol=1e-3
 
-  @info "continuous cost function"
-  g_cont(u,p,t) = (sum(u).^2) ./ 2
-  dg_cont(out,u,p,t) = out .= sum(u)
-  _,easy_res_cont = adjoint_sensitivities(sol_mm,Rodas5(autodiff=false),g_cont,nothing,
-                                   dg_cont,abstol=1e-10,reltol=1e-10,
-                                   sensealg=QuadratureAdjoint())
-  function G_cont(p)
-    tmp_prob_mm = remake(prob_mm,u0=eltype(p).(prob_mm.u0),p=p,
-                      tspan=eltype(p).(prob_mm.tspan))
-    sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
-    res,err = quadgk((t)-> (sum(sol(t)).^2)./2,prob_mm.tspan...,atol=1e-14,rtol=1e-10)
-    res
+    _, res_interp = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
+    @test res_interp ≈ res rtol = 1e-2
+    _, res_interp2 = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_mm.t[1:10:end])
+    @test res_interp2 ≈ res rtol = 1e-2
+
+    # backsolve doesn't work
+    _, res_bs = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=false))
+    @test res_bs ≈ res rtol = 1e-2
+    _, res_bs2 = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_mm.t)
+    @test res_bs2 ≈ res rtol = 1e-2
+
+    @info "continuous cost"
+    g_cont(u,p,t) = (sum(u).^2) ./ 2
+    dg_cont(out,u,p,t) = out .= sum(u)
+    _,easy_res_cont = adjoint_sensitivities(sol_mm,alg,g_cont,nothing,
+                                     dg_cont,abstol=1e-10,reltol=1e-10,
+                                     sensealg=QuadratureAdjoint())
+    function G_cont(p)
+      tmp_prob_mm = remake(prob_mm,u0=eltype(p).(prob_mm.u0),p=p,
+                        tspan=eltype(p).(prob_mm.tspan))
+      sol = solve(tmp_prob_mm,Rodas5(autodiff=false),abstol=1e-14,reltol=1e-14)
+      res,err = quadgk((t)-> (sum(sol(t)).^2)./2,prob_mm.tspan...,atol=1e-14,rtol=1e-10)
+      res
+    end
+    reference_sol_cont = ForwardDiff.gradient(G_cont, p)
+    @test easy_res_cont' ≈ reference_sol_cont rtol=1e-3
   end
-  reference_sol_cont = ForwardDiff.gradient(G_cont, p)
-  @test easy_res_cont' ≈ reference_sol_cont rtol=1e-3
 
-  function rober(du,u,p,t)
-    y₁,y₂,y₃ = u
-    k₁,k₂,k₃ = p
-    du[1] = -k₁*y₁+k₃*y₂*y₃
-    du[2] =  k₁*y₁-k₂*y₂^2-k₃*y₂*y₃
-    du[3] =  y₁ + y₂ + y₃ - 1
-    nothing
+  @testset "Singular mass matrix" begin
+    function rober(du,u,p,t)
+      y₁,y₂,y₃ = u
+      k₁,k₂,k₃ = p
+      du[1] = -k₁*y₁+k₃*y₂*y₃
+      du[2] =  k₁*y₁-k₂*y₂^2-k₃*y₂*y₃
+      du[3] =  y₁ + y₂ + y₃ - 1
+      nothing
+    end
+    M = [1. 0  0
+         0  1. 0
+         0  0  0]
+    f = ODEFunction(rober,mass_matrix=M)
+    p = [0.04,3e7,1e4]
+
+    prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
+    sol_singular_mm = solve(prob_singular_mm,Rodas5(),reltol=1e-8,abstol=1e-8)
+    ts = [50, sol_singular_mm.t[end]]
+    dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
+    _, res = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=QuadratureAdjoint())
+    reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
+    @test res' ≈ reference_sol rtol = 1e-2
+
+    _, res_interp = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
+    @test res_interp ≈ res rtol = 1e-2
+    _, res_interp2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t[1:10:end])
+    @test res_interp2 ≈ res rtol = 1e-2
+
+    # backsolve doesn't work
+    _, res_bs = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=false))
+    @test_broken res_bs ≈ res rtol = 1e-2
+    _, res_bs2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t)
+    @test_broken res_bs2 ≈ res rtol = 1e-2
   end
-  M = [1. 0  0
-       0  1. 0
-       0  0  0]
-  f = ODEFunction(rober,mass_matrix=M)
-  p = [0.04,3e7,1e4]
-
-  Alg = Rodas5
-  prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
-  sol_singular_mm = solve(prob_singular_mm,Alg(),reltol=1e-8,abstol=1e-8)
-  ts = [50, sol_singular_mm.t[end]]
-  dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
-
-  adj_prob = ODEAdjointProblem(sol_singular_mm,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg_singular,ts)
-   # Rodas5 fails with default tolerances, because it steps for too long, and Hermite cannot keep up due to stiffness
-  adj_sol = solve(adj_prob,Alg(autodiff=false),reltol=1e-5,abstol=1e-5)
-  integrand = AdjointSensitivityIntegrand(sol_singular_mm,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
-  res,err = quadgk(integrand,0.0,ts[end])
-  reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
-  @test res' ≈ reference_sol rtol = 1e-2
 end

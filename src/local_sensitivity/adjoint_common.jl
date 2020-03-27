@@ -127,27 +127,23 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0), F=factorized_mass_matrix
     function (integrator)
       p, u = integrator.p, integrator.u
-      # Warning: alias here! Be care with λ
+      # Warning: alias here! Be careful with λ
       gᵤ = isq ? λ : @view(λ[1:idx])
       g(gᵤ,y,p,t[cur_time[]],cur_time[])
-      if isq
-        if issemiexplicitdae
-          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-          dhdd = J[algevar_idxs, diffvar_idxs]
-          dhda = J[algevar_idxs, algevar_idxs]
-          # TODO: maybe need a `conj`
-          Δλa = -dhda'\gᵤ[algevar_idxs]
-          Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
-        else
-          Δλd = gᵤ
-        end
-        if factorized_mass_matrix !== nothing
-          F !== I && ldiv!(F, Δλd)
-        end
-        u[diffvar_idxs] .+= Δλd
+      if issemiexplicitdae
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        dhdd = J[algevar_idxs, diffvar_idxs]
+        dhda = J[algevar_idxs, algevar_idxs]
+        # TODO: maybe need a `conj`
+        Δλa = -dhda'\gᵤ[algevar_idxs]
+        Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
       else
-        @view(u[1:idx]) .+= gᵤ
+        Δλd = gᵤ
       end
+      if factorized_mass_matrix !== nothing
+        F !== I && ldiv!(F, Δλd)
+      end
+      u[diffvar_idxs] .+= Δλd
       u_modified!(integrator,true)
       cur_time[] -= 1
       return nothing
