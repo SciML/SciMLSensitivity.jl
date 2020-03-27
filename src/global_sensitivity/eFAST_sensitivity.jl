@@ -12,7 +12,8 @@ function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
     num_params = length(p_range)
     omega = [floor((n-1)/(2*num_harmonics))]
     m = floor(omega[1]/(2*num_harmonics))
-
+    desol = false
+    
     if m>= num_params-1
         append!(omega,floor.(collect(range(1,stop=m,length=num_params-1))))
     else
@@ -42,6 +43,11 @@ function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
     else
         _y = [f(ps[:,j]) for j in 1:size(ps,2)]
         multioutput = !(eltype(_y) <: Number)
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
+            y_size = size(_y[1])
+            _y = vec.(_y)
+            desol = true
+        end
         all_y = multioutput ? reduce(hcat,_y) : _y
     end
 
@@ -60,6 +66,10 @@ function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
             push!(total_order, map((y,var) -> 1 .- 2*sum(y[1:Int(floor(omega[1]/2))])./var, ys, varnce))
         end
     end
-
+    if desol 
+        f_shape = x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]  
+        first_order = map(f_shape,first_order)
+        total_order = map(f_shape,total_order)
+    end
     return eFASTResult(reduce(hcat,first_order), reduce(hcat,total_order))
 end

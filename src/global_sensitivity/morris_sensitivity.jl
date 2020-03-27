@@ -77,13 +77,19 @@ function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
                                         total_num_trajectory=total_num_trajectory,len_design_mat=len_design_mat)
 
     multioutput = false
-
+    desol = false 
+    local y_size
     if batch
         all_y = f(design_matrices)
         multioutput = all_y isa AbstractMatrix
     else
         _y = [f(design_matrices[:,i]) for i in 1:size(design_matrices,2)]
         multioutput = !(eltype(_y) <: Number)
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
+            y_size = size(_y[1])
+            _y = vec.(_y)
+            desol = true
+        end
         all_y = multioutput ? reduce(hcat,_y) : _y
     end
 
@@ -137,6 +143,12 @@ function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
             push!(means_star, zero(effects[1][1]))
             push!(variances, zero(effects[1][1]))
         end
+    end
+    if desol 
+        f_shape = x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]  
+        means = map(f_shape,means)
+        means_star = map(f_shape,means_star)
+        variances = map(f_shape,variances)
     end
     MorrisResult(reduce(hcat, means),reduce(hcat, means_star),reduce(hcat, variances),effects)
 end
