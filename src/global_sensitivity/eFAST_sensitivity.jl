@@ -1,4 +1,4 @@
-Base.@kwdef struct eFAST <: GSAMethod
+@with_kw struct eFAST <: GSAMethod
     num_harmonics::Int=4
 end
 
