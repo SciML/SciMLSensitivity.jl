@@ -1,4 +1,8 @@
-mutable struct DGSM{T}
+@with_kw struct DGSM <: GSAMethod
+    crossed::Bool = false
+end
+
+mutable struct DGSMResult{T}
     a::Array{T,1}
     absa::Array{T,1}
     asq::Array{T,1}
@@ -11,7 +15,7 @@ end
 
 
 """
-The inputs to the function DGSM are as follows:
+The inputs for DGSM are as follows:
 1.f: 
     This is the input function based on which the values of DGSM are to be evaluated
     Eg- f(x) = x[1]+x[2]^2
@@ -27,7 +31,7 @@ The inputs to the function DGSM are as follows:
     A string(True/False) which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
 """
-function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
+function gsa(f,method::DGSM,distr::AbstractArray,samples::Int)
     
     k = length(distr)
     
@@ -76,7 +80,7 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
         sigma[i] = sigma[i]/samples
     end
     
-    if crossed == true
+    if method.crossed == true
         
         #Evaluating the derivatives with AD
         dfdxdy = [hess(XX[i]) for i in 1 : samples]
@@ -99,10 +103,10 @@ function DGSM(f,samples::Int,distr::AbstractArray, crossed::Bool = false)
         end
         
     else
-    	return DGSM(a, absa, asq, sigma, tao, nothing, nothing, nothing)
+    	return DGSMResult(a, absa, asq, sigma, tao, nothing, nothing, nothing)
     end
     
-    return DGSM(a, absa, asq, sigma, tao, crossed, abscrossed, crossedsq)
+    return DGSMResult(a, absa, asq, sigma, tao, crossed, abscrossed, crossedsq)
     #returns a struct of 7 elements i.e. a, absa, asq, sigma(all 4 arrays) and crossed, abscrossed, crossedsq (all 3 matrices)
 end
 
