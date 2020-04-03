@@ -21,9 +21,13 @@ Base.@pure function determine_chunksize(u,CS)
 end
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                   fx::AbstractArray{<:Number}, alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
+                   fx::Union{Nothing,AbstractArray{<:Number}}, alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
   if alg_autodiff(alg)
-    ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+    if fx === nothing
+      ForwardDiff.jacobian!(J, f, x)
+    else
+      ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+    end
   else
     FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
   end
