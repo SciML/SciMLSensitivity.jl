@@ -49,7 +49,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     no_end && (sol_idxs = sol_idxs[1:end-1])
     only_end = length(sol_idxs) <= 1
     _u = sol.u[sol_idxs]
-    u = save_idxs === nothing ? _out : [x[save_idxs] for x in _u]
+    u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
     ts = sol.t[sol_idxs]
     out = DiffEqArray(u,ts)
   else
