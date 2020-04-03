@@ -39,8 +39,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
     end
     _out = sol(ts)
-    @show [x[save_idxs] for x in _out.u]
-    @show DiffEqArray([x[save_idxs] for x in _out.u],ts)
     out = save_idxs === nothing ? _out : DiffEqArray([x[save_idxs] for x in _out.u],ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   elseif isempty(saveat)
@@ -84,7 +82,8 @@ end
 
 # Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;
+                                 kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
    u,du = extract_local_sensitivities(sol, Val(true))
@@ -101,7 +100,8 @@ end
 
 function DiffEqBase._concrete_solve_forward(prob,alg,
                                  sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;
+                                 kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
    u,du = extract_local_sensitivities(sol,Val(true))
@@ -116,8 +116,9 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity,
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
+                                 save_idxs === nothing,
                                  kwargs...)
-
+  save_idxs !== nothing && error("save_idxs is currently incompatible with ForwardDiffSensitivity")
   MyTag = typeof(prob.f)
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
