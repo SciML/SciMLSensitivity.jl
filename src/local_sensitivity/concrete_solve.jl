@@ -11,6 +11,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
+                                 save_idxs = nothing,
                                  kwargs...)
   _prob = remake(prob,u0=u0,p=p)
 
@@ -37,7 +38,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
     end
-    out = sol(ts)
+    _out = sol(ts)
+    @show [x[save_idxs] for x in _out.u]
+    @show DiffEqArray([x[save_idxs] for x in _out.u],ts)
+    out = save_idxs === nothing ? _out : DiffEqArray([x[save_idxs] for x in _out.u],ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   elseif isempty(saveat)
     no_start = !save_start
@@ -46,13 +50,15 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     no_start && (sol_idxs = sol_idxs[2:end])
     no_end && (sol_idxs = sol_idxs[1:end-1])
     only_end = length(sol_idxs) <= 1
-    u = sol.u[sol_idxs]
+    _u = sol.u[sol_idxs]
+    u = save_idxs === nothing ? _out : [x[save_idxs] for x in _u]
     ts = sol.t[sol_idxs]
     out = DiffEqArray(u,ts)
   else
     _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
     ts = _saveat
-    out = sol(ts)
+    _out = sol(ts)
+    out = save_idxs === nothing ? _out : DiffEqArray([x[save_idxs] for x in _out.u],ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   end
 
