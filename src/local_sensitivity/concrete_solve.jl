@@ -116,7 +116,7 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity,
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
-                                 save_idxs === nothing,
+                                 save_idxs = nothing,
                                  kwargs...)
   save_idxs !== nothing && error("save_idxs is currently incompatible with ForwardDiffSensitivity")
   MyTag = typeof(prob.f)
