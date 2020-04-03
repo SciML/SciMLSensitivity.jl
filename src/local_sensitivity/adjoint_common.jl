@@ -65,8 +65,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     jac_config = nothing
     uf = nothing
   else
-    uf = DiffEqBase.UJacobianWrapper(f,tspan[2],p)
-    jac_config = build_jac_config(sensealg,uf,u0)
+    if DiffEqBase.isinplace(prob)
+      uf = DiffEqBase.UJacobianWrapper(f,tspan[2],p)
+      jac_config = build_jac_config(sensealg,uf,u0)
+    else
+      uf = DiffEqBase.UDerivativeWrapper(f,tspan[2],p)
+      jac_config = nothing
+    end
   end
 
   y = copy(sol.u[end])
@@ -102,7 +107,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
 
   dg_val = similar(u0, numindvar) # number of funcs size
-  f_cache = deepcopy(u0)
+  f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
 
   adjoint_cache = AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,
                           jac_config,pg_config,paramjac_config,

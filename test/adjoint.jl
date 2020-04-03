@@ -608,29 +608,38 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
       du[3] =  y₁ + y₂ + y₃ - 1
       nothing
     end
+    function rober(u,p,t)
+      y₁,y₂,y₃ = u
+      k₁,k₂,k₃ = p
+      return [-k₁*y₁+k₃*y₂*y₃,
+       k₁*y₁-k₂*y₂^2-k₃*y₂*y₃,
+       y₁ + y₂ + y₃ - 1]
+    end
     M = [1. 0  0
          0  1. 0
          0  0  0]
-    f = ODEFunction(rober,mass_matrix=M)
-    p = [0.04,3e7,1e4]
+    for iip in [true, false]
+      f = ODEFunction{iip}(rober,mass_matrix=M)
+      p = [0.04,3e7,1e4]
 
-    prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
-    sol_singular_mm = solve(prob_singular_mm,Rodas5(),reltol=1e-8,abstol=1e-8)
-    ts = [50, sol_singular_mm.t[end]]
-    dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
-    _, res = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=QuadratureAdjoint())
-    reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
-    @test res' ≈ reference_sol rtol = 1e-2
+      prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
+      sol_singular_mm = solve(prob_singular_mm,Rodas5(),reltol=1e-8,abstol=1e-8)
+      ts = [50, sol_singular_mm.t[end]]
+      dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
+      _, res = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=QuadratureAdjoint())
+      reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
+      @test res' ≈ reference_sol rtol = 1e-2
 
-    _, res_interp = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
-    @test res_interp ≈ res rtol = 1e-2
-    _, res_interp2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t[1:10:end])
-    @test res_interp2 ≈ res rtol = 1e-2
+      _, res_interp = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint())
+      @test res_interp ≈ res rtol = 1e-2
+      _, res_interp2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t[1:10:end])
+      @test res_interp2 ≈ res rtol = 1e-2
 
-    # backsolve doesn't work
-    _, res_bs = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=false))
-    @test_broken res_bs ≈ res rtol = 1e-2
-    _, res_bs2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t)
-    @test_broken res_bs2 ≈ res rtol = 1e-2
+      # backsolve doesn't work
+      _, res_bs = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=false))
+      @test_broken res_bs ≈ res rtol = 1e-2
+      _, res_bs2 = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-5,reltol=1e-5,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_singular_mm.t)
+      @test_broken res_bs2 ≈ res rtol = 1e-2
+    end
   end
 end
