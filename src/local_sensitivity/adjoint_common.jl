@@ -76,7 +76,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
   y = copy(sol.u[end])
 
-  if sensealg.autojacvec isa ReverseDiffVJP
+  if sensealg.autojacvec isa ReverseDiffVJP || (isautojacvec && DiffEqBase.isinplace(prob))
     if DiffEqBase.isinplace(prob)
       tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
         du1 = similar(p, size(u))
