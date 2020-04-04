@@ -104,7 +104,7 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
     end
     dy !== nothing && f(dy, y, p, t)
   elseif DiffEqBase.isinplace(prob)
-    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP(), dgrad, dy)
+    _vecjacobian!(dλ, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
   else
     _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP(), dgrad, dy)
   end
@@ -144,7 +144,7 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   f = prob.f
   isautojacvec = get_jacvec(sensealg)
   tape = S.diffcache.paramjac_config
-  
+
   tu, tp = ReverseDiff.input_hook(tape)
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
