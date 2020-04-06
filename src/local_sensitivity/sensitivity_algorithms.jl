@@ -74,6 +74,7 @@ end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
+@inline compile_tape(autojacvec::Bool) = false
 
 struct ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}
   adjalg::A
