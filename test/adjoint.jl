@@ -50,6 +50,9 @@ _,easy_res2 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
 _,easy_res22 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))
+_,easy_res23 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,compile=true))
 _,easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
@@ -107,6 +110,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
+@test isapprox(res, easy_res23, rtol = 1e-10)
 @test isapprox(res, easy_res3, rtol = 1e-10)
 @test isapprox(res, easy_res32, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
@@ -131,6 +135,9 @@ _,easy_res2 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
 @test_broken easy_res22 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))[1] isa AbstractArray
+_,easy_res2 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+                                    reltol=1e-14,
+                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,compile=true))
 _,easy_res3 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
@@ -174,6 +181,7 @@ _,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
+@test isapprox(res, easy_res23, rtol = 1e-10)
 @test isapprox(res, easy_res3, rtol = 1e-10)
 @test isapprox(res, easy_res32, rtol = 1e-10)
 @test isapprox(res, easy_res4, rtol = 1e-10)
@@ -311,6 +319,10 @@ ū052,adj52 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                                     sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14),
                                     reltol=1e-14)
 
+ū05,adj53 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
+                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,compile=true),
+                                    reltol=1e-14)
+
 ū0args,adjargs = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                         save_everystep=false, save_start=false,
                         sensealg=BacksolveAdjoint(),
@@ -348,6 +360,7 @@ end
 @test adj ≈ adj42 rtol = 1e-10
 @test adj ≈ adj5 rtol = 1e-10
 @test adj ≈ adj52 rtol = 1e-10
+@test adj ≈ adj53 rtol = 1e-10
 
 @test ū0args ≈ res rtol = 1e-10
 @test adjargs ≈ adj rtol = 1e-10
@@ -383,6 +396,9 @@ println("23")
 _,easy_res23 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
+_,easy_res232 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
+                                  reltol=1e-14,
+                                  sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,compile=false))
 _,easy_res24 = adjoint_sensitivities(sol,Tsit5(),g,nothing,dg,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))
@@ -440,6 +456,7 @@ _,easy_res38 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
 @test norm(easy_res2 .- res) < 1e-8
 @test norm(easy_res22 .- res) < 1e-8
 @test norm(easy_res23 .- res) < 1e-8
+@test norm(easy_res232 .- res) < 1e-8
 @test norm(easy_res24 .- res) < 1e-8
 @test norm(easy_res25 .- res) < 1e-8
 @test norm(easy_res26 .- res) < 1e-8
