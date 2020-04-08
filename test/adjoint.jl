@@ -3,18 +3,18 @@ using DiffEqSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
 using Test
 
 function fb(du,u,p,t)
-  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]*t
   du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
 end
 function foop(u,p,t)
-  dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  dx = p[1]*u[1] - p[2]*u[1]*u[2]*t
   dy = -p[3]*u[2] + p[4]*u[1]*u[2]
   [dx,dy]
 end
 function jac(J,u,p,t)
   (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
-  J[1,1] = a + y * b * -1
-  J[2,1] = y
+  J[1,1] = a + y * b * -1 * t
+  J[2,1] = y * t
   J[1,2] = b * x * -1
   J[2,2] = c * -1 + x
 end

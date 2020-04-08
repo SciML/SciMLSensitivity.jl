@@ -145,12 +145,14 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   isautojacvec = get_jacvec(sensealg)
   tape = S.diffcache.paramjac_config
 
-  tu, tp = ReverseDiff.input_hook(tape)
+  tu, tp, tt = ReverseDiff.input_hook(tape)
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
   ReverseDiff.unseed!(tp)
+  ReverseDiff.unseed!(tt)
   ReverseDiff.value!(tu, y)
   ReverseDiff.value!(tp, prob.p)
+  ReverseDiff.value!(tt, [t])
   ReverseDiff.forward_pass!(tape)
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)
