@@ -80,7 +80,8 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
     if DiffEqBase.isinplace(prob)
       tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-        du1 = zero(p, size(u))
+        du1 = similar(p, size(u))
+        du1 .= false
         f(du1,u,p,first(t))
         return vec(du1)
       end

@@ -89,6 +89,7 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
       f.jac(J,y,p,t) # Calculate the Jacobian into J
     else
       uf.t = t
+      uf.p = p
       jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     end
     mul!(dλ',λ',J)
@@ -98,6 +99,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
         # Calculate the parameter Jacobian into pJ
         f.paramjac(pJ,y,prob.p,t)
       else
+        pf.t = t
+        pf.u = y
         jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
       end
       mul!(dgrad',λ',pJ)

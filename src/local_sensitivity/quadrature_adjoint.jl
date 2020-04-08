@@ -92,12 +92,12 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   λ .*= -one(eltype(λ))
   isautojacvec = get_jacvec(sensealg)
   # y is aliased
-  pf.t = t
 
   if !isautojacvec
     if DiffEqBase.has_paramjac(f)
       f.paramjac(pJ,y,p,t) # Calculate the parameter Jacobian into pJ
     else
+      pf.t = t
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)

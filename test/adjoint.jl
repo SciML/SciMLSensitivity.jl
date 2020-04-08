@@ -14,8 +14,8 @@ end
 function jac(J,u,p,t)
   (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
   J[1,1] = a + y * b * -1 * t
-  J[2,1] = y * t
-  J[1,2] = b * x * -1
+  J[2,1] = y
+  J[1,2] = b * x * -1 * t
   J[2,2] = c * -1 + x
 end
 
