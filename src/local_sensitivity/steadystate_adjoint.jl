@@ -34,8 +34,12 @@ end
   if DiffEqBase.has_jac(f)
      f.jac(diffcache.J,y,p,nothing)
   else
-     jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache, sensealg, diffcache.jac_config)
-
+     if DiffEqBase.isinplace(sol.prob)
+       jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache, sensealg, diffcache.jac_config)
+     else
+        temp = jacobian(diffcache.uf, y, sensealg)
+        @. diffcache.J = temp
+     end
   end
 
   if dg != nothing

@@ -28,6 +28,16 @@ Base.@pure function determine_chunksize(u,CS)
   end
 end
 
+function jacobian(f, x::AbstractArray{<:Number}, alg::DiffEqBase.AbstractSensitivityAlgorithm)
+  if alg_autodiff(alg)
+    J = ForwardDiff.jacobian(f, x)
+  else
+    J = FiniteDiff.finite_difference_jacobian(f, x)
+  end
+  return J
+end
+
+
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::Union{Nothing,AbstractArray{<:Number}}, alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
   if alg_autodiff(alg)
@@ -111,7 +121,12 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
       else
         pf.t = t
         pf.u = y
-        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config) # fails for oop
+        if DiffEqBase.isinplace(prob)
+          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+        else
+          temp = jacobian(pf, prob.p, sensealg)
+          pJ .= temp
+        end
       end
       mul!(dgrad',λ',pJ)
     end

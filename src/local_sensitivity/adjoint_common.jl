@@ -123,8 +123,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     paramjac_config = nothing
     pf = nothing
   else
-    pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
-    paramjac_config = build_param_jac_config(sensealg,pf,y,p)
+    if DiffEqBase.isinplace(prob)
+      pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
+      paramjac_config = build_param_jac_config(sensealg,pf,y,p)
+    else
+      pf = ParamGradientWrapper(f,tspan[2],y)
+      paramjac_config = nothing
+    end
   end
 
   pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)

@@ -91,6 +91,7 @@ using ForwardDiff, Calculus
     res1d = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
     res1e = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
     res1f = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res1g = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
 
     # with jac, without param_jac
     f2 = ODEFunction(f!;jac=jac!)
@@ -99,9 +100,10 @@ using ForwardDiff, Calculus
     res2a = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res2b = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
     res2c = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
-    res2d = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
-    res2e = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
-    res2f = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res2d = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
+    res2e = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
+    res2f = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res2g = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
 
     # without jac, without param_jac
     f3 = ODEFunction(f!)
@@ -110,9 +112,10 @@ using ForwardDiff, Calculus
     res3a = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res3b = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
     res3c = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
-    res3d = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
-    res3e = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
-    res3f = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res3d = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
+    res3e = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
+    res3f = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res3g = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
 
     # @show res_analytical, res1a
     @test norm(res_analytical' .- res1a) < 1e-7
@@ -121,18 +124,21 @@ using ForwardDiff, Calculus
     @test norm(res_analytical' .- res1d) < 1e-7
     @test norm(res_analytical' .- res1e) < 1e-7
     @test_broken norm(res_analytical' .- res1f) < 1e-7
+    @test norm(res_analytical' .- res1g) < 1e-7
     @test norm(res_analytical' .- res2a) < 1e-7
     @test norm(res_analytical' .- res2b) < 1e-7
     @test norm(res_analytical' .- res2c) < 1e-7
     @test norm(res_analytical' .- res2d) < 1e-7
     @test norm(res_analytical' .- res2e) < 1e-7
     @test_broken norm(res_analytical' .- res2f) < 1e-7
+    @test norm(res_analytical' .- res2g) < 1e-7
     @test norm(res_analytical' .- res3a) < 1e-7
     @test norm(res_analytical' .- res3b) < 1e-7
     @test norm(res_analytical' .- res3c) < 1e-7
     @test norm(res_analytical' .- res3d) < 1e-7
     @test norm(res_analytical' .- res3e) < 1e-7
     @test_broken norm(res_analytical' .- res3f) < 1e-7
+    @test norm(res_analytical' .- res3g) < 1e-7
 
     @info "oop checks"
     function foop(u,p,t)
@@ -146,17 +152,21 @@ using ForwardDiff, Calculus
 
     res4a = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res4b = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
-    #res4c = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing) # only works currently with autodiff=true, autojacvec !=false
+    res4c = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
     res4d = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=TrackerVJP()),g,nothing)
     res4e = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
     res4f = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
+    res4g = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
+    res4h = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=true,autojacvec=false),g,nothing)
 
     @test norm(res_analytical' .- res4a) < 1e-7
     @test norm(res_analytical' .- res4b) < 1e-7
-    #@test norm(res_analytical' .- res3c) < 1e-7
+    @test norm(res_analytical' .- res4c) < 1e-7
     @test norm(res_analytical' .- res4d) < 1e-7
     @test norm(res_analytical' .- res4e) < 1e-7
     @test norm(res_analytical' .- res4f) < 1e-7
+    @test norm(res_analytical' .- res4g) < 1e-7
+    @test norm(res_analytical' .- res4h) < 1e-7
   end
 
   @testset "for u0: (should be zero, steady state does not depend on initial condition)" begin
