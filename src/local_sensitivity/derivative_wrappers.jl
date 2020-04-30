@@ -8,6 +8,14 @@ end
 
 (ff::UGradientWrapper)(uprev) = ff.f(uprev,ff.p,ff.t)
 
+mutable struct ParamGradientWrapper{fType,tType,uType} <: Function
+  f::fType
+  t::tType
+  u::uType
+end
+
+(ff::ParamGradientWrapper)(p) = ff.f(ff.u,p,ff.t)
+
 Base.@pure function determine_chunksize(u,alg::DiffEqBase.AbstractSensitivityAlgorithm)
   determine_chunksize(u,get_chunksize(alg))
 end
@@ -85,14 +93,16 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
   f = prob.f
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      uf.p = p
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+    if !(prob isa DiffEqBase.SteadyStateProblem)
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t) # Calculate the Jacobian into J
+      else
+        uf.t = t
+        uf.p = p
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+      end
+      mul!(dλ',λ',J)
     end
-    mul!(dλ',λ',J)
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
@@ -101,7 +111,7 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
       else
         pf.t = t
         pf.u = y
-        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config) # fails for oop
       end
       mul!(dgrad',λ',pJ)
     end
@@ -148,14 +158,22 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   isautojacvec = get_jacvec(sensealg)
   tape = S.diffcache.paramjac_config
 
-  tu, tp, tt = ReverseDiff.input_hook(tape)
+  if prob isa DiffEqBase.SteadyStateProblem
+    tu, tp = ReverseDiff.input_hook(tape)
+  else
+    tu, tp, tt = ReverseDiff.input_hook(tape)
+  end
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
   ReverseDiff.unseed!(tp)
-  ReverseDiff.unseed!(tt)
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    ReverseDiff.unseed!(tt)
+  end
   ReverseDiff.value!(tu, y)
   ReverseDiff.value!(tp, prob.p)
-  ReverseDiff.value!(tt, [t])
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    ReverseDiff.value!(tt, [t])
+  end
   ReverseDiff.forward_pass!(tape)
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)

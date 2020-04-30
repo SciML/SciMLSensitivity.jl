@@ -58,11 +58,12 @@ end
 struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 
-struct SteadyStateAdjoint{CS,AD,FDT,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::VJP
   linsolve::LS
 end
-Base.@pure function SteadyStateAdjoint(;chunk_size=0,autodiff=true,diff_type=Val{:central},linsolve=DEFAULT_LINSOLVE)
-  SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(linsolve)}(linsolve)
+Base.@pure function SteadyStateAdjoint(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,linsolve=DEFAULT_LINSOLVE)
+  SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
 
 abstract type VJPChoice end

@@ -1,73 +1,64 @@
-struct SteadyStateAdjointSensitivityFunction{Alg<:SteadyStateAdjoint,UF,PF,G,TJ,PJT,GU,JC,GC,PJC,DG,uType,tmpT,LS} <: SensitivityFunction
+
+struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:SteadyStateAdjoint,uType,SType,CV,λType,VJPType} <: SensitivityFunction
+  diffcache::C
   sensealg::Alg
-  uf::UF
-  pf::PF
-  g::G
-  J::TJ
-  pJ::PJT
-  gu::GU
-  jac_config::JC
-  g_grad_config::GC
-  paramjac_config::PJC
-  dg::DG
-  u::uType
-  linsolve_tmp::tmpT
-  linsolve::LS
+  discrete::Bool
+  y::uType
+  sol::SType
+  colorvec::CV
+  λ::λType
+  vjp::VJPType
+#  linsolve::LS
 end
 
-function SteadyStateAdjointSensitivityFunction(g,sensealg,sol,dg)
-  func = sol.prob.f
-  u = sol.u
-  p = sol.prob.p
-  u0 = sol.prob.u0
-  numparams = length(p)
-  numindvar = length(u0)
+function SteadyStateAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
+  @unpack f, p, u0 = sol.prob
 
-  uf = DiffEqBase.UJacobianWrapper(func,nothing,p)
-  pf = DiffEqBase.ParamJacobianWrapper(func,nothing,copy(u))
-  f_cache = DiffEqBase.isinplace(sol.prob) ? deepcopy(u0) : nothing
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
 
-  J = Matrix{eltype(u0)}(undef,numindvar,numindvar) #df/du
-  pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) #df/dp
-  gu = Matrix{eltype(u0)}(undef,1,numindvar) # dg/du
+  λ = zero(y) # solution of f_x^T λ = g_x^T, Eq. (2) in  https://math.mit.edu/~stevenj/18.336/adjoint.pdf
+  #linsolve = sensealg.linsolve(Val{:init},diffcache.uf,y)
+  vjp = similar(λ, length(p))
+  SteadyStateAdjointSensitivityFunction(diffcache,sensealg,discrete,y,sol,colorvec,λ,vjp)
+end
+
+@noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg=nothing)
+  @unpack f, p = sol.prob
+
+  discrete = false
+
+  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+
+  sense = SteadyStateAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
+  @unpack diffcache, y, sol, λ, vjp = sense
+  if DiffEqBase.has_jac(f)
+     f.jac(diffcache.J,y,p,nothing)
+  else
+     jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache, sensealg, diffcache.jac_config)
+
+  end
 
   if dg != nothing
-    pg = nothing
-    pg_config = nothing
-    dg(vec(gu),u,p,nothing,nothing)
+    dg(vec(diffcache.dg_val),y,p,nothing,nothing)
   else
     if g != nothing
-      pg = UGradientWrapper(g,nothing,p)
-      pg_config = build_grad_config(sensealg,pg,u0,p)
-      gradient!(vec(gu),pg,u,sensealg,pg_config)
-      #@show gu
+      gradient!(vec(diffcache.dg_val),diffcache.g,y,sensealg,diffcache.g_grad_config)
     end
   end
 
-  if DiffEqBase.has_jac(func)
-    jac_config = nothing
-    func.jac(J,u,p,nothing)
-  else
-    if DiffEqBase.isinplace(sol.prob)
-      jac_config = build_jac_config(sensealg,uf,u0)
-    else
-      jac_config = nothing
-    end
-    jacobian!(J, uf, u, f_cache, sensealg, jac_config)
-    #@show J
+  λ .= diffcache.J'\vec(diffcache.dg_val') # use linsolve here
+
+  # compute del g/del p
+  if g != nothing
+    dg_dp_val = zero(p)
+    dg_dp = ParamGradientWrapper(g,nothing,y)
+    dg_dp_config = build_grad_config(sensealg,dg_dp,p,y)
+    gradient!(dg_dp_val,dg_dp,p,sensealg,dg_dp_config)
   end
 
-  if DiffEqBase.has_paramjac(func)
-    paramjac_config = nothing
-    func.paramjac(pJ,u,p,nothing)
-  else
-    paramjac_config = build_param_jac_config(sensealg,pf,u0,p)
-    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
-    #@show pJ
-  end
+  vecjacobian!(vec(diffcache.dg_val), λ, p, nothing, sense, dgrad=vjp, dy=nothing)
 
-  linsolve_tmp = zero(u0)
-  linsolve = sensealg.linsolve(Val{:init},uf,u)
+  @. dg_dp_val = dg_dp_val - vjp
 
-  SteadyStateAdjointSensitivityFunction(sensealg,uf,pf,g,J,pJ,gu,jac_config,pg_config,paramjac_config,dg,u,linsolve_tmp,linsolve)
+  return dg_dp_val
 end

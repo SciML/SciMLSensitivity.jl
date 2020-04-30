@@ -25,15 +25,8 @@ end
 function _adjoint_sensitivities(sol,sensealg::SteadyStateAdjoint,alg,g,dg=nothing;
                                    abstol=1e-6,reltol=1e-3,
                                    kwargs...)
-  cache = SteadyStateAdjointSensitivityFunction(g,sensealg,sol,dg)
-
-  linsolve_tmp = cache.J'\vec(cache.gu')
-  #cache.linsolve(vec(cache.gu), cache.J', vec(cache.linsolve_tmp))
-
-  -linsolve_tmp'*cache.pJ #dg/dp?
+  SteadyStateAdjointProblem(sol,sensealg,g,dg)
 end
-
-
 
 function second_order_sensitivities(loss,prob,alg,args...;
                                     sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
