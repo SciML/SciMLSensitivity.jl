@@ -23,7 +23,12 @@ return (AdjointDiffCache, y)
 """
 function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   prob = sol.prob
-  @unpack f, u0, p, tspan = prob
+  if prob isa DiffEqBase.SteadyStateProblem
+    @unpack f, u0, p = prob
+    tspan = (nothing, nothing)
+  else
+    @unpack f, u0, p, tspan = prob
+  end
   numparams = length(p)
   numindvar = length(u0)
   isautojacvec = get_jacvec(sensealg)
@@ -46,7 +51,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     algevar_idxs = 1:0
   end
 
-  J = (issemiexplicitdae || !isautojacvec) ? similar(u0, numindvar, numindvar) : nothing
+  J = (issemiexplicitdae || !isautojacvec || prob isa DiffEqBase.SteadyStateProblem) ? similar(u0, numindvar, numindvar) : nothing
 
   if !discrete
     if dg != nothing
@@ -74,22 +79,39 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     end
   end
 
-  y = copy(sol.u[end])
+  if prob isa DiffEqBase.SteadyStateProblem
+    y = copy(sol.u)
+  else
+    y = copy(sol.u[end])
+  end
 
   if sensealg.autojacvec isa ReverseDiffVJP ||
     (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
-    if DiffEqBase.isinplace(prob)
-      tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-        du1 = similar(p, size(u))
-        f(du1,u,p,first(t))
-        return vec(du1)
+    if prob isa DiffEqBase.SteadyStateProblem
+       if DiffEqBase.isinplace(prob)
+         tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+          du1 = similar(p, size(u))
+          f(du1,u,p,nothing)
+          return vec(du1)
+        end
+      else
+        tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+          vec(f(u,p,nothing))
+        end
       end
     else
-      tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-        vec(f(u,p,first(t)))
-      end
+      if DiffEqBase.isinplace(prob)
+        tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+         du1 = similar(p, size(u))
+         f(du1,u,p,first(t))
+         return vec(du1)
+       end
+     else
+       tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+         vec(f(u,p,first(t)))
+       end
+     end
     end
-
     if compile_tape(sensealg.autojacvec)
       paramjac_config = ReverseDiff.compile(tape)
     else
@@ -101,8 +123,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
     paramjac_config = nothing
     pf = nothing
   else
-    pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
-    paramjac_config = build_param_jac_config(sensealg,pf,y,p)
+    if DiffEqBase.isinplace(prob)
+      pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
+      paramjac_config = build_param_jac_config(sensealg,pf,y,p)
+    else
+      pf = ParamGradientWrapper(f,tspan[2],y)
+      paramjac_config = nothing
+    end
   end
 
   pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)

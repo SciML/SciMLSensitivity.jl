@@ -20,6 +20,7 @@ include("local_sensitivity/interpolating_adjoint.jl")
 include("local_sensitivity/quadrature_adjoint.jl")
 include("local_sensitivity/concrete_solve.jl")
 include("local_sensitivity/second_order.jl")
+include("local_sensitivity/steadystate_adjoint.jl")
 include("global_sensitivity/morris_sensitivity.jl")
 include("global_sensitivity/sobol_sensitivity.jl")
 include("global_sensitivity/regression_sensitivity.jl")
@@ -36,7 +37,8 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
-       ForwardDiffOverAdjoint
+       ForwardDiffOverAdjoint,
+       SteadyStateAdjoint
 
 export second_order_sensitivities, second_order_sensitivity_product
 
