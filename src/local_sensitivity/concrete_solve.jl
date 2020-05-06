@@ -209,3 +209,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
+
+
+function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
+                                 u0,p,args...;kwargs...)
+
+    #_prob = remake(prob,u0=u0,p=p)
+    # sol = solve(_prob,alg)
+    Zygote.pullback(p->DiffEqBase._concrete_solve(prob,alg,u0,p,args...;kwargs...),p)
+end

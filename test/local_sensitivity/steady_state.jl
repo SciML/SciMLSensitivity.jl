@@ -181,3 +181,24 @@ using ForwardDiff, Calculus
     @test abs(dot(res5,res5)) < 1e-7
   end
 end
+
+
+
+@testset "concrete_solve derivatives steady state solver" begin
+  using Zygote
+  function f!(du,u,p,t)
+    du[1] = p[1] + p[2]*u[1]
+    du[2] = p[3]*u[1] + p[4]*u[2]
+  end
+
+  u0 = zeros(2)
+  p = [2.0,-2.0,1.0,-4.0]
+  prob = SteadyStateProblem(f!,u0,p)
+
+  #DiffEqBase._concrete_solve(prob,DynamicSS(Rodas5()),u0,p)
+  #Zygote.pullback(p->DiffEqBase._concrete_solve(prob,DynamicSS(Rodas5()),u0,p),p)
+
+  sol = concrete_solve(prob, DynamicSS(Rodas5()), u0, p, sensealg=SteadyStateAdjoint())
+  @info sol
+  dp1 = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint())),p)
+end
