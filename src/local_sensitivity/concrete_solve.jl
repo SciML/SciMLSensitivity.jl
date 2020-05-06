@@ -7,6 +7,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
+function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+  default_sensealg = SteadyStateAdjoint()
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
@@ -216,5 +221,12 @@ function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,senseal
 
     #_prob = remake(prob,u0=u0,p=p)
     # sol = solve(_prob,alg)
-    Zygote.pullback(p->DiffEqBase._concrete_solve(prob,alg,u0,p,args...;kwargs...),p)
+    sol = solve(prob,alg)
+    function steadystatebackpass(Δ)
+      # Δ = dg/dx or diffcache.dg_val
+      # del g/del p = 0
+      dp = adjoint_sensitivities(sol,alg,sensealg,g,Δ)
+      (nothing,nothing,nothing,dp,ntuple(_->nothing, length(args))...)
+    end
+    sol.u,steadystatebackpass
 end
