@@ -22,7 +22,7 @@ function SteadyStateAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorv
   SteadyStateAdjointSensitivityFunction(diffcache,sensealg,discrete,y,sol,colorvec,λ,vjp)
 end
 
-@noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg=nothing)
+@noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg)
   @unpack f, p = sol.prob
 
   discrete = false
@@ -43,7 +43,11 @@ end
   end
 
   if dg != nothing
-    dg(vec(diffcache.dg_val),y,p,nothing,nothing)
+    if g!= nothing
+      dg(vec(diffcache.dg_val),y,p,nothing,nothing)
+    else
+      @. diffcache.dg_val = dg
+    end
   else
     if g != nothing
       gradient!(vec(diffcache.dg_val),diffcache.g,y,sensealg,diffcache.g_grad_config)
@@ -51,18 +55,19 @@ end
   end
 
   λ .= diffcache.J'\vec(diffcache.dg_val') # use linsolve here
+  vecjacobian!(vec(diffcache.dg_val), λ, p, nothing, sense, dgrad=vjp, dy=nothing)
 
-  # compute del g/del p
   if g != nothing
+    # compute del g/del p
     dg_dp_val = zero(p)
     dg_dp = ParamGradientWrapper(g,nothing,y)
     dg_dp_config = build_grad_config(sensealg,dg_dp,p,y)
     gradient!(dg_dp_val,dg_dp,p,sensealg,dg_dp_config)
+
+    @. dg_dp_val = dg_dp_val - vjp
+    return dg_dp_val
+
+  else
+    return -vjp
   end
-
-  vecjacobian!(vec(diffcache.dg_val), λ, p, nothing, sense, dgrad=vjp, dy=nothing)
-
-  @. dg_dp_val = dg_dp_val - vjp
-
-  return dg_dp_val
 end

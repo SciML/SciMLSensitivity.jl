@@ -225,8 +225,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,senseal
     function steadystatebackpass(Δ)
       # Δ = dg/dx or diffcache.dg_val
       # del g/del p = 0
-      dp = adjoint_sensitivities(sol,alg,sensealg,g,Δ)
+      dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ)
       (nothing,nothing,nothing,dp,ntuple(_->nothing, length(args))...)
     end
-    sol.u,steadystatebackpass
+    sol.u, steadystatebackpass
 end
