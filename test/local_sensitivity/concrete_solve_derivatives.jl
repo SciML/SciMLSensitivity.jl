@@ -108,6 +108,7 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,absto
 @test adj ≈ dp7' rtol=1e-12
 
 # Handle VecOfArray Derivatives
-dp1 = Zygote.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)
-dp2 = ForwardDiff.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)
-@test du06 ≈ du07
+du01, dp1 = Zygote.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),u0,p)
+du02, dp2 = ForwardDiff.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),u0,p)
+@test du01 ≈ du02
+@test dp1 ≈ dp2
