@@ -1,6 +1,6 @@
 using DiffEqSensitivity, OrdinaryDiffEq, Zygote
 using RecursiveArrayTools: DiffEqArray
-using Test
+using Test, ForwardDiff
 import Tracker
 
 function fiip(du,u,p,t)
@@ -106,3 +106,8 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,absto
 @test du06 === du07 === nothing
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
+
+# Handle VecOfArray Derivatives
+dp1 = Zygote.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)[1]
+dp2 = ForwardDiff.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)
+@test dp1 ≈ dp2
