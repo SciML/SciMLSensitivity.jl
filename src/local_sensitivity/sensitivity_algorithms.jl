@@ -46,16 +46,25 @@ struct QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{C
   autojacvec::VJP
   abstol::Float64
   reltol::Float64
+  compile::Bool
 end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=autodiff,abstol=1e-6,
-                                         reltol=1e-3)
-  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol)
+                                         reltol=1e-3,compile=false)
+  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol,compile)
 end
 
 struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
+
+struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+  autojacvec::VJP
+  linsolve::LS
+end
+Base.@pure function SteadyStateAdjoint(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,linsolve=DEFAULT_LINSOLVE)
+  SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
+end
 
 abstract type VJPChoice end
 struct ZygoteVJP <: VJPChoice end
@@ -74,6 +83,8 @@ end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
+@inline compile_tape(autojacvec::Bool) = false
+@inline compile_tape(sensealg::QuadratureAdjoint) = sensealg.compile
 
 struct ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}
   adjalg::A

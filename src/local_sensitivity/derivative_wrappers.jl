@@ -8,6 +8,14 @@ end
 
 (ff::UGradientWrapper)(uprev) = ff.f(uprev,ff.p,ff.t)
 
+mutable struct ParamGradientWrapper{fType,tType,uType} <: Function
+  f::fType
+  t::tType
+  u::uType
+end
+
+(ff::ParamGradientWrapper)(p) = ff.f(ff.u,p,ff.t)
+
 Base.@pure function determine_chunksize(u,alg::DiffEqBase.AbstractSensitivityAlgorithm)
   determine_chunksize(u,get_chunksize(alg))
 end
@@ -20,10 +28,24 @@ Base.@pure function determine_chunksize(u,CS)
   end
 end
 
-function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                   fx::AbstractArray{<:Number}, alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
+function jacobian(f, x::AbstractArray{<:Number}, alg::DiffEqBase.AbstractSensitivityAlgorithm)
   if alg_autodiff(alg)
-    ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+    J = ForwardDiff.jacobian(f, x)
+  else
+    J = FiniteDiff.finite_difference_jacobian(f, x)
+  end
+  return J
+end
+
+
+function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
+                   fx::Union{Nothing,AbstractArray{<:Number}}, alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
+  if alg_autodiff(alg)
+    if fx === nothing
+      ForwardDiff.jacobian!(J, f, x)
+    else
+      ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+    end
   else
     FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
   end
@@ -81,26 +103,36 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
   f = prob.f
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
-    if DiffEqBase.has_jac(f)
-      f.jac(J,y,p,t) # Calculate the Jacobian into J
-    else
-      uf.t = t
-      jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+    if !(prob isa DiffEqBase.SteadyStateProblem)
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t) # Calculate the Jacobian into J
+      else
+        uf.t = t
+        uf.p = p
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+      end
+      mul!(dλ',λ',J)
     end
-    mul!(dλ',λ',J)
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
         f.paramjac(pJ,y,prob.p,t)
       else
-        jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+        pf.t = t
+        pf.u = y
+        if DiffEqBase.isinplace(prob)
+          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+        else
+          temp = jacobian(pf, prob.p, sensealg)
+          pJ .= temp
+        end
       end
       mul!(dgrad',λ',pJ)
     end
     dy !== nothing && f(dy, y, p, t)
   elseif DiffEqBase.isinplace(prob)
-    _vecjacobian!(dλ, λ, p, t, S, TrackerVJP(), dgrad, dy)
+    _vecjacobian!(dλ, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
   else
     _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP(), dgrad, dy)
   end
@@ -140,13 +172,23 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   f = prob.f
   isautojacvec = get_jacvec(sensealg)
   tape = S.diffcache.paramjac_config
-  
-  tu, tp = ReverseDiff.input_hook(tape)
+
+  if prob isa DiffEqBase.SteadyStateProblem
+    tu, tp = ReverseDiff.input_hook(tape)
+  else
+    tu, tp, tt = ReverseDiff.input_hook(tape)
+  end
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
   ReverseDiff.unseed!(tp)
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    ReverseDiff.unseed!(tt)
+  end
   ReverseDiff.value!(tu, y)
   ReverseDiff.value!(tp, prob.p)
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    ReverseDiff.value!(tt, [t])
+  end
   ReverseDiff.forward_pass!(tape)
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)
