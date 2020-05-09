@@ -66,7 +66,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         _out[:] .= -vec(Δ)
       else
         if typeof(Δ) <: AbstractArray{<:AbstractArray}
-          _out[:] .= Δ[i]
+          _out[:] .= -Δ[i]
         else
           _out[:] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
         end
