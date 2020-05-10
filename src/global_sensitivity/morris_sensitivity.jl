@@ -65,7 +65,7 @@ function sample_matrices(p_range,p_steps;num_trajectory=10,total_num_trajectory=
     reduce(hcat,matrices)
 end
 
-function gsa(f,method::Morris,p_range::AbstractVector;batch=false)
+function gsa(f,method::Morris,p_range::AbstractVector;batch=false, kwargs...)
     @unpack p_steps, relative_scale, num_trajectory, total_num_trajectory, len_design_mat  = method
     if !(length(p_steps) == length(p_range))
         for i in 1:length(p_range)-length(p_steps)

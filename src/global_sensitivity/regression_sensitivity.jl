@@ -29,7 +29,7 @@ struct RegressionGSAResult{T, TR}
     partial_rank_correlation::TR
 end
 
-function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false)
+function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false, kwargs...)
     lb = [i[1] for i in p_range]
     ub = [i[2] for i in p_range]
     X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())

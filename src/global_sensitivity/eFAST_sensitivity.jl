@@ -7,7 +7,7 @@ struct eFASTResult{T1}
     total_order::T1
 end
 
-function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false)
+function gsa(f,method::eFAST,p_range::AbstractVector,n::Int=1000;batch=false, kwargs...)
     @unpack num_harmonics = method
     num_params = length(p_range)
     omega = [floor((n-1)/(2*num_harmonics))]
