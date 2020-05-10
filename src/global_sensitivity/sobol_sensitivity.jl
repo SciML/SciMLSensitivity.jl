@@ -23,7 +23,7 @@ function fuse_designs(A, B)
 end
 
 function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
-             batch=false, Ei_estimator = :Jansen1999)
+             batch=false, Ei_estimator = :Jansen1999, kwargs...)
     Aᵦ = fuse_designs(A, B)
     d,n = size(A)
     multioutput = false
