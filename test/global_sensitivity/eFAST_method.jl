@@ -25,8 +25,8 @@ end
 lb = -ones(4)*π
 ub = ones(4)*π
 
-res1 = gsa(ishi,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000)
-res2 = gsa(ishi_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000,batch=true)
+res1 = gsa(ishi,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000)
+res2 = gsa(ishi_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000,batch=true)
 
 @test res1.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
 @test res2.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
@@ -57,8 +57,8 @@ function ishi_linear_batch(X)
     vcat(X1',X2')
 end
 
-res1 = gsa(ishi_linear,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000)
-res2 = gsa(ishi_linear_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000,batch=true)
+res1 = gsa(ishi_linear,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000)
+res2 = gsa(ishi_linear_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000,batch=true)
 
 # Now both tests together
 

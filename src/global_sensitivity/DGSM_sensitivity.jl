@@ -31,7 +31,7 @@ The inputs for DGSM are as follows:
     A string(True/False) which act as indicator for computation of DGSM crossed indices
     Eg- a True value over there will lead to evauation of crossed indices
 """
-function gsa(f,method::DGSM,distr::AbstractArray,samples::Int; kwargs...)
+function gsa(f,method::DGSM,distr::AbstractArray;samples::Int, kwargs...)
     
     k = length(distr)
     
