@@ -1,6 +1,6 @@
 @with_kw mutable struct Sobol <: GSAMethod
     order::Array{Int}=[0, 1]
-    nboot::Int=0
+    nboot::Int=1
     conf_int::Float64=0.95
 end
 
@@ -107,8 +107,38 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
     SobolResult(Sᵢ, nothing, 2 in method.order ? Sᵢⱼ : nothing, nothing, Tᵢ, nothing)
 end
 
+function gsa(f,method::Sobol,A::AbstractVector{<:AbstractMatrix},B::AbstractVector{<:AbstractMatrix};kwargs...)
+    d,n = size(A[1])
+    res = map(A,B) do A_,B_
+        Threads.@spawn gsa(f, method, A_, B_; kwargs...)
+    end
+    sobolres = fetch.(res)
+    if method.nboot > 1
+        size_ = size(sobolres[1].S1)
+        S1 = [[sobol.S1[i] for sobol in sobolres] for i in 1:length(sobolres[1].S1)]
+        ST = [[sobol.ST[i] for sobol in sobolres] for i in 1:length(sobolres[1].ST)]
+        
+        function calc_ci(x)
+            alpha = (1 - method.conf_int)
+            tstar = quantile(TDist(length(x)-1), 1 - alpha/2)
+            std(x)/sqrt(length(x))
+        end
+        S1_CI = map(calc_ci,S1)
+        ST_CI = map(calc_ci,ST)
+
+        if 2 in method.order
+           size__= size(sobolres[1].S2)
+            S2 = [[sobol.S2[i] for sobol in sobolres] for i in 1:length(sobolres[1].S2)]
+            S2_CI = reshape(map(calc_ci,S2),size__...)
+            Sᵢⱼ = reshape(mean.(S2),size__...)
+        end
+        return SobolResult(reshape(mean.(S1),size_...), reshape(S1_CI,size_...),  2 in method.order ? Sᵢⱼ : nothing, 2 in method.order ? S2_CI : nothing, reshape(mean.(ST),size_...), reshape(ST_CI,size_...))
+    else
+        return sobolres[1]
+    end
+end
 
 function gsa(f,method::Sobol,p_range::AbstractVector; N, kwargs...)
-    A,B = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample())
-    gsa(f, method, A, B; kwargs...)
+    A = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample(),2*method.nboot)
+    gsa(f, method, A[1:method.nboot], A[method.nboot+1:end]; kwargs...)
 end
