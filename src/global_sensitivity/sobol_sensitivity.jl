@@ -19,16 +19,17 @@ function fuse_designs(A, B)
     for i in 1:d
         Aᵦ[i][i,:] = B[i,:]
     end
-    Aᵦ
+    hcat(A,B,reduce(hcat,Aᵦ))
 end
 
 function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
              batch=false, Ei_estimator = :Jansen1999, kwargs...)
-    Aᵦ = fuse_designs(A, B)
+    
     d,n = size(A)
+    n = Int(n/method.nboot)
     multioutput = false
     desol = false
-    all_points = hcat(A, B, reduce(hcat,Aᵦ))
+    all_points = mapreduce(fuse_designs, hcat, [A[:,n*(i-1)+1:n*(i)] for i in 1:method.nboot], [B[:,n*(i-1)+1:n*(i)] for i in 1:method.nboot])
 
     if batch
         all_y = f(all_points)
@@ -44,80 +45,66 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
         all_y = multioutput ? reduce(hcat, _y) : _y
     end
 
+    Eys = []
+    Varys = []
+    Vᵢs = []
+    Vᵢⱼs = []
+    Eᵢs = []
     if !multioutput
+        for i in 1:d+2:(d+2)*method.nboot
+            push!(Eys,mean(all_y[(i-1)*n+1:(i+1)*n]))
+            push!(Varys,var(all_y[(i-1)*n+1:(i+1)*n]))
 
-        Ey = mean(all_y[1:2n])
-        Vary = var(all_y[1:2n])
+            fA = all_y[(i-1)*n+1:i*n]
+            fB = all_y[(i*n+1):(i+1)*n]
+            fAⁱ= [all_y[(j*n+1):((j+1)*n)] for j in i+1:(i+d)]
 
-        fA = all_y[1:n]
-        fB = all_y[(n+1):(2n)]
-        fAⁱ= [all_y[(j*n+1):((j+1)*n)] for j in 2:(d+1)]
-        if 2 in method.order 
-            fAⁱʲ= all_y[Int(end - (d*(d-1))/2):end]
+            push!(Vᵢs,[sum(fB.*(fAⁱ[k].-fA)) for k in 1:d]./n)
+            if 2 in method.order 
+                push!(Vᵢⱼs,[sum(abs2, fAⁱ[k] - fAⁱ[j]) for k in 1:d for j in k+1:d]./(2n))
+            end
+            if Ei_estimator == :Homma1996
+                push!(Eᵢs,[Varys[i] .- sum(fA .* fAⁱ[k])./(n) + Eys[i].^2 for k in 1:d])
+            elseif Ei_estimator == :Sobol2007
+                push!(Eᵢs,[sum(abs2,fA-fAⁱ[k]) for k in 1:d]./(2n))
+            elseif Ei_estimator == :Jansen1999
+                push!(Eᵢs,[sum(fA.*(fA.-fAⁱ[k])) for k in 1:d]./(n))
+            end
         end
-        Vᵢ = [sum(fB.*(fAⁱ[i].-fA)) for i in 1:d]./n
-        if 2 in method.order 
-            Vᵢⱼ = [sum(abs2, fAⁱ[i] - fAⁱ[j]) for i in 1:d for j in i+1:d]./(2n)
-        end
-        if Ei_estimator == :Homma1996
-            Eᵢ = [Vary .- sum(fA .* fAⁱ[i])./(n) + Ey.^2 for i in 1:d]
-        elseif Ei_estimator == :Sobol2007
-            Eᵢ = [sum(abs2,fA-fAⁱ[i]) for i in 1:d]./(2n)
-        elseif Ei_estimator == :Jansen1999
-            Eᵢ = [sum(fA.*(fA.-fAⁱ[i])) for i in 1:d]./(n)
-        end
-
     else
+        for i in 1:d+2:(d+2)*method.nboot
+            push!(Eys,mean(all_y[:, (i-1)*n+1:(i+1)*n],dims=2))
+            push!(Varys,var(all_y[:, (i-1)*n+1:(i+1)*n],dims=2))
 
-        Ey = mean(all_y[:, 1:2n],dims=2)
-        Vary = var(all_y[:, 1:2n],dims=2)
+            fA = all_y[:, (i-1)*n+1:i*n]
+            fB = all_y[:, (i*n+1):(i+1)*n]
+            fAⁱ= [all_y[:, (j*n+1):((j+1)*n)] for j in i+1:(i+d)]
 
-        fA = all_y[:, 1:n]
-        fB = all_y[:, (n+1):(2n)]
-        fAⁱ= [all_y[:, (j*n+1):((j+1)*n)] for j in 2:(d+1)]
+            push!(Vᵢs,reduce(hcat, [sum(fB.*(fAⁱ[k].-fA), dims=2) for k in 1:d]./n))
 
-        Vᵢ = reduce(hcat, [sum(fB.*(fAⁱ[i].-fA), dims=2) for i in 1:d]./n)
-
-        if 2 in method.order 
-            Vᵢⱼ = reduce(hcat, [sum(abs2, fAⁱ[i] - fAⁱ[j], dims=2) for i in 1:d for j in i+1:d]./(2n))
+            if 2 in method.order 
+                push!(Vᵢⱼs,reduce(hcat, [sum(abs2, fAⁱ[k] - fAⁱ[j], dims=2) for k in 1:d for j in k+1:d]./(2n)))
+            end
+            if Ei_estimator == :Homma1996
+                push!(Eᵢs,reduce(hcat, [Varys[i] .- sum(fA .* fAⁱ[k], dims=2)./(n) + Eys[i].^2 for k in 1:d]))
+            elseif Ei_estimator == :Sobol2007
+                push!(Eᵢs,reduce(hcat, [sum(abs2,fA-fAⁱ[k],dims=2) for k in 1:d]./(2n)))
+            elseif Ei_estimator == :Jansen1999
+                push!(Eᵢs,reduce(hcat, [sum(fA.*(fA.-fAⁱ[k]), dims=2) for k in 1:d]./(n)))
+            end
         end
-        if Ei_estimator == :Homma1996
-            Eᵢ = reduce(hcat, [Vary .- sum(fA .* fAⁱ[i], dims=2)./(n) + Ey.^2 for i in 1:d])
-        elseif Ei_estimator == :Sobol2007
-            Eᵢ = reduce(hcat, [sum(abs2,fA-fAⁱ[i],dims=2) for i in 1:d]./(2n))
-        elseif Ei_estimator == :Jansen1999
-            Eᵢ = reduce(hcat, [sum(fA.*(fA.-fAⁱ[i]), dims=2) for i in 1:d]./(n))
-        end
-
     end
     if 2 in method.order
-        Sᵢⱼ= (Vᵢⱼ)./Vary
+        Sᵢⱼs = [(Vᵢⱼs)./Varys for i in 1:method.nboot]
     end
 
-    Sᵢ = Vᵢ ./Vary
-    Tᵢ = Eᵢ ./Vary
-    if desol 
-        f_shape = x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]  
-        Sᵢ = f_shape(Sᵢ)
-        if 2 in method.order
-            Sᵢⱼ = f_shape(Sᵢⱼ)
-        end
-        Tᵢ = f_shape(Tᵢ)
-    end
-    SobolResult(Sᵢ, nothing, 2 in method.order ? Sᵢⱼ : nothing, nothing, Tᵢ, nothing)
-end
-
-function gsa(f,method::Sobol,A::AbstractVector{<:AbstractMatrix},B::AbstractVector{<:AbstractMatrix};kwargs...)
-    d,n = size(A[1])
-    res = map(A,B) do A_,B_
-        Threads.@spawn gsa(f, method, A_, B_; kwargs...)
-    end
-    sobolres = fetch.(res)
+    Sᵢs = [Vᵢs[i] ./Varys[i] for i in 1:method.nboot]
+    Tᵢs = [Eᵢs[i] ./Varys[i] for i in 1:method.nboot]
     if method.nboot > 1
-        size_ = size(sobolres[1].S1)
-        S1 = [[sobol.S1[i] for sobol in sobolres] for i in 1:length(sobolres[1].S1)]
-        ST = [[sobol.ST[i] for sobol in sobolres] for i in 1:length(sobolres[1].ST)]
-        
+        size_ = size(Sᵢs[1])
+        S1 = [[Sᵢ[i] for Sᵢ in Sᵢs] for i in 1:length(Sᵢs[1])]
+        ST = [[Tᵢ[i] for Tᵢ in Tᵢs] for i in 1:length(Tᵢs[1])]
+
         function calc_ci(x)
             alpha = (1 - method.conf_int)
             tstar = quantile(TDist(length(x)-1), 1 - alpha/2)
@@ -127,18 +114,38 @@ function gsa(f,method::Sobol,A::AbstractVector{<:AbstractMatrix},B::AbstractVect
         ST_CI = map(calc_ci,ST)
 
         if 2 in method.order
-           size__= size(sobolres[1].S2)
-            S2 = [[sobol.S2[i] for sobol in sobolres] for i in 1:length(sobolres[1].S2)]
+            size__= size(Sᵢⱼs[1])
+            S2 = [[Sᵢⱼ[i] for Sᵢⱼ in Sᵢⱼs] for i in 1:length(Sᵢⱼs[1])]
             S2_CI = reshape(map(calc_ci,S2),size__...)
             Sᵢⱼ = reshape(mean.(S2),size__...)
         end
-        return SobolResult(reshape(mean.(S1),size_...), reshape(S1_CI,size_...),  2 in method.order ? Sᵢⱼ : nothing, 2 in method.order ? S2_CI : nothing, reshape(mean.(ST),size_...), reshape(ST_CI,size_...))
+
+        Sᵢ = reshape(mean.(S1),size_...)
+        Tᵢ = reshape(mean.(ST),size_...)
     else
-        return sobolres[1]
+        Sᵢ = Sᵢs[1]
+        Tᵢ = Tᵢs[1]
+        if 2 in method.order
+            Sᵢⱼ = Sᵢⱼs[1]
+        end
     end
+    if desol 
+        f_shape = x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]  
+        Sᵢ = f_shape(Sᵢ)
+        if 2 in method.order
+            Sᵢⱼ = f_shape(Sᵢⱼ)
+        end
+        Tᵢ = f_shape(Tᵢ)
+    end
+    return SobolResult(Sᵢ,
+                     method.nboot > 1 ? reshape(S1_CI,size_...) : nothing,  
+                     2 in method.order ? Sᵢⱼ : nothing,  
+                     method.nboot > 1 && 2 in method.order ? S2_CI : nothing, 
+                     Tᵢ , 
+                     method.nboot > 1 ? reshape(ST_CI,size_...) : nothing)
 end
 
 function gsa(f,method::Sobol,p_range::AbstractVector; N, kwargs...)
     A = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample(),2*method.nboot)
-    gsa(f, method, A[1:method.nboot], A[method.nboot+1:end]; kwargs...)
+    gsa(f, method, hcat(A[1:method.nboot]...), hcat(A[method.nboot+1:end]...); kwargs...)
 end
