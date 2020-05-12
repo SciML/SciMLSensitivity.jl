@@ -181,3 +181,60 @@ using ForwardDiff, Calculus
     @test abs(dot(res5,res5)) < 1e-7
   end
 end
+
+
+using Zygote
+@testset "concrete_solve derivatives steady state solver" begin
+
+  function g1(u,p,t)
+    sum(u)
+  end
+
+  function g2(u,p,t)
+    sum((2.0.-u).^2)/2
+  end
+
+  u0 = zeros(2)
+  p = [2.0,-2.0,1.0,-4.0]
+
+  @testset "iip" begin
+    function f!(du,u,p,t)
+      du[1] = p[1] + p[2]*u[1]
+      du[2] = p[3]*u[1] + p[4]*u[2]
+    end
+    prob = SteadyStateProblem(f!,u0,p)
+
+
+    sol = solve(prob,DynamicSS(Rodas5()))
+    res1 = adjoint_sensitivities(sol,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g1,nothing)
+    res2 = adjoint_sensitivities(sol,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g2,nothing)
+
+
+    dp1 = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint())),p)
+    dp2 = Zygote.gradient(p->sum((2.0.-concrete_solve(prob,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint())).^2)/2.0,p)
+
+    @test res1 ≈ dp1[1] rtol=1e-12
+    @test res2 ≈ dp2[1] rtol=1e-12
+  end
+
+  @testset "oop" begin
+    function f(u,p,t)
+      dx = p[1] + p[2]*u[1]
+      dy = p[3]*u[1] + p[4]*u[2]
+      [dx,dy]
+    end
+    proboop = SteadyStateProblem(f,u0,p)
+
+
+    soloop = solve(proboop,DynamicSS(Rodas5()))
+    res1oop = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g1,nothing)
+    res2oop = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g2,nothing)
+
+
+    dp1oop = Zygote.gradient(p->sum(concrete_solve(proboop,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint())),p)
+    dp2oop = Zygote.gradient(p->sum((2.0.-concrete_solve(proboop,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint())).^2)/2.0,p)
+
+    @test res1oop ≈ dp1oop[1] rtol=1e-12
+    @test res2oop ≈ dp2oop[1] rtol=1e-12
+  end
+end

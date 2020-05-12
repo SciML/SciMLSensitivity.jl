@@ -28,6 +28,13 @@ function _adjoint_sensitivities(sol,sensealg::SteadyStateAdjoint,alg,g,dg=nothin
   SteadyStateAdjointProblem(sol,sensealg,g,dg)
 end
 
+function _adjoint_sensitivities(sol,sensealg::SteadyStateAdjoint,alg;
+                                   g=nothing,dg=nothing,
+                                   abstol=1e-6,reltol=1e-3,
+                                   kwargs...)
+  SteadyStateAdjointProblem(sol,sensealg,g,dg)
+end
+
 function second_order_sensitivities(loss,prob,alg,args...;
                                     sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                     kwargs...)
