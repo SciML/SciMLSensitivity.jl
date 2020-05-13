@@ -45,11 +45,11 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
         all_y = multioutput ? reduce(hcat, _y) : _y
     end
 
-    Eys = []
-    Varys = []
-    Vᵢs = []
-    Vᵢⱼs = []
-    Eᵢs = []
+    Eys = multioutput ? Array{eltype(all_y)}[] : eltype(all_y)[]
+    Varys = multioutput ? Array{eltype(all_y)}[] : eltype(all_y)[]
+    Vᵢs = multioutput ? Array{eltype(all_y)}[] : Array{eltype(all_y)}[]
+    Vᵢⱼs = multioutput ? Array{eltype(all_y)}[] : Array{eltype(all_y)}[]
+    Eᵢs = multioutput ? Array{eltype(all_y)}[] : Array{eltype(all_y)}[]
     if !multioutput
         for i in 1:d+2:(d+2)*method.nboot
             push!(Eys,mean(all_y[(i-1)*n+1:(i+1)*n]))
