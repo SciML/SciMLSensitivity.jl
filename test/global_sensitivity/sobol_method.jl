@@ -28,7 +28,7 @@ ub = ones(4)*π
 sampler = SobolSample()
 A,B = QuasiMonteCarlo.generate_design_matrices(n,lb,ub,sampler)
 
-res1 = gsa(ishi,Sobol(),A,B)
+res1 = gsa(ishi,Sobol(method=[0,1,2]),A,B)
 res2 = gsa(ishi_batch,Sobol(),A,B,batch=true)
 
 @test res1.S1 ≈ [0.3139335358797363, 0.44235918402206326, 0.0, 0.0] atol=1e-4

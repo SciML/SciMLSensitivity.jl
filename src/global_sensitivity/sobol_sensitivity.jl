@@ -95,7 +95,7 @@ function gsa(f, method::Sobol, A::AbstractMatrix, B::AbstractMatrix;
         end
     end
     if 2 in method.order
-        Sᵢⱼs = [(Vᵢⱼs)./Varys for i in 1:method.nboot]
+        Sᵢⱼs = [(Vᵢⱼs[i])./Varys[i] for i in 1:method.nboot]
     end
 
     Sᵢs = [Vᵢs[i] ./Varys[i] for i in 1:method.nboot]
