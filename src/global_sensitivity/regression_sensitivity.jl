@@ -29,10 +29,11 @@ struct RegressionGSAResult{T, TR}
     partial_rank_correlation::TR
 end
 
-function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1000; batch::Bool = false)
+function gsa(f, method::RegressionGSA, p_range::AbstractVector;samples::Int = 1000, batch::Bool = false, kwargs...)
     lb = [i[1] for i in p_range]
     ub = [i[2] for i in p_range]
     X = QuasiMonteCarlo.sample(samples, lb, ub, QuasiMonteCarlo.SobolSample())
+    desol = false
 
     if batch
         _y = f(X)
@@ -41,6 +42,11 @@ function gsa(f, method::RegressionGSA, p_range::AbstractVector, samples::Int = 1
     else
         _y = [f(X[:, j]) for j in axes(X, 2)]
         multioutput = !(eltype(_y) <: Number)
+        if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
+            y_size = size(_y[1])
+            _y = vec.(_y)
+            desol = true
+        end
         Y = multioutput ? reduce(hcat,_y) : reshape(_y, 1, length(_y))
     end
 

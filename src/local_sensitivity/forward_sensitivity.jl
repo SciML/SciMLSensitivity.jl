@@ -1,9 +1,10 @@
-struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   tgrad::Tt
   jac::J
   jac_prototype::JP
+  sparsity::S
   paramjac::PJ
   Wfact::TW
   Wfact_t::TWt
@@ -22,7 +23,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,PJ,TW,TWt,UF,PF,JC,PJC,Alg,
   colorvec::CV
 end
 
-function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,u0,
+function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec,colorvec)
   numparams = length(p)
@@ -30,13 +31,14 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,paramj
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
   ODEForwardSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
-                             typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(paramjac),
+                             typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(sparsity),
+                             typeof(paramjac),
                              typeof(Wfact),typeof(Wfact_t),typeof(uf),
                              typeof(pf),typeof(jac_config),
                              typeof(paramjac_config),typeof(alg),
                              typeof(f_cache),
                              typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
-                             f,analytic,tgrad,jac,jac_prototype,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
+                             f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
 end
@@ -137,7 +139,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
 
   # TODO: Use user tgrad. iW can be safely ignored here.
   sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,
-                                     f.jac_prototype,f.paramjac,
+                                     f.jac_prototype,f.sparsity,f.paramjac,
                                      nothing,nothing,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
@@ -157,17 +159,25 @@ function seed_duals(x::AbstractArray{V},::Type{T},
   duals = [ForwardDiff.Dual{T}(x[i],seeds[i]) for i in eachindex(x)]
 end
 
+has_continuous_callback(cb::DiscreteCallback) = false
+has_continuous_callback(cb::ContinuousCallback) = true
+has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
+
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                       tspan,p,alg::ForwardDiffSensitivity;
                                       kwargs...)
   MyTag = typeof(f)
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
-  if convert_tspan(alg)
+
+  if (convert_tspan(alg) === nothing &&
+    haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)
+    ) || (convert_tspan(alg) !== nothing && convert_tspan(alg))
     tspandual = convert.(eltype(pdual),tspan)
   else
     tspandual = tspan
   end
+
   prob_dual = ODEProblem(f,u0dual,tspan,pdual;
                          problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                                                    typeof(alg)}(alg),

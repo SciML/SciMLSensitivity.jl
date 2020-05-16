@@ -3,7 +3,14 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = InterpolatingAdjoint()
+  default_sensealg = (isgpu(u0) && !DiffEqBase.isinplace(prob)) ?
+                                  InterpolatingAdjoint(autojacvec=ZygoteVJP()) :
+                                  InterpolatingAdjoint()
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+end
+
+function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+  default_sensealg = SteadyStateAdjoint()
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -11,6 +18,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
+                                 save_idxs = nothing,
                                  kwargs...)
   _prob = remake(prob,u0=u0,p=p)
 
@@ -37,7 +45,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:abs(saveat):_prob.tspan[1]
     end
-    out = sol(ts)
+    _out = sol(ts)
+    out = save_idxs === nothing ? _out : DiffEqArray([x[save_idxs] for x in _out.u],ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   elseif isempty(saveat)
     no_start = !save_start
@@ -46,12 +55,15 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     no_start && (sol_idxs = sol_idxs[2:end])
     no_end && (sol_idxs = sol_idxs[1:end-1])
     only_end = length(sol_idxs) <= 1
-    u = sol.u[sol_idxs]
+    _u = sol.u[sol_idxs]
+    u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
     ts = sol.t[sol_idxs]
     out = DiffEqArray(u,ts)
   else
-    ts = saveat
-    out = sol(ts)
+    _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
+    ts = _saveat
+    _out = sol(ts)
+    out = save_idxs === nothing ? _out : DiffEqArray([x[save_idxs] for x in _out.u],ts)
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   end
 
@@ -60,7 +72,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       if only_end
         _out[:] .= -vec(Δ)
       else
-        _out[:] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
+        if typeof(Δ) <: AbstractArray{<:AbstractArray}
+          _out[:] .= -Δ[i]
+        else
+          _out[:] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
+        end
       end
     end
 
@@ -77,7 +93,8 @@ end
 
 # Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;
+                                 kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
    u,du = extract_local_sensitivities(sol, Val(true))
@@ -94,7 +111,8 @@ end
 
 function DiffEqBase._concrete_solve_forward(prob,alg,
                                  sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;
+                                 kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
    u,du = extract_local_sensitivities(sol,Val(true))
@@ -109,16 +127,23 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity,
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
+                                 save_idxs = nothing,
                                  kwargs...)
-
+  save_idxs !== nothing && error("save_idxs is currently incompatible with ForwardDiffSensitivity")
   MyTag = typeof(prob.f)
   pdual = seed_duals(p,MyTag)
   u0dual = convert.(eltype(pdual),u0)
-  if convert_tspan(sensealg)
+
+  if (convert_tspan(sensealg) === nothing && (
+        (haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)) ||
+        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs.callback))
+        )) || (convert_tspan(sensealg) !== nothing && convert_tspan(alg))
+
     tspandual = convert.(eltype(pdual),prob.tspan)
   else
     tspandual = prob.tspan
   end
+
   _prob = remake(prob,u0=u0dual,p=pdual,tspan=tspandual)
 
   if saveat isa Number
@@ -194,4 +219,20 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
+end
+
+
+function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
+                                 u0,p,args...;kwargs...)
+
+    #_prob = remake(prob,u0=u0,p=p)
+    # sol = solve(_prob,alg)
+    sol = solve(prob,alg)
+    function steadystatebackpass(Δ)
+      # Δ = dg/dx or diffcache.dg_val
+      # del g/del p = 0
+      dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ)
+      (nothing,nothing,nothing,dp,ntuple(_->nothing, length(args))...)
+    end
+    sol.u, steadystatebackpass
 end

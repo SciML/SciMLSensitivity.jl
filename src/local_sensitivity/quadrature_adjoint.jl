@@ -46,9 +46,9 @@ end
   sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  odefun = ODEFunction(sense,mass_matrix=sol.prob.f.mass_matrix')
+  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
@@ -78,7 +78,23 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
 
   if DiffEqBase.has_paramjac(f) || isautojacvec
-    paramjac_config = nothing
+    tape = if DiffEqBase.isinplace(prob)
+      ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+        du1 = similar(p, size(u))
+        du1 .= false
+        f(du1,u,p,first(t))
+        return vec(du1)
+      end
+    else
+      ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+        vec(f(u,p,first(t)))
+      end
+    end
+    if compile_tape(sensealg)
+      paramjac_config = ReverseDiff.compile(tape)
+    else
+      paramjac_config = tape
+    end
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
@@ -93,29 +109,29 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   λ .*= -one(eltype(λ))
   isautojacvec = get_jacvec(sensealg)
   # y is aliased
-  pf.t = t
 
   if !isautojacvec
     if DiffEqBase.has_paramjac(f)
       f.paramjac(pJ,y,p,t) # Calculate the parameter Jacobian into pJ
     else
+      pf.t = t
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
   else
-    if DiffEqBase.isinplace(sol.prob)
-      _, back = Tracker.forward(y,p) do u,p
-        out_ = map(zero, u)
-        f(out_, y, p, t)
-        Tracker.collect(out_)
-      end
-      out[:] = vec(Tracker.data(back(λ)[2]))
-    else
-      _, back = Zygote.pullback(p) do p
-        vec(f(y, p, t))
-      end
-      out[:] = vec(back(λ)[1])
-    end
+    tape = paramjac_config
+    tu, tp, tt = ReverseDiff.input_hook(tape)
+    output = ReverseDiff.output_hook(tape)
+    ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+    ReverseDiff.unseed!(tp)
+    ReverseDiff.unseed!(tt)
+    ReverseDiff.value!(tu, y)
+    ReverseDiff.value!(tp, p)
+    ReverseDiff.value!(tt, [t])
+    ReverseDiff.forward_pass!(tape)
+    ReverseDiff.increment_deriv!(output, λ)
+    ReverseDiff.reverse_pass!(tape)
+    copyto!(vec(out), ReverseDiff.deriv(tp))
   end
   out'
 end

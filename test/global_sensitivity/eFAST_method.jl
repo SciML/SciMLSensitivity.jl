@@ -1,4 +1,4 @@
-using DiffEqSensitivity, QuasiMonteCarlo, Test
+using DiffEqSensitivity, QuasiMonteCarlo, Test, OrdinaryDiffEq
 
 function ishi_batch(X)
     A= 7
@@ -25,8 +25,8 @@ end
 lb = -ones(4)*π
 ub = ones(4)*π
 
-res1 = gsa(ishi,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000)
-res2 = gsa(ishi_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000,batch=true)
+res1 = gsa(ishi,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000)
+res2 = gsa(ishi_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000,batch=true)
 
 @test res1.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
 @test res2.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
@@ -57,8 +57,8 @@ function ishi_linear_batch(X)
     vcat(X1',X2')
 end
 
-res1 = gsa(ishi_linear,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000)
-res2 = gsa(ishi_linear_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000,batch=true)
+res1 = gsa(ishi_linear,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000)
+res2 = gsa(ishi_linear_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000,batch=true)
 
 # Now both tests together
 
@@ -71,3 +71,22 @@ res2 = gsa(ishi_linear_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],15000,batch=tr
                             0.999796  0.00020404  6.36917e-8  6.34754e-8] atol=1e-4
 @test res2.total_order ≈ [0.556243  0.446861    0.239258    0.0271024 
                             0.999796  0.00020404  6.35579e-8  6.36016e-8] atol=1e-4
+
+function f(du,u,p,t)
+  du[1] = p[1]*u[1] - p[2]*u[1]*u[2] #prey
+  du[2] = -p[3]*u[2] + p[4]*u[1]*u[2] #predator
+end
+
+u0 = [1.0;1.0]
+tspan = (0.0,10.0)
+p = [1.5,1.0,3.0,1.0]
+prob = ODEProblem(f,u0,tspan,p)
+t = collect(range(0, stop=10, length=200))
+
+f1 = function (p)
+  prob1 = remake(prob;p=p)
+  sol = solve(prob1,Tsit5();saveat=t)
+  return sol
+end
+
+m = gsa(f1,eFAST(),[[1,5],[1,5],[1,5],[1,5]])

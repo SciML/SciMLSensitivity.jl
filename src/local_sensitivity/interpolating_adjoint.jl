@@ -73,8 +73,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   end
 
   λ     = @view u[1:idx]
-  dλ    = @view du[1:idx]
   grad  = @view u[idx+1:end]
+  dλ    = @view du[1:idx]
   dgrad = @view du[idx+1:end]
 
   vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad)
@@ -97,9 +97,10 @@ end
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+  numstates = length(u0)
   numparams = length(p)
 
-  len = length(u0)+numparams
+  len = numstates+numparams
   λ = similar(u0, len)
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
                                                      checkpoints,f.colorvec,
@@ -108,5 +109,14 @@ end
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
   z0 = vec(zero(λ))
-  ODEProblem(sense,z0,tspan,p,callback=cb)
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I
+    mm = I
+  else
+    mm = zeros(len, len)
+    copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
+    copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
+  end
+  odefun = ODEFunction(sense, mass_matrix=mm)
+  return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
