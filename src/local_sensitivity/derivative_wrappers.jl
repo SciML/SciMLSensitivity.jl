@@ -201,7 +201,11 @@ end
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
   @unpack y, sensealg = S
   prob = getprob(S)
-  f = prob.f
+  if prob isa SDEProblem
+     f = prob.f.f
+  else
+     f = prob.f
+  end
   isautojacvec = get_jacvec(sensealg)
   if DiffEqBase.isinplace(prob)
     _dy, back = Zygote.pullback(y, prob.p) do u, p
