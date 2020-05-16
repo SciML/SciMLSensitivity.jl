@@ -98,7 +98,8 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
-  @unpack y, sensealg = S
+  @unpack sensealg = S
+  y = DiffEqBase.get_tmp(S.y,λ)
   prob = getprob(S)
   f = prob.f
   if isautojacvec isa Bool && !isautojacvec
