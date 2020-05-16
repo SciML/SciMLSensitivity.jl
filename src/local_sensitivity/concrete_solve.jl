@@ -3,7 +3,9 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = InterpolatingAdjoint()
+  default_sensealg = (isgpu(u0) && !DiffEqBase.isinplace(prob)) ?
+                                  InterpolatingAdjoint(autojacvec=ZygoteVJP()) :
+                                  InterpolatingAdjoint()
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 

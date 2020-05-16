@@ -4,12 +4,13 @@ using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
-using FFTW, Distributions
+using FFTW, Distributions, Requires
 import ZygoteRules, Zygote, ReverseDiff
 
 abstract type SensitivityFunction end
 abstract type GSAMethod end
 
+include("require.jl")
 include("local_sensitivity/sensitivity_algorithms.jl")
 include("local_sensitivity/derivative_wrappers.jl")
 include("local_sensitivity/sensitivity_interface.jl")
