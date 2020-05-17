@@ -201,8 +201,8 @@ end
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
   @unpack y, sensealg = S
   prob = getprob(S)
-  if prob isa SDEProblem
-     f = prob.f.f
+  if prob isa Union{SDEProblem}
+    @unpack f = S
   else
      f = prob.f
   end

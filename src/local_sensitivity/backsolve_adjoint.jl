@@ -1,74 +1,25 @@
-struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:Union{ODEFunction, SDEFunction},CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   prob::pType
+  f::fType
   colorvec::CV
 end
 
-struct SDEBacksolveDriftSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,CV} <: SensitivityFunction
-  diffcache::C
-  sensealg::Alg
-  discrete::Bool
-  y::uType
-  prob::pType
-  colorvec::CV
-end
 
-struct SDEBacksolveDiffusionSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,CV} <: SensitivityFunction
-  diffcache::C
-  sensealg::Alg
-  discrete::Bool
-  y::uType
-  prob::pType
-  colorvec::CV
-end
-
-function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,colorvec)
+                                         y,sol.prob,f,colorvec)
 end
-
-
-
-# function TimeReversal(prob)
-#   function frev(u,p,t)
-#     return prob.f.f(u,p,-t)
-#   end
-#
-#   function grev(u,p,t)
-#     prob.f.g(u,p,-t)
-#   end
-#
-#   SDE_func_rev = SDEFunction{false}(frev,grev)
-#   return remake(prob; f=SDE_func_rev, g=grev)
-# end
-
-function SDEBacksolveDriftSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
-
-  return SDEBacksolveDriftSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,colorvec)
-end
-
-function SDEBacksolveDiffusionSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
-  diffcache, y = adjointdiffusioncache(g,sensealg,discrete,sol,dg;quad=false)
-
-  #prob = TimeReversal(sol.prob)
-
-  return SDEBacksolveDriftSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,colorvec)
-end
-
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, prob, discrete = S
+  @unpack y, prob, f, discrete = S
   idx = length(y)
-  f = prob.f
 
   λ     = @view u[1:idx]
   grad  = @view u[idx+1:end-idx]
@@ -87,57 +38,6 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   return nothing
 end
 
-
-function (S::SDEBacksolveDriftSensitivityFunction)(du,u,p,t)
-  @unpack y, discrete = S
-  idx = length(y)
-
-  t *= -1
-
-  λ     = @view u[1:idx]
-  grad  = @view u[idx+1:end-idx]
-  _y    = @view u[end-idx+1:end]
-  dλ    = @view du[1:idx]
-  dgrad = @view du[idx+1:end-idx]
-  dy    = @view du[end-idx+1:end]
-
-
-  copyto!(vec(y), _y)
-  dy .*= -one(eltype(dy))
-  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
-
-  #dλ .*= -one(eltype(λ))
-  discrete || accumulate_dgdu!(dλ, y, p, t, S)
-  return nothing
-end
-
-
-function (S::SDEBacksolveDiffusionSensitivityFunction)(du,u,p,t)
-  @unpack y, discrete = S
-
-  @. du = zeros(u)
-
-  # idx = length(y)
-  # f = prob.g
-  #
-  # λ     = @view u[1:idx]
-  # grad  = @view u[idx+1:end-idx]
-  # _y    = @view u[end-idx+1:end]
-  # dλ    = @view du[1:idx]
-  # dgrad = @view du[idx+1:end-idx]
-  # dy    = @view du[end-idx+1:end]
-  #
-  # @show u, du, p, t
-  #
-  # copyto!(vec(y), _y)
-  #
-  # vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
-  #
-  # dλ .*= -one(eltype(λ))
-  #
-  # discrete || accumulate_dgdu!(dλ, y, p, t, S)
-  return nothing
-end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
@@ -164,7 +64,6 @@ end
   end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
-
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)
     mm = I
@@ -190,7 +89,7 @@ end
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),kwargs...)
   @unpack f, p, u0, tspan = sol.prob
-  tspan = -1.0.*reverse(tspan) # minus sign to propagate forward
+  tspan = reverse(tspan)
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
@@ -199,8 +98,12 @@ end
 
   len = length(u0)+numparams
   λ = similar(u0, len)
-  sense_drift = SDEBacksolveDriftSensitivityFunction(g,sensealg,discrete,sol,dg, f.colorvec)
-  #sense_diffusion = SDEBacksolveDiffusionSensitivityFunction(g,sensealg,discrete,sol,dg, nothing)
+
+  drift_function = ODEFunction(sol.prob.f)
+  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function,drift_function.colorvec)
+
+  diffusion_function = ODEFunction(sol.prob.g)
+  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
@@ -227,21 +130,15 @@ end
     copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix)
   end
 
-  odefun = ODEFunction(sense_drift, mass_matrix=mm)
-  #sdefun = SDEFunction(odefun,sense_diffusion)
-
-  function zero_diff(du,u,p,t)
-    @. du = 0.0
-  end
+  sdefun = SDEFunction(sense_drift,sense_diffusion,mass_matrix=mm)
 
   # replicated noise
-  backwardnoise = StochasticDiffEq.NoiseGrid((sol.t),-reverse(sol.W.W))
-  # noise prototype needed?
-  #return SDEProblem(sdefun,sense_diffusion,z0,tspan,p#,noise=backwardnoise
-  #)
+  _sol = deepcopy(sol)
+  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!(_sol.W.W))
 
-  return SDEProblem(odefun,zero_diff,z0,tspan,p#,noise=backwardnoise
-  )
+  return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,callback=cb,
+    noise=backwardnoise
+    )
 end
 
 

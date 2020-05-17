@@ -21,13 +21,15 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
   prob = sol.prob
   if prob isa DiffEqBase.SteadyStateProblem
-    @unpack f, u0, p = prob
+    @unpack u0, p = prob
     tspan = (nothing, nothing)
+  #elseif prob isa SDEProblem
+  #  @unpack tspan, u0, p = prob
   else
-    @unpack f, u0, p, tspan = prob
+    @unpack u0, p, tspan = prob
   end
   numparams = length(p)
   numindvar = length(u0)
@@ -148,7 +150,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   return adjoint_cache, y
 end
 
-getprob(S::SensitivityFunction) = (S isa Union{ODEBacksolveSensitivityFunction,SDEBacksolveDriftSensitivityFunction,SDEBacksolveDiffusionSensitivityFunction}) ? S.prob : S.sol.prob
+getprob(S::SensitivityFunction) = (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   sensefun.discrete || return callback
@@ -188,100 +190,4 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   end
   cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=init_cb)
   return CallbackSet(cb,callback)
-end
-
-
-function adjointdiffusioncache(g,sensealg,discrete,sol,dg;quad=false)
-  prob = sol.prob
-
-  @unpack u0, p, tspan = prob
-  # diffusion term
-  if DiffEqBase.isinplace(prob)
-    f(du,u,p,t) = prob.g(du, u, p, t)
-  else
-    f(u,p,t) = prob.g(u, p, t)
-  end
-  numparams = length(p)
-  numindvar = length(u0)
-  isautojacvec = get_jacvec(sensealg)
-
-  diffvar_idxs=nothing; algevar_idxs=nothing; factorized_mass_matrix=nothing;issemiexplicitdae=nothing;issemiexplicitdae=false;
-
-  # construct J for correction term from backward if Ito
-  J = (!isautojacvec) ? similar(u0, numindvar, numindvar) : nothing
-
-  if !discrete
-    if dg != nothing
-      pg = nothing
-      pg_config = nothing
-    else
-      pg = UGradientWrapper(g,tspan[2],p)
-      pg_config = build_grad_config(sensealg,pg,u0,p)
-    end
-  else
-    pg = nothing
-    pg_config = nothing
-  end
-
-  if (J === nothing)
-    jac_config = nothing
-    uf = nothing
-  else
-    if DiffEqBase.isinplace(prob)
-      uf = DiffEqBase.UJacobianWrapper(f,tspan[2],p)
-      jac_config = build_jac_config(sensealg,uf,u0)
-    else
-      uf = DiffEqBase.UDerivativeWrapper(f,tspan[2],p)
-      jac_config = nothing
-    end
-  end
-
-  y = copy(sol.u[end])
-
-  if sensealg.autojacvec isa ReverseDiffVJP ||
-    (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
-
-    if DiffEqBase.isinplace(prob)
-      tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-       du1 = similar(p, size(u))
-       f(du1,u,p,first(t))
-       return vec(du1)
-      end
-    else
-      tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-       vec(f(u,p,first(t)))
-      end
-    end
-    if compile_tape(sensealg.autojacvec)
-      paramjac_config = ReverseDiff.compile(tape)
-    else
-      paramjac_config = tape
-    end
-
-    pf = nothing
-  elseif isautojacvec || quad
-    paramjac_config = nothing
-    pf = nothing
-  else
-    if DiffEqBase.isinplace(prob)
-      pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
-      paramjac_config = build_param_jac_config(sensealg,pf,y,p)
-    else
-      pf = ParamGradientWrapper(f,tspan[2],y)
-      paramjac_config = nothing
-    end
-  end
-
-  pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
-
-  dg_val = similar(u0, numindvar) # number of funcs size
-  f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
-
-
-  adjoint_cache = AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,
-                          jac_config,pg_config,paramjac_config,
-                          f_cache,dg,diffvar_idxs,algevar_idxs,
-                          factorized_mass_matrix,issemiexplicitdae)
-
-  return adjoint_cache, y
 end
