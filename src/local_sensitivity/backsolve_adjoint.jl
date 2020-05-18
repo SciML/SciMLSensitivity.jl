@@ -99,8 +99,7 @@ end
   len = length(u0)+numparams
   λ = similar(u0, len)
 
-  drift_function = ODEFunction(sol.prob.f)
-  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function,drift_function.colorvec)
+  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
 
   diffusion_function = ODEFunction(sol.prob.g)
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec)
