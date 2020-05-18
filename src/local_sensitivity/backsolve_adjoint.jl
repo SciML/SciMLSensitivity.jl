@@ -134,9 +134,18 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!(_sol.W.W))
+  if typeof(_sol.W.dW) <: Number
+    noisearray =  _sol.W.W
+  elseif StochasticDiffEq.is_diagonal_noise(sol.prob) && length(sol.W.dW)==1
+    noisearray = [W[1] for W in _sol.W.W]
+  else
+    error("Only scalar and diagonal noise")
+  end
 
-  return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,callback=cb,
+  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!(noisearray))
+
+  return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,
+    callback=cb,
     noise=backwardnoise
     )
 end
