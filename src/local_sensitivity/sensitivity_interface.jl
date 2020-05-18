@@ -13,13 +13,9 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
   if sol.prob isa SDEProblem
     adj_prob = SDEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
-    return adj_prob, tstops
   else
     adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
-    return adj_prob, tstops
   end
   tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;
