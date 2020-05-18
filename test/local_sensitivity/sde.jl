@@ -12,8 +12,8 @@ reltol = 1e-4
 
 u₀ = [0.5]
 tstart = 0.0
-tend = 1.0
-dt = 0.05
+tend = 0.1
+dt = 0.005
 trange = (tstart, tend)
 t = tstart:dt:tend
 
@@ -104,7 +104,7 @@ p2 = [1.01,0.87]
 
 Random.seed!(seed)
 prob_oop_sde2 = SDEProblem(f_oop_linear,σ_oop_linear,u₀,trange,p2)
-sol_oop_sde2 = solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=1e-4,adaptive=false,save_noise=true)
+sol_oop_sde2 = solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1000,adaptive=false,save_noise=true)
 res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,RKMil(interpretation=:Stratonovich),dg!,t
  	,abstol=abstol,reltol=reltol,sensealg=BacksolveAdjoint())
 
@@ -114,7 +114,7 @@ function GSDE(p)
                     tspan=eltype(p).(prob_oop_sde2.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/10000,adaptive=false,saveat=t)
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1000,adaptive=false,saveat=t)
   A = convert(Array,sol)
   res = g(A,p,nothing)
   @show res
@@ -123,7 +123,8 @@ end
 res_sde_forward2 = ForwardDiff.gradient(GSDE,p2)
 res_sde_reverse2 = ReverseDiff.gradient(GSDE,p2)
 
-res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(concrete_solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1400,adaptive=false,u0,p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p2)
+Random.seed!(seed)
+res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(concrete_solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1000,adaptive=false,u0,p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p2)
 
 
 tarray = collect(t)
@@ -132,7 +133,7 @@ Wfix = [W[1][1] for W in noise]
 resp1 = sum(@. tarray*u₀^2*exp(2*(p2[1]-p2[2]^2/2)*tarray+2*p[2]*Wfix))
 resp2 = sum(@. (p[2]*tarray+Wfix)*u₀^2*exp(2*(p2[1]-p2[2]^2/2)*tarray+2*p[2]*Wfix))
 
-@test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-2)
-#@test isapprox(res_sde_forward2[1], resp1, rtol = 1e-2)
-#@test isapprox(res_sde_reverse2[1], resp1, rtol = 1e-2)
-#@test isapprox(res_sde_p2'[1], resp1, rtol = 1e-2)
+@test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-4)
+@test isapprox(res_sde_p2', res_sde_trackerp2, rtol = 1e-4)
+@test isapprox(res_sde_p2'[1], resp1, rtol = 1e-1)
+@test isapprox(res_sde_p2'[2], resp2, rtol = 2e-1)
