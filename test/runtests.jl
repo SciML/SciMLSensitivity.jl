@@ -12,6 +12,7 @@ if GROUP == "All" || GROUP == "Core" || GROUP == "Downstream"
     @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
     @time @safetestset "Second Order Sensitivity" begin include("local_sensitivity/second_order.jl") end
     @time @safetestset "Concrete Solve Derivatives" begin include("local_sensitivity/concrete_solve_derivatives.jl") end
+    @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("local_sensitivity/second_order_odes.jl") end
 end
 
 if GROUP == "All" || GROUP == "GSA"
