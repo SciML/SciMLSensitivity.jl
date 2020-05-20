@@ -36,9 +36,9 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   issemiexplicitdae = false
   mass_matrix = sol.prob.f.mass_matrix
   if mass_matrix isa UniformScaling
-    factorized_mass_matrix = mass_matrix
+    factorized_mass_matrix = mass_matrix'
   elseif mass_matrix isa Tuple{UniformScaling,UniformScaling}
-    factorized_mass_matrix = I
+    factorized_mass_matrix = (I',I')
   else
     mass_matrix = mass_matrix'
     diffvar_idxs = findall(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
