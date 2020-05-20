@@ -51,7 +51,7 @@ end
   if sol.prob.f.mass_matrix !== I || sol.prob.f.mass_matrix !== (I,I)
     odefun = ODEFunction(sense)
   else
-    odefun = ODEFunction(sense, mass_matrix=adjoint.(sol.prob.f.mass_matrix))
+    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
   end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end

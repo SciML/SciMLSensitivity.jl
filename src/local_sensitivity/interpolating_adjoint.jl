@@ -114,7 +114,7 @@ end
     mm = I
   else
     mm = zeros(len, len)
-    copyto!(@view(mm[1:numstates, 1:numstates]), adjoint.(sol.prob.f.mass_matrix))
+    copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
     copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
   end
   odefun = ODEFunction(sense, mass_matrix=mm)
