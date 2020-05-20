@@ -146,9 +146,9 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                      p,similar(u0),mm,
                                      isautojacvec,f.colorvec)
   sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
-  ODEProblem(sense,sense_u0,tspan,p;
-             problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
-                                                       typeof(alg)}(alg),
+  ODEProblem(sense,sense_u0,tspan,p,
+             ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
+                                          typeof(alg)}(alg);
              kwargs...)
 end
 
@@ -178,9 +178,9 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     tspandual = tspan
   end
 
-  prob_dual = ODEProblem(f,u0dual,tspan,pdual;
-                         problem_type=ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
-                                                                   typeof(alg)}(alg),
+  prob_dual = ODEProblem(f,u0dual,tspan,pdual,
+                         ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
+                                                      typeof(alg)}(alg);
                          kwargs...)
 end
 
