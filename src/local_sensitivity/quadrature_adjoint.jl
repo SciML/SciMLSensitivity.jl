@@ -48,7 +48,7 @@ end
   z0 = vec(zero(λ))
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
 
-  if sol.prob.f.mass_matrix !== I || sol.prob.f.mass_matrix !== (I,I)
+  if sol.prob.f.mass_matrix === (I,I)
     odefun = ODEFunction(sense)
   else
     odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')

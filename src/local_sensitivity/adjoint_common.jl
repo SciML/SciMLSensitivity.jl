@@ -176,6 +176,7 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       else
         Δλd = gᵤ
       end
+
       if factorized_mass_matrix !== nothing
         F !== I && F !== (I,I) && ldiv!(F, Δλd)
       end
