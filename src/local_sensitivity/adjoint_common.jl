@@ -34,10 +34,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   isautojacvec = get_jacvec(sensealg)
 
   issemiexplicitdae = false
-  mass_matrix = sol.prob.f.mass_matrix'
+  mass_matrix = sol.prob.f.mass_matrix
   if mass_matrix isa UniformScaling
-    factorized_mass_matrix = mass_matrix
+    factorized_mass_matrix = mass_matrix'
+  elseif mass_matrix isa Tuple{UniformScaling,UniformScaling}
+    factorized_mass_matrix = (I',I')
   else
+    mass_matrix = mass_matrix'
     diffvar_idxs = findall(x->any(!iszero, @view(mass_matrix[:, x])), axes(mass_matrix, 2))
     algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
     # TODO: operator
@@ -173,8 +176,9 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
       else
         Δλd = gᵤ
       end
+
       if factorized_mass_matrix !== nothing
-        F !== I && ldiv!(F, Δλd)
+        F !== I && F !== (I,I) && ldiv!(F, Δλd)
       end
       u[diffvar_idxs] .+= Δλd
       u_modified!(integrator,true)
