@@ -81,7 +81,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
 
-  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && autojacvec)
+  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec)
     tape = if DiffEqBase.isinplace(prob)
       ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
         du1 = similar(p, size(u))
