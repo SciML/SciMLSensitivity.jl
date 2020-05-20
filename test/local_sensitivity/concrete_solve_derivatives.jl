@@ -1,7 +1,7 @@
 using DiffEqSensitivity, OrdinaryDiffEq, Zygote
 using RecursiveArrayTools: DiffEqArray
 using Test, ForwardDiff
-import Tracker
+import Tracker, ReverseDiff
 
 function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
@@ -59,6 +59,30 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1
 @test adj ≈ dp5' rtol=1e-12
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
+
+###
+### Other Packages
+###
+
+Tracker.@grad function concrete_solve(prob,alg,u0,p,args...;
+                                      sensealg=nothing,kwargs...)
+  @show "here"
+  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
+end
+
+ReverseDiff.@grad function concrete_solve(prob,alg,u0,p,args...;
+                                          sensealg=nothing,kwargs...)
+  @show "here"
+  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
+end
+
+du01,dp1 = Tracker.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1)),u0,p)
+@test ū0 == du01
+@test adj == dp1'
+
+du01,dp1 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1)),(u0,p))
+@test ū0 == du01
+@test adj == dp1'
 
 ###
 ### forward
