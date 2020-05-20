@@ -64,18 +64,6 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1
 ### Other Packages
 ###
 
-Tracker.@grad function concrete_solve(prob,alg,u0,p,args...;
-                                      sensealg=nothing,kwargs...)
-  @show "here"
-  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
-ReverseDiff.@grad function concrete_solve(prob,alg,u0,p,args...;
-                                          sensealg=nothing,kwargs...)
-  @show "here"
-  _concrete_solve_adjoint(prob,alg,sensealg,u0,p,args...;kwargs...)
-end
-
 du01,dp1 = Tracker.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1)),u0,p)
 @test ū0 == du01
 @test adj == dp1'
