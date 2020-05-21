@@ -65,7 +65,7 @@ end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
   original_mm = sol.prob.f.mass_matrix
-  if original_mm === I
+  if original_mm === I || original_mm === (I,I)
     mm = I
   else
     sense.diffcache.issemiexplicitdae && @warn "`BacksolveAdjoint` is likely to fail on semi-explicit DAEs, if memory is a concern, please consider using InterpolatingAdjoint(checkpoint=true) instead."

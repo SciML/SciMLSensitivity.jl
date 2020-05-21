@@ -47,7 +47,12 @@ end
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
-  odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
+
+  if sol.prob.f.mass_matrix === (I,I)
+    odefun = ODEFunction(sense)
+  else
+    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
+  end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
@@ -76,7 +81,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
 
-  if DiffEqBase.has_paramjac(f) || isautojacvec
+  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec)
     tape = if DiffEqBase.isinplace(prob)
       ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
         du1 = similar(p, size(u))
@@ -94,6 +99,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
     else
       paramjac_config = tape
     end
+  elseif isautojacvec
+    paramjac_config = nothing
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
@@ -117,7 +124,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
-  else
+  elseif sensealg.autojacvec isa Bool || sensealg.autojacvec isa ReverseDiffVJP
     tape = paramjac_config
     tu, tp, tt = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
@@ -131,7 +138,16 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     ReverseDiff.increment_deriv!(output, λ)
     ReverseDiff.reverse_pass!(tape)
     copyto!(vec(out), ReverseDiff.deriv(tp))
+  elseif sensealg.autojacvec isa ZygoteVJP
+    _dy, back = Zygote.pullback(p) do p
+      vec(f(y, p, t))
+    end
+    tmp = back(λ)
+    out[:] .= vec(tmp[1])
   end
+
+  # TODO: Add tracker?
+
   out'
 end
 
