@@ -262,7 +262,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   function tracker_adjoint_backpass(ybar)
     ReverseDiff.increment_deriv!(output, ybar)
     ReverseDiff.reverse_pass!(tape)
-    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp)',ntuple(_->nothing, length(args))...)
+    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),ntuple(_->nothing, length(args))...)
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
