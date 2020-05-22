@@ -245,34 +245,24 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
     sol = solve(_prob,alg,args...;kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
-      u = map.(Tracker.data,sol.u)
+      u = map.(ReverseDiff.value,sol.u)
     else
-      u = map(Tracker.data,sol.u)
+      u = map(ReverseDiff.value,sol.u)
     end
 
-    if typeof(sol.u[1]) <: Array
-      return adapt(typeof(u0),sol)
-    else
-      tmp = vec(sol.u[1])
-      for i in 2:length(sol.u)
-        tmp = hcat(tmp,vec(sol.u[i]))
-      end
-      return reshape(tmp,size(sol.u[1])...,length(sol.u))
-    end
-    #adapt(typeof(u0),arr)
+    Array(sol)
   end
 
   tape = ReverseDiff.GradientTape(reversediff_adjoint_forwardpass,(u0, p))
   tu, tp = ReverseDiff.input_hook(tape)
   output = ReverseDiff.output_hook(tape)
-  ReverseDiff.value!(tu, y)
+  ReverseDiff.value!(tu, u0)
   ReverseDiff.value!(tp, prob.p)
   ReverseDiff.forward_pass!(tape)
   function tracker_adjoint_backpass(ybar)
     ReverseDiff.increment_deriv!(output, ybar)
     ReverseDiff.reverse_pass!(tape)
-    copyto!(vec(dλ), ReverseDiff.deriv(tu))
-    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),ntuple(_->nothing, length(args))...)
+    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp)',ntuple(_->nothing, length(args))...)
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
