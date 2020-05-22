@@ -114,6 +114,7 @@ du02,dp2 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,absto
 du03,dp3 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
 du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=TrackerAdjoint())),u0,p)
 @test_broken Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
+@test_broken Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
 
 @test ū0 ≈ du01 rtol=1e-12
 @test ū0 ≈ du02 rtol=1e-12
