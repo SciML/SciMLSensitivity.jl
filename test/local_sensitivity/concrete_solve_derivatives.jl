@@ -130,7 +130,7 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,absto
 @test_broken Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardSensitivity())),u0,p) isa Tuple
 du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du06 === du07 === nothing
+@test du07 === nothing
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
 
