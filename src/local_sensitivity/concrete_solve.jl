@@ -221,6 +221,52 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
 
+function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoint,
+                                            u0,p,args...;kwargs...)
+
+  t = eltype(prob.tspan)[]
+  u = typeof(u0)[]
+
+  function reversediff_adjoint_forwardpass(_u0,_p)
+    if DiffEqBase.isinplace(prob)
+      # use Array{TrackedReal} for mutation to work
+      # Recurse to all Array{TrackedArray}
+      _prob = remake(prob,u0=map(identity,_u0),p=_p)
+    else
+      # use TrackedArray for efficiency of the tape
+      _f(args...) = ReverseDiff.collect(prob.f(args...))
+      if prob isa SDEProblem
+        _g(args...) = ReverseDiff.collect(prob.g(args...))
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
+      else
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
+      end
+    end
+    sol = solve(_prob,alg,args...;kwargs...)
+    t = sol.t
+    if DiffEqBase.isinplace(prob)
+      u = map.(ReverseDiff.value,sol.u)
+    else
+      u = map(ReverseDiff.value,sol.u)
+    end
+
+    Array(sol)
+  end
+
+  tape = ReverseDiff.GradientTape(reversediff_adjoint_forwardpass,(u0, p))
+  tu, tp = ReverseDiff.input_hook(tape)
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.value!(tu, u0)
+  ReverseDiff.value!(tp, prob.p)
+  ReverseDiff.forward_pass!(tape)
+  function tracker_adjoint_backpass(ybar)
+    ReverseDiff.increment_deriv!(output, ybar)
+    ReverseDiff.reverse_pass!(tape)
+    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),ntuple(_->nothing, length(args))...)
+  end
+  DiffEqArray(u,t),tracker_adjoint_backpass
+end
+
 
 function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
                                  u0,p,args...;kwargs...)
