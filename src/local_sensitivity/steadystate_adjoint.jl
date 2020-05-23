@@ -1,10 +1,11 @@
 
-struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:SteadyStateAdjoint,uType,SType,CV,λType,VJPType} <: SensitivityFunction
+struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:SteadyStateAdjoint,uType,SType,fType<:ODEFunction,CV,λType,VJPType} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   sol::SType
+  f::fType
   colorvec::CV
   λ::λType
   vjp::VJPType
@@ -14,12 +15,12 @@ end
 function SteadyStateAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
   @unpack f, p, u0 = sol.prob
 
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
 
   λ = zero(y) # solution of f_x^T λ = g_x^T, Eq. (2) in  https://math.mit.edu/~stevenj/18.336/adjoint.pdf
   #linsolve = sensealg.linsolve(Val{:init},diffcache.uf,y)
   vjp = similar(λ, length(p))
-  SteadyStateAdjointSensitivityFunction(diffcache,sensealg,discrete,y,sol,colorvec,λ,vjp)
+  SteadyStateAdjointSensitivityFunction(diffcache,sensealg,discrete,y,sol,f,colorvec,λ,vjp)
 end
 
 @noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg)

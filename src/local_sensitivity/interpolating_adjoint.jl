@@ -1,11 +1,12 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
-                                                  uType,SType,CPS,CV} <: SensitivityFunction
+                                                  uType,SType,CPS,fType<:Union{ODEFunction, SDEFunction},CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   sol::SType
   checkpoint_sol::CPS
+  f::fType
   colorvec::CV
 end
 
@@ -33,11 +34,11 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,c
     nothing
   end
 
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,sol.prob.f)
 
   return ODEInterpolatingAdjointSensitivityFunction(diffcache,sensealg,
                                                     discrete,y,sol,
-                                                    checkpoint_sol,colorvec)
+                                                    checkpoint_sol,sol.prob.f,colorvec)
 end
 
 function findcursor(intervals, t)
