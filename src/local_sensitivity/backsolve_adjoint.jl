@@ -21,12 +21,26 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   @unpack y, prob, f, discrete = S
   idx = length(y)
 
-  λ     = @view u[1:idx]
-  grad  = @view u[idx+1:end-idx]
-  _y    = @view u[end-idx+1:end]
-  dλ    = @view du[1:idx]
-  dgrad = @view du[idx+1:end-idx]
-  dy    = @view du[end-idx+1:end]
+  if length(u) == length(du)
+    # ODE/Drift term
+    λ     = @view u[1:idx]
+    grad  = @view u[idx+1:end-idx]
+    _y    = @view u[end-idx+1:end]
+    dλ    = @view du[1:idx]
+    dgrad = @view du[idx+1:end-idx]
+    dy    = @view du[end-idx+1:end]
+  else
+    # Diffusion term, diagonal noise, length(du) =  u*m
+    idx1 = [length(u)*(i-1)+i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
+    idx2 = [(length(u)+1)*i-idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
+
+    λ     = @view u[1:idx]
+    grad  = @view u[idx+1:end-idx]
+    _y    = @view u[end-idx+1:end]
+    dλ    = @view du[idx1]
+    dgrad = @view du[idx+1:end-idx,1:idx]
+    dy    = @view du[idx2]
+  end
 
   copyto!(vec(y), _y)
 
@@ -93,6 +107,9 @@ end
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+
+  !(StochasticDiffEq.is_diagonal_noise(sol.prob))  && error("Your model has non-diagonal noise terms. Only scalar and diagonal noise terms are currently supported.")
+
   numstates = length(u0)
   numparams = length(p)
 
@@ -133,19 +150,12 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  if typeof(_sol.W.dW) <: Number
-    noisearray =  _sol.W.W
-  elseif StochasticDiffEq.is_diagonal_noise(sol.prob) && length(sol.W.dW)==1
-    noisearray = [W[1] for W in _sol.W.W]
-  else
-    error("Only scalar and diagonal noise")
-  end
-
-  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!(noisearray))
+  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
   return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,
     callback=cb,
-    noise=backwardnoise
+    noise=backwardnoise,
+    noise_rate_prototype = zeros(length(z0),numstates)
     )
 end
 
