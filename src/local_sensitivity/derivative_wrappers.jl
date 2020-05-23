@@ -222,22 +222,24 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Zygo
       vec(f(u, p, t))
     end
     tmp1,tmp2 = back(λ)
-    
+
     if typeof(y) <: ArrayPartition
       dλ .= ArrayPartition(tmp1.x)
     else
       dλ[:] .= vec(tmp1)
     end
     dy !== nothing && (dy[:] .= vec(_dy))
-    if length(dgrad) == length(tmp2)
-      dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-    else
-      for (i, λi) in enumerate(λ)
-        _, back = Zygote.pullback(y, prob.p) do u, p
-          f(u, p, t)[i]
+    if dgrad !== nothing
+      if length(dgrad) == length(tmp2)
+        (dgrad[:] .= vec(tmp2))
+      else
+        for (i, λi) in enumerate(λ)
+          _, back = Zygote.pullback(y, prob.p) do u, p
+            f(u, p, t)[i]
+          end
+          _,tmp2 = back(λi)
+          dgrad !== nothing && (dgrad[:,i] .= vec(tmp2))
         end
-        _,tmp2 = back(λi)
-        dgrad !== nothing && (dgrad[:,i] .= vec(tmp2))
       end
     end
   end

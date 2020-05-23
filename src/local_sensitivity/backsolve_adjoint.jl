@@ -67,7 +67,7 @@ end
   numparams = length(p)
 
   len = length(u0)+numparams
-  λ = similar(u0, len)
+  λ = similar(p, len)
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,f.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]
@@ -114,7 +114,7 @@ end
   numparams = length(p)
 
   len = length(u0)+numparams
-  λ = similar(u0, len)
+  λ = similar(p, len)
 
   sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
 
