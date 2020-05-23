@@ -138,6 +138,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
 
   dg_val = similar(u0, numindvar) # number of funcs size
+  dg_val .= false
   f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
 
   adjoint_cache = AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,

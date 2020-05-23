@@ -215,6 +215,12 @@ using Zygote
 
     @test res1 ≈ dp1[1] rtol=1e-12
     @test res2 ≈ dp2[1] rtol=1e-12
+
+    res1 = Zygote.gradient(p->sum(Array(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint()))[1]),p)
+    dp1 = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,save_idxs=1:1,sensealg=SteadyStateAdjoint())),p)
+    dp2 = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,save_idxs=1,sensealg=SteadyStateAdjoint())),p)
+    @test res1[1] ≈ dp1[1] rtol=1e-10
+    @test res1[1] ≈ dp2[1] rtol=1e-10
   end
 
   @testset "oop" begin
@@ -236,5 +242,11 @@ using Zygote
 
     @test res1oop ≈ dp1oop[1] rtol=1e-12
     @test res2oop ≈ dp2oop[1] rtol=1e-12
+
+    res1oop = Zygote.gradient(p->sum(Array(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,sensealg=SteadyStateAdjoint()))[1]),p)
+    dp1oop = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,save_idxs=1:1,sensealg=SteadyStateAdjoint())),p)
+    dp2oop = Zygote.gradient(p->sum(concrete_solve(prob,DynamicSS(Rodas5()),u0,p,save_idxs=1,sensealg=SteadyStateAdjoint())),p)
+    @test res1oop[1] ≈ dp1oop[1] rtol=1e-10
+    @test res1oop[1] ≈ dp2oop[1] rtol=1e-10
   end
 end
