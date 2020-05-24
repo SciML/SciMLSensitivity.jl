@@ -165,10 +165,13 @@ end
   _sol = deepcopy(sol)
   backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
+  noise_matrix = similar(z0,length(z0),numstates)
+  noise_matrix .= false
+
   return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,
     callback=cb,
     noise=backwardnoise,
-    noise_rate_prototype = zeros(length(z0),numstates)
+    noise_rate_prototype = noise_matrix
     )
 end
 
