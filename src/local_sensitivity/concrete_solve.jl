@@ -67,15 +67,29 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
   end
 
+  _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+
   function adjoint_sensitivity_backpass(Δ)
     function df(_out, u, p, t, i)
       if only_end
-        _out[:] .= -vec(Δ)
+        if typeof(_save_idxs) <: Number
+          _out[_save_idxs] = -vec(Δ)[_save_idxs]
+        else
+          _out[_save_idxs] .= -vec(Δ)[_save_idxs]
+        end
       else
         if typeof(Δ) <: AbstractArray{<:AbstractArray}
-          _out[:] .= -Δ[i]
+          if typeof(_save_idxs) <: Number
+            _out[_save_idxs] = -Δ[i][_save_idxs]
+          else
+            _out[_save_idxs] .= -Δ[i][_save_idxs]
+          end
         else
-          _out[:] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
+          if typeof(_save_idxs) <: Number
+            _out[_save_idxs] = -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+          else
+            _out[_save_idxs] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+          end
         end
       end
     end
@@ -269,16 +283,18 @@ end
 
 
 function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,args...;save_idxs = nothing, kwargs...)
 
     #_prob = remake(prob,u0=u0,p=p)
     # sol = solve(_prob,alg)
-    sol = solve(prob,alg)
+    sol = solve(prob,alg,args...;kwargs...)
+    _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+
     function steadystatebackpass(Δ)
       # Δ = dg/dx or diffcache.dg_val
       # del g/del p = 0
-      dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ)
+      dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ,save_idxs=save_idxs)
       (nothing,nothing,nothing,dp,ntuple(_->nothing, length(args))...)
     end
-    sol.u, steadystatebackpass
+    sol.u[_save_idxs], steadystatebackpass
 end
