@@ -1,4 +1,4 @@
-struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.DiffEqFunction,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
