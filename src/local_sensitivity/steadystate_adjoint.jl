@@ -23,7 +23,7 @@ function SteadyStateAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorv
   SteadyStateAdjointSensitivityFunction(diffcache,sensealg,discrete,y,sol,f,colorvec,λ,vjp)
 end
 
-@noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg)
+@noinline function SteadyStateAdjointProblem(sol,sensealg::SteadyStateAdjoint,g,dg;save_idxs=nothing)
   @unpack f, p = sol.prob
 
   discrete = false
@@ -43,11 +43,18 @@ end
      end
   end
 
+  _save_idxs = save_idxs === nothing ? Colon() : save_idxs
   if dg != nothing
     if g!= nothing
       dg(vec(diffcache.dg_val),y,p,nothing,nothing)
     else
-      @. diffcache.dg_val = dg
+      if typeof(_save_idxs) <: Number
+        diffcache.dg_val[_save_idxs] = dg[_save_idxs]
+      elseif typeof(dg) <: Number
+        @. diffcache.dg_val[_save_idxs] = dg
+      else
+        @. diffcache.dg_val[_save_idxs] = dg[_save_idxs]
+      end
     end
   else
     if g != nothing

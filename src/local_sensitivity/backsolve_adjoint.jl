@@ -68,6 +68,7 @@ end
 
   len = length(u0)+numparams
   λ = similar(p, len)
+  λ .= false
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,f.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]

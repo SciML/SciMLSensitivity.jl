@@ -39,7 +39,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        SensitivityAlg, RegressionGSA, DGSM, eFAST
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
-       TrackerAdjoint, ZygoteAdjoint,
+       TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint

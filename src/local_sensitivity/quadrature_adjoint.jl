@@ -42,6 +42,7 @@ end
 
   len = length(u0)
   λ = similar(u0, len)
+  λ .= false
   sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
 
   init_cb = t !== nothing && tspan[1] == t[end]
@@ -73,11 +74,12 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
   numparams = length(p)
-  y = similar(sol.prob.u0)
-  λ = similar(adj_sol.prob.u0)
+  y = zero(sol.prob.u0)
+  λ = zero(adj_sol.prob.u0)
   # we need to alias `y`
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
-  f_cache = similar(y)
+  f_cache = zero(y)
+  f_cache .= false
   isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
 
