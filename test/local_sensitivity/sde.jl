@@ -206,4 +206,4 @@ end
 @info "ForwardDiff u0"
 res_sde_forward2 = ForwardDiff.gradient(GSDE3,[u₀;u₀;u₀])
 
-@test isapprox(res_sde_u02, res_sde_forward2, rtol = 1e-5)
+@test isapprox(res_sde_u02, res_sde_forward2, rtol = 1e-4)
