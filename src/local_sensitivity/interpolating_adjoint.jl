@@ -1,5 +1,5 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
-                                                  uType,SType,CPS,fType<:DiffEqFunction,CV} <: SensitivityFunction
+                                                  uType,SType,CPS,fType<:DiffEqBase.DiffEqFunction,CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool

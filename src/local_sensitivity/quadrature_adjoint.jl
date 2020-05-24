@@ -1,5 +1,5 @@
 struct ODEQuadratureAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:QuadratureAdjoint,
-                                               uType,SType,fType<:DiffEqFunction,CV} <: SensitivityFunction
+                                               uType,SType,fType<:DiffEqBase.DiffEqFunction,CV} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
