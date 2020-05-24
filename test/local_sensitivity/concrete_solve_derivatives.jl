@@ -245,7 +245,8 @@ Random.seed!(seed)
 du03,dp3 = Tracker.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01)),u0,p)
 
 #Random.seed!(seed)
-#du01,dp1 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01)),u0,p)
+du01,dp1 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01)),(u0,p))
+
 
 @test isapprox(ū0, du01, rtol = 1e-4)
 @test isapprox(adj, dp1', rtol = 1e-4)
