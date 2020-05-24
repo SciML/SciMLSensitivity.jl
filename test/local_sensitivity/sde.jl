@@ -52,10 +52,7 @@ function G(p)
   tmp_prob = remake(prob_oop_ode,u0=eltype(p).(prob_oop_ode.u0),p=p,
                     tspan=eltype(p).(prob_oop_ode.tspan),abstol=abstol, reltol=reltol)
   sol = solve(tmp_prob,Tsit5(),saveat=Array(t),abstol=abstol, reltol=reltol)
-  #@show sol
   res = g(sol,p,nothing)
-  @show res
-  res
 end
 res_ode_forward = ForwardDiff.gradient(G,p)
 #res_ode_reverse = ReverseDiff.gradient(G,p)
@@ -86,8 +83,6 @@ function GSDE1(p)
   sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/10000,adaptive=false,saveat=t)
   A = convert(Array,sol)
   res = g(A,p,nothing)
-  @show res
-  res
 end
 res_sde_forward = ForwardDiff.gradient(GSDE1,p)
 res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
@@ -121,8 +116,6 @@ function GSDE2(p)
   sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,saveat=Array(t))
   A = convert(Array,sol)
   res = g(A,p,nothing)
-  @show res
-  res
 end
 res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
 res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
@@ -167,9 +160,9 @@ res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Arr
 Random.seed!(seed)
 prob_oop_sde2 = SDEProblem(f_oop_linear,σ_oop_linear,[u₀;u₀;u₀],trange,p2)
 sol_oop_sde2 = solve(prob_oop_sde2,EulerHeun(),
-	dt=tend/1e6,adaptive=false,save_noise=true)
+	dt=tend/1e5,adaptive=false,save_noise=true)
 res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
- 	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint())
+ 	,dt=tend/1e5,adaptive=false,sensealg=BacksolveAdjoint())
 
 
 res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
@@ -187,11 +180,9 @@ function GSDE3(u)
                     tspan=eltype(p).(prob_oop_sde2.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,saveat=Array(t))
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e5,adaptive=false,saveat=Array(t))
   A = convert(Array,sol)
   res = g(A,p,nothing)
-  @show res
-  res
 end
 
 res_sde_forward2 = ForwardDiff.gradient(GSDE3,[u₀;u₀;u₀])
