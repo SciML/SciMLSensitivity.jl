@@ -117,7 +117,6 @@ using ForwardDiff, Calculus
     res3f = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
     res3g = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
 
-    # @show res_analytical, res1a
     @test norm(res_analytical' .- res1a) < 1e-7
     @test norm(res_analytical' .- res1b) < 1e-7
     @test norm(res_analytical' .- res1c) < 1e-7

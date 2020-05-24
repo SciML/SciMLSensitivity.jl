@@ -102,6 +102,7 @@ end
   len = numstates+numparams
 
   λ = similar(p, len)
+  λ .= false
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
                                                      checkpoints,f.colorvec,
                                                      (reltol=reltol,abstol=abstol))
