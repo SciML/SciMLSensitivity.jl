@@ -8,7 +8,8 @@ julia:
 #  allow_failures:
 #    - julia: nightly
 env:
-  - GROUP=Core
+  - GROUP=Core1
+  - GROUP=Core2
   - GROUP=GSA
   - GROUP=DiffEqFlux
 notifications:

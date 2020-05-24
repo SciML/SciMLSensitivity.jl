@@ -5,6 +5,8 @@ using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions, Requires
+using StochasticDiffEq
+import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 
 abstract type SensitivityFunction end
@@ -32,6 +34,7 @@ export extract_local_sensitivities
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
+       SDEAdjointProblem,
        adjoint_sensitivities, adjoint_sensitivities_u0, Sobol, Morris, gsa,
        SensitivityAlg, RegressionGSA, DGSM, eFAST
 

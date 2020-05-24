@@ -199,9 +199,9 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
-  @unpack y, sensealg = S
+  @unpack y, sensealg, f = S
   prob = getprob(S)
-  f = prob.f
+
   isautojacvec = get_jacvec(sensealg)
   if DiffEqBase.isinplace(prob)
     _dy, back = Zygote.pullback(y, prob.p) do u, p
@@ -224,9 +224,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Zygo
     else
       dλ[:] .= vec(tmp1)
     end
-
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
   end
   return
 end

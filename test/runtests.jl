@@ -6,12 +6,16 @@ const is_APPVEYOR = Sys.iswindows() && haskey(ENV,"APPVEYOR")
 const is_TRAVIS = haskey(ENV,"TRAVIS")
 
 @time begin
-if GROUP == "All" || GROUP == "Core" || GROUP == "Downstream"
+if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Forward Sensitivity" begin include("local_sensitivity/forward.jl") end
     @time @safetestset "Adjoint Sensitivity" begin include("local_sensitivity/adjoint.jl") end
-    @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
     @time @safetestset "Second Order Sensitivity" begin include("local_sensitivity/second_order.jl") end
     @time @safetestset "Concrete Solve Derivatives" begin include("local_sensitivity/concrete_solve_derivatives.jl") end
+end
+
+if GROUP == "All" || GROUP == "Core2" || GROUP == "Downstream"
+    @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
+    @time @safetestset "SDE Adjoint" begin include("local_sensitivity/sde.jl") end
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("local_sensitivity/second_order_odes.jl") end
 end
 

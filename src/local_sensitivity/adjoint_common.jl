@@ -21,13 +21,15 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
   prob = sol.prob
   if prob isa DiffEqBase.SteadyStateProblem
-    @unpack f, u0, p = prob
+    @unpack u0, p = prob
     tspan = (nothing, nothing)
+  #elseif prob isa SDEProblem
+  #  @unpack tspan, u0, p = prob
   else
-    @unpack f, u0, p, tspan = prob
+    @unpack u0, p, tspan = prob
   end
   numparams = length(p)
   numindvar = length(u0)
@@ -149,7 +151,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
   return adjoint_cache, y
 end
 
-getprob(S::SensitivityFunction) = S isa ODEBacksolveSensitivityFunction ? S.prob : S.sol.prob
+getprob(S::SensitivityFunction) = (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   sensefun.discrete || return callback
