@@ -198,7 +198,7 @@ function GSDE3(u)
                     tspan=eltype(p).(prob_oop_sde2.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e5,adaptive=false,saveat=Array(t))
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,saveat=Array(t))
   A = convert(Array,sol)
   res = g(A,p,nothing)
 end
