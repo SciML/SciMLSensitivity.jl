@@ -18,7 +18,6 @@ mutable struct CheckpointSolution{S,I,T}
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
-  @show typeof(sol)
   tspan = reverse(sol.prob.tspan)
   checkpointing = ischeckpointing(sensealg, sol)
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
@@ -104,7 +103,6 @@ end
   len = numstates+numparams
 
   λ = similar(p, len)
-  @show typeof(sol), "here"
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
                                                      checkpoints,f.colorvec,
                                                      (reltol=reltol,abstol=abstol))

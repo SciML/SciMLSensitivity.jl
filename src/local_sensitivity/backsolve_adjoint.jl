@@ -129,7 +129,6 @@ end
   end
 
   z0 = [vec(zero(λ)); vec(sense_drift.y)]
-  #@show z0, vec(zero(λ)), sense_drift.y
 
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I
