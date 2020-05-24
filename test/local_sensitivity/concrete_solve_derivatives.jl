@@ -242,10 +242,10 @@ du02,dp2 = Zygote.gradient(
 
 
 Random.seed!(seed)
-du03,dp3 = Tracker.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01)),u0,p)
+du03,dp3 = Tracker.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,abstol=1e-14,reltol=1e-14,saveat=0.01)),u0,p)
 
-#Random.seed!(seed)
-du01,dp1 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01)),(u0,p))
+Random.seed!(seed)
+du04,dp4 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,abstol=1e-14,reltol=1e-14,saveat=0.01)),(u0,p))
 
 
 @test isapprox(ū0, du01, rtol = 1e-4)
@@ -255,3 +255,6 @@ du01,dp1 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u
 
 @test isapprox(ū0, du03, rtol = 1e-4)
 @test isapprox(adj, dp3', rtol = 1e-4)
+
+@test isapprox(ū0, du04, rtol = 1e-4)
+@test isapprox(adj, dp4', rtol = 1e-4)
