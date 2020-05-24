@@ -153,24 +153,43 @@ res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Arr
 
 @test isapprox(res_sde_p2', res_sde_trackerp2, rtol = 3e-4)
 
+# Free memory to help Travis
+
+noise = nothing
+Wfix = nothing
+res_sde_forward2 = nothing
+res_sde_reverse2 = nothing
+resp = nothing
+res_sde_trackerp2 = nothing
+res_sde_u02 = nothing
+sol_oop_sde2 = nothing
+res_sde_p2 = nothing
+sol_oop_sde = nothing
+GC.gc()
 
 # SDE adjoint results with diagonal noise
-
 
 Random.seed!(seed)
 prob_oop_sde2 = SDEProblem(f_oop_linear,σ_oop_linear,[u₀;u₀;u₀],trange,p2)
 sol_oop_sde2 = solve(prob_oop_sde2,EulerHeun(),
-	dt=tend/1e5,adaptive=false,save_noise=true)
+	dt=tend/1e6,adaptive=false,save_noise=true)
+
+@info "Diagonal Adjoint"
+
 res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
- 	,dt=tend/1e5,adaptive=false,sensealg=BacksolveAdjoint())
+ 	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint())
 
+sol_oop_sde2 = nothing
+GC.gc()
 
+@info "Diagonal ForwardDiff"
 res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
+@info "Diagonal ReverseDiff"
 res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
 
 @test isapprox(res_sde_forward2, res_sde_reverse2, rtol = 1e-6)
-@test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-5)
-@test isapprox(res_sde_p2', res_sde_reverse2, rtol = 1e-5)
+@test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-3)
+@test isapprox(res_sde_p2', res_sde_reverse2, rtol = 1e-3)
 
 
 # u0

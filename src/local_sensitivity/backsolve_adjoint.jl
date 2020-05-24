@@ -6,14 +6,15 @@ struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint
   prob::pType
   f::fType
   colorvec::CV
+  noiseterm::Bool
 end
 
 
-function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec)
+function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec;noiseterm=false)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,f,colorvec)
+                                         y,sol.prob,f,colorvec,noiseterm)
 end
 
 # u = λ'
@@ -44,7 +45,19 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
 
   copyto!(vec(y), _y)
 
-  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
+  if S.noiseterm
+    vecjacobian!(dλ, λ, p, t, S, dy=dy)
+
+    for (i, λi) in enumerate(λ)
+      _, back = Zygote.pullback(y, prob.p) do u, p
+        f(u, p, t)[i]
+      end
+      _,tmp2 = back(λi)
+      dgrad[:,i] .= vec(tmp2)
+    end
+  else
+    vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
+  end
 
   dλ .*= -one(eltype(λ))
 
@@ -120,7 +133,7 @@ end
   sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
 
   diffusion_function = ODEFunction(sol.prob.g)
-  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec)
+  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
