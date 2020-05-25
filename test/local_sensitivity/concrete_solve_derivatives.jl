@@ -186,3 +186,75 @@ dp2 = ForwardDiff.gradient((p)->sum(last(concrete_solve(prob,Tsit5(),u0,p,saveat
 dp1 = Zygote.gradient((p)->sum(last(concrete_solve(proboop,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)[1]
 dp2 = ForwardDiff.gradient((p)->sum(last(concrete_solve(proboop,Tsit5(),u0,p,saveat=10.0,abstol=1e-14,reltol=1e-14))),p)
 @test dp1 ≈ dp2
+
+
+
+###
+### SDE
+###
+
+using StochasticDiffEq
+using Random
+seed = 100
+
+function σiip(du,u,p,t)
+  du[1] = p[5]*u[1]
+  du[2] = p[6]*u[2]
+end
+
+function σoop(u,p,t)
+  dx = p[5]*u[1]
+  dy = p[6]*u[2]
+  [dx,dy]
+end
+
+function σoop(u::Tracker.TrackedArray,p,t)
+  dx = p[5]*u[1]
+  dy = p[6]*u[2]
+  Tracker.collect([dx,dy])
+end
+
+p = [1.5,1.0,3.0,1.0,0.1,0.1]
+u0 = [1.0;1.0]
+tarray = collect(0.0:0.01:1)
+
+prob = SDEProblem(fiip,σiip,u0,(0.0,1.0),p)
+proboop = SDEProblem(foop,σoop,u0,(0.0,1.0),p)
+
+
+###
+### OOPs
+###
+
+Random.seed!(seed)
+_sol = solve(proboop,EulerHeun(),dt=1e-2,adaptive=false,save_noise=true)
+ū0,adj = adjoint_sensitivities(_sol,EulerHeun(),((out,u,p,t,i) -> out .= -1),tarray, sensealg=BacksolveAdjoint())
+
+
+Random.seed!(seed)
+du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),
+  u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
+
+
+Random.seed!(seed)
+du02,dp2 = Zygote.gradient(
+  (u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=ForwardDiffSensitivity())),u0,p)
+
+
+Random.seed!(seed)
+du03,dp3 = Tracker.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
+
+Random.seed!(seed)
+du04,dp4 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01, sensealg=BacksolveAdjoint())),(u0,p))
+
+
+@test isapprox(ū0, du01, rtol = 1e-4)
+@test isapprox(adj, dp1', rtol = 1e-4)
+
+@test isapprox(adj, dp2', rtol = 1e-4)
+
+@test isapprox(ū0, du03, rtol = 1e-4)
+@test isapprox(adj, dp3', rtol = 1e-4)
+
+@test isapprox(ū0, du04, rtol = 1e-4)
+@test isapprox(adj, dp4', rtol = 1e-4)
