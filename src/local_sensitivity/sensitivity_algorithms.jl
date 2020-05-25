@@ -20,15 +20,16 @@ Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
   ForwardDiffSensitivity{chunk_size,convert_tspan}()
 end
 
-struct BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
+  noise::NOISE
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
                                       autojacvec=autodiff,
-                                      checkpointing=true)
-  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing)
+                                      checkpointing=true, noise=true)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise)
 end
 
 struct InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -74,6 +75,12 @@ struct ReverseDiffVJP{compile} <: VJPChoice
   ReverseDiffVJP(compile=false) = new{compile}()
 end
 
+abstract type NoiseChoice end
+struct ZygoteNoise <: NoiseChoice end
+struct ReverseDiffNoise{compile} <: NoiseChoice
+  ReverseDiffNoise(compile=false) = new{compile}()
+end
+
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
 @inline get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = CS
@@ -83,7 +90,9 @@ end
 end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :noise) ? alg.noise : false
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
+@inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false
 @inline compile_tape(sensealg::QuadratureAdjoint) = sensealg.compile
 

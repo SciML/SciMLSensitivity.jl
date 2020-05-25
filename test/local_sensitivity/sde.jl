@@ -179,8 +179,26 @@ sol_oop_sde2 = solve(prob_oop_sde2,EulerHeun(),
 res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
  	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint())
 
+res_sde_u03, res_sde_p3 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
+	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
+
+res_sde_u04, res_sde_p4 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
+	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
+
+res_sde_u05, res_sde_p5 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
+	,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
+
+
 sol_oop_sde2 = nothing
 GC.gc()
+
+@test isapprox(res_sde_p2, res_sde_p3, rtol = 1e-7)
+@test isapprox(res_sde_p2, res_sde_p4, rtol = 1e-7)
+@test isapprox(res_sde_p2, res_sde_p5, rtol = 1e-7)
+
+@test isapprox(res_sde_u02, res_sde_u03, rtol = 1e-7)
+@test isapprox(res_sde_u02, res_sde_u04, rtol = 1e-7)
+@test isapprox(res_sde_u02, res_sde_u05, rtol = 1e-7)
 
 @info "Diagonal ForwardDiff"
 res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
