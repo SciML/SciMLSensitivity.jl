@@ -271,15 +271,23 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise,
   @unpack y, sensealg, f = S
   prob = getprob(S)
 
-  tape = S.diffcache.paramjac_noise_tape
-  fcfg = S.diffcache.paramjac_noise_config
+  for (i, λi) in enumerate(λ)
+  	tapei = S.diffcache.paramjac_noise_config[i]
+  	tu, tp, tt = ReverseDiff.input_hook(tapei)
+  	output = ReverseDiff.output_hook(tapei)
+  	ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  	ReverseDiff.unseed!(tp)
+  	ReverseDiff.unseed!(tt)
+  	ReverseDiff.value!(tu, y)
+  	ReverseDiff.value!(tp, p)
+  	ReverseDiff.value!(tt, [t])
+  	ReverseDiff.forward_pass!(tapei)
+  	ReverseDiff.increment_deriv!(output, λi)
+  	ReverseDiff.reverse_pass!(tapei)
 
-  numindvar = length(y)
-  tmp = (similar(y, numindvar, numindvar), similar(p, numindvar, length(p)), similar([t], numindvar, 1))
-
-  ReverseDiff.jacobian!(tmp, tape, (y, p, [t]))
-
-  dgrad !== nothing && copyto!(dgrad, (λ .*tmp[2])')
+  	deriv = ReverseDiff.deriv(tp)
+  	dgrad[:,i] .= vec(deriv)
+  end
   return
 end
 
