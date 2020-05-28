@@ -11,7 +11,7 @@ end
 
 
 function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec;noiseterm=false)
-  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false)
+  diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=noiseterm)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
                                          y,sol.prob,f,colorvec,noiseterm)
@@ -48,13 +48,8 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   if S.noiseterm
     vecjacobian!(dλ, λ, p, t, S, dy=dy)
 
-    for (i, λi) in enumerate(λ)
-      _, back = Zygote.pullback(y, prob.p) do u, p
-        f(u, p, t)[i]
-      end
-      _,tmp2 = back(λi)
-      dgrad[:,i] .= vec(tmp2)
-    end
+    jacNoise!(λ, p, t, S, dgrad=dgrad)
+
   else
     vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
   end

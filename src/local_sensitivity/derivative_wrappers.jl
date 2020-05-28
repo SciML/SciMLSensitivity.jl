@@ -98,9 +98,8 @@ function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
-  @unpack y, sensealg = S
+  @unpack y, sensealg, f = S
   prob = getprob(S)
-  f = prob.f
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if !(prob isa DiffEqBase.SteadyStateProblem)
@@ -140,9 +139,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
-  @unpack y, sensealg = S
+  @unpack y, sensealg, f = S
   prob = getprob(S)
-  f = prob.f
   isautojacvec = get_jacvec(sensealg)
   if DiffEqBase.isinplace(prob)
     _dy, back = Tracker.forward(y, prob.p) do u, p
@@ -167,9 +165,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Trac
 end
 
 function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
-  @unpack y, sensealg = S
+  @unpack y, sensealg, f = S
   prob = getprob(S)
-  f = prob.f
   isautojacvec = get_jacvec(sensealg)
   tape = S.diffcache.paramjac_config
 
@@ -229,6 +226,97 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Zygo
   end
   return
 end
+
+
+function jacNoise!(λ, p, t, S::SensitivityFunction;
+                      dgrad=nothing)
+  _jacNoise!(λ, p, t, S, S.sensealg.noise, dgrad)
+  return
+end
+
+function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
+  @unpack y, sensealg, f = S
+  prob = getprob(S)
+  if isnoise isa Bool && !isnoise
+    if dgrad !== nothing
+      @unpack pJ, pf, paramjac_config = S.diffcache
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,prob.p,t)
+      else
+        pf.t = t
+        pf.u = y
+        if DiffEqBase.isinplace(prob)
+          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+          pJt = transpose(λ).*transpose(pJ)
+          # maybe reshape(pJ, (length(prob.p),length(λ)))?
+        else
+          temp = jacobian(pf, prob.p, sensealg)
+          pJ .= temp
+          pJt = transpose(λ).*transpose(pJ)
+        end
+      end
+      dgrad .= pJt
+    end
+
+  elseif DiffEqBase.isinplace(prob)
+    _jacNoise!(λ, p, t, S, ReverseDiffNoise(), dgrad)
+  else
+    _jacNoise!(λ, p, t, S, ZygoteNoise(), dgrad)
+  end
+  return
+end
+
+function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad)
+  @unpack y, sensealg, f = S
+  prob = getprob(S)
+
+  for (i, λi) in enumerate(λ)
+  	tapei = S.diffcache.paramjac_noise_config[i]
+  	tu, tp, tt = ReverseDiff.input_hook(tapei)
+  	output = ReverseDiff.output_hook(tapei)
+  	ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  	ReverseDiff.unseed!(tp)
+  	ReverseDiff.unseed!(tt)
+  	ReverseDiff.value!(tu, y)
+  	ReverseDiff.value!(tp, p)
+  	ReverseDiff.value!(tt, [t])
+  	ReverseDiff.forward_pass!(tapei)
+  	ReverseDiff.increment_deriv!(output, λi)
+  	ReverseDiff.reverse_pass!(tapei)
+
+  	deriv = ReverseDiff.deriv(tp)
+  	dgrad[:,i] .= vec(deriv)
+  end
+  return
+end
+
+
+function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad)
+  @unpack y, sensealg, f = S
+  prob = getprob(S)
+
+  if DiffEqBase.isinplace(prob)
+    for (i, λi) in enumerate(λ)
+      _, back = Zygote.pullback(y, prob.p) do u, p
+        out_ = Zygote.Buffer(similar(u))
+        copy(f(out_, u, p, t))[i]
+      end
+      _,tmp2 = back(λi)
+      dgrad[:,i] .= vec(tmp2)
+    end
+  else
+    for (i, λi) in enumerate(λ)
+      _, back = Zygote.pullback(y, prob.p) do u, p
+        f(u, p, t)[i]
+      end
+      _,tmp2 = back(λi)
+      dgrad[:,i] .= vec(tmp2)
+    end
+  end
+  return
+end
+
 
 function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
   @unpack dg, dg_val, g, g_grad_config = S.diffcache
