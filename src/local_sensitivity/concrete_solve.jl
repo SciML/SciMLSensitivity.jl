@@ -36,9 +36,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   end
 
   if ischeckpointing(sensealg)
-    sol = solve(_prob,alg,args...;save_start=true,save_end=true,saveat=saveat,kwargs...)
+    sol = solve(_prob,alg,args...;sensitivity_context=true,save_start=true,save_end=true,saveat=saveat,kwargs...)
   else
-    sol = solve(_prob,alg,args...;save_start=true,save_end=true,kwargs...)
+    sol = solve(_prob,alg,args...;sensitivity_context=true,save_start=true,save_end=true,kwargs...)
   end
 
   if saveat isa Number
@@ -112,7 +112,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
                                  u0,p,args...;
                                  kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,alg,args...;kwargs...)
+   sol = solve(_prob,alg,args...;sensitivity_context=true,kwargs...)
    u,du = extract_local_sensitivities(sol, Val(true))
    function forward_sensitivity_backpass(Δ)
      adj = sum(eachindex(du)) do i
@@ -130,7 +130,7 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
                                  u0,p,args...;
                                  kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,args...;kwargs...)
+   sol = solve(_prob,args...;sensitivity_context=true,kwargs...)
    u,du = extract_local_sensitivities(sol,Val(true))
    function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
      x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
@@ -168,7 +168,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat
   end
 
-  sol = solve(_prob,alg,args...;saveat=_saveat,kwargs...)
+  sol = solve(_prob,alg,args...;sensitivity_context=true,saveat=_saveat,kwargs...)
 
   u,du = extract_local_sensitivities(sol, sensealg, Val(true))
   function forward_sensitivity_backpass(Δ)
@@ -184,11 +184,12 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
-    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,kwargs...),u0,p)
+    Zygote.pullback((u0,p)->solve(prob,alg,args...;sensitivity_context=true,u0=u0,p=p,kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
-                                            u0,p,args...;kwargs...)
+                                            u0,p,args...;
+                                            kwargs...)
 
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
@@ -208,7 +209,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
-    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
+    sol = solve(_prob,alg,args...;sensitivity_context=true,sensealg=SensitivityADPassThrough2(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
       u = map.(Tracker.data,sol.u)
@@ -258,7 +259,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
-    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
+    sol = solve(_prob,alg,args...;sensitivity_context=true,sensealg=SensitivityADPassThrough2(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
       u = map.(ReverseDiff.value,sol.u)
@@ -287,9 +288,8 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
                                  u0,p,args...;save_idxs = nothing, kwargs...)
 
-    #_prob = remake(prob,u0=u0,p=p)
-    # sol = solve(_prob,alg)
-    sol = solve(prob,alg,args...;kwargs...)
+    _prob = remake(prob,u0=u0,p=p)
+    sol = solve(_prob,alg,args...;sensitivity_context=true,kwargs...)
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function steadystatebackpass(Δ)
