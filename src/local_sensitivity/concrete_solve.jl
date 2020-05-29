@@ -1,5 +1,7 @@
 ## High level
 
+struct SensitivityADPassThrough2 end
+
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
@@ -100,7 +102,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     du0 = reshape(du0,size(u0))
     dp = reshape(dp',size(p))
 
-    (nothing,nothing,du0,dp,ntuple(_->nothing, length(args))...)
+    (nothing,nothing,du0,dp,nothing,ntuple(_->nothing, length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
@@ -118,7 +120,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
        v = @view Δ[:, i]
        J'v
      end
-     (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
+     (nothing,nothing,nothing,adj,nothing,ntuple(_->nothing, length(args))...)
    end
    DiffEqArray([u[:,i] for i in 1:size(u,2)],sol.t),forward_sensitivity_backpass
 end
@@ -175,7 +177,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       v = @view Δ[:, i]
       J'v
     end
-    (nothing,nothing,nothing,adj,ntuple(_->nothing, length(args))...)
+    (nothing,nothing,nothing,adj,nothing,ntuple(_->nothing, length(args))...)
   end
   DiffEqArray([u[:,i] for i in 1:size(u,2)],sol.t),forward_sensitivity_backpass
 end
@@ -206,7 +208,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
-    sol = solve(_prob,alg,args...;kwargs...)
+    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
       u = map.(Tracker.data,sol.u)
@@ -230,7 +232,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   function tracker_adjoint_backpass(ybar)
     u0bar, pbar = pullback(ybar)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
-    (nothing,nothing,_u0bar,Tracker.data(pbar),ntuple(_->nothing, length(args))...)
+    (nothing,nothing,_u0bar,Tracker.data(pbar),nothing,ntuple(_->nothing, length(args))...)
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
@@ -256,7 +258,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
-    sol = solve(_prob,alg,args...;kwargs...)
+    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
       u = map.(ReverseDiff.value,sol.u)
@@ -276,7 +278,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   function tracker_adjoint_backpass(ybar)
     ReverseDiff.increment_deriv!(output, ybar)
     ReverseDiff.reverse_pass!(tape)
-    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),ntuple(_->nothing, length(args))...)
+    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
   end
   DiffEqArray(u,t),tracker_adjoint_backpass
 end
@@ -294,7 +296,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,senseal
       # Δ = dg/dx or diffcache.dg_val
       # del g/del p = 0
       dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ,save_idxs=save_idxs)
-      (nothing,nothing,nothing,dp,ntuple(_->nothing, length(args))...)
+      (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
     end
     sol.u[_save_idxs], steadystatebackpass
 end
