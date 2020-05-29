@@ -184,7 +184,7 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
-    Zygote.pullback((u0,p)->_concrete_solve(prob,alg,u0,p,args...;kwargs...),u0,p)
+    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
