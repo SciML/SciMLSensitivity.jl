@@ -165,7 +165,7 @@ solvers = [
     RadauIIA5(),
     # Fully-Implicit Runge-Kutta Methods (FIRK)
     PDIRK44(),
-    # Rosenbrock Methods (all fail)
+    # Rosenbrock Methods
     ROS3P(),
     Rodas3(),
     RosShamp4(),
