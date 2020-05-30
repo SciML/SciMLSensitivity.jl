@@ -23,7 +23,7 @@ v = ones(4)
 H  = second_order_sensitivities(loss,prob,Vern9(),saveat=0.1,abstol=1e-12,reltol=1e-12)
 Hv = second_order_sensitivity_product(loss,v,prob,Vern9(),saveat=0.1,abstol=1e-12,reltol=1e-12)
 
-_loss(p) = loss(concrete_solve(prob,Vern9(),u0,p,saveat=0.1,abstol=1e-12,reltol=1e-12))
+_loss(p) = loss(solve(prob,Vern9();u0=u0,p=p,saveat=0.1,abstol=1e-12,reltol=1e-12))
 H2 = ForwardDiff.hessian(_loss,p)
 H2v = H*v
 

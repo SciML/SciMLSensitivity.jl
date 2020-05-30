@@ -22,8 +22,8 @@ p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
 prob = ODEProblem(fiip,u0,(0.0,10.0),p)
 proboop = ODEProblem(foop,u0,(0.0,10.0),p)
 
-sol = concrete_solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-@test sol isa DiffEqArray
+sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
+@test sol isa ODESolution
 sumsol = sum(sol)
 @test sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14)) == sumsol
 @test sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,sensealg=ForwardDiffSensitivity())) == sumsol
@@ -43,6 +43,7 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 @test_broken Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
 du06,dp6 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
 du07,dp7 = Zygote.gradient((u0,p)->sum(concrete_solve(prob,Tsit5(),u0,p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
+csol = concrete_solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 
 @test ū0 ≈ du01 rtol=1e-12
 @test ū0 == du02
@@ -96,8 +97,7 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 @test adj ≈ dp7' rtol=1e-12
 
 ū02,adj2 = Zygote.gradient((u0,p)->sum(Array(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint()))[1,:]),u0,p)
-du05,dp5 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=InterpolatingAdjoint())),u0,p
-)
+du05,dp5 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=InterpolatingAdjoint())),u0,p)
 du06,dp6 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.0:0.1:10.0,save_idxs=1:1,sensealg=QuadratureAdjoint())),u0,p)
 du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1,sensealg=InterpolatingAdjoint())),u0,p)
 du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=InterpolatingAdjoint())),u0,p)
@@ -247,20 +247,20 @@ ū0,adj = adjoint_sensitivities(_sol,EulerHeun(),((out,u,p,t,i) -> out .= -1),t
 
 
 Random.seed!(seed)
-du01,dp1 = Zygote.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),
-  u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
+du01,dp1 = Zygote.gradient((u0,p)->sum(solve(proboop,EulerHeun(),
+  u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
 
 
 Random.seed!(seed)
 du02,dp2 = Zygote.gradient(
-  (u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=ForwardDiffSensitivity())),u0,p)
+  (u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=ForwardDiffSensitivity())),u0,p)
 
 
 Random.seed!(seed)
-du03,dp3 = Tracker.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
+du03,dp3 = Tracker.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
 
 Random.seed!(seed)
-du04,dp4 = ReverseDiff.gradient((u0,p)->sum(concrete_solve(proboop,EulerHeun(),u0,p,dt=1e-2,adaptive=false,save_noise=true,saveat=0.01, sensealg=BacksolveAdjoint())),(u0,p))
+du04,dp4 = ReverseDiff.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01, sensealg=BacksolveAdjoint())),(u0,p))
 
 
 @test isapprox(ū0, du01, rtol = 1e-4)
