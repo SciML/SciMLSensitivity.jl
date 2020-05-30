@@ -168,7 +168,22 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   @unpack y, sensealg, f = S
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
-  tape = S.diffcache.paramjac_config
+
+  if eltype(λ) <: eltype(prob.u0)
+    tape = S.diffcache.paramjac_config
+
+  ## These other cases happen due to autodiff in stiff ODE solvers
+  elseif DiffEqBase.isinplace(prob)
+    tape = ReverseDiff.GradientTape((λ, prob.p, [t])) do u,p,t
+      du1 = similar(u, size(u))
+      f(du1,u,p,first(t))
+      return vec(du1)
+     end
+  else
+    tape = ReverseDiff.GradientTape((λ, prob.p, [t])) do u,p,t
+      vec(f(u,p,first(t)))
+    end
+  end
 
   if prob isa DiffEqBase.SteadyStateProblem
     tu, tp = ReverseDiff.input_hook(tape)
