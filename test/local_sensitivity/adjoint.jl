@@ -218,8 +218,8 @@ _,end_only_res = adjoint_sensitivities(sol_end,Tsit5(),dg,t,abstol=1e-14,
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
-  sol = solve(tmp_prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=t)
-  A = convert(Array,sol)
+  sol = solve(tmp_prob,Tsit5(),abstol=1e-14,reltol=1e-14,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=t)
+  A = Array(sol)
   sum(((2 .- A).^2)./2)
 end
 G([1.5,1.0,3.0,1.0])
@@ -252,7 +252,7 @@ _,easy_res4 = adjoint_sensitivities(sol,Tsit5(),dg,t4,abstol=1e-14,
 
 function G(p,ts)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
-  sol = solve(tmp_prob,Tsit5(),abstol=1e-10,reltol=1e-10,saveat=ts)
+  sol = solve(tmp_prob,Tsit5(),abstol=1e-10,reltol=1e-10,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=ts)
   A = convert(Array,sol)
   sum(((2 .- A).^2)./2)
 end

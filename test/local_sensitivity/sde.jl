@@ -59,7 +59,7 @@ end
 res_ode_forward = ForwardDiff.gradient(G,p)
 #res_ode_reverse = ReverseDiff.gradient(G,p)
 
-res_ode_trackeru0, res_ode_trackerp = Zygote.gradient((u0,p)->sum(concrete_solve(prob_oop_ode,Tsit5(),u0,p,abstol=abstol,reltol=reltol,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
+res_ode_trackeru0, res_ode_trackerp = Zygote.gradient((u0,p)->sum(solve(prob_oop_ode,Tsit5();u0=u0,p=p,abstol=abstol,reltol=reltol,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
 
 @test isapprox(res_ode_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
 #@test isapprox(res_ode_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
@@ -82,14 +82,14 @@ function GSDE1(p)
                     tspan=eltype(p).(prob_oop_sde.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/10000,adaptive=false,saveat=t)
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/10000,adaptive=false,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=t)
   A = convert(Array,sol)
   res = g(A,p,nothing)
 end
 res_sde_forward = ForwardDiff.gradient(GSDE1,p)
 res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
 
-res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(concrete_solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1400,adaptive=false,u0,p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
+res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1200,adaptive=false,u0=u₀,p=p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
 
 noise = vec((@. sol_oop_sde.W(tarray)))
 Wfix = [W[1][1] for W in noise]
@@ -115,7 +115,7 @@ function GSDE2(p)
                     tspan=eltype(p).(prob_oop_sde2.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,saveat=Array(t))
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=Array(t))
   A = convert(Array,sol)
   res = g(A,p,nothing)
 end
@@ -124,7 +124,7 @@ res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
 
 
 Random.seed!(seed)
-res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(concrete_solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1e3,adaptive=false,u0,p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p2)
+res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1e3,adaptive=false,u0=u0,p=p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p2)
 
 
 noise = vec((@. sol_oop_sde2.W(tarray)))
@@ -218,7 +218,7 @@ function GSDE3(u)
                     tspan=eltype(p).(prob_oop_sde2.tspan)
 					#,abstol=abstol, reltol=reltol
 					)
-  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,saveat=Array(t))
+  sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=tend/1e6,adaptive=false,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=Array(t))
   A = convert(Array,sol)
   res = g(A,p,nothing)
 end
