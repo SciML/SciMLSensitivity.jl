@@ -169,7 +169,7 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
 
-  if eltype(λ) <: eltype(prob.u0)
+  if eltype(λ) <: eltype(prob.u0) && typeof(t) <: eltype(prob.u0)
     tape = S.diffcache.paramjac_config
 
   ## These other cases happen due to autodiff in stiff ODE solvers

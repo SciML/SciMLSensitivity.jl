@@ -19,7 +19,11 @@ end
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   @unpack y, sol, discrete = S
   f = sol.prob.f
-  sol(y,t)
+  if typeof(t) <: eltype(y)
+    sol(y,t)
+  else
+    y = sol(t)
+  end
   λ  = u
   dλ = du
 

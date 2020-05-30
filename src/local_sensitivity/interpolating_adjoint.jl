@@ -55,7 +55,11 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   f = sol.prob.f
 
   if checkpoint_sol === nothing
-    sol(y,t)
+    if typeof(t) <: eltype(y)
+      sol(y,t)
+    else
+      y = sol(t)
+    end
   else
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
@@ -63,7 +67,11 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       cursor′ = findcursor(intervals, t)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
-      sol(y, interval[1])
+      if typeof(t) <: eltype(y)
+        sol(y, interval[1])
+      else
+        y = sol(interval[1])
+      end
       prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
       cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
       checkpoint_sol.cpsol = cpsol′
