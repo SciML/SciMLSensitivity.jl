@@ -178,7 +178,7 @@ solvers = [
     Rodas42(),
     Rodas4P(),
     Rodas5(),
-    # Rosenbrock-W Methods (all fail)
+    # Rosenbrock-W Methods
     Rosenbrock23(),
     Rosenbrock32(),
     RosenbrockW6S4OS(),
