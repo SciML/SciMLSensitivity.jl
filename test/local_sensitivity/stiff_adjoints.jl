@@ -1,4 +1,4 @@
-using Zygote, DiffEqSensitivity,
+using Zygote, DiffEqSensitivity
 println("Starting tests")
 using OrdinaryDiffEq, ForwardDiff, Test
 
