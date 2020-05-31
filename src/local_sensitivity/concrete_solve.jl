@@ -278,14 +278,15 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
       _prob = remake(prob,u0=map(identity,_u0),p=_p)
     else
       # use TrackedArray for efficiency of the tape
-      _f(args...) = ReverseDiff.collect(prob.f(args...))
+      _f(args...) = reduce(vcat,prob.f(args...))
       if prob isa SDEProblem
-        _g(args...) = ReverseDiff.collect(prob.g(args...))
+        _g(args...) = reduce(vcat,prob.g(args...))
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
       else
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
+
     sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
