@@ -131,9 +131,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::B
     end
     dy !== nothing && f(dy, y, p, t)
   elseif DiffEqBase.isinplace(prob)
-    _vecjacobian!(dλ, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
+    _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
   else
-    _vecjacobian!(dλ, λ, p, t, S, ZygoteVJP(), dgrad, dy)
+    _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy)
   end
   return
 end
