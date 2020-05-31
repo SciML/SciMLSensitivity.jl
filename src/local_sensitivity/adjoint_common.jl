@@ -96,7 +96,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
 
     if prob isa DiffEqBase.SteadyStateProblem
        if DiffEqBase.isinplace(prob)
-         tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+        tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
           du1 = similar(p, size(u))
           f(du1,u,p,nothing)
           return vec(du1)
@@ -109,13 +109,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     else
       if DiffEqBase.isinplace(prob)
         tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-         du1 = similar(p, size(u))
-         f(du1,u,p,first(t))
-         return vec(du1)
+          du1 = similar(p, size(u))
+          f(du1,u,p,first(t))
+          return vec(du1)
        end
      else
        tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-         vec(f(u,p,first(t)))
+          vec(f(u,p,first(t)))
        end
      end
     end
@@ -152,16 +152,16 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
       paramjac_noise_config = []
 
       if DiffEqBase.isinplace(prob)
-        function noisetape(indx)
-      		ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-            du1 = similar(p, size(u))
-      			f(du1, u,p,first(t))[indx]
-      		end
-      	end
-
         for i in 1:numindvar
+          function noisetape(indx)
+            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              du1 = similar(p, size(u))
+              f(du1, u,p,first(t))
+              return du1[indx]
+            end
+          end
           tapei = noisetape(i)
-        	if compile_tape(sensealg.noise)
+          if compile_tape(sensealg.noise)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
           else
             push!(paramjac_noise_config, tapei)
@@ -170,12 +170,12 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
       else
         for i in 1:numindvar
           function noisetapeoop(indx)
-        		ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-        			f(u,p,first(t))[indx]
-        		end
-        	end
+            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              f(u,p,first(t))[indx]
+            end
+          end
           tapei = noisetapeoop(i)
-        	if compile_tape(sensealg.noise)
+          if compile_tape(sensealg.noise)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
           else
             push!(paramjac_noise_config, tapei)
@@ -185,20 +185,18 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     elseif (sensealg.noise isa Bool && !sensealg.noise)
       if DiffEqBase.isinplace(prob)
         pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
-        paramjac_config = build_param_jac_config(sensealg,pf,y,p)
+        paramjac_noise_config = build_param_jac_config(sensealg,pf,y,p)
       else
         pf = ParamGradientWrapper(f,tspan[2],y)
-        paramjac_config = nothing
+        paramjac_noise_config = nothing
       end
       pJ = similar(u0, numindvar, numparams)
-      paramjac_noise_config = nothing
     else
       paramjac_noise_config = nothing
     end
   else
     paramjac_noise_config = nothing
   end
-
 
   adjoint_cache = AdjointDiffCache(uf,pf,pg,J,pJ,dg_val,
                           jac_config,pg_config,paramjac_config,paramjac_noise_config,
