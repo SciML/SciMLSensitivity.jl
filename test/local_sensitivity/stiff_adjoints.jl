@@ -1,4 +1,6 @@
-using Zygote, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, Test
+using Zygote, DiffEqSensitivity
+println("Starting tests")
+using OrdinaryDiffEq, ForwardDiff, Test
 
 function lotka_volterra(u, p, t)
   x, y = u

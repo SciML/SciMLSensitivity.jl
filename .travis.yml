@@ -10,6 +10,7 @@ julia:
 env:
   - GROUP=Core1
   - GROUP=Core2
+  - GROUP=Core3
   - GROUP=GSA
   - GROUP=DiffEqFlux
 notifications:
