@@ -50,16 +50,15 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack sol, checkpoint_sol, discrete = S
-  idx = length(S.y)
+  @unpack sol, y, checkpoint_sol, discrete = S
+  idx = length(y)
   f = sol.prob.f
 
   if checkpoint_sol === nothing
     if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
       y = sol(t)
     else
-      sol(S.y,t)
-      y = S.y
+      sol(y,t)
     end
   else
     intervals = checkpoint_sol.intervals
@@ -71,8 +70,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
         y = sol(interval[1])
       else
-        sol(S.y, interval[1])
-        y = S.y
+        sol(y, interval[1])
       end
       prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
       cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
