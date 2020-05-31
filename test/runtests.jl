@@ -13,10 +13,13 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Concrete Solve Derivatives" begin include("local_sensitivity/concrete_solve_derivatives.jl") end
 end
 
-if GROUP == "All" || GROUP == "Core2" || GROUP == "Downstream"
+if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
     @time @safetestset "SDE Adjoint" begin include("local_sensitivity/sde.jl") end
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("local_sensitivity/second_order_odes.jl") end
+end
+
+if GROUP == "All" || GROUP == "Core3"
     @time @safetestset "Stiff Adjoints" begin include("local_sensitivity/stiff_adjoints.jl") end
 end
 
