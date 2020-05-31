@@ -1,5 +1,7 @@
 using DiffEqSensitivity, Test, OrdinaryDiffEq
 
+@info "Morris Method"
+
 A = reshape([1,0,2,3],2,2)
 function f_morris(p)
     A*p

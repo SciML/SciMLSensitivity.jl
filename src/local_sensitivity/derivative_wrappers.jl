@@ -239,7 +239,7 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
   prob = getprob(S)
   if isnoise isa Bool && !isnoise
     if dgrad !== nothing
-      @unpack pJ, pf, paramjac_config = S.diffcache
+      @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
         f.paramjac(pJ,y,prob.p,t)
@@ -247,16 +247,15 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
         pf.t = t
         pf.u = y
         if DiffEqBase.isinplace(prob)
-          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_noise_config)
           pJt = transpose(λ).*transpose(pJ)
-          # maybe reshape(pJ, (length(prob.p),length(λ)))?
         else
           temp = jacobian(pf, prob.p, sensealg)
           pJ .= temp
           pJt = transpose(λ).*transpose(pJ)
         end
       end
-      dgrad .= pJt
+      dgrad[:] .= vec(pJt)
     end
 
   elseif DiffEqBase.isinplace(prob)
@@ -272,21 +271,22 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise,
   prob = getprob(S)
 
   for (i, λi) in enumerate(λ)
-  	tapei = S.diffcache.paramjac_noise_config[i]
-  	tu, tp, tt = ReverseDiff.input_hook(tapei)
-  	output = ReverseDiff.output_hook(tapei)
-  	ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
-  	ReverseDiff.unseed!(tp)
-  	ReverseDiff.unseed!(tt)
-  	ReverseDiff.value!(tu, y)
-  	ReverseDiff.value!(tp, p)
-  	ReverseDiff.value!(tt, [t])
-  	ReverseDiff.forward_pass!(tapei)
-  	ReverseDiff.increment_deriv!(output, λi)
-  	ReverseDiff.reverse_pass!(tapei)
+    tapei = S.diffcache.paramjac_noise_config[i]
+    tu, tp, tt = ReverseDiff.input_hook(tapei)
+    output = ReverseDiff.output_hook(tapei)
+    ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+    ReverseDiff.unseed!(tp)
+    ReverseDiff.unseed!(tt)
+    ReverseDiff.value!(tu, y)
+    ReverseDiff.value!(tp, p)
+    ReverseDiff.value!(tt, [t])
+    ReverseDiff.forward_pass!(tapei)
+    ReverseDiff.increment_deriv!(output, λi)
+    ReverseDiff.reverse_pass!(tapei)
 
-  	deriv = ReverseDiff.deriv(tp)
-  	dgrad[:,i] .= vec(deriv)
+    deriv = ReverseDiff.deriv(tp)
+    #@show i, λi, deriv
+    dgrad[:,i] .= vec(deriv)
   end
   return
 end
@@ -297,12 +297,13 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgra
   prob = getprob(S)
 
   if DiffEqBase.isinplace(prob)
+
     for (i, λi) in enumerate(λ)
       _, back = Zygote.pullback(y, prob.p) do u, p
         out_ = Zygote.Buffer(similar(u))
         copy(f(out_, u, p, t))[i]
       end
-      _,tmp2 = back(λi)
+      _,tmp2 = back(λi) #issue: tmp2 = zeros(p)
       dgrad[:,i] .= vec(tmp2)
     end
   else
