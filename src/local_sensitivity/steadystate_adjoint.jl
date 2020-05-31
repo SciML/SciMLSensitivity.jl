@@ -63,7 +63,7 @@ end
   end
 
   λ .= diffcache.J'\vec(diffcache.dg_val') # use linsolve here
-  vecjacobian!(vec(diffcache.dg_val), λ, p, nothing, sense, dgrad=vjp, dy=nothing)
+  vecjacobian!(vec(diffcache.dg_val), y, λ, p, nothing, sense, dgrad=vjp, dy=nothing)
 
   if g != nothing
     # compute del g/del p

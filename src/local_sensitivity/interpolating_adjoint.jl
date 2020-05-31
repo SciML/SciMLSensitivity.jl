@@ -50,12 +50,16 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, checkpoint_sol, discrete = S
+  @unpack sol, y, checkpoint_sol, discrete = S
   idx = length(y)
   f = sol.prob.f
 
   if checkpoint_sol === nothing
-    sol(y,t)
+    if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+      y = sol(t)
+    else
+      sol(y,t)
+    end
   else
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
@@ -63,7 +67,11 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       cursor′ = findcursor(intervals, t)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
-      sol(y, interval[1])
+      if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+        y = sol(interval[1])
+      else
+        sol(y, interval[1])
+      end
       prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
       cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
       checkpoint_sol.cpsol = cpsol′
@@ -77,7 +85,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   dλ    = @view du[1:idx]
   dgrad = @view du[idx+1:end]
 
-  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad)
+  vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
 
   dλ .*= -one(eltype(λ))
 

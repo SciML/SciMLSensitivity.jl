@@ -46,12 +46,10 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   copyto!(vec(y), _y)
 
   if S.noiseterm
-    vecjacobian!(dλ, λ, p, t, S, dy=dy)
-
-    jacNoise!(λ, p, t, S, dgrad=dgrad)
-
+    vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
+    jacNoise!(λ, y, p, t, S, dgrad=dgrad)
   else
-    vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad, dy=dy)
+    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
   end
 
   dλ .*= -one(eltype(λ))
