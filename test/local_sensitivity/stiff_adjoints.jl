@@ -16,14 +16,13 @@ end
 u0 = [1.0,1.0];
 tspan = (0.0,10.0);
 p0 = [1.5,1.0,3.0,1.0];
-maxiters=10000;
 prob0 = ODEProblem(lotka_volterra,u0,tspan,p0);
 # Solve the ODE and collect solutions at fixed intervals
 target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -39,7 +38,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -53,7 +52,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -67,7 +66,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -87,7 +86,7 @@ target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -104,7 +103,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -118,7 +117,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -132,7 +131,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,maxiters=maxiters,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
