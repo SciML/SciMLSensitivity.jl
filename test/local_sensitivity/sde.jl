@@ -79,6 +79,7 @@ p2 = [1.01,0.87]
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_oop_sde,
     EulerHeun(),dg!,t,dt=1e-2,sensealg=BacksolveAdjoint())
 
+  @info res_sde_p
 
 
   function GSDE1(p)
@@ -112,6 +113,8 @@ p2 = [1.01,0.87]
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
       ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint())
 
+  @info res_sde_p2
+
   # test consitency for different switches for the noise Jacobian
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
       ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
@@ -119,17 +122,23 @@ p2 = [1.01,0.87]
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-6)
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-6)
 
+  @info res_sde_p2a
+
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
       ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-6)
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-6)
 
+  @info res_sde_p2a
+
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,Array(t)
       ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
 
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-6)
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-6)
+
+  @info res_sde_p2a
 
   function GSDE2(p)
     Random.seed!(seed)
