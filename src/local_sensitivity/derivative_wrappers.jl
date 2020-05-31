@@ -91,14 +91,14 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   nothing
 end
 
-function vecjacobian!(dλ, λ, p, t, S::SensitivityFunction;
+function vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction;
                       dgrad=nothing, dy=nothing)
-  _vecjacobian!(dλ, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy)
+  _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy)
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
-  @unpack y, sensealg, f = S
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
+  @unpack sensealg, f = S
   prob = getprob(S)
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
@@ -138,8 +138,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Bool
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
-  @unpack y, sensealg, f = S
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
+  @unpack sensealg, f = S
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
   if DiffEqBase.isinplace(prob)
@@ -164,8 +164,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Trac
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
-  @unpack y, sensealg, f = S
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
+  @unpack sensealg, f = S
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
 
@@ -210,8 +210,8 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Reve
   return
 end
 
-function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
-  @unpack y, sensealg, f = S
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
+  @unpack sensealg, f = S
   prob = getprob(S)
 
   isautojacvec = get_jacvec(sensealg)
@@ -243,14 +243,14 @@ function _vecjacobian!(dλ, λ, p, t, S::SensitivityFunction, isautojacvec::Zygo
 end
 
 
-function jacNoise!(λ, p, t, S::SensitivityFunction;
+function jacNoise!(λ, y, p, t, S::SensitivityFunction;
                       dgrad=nothing)
-  _jacNoise!(λ, p, t, S, S.sensealg.noise, dgrad)
+  _jacNoise!(λ, y, p, t, S, S.sensealg.noise, dgrad)
   return
 end
 
-function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
-  @unpack y, sensealg, f = S
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
+  @unpack sensealg, f = S
   prob = getprob(S)
   if isnoise isa Bool && !isnoise
     if dgrad !== nothing
@@ -275,15 +275,15 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
     end
 
   elseif DiffEqBase.isinplace(prob)
-    _jacNoise!(λ, p, t, S, ReverseDiffNoise(), dgrad)
+    _jacNoise!(λ, y, p, t, S, ReverseDiffNoise(), dgrad)
   else
-    _jacNoise!(λ, p, t, S, ZygoteNoise(), dgrad)
+    _jacNoise!(λ, y, p, t, S, ZygoteNoise(), dgrad)
   end
   return
 end
 
-function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad)
-  @unpack y, sensealg, f = S
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad)
+  @unpack sensealg, f = S
   prob = getprob(S)
 
   for (i, λi) in enumerate(λ)
@@ -307,8 +307,8 @@ function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise,
 end
 
 
-function _jacNoise!(λ, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad)
-  @unpack y, sensealg, f = S
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad)
+  @unpack sensealg, f = S
   prob = getprob(S)
 
   if DiffEqBase.isinplace(prob)

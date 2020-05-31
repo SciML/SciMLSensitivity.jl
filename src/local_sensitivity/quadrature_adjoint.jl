@@ -19,15 +19,15 @@ end
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   @unpack y, sol, discrete = S
   f = sol.prob.f
-  if typeof(t) <: eltype(y)
-    sol(y,t)
-  else
+  if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
     y = sol(t)
+  else
+    sol(y,t)
   end
   λ  = u
   dλ = du
 
-  vecjacobian!(dλ, λ, p, t, S)
+  vecjacobian!(dλ, y, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
   discrete || accumulate_dgdu!(dλ, y, p, t, S)

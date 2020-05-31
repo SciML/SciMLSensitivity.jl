@@ -55,10 +55,10 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   f = sol.prob.f
 
   if checkpoint_sol === nothing
-    if typeof(t) <: eltype(y)
-      sol(y,t)
-    else
+    if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
       y = sol(t)
+    else
+      sol(y,t)
     end
   else
     intervals = checkpoint_sol.intervals
@@ -67,10 +67,10 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       cursor′ = findcursor(intervals, t)
       interval = intervals[cursor′]
       cpsol_t = checkpoint_sol.cpsol.t
-      if typeof(t) <: eltype(y)
-        sol(y, interval[1])
-      else
+      if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
         y = sol(interval[1])
+      else
+        sol(y, interval[1])
       end
       prob′ = remake(sol.prob, tspan=intervals[cursor′], u0=y)
       cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
@@ -85,7 +85,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   dλ    = @view du[1:idx]
   dgrad = @view du[idx+1:end]
 
-  vecjacobian!(dλ, λ, p, t, S, dgrad=dgrad)
+  vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
 
   dλ .*= -one(eltype(λ))
 
