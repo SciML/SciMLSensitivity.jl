@@ -23,7 +23,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   idx = length(y)
 
   if length(u) == length(du)
-    # ODE/Drift term
+    # ODE/Drift term and scalar noise
     λ     = @view u[1:idx]
     grad  = @view u[idx+1:end-idx]
     _y    = @view u[end-idx+1:end]
@@ -46,8 +46,12 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   copyto!(vec(y), _y)
 
   if S.noiseterm
-    vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
-    jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    if length(u) == length(du)
+      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
+    else
+      vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    end
   else
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
   end
@@ -158,8 +162,13 @@ end
   _sol = deepcopy(sol)
   backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
-  noise_matrix = similar(z0,length(z0),numstates)
-  noise_matrix .= false
+  if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
+    # scalar noise case
+    noise_matrix = nothing
+  else
+    noise_matrix = similar(z0,length(z0),numstates)
+    noise_matrix .= false
+  end
 
   return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,
     callback=cb,
