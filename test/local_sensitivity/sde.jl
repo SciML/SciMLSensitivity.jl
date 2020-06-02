@@ -296,31 +296,29 @@ end
 
   @info res_sde_p
 
-  ### The following tests are not needed anymore here, as for scalar SDEs it is sufficient to compute the vjps for the dsigma/dp terms
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
+      ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
 
-  # res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
-  #     ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
-  #
-  # @info res_sde_p2
-  #
-  # @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-5)
-  # @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-5)
-  #
-  # res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
-  #     ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
-  #
-  # @info res_sde_p2
-  #
-  # @test_broken isapprox(res_sde_p, res_sde_p2, rtol = 1e-5)
-  # @test isapprox(res_sde_u0 ,res_sde_u02, rtol = 1e-5)
-  #
-  # res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
-  #     ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
-  #
-  # @info res_sde_p2
-  #
-  # @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-10)
-  # @test isapprox(res_sde_u0 ,res_sde_u02, rtol = 1e-10)
+  @info res_sde_p2
+
+  @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-5)
+  @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-5)
+
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
+      ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
+
+  @info res_sde_p2
+
+  @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-5) # not broken here because it just uses the vjps
+  @test isapprox(res_sde_u0 ,res_sde_u02, rtol = 1e-5)
+
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,Array(t)
+      ,dt=tend/1e6,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
+
+  @info res_sde_p2
+
+  @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-10)
+  @test isapprox(res_sde_u0 ,res_sde_u02, rtol = 1e-10)
 
 
   # diagonal noise
