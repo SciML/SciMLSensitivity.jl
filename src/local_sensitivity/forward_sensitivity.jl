@@ -205,7 +205,15 @@ function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
   _sol = adapt(eltype(sol.u),sol)
   u = ForwardDiff.value.(_sol)
   du_full = ForwardDiff.partials.(_sol)
-  return u, [[du_full[i,j][k] for i in 1:size(du_full,1), j in 1:size(du_full,2)] for k in 1:length(du_full[1])]
+  @show size(du_full)
+  firststate = first(du_full)
+  firstparam = first(firststate)
+  Js = map(1:length(firstparam)) do j
+    map(CartesianIndices(du_full)) do II
+      du_full[II][j]
+    end
+  end
+  return u, Js
 end
 
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
