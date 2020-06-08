@@ -205,7 +205,6 @@ function extract_local_sensitivities(sol,::ForwardDiffSensitivity, ::Val{false})
   _sol = adapt(eltype(sol.u),sol)
   u = ForwardDiff.value.(_sol)
   du_full = ForwardDiff.partials.(_sol)
-  @show size(du_full)
   firststate = first(du_full)
   firstparam = first(firststate)
   Js = map(1:length(firstparam)) do j
