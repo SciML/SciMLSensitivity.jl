@@ -18,14 +18,14 @@ end
 p = [1., 1., 1., 1.]; u0 = [1.0;1.0]
 prob = ODEProblem(fiip, u0, (0.0, 4.0), p);
 
+internalnorm(u::ForwardDiff.Dual,::Any) = DiffEqBase.UNITLESS_ABS2(ForwardDiff.value(u)) + sum(DiffEqBase.UNITLESS_ABS2.(ForwardDiff.partials(u)))
+internalnorm(u::AbstractArray{<:ForwardDiff.Dual},::Any) = sqrt(sum(x->(DiffEqBase.UNITLESS_ABS2(ForwardDiff.value(x)) + sum(DiffEqBase.UNITLESS_ABS2.(ForwardDiff.partials(x)))),u) / length(u))
+
 dp1 = Zygote.gradient(p->sum(solve(prob, Tsit5(), u0=u0, p=p, sensealg = ForwardDiffSensitivity(), internalnorm=internalnorm, saveat = 0.1, abstol=1e-12, reltol=1e-12)), p)
 dp2 = Zygote.gradient(p->sum(solve(prob, Tsit5(), u0=u0, p=p, sensealg = ForwardSensitivity(), saveat = 0.1, abstol=1e-12, reltol=1e-12)), p)
 dp3 = Zygote.gradient(p->sum(solve(prob, Tsit5(), u0=u0, p=p, saveat = 0.1, abstol=1e-12, reltol=1e-12)), p)
 dp4 = Zygote.gradient(p->sum(solve(prob, Tsit5(), u0=u0, p=p, saveat = 0.1, abstol=1e-12, reltol=1e-12, sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))), p)
 dp5 = Zygote.gradient(p->sum(solve(prob, Tsit5(), u0=u0, p=p, saveat = 0.1, abstol=1e-12, reltol=1e-12, sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))), p)
-
-internalnorm(u::ForwardDiff.Dual,::Any) = DiffEqBase.UNITLESS_ABS2(ForwardDiff.value(u)) + sum(DiffEqBase.UNITLESS_ABS2.(ForwardDiff.partials(u)))
-internalnorm(u::AbstractArray{<:ForwardDiff.Dual},::Any) = sqrt(sum(x->(DiffEqBase.UNITLESS_ABS2(ForwardDiff.value(x)) + sum(DiffEqBase.UNITLESS_ABS2.(ForwardDiff.partials(x)))),u) / length(u))
 
 @test dp1[1] ≈ dp2[1]
 @test dp2[1] ≈ dp3[1]
