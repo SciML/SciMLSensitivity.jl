@@ -17,7 +17,7 @@ end
 if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "SDE Adjoint" begin include("local_sensitivity/sde.jl") end
     @time @safetestset "SDE Scalar Noise" begin include("local_sensitivity/sde_scalar.jl") end
-    @time @safetestset "SDE Non-Diagonal Noise" begin include("local_sensitivity/sde_non_diag.jl") end
+    @time @safetestset "SDE Non-Diagonal Noise" begin include("local_sensitivity/sde_nondiag.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core3"
