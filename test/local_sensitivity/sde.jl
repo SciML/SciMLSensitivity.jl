@@ -62,7 +62,7 @@ p2 = [1.01,0.87]
   res_ode_forward = ForwardDiff.gradient(G,p)
   #res_ode_reverse = ReverseDiff.gradient(G,p)
 
-  res_ode_trackeru0, res_ode_trackerp = Zygote.gradient((u0,p)->sum(solve(prob_oop_ode,Tsit5();u0=u0,p=p,abstol=abstol,reltol=reltol,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
+  res_ode_trackeru0, res_ode_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_ode,Tsit5();u0=u0,p=p,abstol=abstol,reltol=reltol,saveat=Array(t),sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
 
   @test isapprox(res_ode_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   #@test isapprox(res_ode_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
@@ -91,7 +91,7 @@ p2 = [1.01,0.87]
   res_sde_forward = ForwardDiff.gradient(GSDE1,p)
   res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
 
-  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1400,adaptive=false,u0=u0,p=p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p)
+  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1400,adaptive=false,u0=u0,p=p,saveat=Array(t),sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
 
   noise = vec((@. sol_oop_sde.W(tarray)))
   Wfix = [W[1][1] for W in noise]
@@ -153,7 +153,7 @@ p2 = [1.01,0.87]
 
 
   Random.seed!(seed)
-  res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1e3,adaptive=false,u0=u0,p=p,saveat=Array(t),sensealg=TrackerAdjoint()).^2.0/2.0),u₀,p2)
+  res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=tend/1e3,adaptive=false,u0=u0,p=p,saveat=Array(t),sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p2)
 
 
   Wfix = [sol_oop_sde2.W(t)[1][1] for t in tarray]
