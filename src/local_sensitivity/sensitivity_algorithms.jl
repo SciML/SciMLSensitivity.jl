@@ -24,12 +24,13 @@ struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgori
   autojacvec::VJP
   checkpointing::Bool
   noise::NOISE
+  noisemixing::Bool
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
                                       autojacvec=autodiff,
-                                      checkpointing=true, noise=true)
-  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise)
+                                      checkpointing=true, noise=true,noisemixing=false)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
 
 struct InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -91,6 +92,7 @@ end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :noise) ? alg.noise : false
+@inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :noisemixing) ? alg.noisemixing : false
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
 @inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false

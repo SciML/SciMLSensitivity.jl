@@ -16,6 +16,57 @@ end
 
 (ff::ParamGradientWrapper)(p) = ff.f(ff.u,p,ff.t)
 
+# the next four definitions are only needed in case of non-diagonal SDEs
+
+mutable struct ParamNonDiagNoiseGradientWrapper{fType,tType,uType} <: Function
+  f::fType
+  t::tType
+  u::uType
+end
+
+(ff::ParamNonDiagNoiseGradientWrapper)(p) = vec(ff.f(ff.u,p,ff.t))
+
+mutable struct ParamNonDiagNoiseJacobianWrapper{fType,tType,uType,duType} <: Function
+  f::fType
+  t::tType
+  u::uType
+  du::duType
+end
+
+function (ff::ParamNonDiagNoiseJacobianWrapper)(p)
+  du1 = similar(p, size(ff.du))
+  ff.f(du1,ff.u,p,ff.t)
+  return vec(du1)
+end
+
+function (ff::ParamNonDiagNoiseJacobianWrapper)(du1,p)
+  ff.f(du1,ff.u,p,ff.t)
+  return vec(du1)
+end
+
+mutable struct UNonDiagNoiseGradientWrapper{fType,tType,P} <: Function
+  f::fType
+  t::tType
+  p::P
+end
+
+(ff::UNonDiagNoiseGradientWrapper)(uprev) = vec(ff.f(uprev,ff.p,ff.t))
+
+mutable struct UNonDiagNoiseJacobianWrapper{fType,tType,P,duType} <: Function
+  f::fType
+  t::tType
+  p::P
+  du::duType
+end
+
+(ff::UNonDiagNoiseJacobianWrapper)(uprev) = (du1 = similar(ff.du); ff.f(du1,uprev,ff.p,ff.t); vec(du1))
+
+function (ff::UNonDiagNoiseJacobianWrapper)(du1,uprev)
+  ff.f(du1,uprev,ff.p,ff.t)
+  return vec(du1)
+end
+
+
 Base.@pure function determine_chunksize(u,alg::DiffEqBase.AbstractSensitivityAlgorithm)
   determine_chunksize(u,get_chunksize(alg))
 end
@@ -244,12 +295,12 @@ end
 
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
-                      dgrad=nothing)
-  _jacNoise!(λ, y, p, t, S, S.sensealg.noise, dgrad)
+                      dgrad=nothing, dλ=nothing, dy=nothing)
+  _jacNoise!(λ, y, p, t, S, S.sensealg.noise, dgrad, dλ, dy)
   return
 end
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, dλ, dy)
   @unpack sensealg, f = S
   prob = getprob(S)
   if isnoise isa Bool && !isnoise
@@ -262,26 +313,68 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad)
         pf.t = t
         pf.u = y
         if DiffEqBase.isinplace(prob)
-          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_noise_config)
-          pJt = transpose(λ).*transpose(pJ)
+          jacobian!(pJ, pf, prob.p, nothing, sensealg, nothing)
+          #jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_noise_config)
         else
           temp = jacobian(pf, prob.p, sensealg)
           pJ .= temp
-          pJt = transpose(λ).*transpose(pJ)
         end
       end
-      dgrad[:] .= vec(pJt)
+
+      if StochasticDiffEq.is_diagonal_noise(prob)
+        pJt = transpose(λ).*transpose(pJ)
+        dgrad[:] .= vec(pJt)
+      else
+        m = size(prob.noise_rate_prototype)[2]
+        for i in 1:m
+          tmp = λ'*pJ[(i-1)*m+1:i*m,:]
+          dgrad[:,i] .= vec(tmp)
+        end
+      end
     end
 
+    if (dλ !== nothing && dy !== nothing) && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
+      @unpack J, uf, f_cache, jac_noise_config = S.diffcache
+
+      if DiffEqBase.isinplace(prob)
+        f(dy, y, p, t)
+      else
+        dy .= f(y, p, t)
+      end
+
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t) # Calculate the Jacobian into J
+      else
+        if DiffEqBase.isinplace(prob)
+          ForwardDiff.jacobian!(J,uf,dy,y)
+        else
+          tmp = ForwardDiff.jacobian(uf,y)
+          J .= tmp
+        end
+      #  uf.t = t
+      #  uf.p = p
+      #  jacobian!(J, uf, y, nothing, sensealg, nothing)
+      end
+
+      if StochasticDiffEq.is_diagonal_noise(prob)
+        Jt = transpose(λ).*transpose(J)
+        dλ[:] .= vec(Jt)
+      else
+        for i in 1:m
+          tmp = λ'*J[(i-1)*m+1:i*m,:]
+          dλ[:,i] .= vec(tmp)
+        end
+      end
+    end
   elseif DiffEqBase.isinplace(prob)
-    _jacNoise!(λ, y, p, t, S, ReverseDiffNoise(), dgrad)
+    _jacNoise!(λ, y, p, t, S, ReverseDiffNoise(), dgrad, dλ, dy)
   else
-    _jacNoise!(λ, y, p, t, S, ZygoteNoise(), dgrad)
+    _jacNoise!(λ, y, p, t, S, ZygoteNoise(), dgrad, dλ, dy)
   end
   return
 end
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad)
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad, dλ, dy)
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -296,38 +389,79 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoi
     ReverseDiff.value!(tp, p)
     ReverseDiff.value!(tt, [t])
     ReverseDiff.forward_pass!(tapei)
-    ReverseDiff.increment_deriv!(output, λi)
+    if StochasticDiffEq.is_diagonal_noise(prob)
+      ReverseDiff.increment_deriv!(output, λi)
+    else
+      ReverseDiff.increment_deriv!(output, λ)
+    end
     ReverseDiff.reverse_pass!(tapei)
 
     deriv = ReverseDiff.deriv(tp)
-    #@show i, λi, deriv
     dgrad[:,i] .= vec(deriv)
+
+    if StochasticDiffEq.is_diagonal_noise(prob)
+      dλ !== nothing && (dλ[:,i] .= vec(ReverseDiff.deriv(tu)))
+      dy !== nothing && (dy[i] = ReverseDiff.value(output))
+    else
+      dλ !== nothing && (dλ[:,i] .= vec(ReverseDiff.deriv(tu)))
+      dy !== nothing && (dy[:,i] .= vec(ReverseDiff.value(output)))
+    end
   end
   return
 end
 
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad)
+function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad, dλ, dy)
   @unpack sensealg, f = S
   prob = getprob(S)
 
-  if DiffEqBase.isinplace(prob)
-
-    for (i, λi) in enumerate(λ)
-      _, back = Zygote.pullback(y, prob.p) do u, p
-        out_ = Zygote.Buffer(similar(u))
-        copy(f(out_, u, p, t))[i]
+  if StochasticDiffEq.is_diagonal_noise(prob)
+    if DiffEqBase.isinplace(prob)
+      for (i, λi) in enumerate(λ)
+        _dy, back = Zygote.pullback(y, prob.p) do u, p
+          out_ = Zygote.Buffer(similar(u))
+          f(out_, u, p, t)
+          copy(out_[i])
+        end
+        tmp1,tmp2 = back(λi) #issue: tmp2 = zeros(p)
+        dgrad[:,i] .= vec(tmp2)
+        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        dy !== nothing && (dy[i] = _dy)
       end
-      _,tmp2 = back(λi) #issue: tmp2 = zeros(p)
-      dgrad[:,i] .= vec(tmp2)
+    else
+      for (i, λi) in enumerate(λ)
+        _dy, back = Zygote.pullback(y, prob.p) do u, p
+          f(u, p, t)[i]
+        end
+        tmp1,tmp2 = back(λi)
+        dgrad[:,i] .= vec(tmp2)
+        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        dy !== nothing && (dy[i] = _dy)
+      end
     end
   else
-    for (i, λi) in enumerate(λ)
-      _, back = Zygote.pullback(y, prob.p) do u, p
-        f(u, p, t)[i]
+    if DiffEqBase.isinplace(prob)
+      for (i, λi) in enumerate(λ)
+        _dy, back = Zygote.pullback(y, prob.p) do u, p
+          out_ = Zygote.Buffer(similar(prob.noise_rate_prototype))
+          f(out_, u, p, t)
+          copy(out_[:,i])
+        end
+        tmp1,tmp2 = back(λ)#issue with Zygote.Buffer
+        dgrad[:,i] .= vec(tmp2)
+        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        dy !== nothing && (dy[:,i] .= vec(_dy))
       end
-      _,tmp2 = back(λi)
-      dgrad[:,i] .= vec(tmp2)
+    else
+      for (i, λi) in enumerate(λ)
+         _dy, back = Zygote.pullback(y, prob.p) do u, p
+          f(u, p, t)[:,i]
+        end
+        tmp1,tmp2 = back(λ)
+        dgrad[:,i] .= vec(tmp2)
+        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        dy !== nothing && (dy[:,i] .= vec(_dy))
+      end
     end
   end
   return

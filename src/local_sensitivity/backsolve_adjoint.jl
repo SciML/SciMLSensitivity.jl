@@ -22,25 +22,38 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   @unpack y, prob, f, discrete = S
   idx = length(y)
 
+  λ     = @view u[1:idx]
+  grad  = @view u[idx+1:end-idx]
+  _y    = @view u[end-idx+1:end]
+
   if length(u) == length(du)
     # ODE/Drift term and scalar noise
-    λ     = @view u[1:idx]
-    grad  = @view u[idx+1:end-idx]
-    _y    = @view u[end-idx+1:end]
     dλ    = @view du[1:idx]
     dgrad = @view du[idx+1:end-idx]
     dy    = @view du[end-idx+1:end]
-  else
+
+  elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
     # Diffusion term, diagonal noise, length(du) =  u*m
     idx1 = [length(u)*(i-1)+i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
     idx2 = [(length(u)+1)*i-idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
 
-    λ     = @view u[1:idx]
-    grad  = @view u[idx+1:end-idx]
-    _y    = @view u[end-idx+1:end]
     dλ    = @view du[idx1]
     dgrad = @view du[idx+1:end-idx,1:idx]
     dy    = @view du[idx2]
+
+  elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && isnoisemixing(S.sensealg)
+    # Diffusion term, diagonal noise, (as above but can handle mixing noise terms)
+    idx2 = [(length(u)+1)*i-idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
+
+    dλ    = @view du[1:idx,1:idx]
+    dgrad = @view du[idx+1:end-idx,1:idx]
+    dy    = @view du[idx2]
+
+  else
+    # non-diagonal noise
+    dλ    = @view du[1:idx, 1:idx]
+    dgrad = @view du[idx+1:end-idx,1:idx]
+    dy    = @view du[end-idx+1:end, end-idx+1:end]
   end
 
   copyto!(vec(y), _y)
@@ -48,9 +61,11 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   if S.noiseterm
     if length(u) == length(du)
       vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
-    else
+    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
       vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
       jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    else
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ, dy=dy)
     end
   else
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
@@ -112,14 +127,13 @@ end
 @noinline function SDEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
-                                     callback=CallbackSet(),kwargs...)
+                                     callback=CallbackSet(),
+                                     diffusion_jac=nothing, diffusion_paramjac=nothing,kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
   discrete = t != nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
-
-  !(StochasticDiffEq.is_diagonal_noise(sol.prob))  && error("Your model has non-diagonal noise terms. Only scalar and diagonal noise terms are currently supported.")
 
   numstates = length(u0)
   numparams = length(p)
@@ -129,7 +143,7 @@ end
 
   sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
 
-  diffusion_function = ODEFunction(sol.prob.g)
+  diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
