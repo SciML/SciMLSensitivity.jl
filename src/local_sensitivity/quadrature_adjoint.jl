@@ -55,7 +55,8 @@ end
   jac_prototype = sol.prob.f.jac_prototype
   adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')
 
-  if sol.prob.f.mass_matrix === (I,I)
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I || original_mm === (I,I)
     odefun = ODEFunction(sense, jac_prototype=adjoint_jac_prototype)
   else
     odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix', jac_prototype=adjoint_jac_prototype)
