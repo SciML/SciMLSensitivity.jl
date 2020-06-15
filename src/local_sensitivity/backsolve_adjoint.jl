@@ -1,20 +1,19 @@
-struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   prob::pType
   f::fType
-  colorvec::CV
   noiseterm::Bool
 end
 
 
-function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec;noiseterm=false)
+function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=noiseterm)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,f,colorvec,noiseterm)
+                                         y,sol.prob,f,noiseterm)
 end
 
 # u = λ'
@@ -94,7 +93,7 @@ end
   len = length(u0)+numparams
   λ = similar(p, len)
   λ .= false
-  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,f.colorvec)
+  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
@@ -141,10 +140,10 @@ end
   len = length(u0)+numparams
   λ = similar(p, len)
 
-  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
+  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
-  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec;noiseterm=true)
+  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)

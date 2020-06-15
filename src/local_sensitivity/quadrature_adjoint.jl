@@ -1,18 +1,17 @@
 struct ODEQuadratureAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:QuadratureAdjoint,
-                                               uType,SType,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+                                               uType,SType,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   sol::SType
   f::fType
-  colorvec::CV
 end
 
-function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
+function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,sol.prob.f;quad=true)
   return ODEQuadratureAdjointSensitivityFunction(diffcache,sensealg,discrete,
-                                                 y,sol,sol.prob.f,colorvec)
+                                                 y,sol)
 end
 
 # u = λ'
@@ -47,7 +46,7 @@ end
   len = length(u0)
   λ = similar(u0, len)
   λ .= false
-  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
+  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))

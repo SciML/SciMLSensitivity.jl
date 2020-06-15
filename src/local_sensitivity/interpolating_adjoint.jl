@@ -1,5 +1,5 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
-                                                  uType,SType,CPS,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+                                                  uType,SType,CPS,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
@@ -7,7 +7,6 @@ struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:Inter
   sol::SType
   checkpoint_sol::CPS
   f::fType
-  colorvec::CV
 end
 
 mutable struct CheckpointSolution{S,I,T}
@@ -17,7 +16,7 @@ mutable struct CheckpointSolution{S,I,T}
   tols::T
 end
 
-function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
+function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,tols)
   tspan = reverse(sol.prob.tspan)
   checkpointing = ischeckpointing(sensealg, sol)
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
@@ -38,7 +37,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,c
 
   return ODEInterpolatingAdjointSensitivityFunction(diffcache,sensealg,
                                                     discrete,y,sol,
-                                                    checkpoint_sol,sol.prob.f,colorvec)
+                                                    checkpoint_sol,sol.prob.f,)
 end
 
 function findcursor(intervals, t)
@@ -113,7 +112,7 @@ end
   λ = similar(p, len)
   λ .= false
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
-                                                     checkpoints,f.colorvec,
+                                                     checkpoints,
                                                      (reltol=reltol,abstol=abstol))
 
   init_cb = t !== nothing && tspan[1] == t[end]
