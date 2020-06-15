@@ -122,21 +122,25 @@ end
   if original_mm === I || original_mm === (I,I)
     mm = I
   else
-    adjmm = sol.prob.f.mass_matrix'
-    zzz = zero(adjmm)
-    mm = [adjmm zzz
-          zzz   adjmm]
+    adjmm = copy(sol.prob.f.mass_matrix')
+    zzz = similar(adjmm, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    # using concrate I is slightly more efficient
+    II = Diagonal(I, numparams)
+    mm = [adjmm       zzz
+          copy(zzz')   II]
   end
 
   jac_prototype = sol.prob.f.jac_prototype
   if !sense.discrete || jac_prototype === nothing
     adjoint_jac_prototype = nothing
   else
-    _adjoint_jac_prototype = jac_prototype'
-    zzz = zero(_adjoint_jac_prototype)
-    augmented_integral_jac_prototype = Diagonal(I, len-numstates)
+    _adjoint_jac_prototype = copy(jac_prototype')
+    zzz = similar(_adjoint_jac_prototype, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    II = Diagonal(I, numparams)
     adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-                             zzz                    augmented_integral_jac_prototype]
+                             copy(zzz')             II]
   end
 
   odefun = ODEFunction(sense, mass_matrix=mm, jac_prototype=adjoint_jac_prototype)

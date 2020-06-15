@@ -104,18 +104,30 @@ end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
   original_mm = sol.prob.f.mass_matrix
+  zzz(A, m, n) = fill!(similar(A, m, n), zero(eltype(original_mm)))
   if original_mm === I || original_mm === (I,I)
     mm = I
   else
     sense.diffcache.issemiexplicitdae && @warn "`BacksolveAdjoint` is likely to fail on semi-explicit DAEs, if memory is a concern, please consider using InterpolatingAdjoint(checkpoint=true) instead."
-    len2 = length(z0)
-    mm = zeros(len2, len2)
-    idx = 1:numstates
-    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix')
-    idx = numstates+1:numstates+1+numparams
-    copyto!(@view(mm[idx, idx]), I)
-    idx = len+1:len2
-    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix)
+    II = Diagonal(I, numparams)
+    Z1 = zzz(original_mm, numstates, numstates+numparams)
+    Z2 = zzz(original_mm, numparams, numstates)
+    mm = [copy(original_mm')   Z1
+          Z2                   II  Z2
+          Z1                       original_mm]
+  end
+  jac_prototype = sol.prob.f.jac_prototype
+  if !sense.discrete || jac_prototype === nothing
+    adjoint_jac_prototype = nothing
+  else
+    J = jac_prototype
+    Ja = copy(J')
+    II = Diagonal(I, numparams)
+    Z1 = zzz(J, numstates, numstates+numparams)
+    Z2 = zzz(J, numparams, numstates)
+    adjoint_jac_prototype = [Ja       Z1
+                             Z2       II     Z2
+                             Z1              J]
   end
   odefun = ODEFunction(sense, mass_matrix=mm)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
