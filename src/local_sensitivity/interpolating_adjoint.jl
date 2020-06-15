@@ -122,10 +122,23 @@ end
   if original_mm === I || original_mm === (I,I)
     mm = I
   else
-    mm = zeros(len, len)
-    copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
-    copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
+    adjmm = sol.prob.f.mass_matrix'
+    zzz = zero(adjmm)
+    mm = [adjmm zzz
+          zzz   adjmm]
   end
-  odefun = ODEFunction(sense, mass_matrix=mm)
+
+  jac_prototype = sol.prob.f.jac_prototype
+  if !sense.discrete || jac_prototype === nothing
+    adjoint_jac_prototype = nothing
+  else
+    _adjoint_jac_prototype = jac_prototype'
+    zzz = zero(_adjoint_jac_prototype)
+    augmented_integral_jac_prototype = Diagonal(I, len-numstates)
+    adjoint_jac_prototype = [_adjoint_jac_prototype zzz
+                             zzz                    augmented_integral_jac_prototype]
+  end
+
+  odefun = ODEFunction(sense, mass_matrix=mm, jac_prototype=adjoint_jac_prototype)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
