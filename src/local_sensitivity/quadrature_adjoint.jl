@@ -52,10 +52,13 @@ end
   z0 = vec(zero(λ))
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
 
+  jac_prototype = sol.prob.f.jac_prototype
+  adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')
+
   if sol.prob.f.mass_matrix === (I,I)
-    odefun = ODEFunction(sense)
+    odefun = ODEFunction(sense, jac_prototype=adjoint_jac_prototype)
   else
-    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
+    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix', jac_prototype=adjoint_jac_prototype)
   end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
