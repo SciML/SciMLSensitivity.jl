@@ -1,20 +1,19 @@
-struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+struct ODEBacksolveSensitivityFunction{C<:AdjointDiffCache,Alg<:BacksolveAdjoint,uType,pType,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   prob::pType
   f::fType
-  colorvec::CV
   noiseterm::Bool
 end
 
 
-function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,colorvec;noiseterm=false)
+function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=noiseterm)
 
   return ODEBacksolveSensitivityFunction(diffcache,sensealg,discrete,
-                                         y,sol.prob,f,colorvec,noiseterm)
+                                         y,sol.prob,f,noiseterm)
 end
 
 # u = λ'
@@ -94,7 +93,7 @@ end
   len = length(u0)+numparams
   λ = similar(p, len)
   λ .= false
-  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f,f.colorvec)
+  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
@@ -105,18 +104,30 @@ end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
   original_mm = sol.prob.f.mass_matrix
+  zzz(A, m, n) = fill!(similar(A, m, n), zero(eltype(original_mm)))
   if original_mm === I || original_mm === (I,I)
     mm = I
   else
     sense.diffcache.issemiexplicitdae && @warn "`BacksolveAdjoint` is likely to fail on semi-explicit DAEs, if memory is a concern, please consider using InterpolatingAdjoint(checkpoint=true) instead."
-    len2 = length(z0)
-    mm = zeros(len2, len2)
-    idx = 1:numstates
-    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix')
-    idx = numstates+1:numstates+1+numparams
-    copyto!(@view(mm[idx, idx]), I)
-    idx = len+1:len2
-    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix)
+    II = Diagonal(I, numparams)
+    Z1 = zzz(original_mm, numstates, numstates+numparams)
+    Z2 = zzz(original_mm, numparams, numstates)
+    mm = [copy(original_mm')   Z1
+          Z2                   II  Z2
+          Z1                       original_mm]
+  end
+  jac_prototype = sol.prob.f.jac_prototype
+  if !sense.discrete || jac_prototype === nothing
+    adjoint_jac_prototype = nothing
+  else
+    J = jac_prototype
+    Ja = copy(J')
+    II = Diagonal(I, numparams)
+    Z1 = zzz(J, numstates, numstates+numparams)
+    Z2 = zzz(J, numparams, numstates)
+    adjoint_jac_prototype = [Ja       Z1
+                             Z2       II     Z2
+                             Z1              J]
   end
   odefun = ODEFunction(sense, mass_matrix=mm)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
@@ -141,10 +152,10 @@ end
   len = length(u0)+numparams
   λ = similar(p, len)
 
-  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,sol.prob.f.colorvec)
+  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
-  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,diffusion_function.colorvec;noiseterm=true)
+  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)

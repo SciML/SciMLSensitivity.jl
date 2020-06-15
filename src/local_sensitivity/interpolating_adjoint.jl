@@ -1,5 +1,5 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:InterpolatingAdjoint,
-                                                  uType,SType,CPS,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+                                                  uType,SType,CPS,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
@@ -7,7 +7,6 @@ struct ODEInterpolatingAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:Inter
   sol::SType
   checkpoint_sol::CPS
   f::fType
-  colorvec::CV
 end
 
 mutable struct CheckpointSolution{S,I,T}
@@ -17,7 +16,7 @@ mutable struct CheckpointSolution{S,I,T}
   tols::T
 end
 
-function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,colorvec,tols)
+function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,checkpoints,tols)
   tspan = reverse(sol.prob.tspan)
   checkpointing = ischeckpointing(sensealg, sol)
   (checkpointing && checkpoints === nothing) && error("checkpoints must be passed when checkpointing is enabled.")
@@ -38,7 +37,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,c
 
   return ODEInterpolatingAdjointSensitivityFunction(diffcache,sensealg,
                                                     discrete,y,sol,
-                                                    checkpoint_sol,sol.prob.f,colorvec)
+                                                    checkpoint_sol,sol.prob.f,)
 end
 
 function findcursor(intervals, t)
@@ -113,7 +112,7 @@ end
   λ = similar(p, len)
   λ .= false
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,
-                                                     checkpoints,f.colorvec,
+                                                     checkpoints,
                                                      (reltol=reltol,abstol=abstol))
 
   init_cb = t !== nothing && tspan[1] == t[end]
@@ -123,10 +122,27 @@ end
   if original_mm === I || original_mm === (I,I)
     mm = I
   else
-    mm = zeros(len, len)
-    copyto!(@view(mm[1:numstates, 1:numstates]), sol.prob.f.mass_matrix')
-    copyto!(@view(mm[numstates+1:end, numstates+1:end]), I)
+    adjmm = copy(sol.prob.f.mass_matrix')
+    zzz = similar(adjmm, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    # using concrate I is slightly more efficient
+    II = Diagonal(I, numparams)
+    mm = [adjmm       zzz
+          copy(zzz')   II]
   end
-  odefun = ODEFunction(sense, mass_matrix=mm)
+
+  jac_prototype = sol.prob.f.jac_prototype
+  if !sense.discrete || jac_prototype === nothing
+    adjoint_jac_prototype = nothing
+  else
+    _adjoint_jac_prototype = copy(jac_prototype')
+    zzz = similar(_adjoint_jac_prototype, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    II = Diagonal(I, numparams)
+    adjoint_jac_prototype = [_adjoint_jac_prototype zzz
+                             copy(zzz')             II]
+  end
+
+  odefun = ODEFunction(sense, mass_matrix=mm, jac_prototype=adjoint_jac_prototype)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end

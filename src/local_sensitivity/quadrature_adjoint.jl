@@ -1,18 +1,17 @@
 struct ODEQuadratureAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:QuadratureAdjoint,
-                                               uType,SType,fType<:DiffEqBase.AbstractDiffEqFunction,CV} <: SensitivityFunction
+                                               uType,SType,fType<:DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
   diffcache::C
   sensealg::Alg
   discrete::Bool
   y::uType
   sol::SType
   f::fType
-  colorvec::CV
 end
 
-function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,colorvec)
+function ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg)
   diffcache, y = adjointdiffcache(g,sensealg,discrete,sol,dg,sol.prob.f;quad=true)
   return ODEQuadratureAdjointSensitivityFunction(diffcache,sensealg,discrete,
-                                                 y,sol,sol.prob.f,colorvec)
+                                                 y,sol,sol.prob.f)
 end
 
 # u = λ'
@@ -47,16 +46,20 @@ end
   len = length(u0)
   λ = similar(u0, len)
   λ .= false
-  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f.colorvec)
+  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg)
 
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
   cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
 
-  if sol.prob.f.mass_matrix === (I,I)
-    odefun = ODEFunction(sense)
+  jac_prototype = sol.prob.f.jac_prototype
+  adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')
+
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I || original_mm === (I,I)
+    odefun = ODEFunction(sense, jac_prototype=adjoint_jac_prototype)
   else
-    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix')
+    odefun = ODEFunction(sense, mass_matrix=sol.prob.f.mass_matrix', jac_prototype=adjoint_jac_prototype)
   end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
