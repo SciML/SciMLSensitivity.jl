@@ -88,7 +88,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
 
   dλ .*= -one(eltype(λ))
 
-  discrete || accumulate_dgdu!(dλ, y, p, t, S)
+  discrete || accumulate_dgdu!(dλ, y, p, t, S, dgrad)
   return nothing
 end
 

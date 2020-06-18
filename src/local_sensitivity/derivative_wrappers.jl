@@ -468,15 +468,25 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
 end
 
 
-function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction)
+function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)
   @unpack dg, dg_val, g, g_grad_config = S.diffcache
   if dg != nothing
-    dg(dg_val,y,p,t)
+    if !(dg isa Tuple)
+      dg(dg_val,y,p,t)
+      dλ .+= vec(dg_val)
+    else
+      dg[1](dg_val,y,p,t)
+      dλ .+= vec(dg_val)
+      if dgrad !== nothing
+        dg[2](dg_val,y,p,t)
+        dgrad .-= vec(dg_val)
+      end
+    end
   else
     g.t = t
     gradient!(dg_val, g, y, S.sensealg, g_grad_config)
+    dλ .+= vec(dg_val)
   end
-  dλ .+= vec(dg_val)
   return nothing
 end
 
