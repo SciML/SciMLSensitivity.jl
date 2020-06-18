@@ -20,8 +20,12 @@ g(x, p, t) = 1.0*(x[1] - π)^2 + 1.0*x[2]^2 + 5.0*(-p[1]*sin(x[1]) + p[2]*x[2])^
 dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
-res = adjoint_sensitivities(sol,Vern9(),g,nothing,(dgdu, dgdp),abstol=1e-8,
-                                reltol=1e-8,iabstol=1e-8,ireltol=1e-8)
+res_interp = adjoint_sensitivities(sol,Vern9(),g,nothing,(dgdu, dgdp),abstol=1e-8,
+                                reltol=1e-8,iabstol=1e-8,ireltol=1e-8, sensealg=InterpolatingAdjoint())
+res_quad = adjoint_sensitivities(sol,Vern9(),g,nothing,(dgdu, dgdp),abstol=1e-8,
+                                reltol=1e-8,iabstol=1e-8,ireltol=1e-8, sensealg=QuadratureAdjoint())
+#res_back = adjoint_sensitivities(sol,Vern9(),g,nothing,(dgdu, dgdp),abstol=1e-8,
+#                                reltol=1e-8,iabstol=1e-8,ireltol=1e-8, sensealg=BacksolveAdjoint(checkpointing=true), sol=sol.t) # it's blowing up
 
 function G(p)
     tmp_prob = remake(prob,p=p,u0=convert.(eltype(p), prob.u0))
@@ -31,4 +35,5 @@ function G(p)
 end
 res2 = ForwardDiff.gradient(G,p)
 
-@test res[2]' ≈ res2 atol=1e-5
+@test res_interp[2]' ≈ res2 atol=1e-5
+@test res_quad[2]' ≈ res2 atol=1e-5

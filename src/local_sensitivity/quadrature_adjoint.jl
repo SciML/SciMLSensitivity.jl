@@ -64,7 +64,7 @@ end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,G}
   sol::S
   adj_sol::AS
   p::pType
@@ -75,9 +75,10 @@ struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT}
   pJ::PJT
   paramjac_config::PJC
   sensealg::QuadratureAdjoint
+  dgdp::G
 end
 
-function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
+function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
   numparams = length(p)
@@ -113,7 +114,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg)
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
@@ -157,6 +158,10 @@ function (S::AdjointSensitivityIntegrand)(out,t)
 
   # TODO: Add tracker?
 
+  if S.dgdp !== nothing
+    S.dgdp(f_cache, y, p, t)
+    out .+= f_cache
+  end
   out'
 end
 
@@ -169,10 +174,11 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
                                 abstol=1e-6,reltol=1e-3,
                                 kwargs...)
-  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg)
+  dgdu, dgdp = dg isa Tuple ? dg : (dg, nothing)
+  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=true,save_start=true,kwargs...)
-  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg)
+  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp)
 
   if t === nothing
     res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
