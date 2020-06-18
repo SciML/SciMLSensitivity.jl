@@ -78,7 +78,7 @@ struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,G}
   dgdp::G
 end
 
-function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp)
+function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   prob = sol.prob
   @unpack f, p, tspan, u0 = prob
   numparams = length(p)
