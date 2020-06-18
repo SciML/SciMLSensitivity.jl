@@ -29,7 +29,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   vecjacobian!(dλ, y, λ, p, t, S)
   dλ .*= -one(eltype(λ))
 
-  discrete || accumulate_dgdu!(dλ, y, p, t, S)
+  discrete || accumulate_cost!(dλ, y, p, t, S)
   return nothing
 end
 

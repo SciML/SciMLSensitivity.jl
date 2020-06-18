@@ -468,7 +468,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
 end
 
 
-function accumulate_dgdu!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)
+function accumulate_cost!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)
   @unpack dg, dg_val, g, g_grad_config = S.diffcache
   if dg != nothing
     if !(dg isa Tuple)
