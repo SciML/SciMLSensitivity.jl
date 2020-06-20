@@ -13,6 +13,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Second Order Sensitivity" begin include("local_sensitivity/second_order.jl") end
     @time @safetestset "Concrete Solve Derivatives" begin include("local_sensitivity/concrete_solve_derivatives.jl") end
     @time @safetestset "Branching Derivatives" begin include("local_sensitivity/branching_derivatives.jl") end
+    @time @safetestset "Derivative Shapes" begin include("local_sensitivity/derivative_shapes.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core2"

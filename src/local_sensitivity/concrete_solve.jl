@@ -85,26 +85,26 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         if typeof(_save_idxs) <: Number
           _out[_save_idxs] = -vec(Δ)[_save_idxs]
         elseif _save_idxs isa Colon
-          _out .= -vec(Δ)
+          vec(_out) .= -vec(Δ)
         else
           _out[_save_idxs] .= -vec(Δ)[_save_idxs]
         end
       else
         if typeof(Δ) <: AbstractArray{<:AbstractArray}
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -Δ[i][_save_idxs]
+            _out[_save_idxs] = -vec(Δ[i][_save_idxs])
           elseif _save_idxs isa Colon
-            _out .= -Δ[i]
+            vec(_out) .= -vec(Δ[i])
           else
-            _out[_save_idxs] .= -Δ[i][_save_idxs]
+            vec(_out[_save_idxs]) .= -vec(Δ[i][_save_idxs])
           end
         else
           if typeof(_save_idxs) <: Number
             _out[_save_idxs] = -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
           elseif _save_idxs isa Colon
-            _out .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i])
+            vec(_out) .= -vec(adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           else
-            _out[_save_idxs] .= -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+            vec(_out[_save_idxs]) .= -vec(adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i]))
           end
         end
       end
