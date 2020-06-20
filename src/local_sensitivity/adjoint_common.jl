@@ -79,6 +79,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
       dg_val .= false
     end
   else
+    dg_val = nothing
     pg = nothing
     pg_config = nothing
   end
