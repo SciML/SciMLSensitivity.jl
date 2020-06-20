@@ -475,11 +475,11 @@ function accumulate_cost!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)
       dg(dg_val,y,p,t)
       dλ .+= vec(dg_val)
     else
-      dg[1](dg_val,y,p,t)
-      dλ .+= vec(dg_val)
+      dg[1](dg_val[1],y,p,t)
+      dλ .+= vec(dg_val[1])
       if dgrad !== nothing
-        dg[2](dg_val,y,p,t)
-        dgrad .-= vec(dg_val)
+        dg[2](dg_val[2],y,p,t)
+        dgrad .-= vec(dg_val[2])
       end
     end
   else

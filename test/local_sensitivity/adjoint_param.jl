@@ -37,3 +37,28 @@ res2 = ForwardDiff.gradient(G,p)
 
 @test res_interp[2]' ≈ res2 atol=1e-5
 @test res_quad[2]' ≈ res2 atol=1e-5
+
+p = [2.0,3.0]
+u0 = [2.0]
+function f(du,u,p,t)
+    du[1] = -u[1]*p[1]-p[2]
+end
+
+prob = ODEProblem(f,u0,(0.0,1.0),p)
+sol = solve(prob,Tsit5(),abstol=1e-10,reltol=1e-10);
+
+g(u,p,t) = -u[1]*p[1]-p[2]
+
+dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
+dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
+du0,dp = adjoint_sensitivities(sol,Vern9(),g,nothing,(dgdu,dgdp);abstol=1e-10,reltol=1e-10)
+
+function G(p)
+    tmp_prob = remake(prob,p=p,u0=convert.(eltype(p), prob.u0))
+    sol = solve(tmp_prob,Vern9(),abstol=1e-8,reltol=1e-8)
+    res,err = quadgk((t)-> g(sol(t), p, t), 0.0,10.0,atol=1e-8,rtol=1e-8)
+    res
+end
+res2 = ForwardDiff.gradient(G,p)
+
+@test dp' ≈ res2 atol=1e-5
