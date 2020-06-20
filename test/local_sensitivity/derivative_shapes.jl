@@ -18,4 +18,4 @@ tsteps = 0.0:T/100.0:T
 p = [1.7, 1.0, 3.0, 1.0]
 
 prob_ode = ODEProblem(f, u0, tspan, p);
-sol_ode = Zygote.gradient(p->sum(solve(prob_ode, Tsit5(),p=p)),p)
+sol_ode = Zygote.gradient(p->sum(last(solve(prob_ode, Tsit5(),p=p))),p)
