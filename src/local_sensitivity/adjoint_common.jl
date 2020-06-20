@@ -64,11 +64,22 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     if dg != nothing
       pg = nothing
       pg_config = nothing
+      if dg isa Tuple && length(dg) == 2
+        dg_val = (similar(u0, numindvar),similar(u0, numparams))
+        dg_val[1] .= false
+        dg_val[2] .= false
+      else
+        dg_val = similar(u0, numindvar) # number of funcs size
+        dg_val .= false
+      end
     else
       pg = UGradientWrapper(g,tspan[2],p)
       pg_config = build_grad_config(sensealg,pg,u0,p)
+      dg_val = similar(u0, numindvar) # number of funcs size
+      dg_val .= false
     end
   else
+    dg_val = nothing
     pg = nothing
     pg_config = nothing
   end
@@ -144,8 +155,6 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
 
   pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
 
-  dg_val = similar(u0, numindvar) # number of funcs size
-  dg_val .= false
   f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
 
   if noiseterm
