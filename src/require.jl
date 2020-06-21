@@ -15,7 +15,7 @@ function __init__()
         isgpu(::Transpose{<:Any,TrackedArray{<:Any,<:Any,<:CuArrays.CuArray}}) = true
     end
 
-    @require CUDA="3a865a2d-5b23-5a0f-bc46-62713ec82fae" begin
+    @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" begin
         gpu_or_cpu(x::CUDA.CuArray) = CUDA.CuArray
         gpu_or_cpu(x::TrackedArray{<:Any,<:Any,<:CUDA.CuArray}) = CUDA.CuArray
         gpu_or_cpu(x::Transpose{<:Any,<:CUDA.CuArray}) = CUDA.CuArray
