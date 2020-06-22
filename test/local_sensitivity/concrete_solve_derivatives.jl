@@ -77,7 +77,7 @@ end
 
 du01,dp1 = Tracker.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1)),u0,p)
 @test ū0 == du01
-@test adj == dp1'
+@test adj' == dp1
 
 du01,dp1 = ReverseDiff.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1)),(u0,p))
 @test ū0 == du01
