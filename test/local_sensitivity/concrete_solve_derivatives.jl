@@ -269,7 +269,7 @@ du04,dp4 = ReverseDiff.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,
 @test isapprox(adj, dp2', rtol = 1e-4)
 
 @test isapprox(ū0, du03, rtol = 1e-4)
-@test isapprox(adj, dp3', rtol = 1e-4)
+@test isapprox(adj', dp3, rtol = 1e-4)
 
 @test isapprox(ū0, du04, rtol = 1e-4)
 @test isapprox(adj, dp4', rtol = 1e-4)
