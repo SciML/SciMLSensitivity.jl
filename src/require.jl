@@ -14,4 +14,19 @@ function __init__()
         isgpu(::Adjoint{<:Any,TrackedArray{<:Any,<:Any,<:CuArrays.CuArray}}) = true
         isgpu(::Transpose{<:Any,TrackedArray{<:Any,<:Any,<:CuArrays.CuArray}}) = true
     end
+
+    @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" begin
+        gpu_or_cpu(x::CUDA.CuArray) = CUDA.CuArray
+        gpu_or_cpu(x::TrackedArray{<:Any,<:Any,<:CUDA.CuArray}) = CUDA.CuArray
+        gpu_or_cpu(x::Transpose{<:Any,<:CUDA.CuArray}) = CUDA.CuArray
+        gpu_or_cpu(x::Adjoint{<:Any,<:CUDA.CuArray}) = CUDA.CuArray
+        gpu_or_cpu(x::Adjoint{<:Any,TrackedArray{<:Any,<:Any,<:CUDA.CuArray}}) = CUDA.CuArray
+        gpu_or_cpu(x::Transpose{<:Any,TrackedArray{<:Any,<:Any,<:CUDA.CuArray}}) = CUDA.CuArray
+        isgpu(::CUDA.CuArray) = true
+        isgpu(::TrackedArray{<:Any,<:Any,<:CUDA.CuArray}) = true
+        isgpu(::Transpose{<:Any,<:CUDA.CuArray}) = true
+        isgpu(::Adjoint{<:Any,<:CUDA.CuArray}) = true
+        isgpu(::Adjoint{<:Any,TrackedArray{<:Any,<:Any,<:CUDA.CuArray}}) = true
+        isgpu(::Transpose{<:Any,TrackedArray{<:Any,<:Any,<:CUDA.CuArray}}) = true
+    end
 end
