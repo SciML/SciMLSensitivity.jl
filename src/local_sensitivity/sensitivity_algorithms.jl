@@ -33,15 +33,17 @@ Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
   BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
 
-struct InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
+  noise::NOISE
+  noisemixing::Bool
 end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=autodiff,
-                                         checkpointing=false)
-  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing)
+                                         checkpointing=false, noise=true,noisemixing=false)
+  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
 
 struct QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
