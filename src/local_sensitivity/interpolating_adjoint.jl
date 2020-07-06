@@ -28,12 +28,11 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
     interval_end = intervals[end][end]
     tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
     cursor = lastindex(intervals)
-    interval = intervals[cursor].-eps(eltype(sol.t))  # floating point end point error with NoiseGrid
+    interval = intervals[cursor]
 
     if typeof(sol.prob) <: SDEProblem
       # replicated noise
       _sol = deepcopy(sol)
-      @show 36, interval
       idx1 = searchsortedfirst(_sol.t, interval[1])
       idx2 = searchsortedfirst(_sol.t, interval[2])
 
@@ -87,7 +86,6 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       end
       if typeof(sol.prob) <: SDEProblem
         _sol = deepcopy(sol)
-        @show 90 interval
         idx1 = searchsortedfirst(_sol.t, interval[1])
         idx2 = searchsortedfirst(_sol.t, interval[2])
 
@@ -257,7 +255,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t, _sol.W.W)
+  backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t), reverse!(_sol.W.W))
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case
@@ -269,7 +267,7 @@ end
 
   return SDEProblem(sdefun,sense_diffusion,z0,tspan,p,
     callback=cb,
-    noise=forwardnoise,
+    noise=backwardnoise,
     noise_rate_prototype = noise_matrix
     )
 end
