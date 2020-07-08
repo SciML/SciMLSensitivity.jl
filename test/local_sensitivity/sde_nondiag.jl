@@ -216,11 +216,9 @@ end
 
 
 @testset "diagonal but mixing noise tests" begin
-
   Random.seed!(seed)
   u₀ = [0.75,0.5]
   p = [-1.5,0.05,0.2, 0.01]
-
   dtmix = tend/1e5
 
   # Example from Roessler, SIAM J. NUMER. ANAL, 48, 922–952 with d = 2; m = 2
@@ -258,15 +256,13 @@ end
   proboop = SDEProblem(f_mixing,g_mixing,u₀,trange,p)
   soloop = solve(proboop,EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave)
 
-
   res_sde_u0, res_sde_p = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
 
   @info res_sde_p
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
-
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -274,7 +270,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=false,noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=false,noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -291,26 +287,26 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
   @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
   @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -320,9 +316,9 @@ end
   function GSDE(p)
     Random.seed!(seed)
     tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
-                      tspan=eltype(p).(prob.tspan))
-    sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
-    A = convert(Array,sol)
+                  tspan=eltype(p).(prob.tspan))
+    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
+    A = convert(Array,_sol)
     res = g(A,p,nothing)
   end
 
@@ -334,22 +330,21 @@ end
     Random.seed!(seed)
     tmp_prob = remake(prob,u0=u0,p=eltype(p).(prob.p),
                       tspan=eltype(p).(prob.tspan))
-    sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
-    A = convert(Array,sol)
+    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
+    A = convert(Array,_sol)
     res = g(A,p,nothing)
   end
-
+  
   res_sde_forward = ForwardDiff.gradient(GSDE2,u₀)
 
   @test isapprox(res_sde_forward, res_sde_u0, rtol=1e-6)
-
 
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
 
   @info res_sde_p
 
-  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
+  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
 
 
@@ -358,7 +353,7 @@ end
 
   @info res_sde_pa
 
-  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
+  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=false,noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
@@ -366,7 +361,7 @@ end
 
   @info res_sde_pa
 
-  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
+  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(), noisemixing=true))
 
 
@@ -375,7 +370,7 @@ end
 
   @info res_sde_pa
 
-  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
+   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
@@ -389,7 +384,7 @@ end
 
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
   @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
   @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -401,4 +396,5 @@ end
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
 
   @info res_sde_pa
+
 end
