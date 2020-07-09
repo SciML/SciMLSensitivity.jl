@@ -92,7 +92,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
         forwardnoise = DiffEqNoiseProcess.NoiseGrid(sol.t[idx1:idx2], sol.W.W[idx1:idx2])
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
         dt = abs(cpsol_t[end]-cpsol_t[end-1])
-        if dt < 1000eps(cpsol_t[end])
+        if dt < 10000eps(cpsol_t[end])
           dt = interval[2] - interval[1]
         end
         cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, checkpoint_sol.tols...)
