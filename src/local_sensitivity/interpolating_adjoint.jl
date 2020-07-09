@@ -37,7 +37,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
       idx2 = searchsortedfirst(_sol.t, interval[2])
       forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
       dt = abs(_sol.W.dt)
-      if dt < 10000eps(_sol.t[end])
+      if dt < 1000eps(_sol.t[end])
         dt = interval[2] - interval[1]
       end
       cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tols...)
@@ -92,7 +92,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
         forwardnoise = DiffEqNoiseProcess.NoiseGrid(sol.t[idx1:idx2], sol.W.W[idx1:idx2])
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
         dt = abs(cpsol_t[end]-cpsol_t[end-1])
-        if dt < 10000eps(cpsol_t[end])
+        if dt < 1000eps(cpsol_t[end])
           dt = interval[2] - interval[1]
         end
         cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, checkpoint_sol.tols...)
