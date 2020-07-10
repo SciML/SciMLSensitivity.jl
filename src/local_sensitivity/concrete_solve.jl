@@ -5,9 +5,23 @@ struct SensitivityADPassThrough2 end
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = (isgpu(u0) && !DiffEqBase.isinplace(prob)) ?
-                                  InterpolatingAdjoint(autojacvec=ZygoteVJP()) :
-                                  InterpolatingAdjoint()
+  default_sensealg = if isgpu(u0) && !DiffEqBase.isinplace(prob)
+    # only Zygote is GPU compatible and fast
+    # so if in-place, try Zygote
+    if p === nothing || p === DiffEqBase.NullParameters()
+        # QuadratureAdjoint skips all p calculations until the end
+        # So it's the fastest when there are no parameters
+        QuadratureAdjoint(autojacvec=ZygoteVJP())
+      else
+        InterpolatingAdjoint(autojacvec=ZygoteVJP())
+      end
+    else
+      if p === nothing || p === DiffEqBase.NullParameters()
+        QuadratureAdjoint()
+      else
+        InterpolatingAdjoint()
+      end
+    end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -114,7 +128,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                     kwargs_adj...)
 
     du0 = reshape(du0,size(u0))
-    dp = reshape(dp',size(p))
+    dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing : reshape(dp',size(p))
 
     (nothing,nothing,du0,dp,nothing,ntuple(_->nothing, length(args))...)
   end

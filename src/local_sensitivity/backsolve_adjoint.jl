@@ -86,12 +86,11 @@ end
   tspan = reverse(tspan)
   discrete = t != nothing
 
-  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
   numstates = length(u0)
-  numparams = length(p)
+  numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = length(u0)+numparams
-  λ = similar(p, len)
+  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : similar(p, len)
   λ .= false
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 

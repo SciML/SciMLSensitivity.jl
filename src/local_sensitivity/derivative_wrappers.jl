@@ -274,7 +274,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
     end
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
   else
     _dy, back = Zygote.pullback(y, prob.p) do u, p
@@ -288,7 +288,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
       dλ[:] .= vec(tmp1)
     end
     dy !== nothing && (dy[:] .= vec(_dy))
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
   end
   return
 end
