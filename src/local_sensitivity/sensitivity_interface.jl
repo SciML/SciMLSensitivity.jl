@@ -17,6 +17,7 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
     adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                abstol=abstol,reltol=reltol)
   end
+
   tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[],

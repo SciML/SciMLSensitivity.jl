@@ -52,7 +52,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     # non-diagonal noise
     dλ    = @view du[1:idx, 1:idx]
     dgrad = @view du[idx+1:end-idx,1:idx]
-    dy    = @view du[end-idx+1:end, end-idx+1:end]
+    dy    = @view du[end-idx+1:end, 1:idx]
   end
 
   copyto!(vec(y), _y)
