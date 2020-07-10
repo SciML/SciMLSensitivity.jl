@@ -35,7 +35,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
   end
 
-  if ischeckpointing(sensealg)
+  if ischeckpointing(sensealg) || typeof(sensealg) <: BacksolveAdjoint 
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs...)
   else
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs...)
