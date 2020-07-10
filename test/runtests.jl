@@ -18,16 +18,19 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
 end
 
 if GROUP == "All" || GROUP == "Core2"
-    @time @safetestset "SDE Adjoint" begin include("local_sensitivity/sde.jl") end
-    @time @safetestset "SDE Scalar Noise" begin include("local_sensitivity/sde_scalar.jl") end
-    @time @safetestset "SDE Checkpointing" begin include("local_sensitivity/sde_checkpointing.jl") end
+    @time @safetestset "Stiff Adjoints" begin include("local_sensitivity/stiff_adjoints.jl") end
     @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("local_sensitivity/second_order_odes.jl") end
 end
 
-if GROUP == "All" || GROUP == "Core3"
+if GROUP == "All" || GROUP == "SDE1"
+    @time @safetestset "SDE Adjoint" begin include("local_sensitivity/sde.jl") end
+    @time @safetestset "SDE Scalar Noise" begin include("local_sensitivity/sde_scalar.jl") end
+    @time @safetestset "SDE Checkpointing" begin include("local_sensitivity/sde_checkpointing.jl") end
+end
+
+if GROUP == "All" || GROUP == "SDE2"
     @time @safetestset "SDE Non-Diagonal Noise" begin include("local_sensitivity/sde_nondiag.jl") end
-    @time @safetestset "Stiff Adjoints" begin include("local_sensitivity/stiff_adjoints.jl") end
 end
 
 if GROUP == "All" || GROUP == "GSA"
