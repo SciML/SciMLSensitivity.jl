@@ -20,6 +20,43 @@ Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
   ForwardDiffSensitivity{chunk_size,convert_tspan}()
 end
 
+"""
+ODE:
+ Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+ R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+ for Scientific Machine Learning,	arXiv:2001.04385
+
+ Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+ and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+ differential/algebraic equation solvers, ACM Transactions on Mathematical
+ Software (TOMS), 31, pp:363–396 (2005)
+
+ Chen, R.T.Q. and Rubanova, Y. and Bettencourt, J. and Duvenaud, D. K.,
+ Neural ordinary differential equations. In Advances in neural information processing
+ systems, pp. 6571–6583 (2018)
+
+ Pontryagin, L. S. and Mishchenko, E.F. and Boltyanskii, V.G. and Gamkrelidze, R.V.
+ The mathematical theory of optimal processes. Routledge, (1962)
+
+ Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+ and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+ continuous sensitivity analysis for derivatives of differential equation solutions,
+ arXiv:1812.01892
+
+DAE:
+ Cao, Y. and Li, S. and Petzold, L. and Serban, R., Adjoint sensitivity analysis
+ for differential-algebraic equations: The adjoint DAE system and its numerical
+ solution, SIAM journal on scientific computing 24 pp: 1076-1089 (2003)
+
+SDE:
+ Gobet, E. and Munos, R., Sensitivity Analysis Using Ito-Malliavin Calculus and
+ Martingales, and Application to Stochastic Optimal Control,
+ SIAM Journal on control and optimization, 43, pp. 1676-1713 (2005)
+
+ Li, X. and Wong, T.-K. L.and Chen, R. T. Q. and Duvenaud, D.,
+ Scalable Gradients for Stochastic Differential Equations,
+ PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
+"""
 struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
@@ -33,6 +70,21 @@ Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
   BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
 
+"""
+ Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+ R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+ for Scientific Machine Learning,	arXiv:2001.04385
+
+ Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+ and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+ differential/algebraic equation solvers, ACM Transactions on Mathematical
+ Software (TOMS), 31, pp:363–396 (2005)
+
+ Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+ and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+ continuous sensitivity analysis for derivatives of differential equation solutions,
+ arXiv:1812.01892
+"""
 struct InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
@@ -63,6 +115,10 @@ struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothin
 struct ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 
+"""
+ Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
+ http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
+"""
 struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   linsolve::LS
