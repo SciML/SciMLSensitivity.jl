@@ -68,7 +68,7 @@ end
 @test Zygote.gradient(loss4, nothing)[1] == nothing
 @test Zygote.gradient(loss5, nothing)[1] == nothing
 @test Zygote.gradient(loss6, nothing)[1] == nothing
-@test Zygote.gradient(loss7, nothing)[1] == nothing
+@test_broken Zygote.gradient(loss7, nothing)[1] == nothing
 @test Zygote.gradient(loss8, nothing)[1] == nothing
 
 @test Zygote.gradient(loss, zeros(123))[1] == zeros(123)
@@ -76,6 +76,6 @@ end
 @test Zygote.gradient(loss3, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss4, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss5, zeros(123))[1] == zeros(123)
-@test Zygote.gradient(loss6, zeros(123))[1] == zeros(123)
-@test_broken Zygote.gradient(loss7, zeros(123))[1] == zeros(123)
+@test_broken Zygote.gradient(loss6, zeros(123))[1] == zeros(123)
+@test Zygote.gradient(loss7, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
