@@ -88,7 +88,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
       end
       if typeof(sol.prob) <: SDEProblem
         idx1 = searchsortedfirst(sol.t, interval[1])
-        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(sol.W, indx=idx1)
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
         dt = abs(cpsol_t[end]-cpsol_t[end-1])
         if dt < 10000eps(cpsol_t[end])
