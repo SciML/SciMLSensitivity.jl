@@ -556,6 +556,59 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   @test adj2 ≈ adj3 rtol=1e-5
   @test ū2 ≈ ū4 rtol=1e-4
   @test adj2 ≈ adj4 rtol=1e-4
+
+
+  # LQR Tests from issue https://github.com/SciML/DiffEqSensitivity.jl/issues/300
+  x_dim = 2
+  T = 40.0
+
+  cost = (x, u) -> x'*x
+  params =  [-0.4142135623730951, 0.0, -0.0, -0.4142135623730951, 0.0, 0.0]
+
+  function dynamics!(du,u,p,t)
+      du[1] = -u[1] + tanh(p[1]*u[1]+p[2]*u[2])
+      du[2] = -u[2] + tanh(p[3]*u[1]+p[4]*u[2])
+  end
+
+  function backsolve_grad(sol, lqr_params, checkpointing)
+      bwd_sol = solve(
+          ODEAdjointProblem(
+              sol,
+              BacksolveAdjoint(checkpointing = checkpointing),
+              (x, lqr_params, t) -> cost(x,lqr_params),
+          ),
+          Tsit5(),
+          dense = false,
+          save_everystep = false,
+      )
+
+      bwd_sol.u[end][1:end-x_dim]
+      #fwd_sol, bwd_sol
+  end
+
+
+
+  x0 = ones(x_dim)
+  fwd_sol = solve(
+      ODEProblem(dynamics!, x0, (0, T), params),
+      Tsit5(),abstol=1e-9, reltol=1e-9,
+      u0 = x0,
+      p = params,
+      dense = false,
+      save_everystep = true
+  )
+
+
+
+  backsolve_results = backsolve_grad(fwd_sol, params, false)
+  backsolve_checkpointing_results = backsolve_grad(fwd_sol, params, true)
+
+  @test backsolve_results != backsolve_checkpointing_results
+
+  int_u0, int_p = adjoint_sensitivities(fwd_sol,Tsit5(),(x, params, t)->cost(x,params), nothing, sensealg=InterpolatingAdjoint())
+
+  @test isapprox(-backsolve_checkpointing_results[1:length(x0)], int_u0, rtol=1e-10)
+  @test isapprox(backsolve_checkpointing_results[(1:length(params)) .+ length(x0)], int_p', rtol=1e-10)
 end
 
 using Test

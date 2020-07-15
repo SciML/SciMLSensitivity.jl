@@ -206,10 +206,6 @@ end
 function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
   prob = sol.prob
   cur_time = Ref(length(checkpoints))
-  condition = let checkpoints=checkpoints
-    (u,t,integrator) ->
-      checkpoints !== nothing && ((idx = searchsortedfirst(checkpoints, t)) <= length(checkpoints)) && checkpoints[idx] == t
-  end
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)
       _y = reshape(@view(integrator.u[end-idx+1:end]), axes(prob.u0))
@@ -219,7 +215,8 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
       return nothing
     end
   end
-  cb = DiscreteCallback(condition,affect!)
+
+  cb = PresetTimeCallback(checkpoints,affect!)
 
   return CallbackSet(cb,callback)
 end
