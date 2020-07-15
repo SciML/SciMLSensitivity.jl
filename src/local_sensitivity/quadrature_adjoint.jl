@@ -151,7 +151,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       vec(f(y, p, t))
     end
     tmp = back(λ)
-    tmp[1] != nothing && out[:] .= vec(tmp[1])
+    out[:] .= vec(tmp[1])
   end
 
   # TODO: Add tracker?
