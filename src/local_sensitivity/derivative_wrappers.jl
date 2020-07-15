@@ -225,13 +225,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
 
   ## These other cases happen due to autodiff in stiff ODE solvers
   elseif DiffEqBase.isinplace(prob)
-    tape = ReverseDiff.GradientTape((y.*λ, prob.p, [t])) do u,p,t
+    tape = ReverseDiff.GradientTape((y.*reshape(λ,size(y)), prob.p, [t])) do u,p,t
       du1 = similar(u, size(u))
       f(du1,u,p,first(t))
       return vec(du1)
      end
   else
-    tape = ReverseDiff.GradientTape((y.*λ, prob.p, [t])) do u,p,t
+    tape = ReverseDiff.GradientTape((vec(y).*reshape(λ,size(y)), prob.p, [t])) do u,p,t
       vec(f(u,p,first(t)))
     end
   end
