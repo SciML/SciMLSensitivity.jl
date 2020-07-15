@@ -41,8 +41,6 @@ end
   tspan = reverse(tspan)
   discrete = t != nothing
 
-  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
-
   len = length(u0)
   λ = similar(u0, len)
   λ .= false
@@ -178,21 +176,27 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=true,save_start=true,kwargs...)
-  integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp)
 
-  if t === nothing
-    res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
-                     atol=sensealg.abstol,rtol=sensealg.reltol)
+  p = sol.prob.p
+  if p === nothing || p === DiffEqBase.NullParameters()
+    return -adj_sol[end],nothing
   else
-    res = zero(integrand.p)'
-    for i in 1:length(t)-1
-      res .+= quadgk(integrand,t[i],t[i+1],
-                     atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+    integrand = AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp)
+
+    if t === nothing
+      res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
+                       atol=sensealg.abstol,rtol=sensealg.reltol)
+    else
+      res = zero(integrand.p)'
+      for i in 1:length(t)-1
+        res .+= quadgk(integrand,t[i],t[i+1],
+                       atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+      end
+      if t[1] != sol.prob.tspan[1]
+        res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
+                       atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+      end
     end
-    if t[1] != sol.prob.tspan[1]
-      res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
-                     atol=sensealg.abstol,rtol=sensealg.reltol)[1]
-    end
+    return -adj_sol[end], res
   end
-  -adj_sol[end], res
 end

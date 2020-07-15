@@ -33,7 +33,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
   else
     @unpack u0, p, tspan = prob
   end
-  numparams = length(p)
+  numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
   numindvar = length(u0)
   isautojacvec = get_jacvec(sensealg)
 
@@ -109,7 +109,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     if prob isa DiffEqBase.SteadyStateProblem
        if DiffEqBase.isinplace(prob)
         tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
-          du1 = similar(p, size(u))
+          du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
           f(du1,u,p,nothing)
           return vec(du1)
         end
@@ -123,7 +123,7 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     else
       if DiffEqBase.isinplace(prob)
         tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-            du1 = similar(p, size(u))
+            du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
             f(du1,u,p,first(t))
           return vec(du1)
        end

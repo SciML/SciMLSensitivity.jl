@@ -23,7 +23,8 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
                   tstops=tstops,abstol=abstol,reltol=reltol,kwargs...)
 
-  l = length(sol.prob.p)
+  p = sol.prob.p
+  l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p)
   -adj_sol[end][1:length(sol.prob.u0)],
     adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 end
