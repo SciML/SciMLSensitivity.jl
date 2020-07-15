@@ -311,6 +311,8 @@ end
 
   @info res_sde_pa
 
+  @info res_sde_pa
+
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
@@ -382,8 +384,8 @@ end
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
   @info res_sde_pa
 
@@ -406,8 +408,8 @@ end
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-3)
+  isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
   @info res_sde_pa
 
