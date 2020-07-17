@@ -333,20 +333,33 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, d
       end
     end
 
-    if (dλ !== nothing && dy !== nothing) && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
+    if dλ !== nothing && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
       @unpack J, uf, f_cache, jac_noise_config = S.diffcache
-
-      if DiffEqBase.isinplace(prob)
-        f(dy, y, p, t)
-      else
-        dy .= f(y, p, t)
+      if dy!=nothing
+        if DiffEqBase.isinplace(prob)
+          f(dy, y, p, t)
+        else
+          dy .= f(y, p, t)
+        end
       end
 
       if DiffEqBase.has_jac(f)
         f.jac(J,y,p,t) # Calculate the Jacobian into J
       else
         if DiffEqBase.isinplace(prob)
-          ForwardDiff.jacobian!(J,uf,dy,y)
+          if dy != nothing
+            ForwardDiff.jacobian!(J,uf,dy,y)
+          else
+            if StochasticDiffEq.is_diagonal_noise(prob)
+              dy = similar(y)
+            else
+              dy = similar(prob.noise_rate_prototype)
+              f(dy, y, p, t)
+              ForwardDiff.jacobian!(J,uf,dy,y)
+            end
+            f(dy, y, p, t)
+            ForwardDiff.jacobian!(J,uf,dy,y)
+          end
         else
           tmp = ForwardDiff.jacobian(uf,y)
           J .= tmp

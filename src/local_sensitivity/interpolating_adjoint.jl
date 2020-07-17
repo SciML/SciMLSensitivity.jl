@@ -33,8 +33,11 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
     if typeof(sol.prob) <: SDEProblem
       # replicated noise
       _sol = deepcopy(sol)
+      sol.W.save_everystep = false
+      _sol.W.save_everystep = false
       idx1 = searchsortedfirst(_sol.t, interval[1]-1000eps(interval[1]))
-
+      #idx2 = searchsortedfirst(_sol.t, interval[2])
+      #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
       forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
       dt = abs(_sol.W.dt)
       if dt < 1000eps(_sol.t[end])

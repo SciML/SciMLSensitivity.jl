@@ -3,7 +3,6 @@ using DiffEqSensitivity, StochasticDiffEq
 using ForwardDiff
 using Random
 
-
 @info "SDE Non-Diagonal Noise Adjoints"
 
 seed = 100
@@ -127,8 +126,8 @@ end
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
         ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
 
-    @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-    @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+    @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
     @info res_sde_pa
 
@@ -156,7 +155,7 @@ end
 
     @info res_sde_pa
 
-    es_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
+    res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
         ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint())
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
@@ -175,8 +174,8 @@ end
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
         ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
 
-    @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-    @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+    @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
     @info res_sde_pa
 
@@ -255,6 +254,9 @@ end
   proboop = SDEProblem(f_mixing,g_mixing,u₀,trange,p)
   soloop = solve(proboop,EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave)
 
+
+  #oop
+
   res_sde_u0, res_sde_p = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
     ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
 
@@ -304,8 +306,8 @@ end
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-4)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -317,34 +319,11 @@ end
 
   @info res_sde_pa
 
-  function GSDE(p)
-    Random.seed!(seed)
-    tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
-                  tspan=eltype(p).(prob.tspan))
-    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
-    A = convert(Array,_sol)
-    res = g(A,p,nothing)
-  end
-
-  res_sde_forward = ForwardDiff.gradient(GSDE,p)
-
-  @test isapprox(res_sde_p', res_sde_forward, rtol=1e-5)
-
-  function GSDE2(u0)
-    Random.seed!(seed)
-    tmp_prob = remake(prob,u0=u0,p=eltype(p).(prob.p),
-                      tspan=eltype(p).(prob.tspan))
-    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
-    A = convert(Array,_sol)
-    res = g(A,p,nothing)
-  end
-
-  res_sde_forward = ForwardDiff.gradient(GSDE2,u₀)
-
-  @test isapprox(res_sde_forward, res_sde_u0, rtol=1e-5)
-
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
+
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_p
 
@@ -377,8 +356,10 @@ end
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
-  isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+
+  @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
@@ -386,19 +367,48 @@ end
   @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
+  @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+
+  @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
-  isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
+
+  function GSDE(p)
+    Random.seed!(seed)
+    tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
+                  tspan=eltype(p).(prob.tspan))
+    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
+    A = convert(Array,_sol)
+    res = g(A,p,nothing)
+  end
+
+  res_sde_forward = ForwardDiff.gradient(GSDE,p)
+
+  @test isapprox(res_sde_p', res_sde_forward, rtol=1e-5)
+
+  function GSDE2(u0)
+    Random.seed!(seed)
+    tmp_prob = remake(prob,u0=u0,p=eltype(p).(prob.p),
+                      tspan=eltype(p).(prob.tspan))
+    _sol = solve(tmp_prob,EulerHeun(),dt=dtmix,adaptive=false,saveat=Array(t))
+    A = convert(Array,_sol)
+    res = g(A,p,nothing)
+  end
+
+  res_sde_forward = ForwardDiff.gradient(GSDE2,u₀)
+
+  @test isapprox(res_sde_forward, res_sde_u0, rtol=1e-5)
 
 end
