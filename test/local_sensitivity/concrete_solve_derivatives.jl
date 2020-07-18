@@ -12,11 +12,6 @@ function foop(u,p,t)
   dy = -p[3]*u[2] + p[4]*u[1]*u[2]
   [dx,dy]
 end
-function foop(u::Tracker.TrackedArray,p,t)
-  dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  dy = -p[3]*u[2] + p[4]*u[1]*u[2]
-  Tracker.collect([dx,dy])
-end
 
 p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
 prob = ODEProblem(fiip,u0,(0.0,10.0),p)
@@ -136,7 +131,7 @@ du02,dp2 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e
 du03,dp3 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
 du04,dp4 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=TrackerAdjoint())),u0,p)
 @test_broken Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ZygoteAdjoint())),u0,p) isa Tuple
-@test_broken Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
+Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
 
 @test ū0 ≈ du01 rtol=1e-12
 @test ū0 ≈ du02 rtol=1e-12
