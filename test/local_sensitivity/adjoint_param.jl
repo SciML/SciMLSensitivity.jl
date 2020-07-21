@@ -6,13 +6,13 @@ using ForwardDiff
 using QuadGK
 
 function pendulum_eom(dx, x, p, t)
-    dx[1] = x[2]
+    dx[1] = p[1] * x[2]
     dx[2] = -sin(x[1]) + (-p[1]*sin(x[1]) + p[2]*x[2])  # Second term is a simple controller that stabilizes π
 end
 
 x0 = [0.1, 0.0]
 tspan = (0.0, 10.0)
-p = [-24.05, -19.137]
+p = [1.0, -24.05, -19.137]
 prob = ODEProblem(pendulum_eom, x0, tspan, p)
 sol = solve(prob, Vern9(), abstol=1e-8, reltol=1e-8)
 
