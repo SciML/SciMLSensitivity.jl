@@ -62,7 +62,7 @@ end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,G}
+struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,DGP,G}
   sol::S
   adj_sol::AS
   p::pType
@@ -73,6 +73,7 @@ struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,G}
   pJ::PJT
   paramjac_config::PJC
   sensealg::QuadratureAdjoint
+  dgdp_cache::DGP
   dgdp::G
 end
 
@@ -88,6 +89,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   f_cache .= false
   isautojacvec = get_jacvec(sensealg)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
+  dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
   if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec)
     tape = if DiffEqBase.isinplace(prob)
@@ -112,11 +114,12 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
-  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp)
+
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
 end
 
 function (S::AdjointSensitivityIntegrand)(out,t)
-  @unpack y, λ, pJ, pf, p, f_cache, paramjac_config, sensealg, sol, adj_sol = S
+  @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
   f = sol.prob.f
   sol(y,t)
   adj_sol(λ,t)
@@ -157,8 +160,8 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   # TODO: Add tracker?
 
   if S.dgdp !== nothing
-    S.dgdp(f_cache, y, p, t)
-    out .+= f_cache
+    S.dgdp(dgdp_cache, y, p, t)
+    out .+= dgdp_cache
   end
   out'
 end
