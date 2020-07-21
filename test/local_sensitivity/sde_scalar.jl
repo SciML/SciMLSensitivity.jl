@@ -6,8 +6,6 @@ using Random
 
 seed = 5
 Random.seed!(seed)
-abstol = 1e-4
-reltol = 1e-4
 
 u₀ = [0.5]
 tstart = 0.0
