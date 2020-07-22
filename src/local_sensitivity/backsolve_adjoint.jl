@@ -184,6 +184,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
+  _sol.W.save_everystep = false
   backwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, reverse=true)
   #backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 

@@ -359,7 +359,7 @@ end
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -375,7 +375,7 @@ end
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -383,7 +383,7 @@ end
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -413,4 +413,115 @@ end
 
   @test isapprox(res_sde_forward, res_sde_u0, rtol=1e-5)
 
+end
+
+
+@testset "mixing noise inplace/oop tests" begin
+  Random.seed!(seed)
+  u₀ = [0.75,0.5]
+  p = [-1.5,0.05,0.2, 0.01]
+  dtmix = tend/1e3
+
+  # Example from Roessler, SIAM J. NUMER. ANAL, 48, 922–952 with d = 2; m = 2
+  function f_mixing!(du,u,p,t)
+    du[1] = p[1]*u[1] + p[2]*u[2]
+    du[2] = p[2]*u[1] + p[1]*u[2]
+    nothing
+  end
+
+  function g_mixing!(du,u,p,t)
+    du[1] = p[3]*u[1] + p[4]*u[2]
+    du[2] = p[3]*u[1] + p[4]*u[2]
+    nothing
+  end
+
+  function f_mixing(u,p,t)
+    dx = p[1]*u[1] + p[2]*u[2]
+    dy = p[2]*u[1] + p[1]*u[2]
+    [dx,dy]
+  end
+
+  function g_mixing(u,p,t)
+    dx = p[3]*u[1] + p[4]*u[2]
+    dy = p[3]*u[1] + p[4]*u[2]
+    [dx,dy]
+  end
+
+  Random.seed!(seed)
+  prob = SDEProblem(f_mixing!,g_mixing!,u₀,trange,p)
+  soltsave = collect(trange[1]:dtmix:trange[2])
+  sol = solve(prob, EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave )
+
+  Random.seed!(seed)
+  proboop = SDEProblem(f_mixing,g_mixing,u₀,trange,p)
+  soloop = solve(proboop,EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave)
+
+
+  # BacksolveAdjoint
+
+  res_sde_u0, res_sde_p = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
+
+
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noisemixing=true))
+
+
+  @test res_sde_u0 ≈ res_sde_u02 atol = 1e-14
+  @test res_sde_p ≈ res_sde_p2 atol = 1e-14
+
+  @show res_sde_u0
+
+  adjproboop = SDEAdjointProblem(soloop,BacksolveAdjoint(noisemixing=true),dg!,tarray, nothing)
+  adj_soloop = solve(adjproboop,EulerHeun(); dt=dtmix, tstops=soloop.t, adaptive=false)
+
+
+  @test adj_soloop[end][length(p)+length(u₀)+1:end] == soloop.u[1]
+  @test - adj_soloop[end][1:length(u₀)] == res_sde_u0
+  @test adj_soloop[end][length(u₀)+1:end-length(u₀)] == res_sde_p'
+
+  adjprob = SDEAdjointProblem(sol,BacksolveAdjoint(noisemixing=true, checkpointing=true),dg!,tarray, nothing)
+  adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
+
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-15
+
+
+  adjprob = SDEAdjointProblem(sol,BacksolveAdjoint(noisemixing=true, checkpointing=false),dg!,tarray, nothing)
+  adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
+
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-8
+
+
+
+  # InterpolatingAdjoint
+
+  res_sde_u0, res_sde_p = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
+
+
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
+
+  @test res_sde_u0 ≈ res_sde_u02 atol = 1e-14
+  @test res_sde_p ≈ res_sde_p2 atol = 1e-14
+
+  @show res_sde_u0 
+
+  adjproboop = SDEAdjointProblem(soloop,InterpolatingAdjoint(noisemixing=true),dg!,tarray, nothing)
+  adj_soloop = solve(adjproboop,EulerHeun(); dt=dtmix, tstops=soloop.t, adaptive=false)
+
+
+  @test - adj_soloop[end][1:length(u₀)] ≈ res_sde_u0  atol = 1e-14
+  @test adj_soloop[end][length(u₀)+1:end] ≈ res_sde_p' atol = 1e-14
+
+  adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=true),dg!,tarray, nothing)
+  adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
+
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-15
+
+
+  adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=false),dg!,tarray, nothing)
+  adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
+
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-8
 end
