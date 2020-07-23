@@ -7,7 +7,6 @@ using Random
 seed = 5
 Random.seed!(seed)
 
-u₀ = [0.5]
 tstart = 0.0
 tend = 0.1
 dt = 0.005
@@ -30,6 +29,8 @@ p2 = [1.01,0.87]
 @testset "SDE scalar noise tests" begin
   using DiffEqNoiseProcess
 
+  dtscalar = tend/1e2
+
   f!(du,u,p,t) = (du .= p[1]*u)
   σ!(du,u,p,t) = (du .= p[2]*u)
 
@@ -44,13 +45,13 @@ p2 = [1.01,0.87]
   prob = SDEProblem(SDEFunction(f!,σ!,analytic=linear_analytic_strat),σ!,u0,trange,p2,
     noise=W
     )
-  sol = solve(prob,EulerHeun(), dt=tend/1e2, save_noise=true)
+  sol = solve(prob,EulerHeun(), dt=dtscalar, save_noise=true)
 
   @test isapprox(sol.u_analytic,sol.u, atol=1e-4)
 
   Random.seed!(seed)
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
-    ,dt=tend/1e2,adaptive=false,sensealg=BacksolveAdjoint())
+    ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint())
 
   @show res_sde_u0, res_sde_p
 
@@ -82,5 +83,6 @@ p2 = [1.01,0.87]
   @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
   @test isapprox(true_grads[2], res_sde_p', atol=1e-4)
   @test isapprox(true_grads[1], res_sde_u0, rtol=1e-4)
-
+  @test isapprox(true_grads[2], res_sde_p2', atol=1e-4)
+  @test isapprox(true_grads[1], res_sde_u02, rtol=1e-4)
 end
