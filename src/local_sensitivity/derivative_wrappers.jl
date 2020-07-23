@@ -180,7 +180,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::B
       end
       mul!(dgrad',λ',pJ)
     end
-    dy !== nothing && f(dy, y, p, t)
+    if dy !== nothing
+      if DiffEqBase.isinplace(prob)
+         f(dy, y, p, t)
+      else
+        dy[:] .= vec(f(y, p, t))
+      end
+    end
   elseif DiffEqBase.isinplace(prob)
     _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
   else
