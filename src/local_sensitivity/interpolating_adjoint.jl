@@ -36,9 +36,9 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
       sol.W.save_everystep = false
       _sol.W.save_everystep = false
       idx1 = searchsortedfirst(_sol.t, interval[1]-1000eps(interval[1]))
-      idx2 = searchsortedfirst(_sol.t, interval[2])
-      forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-      #forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+      #idx2 = searchsortedfirst(_sol.t, interval[2])
+      #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
+      forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
       dt = abs(_sol.W.dt)
       if dt < 1000eps(_sol.t[end])
         dt = interval[2] - interval[1]
@@ -95,8 +95,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
         _sol.W.save_everystep = false
         idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
         idx2 = searchsortedfirst(_sol.t, interval[2])
-        forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-        #forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+        #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
+        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
         dt = abs(cpsol_t[end]-cpsol_t[end-1])
         if dt < 10000eps(cpsol_t[end])
