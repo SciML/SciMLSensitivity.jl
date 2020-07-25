@@ -69,7 +69,7 @@ end
     # compute del g/del p
     dg_dp_val = zero(p)
     dg_dp = ParamGradientWrapper(g,nothing,y)
-    dg_dp_config = build_grad_config(sensealg,dg_dp,p,y)
+    dg_dp_config = build_grad_config(sensealg,dg_dp,p,p)
     gradient!(dg_dp_val,dg_dp,p,sensealg,dg_dp_config)
 
     @. dg_dp_val = dg_dp_val - vjp
