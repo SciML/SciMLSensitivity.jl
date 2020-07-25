@@ -114,7 +114,6 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
-  @show typeof(y),typeof(λ)
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
 end
 
