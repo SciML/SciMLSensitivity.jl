@@ -147,7 +147,7 @@ _,easy_res3 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
 _,easy_res4 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=BacksolveAdjoint())
-@test_broken easy_res42 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
+@test easy_res42 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=BacksolveAdjoint(autojacvec=false))[1] isa AbstractArray
 _,easy_res5 = adjoint_sensitivities(soloop,Kvaerno5(nlsolve=NLAnderson(), smooth_est=false),

@@ -33,14 +33,17 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
     if typeof(sol.prob) <: SDEProblem
       # replicated noise
       _sol = deepcopy(sol)
+      sol.W.save_everystep = false
+      _sol.W.save_everystep = false
       idx1 = searchsortedfirst(_sol.t, interval[1]-1000eps(interval[1]))
-
+      #idx2 = searchsortedfirst(_sol.t, interval[2])
+      #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
       forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
       dt = abs(_sol.W.dt)
       if dt < 1000eps(_sol.t[end])
         dt = interval[2] - interval[1]
       end
-      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tols...)
+      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
     else
       cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1])), sol.alg; tols...)
     end
@@ -87,14 +90,19 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
         sol(y, interval[1])
       end
       if typeof(sol.prob) <: SDEProblem
-        idx1 = searchsortedfirst(sol.t, interval[1])
-        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(sol.W, indx=idx1)
+        #idx1 = searchsortedfirst(sol.t, interval[1])
+        _sol = deepcopy(sol)
+        _sol.W.save_everystep = false
+        idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
+        idx2 = searchsortedfirst(_sol.t, interval[2])
+        #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
+        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
         dt = abs(cpsol_t[end]-cpsol_t[end-1])
         if dt < 10000eps(cpsol_t[end])
           dt = interval[2] - interval[1]
         end
-        cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, checkpoint_sol.tols...)
+        cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
       else
         prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
         cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
