@@ -75,13 +75,13 @@ p2 = [1.01,0.87]
 
   Random.seed!(seed)
   prob_oop_sde = SDEProblem(f_oop_linear,σ_oop_linear,u₀,trange,p)
-  sol_oop_sde = solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=1e-4,adaptive=false,save_noise=true)
+  sol_oop_sde = solve(prob_oop_sde,EulerHeun(),dt=1e-4,adaptive=false,save_noise=true)
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_oop_sde,
       EulerHeun(),dg!,t,dt=1e-2,sensealg=BacksolveAdjoint())
 
   @info res_sde_p
 
-  @test res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol_oop_sde,
+  res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol_oop_sde,
       EulerHeun(),dg!,t,dt=1e-2,sensealg=InterpolatingAdjoint())
 
   @test isapprox(res_sde_u0, res_sde_u0a, rtol = 1e-6)
