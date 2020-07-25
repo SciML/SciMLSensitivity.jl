@@ -62,12 +62,12 @@ end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
-struct AdjointSensitivityIntegrand{pType,uType,rateType,S,AS,PF,PJC,PJT,DGP,G}
+struct AdjointSensitivityIntegrand{pType,uType,lType,rateType,S,AS,PF,PJC,PJT,DGP,G}
   sol::S
   adj_sol::AS
   p::pType
   y::uType
-  λ::uType
+  λ::lType
   pf::PF
   f_cache::rateType
   pJ::PJT
@@ -114,7 +114,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   else
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
-
+  @show typeof(y),typeof(λ)
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
 end
 

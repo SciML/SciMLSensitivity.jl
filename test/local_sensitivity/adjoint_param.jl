@@ -4,6 +4,7 @@ using DiffEqSensitivity
 using DiffEqBase
 using ForwardDiff
 using QuadGK
+using Zygote
 
 function pendulum_eom(dx, x, p, t)
     dx[1] = p[1] * x[2]
@@ -62,3 +63,41 @@ end
 res2 = ForwardDiff.gradient(G,p)
 
 @test dp' ≈ res2 atol=1e-5
+
+function model(p)
+    N_oscillators = 30
+    u0 = repeat([0.0; 1.0], 1, N_oscillators) # size(u0) = (2, 30)
+
+    function du!(du, u, p, t)
+        W, b  = p # Parameters
+        dy  = @view du[1,:] # 30 elements
+        dy′ = @view du[2,:]
+        y = @view u[1,:]
+        y′= @view u[2,:]
+        @. dy′ = -y * W
+        @. dy  = y′ * b
+    end
+
+    output = solve(
+        ODEProblem(
+            du!,
+            u0,
+            (0.0, 10.0),
+            p,
+            jac = true,
+            abstol = 1e-12,
+            reltol = 1e-12),
+        Tsit5(),
+        jac = true,
+        saveat = collect(0:0.1:7),
+        sensealg = QuadratureAdjoint(),
+    )
+    return Array(output[1, :, :]) # only return y, not y′
+end
+
+p=[1.5, 0.1]
+y = model(p)
+loss(p) = sum(model(p))
+dp1 = Zygote.gradient(loss,p)[1]
+dp2 = ForwardDiff.gradient(loss,p)
+@test dp1 ≈ dp2
