@@ -206,7 +206,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   function forward_sensitivity_backpass(Δ)
     adj = sum(eachindex(du)) do i
       J = du[i]
-      v = @view Δ[:, i]
+      if Δ isa AbstractVector
+        v = Δ[i]
+      else
+        v = @view Δ[:, i]
+      end
       ForwardDiff.value.(J'v)
     end
     (nothing,nothing,nothing,adj,nothing,ntuple(_->nothing, length(args))...)
