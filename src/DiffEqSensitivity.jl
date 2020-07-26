@@ -5,7 +5,7 @@ using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions, Requires
-using StochasticDiffEq
+using StochasticDiffEq, DistributionsAD
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 
