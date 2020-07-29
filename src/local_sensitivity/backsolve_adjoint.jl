@@ -151,7 +151,13 @@ end
   len = length(u0)+numparams
   λ = one(eltype(u0)) .* similar(p, len)
 
-  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
+  if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
+  else
+    transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
+    drift_function = ODEFunction(transformed_function)
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function)
+  end
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
