@@ -42,7 +42,7 @@ p2 = [1.01,0.87]
 
   linear_analytic(u0,p,t,W) = @.(u0*exp((p[1]-p[2]^2/2)*t+p[2]*W))
 
-  prob = SDEProblem(SDEFunction(f!,σ!,analytic=linear_analytic),σ!,u0,trange,p2,
+  prob = SDEProblem(SDEFunction(f!,σ!,analytic=linear_analytic_strat),σ!,u0,trange,p2,
     noise=W
     )
   sol = solve(prob,SOSRI(), dt=dtscalar, adaptive=false, save_noise=true)
@@ -135,7 +135,7 @@ end
 
   linear_analytic(u0,p,t,W) = @.(u0*exp((p[1]-p[2]^2/2)*t+p[2]*W))
 
-  prob = SDEProblem(SDEFunction(f,σ,analytic=linear_analytic),σ,u0,trange,p2,
+  prob = SDEProblem(SDEFunction(f,σ,analytic=linear_analytic_strat),σ,u0,trange,p2,
     noise=W
    )
   sol = solve(prob,EulerHeun(), dt=dtscalar, save_noise=true)
