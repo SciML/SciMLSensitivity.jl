@@ -83,7 +83,7 @@ end
 
 @deprecate ODELocalSensitivityProblem(args...;kwargs...) ODEForwardSensitivityProblem(args...;kwargs...)
 
-struct ODEForwardSensitivityProblem{iip,A} <: DiffEqBase.AbstractODEProblem{nothing,nothing,iip}
+struct ODEForwardSensitivityProblem{iip,A}
   sensealg::A
 end
 
