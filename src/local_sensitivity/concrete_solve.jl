@@ -49,7 +49,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
   end
 
-  if ischeckpointing(sensealg) || typeof(sensealg) <: BacksolveAdjoint 
+  if ischeckpointing(sensealg) || typeof(sensealg) <: BacksolveAdjoint
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs...)
   else
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs...)
@@ -250,7 +250,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
 
     if typeof(sol.u[1]) <: Array
-      return adapt(typeof(u0),sol)
+      return Array(sol)
     else
       tmp = vec(sol.u[1])
       for i in 2:length(sol.u)
