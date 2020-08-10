@@ -41,3 +41,5 @@ if GROUP == "All" || GROUP == "GSA"
     @time @safetestset "eFAST Method" begin include("global_sensitivity/eFAST_method.jl") end
     @time @safetestset "RegressionGSA Method" begin include("global_sensitivity/regression_sensitivity.jl") end
 end
+    
+end
