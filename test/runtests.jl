@@ -46,6 +46,7 @@ if GROUP == "DiffEqFlux"
     using Pkg
     if is_TRAVIS
       using Pkg
+      Pkg.add("DiffEqSensitivity")
       Pkg.add("DiffEqFlux")
     end
     @time Pkg.test("DiffEqFlux")
