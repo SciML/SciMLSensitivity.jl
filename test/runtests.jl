@@ -41,13 +41,3 @@ if GROUP == "All" || GROUP == "GSA"
     @time @safetestset "eFAST Method" begin include("global_sensitivity/eFAST_method.jl") end
     @time @safetestset "RegressionGSA Method" begin include("global_sensitivity/regression_sensitivity.jl") end
 end
-
-if GROUP == "DiffEqFlux"
-    using Pkg
-    if is_TRAVIS
-      using Pkg
-      Pkg.add("DiffEqFlux")
-    end
-    @time Pkg.test("DiffEqFlux")
-end
-end

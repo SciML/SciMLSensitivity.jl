@@ -13,7 +13,6 @@ env:
   - GROUP=SDE1
   - GROUP=SDE2
   - GROUP=GSA
-  - GROUP=DiffEqFlux
 notifications:
   email: false
 # uncomment the following lines to override the default test script
