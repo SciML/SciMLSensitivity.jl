@@ -1,5 +1,4 @@
 using DiffEqSensitivity, OrdinaryDiffEq, Zygote
-using RecursiveArrayTools: DiffEqArray
 using Test, ForwardDiff
 import Tracker, ReverseDiff
 
