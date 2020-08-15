@@ -265,6 +265,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   ReverseDiff.reverse_pass!(tape)
   copyto!(vec(dλ), ReverseDiff.deriv(tu))
   dgrad !== nothing && copyto!(vec(dgrad), ReverseDiff.deriv(tp))
+  ReverseDiff.pull_value!(output)
   dy !== nothing && copyto!(vec(dy), ReverseDiff.value(output))
   return
 end
@@ -419,6 +420,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoi
 
     deriv = ReverseDiff.deriv(tp)
     dgrad[:,i] .= vec(deriv)
+    ReverseDiff.pull_value!(output)
 
     if StochasticDiffEq.is_diagonal_noise(prob)
       dλ !== nothing && (dλ[:,i] .= vec(ReverseDiff.deriv(tu)))
