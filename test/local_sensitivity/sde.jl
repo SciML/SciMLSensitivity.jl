@@ -37,13 +37,11 @@ p2 = [1.01,0.87]
   σ_oop_linear(u,p,t) = p[2]*u
 
   function f_oop_linear(u::Tracker.TrackedArray,p,t)
-    dx = p[1]*u[1]
-    Tracker.collect([dx])
+    p[1].*u
   end
 
   function σ_oop_linear(u::Tracker.TrackedArray,p,t)
-    dx = p[2]*u[1]
-    Tracker.collect([dx])
+    p[2].*u
   end
 
   p = [1.01,0.0]
