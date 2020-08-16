@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Zygote, Test
+using DiffEqSensitivity, OrdinaryDiffEq, Zygote, Test
 function lv!(du, u, p, t)
     x,y = u
     a, b, c, d = p
