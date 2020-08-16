@@ -27,7 +27,7 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 Adapt = "1.0, 2.0"
-DiffEqBase = "6.36"
+DiffEqBase = "6.43"
 DiffEqCallbacks = "2.9"
 DiffEqNoiseProcess = "4.1.4, 5.0"
 Distributions = "0.21, 0.22, 0.23"
