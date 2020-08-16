@@ -18,6 +18,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
 end
 
 if GROUP == "All" || GROUP == "Core2"
+    @time @safetestset "Literal Adjoints" begin include("local_sensitivity/literal_adjoint.jl") end
     @time @safetestset "Stiff Adjoints" begin include("local_sensitivity/stiff_adjoints.jl") end
     @time @safetestset "Null Parameters" begin include("local_sensitivity/null_parameters.jl") end
     @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
@@ -41,5 +42,5 @@ if GROUP == "All" || GROUP == "GSA"
     @time @safetestset "eFAST Method" begin include("global_sensitivity/eFAST_method.jl") end
     @time @safetestset "RegressionGSA Method" begin include("global_sensitivity/regression_sensitivity.jl") end
 end
-    
+
 end
