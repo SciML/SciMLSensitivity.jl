@@ -104,7 +104,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           vec(@view(_out[_save_idxs])) .= -vec(Δ)[_save_idxs]
         end
       else
-        if typeof(Δ) <: AbstractArray{<:AbstractArray}
+        if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
           if typeof(_save_idxs) <: Number
             _out[_save_idxs] = -Δ[i][_save_idxs]
           elseif _save_idxs isa Colon
