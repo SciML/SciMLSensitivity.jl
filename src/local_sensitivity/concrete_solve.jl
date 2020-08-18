@@ -96,12 +96,23 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   function adjoint_sensitivity_backpass(Δ)
     function df(_out, u, p, t, i)
       if only_end
-        if typeof(_save_idxs) <: Number
-          _out[_save_idxs] = -vec(Δ)[_save_idxs]
-        elseif _save_idxs isa Colon
-          vec(_out) .= -vec(Δ)
+        if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+          # user did sol[end] on only_end
+          if typeof(_save_idxs) <: Number
+            _out[_save_idxs] = -vec(Δ[1])[_save_idxs]
+          elseif _save_idxs isa Colon
+            vec(_out) .= -vec(Δ[1])
+          else
+            vec(@view(_out[_save_idxs])) .= -vec(Δ[1])[_save_idxs]
+        end
         else
-          vec(@view(_out[_save_idxs])) .= -vec(Δ)[_save_idxs]
+          if typeof(_save_idxs) <: Number
+            _out[_save_idxs] = -vec(Δ)[_save_idxs]
+          elseif _save_idxs isa Colon
+            vec(_out) .= -vec(Δ)
+          else
+            vec(@view(_out[_save_idxs])) .= -vec(Δ)[_save_idxs]
+          end
         end
       else
         if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
