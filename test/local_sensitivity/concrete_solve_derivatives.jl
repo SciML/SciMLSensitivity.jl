@@ -114,6 +114,18 @@ du010,dp10 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-
 @test adj2 ≈ dp10 rtol=1e-12
 
 ###
+### Only End
+###
+
+ū0,adj = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=InterpolatingAdjoint())),u0,p)
+du03,dp3 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=ReverseDiffAdjoint())),u0,p)
+du04,dp4 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=InterpolatingAdjoint())[end]),u0,p)
+@test ū0 ≈ du03 rtol=1e-12
+@test ū0 ≈ du04 rtol=1e-12
+@test adj ≈ dp3 rtol=1e-12
+@test adj ≈ dp4 rtol=1e-12
+
+###
 ### OOPs
 ###
 
