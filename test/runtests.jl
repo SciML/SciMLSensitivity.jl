@@ -40,7 +40,7 @@ end
 
 if GROUP == "All" || GROUP == "SDE3"
     @time @safetestset "SDE Ito Conversion Tests" begin include("local_sensitivity/sde_transformation_test.jl") end
-    @time @safetestset "SDE Scalar Noise" begin include("local_sensitivity/sde_scalar_ito.jl") end
+    @time @safetestset "SDE Ito Scalar Noise" begin include("local_sensitivity/sde_scalar_ito.jl") end
 end
 
 

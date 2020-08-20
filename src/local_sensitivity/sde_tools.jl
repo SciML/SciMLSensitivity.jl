@@ -25,38 +25,35 @@ end
 
 
 function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
-  @unpack utmp, ducor, prob, f, g = Tfunc
+  @unpack utmp, ducor, f, g = Tfunc
 
   copyto!(vec(utmp), u)
   fill!(ducor, zero(eltype(u)))
 
   vecjacobian!(ducor, utmp, p, t, Tfunc)
 
-  if DiffEqBase.isinplace(prob)
-    f(du,u,p,t)
-    @. du = du - ducor
-  else
-    tmp1 = f(u,p,t)
-    @. du = tmp1 - ducor
-  end
+  f(du,u,p,t)
+  @. du = du - ducor
+  # else
+  #   tmp1 = f(u,p,t)
+  #   @. du = tmp1 - ducor
+  # end
 
   return nothing
 end
 
 
 function (Tfunc::StochasticTransformedFunction)(u,p,t)
-  @unpack prob, f, g = Tfunc
+  @unpack f, g = Tfunc
+  #ducor = vecjacobian(u, p, t, Tfunc)
 
-  utmp = copy(u)
-
-  ducor = vecjacobian(utmp, p, t, Tfunc)
-  if DiffEqBase.isinplace(prob)
-    du = zero(u)
-    f(du,u,p,t)
-    return (du - ducor)
-  else
-    tmp1 = f(u,p,t)
-    du = tmp1 - ducor
-    return du
+  _dy, back = Zygote.pullback(u, p) do uloc, ploc
+    vec(g(uloc, ploc, t))
   end
+  ducor, _ = back(_dy)
+
+  du = f(u,p,t)
+
+  du = @. du - ducor
+  return du
 end
