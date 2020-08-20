@@ -69,7 +69,7 @@ u0 = rand(3)
 prob = SDEProblem(SDEFunction(f,σ,analytic=linear_analytic),σ,u0,tspan,p)
 sol = solve(prob,SOSRI(),adaptive=false, dt=0.001, save_noise=true)
 
-#transformed_function(du,u,p,tspan[2])
+transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
 du2 = transformed_function(u,p,tspan[2])
 
 @test isapprox(du2,(p[1]*u-p[2]^2*u), atol=1e-15)
@@ -101,7 +101,7 @@ sol = solve(prob,EM(),adaptive=false, dt=0.001, save_noise=true)
 
 
 transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
-du2 = transformed_function(u,p,tspan[2])
+du2 = transformed_function(u0,p,tspan[2])
 
 @test isapprox(du2,zeros(2), atol=1e-15)
 
@@ -327,3 +327,98 @@ ReverseDiff.reverse_pass!(tape)
 
 @test isapprox(ReverseDiff.deriv(tu), zero(u0), atol=1e-15)
 @test isapprox(ReverseDiff.deriv(tp), zero(p), atol=1e-15)
+
+
+###
+# Check Mutating functions
+###
+# scalar
+Random.seed!(seed)
+u0 = rand(1)
+p = rand(2)
+λ = rand(1)
+
+prob = SDEProblem(SDEFunction(f!,σ!,analytic=linear_analytic),σ!,u0,tspan,p)
+sol = solve(prob,SOSRI(),adaptive=false, dt=0.001, save_noise=true)
+
+du = zeros(size(u0))
+u = sol.u[end]
+transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
+
+
+tape = ReverseDiff.GradientTape((u0, p, [t])) do u,p,t
+  du1 = similar(u, size(u))
+  f!(du1, u, p, first(t))
+  return vec(du1-p[2]^2*u)
+end
+
+tu, tp, tt = ReverseDiff.input_hook(tape) # u0
+
+output = ReverseDiff.output_hook(tape) # p[1]*u0 -p[2]^2*u0
+ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+ReverseDiff.unseed!(tp)
+ReverseDiff.unseed!(tt)
+
+ReverseDiff.value!(tu, u0)
+ReverseDiff.value!(tp, p)
+ReverseDiff.value!(tt, [t])
+ReverseDiff.forward_pass!(tape)
+ReverseDiff.increment_deriv!(output, λ)
+ReverseDiff.reverse_pass!(tape)
+
+@test isapprox(ReverseDiff.deriv(tu), (p[1]-p[2]^2)*λ, atol=1e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
+
+
+tape = ReverseDiff.GradientTape((u0, p, [t])) do u,p,t
+  _dy, back = Zygote.pullback(u, p) do u, p
+    out_ = Zygote.Buffer(similar(u))
+    σ!(out_, u, p, t)
+    vec(copy(out_))
+  end
+  tmp1,tmp2 = back(λ)
+  du1 = similar(u, size(u))
+  f!(du1, u, p, first(t))
+  return  vec(du1-tmp1)
+end
+
+tu, tp, tt = ReverseDiff.input_hook(tape)
+
+output = ReverseDiff.output_hook(tape)
+ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+ReverseDiff.unseed!(tp)
+ReverseDiff.unseed!(tt)
+
+ReverseDiff.value!(tu, u0)
+ReverseDiff.value!(tp, p)
+ReverseDiff.value!(tt, [t])
+ReverseDiff.forward_pass!(tape)
+ReverseDiff.increment_deriv!(output, λ)
+ReverseDiff.reverse_pass!(tape)
+
+@test_broken isapprox(ReverseDiff.deriv(tu), (p[1]-p[2]^2)*λ, atol=1e-15)
+@test_broken isapprox(ReverseDiff.deriv(tp), (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
+
+
+tape = ReverseDiff.GradientTape((u0, p, [t])) do u1,p1,t1
+  du1 = similar(u1, size(u1))
+  transformed_function(du1, u1, p1, first(t1))
+  return  vec(du1)
+end
+
+tu, tp, tt = ReverseDiff.input_hook(tape) # p[1]*u0
+
+output = ReverseDiff.output_hook(tape) # p[1]*u0 -p[2]^2*u0
+ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+ReverseDiff.unseed!(tp)
+ReverseDiff.unseed!(tt)
+
+ReverseDiff.value!(tu, u0)
+ReverseDiff.value!(tp, p)
+ReverseDiff.value!(tt, [t])
+ReverseDiff.forward_pass!(tape)
+ReverseDiff.increment_deriv!(output, λ)
+ReverseDiff.reverse_pass!(tape)
+
+@test_broken isapprox(ReverseDiff.deriv(tu), (p[1]-p[2]^2)*λ, atol=1e-15)
+@test_broken isapprox(ReverseDiff.deriv(tp), (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
