@@ -25,19 +25,42 @@ end
 
 
 function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
-  @unpack utmp, ducor, f, g = Tfunc
+  @unpack utmp, ducor, gtmp, f, g = Tfunc
 
-  copyto!(vec(utmp), u)
-  fill!(ducor, zero(eltype(u)))
+  tape = ReverseDiff.GradientTape((u, p, [t])) do uloc,ploc,tloc
+    du1 = similar(uloc, size(gtmp))
+    g(du1,uloc,ploc,first(tloc))
+    return vec(du1)
+  end
+  tu, tp, tt = ReverseDiff.input_hook(tape)
 
-  vecjacobian!(ducor, utmp, p, t, Tfunc)
+  output = ReverseDiff.output_hook(tape)
+
+  #@show utmp  ReverseDiff.value(output)
+
+  copyto!(vec(gtmp), ReverseDiff.value(output))#
+  #@show utmp
+
+  ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.unseed!(tp)
+  ReverseDiff.unseed!(tt)
+
+  ReverseDiff.value!(tu, u)
+  ReverseDiff.value!(tp, p)
+  ReverseDiff.value!(tt, [t])
+
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, vec(gtmp))
+  ReverseDiff.reverse_pass!(tape)
+
+  ReverseDiff.deriv(tu)
+  ReverseDiff.pull_value!(output)
+  copyto!(vec(ducor), ReverseDiff.deriv(tu))
+
 
   f(du,u,p,t)
+
   @. du = du - ducor
-  # else
-  #   tmp1 = f(u,p,t)
-  #   @. du = tmp1 - ducor
-  # end
 
   return nothing
 end
