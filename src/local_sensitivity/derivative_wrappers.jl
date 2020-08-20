@@ -501,76 +501,65 @@ end
 
 function _vecjacobian!(dλ, y, p, t, Tf::TransformedFunction, inplace::Bool)
   @unpack prob, g, gtmp = Tf
-  if DiffEqBase.isinplace(prob)
-    tape = ReverseDiff.GradientTape((y, p, [t])) do u,p,t
-      du1 = similar(u, size(gtmp))
-      g(du1,u,p,first(t))
-      return vec(du1)
-    end
-    tu, tp, tt = ReverseDiff.input_hook(tape)
 
-    output = ReverseDiff.output_hook(tape)
-    ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
-    ReverseDiff.unseed!(tp)
-    ReverseDiff.unseed!(tt)
-
-    ReverseDiff.value!(tu, y)
-    ReverseDiff.value!(tp, p)
-    ReverseDiff.value!(tt, [t])
-
-    ReverseDiff.forward_pass!(tape)
-    ReverseDiff.increment_deriv!(output, output)
-    ReverseDiff.reverse_pass!(tape)
-
-    ReverseDiff.deriv(tu)
-    copyto!(vec(dλ), ReverseDiff.deriv(tu))
-  else
-    _dy, back = Zygote.pullback(y, prob.p) do u, p
-      vec(g(u, p, t))
-    end
-    tmp1,tmp2 = back(_dy)
-
-    if typeof(y) <: ArrayPartition
-      dλ .= ArrayPartition(tmp1.x)
-    else
-      dλ[:] .= vec(tmp1)
-    end
+  tape = ReverseDiff.GradientTape((y, p, [t])) do u,p,t
+    du1 = similar(u, size(gtmp))
+    g(du1,u,p,first(t))
+    return vec(du1)
   end
+  tu, tp, tt = ReverseDiff.input_hook(tape)
+
+  output = ReverseDiff.output_hook(tape)
+  ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  ReverseDiff.unseed!(tp)
+  ReverseDiff.unseed!(tt)
+
+  ReverseDiff.value!(tu, y)
+  ReverseDiff.value!(tp, p)
+  ReverseDiff.value!(tt, [t])
+
+  ReverseDiff.forward_pass!(tape)
+  ReverseDiff.increment_deriv!(output, output)
+  ReverseDiff.reverse_pass!(tape)
+
+  ReverseDiff.deriv(tu)
+  ReverseDiff.pull_value!(output)
+  copyto!(vec(dλ), ReverseDiff.deriv(tu))
   return nothing
 end
 
 
 function _vecjacobian(y, p, t, Tf::TransformedFunction, inplace::Bool)
   @unpack prob, g, gtmp = Tf
-  if DiffEqBase.isinplace(prob)
-    tape = ReverseDiff.GradientTape((y, p, [t])) do u,p,t
-      du1 = similar(u, size(gtmp))
-      g(du1,u,p,first(t))
-      return vec(du1)
-    end
-    tu, tp, tt = ReverseDiff.input_hook(tape)
 
-    output = ReverseDiff.output_hook(tape)
-    ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
-    ReverseDiff.unseed!(tp)
-    ReverseDiff.unseed!(tt)
+  # tape = ReverseDiff.GradientTape((y, p, [t])) do u,p,t
+  #   vec(g(u,p,first(t)))
+  # end
+  # tu, tp, tt = ReverseDiff.input_hook(tape)
+  #
+  # output = ReverseDiff.output_hook(tape)
+  # ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+  # ReverseDiff.unseed!(tp)
+  # ReverseDiff.unseed!(tt)
+  #
+  # ReverseDiff.value!(tu, y)
+  # ReverseDiff.value!(tp, p)
+  # ReverseDiff.value!(tt, [t])
+  #
+  # ReverseDiff.forward_pass!(tape)
+  # ReverseDiff.increment_deriv!(output, output)
+  # ReverseDiff.reverse_pass!(tape)
+  #
+  # dλ = ReverseDiff.deriv(tu)
+  #
+  # ReverseDiff.pull_value!(output)
 
-    ReverseDiff.value!(tu, y)
-    ReverseDiff.value!(tp, p)
-    ReverseDiff.value!(tt, [t])
-
-    ReverseDiff.forward_pass!(tape)
-    ReverseDiff.increment_deriv!(output, output)
-    ReverseDiff.reverse_pass!(tape)
-
-    return ReverseDiff.deriv(tu)
-  else
-    _dy, back = Zygote.pullback(y, prob.p) do u, p
-      vec(g(u, p, t))
-    end
-    tmp1,tmp2 = back(_dy)
-    return vec(tmp1)
-  end  
+  # Zygote version
+  _dy, back = Zygote.pullback(y, prob.p) do u, p
+    vec(g(u, p, t))
+  end
+  tmp1,tmp2 = back(_dy)
+  return vec(tmp1)
 end
 
 function accumulate_cost!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)

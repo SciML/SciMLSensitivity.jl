@@ -25,6 +25,69 @@ end
 p2 = [1.01,0.87]
 
 
+using DiffEqNoiseProcess
+
+dtscalar = tend/1e4
+
+f(u,p,t) = p[1]*u
+σ(u,p,t) = p[2]*u
+
+Random.seed!(seed)
+#W = WienerProcess(0.0,0.0,0.0)
+u0 = rand(1)
+
+linear_analytic(u0,p,t,W) = @.(u0*exp((p[1]-p[2]^2/2)*t+p[2]*W))
+
+prob = SDEProblem(SDEFunction(f,σ,analytic=linear_analytic),σ,u0,trange,p2,
+  #noise=W
+ )
+sol = solve(prob,SOSRI(), dt=dtscalar, adaptive=false, save_noise=true)
+
+@test isapprox(sol.u_analytic,sol.u, atol=1e-4)
+
+res_sde_u0, res_sde_p = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
+  ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+
+
+
+res_sde_u0, res_sde_p = adjoint_sensitivities(sol,EM(),dg!,Array(t)
+  ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false))
+
+using ForwardDiff
+function GSDE(p)
+  Random.seed!(seed)
+  tmp_prob = remake(prob,u0=eltype(p).(prob.u0),p=p,
+                  tspan=eltype(p).(prob.tspan))
+  _sol = solve(tmp_prob,EM(),dt=dtscalar,adaptive=false,saveat=Array(t))
+  A = convert(Array,_sol)
+  res = g(A,p,nothing)
+end
+
+res_sde_forward = ForwardDiff.gradient(GSDE,p2)
+
+
+
+_sol = deepcopy(sol)
+_sol.W.save_everystep = false
+xdis = _sol(tarray)
+helpu1 = [u[1] for u in xdis.u]
+tmp1 = sum((@. xdis.t*helpu1^2))
+
+Wtmp = [_sol.W(t)[1][1] for t in tarray]
+tmp2 = sum((@. (Wtmp-sol.prob.p[2]*t)*helpu1^2))
+
+tmp3 = sum((@. helpu1^2))/helpu1[1]
+
+[tmp3, u0[2]/u0[1]*tmp3]
+[tmp1*(1.0+(u0[2]/u0[1])^2), tmp2*(1.0+(u0[2]/u0[1])^2)]
+
+
+
+
+#
+error()
+#
+
 # scalar noise
 @testset "SDE inplace scalar noise tests (Ito)" begin
   using DiffEqNoiseProcess
