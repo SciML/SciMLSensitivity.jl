@@ -138,7 +138,8 @@ end
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
-                                     diffusion_jac=nothing, diffusion_paramjac=nothing,kwargs...)
+                                     corfunc_analytical=nothing,diffusion_jac=nothing, diffusion_paramjac=nothing,
+                                     kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
   discrete = t != nothing
@@ -154,7 +155,7 @@ end
   if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
     sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
   else
-    transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
+    transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g,corfunc_analytical)
     drift_function = ODEFunction(transformed_function)
     sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function)
   end
