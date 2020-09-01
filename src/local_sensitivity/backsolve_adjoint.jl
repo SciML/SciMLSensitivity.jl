@@ -90,7 +90,7 @@ end
   numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = length(u0)+numparams
-  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : similar(p, len)
+  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
   λ .= false
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
@@ -149,7 +149,7 @@ end
   numparams = length(p)
 
   len = length(u0)+numparams
-  λ = similar(p, len)
+  λ = one(eltype(u0)) .* similar(p, len)
 
   sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
 

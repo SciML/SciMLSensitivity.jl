@@ -21,3 +21,33 @@ end
 grad1 = Zygote.gradient(loss_adjoint,Complex{Float64}[1.5, 1.0, 3.0, 1.0])[1]
 grad2 = FiniteDiff.finite_difference_gradient(loss_adjoint,Complex{Float64}[1.5, 1.0, 3.0, 1.0])
 @test grad1 ≈ grad2
+
+function rhs(u, p, t)
+    p .* u
+end
+
+function loss_fun(sol)
+    final_u = sol[:, end]
+    err = sum(abs.(final_u))
+    return err
+end
+
+function inner_loop(prob, p, loss_fun; sensealg = InterpolatingAdjoint())
+    sol = solve(prob, Tsit5(), p=p,  saveat=0.1)
+    err = loss_fun(sol)
+    return err
+end
+
+tspan = (0.0, 1.0)
+p = [1.0]
+u0=[1.0, 2.0]
+
+grads = Zygote.gradient((p)->inner_loop(prob, p, loss_fun), p)
+
+u0=[1.0 + 2.0*im, 2.0 + 1.0*im]
+prob = ODEProblem(rhs, u0, tspan, p)
+dp1 = Zygote.gradient((p)->inner_loop(prob, p, loss_fun), p)[1]
+dp2 = Zygote.gradient((p)->inner_loop(prob, p, loss_fun; sensealg = QuadratureAdjoint()), p)[1]
+dp3 = Zygote.gradient((p)->inner_loop(prob, p, loss_fun; sensealg = BacksolveAdjoint()), p)[1]
+@test dp1 ≈ dp2 ≈ dp3
+@test eltype(dp1) <: Float64

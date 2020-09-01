@@ -25,8 +25,13 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
 
   p = sol.prob.p
   l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p)
-  -adj_sol[end][1:length(sol.prob.u0)],
-    adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
+  du0 = -adj_sol[end][1:length(sol.prob.u0)]
+  dp = adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
+
+  if eltype(sol.prob.p) <: real(eltype(adj_sol[end]))
+      dp = real.(dp)'
+  end
+  du0,dp
 end
 
 function _adjoint_sensitivities(sol,sensealg::SteadyStateAdjoint,alg,g,dg=nothing;

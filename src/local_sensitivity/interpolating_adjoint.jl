@@ -167,8 +167,9 @@ end
 
   len = numstates+numparams
 
-  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : similar(p, len)
+  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
   λ .= false
+
   sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f,
                                                      checkpoints,
                                                      (reltol=reltol,abstol=abstol))
@@ -229,7 +230,7 @@ end
 
   len = numstates+numparams
 
-  λ = similar(p, len)
+  λ = one(eltype(u0)) .* similar(p, len)
   λ .= false
 
   sense_drift = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,
