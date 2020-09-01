@@ -321,7 +321,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   tu, tp = ReverseDiff.input_hook(tape)
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.value!(tu, u0)
-  ReverseDiff.value!(tp, prob.p)
+  typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
   function tracker_adjoint_backpass(ybar)
     ReverseDiff.increment_deriv!(output, ybar)
