@@ -41,8 +41,8 @@ end
 tspan = (0.0, 1.0)
 p = [1.0]
 u0=[1.0, 2.0]
-
-grads = Zygote.gradient((p)->inner_loop(prob, p, loss_fun), p)
+prob = ODEProblem(rhs, u0, tspan, p)
+grads = Zygote.gradient((p)->inner_loop(prob, p, loss_fun), p)[1]
 
 u0=[1.0 + 2.0*im, 2.0 + 1.0*im]
 prob = ODEProblem(rhs, u0, tspan, p)
