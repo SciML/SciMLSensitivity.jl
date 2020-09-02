@@ -29,7 +29,7 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
   dp = adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
 
   if eltype(sol.prob.p) <: real(eltype(adj_sol[end]))
-      dp = real.(dp)'
+      dp = real.(dp)
   end
   du0,dp
 end
