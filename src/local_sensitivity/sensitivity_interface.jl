@@ -31,6 +31,8 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
     dp = adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
   elseif eltype(sol.prob.p) <: real(eltype(adj_sol[end]))
     dp = real.(adj_sol[end][(1:l) .+ length(sol.prob.u0)])'
+  elseif p === nothing || p === DiffEqBase.NullParameters()
+    dp = nothing
   end
 
   du0,dp
