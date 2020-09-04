@@ -49,13 +49,20 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
   end
 
-  if ischeckpointing(sensealg) || typeof(sensealg) <: BacksolveAdjoint
+  if typeof(sensealg) <: BacksolveAdjoint
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
+  elseif ischeckpointing(sensealg)
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs...)
   else
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs...)
   end
 
-  if saveat isa Number
+  if typeof(sensealg) <: BacksolveAdjoint
+    # Saving behavior unchanged
+    ts = sol.t
+    only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
+    out = DiffEqBase.sensitivity_solution(sol,sol.u,ts)
+  elseif saveat isa Number
     if _prob.tspan[2] > _prob.tspan[1]
       ts = _prob.tspan[1]:abs(saveat):_prob.tspan[2]
     else
