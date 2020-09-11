@@ -205,8 +205,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   u0dual = convert.(eltype(pdual),u0)
 
   if (convert_tspan(sensealg) === nothing && (
-        (haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)) ||
-        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs.callback))
+        (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
         )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
 
     tspandual = convert.(eltype(pdual),prob.tspan)
