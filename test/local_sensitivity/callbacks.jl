@@ -1,4 +1,4 @@
-using StochasticDiffEq, Flux,  DiffEqFlux
+using StochasticDiffEq, Zygote, DiffEqFlux
 using DiffEqSensitivity, Test
 
 function dt!(du, u, p, t)
@@ -30,7 +30,7 @@ end
 
 loss_sde(p)= sum(abs2, x-1 for x in predict_sde(p))
 
-ps = Flux.params(p)
+ps = Zygote.params(p)
 
 loss_sde(p)
 @time gs = gradient(ps) do
