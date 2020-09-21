@@ -1,4 +1,4 @@
-using StochasticDiffEq, Zygote, DiffEqFlux
+using StochasticDiffEq, Zygote
 using DiffEqSensitivity, Test
 
 function dt!(du, u, p, t)
