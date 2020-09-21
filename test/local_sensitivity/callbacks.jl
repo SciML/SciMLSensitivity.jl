@@ -30,11 +30,9 @@ end
 
 loss_sde(p)= sum(abs2, x-1 for x in predict_sde(p))
 
-ps = Zygote.params(p)
-
 loss_sde(p)
-@time gs = gradient(ps) do
+@time dp = gradient(p) do p
 	loss_sde(p)
 end
 
-@test !iszero(gs[p])
+@test !iszero(dp)
