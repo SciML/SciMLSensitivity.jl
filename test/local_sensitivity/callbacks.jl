@@ -25,7 +25,7 @@ end
 cb = DiscreteCallback(condition,affect!,save_positions=(false,false))
 
 function predict_sde(p)
-  return Array(solve(prob_sde, EM(),  saveat = 0.1,sensealg = ForwardDiffSensitivity(), dt=0.001, callback=cb))
+  return Array(solve(prob_sde, EM(), p=p, saveat = 0.1,sensealg = ForwardDiffSensitivity(), dt=0.001, callback=cb))
 end
 
 loss_sde(p)= sum(abs2, x-1 for x in predict_sde(p))
