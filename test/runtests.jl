@@ -21,6 +21,7 @@ if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "Literal Adjoint" begin include("local_sensitivity/literal_adjoint.jl") end
     @time @safetestset "Stiff Adjoints" begin include("local_sensitivity/stiff_adjoints.jl") end
     @time @safetestset "Null Parameters" begin include("local_sensitivity/null_parameters.jl") end
+    @time @safetestset "Callbacks with Adjoints" begin include("local_sensitivity/callbacks.jl") end
     @time @safetestset "Steady State Adjoint" begin include("local_sensitivity/steady_state.jl") end
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("local_sensitivity/second_order_odes.jl") end
 end
