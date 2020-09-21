@@ -35,4 +35,4 @@ loss_sde(p)
 	loss_sde(p)
 end
 
-@test !iszero(dp)
+@test !iszero(dp[1])
