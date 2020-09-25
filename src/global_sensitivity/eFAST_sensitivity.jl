@@ -45,12 +45,16 @@ function gsa(f,method::eFAST,p_range::AbstractVector;n::Int=1000,batch=false, kw
         multioutput = !(eltype(_y) <: Number)
         if eltype(_y) <: RecursiveArrayTools.AbstractVectorOfArray
             y_size = size(_y[1])
-            _y = vec.(_y)
+            __y = vec.(_y)
         else
             y_size = nothing
+            __y = _y
         end
-        all_y = multioutput ? reduce(hcat,_y) : _y
-        gsa_efast_all_y_analysis(method, all_y, num_params, y_size, n, omega, Val(multioutput))
+        if multioutput
+            gsa_efast_all_y_analysis(method, reduce(hcat,__y), num_params, y_size, n, omega, Val(true))
+        else
+            gsa_efast_all_y_analysis(method, __y, num_params, y_size, n, omega, Val(false))
+        end
     end
 end
 function gsa_efast_all_y_analysis(method, all_y, num_params, y_size, n, omega, ::Val{multioutput}) where {multioutput}
@@ -82,12 +86,16 @@ function gsa_efast_all_y_analysis(method, all_y, num_params, y_size, n, omega, :
             total_order[i] = map((y,var) -> 1 .- 2*sum(y[1:(omega[1] ÷ 2)])./var, ys, varnce)
         end
     end
-    if !isnothing(y_size)
+    if isnothing(y_size)
+        _first_order = reduce(hcat,first_order)
+        _total_order = reduce(hcat,total_order)
+    else
         f_shape = let y_size = y_size
             x -> [reshape(x[:,i], y_size) for i in 1:size(x,2)]
         end
-        first_order = map(f_shape,first_order)
-        total_order = map(f_shape,total_order)
+        _first_order = reduce(hcat,map(f_shape,first_order))
+        _total_order = reduce(hcat,map(f_shape,total_order))
     end
-    return eFASTResult(reduce(hcat,first_order), reduce(hcat,total_order))
+    return eFASTResult(_first_order, _total_order)
 end
+

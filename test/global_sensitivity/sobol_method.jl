@@ -116,10 +116,13 @@ p = [1.5,1.0,3.0,1.0]
 prob = ODEProblem(f,u0,tspan,p)
 t = collect(range(0, stop=10, length=200))
 
-f1 = function (p)
-  prob1 = remake(prob;p=p)
-  sol = solve(prob1,Tsit5();saveat=t)
-  return sol
+
+f1 = let prob = prob, t = t
+    function (p)
+        prob1 = remake(prob;p=p)
+        sol = solve(prob1,Tsit5();saveat=t)
+        return sol
+    end
 end
 
 m = gsa(f1,Sobol(),[[1,5],[1,5],[1,5],[1,5]],N=100)

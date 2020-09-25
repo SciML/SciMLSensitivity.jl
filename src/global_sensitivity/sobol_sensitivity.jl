@@ -1,6 +1,6 @@
 # @with_kw
 mutable struct Sobol <: GSAMethod
-    order::Array{Int}
+    order::Vector{Int}
     nboot::Int
     conf_int::Float64
 end
@@ -24,8 +24,8 @@ function fuse_designs(A, B)
     hcat(A,B,reduce(hcat,Aᵦ))
 end
 
-function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix{TB};
-             batch=false, Ei_estimator = :Jansen1999, kwargs...) where {TA,TB}
+function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix;
+             batch=false, Ei_estimator = :Jansen1999, kwargs...) where {TA}
     d,n = size(A)
     n = Int(n/method.nboot)
     multioutput = false
@@ -44,6 +44,7 @@ function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix{TB};
         all_y = f(all_points)
         multioutput = all_y isa AbstractMatrix
         y_size = nothing
+        gsa_sobol_all_y_analysis(method, all_y, d, n, Ei_estimator, y_size, Val(multioutput))
     else
         _y = [f(all_points[:, i]) for i in 1:size(all_points, 2)]
         multioutput = !(eltype(_y) <: Number)
@@ -53,9 +54,12 @@ function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix{TB};
         else
             y_size = nothing
         end
-        all_y = multioutput ? reduce(hcat, _y) : _y
+        if multioutput
+            gsa_sobol_all_y_analysis(method, reduce(hcat, _y), d, n, Ei_estimator, y_size, Val(true))
+        else
+            gsa_sobol_all_y_analysis(method, _y, d, n, Ei_estimator, y_size, Val(false))
+        end
     end
-    gsa_sobol_all_y_analysis(method, all_y, d, n, Ei_estimator, y_size, Val(multioutput))
 end
 function gsa_sobol_all_y_analysis(method, all_y::AbstractArray{T}, d, n, Ei_estimator, y_size, ::Val{multioutput}) where {T, multioutput}
     nboot = method.nboot 
@@ -141,7 +145,7 @@ function gsa_sobol_all_y_analysis(method, all_y::AbstractArray{T}, d, n, Ei_esti
             for i ∈ 2:length(Sᵢⱼs₁)
                 b .= getindex.(Sᵢⱼs₁, i)
                 Sᵢⱼ[i] = b̄ = mean(b)
-                S2_CI[i] = calc_ci(bf, b̄)
+                S2_CI[i] = calc_ci(b, b̄)
             end
         end
         Sᵢ = reshape(mean.(S1),size_...)
@@ -153,25 +157,29 @@ function gsa_sobol_all_y_analysis(method, all_y::AbstractArray{T}, d, n, Ei_esti
             Sᵢⱼ = Sᵢⱼs[1]
         end
     end
-    if !isnothing(y_size)
+    if isnothing(y_size)
+        _Sᵢ = Sᵢ
+        _Tᵢ = Tᵢ
+        _Sᵢⱼ = 2 in method.order ? Sᵢⱼ : nothing
+    else
         f_shape = let y_size = y_size
             x -> [reshape(x[:,i],y_size) for i in 1:size(x,2)]
         end
-        Sᵢ = f_shape(Sᵢ)
-        if 2 in method.order
-            Sᵢⱼ = f_shape(Sᵢⱼ)
-        end
-        Tᵢ = f_shape(Tᵢ)
+        _Sᵢ = f_shape(Sᵢ)
+        _Sᵢⱼ = 2 in method.order ? f_shape(Sᵢⱼ) : nothing
+        _Tᵢ = f_shape(Tᵢ)
     end
-    return SobolResult(Sᵢ,
+    return SobolResult(_Sᵢ,
                      nboot > 1 ? reshape(S1_CI,size_...) : nothing,  
                      2 in method.order ? Sᵢⱼ : nothing,  
                      nboot > 1 && 2 in method.order ? S2_CI : nothing, 
-                     Tᵢ , 
+                     _Tᵢ , 
                      nboot > 1 ? reshape(ST_CI,size_...) : nothing)
 end
 
 function gsa(f,method::Sobol,p_range::AbstractVector; N, kwargs...)
-    A = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample(),2*method.nboot)
-    gsa(f, method, hcat(A[1:method.nboot]...), hcat(A[method.nboot+1:end]...); kwargs...)
+    AB = QuasiMonteCarlo.generate_design_matrices(N, [i[1] for i in p_range], [i[2] for i in p_range], QuasiMonteCarlo.SobolSample(),2*method.nboot)
+    A = reduce(hcat, @view(AB[1:method.nboot]))
+    B = reduce(hcat, @view(AB[method.nboot+1:end]))
+    gsa(f, method, A, B; kwargs...)
 end
