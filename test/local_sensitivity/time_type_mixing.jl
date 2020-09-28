@@ -8,7 +8,7 @@ function dudt(du, u, p, t)
     du[1] = p[1]
 end
 
-prob = ODEProblem(dudt,u0,tspan)
+prob = ODEProblem(dudt,u0,(0f0,99.9f0))
 
 function predict_neuralode(p)
     _prob = remake(prob,p=p)
@@ -19,4 +19,4 @@ loss(p) = sum(abs2,predict_neuralode(p))/length(y)
 
 p_model_ini = copy(p_model)
 
-@test !iszero(Flux.gradient(loss,p_model_ini)[1])
+@test !iszero(Zygote.gradient(loss,p_model_ini)[1])
