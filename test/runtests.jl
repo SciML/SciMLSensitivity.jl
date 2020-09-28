@@ -15,6 +15,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Branching Derivatives" begin include("local_sensitivity/branching_derivatives.jl") end
     @time @safetestset "Derivative Shapes" begin include("local_sensitivity/derivative_shapes.jl") end
     @time @safetestset "Complex Adjoints" begin include("local_sensitivity/complex_adjoints.jl") end
+    @time @safetestset "Time Type Mixing Adjoints" begin include("local_sensitivity/time_type_mixing.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core2"
