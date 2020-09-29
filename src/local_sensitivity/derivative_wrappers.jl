@@ -290,12 +290,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
       vec(f(u, p, t))
     end
     tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
 
-    if typeof(y) <: ArrayPartition
-      dλ .= ArrayPartition(tmp1.x)
-    else
-      dλ[:] .= vec(tmp1)
-    end
     dy !== nothing && (dy[:] .= vec(_dy))
     dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
   end
