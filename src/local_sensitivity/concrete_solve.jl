@@ -1,7 +1,5 @@
 ## High level
 
-struct SensitivityADPassThrough2 end
-
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
@@ -266,7 +264,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
       end
     end
-    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
+    sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
 
     if typeof(sol.u[1]) <: Array
       return Array(sol)
@@ -314,7 +312,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
       end
     end
 
-    sol = solve(_prob,alg,args...;sensealg=SensitivityADPassThrough2(),kwargs...)
+    sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
     t = sol.t
     if DiffEqBase.isinplace(prob)
       u = map.(ReverseDiff.value,sol.u)
