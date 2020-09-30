@@ -8,7 +8,7 @@ struct eFASTResult{T1}
     total_order::T1
 end
 
-function gsa(f,method::eFAST,p_range::AbstractVector;n::Int=1000,batch=false, kwargs...)
+function gsa(f,method::eFAST,p_range::AbstractVector;n::Int=1000,batch=false, distributed::Val{SHARED_ARRAY} = Val(false), kwargs...) where {SHARED_ARRAY}
     @unpack num_harmonics = method
     num_params = length(p_range)
     omega = [ (n-1) ÷ (2*num_harmonics) ]
@@ -21,17 +21,24 @@ function gsa(f,method::eFAST,p_range::AbstractVector;n::Int=1000,batch=false, kw
     end
 
     omega_temp = similar(omega)
-    s = collect((2*pi/n) * (0:n-1))
-    ps = zeros(num_params,n*num_params)
-
-    for i in 1:num_params
+    s = (2/n) * (0:n-1)
+    if SHARED_ARRAY
+        ps = SharedMatrix{Float64}((num_params, n*num_params))
+    else
+        ps = Matrix{Float64}(undef, num_params, n*num_params)
+    end
+    @inbounds for i in 1:num_params
         omega_temp[i] = omega[1]
-        omega_temp[[k for k in 1:num_params if k != i]] = omega[2:end]
-        l = collect((i-1)*n+1:i*n)
-        phi = 2*pi*rand()
+        for k ∈ 1:i-1
+            omega_temp[k] = omega[k+1]
+        end
+        for k ∈ i+1:num_params
+            omega_temp[k] = omega[k]
+        end
+        l = (i-1)*n+1:i*n
+        phi = 2rand()
         for j in 1:num_params
-            x =  0.5 .+ (1/pi) .*(asin.(sin.(omega_temp[j]*s .+ phi)))
-            ps[j,l] .= quantile.(Uniform(p_range[j][1], p_range[j][2]),x)
+            ps[j,l] .= quantile.(Uniform(p_range[j][1], p_range[j][2]), 0.5 .+ (1/pi) .* (asin.(sinpi.(omega_temp[j] .* s .+ phi))))
         end
     end
 
