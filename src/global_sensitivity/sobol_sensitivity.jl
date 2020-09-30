@@ -126,9 +126,8 @@ function gsa_sobol_all_y_analysis(method, all_y::AbstractArray{T}, d, n, Ei_esti
         S1 = [[Sᵢ[i] for Sᵢ in Sᵢs] for i in 1:length(Sᵢs[1])]
         ST = [[Tᵢ[i] for Tᵢ in Tᵢs] for i in 1:length(Tᵢs[1])]
 
-        function calc_ci(x,mean=nothing) # what is ci? Not a confidence interval?
+        function calc_ci(x,mean=nothing)
             alpha = (1 - method.conf_int)
-            # tstar = quantile(TDist(length(x)-1), 1 - alpha/2) # why?
             std(x,mean=mean)/sqrt(length(x))
         end
         S1_CI = map(calc_ci,S1)
@@ -138,12 +137,11 @@ function gsa_sobol_all_y_analysis(method, all_y::AbstractArray{T}, d, n, Ei_esti
             size__= size(Sᵢⱼs[1])
             S2_CI = Array{T}(undef, size__)
             Sᵢⱼ = Array{T}(undef, size__)
-            Sᵢⱼs₁ = Sᵢⱼs[1]
-            b = getindex.(Sᵢⱼs₁, 1)
+            b = getindex.(Sᵢⱼs, 1)
             Sᵢⱼ[1] = b̄ = mean(b)
             S2_CI[1] = calc_ci(b, b̄)
-            for i ∈ 2:length(Sᵢⱼs₁)
-                b .= getindex.(Sᵢⱼs₁, i)
+            for i ∈ 2:length(Sᵢⱼs[1])
+                b .= getindex.(Sᵢⱼs, i)
                 Sᵢⱼ[i] = b̄ = mean(b)
                 S2_CI[i] = calc_ci(b, b̄)
             end
