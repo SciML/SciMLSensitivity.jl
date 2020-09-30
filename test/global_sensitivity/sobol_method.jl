@@ -46,6 +46,8 @@ res2 = gsa(linear_batch,Sobol(),A,B,batch=true)
 @test res1.ST ≈ [0.9997953478183109, 0.0002040399766938839, 0.0, 0.0] atol=1e-4
 @test res2.ST ≈ [0.9997953478183109, 0.0002040399766938839, 0.0, 0.0] atol=1e-4
 
+@test_nowarn gsa(linear,Sobol(order=[0,1,2], nboot = 100),A,B)
+
 #=
 library(sensitivity)
 ishigami.fun <- function(X) {
