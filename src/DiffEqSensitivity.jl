@@ -6,6 +6,7 @@ using RecursiveArrayTools, QuasiMonteCarlo, Adapt
 using Parameters: @unpack, @with_kw
 using FFTW, Distributions, Requires
 using StochasticDiffEq
+using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 

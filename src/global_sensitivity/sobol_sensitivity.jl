@@ -19,17 +19,17 @@ function fuse_designs(A, B)
     d = size(A,1)
     Aᵦ = [copy(A) for i in 1:d]
     for i in 1:d
-        Aᵦ[i][i,:] = B[i,:]
+        Aᵦ[i][i,:] = @view(B[i,:])
     end
     hcat(A,B,reduce(hcat,Aᵦ))
 end
 
 function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix;
-             batch=false, Ei_estimator = :Jansen1999, kwargs...) where {TA}
-    d,n = size(A)
-    n = Int(n/method.nboot)
-    multioutput = false
+             batch=false, Ei_estimator = :Jansen1999, distributed::Val{SHARED_ARRAY} = Val(false), kwargs...) where {TA, SHARED_ARRAY}
+    d, n = size(A)
     nboot = method.nboot # load to help alias analysis
+    n = n ÷ nboot
+    multioutput = false
     Anb = Vector{Matrix{TA}}(undef, nboot)
     for i ∈ 1:nboot
         Anb[i] = A[:,n*(i-1)+1:n*(i)]
@@ -38,7 +38,13 @@ function gsa(f, method::Sobol, A::AbstractMatrix{TA}, B::AbstractMatrix;
     for i ∈ 1:nboot
         Bnb[i] = B[:,n*(i-1)+1:n*(i)]
     end
-    all_points = mapreduce(fuse_designs, hcat, Anb, Bnb)
+    _all_points = mapreduce(fuse_designs, hcat, Anb, Bnb)
+    if SHARED_ARRAY && isbits(TA)
+        all_points = SharedMatrix{TA}(size(_all_points))
+        all_points .= _all_points
+    else
+        all_points = _all_points
+    end
 
     if batch
         all_y = f(all_points)
