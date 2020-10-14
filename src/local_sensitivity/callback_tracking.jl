@@ -85,9 +85,12 @@ function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
     condition(u,t,integrator) = t ∈ cb.affect!.event_times
 
     function affect!(integrator)
+
+        local _p
         function w(u,p,t)
           integrator = FakeIntegrator(u,p,t)
           cb.affect!(integrator)
+          _p = integrator.p
           u - integrator.u
         end
 
@@ -111,6 +114,7 @@ function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
         vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction;
                               dgrad=dgrad, dy=dy)
         integrator.u .+= du
+        _p != integrator.p && integrator.p = _p
     end
 
     PresetTimeCallback(cb.affect!.event_times,
