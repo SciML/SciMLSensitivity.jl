@@ -151,6 +151,7 @@ end
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
   @unpack sensealg, f = S
   prob = getprob(S)
+  
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if !(prob isa DiffEqBase.SteadyStateProblem)
@@ -167,27 +168,27 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::B
       @unpack pJ, pf, paramjac_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
-        f.paramjac(pJ,y,prob.p,t)
+        f.paramjac(pJ,y,p,t)
       else
         pf.t = t
         pf.u = y
-        if DiffEqBase.isinplace(prob)
-          jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_config)
+        if inplace_sensitivity(S)
+          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         else
-          temp = jacobian(pf, prob.p, sensealg)
+          temp = jacobian(pf, p, sensealg)
           pJ .= temp
         end
       end
       mul!(dgrad',λ',pJ)
     end
     if dy !== nothing
-      if DiffEqBase.isinplace(prob)
+      if inplace_sensitivity(S)
          f(dy, y, p, t)
       else
         dy[:] .= vec(f(y, p, t))
       end
     end
-  elseif DiffEqBase.isinplace(prob)
+  elseif inplace_sensitivity(S)
     _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
   else
     _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy)
@@ -197,10 +198,9 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
   @unpack sensealg, f = S
-  prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
-  if DiffEqBase.isinplace(prob)
-    _dy, back = Tracker.forward(y, prob.p) do u, p
+  if inplace_sensitivity(S)
+    _dy, back = Tracker.forward(y, p) do u, p
       out_ = map(zero, u)
       f(out_, u, p, t)
       Tracker.collect(out_)
@@ -210,7 +210,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::T
     dgrad !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   else
-    _dy, back = Tracker.forward(y, prob.p) do u, p
+    _dy, back = Tracker.forward(y, p) do u, p
       Tracker.collect(f(u, p, t))
     end
     tmp1, tmp2 = Tracker.data.(back(λ))
@@ -230,16 +230,16 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
     tape = S.diffcache.paramjac_config
 
   ## These other cases happen due to autodiff in stiff ODE solvers
-  elseif DiffEqBase.isinplace(prob)
+  elseif inplace_sensitivity(S)
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
-    tape = ReverseDiff.GradientTape((_y, prob.p, [t])) do u,p,t
+    tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
       du1 = similar(u, size(u))
       f(du1,u,p,first(t))
       return vec(du1)
      end
   else
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
-    tape = ReverseDiff.GradientTape((_y, prob.p, [t])) do u,p,t
+    tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
       vec(f(u,p,first(t)))
     end
   end
@@ -275,8 +275,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
   prob = getprob(S)
 
   isautojacvec = get_jacvec(sensealg)
-  if DiffEqBase.isinplace(prob)
-    _dy, back = Zygote.pullback(y, prob.p) do u, p
+  if inplace_sensitivity(S)
+    _dy, back = Zygote.pullback(y, p) do u, p
       out_ = Zygote.Buffer(similar(u))
       f(out_, u, p, t)
       vec(copy(out_))
@@ -286,7 +286,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
     dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
   else
-    _dy, back = Zygote.pullback(y, prob.p) do u, p
+    _dy, back = Zygote.pullback(y, p) do u, p
       vec(f(u, p, t))
     end
     tmp1,tmp2 = back(λ)
@@ -307,21 +307,21 @@ end
 
 function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, dλ, dy)
   @unpack sensealg, f = S
-  prob = getprob(S)
+
   if isnoise isa Bool && !isnoise
     if dgrad !== nothing
       @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
         # Calculate the parameter Jacobian into pJ
-        f.paramjac(pJ,y,prob.p,t)
+        f.paramjac(pJ,y,p,t)
       else
         pf.t = t
         pf.u = y
-        if DiffEqBase.isinplace(prob)
-          jacobian!(pJ, pf, prob.p, nothing, sensealg, nothing)
-          #jacobian!(pJ, pf, prob.p, f_cache, sensealg, paramjac_noise_config)
+        if inplace_sensitivity(S)
+          jacobian!(pJ, pf, p, nothing, sensealg, nothing)
+          #jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_noise_config)
         else
-          temp = jacobian(pf, prob.p, sensealg)
+          temp = jacobian(pf, p, sensealg)
           pJ .= temp
         end
       end
@@ -341,7 +341,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, d
     if dλ !== nothing && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
       @unpack J, uf, f_cache, jac_noise_config = S.diffcache
       if dy!=nothing
-        if DiffEqBase.isinplace(prob)
+        if inplace_sensitivity(S)
           f(dy, y, p, t)
         else
           dy .= f(y, p, t)
@@ -351,7 +351,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, d
       if DiffEqBase.has_jac(f)
         f.jac(J,y,p,t) # Calculate the Jacobian into J
       else
-        if DiffEqBase.isinplace(prob)
+        if inplace_sensitivity(S)
           if dy != nothing
             ForwardDiff.jacobian!(J,uf,dy,y)
           else
@@ -384,7 +384,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, d
         end
       end
     end
-  elseif DiffEqBase.isinplace(prob)
+  elseif inplace_sensitivity(S)
     _jacNoise!(λ, y, p, t, S, ReverseDiffNoise(), dgrad, dλ, dy)
   else
     _jacNoise!(λ, y, p, t, S, ZygoteNoise(), dgrad, dλ, dy)
@@ -435,9 +435,9 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
   prob = getprob(S)
 
   if StochasticDiffEq.is_diagonal_noise(prob)
-    if DiffEqBase.isinplace(prob)
+    if inplace_sensitivity(S)
       for (i, λi) in enumerate(λ)
-        _dy, back = Zygote.pullback(y, prob.p) do u, p
+        _dy, back = Zygote.pullback(y, p) do u, p
           out_ = Zygote.Buffer(similar(u))
           f(out_, u, p, t)
           copy(out_[i])
@@ -449,7 +449,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
       end
     else
       for (i, λi) in enumerate(λ)
-        _dy, back = Zygote.pullback(y, prob.p) do u, p
+        _dy, back = Zygote.pullback(y, p) do u, p
           f(u, p, t)[i]
         end
         tmp1,tmp2 = back(λi)
@@ -459,9 +459,9 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
       end
     end
   else
-    if DiffEqBase.isinplace(prob)
+    if inplace_sensitivity(S)
       for (i, λi) in enumerate(λ)
-        _dy, back = Zygote.pullback(y, prob.p) do u, p
+        _dy, back = Zygote.pullback(y, p) do u, p
           out_ = Zygote.Buffer(similar(prob.noise_rate_prototype))
           f(out_, u, p, t)
           copy(out_[:,i])
@@ -473,7 +473,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
       end
     else
       for (i, λi) in enumerate(λ)
-         _dy, back = Zygote.pullback(y, prob.p) do u, p
+         _dy, back = Zygote.pullback(y, p) do u, p
           f(u, p, t)[:,i]
         end
         tmp1,tmp2 = back(λ)

@@ -267,9 +267,12 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
 end
 
 getprob(S::SensitivityFunction) = (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
+inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
-  sensefun.discrete || return callback
+
+  reverse_cbs = setup_reverse_callbacks(cb,t,sensealg)
+  sensefun.discrete || return reverse_cbs
 
   @unpack sensealg, y = sensefun
   @unpack diffvar_idxs, algevar_idxs, factorized_mass_matrix, issemiexplicitdae, J, uf, f_cache, jac_config = sensefun.diffcache
@@ -305,5 +308,5 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
     end
   end
   cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=init_cb)
-  return CallbackSet(cb,callback)
+  return CallbackSet(cb,reverse_cbs)
 end

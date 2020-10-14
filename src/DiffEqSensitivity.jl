@@ -14,6 +14,7 @@ abstract type SensitivityFunction end
 abstract type GSAMethod end
 
 include("require.jl")
+include("local_sensitivity/callback_tracking.jl")
 include("local_sensitivity/sensitivity_algorithms.jl")
 include("local_sensitivity/derivative_wrappers.jl")
 include("local_sensitivity/sensitivity_interface.jl")
