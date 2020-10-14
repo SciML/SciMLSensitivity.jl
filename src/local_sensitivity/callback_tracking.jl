@@ -77,7 +77,7 @@ For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 setup_reverse_callbacks(cb,sensealg) = setup_reverse_callbacks(CallbackSet(cb),sensealg)
 function setup_reverse_callbacks(cb::CallbackSet,sensealg)
     cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,sensealg)
-                     _setup_reverse_callbacks.(cb.discrete_callbacks,sensealg))
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,sensealg)))
     cb
 end
 
