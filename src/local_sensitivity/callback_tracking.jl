@@ -19,18 +19,18 @@ TrackedAffect(t::Number,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),affe
 function (f::TrackedAffect)(integrator)
     f.affect!(integrator)
     if integrator.u_modified
-        push!(event_times,integrator.t)
+        push!(f.event_times,integrator.t)
     end
 end
 
-function _track_callbacks(cb::DiscreteCallback,t)
+function _track_callback(cb::DiscreteCallback,t)
     DiscreteCallback(cb.condition,
                      TrackedAffect(t,cb.affect!),
                      cb.initialize,
                      cb.save_positions)
 end
 
-function _track_callbacks(cb::ContinuousCallback,t)
+function _track_callback(cb::ContinuousCallback,t)
     ContinuousCallback(
         cb.condition,
         TrackedAffect(t,cb.affect!),
@@ -42,7 +42,7 @@ function _track_callbacks(cb::ContinuousCallback,t)
         cb.dtrelax,cb.abstol,cb.reltol)
 end
 
-function _track_callbacks(cb::VectorContinuousCallback,t)
+function _track_callback(cb::VectorContinuousCallback,t)
     VectorContinuousCallback(
                cb.condition,
                TrackedAffect(t,cb.affect!),
@@ -66,6 +66,7 @@ struct CallbackSensitivityFunction{F,S,D,P} <: SensitivityFunction
     prob::P
 end
 getprob(S::CallbackSensitivityFunction) = S.prob
+inplace_sensitivity(S::CallbackSensitivityFunction) = true
 
 """
 Sets up callbacks for the adjoint pass. This is a version that has an effect
@@ -76,28 +77,27 @@ For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
 setup_reverse_callbacks(cb,sensealg) = setup_reverse_callbacks(CallbackSet(cb),sensealg)
 function setup_reverse_callbacks(cb::CallbackSet,sensealg)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,sensealg)
-                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,sensealg)))
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,)),
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,))))
     cb
 end
 
 function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
-    condition(u,t,integrator) = t ∈ cb.affect!.event_times
-
     function affect!(integrator)
 
         local _p
-        function w(u,p,t)
-          integrator = FakeIntegrator(u,p,t)
-          cb.affect!(integrator)
-          _p = integrator.p
-          u - integrator.u
+
+        function w(du,u,p,t)
+          fakeinteg = FakeIntegrator([x for x in u],p,t)
+          cb.affect!.affect!(fakeinteg)
+          _p = fakeinteg.p
+          du .= u - fakeinteg.u
         end
 
-        S = integrator.f # get the sensitivity function
+        S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
-        fakeS = CallbackSensitivityFunction(w,sensealg,integrator.f.diffcache,integrator.sol.prob)
+        fakeS = CallbackSensitivityFunction(w,sensealg,integrator.f.f.diffcache,integrator.sol.prob)
 
         idx = length(S.y)
 
@@ -106,18 +106,20 @@ function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
         grad  = @view integrator.u[idx+1:end-idx]
         y     = @view integrator.u[end-idx+1:end]
 
-        du = get_tmp_cache(integrator)
+        du = first(get_tmp_cache(integrator))
         dλ    = @view du[1:idx]
         dgrad = @view du[idx+1:end-idx]
         dy    = @view du[end-idx+1:end]
 
-        vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction;
+        #hardcode the left limit from the example for now
+        vecjacobian!(dλ, y - [2.0,0.0], λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
-        integrator.u .+= du
-        _p != integrator.p && integrator.p = _p
+        @show du
+        integrator.u .-= du
+        #_p != integrator.p && (integrator.p = _p)
     end
 
     PresetTimeCallback(cb.affect!.event_times,
-                       condition,affect!,
+                       affect!,
                        save_positions = (false,false))
 end

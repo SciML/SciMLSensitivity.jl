@@ -9,7 +9,6 @@ end
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    abstol=1e-6,reltol=1e-3,
                                    checkpoints=sol.t,
-                                   tstops = (),
                                    callback = nothing,
                                    kwargs...)
   if sol.prob isa SDEProblem
@@ -22,10 +21,10 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                  abstol=abstol,reltol=reltol)
   end
 
-  _tstops = ischeckpointing(sensealg, sol) ? sort!(vcat(tstops,checkpoints)) : tstops
+  tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
-                  tstops=_tstops,abstol=abstol,reltol=reltol,kwargs...)
+                  abstol=abstol,reltol=reltol,kwargs...)
 
   p = sol.prob.p
   l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p)

@@ -271,7 +271,7 @@ inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
-  reverse_cbs = setup_reverse_callbacks(cb,t,sensealg)
+  reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg)
   sensefun.discrete || return reverse_cbs
 
   @unpack sensealg, y = sensefun

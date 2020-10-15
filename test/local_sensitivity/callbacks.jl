@@ -1,5 +1,41 @@
-using StochasticDiffEq, Zygote
-using DiffEqSensitivity, Test
+using StochasticDiffEq, OrdinaryDiffEq, Zygote
+using DiffEqSensitivity, Test, ForwardDiff
+
+# ODEs
+
+function fiip(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+end
+function foop(u,p,t)
+  dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+  [dx,dy]
+end
+
+p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
+
+prob = ODEProblem(fiip,u0,(0.0,10.0),p)
+proboop = ODEProblem(foop,u0,(0.0,10.0),p)
+
+condition(u,t,integrator) = t == 5
+affect!(integrator) = integrator.u[1] += 2.0
+cb = DiscreteCallback(condition,affect!)
+du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
+dstuff = ForwardDiff.gradient((θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),[u0;p])
+@test du01 ≈ dstuff[1:2]
+@test dp1 ≈ dstuff[3:6]
+
+condition(u,t,integrator) = t == 5
+affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
+cb = DiscreteCallback(condition,affect!)
+du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p
+)
+dstuff = ForwardDiff.gradient((θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),[u0;p])
+@test du01 ≈ dstuff[1:2]
+@test dp1 ≈ dstuff[3:6]
+
+# SDEs
 
 function dt!(du, u, p, t)
   x, y = u
