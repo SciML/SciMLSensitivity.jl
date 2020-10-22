@@ -22,18 +22,37 @@ condition(u,t,integrator) = t == 5
 affect!(integrator) = integrator.u[1] += 2.0
 cb = DiscreteCallback(condition,affect!)
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
+du02,dp2 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
 dstuff = ForwardDiff.gradient((θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),[u0;p])
 @test du01 ≈ dstuff[1:2]
 @test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du02
+@test dp1 ≈ dp2
 
 condition(u,t,integrator) = t == 5
 affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
 cb = DiscreteCallback(condition,affect!)
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p
 )
+du02,dp2 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p
+)
 dstuff = ForwardDiff.gradient((θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),[u0;p])
 @test du01 ≈ dstuff[1:2]
 @test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du02
+@test dp1 ≈ dp2
+
+affecttimes = [2.0,4.0,8.0]
+condition(u,t,integrator) = t ∈ affecttimes
+affect!(integrator) = integrator.u[1] += 2.0
+cb = DiscreteCallback(condition,affect!)
+du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
+du02,dp2 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),u0,p)
+dstuff = ForwardDiff.gradient((θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1)),[u0;p])
+@test du01 ≈ dstuff[1:2]
+@test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du02
+@test dp1 ≈ dp2
 
 # SDEs
 
