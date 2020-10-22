@@ -59,12 +59,13 @@ struct FakeIntegrator{uType,P,tType}
     t::tType
 end
 
-struct CallbackSensitivityFunction{F,S,D,P} <: SensitivityFunction
-    f::F
-    sensealg::S
-    diffcache::D
-    prob::P
+struct CallbackSensitivityFunction{fType,Alg<:BacksolveAdjoint,C<:AdjointDiffCache,pType} <: SensitivityFunction
+    f::fType
+    sensealg::Alg
+    diffcache::C
+    prob::pType
 end
+
 getprob(S::CallbackSensitivityFunction) = S.prob
 inplace_sensitivity(S::CallbackSensitivityFunction) = true
 
