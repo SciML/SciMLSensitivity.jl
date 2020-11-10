@@ -34,27 +34,37 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
-  _prob = remake(prob,u0=u0,p=p)
+
+  if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
+    cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1])
+  elseif haskey(prob.kwargs,:callback)
+    cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+  elseif haskey(kwargs,:callback)
+    cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1])
+  else
+    cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+  end
+  _prob = remake(prob,u0=u0,p=p,callback=cb)
+
+  # Remove callbacks from kwargs since it's already in _prob
+  kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
+  values(kwargs)), (:callback,))}(values(kwargs))
+
+  # Capture the callback_adj for the reverse pass and remove both callbacks
+  kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
+
+  if typeof(sensealg) <: BacksolveAdjoint
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs_fwd...)
+  elseif ischeckpointing(sensealg)
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs_fwd...)
+  else
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs_fwd...)
+  end
 
   # Force `save_start` and `save_end` in the forward pass This forces the
   # solver to do the backsolve all the way back to `u0` Since the start aliases
   # `_prob.u0`, this doesn't actually use more memory But it cleans up the
   # implementation and makes `save_start` and `save_end` arg safe.
-  kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
-  values(kwargs)), (:callback_adj,))}(values(kwargs))
-  kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
-  if haskey(kwargs, :callback_adj)
-    kwargs_adj = merge(kwargs_adj, NamedTuple{(:callback,)}( [get(kwargs, :callback_adj, nothing)] ))
-  end
-
-  if typeof(sensealg) <: BacksolveAdjoint
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
-  elseif ischeckpointing(sensealg)
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs...)
-  else
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs...)
-  end
-
   if typeof(sensealg) <: BacksolveAdjoint
     # Saving behavior unchanged
     ts = sol.t
@@ -141,7 +151,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       end
     end
 
+    if haskey(kwargs, :callback_adj)
+      cb2 = CallbackSet(cb,kwargs[:callback_adj])
+    else
+      cb2 = cb
+    end
+
     du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
+                                    callback = cb2,
                                     kwargs_adj...)
 
     du0 = reshape(du0,size(u0))
