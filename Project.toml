@@ -45,7 +45,7 @@ StochasticDiffEq = "6.20"
 Tracker = "0.2"
 Zygote = "0.4, 0.5"
 ZygoteRules = "0.2"
-julia = "1.2"
+julia = "1.5"
 
 [extras]
 AlgebraicMultigrid = "2169fc97-5a83-5252-b627-83903c6c433c"
