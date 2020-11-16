@@ -13,7 +13,7 @@ Random.seed!(seed)
 tstart = 0.0
 tend = 0.1
 trange = (tstart, tend)
-t = tstart:0.005:tend
+t = tstart:0.01:tend
 tarray = collect(t)
 
 function g(u,p,t)
@@ -24,15 +24,19 @@ function dg!(out,u,p,t,i)
   (out.=-u)
 end
 
-p = [1.01,0.87]
+dt = tend/1e4
 
-dt = tend/1e3
+# non-exploding initialization.
+α = 1/(exp(-randn())+1)
+β = -α^2 - 1/(exp(-randn())+1)
+p = [α,β]
 
-fIto(u,p,t) = p[1]*u.+p[2]^2/2*u
-fStrat(u,p,t) = p[1]*u
+fIto(u,p,t) = p[1]*u #p[1]*u.+p[2]^2/2*u
+fStrat(u,p,t) = p[1]*u.-p[2]^2/2*u #p[1]*u
 σ(u,p,t) = p[2]*u
 
-linear_analytic(u0,p,t,W) = @.(u0*exp(p[1]*t+p[2]*W)) # Strat sense
+ # Ito sense (Strat sense for commented version)
+linear_analytic(u0,p,t,W) = @.(u0*exp(p[1]*t+p[2]*W))
 corfunc(u,p,t) = p[2]^2*u
 
 """
@@ -45,17 +49,17 @@ corfunc(u,p,t) = p[2]^2*u
 # NG = NoiseGrid(Array(tstart:dt:(tend+dt)),[Z for Z in Z1])
 
 # set initial state
-u0 = [1/2]
+u0 = [1/6]
 
 # define problem in Ito sense
 Random.seed!(seed)
-probIto = SDEProblem(SDEFunction(fIto,σ,analytic=linear_analytic),
+probIto = SDEProblem(fIto,
   σ,u0,trange,p,
   #noise=NG
  )
 
 # solve Ito sense
-solIto = solve(probIto, EM(), dt=dt, adaptive=false)
+solIto = solve(probIto, EM(), dt=dt, adaptive=false, save_noise=true, saveat=dt)
 
 
 # define problem in Stratonovich sense
@@ -66,11 +70,13 @@ probStrat = SDEProblem(SDEFunction(fStrat,σ,),
   )
 
 # solve Strat sense
-solStrat = solve(probStrat,RKMil(interpretation=:Stratonovich), dt=dt, adaptive=false, save_noise=true)
+solStrat = solve(probStrat,RKMil(interpretation=:Stratonovich), dt=dt,
+  adaptive=false, save_noise=true,  saveat=dt)
 
 # check that forward solution agrees
 @test isapprox(solIto.u, solStrat.u, rtol=1e-3)
-@test isapprox(solIto.u, solIto.u_analytic, rtol=1e-3)
+@test isapprox(solIto.u, solStrat.u, atol=1e-2)
+#@test isapprox(solIto.u, solIto.u_analytic, rtol=1e-3)
 
 
 """
@@ -88,15 +94,14 @@ gs_u0a, gs_pa = adjoint_sensitivities(solIto,EM(),dg!,Array(t)
 
 @info gs_u0a, gs_pa
 
-@test isapprox(gs_u0, gs_u0a, rtol=1e-8) #
+@test isapprox(gs_u0, gs_u0a, rtol=1e-8)
 @test isapprox(gs_p, gs_pa, rtol=1e-8)
 
 # for Strat sense
 res_u0, res_p = adjoint_sensitivities(solStrat,EulerHeun(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint())
+  ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint())
 
 @info res_u0, res_p
-
 
 
 """
@@ -120,18 +125,18 @@ res_reverse = ReverseDiff.gradient(p -> Gp(p,sensealg=ReverseDiffAdjoint()), p)
 @info res_reverse
 
 Wfix = [solStrat.W(t)[1][1] for t in tarray]
-resp1 = sum(@. tarray*u0^2*exp(2*(p[1])*tarray+2*p[2]*Wfix))
-resp2 = sum(@. (Wfix)*u0^2*exp(2*(p[1])*tarray+2*p[2]*Wfix))
+resp1 = sum(@. tarray*u0^2*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
+resp2 = sum(@. (Wfix-p[2]*tarray)*u0^2*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
 resp = [resp1, resp2]
 
 @show resp
 
 
-@test_broken isapprox(resp, gs_p', rtol=1e-3) # exact vs ito adjoint
-@test_broken isapprox(res_p, gs_p, rtol=1e-3) # strat vs ito adjoint
-@test_broken isapprox(gs_p', res_forward, rtol=1e-3) # ito adjoint vs forward
-@test isapprox(resp, res_p', rtol=1e-3) # exact vs strat adjoint
-@test isapprox(resp, res_forward, rtol=1e-3) # exact vs forward
+@test isapprox(resp, gs_p', atol=1e-2) # exact vs ito adjoint
+@test isapprox(res_p, gs_p, atol=1e-2) # strat vs ito adjoint
+@test isapprox(gs_p', res_forward, atol=1e-2) # ito adjoint vs forward
+@test isapprox(resp, res_p', rtol=1e-5) # exact vs strat adjoint
+@test isapprox(resp, res_forward, rtol=1e-5) # exact vs forward
 @test isapprox(res_reverse, res_forward, rtol=1e-12) # reverse vs forward
 
 # tests for initial state gradients
@@ -147,11 +152,12 @@ end
 res_forward = ForwardDiff.gradient(u0 -> Gu0(u0,sensealg=ForwardDiffSensitivity()), u0)
 res_reverse = ReverseDiff.gradient(u0 -> Gu0(u0,sensealg=ReverseDiffAdjoint()), u0)
 
-resu0 = sum(@. u0*exp(2*p[1]*tarray+2*p[2]*Wfix))
+resu0 = sum(@. u0*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
+@show resu0
 
-@test_broken isapprox(resu0, gs_u0[1], rtol=1e-3) # exact vs ito adjoint
-@test_broken isapprox(res_u0, gs_u0, rtol=1e-3) # strat vs ito adjoint
-@test_broken isapprox(gs_u0, res_forward, rtol=1e-3) # ito adjoint vs forward
+@test isapprox(resu0, gs_u0[1], rtol=5e-2) # exact vs ito adjoint
+@test isapprox(res_u0, gs_u0, rtol=5e-2) # strat vs ito adjoint
+@test isapprox(gs_u0, res_forward, rtol=5e-2) # ito adjoint vs forward
 @test isapprox(resu0, res_u0[1], rtol=1e-3) # exact vs strat adjoint
 @test isapprox(res_u0, res_forward, rtol=1e-3) # strat adjoint vs forward
 @test isapprox(resu0, res_forward[1], rtol=1e-3)  # exact vs forward
@@ -161,20 +167,20 @@ resu0 = sum(@. u0*exp(2*p[1]*tarray+2*p[2]*Wfix))
 
 
 adj_probStrat = SDEAdjointProblem(solStrat,BacksolveAdjoint(),dg!,t,nothing)
-adj_solStrat = solve(adj_probStrat,EulerHeun(), dt=dt/10)
+adj_solStrat = solve(adj_probStrat,EulerHeun(), dt=dt)
 
 #@show adj_solStrat[end]
 
 adj_probIto = SDEAdjointProblem(solIto,BacksolveAdjoint(),dg!,t,nothing,
   corfunc_analytical=corfunc)
-adj_solIto = solve(adj_probIto,EM(), dt=dt/10)
+adj_solIto = solve(adj_probIto,EM(), dt=dt)
 
 @test isapprox(adj_solStrat[4,:], adj_solIto[4,:], rtol=1e-3)
 
 
 # using Plots
-#pl1 = plot(solStrat, label="Strat forward")
-#plot!(pl1,solIto, label="Ito forward")
+# pl1 = plot(solStrat, label="Strat forward")
+# plot!(pl1,solIto, label="Ito forward")
 #
 # pl1 = plot(adj_solStrat.t, adj_solStrat[4,:], label="Strat reverse")
 # plot!(pl1,adj_solIto.t, adj_solIto[4,:], label="Ito reverse")
@@ -189,3 +195,5 @@ adj_solIto = solve(adj_probIto,EM(), dt=dt/10)
 # plot!(pl4, adj_solIto.t, adj_solIto[3,:], label="Ito reverse")
 #
 # pl = plot(pl1,pl2,pl3,pl4)
+#
+# savefig(pl, "plot.png")
