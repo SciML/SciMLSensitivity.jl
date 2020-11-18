@@ -313,6 +313,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
 
+  local sol
+
   function reversediff_adjoint_forwardpass(_u0,_p)
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
@@ -346,12 +348,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   ReverseDiff.value!(tu, u0)
   typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
-  function tracker_adjoint_backpass(ybar)
+  function reversediff_adjoint_backpass(ybar)
     ReverseDiff.increment_deriv!(output, ybar)
     ReverseDiff.reverse_pass!(tape)
     (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
   end
-  DiffEqArray(u,t),tracker_adjoint_backpass
+  DiffEqBase.sensitivity_solution(sol,u,t),reversediff_adjoint_backpass
 end
 
 

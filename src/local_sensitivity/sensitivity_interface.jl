@@ -9,12 +9,15 @@ end
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    abstol=1e-6,reltol=1e-3,
                                    checkpoints=sol.t,
+                                   corfunc_analytical=nothing,
                                    callback = nothing,
                                    kwargs...)
+
   if sol.prob isa SDEProblem
     adj_prob = SDEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
-                                 callback = callback,
-                                 abstol=abstol,reltol=reltol)
+                               callback = callback,
+                               abstol=abstol,reltol=reltol,
+                               corfunc_analytical=corfunc_analytical)
   else
     adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                  callback = callback,

@@ -12,6 +12,7 @@ import ZygoteRules, Zygote, ReverseDiff
 
 abstract type SensitivityFunction end
 abstract type GSAMethod end
+abstract type TransformedFunction end
 
 include("require.jl")
 include("local_sensitivity/sensitivity_algorithms.jl")
@@ -26,6 +27,7 @@ include("local_sensitivity/callback_tracking.jl")
 include("local_sensitivity/concrete_solve.jl")
 include("local_sensitivity/second_order.jl")
 include("local_sensitivity/steadystate_adjoint.jl")
+include("local_sensitivity/sde_tools.jl")
 include("global_sensitivity/morris_sensitivity.jl")
 include("global_sensitivity/sobol_sensitivity.jl")
 include("global_sensitivity/regression_sensitivity.jl")
@@ -49,4 +51,6 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
 export second_order_sensitivities, second_order_sensitivity_product
 
 export TrackerVJP, ZygoteVJP, ReverseDiffVJP
+
+export StochasticTransformedFunction
 end # module

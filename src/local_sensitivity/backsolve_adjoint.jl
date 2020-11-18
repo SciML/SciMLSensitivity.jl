@@ -138,7 +138,8 @@ end
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
-                                     diffusion_jac=nothing, diffusion_paramjac=nothing,kwargs...)
+                                     corfunc_analytical=nothing,diffusion_jac=nothing, diffusion_paramjac=nothing,
+                                     kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
   discrete = t != nothing
@@ -151,7 +152,13 @@ end
   len = length(u0)+numparams
   λ = one(eltype(u0)) .* similar(p, len)
 
-  sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
+  if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
+  else
+    transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g,corfunc_analytical)
+    drift_function = ODEFunction(transformed_function)
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function)
+  end
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
@@ -184,8 +191,8 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  _sol.W.save_everystep = false
-  backwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, reverse=true)
+
+  backwardnoise = reverse(_sol.W)
   #backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
