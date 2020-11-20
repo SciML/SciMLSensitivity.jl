@@ -307,6 +307,7 @@ end
 
 function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, dλ, dy)
   @unpack sensealg, f = S
+  prob = getprob(S)
 
   if isnoise isa Bool && !isnoise
     if dgrad !== nothing
