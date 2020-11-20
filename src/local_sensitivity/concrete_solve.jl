@@ -35,16 +35,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
 
-  if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
-    cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1])
-  elseif haskey(prob.kwargs,:callback)
-    cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
-  elseif haskey(kwargs,:callback)
-    cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1])
+  if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
+    if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1])
+    elseif haskey(prob.kwargs,:callback)
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+    else #haskey(kwargs,:callback)
+      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1])
+    end
+    _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
-    cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+    _prob = remake(prob,u0=u0,p=p)
   end
-  _prob = remake(prob,u0=u0,p=p,callback=cb)
+
 
   # Remove callbacks from kwargs since it's already in _prob
   kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
@@ -154,7 +157,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     if haskey(kwargs, :callback_adj)
       cb2 = CallbackSet(cb,kwargs[:callback_adj])
     else
-      cb2 = cb
+      cb2 = nothing
     end
 
     du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
