@@ -332,7 +332,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
   function reversediff_adjoint_backpass(ybar)
-    ReverseDiff.increment_deriv!(output, ybar)
+    if prob isa SDEProblem
+      for i in eachindex(ybar)
+        @views ReverseDiff.increment_deriv!(output[:,i], ybar[i])
+      end
+    else
+      ReverseDiff.increment_deriv!(output, ybar)
+    end
     ReverseDiff.reverse_pass!(tape)
     (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
   end
