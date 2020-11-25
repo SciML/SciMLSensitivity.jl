@@ -50,6 +50,8 @@ julia = "1.5"
 [extras]
 AlgebraicMultigrid = "2169fc97-5a83-5252-b627-83903c6c433c"
 Calculus = "49dc2e85-a5d0-5ad3-a950-438e2897f1b9"
+DiffEqFlux = "aae7a2af-3d4f-5e19-a356-7da93b79d9d0"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -62,4 +64,4 @@ SteadyStateDiffEq = "9672c7b4-1e72-59bd-8a11-6ac3964bc41f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["AlgebraicMultigrid", "OrdinaryDiffEq", "Calculus", "ReverseDiff", "SafeTestsets", "Test", "QuasiMonteCarlo", "Random", "Pkg", "SteadyStateDiffEq", "NLsolve", "SparseArrays"]
+test = ["AlgebraicMultigrid", "OrdinaryDiffEq", "Calculus", "ReverseDiff", "SafeTestsets", "Test", "QuasiMonteCarlo", "Random", "Pkg", "SteadyStateDiffEq", "NLsolve", "SparseArrays", "Flux", "DiffEqFlux"]
