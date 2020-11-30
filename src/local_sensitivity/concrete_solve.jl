@@ -45,6 +45,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
     _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
+    cb = nothing
     _prob = remake(prob,u0=u0,p=p)
   end
 
@@ -154,10 +155,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       end
     end
 
-    if haskey(kwargs, :callback_adj)
+    if haskey(kwargs_adj, :callback_adj)
       cb2 = CallbackSet(cb,kwargs[:callback_adj])
     else
-      cb2 = nothing
+      cb2 = cb
     end
 
     du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,

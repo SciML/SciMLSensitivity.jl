@@ -27,7 +27,7 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
   tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
   adj_sol = solve(adj_prob,alg;
                   save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
-                  abstol=abstol,reltol=reltol,kwargs...)
+                  tstops=tstops,abstol=abstol,reltol=reltol,kwargs...)
 
   p = sol.prob.p
   l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p)

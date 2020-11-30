@@ -113,13 +113,13 @@ function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
         dy    = @view du[end-idx+1:end]
 
         #hardcode the left limit from the example for now
-        vecjacobian!(dλ, y - [2.0,0.0], λ, integrator.p, integrator.t, fakeS;
+        vecjacobian!(dλ, y - 1*[2.0,0.0], λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
-        @show du
+        @show integrator.u, du
         integrator.u .-= du
         #_p != integrator.p && (integrator.p = _p)
     end
-
+    @show cb.affect!.event_times
     PresetTimeCallback(cb.affect!.event_times,
                        affect!,
                        save_positions = (false,false))
