@@ -1,11 +1,18 @@
 using DiffEqSensitivity, SafeTestsets
-using Test
+using Test, Pkg
 
 const GROUP = get(ENV, "GROUP", "All")
 const is_APPVEYOR = Sys.iswindows() && haskey(ENV,"APPVEYOR")
 const is_TRAVIS = haskey(ENV,"TRAVIS")
 
+function activate_downstream_env()
+    Pkg.activate("downstream")
+    Pkg.develop(PackageSpec(path=dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time begin
+
 if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Forward Sensitivity" begin include("local_sensitivity/forward.jl") end
     @time @safetestset "Adjoint Sensitivity" begin include("local_sensitivity/adjoint.jl") end
@@ -43,6 +50,10 @@ if GROUP == "All" || GROUP == "SDE3"
     @time @safetestset "SDE Ito Scalar Noise" begin include("local_sensitivity/sde_scalar_ito.jl") end
 end
 
+if GROUP == "DiffEqFlux"
+    activate_downstream_env()
+    @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
+end
 
 if GROUP == "All" || GROUP == "GSA"
     @time @safetestset "Morris Method" begin include("global_sensitivity/morris_method.jl") end

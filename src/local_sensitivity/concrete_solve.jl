@@ -256,9 +256,23 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       _prob = remake(prob,u0=map(identity,_u0),p=_p)
     else
       # use TrackedArray for efficiency of the tape
-      _f(args...) = Tracker.collect(prob.f(args...))
+      function _f(args...)
+        out = prob.f(args...)
+        if out isa TrackedArray
+          return out
+        else
+          Tracker.collect(out)
+        end
+      end
       if prob isa SDEProblem
-        _g(args...) = Tracker.collect(prob.g(args...))
+        function _g(args...)
+          out = prob.g(args...)
+          if out isa TrackedArray
+            return out
+          else
+            Tracker.collect(out)
+          end
+        end
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
       else
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
@@ -332,7 +346,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
   function reversediff_adjoint_backpass(ybar)
-    ReverseDiff.increment_deriv!(output, ybar)
+    if prob isa SDEProblem
+      for i in eachindex(ybar)
+        @views ReverseDiff.increment_deriv!(output[:,i], ybar[i])
+      end
+    else
+      ReverseDiff.increment_deriv!(output, ybar)
+    end
     ReverseDiff.reverse_pass!(tape)
     (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
   end

@@ -96,7 +96,7 @@ p2 = [1.01,0.87]
   res_sde_forward = ForwardDiff.gradient(GSDE1,p)
   res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
 
-  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1400,adaptive=false,u0=u0,p=p,saveat=tarray,sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
+  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1000,adaptive=false,u0=u0,p=p,saveat=tarray,sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
 
   noise = vec((@. sol_oop_sde.W(tarray)))
   Wfix = [W[1][1] for W in noise]
@@ -104,7 +104,7 @@ p2 = [1.01,0.87]
   @test isapprox(res_sde_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[2], sum(@. (Wfix)*u₀^2*exp(2*(p[1])*tarray+2*p[2]*Wfix)), rtol = 1e-4)
-  @test isapprox(res_sde_p'[1], res_sde_trackerp[1], rtol = 1e-4)
+  @test isapprox(res_sde_p'[1], res_sde_trackerp[1], rtol = 1e-3)
 
   # SDE adjoint results (with noise != 0)
   dt1 = tend/1e3
