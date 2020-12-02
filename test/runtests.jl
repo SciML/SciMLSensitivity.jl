@@ -1,9 +1,15 @@
 using DiffEqSensitivity, SafeTestsets
-using Test
+using Test, Pkg
 
 const GROUP = get(ENV, "GROUP", "All")
 const is_APPVEYOR = Sys.iswindows() && haskey(ENV,"APPVEYOR")
 const is_TRAVIS = haskey(ENV,"TRAVIS")
+
+function activate_downstream_env()
+    Pkg.activate("downstream")
+    Pkg.develop(PackageSpec(path=dirname(@__DIR__)))
+    Pkg.instantiate()
+end
 
 @time begin
 
@@ -45,6 +51,7 @@ if GROUP == "All" || GROUP == "SDE3"
 end
 
 if GROUP == "DiffEqFlux"
+    activate_downstream_env()
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
 end
 
