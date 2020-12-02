@@ -36,18 +36,18 @@ if GROUP == "All" || GROUP == "Core2"
 end
 
 if GROUP == "All" || GROUP == "SDE1"
-    @time @safetestset "SDE Adjoint" begin include("sde.jl") end
-    @time @safetestset "SDE Scalar Noise" begin include("sde_scalar.jl") end
+    @time @safetestset "SDE Adjoint" begin include("sde_stratonovich.jl") end
+    @time @safetestset "SDE Scalar Noise" begin include("sde_scalar_stratonovich.jl") end
     @time @safetestset "SDE Checkpointing" begin include("sde_checkpointing.jl") end
 end
 
 if GROUP == "All" || GROUP == "SDE2"
-    @time @safetestset "SDE Non-Diagonal Noise" begin include("sde_nondiag.jl") end
+    @time @safetestset "SDE Non-Diagonal Noise" begin include("sde_nondiag_stratonovich.jl") end
 end
 
 if GROUP == "All" || GROUP == "SDE3"
-    @time @safetestset "SDE Ito Conversion Tests" begin include("local_sensitivity/sde_transformation_test.jl") end
-    @time @safetestset "SDE Ito Scalar Noise" begin include("local_sensitivity/sde_scalar_ito.jl") end
+    @time @safetestset "SDE Ito Conversion Tests" begin include("sde_transformation_test.jl") end
+    @time @safetestset "SDE Ito Scalar Noise" begin include("sde_scalar_ito.jl") end
 end
 
 if GROUP == "DiffEqFlux"
