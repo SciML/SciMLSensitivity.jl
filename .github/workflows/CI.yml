@@ -17,6 +17,7 @@ jobs:
           - SDE1
           - SDE2
           - SDE3
+          - DiffEqFlux
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
