@@ -12,6 +12,7 @@ import ZygoteRules, Zygote, ReverseDiff
 using Reexport
 @reexport using GlobalSensitivity
 abstract type SensitivityFunction end
+abstract type TransformedFunction end
 
 include("require.jl")
 include("sensitivity_algorithms.jl")
