@@ -9,7 +9,8 @@ using StochasticDiffEq
 using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
-
+using Reexport
+@reexport using GlobalSensitivity
 abstract type SensitivityFunction end
 
 include("require.jl")
@@ -44,4 +45,9 @@ export second_order_sensitivities, second_order_sensitivity_product
 export TrackerVJP, ZygoteVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
+
+function gsa(f, method::GlobalSensitivity.GSAMethod, args...; kwargs...)
+    @warn "Global Sensitivity Analysis has been moved to separate package GlobalSensitivity.jl (https://github.com/SciML/GlobalSensitivity.jl)"
+    GlobalSensitivity.gsa(f, method, args...; kwargs...)
+end
 end # module
