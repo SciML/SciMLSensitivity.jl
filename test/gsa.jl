@@ -1,4 +1,4 @@
-using DiffEqSensitivity, Test
+using DiffEqSensitivity, Test, QuasiMonteCarlo
 
 
 function ishi_batch(X)

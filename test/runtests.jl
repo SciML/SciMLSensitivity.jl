@@ -24,6 +24,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "ArrayPartitions" begin include("array_partitions.jl") end
     @time @safetestset "Complex Adjoints" begin include("complex_adjoints.jl") end
     @time @safetestset "Time Type Mixing Adjoints" begin include("time_type_mixing.jl") end
+    @time @safetestset "GSA tests" begin include("gsa.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core2"
