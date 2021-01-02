@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Zygote, Test
+using OrdinaryDiffEq, DiffEqSensitivity, Zygote, Test
 
 function loss1(p;sensealg=nothing)
   f(x,p,t) = [p[1]]
