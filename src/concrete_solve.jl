@@ -28,6 +28,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,senseal
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
+function DiffEqBase._concrete_solve_adjoint(prob::DiscreteProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+  default_sensealg = ReverseDiffAdjoint()
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
@@ -241,7 +246,8 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
-    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,kwargs...),u0,p)
+    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,
+                    sensealg = SensitivityADPassThrough(),kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
@@ -288,7 +294,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
         _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p,tspan=_tspan)
       end
     end
-    @show _prob.tspan
     sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
 
     if typeof(sol.u[1]) <: Array
