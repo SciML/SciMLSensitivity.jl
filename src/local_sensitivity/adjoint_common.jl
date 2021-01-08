@@ -303,9 +303,7 @@ function (f::CBRev_Affect)(integrator)
   # Warning: alias here! Be careful with λ
   gᵤ = isq ? λ : @view(λ[1:idx])
   g(gᵤ,y,p,t[cur_time[]],cur_time[])
-  @show integrator.t t[cur_time[]] cur_time[]
-  println("----------")
-  println(" ")
+  
   if issemiexplicitdae
     jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     dhdd = J[algevar_idxs, diffvar_idxs]
@@ -333,7 +331,6 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
-  @show _t, t, duplicate_iterator_times
 
   cbrev_affect = CBRev_Affect(sensefun, λ, _t, g)
 

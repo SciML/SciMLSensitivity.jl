@@ -143,7 +143,7 @@ cb = DiscreteCallback(condition,affect!)
 sol1 = solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)
 
 du01,dp1 = Zygote.gradient(
-  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false))),
   u0,p)
 
 du02,dp2 = Zygote.gradient(
@@ -154,10 +154,10 @@ dstuff = ForwardDiff.gradient(
   (θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),
   [u0;p])
 
-@test_broken du01 ≈ dstuff[1:2]
-@test_broken dp1 ≈ dstuff[3:6]
-@test_broken du01 ≈ du02
-@test_broken dp1 ≈ dp2
+@test du01 ≈ dstuff[1:2]
+@test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du02
+@test dp1 ≈ dp2
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
@@ -166,7 +166,7 @@ cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1])
 sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)
 cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
-adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(checkpointing=true),dg!,sol_track.t,nothing,
+adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(checkpointing=false),dg!,sol_track.t,nothing,
 						 callback = cb2,
 						 abstol=1e-14,reltol=1e-14)
 adj_sol1 = solve(adj_prob, Tsit5(), tstops=sol_track.t, abstol=1e-14,reltol=1e-14)
@@ -176,16 +176,6 @@ adj_sol1 = solve(adj_prob, Tsit5(), tstops=sol_track.t, abstol=1e-14,reltol=1e-1
 @test dp1 ≈ adj_sol1[3:6,end]
 
 
-adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(checkpointing=true),dg!,sol_track.t,nothing,
-						 callback = nothing,
-						 abstol=1e-14,reltol=1e-14)
-adj_sol1 = solve(adj_prob, Tsit5(), abstol=1e-14,reltol=1e-14)
-
-@test -adj_sol1[1:2,end] ≈ dstuff[1:2]
-@test adj_sol1[3:6,end] ≈ dstuff[3:6]
-
-
-
 ### other callback at single time point
 
 condition(u,t,integrator) = t == 5
@@ -193,7 +183,7 @@ affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
 cb = DiscreteCallback(condition,affect!)
 
 du01,dp1 = Zygote.gradient(
-  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint()))
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false)))
   ,u0,p)
 
 du02,dp2 = Zygote.gradient(
@@ -221,7 +211,7 @@ affect!(integrator) = integrator.u[1] += 2.0
 cb = DiscreteCallback(condition,affect!)
 
 du01,dp1 = Zygote.gradient(
-  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false))),
   u0,p)
 
 du02,dp2 = Zygote.gradient(
@@ -232,10 +222,10 @@ dstuff = ForwardDiff.gradient(
   (θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1)),
   [u0;p])
 
-@test_broken du01 ≈ dstuff[1:2]
-@test_broken dp1 ≈ dstuff[3:6]
-@test_broken du01 ≈ du02
-@test_broken dp1 ≈ dp2
+@test du01 ≈ dstuff[1:2]
+@test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du02
+@test dp1 ≈ dp2
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
