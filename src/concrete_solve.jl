@@ -28,6 +28,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,senseal
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
+function DiffEqBase._concrete_solve_adjoint(prob::DiscreteProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+  default_sensealg = ReverseDiffAdjoint()
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
@@ -262,7 +267,8 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
                                  u0,p,args...;kwargs...)
-    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,kwargs...),u0,p)
+    Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,
+                    sensealg = SensitivityADPassThrough(),kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
@@ -271,18 +277,42 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   local sol
   function tracker_adjoint_forwardpass(_u0,_p)
+
+    if (convert_tspan(sensealg) === nothing && (
+          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+          (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+          )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+      _tspan = convert.(eltype(_p),prob.tspan)
+    else
+      _tspan = prob.tspan
+    end
+
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
       # Recurse to all Array{TrackedArray}
-      _prob = remake(prob,u0=map(identity,_u0),p=_p)
+      _prob = remake(prob,u0=map(identity,_u0),p=_p,tspan=_tspan)
     else
       # use TrackedArray for efficiency of the tape
-      _f(args...) = Tracker.collect(prob.f(args...))
+      function _f(args...)
+        out = prob.f(args...)
+        if out isa TrackedArray
+          return out
+        else
+          Tracker.collect(out)
+        end
+      end
       if prob isa SDEProblem
-        _g(args...) = Tracker.collect(prob.g(args...))
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
+        function _g(args...)
+          out = prob.g(args...)
+          if out isa TrackedArray
+            return out
+          else
+            Tracker.collect(out)
+          end
+        end
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p,tspan=_tspan)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p,tspan=_tspan)
       end
     end
     sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
@@ -320,18 +350,28 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   local sol
 
   function reversediff_adjoint_forwardpass(_u0,_p)
+
+    if (convert_tspan(sensealg) === nothing && (
+          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+          (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+          )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+      _tspan = convert.(eltype(_p),prob.tspan)
+    else
+      _tspan = prob.tspan
+    end
+
     if DiffEqBase.isinplace(prob)
       # use Array{TrackedReal} for mutation to work
       # Recurse to all Array{TrackedArray}
-      _prob = remake(prob,u0=map(identity,_u0),p=_p)
+      _prob = remake(prob,u0=map(identity,_u0),p=_p,tspan=_tspan)
     else
       # use TrackedArray for efficiency of the tape
       _f(args...) = reduce(vcat,prob.f(args...))
       if prob isa SDEProblem
         _g(args...) = reduce(vcat,prob.g(args...))
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p,tspan=_tspan)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p,tspan=_tspan)
       end
     end
 
@@ -343,7 +383,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
       u = map(ReverseDiff.value,sol.u)
     end
 
-    Array(sol)
+    sol
   end
 
   tape = ReverseDiff.GradientTape(reversediff_adjoint_forwardpass,(u0, p))
