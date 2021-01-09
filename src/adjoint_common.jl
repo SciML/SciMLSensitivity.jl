@@ -269,7 +269,7 @@ end
 getprob(S::SensitivityFunction) = (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
-struct CBRev_Affect{λType,timeType,yType,RefType,FMType,AlgType,gType,cacheType}
+struct ReverseLossCallback{λType,timeType,yType,RefType,FMType,AlgType,gType,cacheType}
   isq::Bool
   λ::λType
   t::timeType
@@ -282,7 +282,7 @@ struct CBRev_Affect{λType,timeType,yType,RefType,FMType,AlgType,gType,cacheType
   diffcache::cacheType
 end
 
-function CBRev_Affect(sensefun, λ, t, g)
+function ReverseLossCallback(sensefun, λ, t, g)
   cur_time = Ref(length(t))
 
   @unpack sensealg, y = sensefun
@@ -292,10 +292,10 @@ function CBRev_Affect(sensefun, λ, t, g)
   prob = getprob(sensefun)
   idx = length(prob.u0)
 
-  return CBRev_Affect(isq, λ, t, y, cur_time, idx, factorized_mass_matrix, sensealg, g, sensefun.diffcache)
+  return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix, sensealg, g, sensefun.diffcache)
 end
 
-function (f::CBRev_Affect)(integrator)
+function (f::ReverseLossCallback)(integrator)
   @unpack isq, λ, t, y, cur_time, idx, F, sensealg, g = f
   @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
 
@@ -303,7 +303,7 @@ function (f::CBRev_Affect)(integrator)
   # Warning: alias here! Be careful with λ
   gᵤ = isq ? λ : @view(λ[1:idx])
   g(gᵤ,y,p,t[cur_time[]],cur_time[])
-  
+
   if issemiexplicitdae
     jacobian!(J, uf, y, f_cache, sensealg, jac_config)
     dhdd = J[algevar_idxs, diffvar_idxs]
@@ -332,13 +332,13 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
 
-  cbrev_affect = CBRev_Affect(sensefun, λ, _t, g)
+  ReverseLossCallback = ReverseLossCallback(sensefun, λ, _t, g)
 
-  cb = PresetTimeCallback(_t,cbrev_affect)
+  cb = PresetTimeCallback(_t,ReverseLossCallback)
 
   # handle duplicates (currently only for double occurances)
   if duplicate_iterator_times!==nothing
-    cbrev_dupl_affect = CBRev_Affect(sensefun, λ, duplicate_iterator_times[1], g)
+    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, duplicate_iterator_times[1], g)
     cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
     return CallbackSet(cb,reverse_cbs,cb_dupl)
   else
