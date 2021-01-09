@@ -267,43 +267,106 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
 end
 
 getprob(S::SensitivityFunction) = (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
+inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
-function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
-  sensefun.discrete || return callback
+struct ReverseLossCallback{λType,timeType,yType,RefType,FMType,AlgType,gType,cacheType}
+  isq::Bool
+  λ::λType
+  t::timeType
+  y::yType
+  cur_time::RefType
+  idx::Int
+  F::FMType
+  sensealg::AlgType
+  g::gType
+  diffcache::cacheType
+end
+
+function ReverseLossCallback(sensefun, λ, t, g)
+  cur_time = Ref(length(t))
 
   @unpack sensealg, y = sensefun
-  @unpack diffvar_idxs, algevar_idxs, factorized_mass_matrix, issemiexplicitdae, J, uf, f_cache, jac_config = sensefun.diffcache
-  prob = getprob(sensefun)
-  cur_time = Ref(length(t))
-  time_choice = let cur_time=cur_time, t=t
-    integrator -> cur_time[] > 0 ? t[cur_time[]] : nothing
-  end
-  affect! = let isq = (sensealg isa QuadratureAdjoint), λ=λ, t=t, y=y, cur_time=cur_time, idx=length(prob.u0), F=factorized_mass_matrix
-    function (integrator)
-      p, u = integrator.p, integrator.u
-      # Warning: alias here! Be careful with λ
-      gᵤ = isq ? λ : @view(λ[1:idx])
-      g(gᵤ,y,p,t[cur_time[]],cur_time[])
-      if issemiexplicitdae
-        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-        dhdd = J[algevar_idxs, diffvar_idxs]
-        dhda = J[algevar_idxs, algevar_idxs]
-        # TODO: maybe need a `conj`
-        Δλa = -dhda'\gᵤ[algevar_idxs]
-        Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
-      else
-        Δλd = gᵤ
-      end
+  isq = (sensealg isa QuadratureAdjoint)
 
-      if factorized_mass_matrix !== nothing
-        F !== I && F !== (I,I) && ldiv!(F, Δλd)
-      end
-      u[diffvar_idxs] .+= Δλd
-      u_modified!(integrator,true)
-      cur_time[] -= 1
-      return nothing
-    end
+  @unpack factorized_mass_matrix = sensefun.diffcache
+  prob = getprob(sensefun)
+  idx = length(prob.u0)
+
+  return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix, sensealg, g, sensefun.diffcache)
+end
+
+function (f::ReverseLossCallback)(integrator)
+  @unpack isq, λ, t, y, cur_time, idx, F, sensealg, g = f
+  @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
+
+  p, u = integrator.p, integrator.u
+  # Warning: alias here! Be careful with λ
+  gᵤ = isq ? λ : @view(λ[1:idx])
+  g(gᵤ,y,p,t[cur_time[]],cur_time[])
+
+  if issemiexplicitdae
+    jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+    dhdd = J[algevar_idxs, diffvar_idxs]
+    dhda = J[algevar_idxs, algevar_idxs]
+    # TODO: maybe need a `conj`
+    Δλa = -dhda'\gᵤ[algevar_idxs]
+    Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
+  else
+    Δλd = gᵤ
   end
-  cb = IterativeCallback(time_choice,affect!,eltype(prob.tspan);initial_affect=init_cb)
-  return CallbackSet(cb,callback)
+
+  if F !== nothing
+    F !== I && F !== (I,I) && ldiv!(F, Δλd)
+  end
+  u[diffvar_idxs] .+= Δλd
+  u_modified!(integrator,true)
+  cur_time[] -= 1
+  return nothing
+end
+
+function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
+
+  reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg)
+  sensefun.discrete || return reverse_cbs
+
+  # callbacks can lead to non-unique time points
+  _t, duplicate_iterator_times = separate_nonunique(t)
+
+  rlcb = ReverseLossCallback(sensefun, λ, _t, g)
+
+  cb = PresetTimeCallback(_t,rlcb)
+
+  # handle duplicates (currently only for double occurances)
+  if duplicate_iterator_times!==nothing
+    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, duplicate_iterator_times[1], g)
+    cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
+    return CallbackSet(cb,reverse_cbs,cb_dupl)
+  else
+    return CallbackSet(cb,reverse_cbs)
+  end
+end
+
+
+function separate_nonunique(t)
+  # t is already sorted
+  _t = unique(t)
+  ts_with_occurances = [(i, count(==(i), t)) for i in _t]
+
+  # duplicates (only those values which occur > 1 times)
+  dupl = filter(x->last(x)>1, ts_with_occurances)
+
+  ts = first.(dupl)
+  occurances = last.(dupl)
+
+
+  if isempty(occurances)
+    itrs = nothing
+  else
+    maxoc = maximum(occurances)
+    maxoc > 2 && warning("More than two occurances of the same time point. Please report this.")
+    # handle also more than two occurances
+    itrs = [ts[occurances .>= i] for i=2:maxoc]
+  end
+
+  return _t, itrs
 end
