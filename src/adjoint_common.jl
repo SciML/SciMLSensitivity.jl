@@ -332,9 +332,9 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
 
-  ReverseLossCallback = ReverseLossCallback(sensefun, λ, _t, g)
+  rlcb = ReverseLossCallback(sensefun, λ, _t, g)
 
-  cb = PresetTimeCallback(_t,ReverseLossCallback)
+  cb = PresetTimeCallback(_t,rlcb)
 
   # handle duplicates (currently only for double occurances)
   if duplicate_iterator_times!==nothing
