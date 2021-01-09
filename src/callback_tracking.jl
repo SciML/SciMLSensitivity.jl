@@ -27,6 +27,7 @@ function _track_callback(cb::DiscreteCallback,t)
     DiscreteCallback(cb.condition,
                      TrackedAffect(t,cb.affect!),
                      cb.initialize,
+                     cb.finalize,
                      cb.save_positions)
 end
 
@@ -36,6 +37,7 @@ function _track_callback(cb::ContinuousCallback,t)
         TrackedAffect(t,cb.affect!),
         TrackedAffect(t,cb.affect_neg!),
         cb.initialize,
+        cb.finalize,
         cb.idxs,
         cb.rootfind,cb.interp_points,
         cb.save_positions,
@@ -47,7 +49,7 @@ function _track_callback(cb::VectorContinuousCallback,t)
                cb.condition,
                TrackedAffect(t,cb.affect!),
                TrackedAffect(t,cb.affect_neg!),
-               cb.len,cb.initialize,cb.idxs,
+               cb.len,cb.initialize,cb.finalize,cb.idxs,
                cb.rootfind,cb.interp_points,
                collect(cb.save_positions),
                cb.dtrelax,cb.abstol,cb.reltol)
