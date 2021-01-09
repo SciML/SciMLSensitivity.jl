@@ -80,12 +80,21 @@ For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
 setup_reverse_callbacks(cb,sensealg) = setup_reverse_callbacks(CallbackSet(cb),sensealg)
 function setup_reverse_callbacks(cb::CallbackSet,sensealg)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,)),
-                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,))))
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,))...,
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,)))...)
     cb
 end
 
-function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
+function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg)
+
+    if typeof(cb) <: Union{ContinuousCallback,VectorContinuousCallback}
+        error("Continuous callbacks are currently not supported with continuous adjoint methods. Please use a discrete adjoint method like ReverseDiffAdjoint.")
+    end
+
+    if typeof(sensealg) <: Union{InterpolatingAdjoint,QuadratureAdjoint}
+        error("Callbacks are currently not supported with InterpolatingAdjoint and QuadratureAdjoint.")
+    end
+
     function affect!(integrator)
 
         local _p
@@ -117,10 +126,18 @@ function _setup_reverse_callbacks(cb::DiscreteCallback,sensealg)
         #hardcode the left limit from the example for now
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
+
         integrator.u .+= du
         #_p != integrator.p && (integrator.p = _p)
     end
-    PresetTimeCallback(cb.affect!.event_times,
+
+    times = if typeof(cb) <: DiscreteCallback
+        cb.affect!.event_times
+    else
+        [cb.affect!.event_times;cb.affect_neg!.event_times]
+    end
+
+    PresetTimeCallback(times,
                        affect!,
                        save_positions = (false,false))
 end
