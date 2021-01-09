@@ -61,7 +61,7 @@ struct FakeIntegrator{uType,P,tType}
     t::tType
 end
 
-struct CallbackSensitivityFunction{fType,Alg<:BacksolveAdjoint,C<:AdjointDiffCache,pType} <: SensitivityFunction
+struct CallbackSensitivityFunction{fType,Alg<:DiffEqBase.AbstractSensitivityAlgorithm,C<:AdjointDiffCache,pType} <: SensitivityFunction
     f::fType
     sensealg::Alg
     diffcache::C
@@ -91,10 +91,6 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         error("Continuous callbacks are currently not supported with continuous adjoint methods. Please use a discrete adjoint method like ReverseDiffAdjoint.")
     end
 
-    if typeof(sensealg) <: Union{InterpolatingAdjoint,QuadratureAdjoint}
-        error("Callbacks are currently not supported with InterpolatingAdjoint and QuadratureAdjoint.")
-    end
-
     function affect!(integrator)
 
         local _p
@@ -109,19 +105,10 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
-        fakeS = CallbackSensitivityFunction(w,sensealg,integrator.f.f.diffcache,integrator.sol.prob)
-
-        idx = length(S.y)
-
-        # Hardcoding to match BacksolveAdjoint
-        λ     = @view integrator.u[1:idx]
-        grad  = @view integrator.u[idx+1:end-idx]
-        y     = @view integrator.u[end-idx+1:end]
+        fakeS = CallbackSensitivityFunction(w,sensealg,S.diffcache,integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
-        dλ    = @view du[1:idx]
-        dgrad = @view du[idx+1:end-idx]
-        dy    = @view du[end-idx+1:end]
+        λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
 
         #hardcode the left limit from the example for now
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;

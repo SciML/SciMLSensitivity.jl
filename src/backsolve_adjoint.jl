@@ -18,7 +18,32 @@ end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, prob, f, discrete = S
+  @unpack y, prob, discrete = S
+
+  λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
+  copyto!(vec(y), _y)
+
+  if S.noiseterm
+    if length(u) == length(du)
+      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
+    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
+      vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    else
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ, dy=dy)
+    end
+  else
+    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
+  end
+
+  dλ .*= -one(eltype(λ))
+
+  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+  return nothing
+end
+
+function split_states(du,u,t,S::ODEBacksolveSensitivityFunction;update=true)
+  @unpack y, prob = S
   idx = length(y)
 
   λ     = @view u[1:idx]
@@ -54,28 +79,8 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     dgrad = @view du[idx+1:end-idx,1:idx]
     dy    = @view du[end-idx+1:end, 1:idx]
   end
-
-  copyto!(vec(y), _y)
-
-  if S.noiseterm
-    if length(u) == length(du)
-      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
-    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
-      vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
-    else
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ, dy=dy)
-    end
-  else
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
-  end
-
-  dλ .*= -one(eltype(λ))
-
-  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
-  return nothing
+  λ,grad,_y,dλ,dgrad,dy
 end
-
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
@@ -131,8 +136,6 @@ end
   odefun = ODEFunction(sense, mass_matrix=mm)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
-
-
 
 @noinline function SDEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;

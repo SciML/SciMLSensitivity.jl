@@ -68,49 +68,75 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
+  @unpack sol,checkpoint_sol, discrete, prob, f = S
+
+  λ,grad,y,dλ,dgrad,dy = split_states(du,u,t,S)
+
+  if S.noiseterm
+    if length(u) == length(du)
+      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
+    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
+      vecjacobian!(dλ, y, λ, p, t, S)
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    else
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ)
+    end
+  else
+    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
+  end
+
+  dλ .*= -one(eltype(λ))
+
+  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+  return nothing
+end
+
+function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;update=true)
   @unpack sol, y, checkpoint_sol, discrete, prob, f = S
   idx = length(y)
 
-  if checkpoint_sol === nothing
-    if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
-      y = sol(t)
-    else
-      sol(y,t)
-    end
-  else
-    intervals = checkpoint_sol.intervals
-    interval = intervals[checkpoint_sol.cursor]
-    if !(interval[1] <= t <= interval[2])
-      cursor′ = findcursor(intervals, t)
-      interval = intervals[cursor′]
-      cpsol_t = checkpoint_sol.cpsol.t
+  if update
+    if checkpoint_sol === nothing
       if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
-        y = sol(interval[1])
+        y = sol(t)
       else
-        sol(y, interval[1])
+        sol(y,t)
       end
-      if typeof(sol.prob) <: SDEProblem
-        #idx1 = searchsortedfirst(sol.t, interval[1])
-        _sol = deepcopy(sol)
-        _sol.W.save_everystep = false
-        idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
-        idx2 = searchsortedfirst(_sol.t, interval[2])
-        #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
-        prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
-        dt = abs(cpsol_t[end]-cpsol_t[end-1])
-        if dt < 10000eps(cpsol_t[end])
-          dt = interval[2] - interval[1]
+    else
+      intervals = checkpoint_sol.intervals
+      interval = intervals[checkpoint_sol.cursor]
+      if !(interval[1] <= t <= interval[2])
+        cursor′ = findcursor(intervals, t)
+        interval = intervals[cursor′]
+        cpsol_t = checkpoint_sol.cpsol.t
+        if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+          y = sol(interval[1])
+        else
+          sol(y, interval[1])
         end
-        cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
-      else
-        prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
-        cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
+        if typeof(sol.prob) <: SDEProblem
+          #idx1 = searchsortedfirst(sol.t, interval[1])
+          _sol = deepcopy(sol)
+          _sol.W.save_everystep = false
+          idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
+          idx2 = searchsortedfirst(_sol.t, interval[2])
+          #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
+          forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+          prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
+          dt = abs(cpsol_t[end]-cpsol_t[end-1])
+          if dt < 10000eps(cpsol_t[end])
+            dt = interval[2] - interval[1]
+          end
+          cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
+        else
+          prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
+          cpsol′ = solve(prob′, sol.alg; dt=abs(cpsol_t[end] - cpsol_t[end-1]), checkpoint_sol.tols...)
+        end
+        checkpoint_sol.cpsol = cpsol′
+        checkpoint_sol.cursor = cursor′
       end
-      checkpoint_sol.cpsol = cpsol′
-      checkpoint_sol.cursor = cursor′
+      checkpoint_sol.cpsol(y, t)
     end
-    checkpoint_sol.cpsol(y, t)
   end
 
   λ     = @view u[1:idx]
@@ -132,23 +158,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
     dgrad = @view du[idx+1:end,1:idx]
   end
 
-  if S.noiseterm
-    if length(u) == length(du)
-      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
-    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
-      vecjacobian!(dλ, y, λ, p, t, S)
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
-    else
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ)
-    end
-  else
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
-  end
-
-  dλ .*= -one(eltype(λ))
-
-  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
-  return nothing
+  λ,grad,y,dλ,dgrad,nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
