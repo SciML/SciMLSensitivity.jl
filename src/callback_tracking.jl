@@ -110,12 +110,11 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
 
-        #hardcode the left limit from the example for now
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
 
         integrator.u .+= du
-        #_p != integrator.p && (integrator.p = _p)
+        _p != integrator.p && (integrator.p = _p)
     end
 
     times = if typeof(cb) <: DiscreteCallback
