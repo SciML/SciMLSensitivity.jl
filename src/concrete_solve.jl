@@ -80,10 +80,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     out = DiffEqBase.sensitivity_solution(sol,sol.u,ts)
   elseif saveat isa Number
-    if _prob.tspan[2] > _prob.tspan[1]
-      ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
+    if cb === nothing
+          if _prob.tspan[2] > _prob.tspan[1]
+            ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
+          else
+            ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
+          end
     else
-      ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
+          ts = sol.t
     end
     _out = sol(ts)
     out = if save_idxs === nothing
@@ -105,7 +109,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     out = DiffEqBase.sensitivity_solution(sol,u,ts)
   else
     _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
-    _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+    if cb === nothing
+      _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+    else
+      _saveat = sol.t
+    end
+
     ts = _saveat
     _out = sol(ts)
     out = if save_idxs === nothing
