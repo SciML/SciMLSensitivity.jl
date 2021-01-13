@@ -61,7 +61,7 @@ end
 
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
 
   jac_prototype = sol.prob.f.jac_prototype
   adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')

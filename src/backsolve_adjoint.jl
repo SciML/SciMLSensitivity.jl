@@ -100,10 +100,10 @@ end
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
-    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb)
+    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
@@ -167,10 +167,10 @@ end
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
-    cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb)
+    cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
   z0 = [vec(zero(λ)); vec(sense_drift.y)]
@@ -215,9 +215,14 @@ end
 
 
 
-function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
+function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback, duplicate_iterator_times=nothing)
   prob = sol.prob
-  cur_time = Ref(length(checkpoints))
+  if duplicate_iterator_times !== nothing
+    _checkpoints = filter(x->x ∉ duplicate_iterator_times[1], checkpoints)
+  else
+    _checkpoints = checkpoints
+  end
+  cur_time = Ref(length(_checkpoints))
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)
       _y = reshape(@view(integrator.u[end-idx+1:end]), axes(prob.u0))
@@ -228,7 +233,7 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
     end
   end
 
-  cb = PresetTimeCallback(checkpoints,affect!)
 
+  cb = PresetTimeCallback(_checkpoints,affect!)
   return CallbackSet(cb,callback)
 end

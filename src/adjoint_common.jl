@@ -340,9 +340,9 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
   if duplicate_iterator_times!==nothing
     cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, duplicate_iterator_times[1], g)
     cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
-    return CallbackSet(cb,reverse_cbs,cb_dupl)
+    return CallbackSet(cb,reverse_cbs,cb_dupl), duplicate_iterator_times
   else
-    return CallbackSet(cb,reverse_cbs)
+    return CallbackSet(cb,reverse_cbs), duplicate_iterator_times
   end
 end
 

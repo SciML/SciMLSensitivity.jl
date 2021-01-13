@@ -61,10 +61,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
   # Capture the callback_adj for the reverse pass and remove both callbacks
   kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
-
+  isq = sensealg isa QuadratureAdjoint
   if typeof(sensealg) <: BacksolveAdjoint
     sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs_fwd...)
-  elseif ischeckpointing(sensealg)
+  elseif ischeckpointing(sensealg) || (cb!==nothing && !isq)
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs_fwd...)
   else
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs_fwd...)
@@ -80,14 +80,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     out = DiffEqBase.sensitivity_solution(sol,sol.u,ts)
   elseif saveat isa Number
-    if cb === nothing
-          if _prob.tspan[2] > _prob.tspan[1]
-            ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
-          else
-            ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
-          end
+    if cb === nothing  || isq
+      if _prob.tspan[2] > _prob.tspan[1]
+        ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
+      else
+        ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
+      end
     else
-          ts = sol.t
+      ts = sol.t
     end
     _out = sol(ts)
     out = if save_idxs === nothing
