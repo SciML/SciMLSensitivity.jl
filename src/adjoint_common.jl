@@ -327,11 +327,10 @@ end
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
   reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg)
-  sensefun.discrete || return reverse_cbs
+  sensefun.discrete || return reverse_cbs, nothing
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
-
   rlcb = ReverseLossCallback(sensefun, λ, _t, g)
 
   cb = PresetTimeCallback(_t,rlcb)

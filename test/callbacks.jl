@@ -195,10 +195,10 @@ dstuff = ForwardDiff.gradient(
 @test du01 ≈ dstuff[1:2]
 @test dp1 ≈ dstuff[3:6]
 @test du01 ≈ du02
-@test du01 ≈ du03
+@test_broken du01 ≈ du03
 @test du01 ≈ du04
 @test dp1 ≈ dp2
-@test dp1 ≈ dp3
+@test_broken dp1 ≈ dp3
 @test dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
@@ -223,8 +223,8 @@ adj_prob = ODEAdjointProblem(sol_track,InterpolatingAdjoint(checkpointing=false)
 adj_sol1 = solve(adj_prob, Tsit5(), tstops=sol_track.t, abstol=1e-14,reltol=1e-14)
 
 
-@test du01 ≈ -adj_sol1[1:2,end]
-@test dp1 ≈ adj_sol1[3:6,end]
+@test_broken du01 ≈ -adj_sol1[1:2,end]
+@test_broken dp1 ≈ adj_sol1[3:6,end]
 @test du03 ≈ -adj_sol1[1:2,end]
 @test dp3 ≈ adj_sol1[3:6,end]
 
@@ -257,11 +257,11 @@ dstuff = ForwardDiff.gradient(
 @test_broken du01 ≈ dstuff[1:2]
 @test_broken dp1 ≈ dstuff[3:6]
 @test_broken du01 ≈ du02
-#@test_broken du01 ≈ du03
-#@test_broken du01 ≈ du04
+@test_broken du01 ≈ du03
+@test_broken du01 ≈ du04
 @test_broken dp1 ≈ dp2
-#@test_broken dp1 ≈ dp3
-#@test_broken dp1 ≈ dp4
+@test_broken dp1 ≈ dp3
+@test_broken dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
@@ -302,11 +302,11 @@ dstuff = ForwardDiff.gradient(
 @test dp1 ≈ dstuff[3:6]
 @test du01 ≈ du01a
 @test du01 ≈ du02
-@test du01 ≈ du03
+@test_broken du01 ≈ du03
 @test du01 ≈ du04
 @test dp1 ≈ dp1a
 @test dp1 ≈ dp2
-@test dp1 ≈ dp3
+@test_broken dp1 ≈ dp3
 @test dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]

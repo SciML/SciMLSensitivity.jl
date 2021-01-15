@@ -80,14 +80,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     out = DiffEqBase.sensitivity_solution(sol,sol.u,ts)
   elseif saveat isa Number
-    if cb === nothing  || isq
+    if cb === nothing || isq
       if _prob.tspan[2] > _prob.tspan[1]
         ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
       else
         ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
       end
+      if isq
+        _, duplicate_iterator_times = separate_nonunique(sol.t)
+        duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
+      end
     else
-      ts = sol.t
+        ts = sol.t
     end
     _out = sol(ts)
     out = if save_idxs === nothing
