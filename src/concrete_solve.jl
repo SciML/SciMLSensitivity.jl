@@ -64,7 +64,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   isq = sensealg isa QuadratureAdjoint
   if typeof(sensealg) <: BacksolveAdjoint
     sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs_fwd...)
-  elseif ischeckpointing(sensealg) || (cb!==nothing && !isq)
+  elseif ischeckpointing(sensealg)
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs_fwd...)
   else
     sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs_fwd...)
@@ -80,18 +80,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     out = DiffEqBase.sensitivity_solution(sol,sol.u,ts)
   elseif saveat isa Number
-    if cb === nothing || isq
-      if _prob.tspan[2] > _prob.tspan[1]
-        ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
-      else
-        ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
-      end
-      if isq
-        _, duplicate_iterator_times = separate_nonunique(sol.t)
-        duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
-      end
+    if _prob.tspan[2] > _prob.tspan[1]
+      ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
     else
-        ts = sol.t
+      ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
+    end
+    if cb !== nothing
+      _, duplicate_iterator_times = separate_nonunique(sol.t)
+      duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
     end
     _out = sol(ts)
     out = if save_idxs === nothing
