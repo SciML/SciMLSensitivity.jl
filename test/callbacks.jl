@@ -41,6 +41,14 @@ du02,dp2 = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint()))
   ,u0,p)
 
+du03,dp3 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),
+  u0,p)
+
+du04,dp4 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),
+  u0,p)
+
 dstuff = ForwardDiff.gradient(
   (θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),
   [u0;p])
@@ -52,11 +60,14 @@ dstuff = ForwardDiff.gradient(
 @test du01b ≈ dstuff[1:2]
 @test dp1b ≈ dstuff[3:6]
 @test du01 ≈ du02
+@test du01 ≈ du03
+@test du01 ≈ du04
 @test dp1 ≈ dp2
+@test dp1 ≈ dp3
+@test dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
-
 
 function dg!(out,u,p,t,i)
   (out.=-1)
@@ -98,6 +109,18 @@ du02,dp2 = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint()))
   ,u0,p)
 
+du03,dp3 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint()))
+  ,u0,p)
+
+du03a,dp3a = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint(checkpointing=true)))
+  ,u0,p)
+
+du04,dp4 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint()))
+  ,u0,p)
+
 dstuff = ForwardDiff.gradient(
   (θ)->sum(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)),
   [u0;p])
@@ -109,7 +132,13 @@ dstuff = ForwardDiff.gradient(
 @test du01a ≈ dstuff[1:2]
 @test dp1a ≈ dstuff[3:6]
 @test du01 ≈ du02
+@test du01 ≈ du03
+@test du01 ≈ du03a
+@test du01 ≈ du04
 @test dp1 ≈ dp2
+@test dp1 ≈ dp3
+@test dp1 ≈ dp3a
+@test dp1 ≈ dp4
 
 @test du01 ≈ du01a
 @test dp1 ≈ dp1a
@@ -133,6 +162,13 @@ adj_sol1 = solve(adj_prob, Tsit5(), abstol=1e-14,reltol=1e-14)
 @test du01 ≈ -adj_sol1[1:2,end]
 @test dp1 ≈ adj_sol1[3:6,end]
 
+adj_prob = ODEAdjointProblem(sol_track,InterpolatingAdjoint(),dg!,sol_track.t,nothing,
+						 callback = cb2,
+						 abstol=1e-14,reltol=1e-14)
+adj_sol1 = solve(adj_prob, Tsit5(), abstol=1e-14,reltol=1e-14)
+
+@test du01 ≈ -adj_sol1[1:2,end]
+@test dp1 ≈ adj_sol1[3:6,end]
 
 ### callback at single time point
 
@@ -140,14 +176,26 @@ condition(u,t,integrator) = t == 5
 affect!(integrator) = integrator.u[1] += 2.0
 cb = DiscreteCallback(condition,affect!)
 
-sol1 = solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1)
+sol1 = solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14)
 
 du01,dp1 = Zygote.gradient(
-  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false))),
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=true))),
   u0,p)
 
 du02,dp2 = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint()))
+  ,u0,p)
+
+du03,dp3 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint()))
+  ,u0,p)
+
+du03a,dp3a = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint(checkpointing=true)))
+  ,u0,p)
+
+du04,dp4 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint()))
   ,u0,p)
 
 dstuff = ForwardDiff.gradient(
@@ -157,7 +205,13 @@ dstuff = ForwardDiff.gradient(
 @test du01 ≈ dstuff[1:2]
 @test dp1 ≈ dstuff[3:6]
 @test du01 ≈ du02
+@test du01 ≈ du03
+@test du01 ≈ du03a
+@test du01 ≈ du04
 @test dp1 ≈ dp2
+@test dp1 ≈ dp3
+@test dp1 ≈ dp3a
+@test dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
@@ -175,6 +229,16 @@ adj_sol1 = solve(adj_prob, Tsit5(), tstops=sol_track.t, abstol=1e-14,reltol=1e-1
 @test du01 ≈ -adj_sol1[1:2,end]
 @test dp1 ≈ adj_sol1[3:6,end]
 
+adj_prob = ODEAdjointProblem(sol1,InterpolatingAdjoint(checkpointing=false),dg!,sol_track.t,nothing,
+						 callback = cb2,
+						 abstol=1e-14,reltol=1e-14)
+adj_sol1 = solve(adj_prob, Tsit5(), tstops=sol_track.t, abstol=1e-14,reltol=1e-14)
+
+
+@test du01 ≈ -adj_sol1[1:2,end]
+@test dp1 ≈ adj_sol1[3:6,end]
+@test du03 ≈ -adj_sol1[1:2,end]
+@test dp3 ≈ adj_sol1[3:6,end]
 
 ### other callback at single time point
 
@@ -183,11 +247,23 @@ affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
 cb = DiscreteCallback(condition,affect!)
 
 du01,dp1 = Zygote.gradient(
-  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false)))
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=true)))
   ,u0,p)
 
 du02,dp2 = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),
+  u0,p)
+
+du03,dp3 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),
+  u0,p)
+
+du03a,dp3a = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint(checkpointing=true))),
+  u0,p)
+
+du04,dp4 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=[5.0],abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),
   u0,p)
 
 dstuff = ForwardDiff.gradient(
@@ -197,7 +273,13 @@ dstuff = ForwardDiff.gradient(
 @test_broken du01 ≈ dstuff[1:2]
 @test_broken dp1 ≈ dstuff[3:6]
 @test_broken du01 ≈ du02
+@test_broken du01 ≈ du03
+@test_broken du01 ≈ du03a
+@test_broken du01 ≈ du04
 @test_broken dp1 ≈ dp2
+@test_broken dp1 ≈ dp3
+@test_broken dp1 ≈ dp3a
+@test_broken dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]
@@ -211,11 +293,27 @@ affect!(integrator) = integrator.u[1] += 2.0
 cb = DiscreteCallback(condition,affect!)
 
 du01,dp1 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=true))),
+  u0,p)
+
+du01a,dp1a = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint(checkpointing=false))),
   u0,p)
 
 du02,dp2 = Zygote.gradient(
   (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ReverseDiffAdjoint())),
+  u0,p)
+
+du03,dp3 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),
+  u0,p)
+
+du03a,dp3a = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint(checkpointing=true))),
+  u0,p)
+
+du04,dp4 = Zygote.gradient(
+  (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=affecttimes,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),
   u0,p)
 
 dstuff = ForwardDiff.gradient(
@@ -224,8 +322,16 @@ dstuff = ForwardDiff.gradient(
 
 @test du01 ≈ dstuff[1:2]
 @test dp1 ≈ dstuff[3:6]
+@test du01 ≈ du01a
 @test du01 ≈ du02
+@test du01 ≈ du03
+@test du01 ≈ du03a
+@test du01 ≈ du04
+@test dp1 ≈ dp1a
 @test dp1 ≈ dp2
+@test dp1 ≈ dp3
+@test dp1 ≈ dp3a
+@test dp1 ≈ dp4
 
 @test du02 ≈ dstuff[1:2]
 @test dp2 ≈ dstuff[3:6]

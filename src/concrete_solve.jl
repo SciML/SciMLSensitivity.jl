@@ -61,7 +61,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
   # Capture the callback_adj for the reverse pass and remove both callbacks
   kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
-
+  isq = sensealg isa QuadratureAdjoint
   if typeof(sensealg) <: BacksolveAdjoint
     sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs_fwd...)
   elseif ischeckpointing(sensealg)
@@ -85,6 +85,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
+    if cb !== nothing
+      _, duplicate_iterator_times = separate_nonunique(sol.t)
+      duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
+    end
     _out = sol(ts)
     out = if save_idxs === nothing
       out = DiffEqBase.sensitivity_solution(sol,_out.u,sol.t)
@@ -105,7 +109,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     out = DiffEqBase.sensitivity_solution(sol,u,ts)
   else
     _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
-    _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+    if cb === nothing
+      _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+    else
+      _saveat = sol.t
+    end
+
     ts = _saveat
     _out = sol(ts)
     out = if save_idxs === nothing

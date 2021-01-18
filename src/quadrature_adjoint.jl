@@ -16,15 +16,10 @@ end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
-  @unpack y, sol, discrete = S
+  @unpack sol, discrete = S
   f = sol.prob.f
-  if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
-    y = sol(t)
-  else
-    sol(y,t)
-  end
-  λ  = u
-  dλ = du
+
+  λ,grad,y,dλ,dgrad,dy = split_states(du,u,t,S)
 
   vecjacobian!(dλ, y, λ, p, t, S)
   dλ .*= -one(eltype(λ))
@@ -33,10 +28,28 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du,u,p,t)
   return nothing
 end
 
+function split_states(du,u,t,S::ODEQuadratureAdjointSensitivityFunction;update=true)
+  @unpack y, sol = S
+
+  if update
+    if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
+      y = sol(t)
+    else
+      sol(y,t)
+    end
+  end
+
+  λ  = u
+  dλ = du
+
+  λ,nothing,y,dλ,nothing,nothing
+end
+
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::QuadratureAdjoint,g,
                                      t=nothing,dg=nothing,
                                      callback=CallbackSet())
+
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
   discrete = t != nothing
@@ -48,7 +61,7 @@ end
 
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
 
   jac_prototype = sol.prob.f.jac_prototype
   adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')
@@ -173,9 +186,10 @@ end
 function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
                                 abstol=1e-6,reltol=1e-3,
+                                callback = nothing,
                                 kwargs...)
   dgdu, dgdp = dg isa Tuple ? dg : (dg, nothing)
-  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu)
+  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu,callback)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=true,save_start=true,kwargs...)
 

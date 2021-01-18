@@ -18,7 +18,32 @@ end
 
 # u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
-  @unpack y, prob, f, discrete = S
+  @unpack y, prob, discrete = S
+
+  λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
+  copyto!(vec(y), _y)
+
+  if S.noiseterm
+    if length(u) == length(du)
+      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
+    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
+      vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
+    else
+      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ, dy=dy)
+    end
+  else
+    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
+  end
+
+  dλ .*= -one(eltype(λ))
+
+  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+  return nothing
+end
+
+function split_states(du,u,t,S::ODEBacksolveSensitivityFunction;update=true)
+  @unpack y, prob = S
   idx = length(y)
 
   λ     = @view u[1:idx]
@@ -54,28 +79,8 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     dgrad = @view du[idx+1:end-idx,1:idx]
     dy    = @view du[end-idx+1:end, 1:idx]
   end
-
-  copyto!(vec(y), _y)
-
-  if S.noiseterm
-    if length(u) == length(du)
-      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
-    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
-      vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad)
-    else
-      jacNoise!(λ, y, p, t, S, dgrad=dgrad, dλ=dλ, dy=dy)
-    end
-  else
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
-  end
-
-  dλ .*= -one(eltype(λ))
-
-  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
-  return nothing
+  λ,grad,_y,dλ,dgrad,dy
 end
-
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
@@ -95,10 +100,10 @@ end
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
-    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb)
+    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
   z0 = [vec(zero(λ)); vec(sense.y)]
@@ -132,8 +137,6 @@ end
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
-
-
 @noinline function SDEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
@@ -164,10 +167,10 @@ end
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
-    cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb)
+    cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
   z0 = [vec(zero(λ)); vec(sense_drift.y)]
@@ -212,9 +215,14 @@ end
 
 
 
-function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
+function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback, duplicate_iterator_times=nothing)
   prob = sol.prob
-  cur_time = Ref(length(checkpoints))
+  if duplicate_iterator_times !== nothing
+    _checkpoints = filter(x->x ∉ duplicate_iterator_times[1], checkpoints)
+  else
+    _checkpoints = checkpoints
+  end
+  cur_time = Ref(length(_checkpoints))
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)
       _y = reshape(@view(integrator.u[end-idx+1:end]), axes(prob.u0))
@@ -225,7 +233,7 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback)
     end
   end
 
-  cb = PresetTimeCallback(checkpoints,affect!)
 
+  cb = PresetTimeCallback(_checkpoints,affect!)
   return CallbackSet(cb,callback)
 end
