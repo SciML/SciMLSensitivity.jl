@@ -25,6 +25,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - run: julia -e 'import Pkg; Pkg.add(url="https://github.com/SciML/StochasticDiffEq.jl",rev="master")'
       - run: julia -e 'import Pkg; Pkg.add("DiffEqFlux")'
       - run: julia -e 'import Pkg; Pkg.status()'
       - run: julia -e 'import Pkg; Pkg.test("DiffEqFlux")'
