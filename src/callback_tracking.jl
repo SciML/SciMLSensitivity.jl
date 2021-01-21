@@ -87,10 +87,6 @@ end
 
 function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg)
 
-    if typeof(cb) <: Union{ContinuousCallback,VectorContinuousCallback}
-        error("Continuous callbacks are currently not supported with continuous adjoint methods. Please use a discrete adjoint method like ReverseDiffAdjoint.")
-    end
-
     function affect!(integrator)
 
         local _p
