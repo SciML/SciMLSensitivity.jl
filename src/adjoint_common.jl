@@ -362,7 +362,7 @@ function separate_nonunique(t)
     itrs = nothing
   else
     maxoc = maximum(occurances)
-    maxoc > 2 && warning("More than two occurances of the same time point. Please report this.")
+    maxoc > 2 && error("More than two occurances of the same time point. Please report this.")
     # handle also more than two occurances
     itrs = [ts[occurances .>= i] for i=2:maxoc]
   end
