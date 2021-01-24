@@ -391,8 +391,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
     else
       u = map(ReverseDiff.value,sol.u)
     end
-
-    sol
+    Array(sol)
   end
 
   tape = ReverseDiff.GradientTape(reversediff_adjoint_forwardpass,(u0, p))
@@ -402,11 +401,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
   function reversediff_adjoint_backpass(ybar)
-    ReverseDiff.increment_deriv!(output, ybar)
+    _ybar = eltype(ybar) <: AbstractArray ? Array(VectorOfArray(ybar)) : ybar
+    ReverseDiff.increment_deriv!(output, _ybar)
     ReverseDiff.reverse_pass!(tape)
     (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
   end
-  DiffEqBase.sensitivity_solution(sol,u,t),reversediff_adjoint_backpass
+  Array(VectorOfArray(u)),reversediff_adjoint_backpass
 end
 
 
