@@ -35,18 +35,18 @@ ensembleprob = EnsembleProblem(prob)
 solution = solve(
     ensembleprob,
     SOSRI(),
-    EnsembleThreads();  
+    EnsembleThreads();
     trajectories = 1000,
     abstol = 1e-5,
-    reltol = 1e-5, 
-    maxiters = 1e8, 
+    reltol = 1e-5,
+    maxiters = 1e8,
     saveat = tsteps,
 )
 
 (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
 ann = FastChain(FastDense(4, 32, tanh), FastDense(32, 32, tanh), FastDense(32, 2))
-α = initial_params(ann)
+α = Float64.(initial_params(ann))
 
 function dudt_(du, u, p, t)
     r, e, μ, h, ph, z, i = p_
@@ -59,6 +59,18 @@ function dudt_(du, u, p, t)
     du[4] = MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
     return nothing
 end
+
+function dudt_op(u, p, t)
+    r, e, μ, h, ph, z, i = p_
+
+    MM = ann(u, p)
+
+    [e * 0.5 * (5μ - u[1]), # nutrient input time series
+     e * 0.05 * (10μ - u[2]), # grazer density time series
+     0.2 * exp(u[1]) - 0.05 * u[3] - MM[1], # nutrient concentration
+     MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i] #Algae density
+end
+
 function noise_(du, u, p, t)
     du[1] = p_[end]
     du[2] = p_[end]
@@ -67,10 +79,33 @@ function noise_(du, u, p, t)
     return nothing
 end
 
+function noise_op(u, p, t)
+    [p_[end],
+     p_[end],
+     0.0,
+     0.0]
+end
+
 prob_nn = SDEProblem(dudt_, noise_, u0, tspan, p = nothing)
+prob_nn_op = SDEProblem(dudt_op, noise_op, u0, tspan, p = nothing)
 
 function loss(θ)
     tmp_prob = remake(prob_nn, p = θ)
+    ensembleprob = EnsembleProblem(tmp_prob)
+    tmp_sol = Array(solve(
+        ensembleprob,
+        EM();
+        dt = tsteps.step,
+        trajectories = 100,
+        sensealg = ReverseDiffAdjoint(),
+       ))
+    tmp_mean = mean(tmp_sol,dims=3)[:,:]
+    tmp_var = var(tmp_sol,dims=3)[:,:]
+    sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
+end
+
+function loss_op(θ)
+    tmp_prob = remake(prob_nn_op, p = θ)
     ensembleprob = EnsembleProblem(tmp_prob)
     tmp_sol = Array(solve(
         ensembleprob,
@@ -95,6 +130,14 @@ end
 
 res1 = DiffEqFlux.sciml_train(
     loss,
+    α,
+    ADAM(0.1),
+    cb = callback,
+    maxiters = 200,
+)
+
+res2 = DiffEqFlux.sciml_train(
+    loss_op,
     α,
     ADAM(0.1),
     cb = callback,
