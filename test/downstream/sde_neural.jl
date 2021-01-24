@@ -25,9 +25,8 @@ end
 datasize = 10
 tspan = (0.0f0, 3.0f0)
 tsteps = range(tspan[1], tspan[2], length = datasize)
-u0 = Float32[1.0, 1.0, 1.0, 1.0]
-
-p_ = Float32[1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1e-6, 1.0]
+u0 = [1.0, 1.0, 1.0, 1.0]
+p_ = [1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1e-6, 1.0]
 
 prob = SDEProblem(sys!, noise!, u0, tspan, p_)
 ensembleprob = EnsembleProblem(prob)
