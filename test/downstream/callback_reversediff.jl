@@ -56,4 +56,4 @@ cba()
 ps = Flux.params(p)
 data = Iterators.repeated((), 200)
 Flux.train!(loss_n_ode, ps, data, ADAM(0.05), cb = cba)
-@test loss_n_ode() < 0.1
+@test loss_n_ode() < 0.4
