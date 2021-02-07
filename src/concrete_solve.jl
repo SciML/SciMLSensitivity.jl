@@ -23,7 +23,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
+function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
+                                            sensealg::Nothing,u0,p,args...;kwargs...)
   default_sensealg = SteadyStateAdjoint()
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
@@ -410,8 +411,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
 end
 
 
-function DiffEqBase._concrete_solve_adjoint(prob::SteadyStateProblem,alg,sensealg::SteadyStateAdjoint,
-                                 u0,p,args...;save_idxs = nothing, kwargs...)
+function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},
+                                            alg,sensealg::SteadyStateAdjoint,
+                                            u0,p,args...;save_idxs = nothing, kwargs...)
 
     _prob = remake(prob,u0=u0,p=p)
     sol = solve(_prob,alg,args...;kwargs...)
