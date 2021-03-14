@@ -39,7 +39,11 @@ function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
 
     output = ReverseDiff.output_hook(tape)
 
-    copyto!(vec(gtmp), ReverseDiff.value(output))
+    if typeof(output) <: TrackedArray
+      copyto!(vec(gtmp), ReverseDiff.value(output))
+    else
+      vec(gtmp) .= ReverseDiff.value.(output)
+    end
 
     ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
     ReverseDiff.unseed!(tp)
