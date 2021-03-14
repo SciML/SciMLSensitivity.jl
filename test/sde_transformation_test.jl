@@ -460,8 +460,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test_broken isapprox(ReverseDiff.deriv(tu), (p[1]-p[2]^2)*λ, atol=1e-15)
-@test_broken isapprox(ReverseDiff.deriv(tp), (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1]-p[2]^2)*λ, atol=1e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
 
 
 transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g,(du,u,p,t)-> (du.=p[2]^2*u))

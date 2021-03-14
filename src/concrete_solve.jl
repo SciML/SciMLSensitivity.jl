@@ -235,8 +235,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
-  MyTag = typeof(prob.f)
-  pdual = seed_duals(p,MyTag)
+  pdual = seed_duals(p,prob.f)
   u0dual = convert.(eltype(pdual),u0)
 
   if (convert_tspan(sensealg) === nothing && (
