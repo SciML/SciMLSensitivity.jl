@@ -36,14 +36,7 @@ function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
       return vec(du1)
     end
     tu, tp, tt = ReverseDiff.input_hook(tape)
-
     output = ReverseDiff.output_hook(tape)
-
-    if typeof(output) <: TrackedArray
-      copyto!(vec(gtmp), ReverseDiff.value(output))
-    else
-      vec(gtmp) .= ReverseDiff.value.(output)
-    end
 
     ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
     ReverseDiff.unseed!(tp)
@@ -54,7 +47,7 @@ function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
     ReverseDiff.value!(tt, [t])
 
     ReverseDiff.forward_pass!(tape)
-    ReverseDiff.increment_deriv!(output, vec(gtmp))
+    ReverseDiff.increment_deriv!(output, vec(ReverseDiff.value(output)))
     ReverseDiff.reverse_pass!(tape)
 
     ReverseDiff.deriv(tu)
