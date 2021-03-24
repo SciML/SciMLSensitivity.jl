@@ -151,7 +151,7 @@ end
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
   @unpack sensealg, f = S
   prob = getprob(S)
-  
+
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if !(prob isa DiffEqBase.SteadyStateProblem)
@@ -290,8 +290,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
       vec(f(u, p, t))
     end
     tmp1,tmp2 = back(λ)
-    dλ[:] .= vec(tmp1)
-
+    tmp1 != nothing && (dλ[:] .= vec(tmp1))
     dy !== nothing && (dy[:] .= vec(_dy))
     dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
   end

@@ -23,6 +23,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Derivative Shapes" begin include("derivative_shapes.jl") end
     @time @safetestset "ArrayPartitions" begin include("array_partitions.jl") end
     @time @safetestset "Complex Adjoints" begin include("complex_adjoints.jl") end
+    @time @safetestset "Forward Remake" begin include("forward_remake.jl") end
     @time @safetestset "DiscreteProblem Adjoints" begin include("discrete.jl") end
     @time @safetestset "Time Type Mixing Adjoints" begin include("time_type_mixing.jl") end
     @time @safetestset "GSA tests" begin include("gsa.jl") end
@@ -56,7 +57,8 @@ end
 if GROUP == "DiffEqFlux"
     activate_downstream_env()
     @time @safetestset "Callback - ReverseDiff" begin include("downstream/callback_reversediff.jl") end
+    @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
-
+    @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
 end
 end
