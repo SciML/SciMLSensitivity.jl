@@ -252,6 +252,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
   elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
     _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+  else
+    _f = prob.f
   end
   _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 

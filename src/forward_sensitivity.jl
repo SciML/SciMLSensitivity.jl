@@ -163,8 +163,8 @@ has_continuous_callback(cb::DiscreteCallback) = false
 has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
-function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
-                                      tspan,p,alg::ForwardDiffSensitivity;
+function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,_u0,
+                                      tspan,_p,alg::ForwardDiffSensitivity;
                                       kwargs...)
   pdual = seed_duals(p,f)
   u0dual = convert.(eltype(pdual),u0)
@@ -272,3 +272,19 @@ function _extract_du(sol, ::ForwardDiffSensitivity, su::Vector, ::Val{true})
   du_full = ForwardDiff.partials.(su)
   return [du_full[i][j] for i in 1:size(du_full,1), j in 1:length(du_full[1])]
 end
+
+
+### Bonus Pieces
+
+function SciMLBase.remake(prob::ODEProblem{uType,tType,isinplace,P,F,K,<:ODEForwardSensitivityProblem};
+                          f=nothing,tspan=nothing,u0=nothing,p=nothing,kwargs...) where
+                          {uType,tType,isinplace,P,F,K}
+    _p     = p     === nothing ? prob.p : p
+    _f     = f     === nothing ? prob.f.f : f
+    _u0    = u0    === nothing ? prob.u0[1:prob.f.numindvar] : u0[1:prob.f.numindvar]
+    _tspan = tspan === nothing ? prob.tspan : tspan
+    ODEForwardSensitivityProblem(_f,_u0,
+                                 _tspan,_p,ForwardSensitivity();
+                                 prob.kwargs...,kwargs...)
+end
+SciMLBase.ODEFunction(f::ODEForwardSensitivityFunction; kwargs...) = f
