@@ -163,8 +163,8 @@ has_continuous_callback(cb::DiscreteCallback) = false
 has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
-function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,_u0,
-                                      tspan,_p,alg::ForwardDiffSensitivity;
+function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
+                                      tspan,p,alg::ForwardDiffSensitivity;
                                       kwargs...)
   pdual = seed_duals(p,f)
   u0dual = convert.(eltype(pdual),u0)
