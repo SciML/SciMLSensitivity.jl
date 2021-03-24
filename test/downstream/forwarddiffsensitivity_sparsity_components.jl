@@ -19,7 +19,6 @@ p_true = ComponentArray(k=0.42)
 jac_proto = Tridiagonal(similar(u0,nknots-1), similar(u0), similar(u0, nknots-1))
 prob = ODEProblem(ODEFunction(f,jac_prototype=jac_proto), u0, (0.0,1.0), p_true)
 @time sol_true = solve(prob, Rodas4P(), saveat=0.1)
-plot(sol_true, legend=nothing)
 
 function loss(prob0, p)
   prob = remake(prob0, p=p)
