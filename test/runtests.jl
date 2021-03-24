@@ -23,6 +23,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Derivative Shapes" begin include("derivative_shapes.jl") end
     @time @safetestset "ArrayPartitions" begin include("array_partitions.jl") end
     @time @safetestset "Complex Adjoints" begin include("complex_adjoints.jl") end
+    @time @safetestset "Forward Remake" begin include("forward_remake.jl") end
     @time @safetestset "DiscreteProblem Adjoints" begin include("discrete.jl") end
     @time @safetestset "Time Type Mixing Adjoints" begin include("time_type_mixing.jl") end
     @time @safetestset "GSA tests" begin include("gsa.jl") end
