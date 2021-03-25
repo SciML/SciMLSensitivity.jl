@@ -101,8 +101,6 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t,W)
 
   λ,grad,y,dλ,dgrad,dy = split_states(du,u,t,S)
 
-
-
   vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, W=W)
 
   dλ .*= -one(eltype(λ))
