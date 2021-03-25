@@ -16,7 +16,6 @@ function ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=
                                          y,sol.prob,f,noiseterm)
 end
 
-# u = λ'
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   @unpack y, prob, discrete = S
 
@@ -36,6 +35,20 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
   end
 
+  dλ .*= -one(eltype(λ))
+
+  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+  return nothing
+end
+
+# u = λ' # for the RODE case
+function (S::ODEBacksolveSensitivityFunction)(du,u,p,t,W)
+  @unpack y, prob, discrete = S
+
+  λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
+  copyto!(vec(y), _y)
+
+  vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy,W=W)
   dλ .*= -one(eltype(λ))
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
@@ -213,6 +226,72 @@ end
     )
 end
 
+
+@noinline function RODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
+                                     g,t=nothing,dg=nothing;
+                                     checkpoints=sol.t,
+                                     callback=CallbackSet(),
+                                     kwargs...)
+  @unpack f, p, u0, tspan = sol.prob
+  tspan = reverse(tspan)
+  discrete = t != nothing
+
+  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
+
+  numstates = length(u0)
+  numparams = length(p)
+
+  len = length(u0)+numparams
+  λ = one(eltype(u0)) .* similar(p, len)
+
+  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
+
+  init_cb = t !== nothing && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
+  if checkpoints !== nothing
+    cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
+  end
+
+  z0 = [vec(zero(λ)); vec(sense.y)]
+
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I
+    mm = I
+  else
+    sense.diffcache.issemiexplicitdae && @warn "`BacksolveAdjoint` is likely to fail on semi-explicit DAEs, if memory is a concern, please consider using InterpolatingAdjoint(checkpoint=true) instead."
+    len2 = length(z0)
+    mm = zeros(len2, len2)
+    idx = 1:numstates
+    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix')
+    idx = numstates+1:numstates+1+numparams
+    copyto!(@view(mm[idx, idx]), I)
+    idx = len+1:len2
+    copyto!(@view(mm[idx, idx]), sol.prob.f.mass_matrix)
+  end
+
+  rodefun = RODEFunction(sense,mass_matrix=mm)
+
+  # replicated noise
+  _sol = deepcopy(sol)
+
+  backwardnoise = reverse(_sol.W)
+  #backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
+
+  if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
+    # scalar noise case
+    noise_matrix = nothing
+  else
+    noise_matrix = similar(z0,length(z0),numstates)
+    noise_matrix .= false
+  end
+
+  return RODEProblem(rodefun,z0,tspan,p,
+    callback=cb,
+    noise=backwardnoise,
+    noise_rate_prototype = noise_matrix
+    )
+end
 
 
 function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback, duplicate_iterator_times=nothing)
