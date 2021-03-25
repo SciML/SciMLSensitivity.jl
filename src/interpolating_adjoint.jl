@@ -40,10 +40,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
       #idx2 = searchsortedfirst(_sol.t, interval[2])
       #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
       forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
-      dt = abs(_sol.W.dt)
-      if dt < 1000eps(_sol.t[end])
-        dt = interval[2] - interval[1]
-      end
+      dt = choose_dt(abs(_sol.W.dt), _sol.W.t, interval)
       cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
     else
       if tstops === nothing
@@ -68,6 +65,16 @@ function findcursor(intervals, t)
   # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
   lt(x, t) = <(x[2], t)
   return searchsortedfirst(intervals, t, lt=lt)
+end
+
+function choose_dt(dt, ts, interval)
+  if dt < 1000eps(interval[2])
+    dt = ts[end-1]-ts[end-2]
+    if dt < 1000eps(interval[2])
+      dt = interval[2] - interval[1]
+    end
+  end
+  return dt
 end
 
 # u = λ'
@@ -141,10 +148,7 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
           #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
           forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
           prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
-          dt = abs(cpsol_t[1]-cpsol_t[2])
-          if dt < 10000eps(cpsol_t[end])
-            dt = interval[2] - interval[1]
-          end
+          dt = choose_dt(abs(cpsol_t[1]-cpsol_t[2]), cpsol_t, interval)
           cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
         else
           prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
@@ -260,14 +264,17 @@ end
   tspan = reverse(tspan)
   discrete = t != nothing
 
-  if length(unique(round.(checkpoints, digits=13))) != length(checkpoints)
-    @warn "The given checkpoints are not unique. To avoid issues in the interpolation the checkpoints were redefined. You may want to check sol.t if default checkpoints were used."
-    checkpoints = unique(round.(checkpoints, digits=13))
+  # remove duplicates from checkpoints
+  if ischeckpointing(sensealg) && (length(unique(checkpoints)) != length(checkpoints))
+    _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
+    tstops = duplicate_iterator_times[1]
+    checkpoints = filter(x->x ∉ tstops, _checkpoints)
+  else
+    tstops = nothing
   end
 
-  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
   numstates = length(u0)
-  numparams = length(p)
+  numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = numstates+numparams
 
