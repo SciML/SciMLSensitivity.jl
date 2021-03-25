@@ -288,11 +288,12 @@ dForward = ForwardDiff.gradient((θ)->sum(
 
 # test gradients
 Random.seed!(seed)
-sol = solve(prob,RandomEM(),dt=dt, save_noise=true, saveat=t)
+sol = solve(prob,RandomEM(),dt=dt, save_noise=true)
+
 du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=true))
+  ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
 @test du0ReverseDiff ≈ du0 rtol=1e-2
-@test dpReverseDiff ≈ dp' rtol=1e-2
+@test dpReverseDiff ≈ dp' rtol=1e-1
 
 @info du0, dp'
