@@ -406,19 +406,19 @@ end
 
 dt = 1e-4
 u0 = [1.00;1.00]
-tspan = (0.0,5.0)
+tspan = (0.0,1.0)
 t = tspan[1]:0.1:tspan[2]
 p = [2.0,-2.0]
 
 prob = RODEProblem{false}(f,u0,tspan,p)
-
-sol = solve(prob,RandomEM(),dt=dt, save_noise=true)
+Random.seed!(seed)
+sol = solve(prob, RandomEM(),dt=dt, save_noise=true, dense=true)
 # check reversion with usage of Noise Grid
 _sol = deepcopy(sol)
 noise_reverse = NoiseGrid(reverse(_sol.t),reverse(_sol.W.W))
 prob_reverse = RODEProblem(f,_sol[end],reverse(tspan),p,noise=noise_reverse)
 sol_reverse = solve(prob_reverse,RandomEM(),dt=dt)
-@test sol.u ≈ reverse(sol_reverse.u) rtol=1e-3
+@test sol(t).u ≈ sol_reverse(t).u rtol=1e-3
 @show minimum(sol.u)
 
 # Test if Forward and ReverseMode AD agree.
@@ -438,12 +438,48 @@ dForward = ForwardDiff.gradient((θ)->sum(
 
 # test gradients
 Random.seed!(seed)
-sol = solve(prob,RandomEM(),dt=dt, save_noise=true)
+sol = solve(prob,RandomEM(),dt=dt, save_noise=true, saveat=t)
 
-du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
+du0, dp = adjoint_sensitivities(_sol,RandomEM(),dg!,Array(t)
   ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
 @test du0ReverseDiff ≈ du0 rtol=1e-2
 @test dpReverseDiff ≈ dp' rtol=1e-1
 
 @info du0, dp'
+
+adj_prob_dense = DiffEqSensitivity.RODEAdjointProblem(_sol,InterpolatingAdjoint(),dg!,t,nothing)
+adj_sol_dense = solve(adj_prob_dense, RandomEM(), dt=dt)
+adj_prob_checkpointing = DiffEqSensitivity.RODEAdjointProblem(sol,InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()),dg!,t,nothing)
+adj_sol_checkpointing = solve(adj_prob_checkpointing, RandomEM(), dt=dt)
+
+@show adj_sol_dense[end]
+@show adj_sol_checkpointing[end]
+
+
+@test du0ReverseDiff ≈ -adj_sol_checkpointing[end][1:2] rtol=1e-2
+@test dpReverseDiff ≈ adj_sol_checkpointing[end][3:4] rtol=1e-2
+
+
+@test du0ReverseDiff ≈ -adj_sol_dense[end][1:2] rtol=1e-2
+@test dpReverseDiff ≈ adj_sol_dense[end][3:4] rtol=1e-2
+
+minimum(abs.(adj_sol_checkpointing.W.t - adj_sol_dense.W.t))
+
+using Plots
+pl1 = plot(adj_sol_dense, label="Dense")
+plot!(pl1,adj_sol_checkpointing, label="Checkpointing", legend=false)
+
+pl2 = plot(adj_sol_dense.t,hcat(adj_sol_dense-adj_sol_checkpointing ...)')
+
+maximum(adj_sol_dense - adj_sol_checkpointing)
+
+adj_prob_backsolve = DiffEqSensitivity.RODEAdjointProblem(sol,BacksolveAdjoint(),dg!,t,nothing)
+adj_sol_backsolve = solve(adj_prob_backsolve, RandomEM(), dt=dt)
+
+plot(getindex.(adj_sol_backsolve(t).u, 3) -getindex.(adj_sol_dense(t).u, 3))
+plot!(getindex.(adj_sol_backsolve(t).u, 4) -getindex.(adj_sol_dense(t).u, 4))
+
+
+plot(getindex.(adj_sol_backsolve(t).u, 3) -getindex.(adj_sol_checkpointing(t).u, 3))
+plot!(getindex.(adj_sol_backsolve(t).u, 4) -getindex.(adj_sol_checkpointing(t).u, 4))
