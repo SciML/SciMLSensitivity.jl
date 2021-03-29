@@ -31,18 +31,10 @@ end
 p2 = [1.01,0.87]
 
 
-@testset "SDE oop Tests" begin
+@testset "SDE oop Tests (no noise)" begin
 
   f_oop_linear(u,p,t) = p[1]*u
   σ_oop_linear(u,p,t) = p[2]*u
-
-  function f_oop_linear(u::Tracker.TrackedArray,p,t)
-    p[1].*u
-  end
-
-  function σ_oop_linear(u::Tracker.TrackedArray,p,t)
-    p[2].*u
-  end
 
   p = [1.01,0.0]
 
@@ -62,12 +54,10 @@ p2 = [1.01,0.87]
   res_ode_forward = ForwardDiff.gradient(G,p)
   #res_ode_reverse = ReverseDiff.gradient(G,p)
 
-  res_ode_trackeru0, res_ode_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_ode,Tsit5();u0=u0,p=p,abstol=abstol,reltol=reltol,saveat=tarray,sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
-
   @test isapprox(res_ode_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   #@test isapprox(res_ode_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_ode_p'[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
-  @test isapprox(res_ode_p', res_ode_trackerp, rtol = 1e-4)
+  #@test isapprox(res_ode_p', res_ode_trackerp, rtol = 1e-4)
 
   # SDE adjoint results (with noise == 0, so should agree with above)
 
@@ -96,15 +86,18 @@ p2 = [1.01,0.87]
   res_sde_forward = ForwardDiff.gradient(GSDE1,p)
   res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
 
-  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,RKMil(interpretation=:Stratonovich),dt=tend/1000,adaptive=false,u0=u0,p=p,saveat=tarray,sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p)
-
   noise = vec((@. sol_oop_sde.W(tarray)))
   Wfix = [W[1][1] for W in noise]
   @test isapprox(res_sde_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[2], sum(@. (Wfix)*u₀^2*exp(2*(p[1])*tarray+2*p[2]*Wfix)), rtol = 1e-4)
-  @test isapprox(res_sde_p'[1], res_sde_trackerp[1], rtol = 1e-3)
+end
+
+@testset "SDE oop Tests (with noise)" begin
+
+  f_oop_linear(u,p,t) = p[1]*u
+  σ_oop_linear(u,p,t) = p[2]*u
 
   # SDE adjoint results (with noise != 0)
   dt1 = tend/1e3
@@ -113,7 +106,7 @@ p2 = [1.01,0.87]
   prob_oop_sde2 = SDEProblem(f_oop_linear,σ_oop_linear,u₀,trange,p2)
   sol_oop_sde2 = solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=dt1,adaptive=false,save_noise=true)
 
-  res_sde_u02, res_sde_p2 =  adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
+  res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=BacksolveAdjoint())
 
   @info res_sde_p2
@@ -157,18 +150,13 @@ p2 = [1.01,0.87]
   res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
 
 
-  Random.seed!(seed)
-  res_sde_trackeru02, res_sde_trackerp2 = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde2,RKMil(interpretation=:Stratonovich),dt=dt1,adaptive=false,u0=u0,p=p,saveat=tarray,sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p2)
-
-
   Wfix = [sol_oop_sde2.W(t)[1][1] for t in tarray]
   resp1 = sum(@. tarray*u₀^2*exp(2*(p2[1])*tarray+2*p2[2]*Wfix))
   resp2 = sum(@. (Wfix)*u₀^2*exp(2*(p2[1])*tarray+2*p2[2]*Wfix))
   resp = [resp1, resp2]
 
-  @test isapprox(res_sde_forward2, resp, rtol = 1e-4)
-  @test isapprox(res_sde_reverse2, resp, rtol = 1e-4)
-  @test isapprox(res_sde_trackerp2, resp, rtol = 1e-4)
+  @test isapprox(res_sde_forward2, resp, rtol = 2e-4)
+  @test isapprox(res_sde_reverse2, resp, rtol = 2e-4)
 
   @test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-3)
   @test isapprox(res_sde_p2', resp, rtol = 1e-3)
@@ -179,14 +167,13 @@ p2 = [1.01,0.87]
   @info "BacksolveAdjoint SDE" res_sde_p2
 
   # InterpolatingAdjoint
+  @info "InterpolatingAdjoint SDE"
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-4)
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-3)
-
-  @info "InterpolatingAdjoint SDE"
 
   @info res_sde_p2a
 
@@ -240,25 +227,26 @@ p2 = [1.01,0.87]
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
-  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-5)
+  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
 
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
-  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-5)
+  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
-  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-5)
+  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
 
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
-  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-5)
+  @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
+
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
@@ -278,7 +266,7 @@ p2 = [1.01,0.87]
   @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-7)
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-7)
 
-  @info  res_sde_p2
+  @info res_sde_p2
 
   sol_oop_sde2 = nothing
   GC.gc()
@@ -296,20 +284,19 @@ p2 = [1.01,0.87]
   # u0
   function GSDE3(u)
     Random.seed!(seed)
-    tmp_prob = remake(prob_oop_sde2,u0=u,p=eltype(p).(prob_oop_sde2.p),
-                      tspan=eltype(p).(prob_oop_sde2.tspan)
-                      #,abstol=abstol, reltol=reltol
-                      )
+    tmp_prob = remake(prob_oop_sde2,u0=u)
     sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=dt1,adaptive=false,saveat=tarray)
     A = convert(Array,sol)
-    res = g(A,p,nothing)
+    res = g(A,nothing,nothing)
   end
 
   @info "ForwardDiff u0"
   res_sde_forward2 = ForwardDiff.gradient(GSDE3,[u₀;u₀;u₀])
 
   @test isapprox(res_sde_u02, res_sde_forward2, rtol = 1e-4)
+
 end
+
 
 
 ##
@@ -474,4 +461,41 @@ end
 
   @test_broken isapprox(res_sde_p, res_oop_p, rtol = 1e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
+end
+
+
+@testset "SDE oop Tests (Tracker)" begin
+
+  f_oop_linear(u,p,t) = p[1]*u
+  σ_oop_linear(u,p,t) = p[2]*u
+
+  function f_oop_linear(u::Tracker.TrackedArray,p,t)
+    p[1].*u
+  end
+
+  function σ_oop_linear(u::Tracker.TrackedArray,p,t)
+    p[2].*u
+  end
+
+  Random.seed!(seed)
+  prob_oop_sde = SDEProblem(f_oop_linear,σ_oop_linear,u₀,trange,p2)
+
+  function GSDE1(p)
+    Random.seed!(seed)
+    tmp_prob = remake(prob_oop_sde,u0=eltype(p).(prob_oop_sde.u0),p=p,
+                      tspan=eltype(p).(prob_oop_sde.tspan))
+    sol = solve(tmp_prob,RKMil(interpretation=:Stratonovich),dt=5e-4,adaptive=false,sensealg=DiffEqBase.SensitivityADPassThrough(),saveat=tarray)
+    A = convert(Array,sol)
+    res = g(A,p,nothing)
+  end
+  res_sde_forward = ForwardDiff.gradient(GSDE1,p2)
+  res_sde_reverse = ReverseDiff.gradient(GSDE1,p2)
+
+  Random.seed!(seed)
+  res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,
+    RKMil(interpretation=:Stratonovich),dt=5e-4,adaptive=false,u0=u0,p=p,saveat=tarray,
+    sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p2)
+
+  @test isapprox(res_sde_forward, res_sde_reverse, rtol = 1e-5)
+  @test isapprox(res_sde_forward, res_sde_trackerp, rtol = 1e-5)
 end
