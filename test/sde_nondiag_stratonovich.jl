@@ -359,7 +359,7 @@ end
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5) # would pass with 1e-4 but last noise value is off
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5) # would pass with 1e-4 but last noise value is off
 
   @info res_sde_pa
 
@@ -375,7 +375,7 @@ end
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -383,7 +383,7 @@ end
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
@@ -503,7 +503,7 @@ end
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test res_sde_u0 ≈ res_sde_u02 atol = 1e-14
-  @test_broken res_sde_p ≈ res_sde_p2 atol = 1e-14
+  @test res_sde_p ≈ res_sde_p2 atol = 1e-14
 
   @show res_sde_u0
 
@@ -517,11 +517,11 @@ end
   adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=true),dg!,tarray, nothing)
   adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
 
-  @test_broken adj_soloop[end] ≈  adj_sol[end]  rtol=1e-15
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-15
 
 
   adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=false),dg!,tarray, nothing)
   adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
 
-  @test_broken adj_soloop[end] ≈  adj_sol[end]  rtol=1e-8
+  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-8
 end
