@@ -77,8 +77,12 @@ end
 
 function choose_dt(dt, ts, interval)
   if dt < 1000eps(interval[2])
-    dt = ts[end-1]-ts[end-2]
-    if dt < 1000eps(interval[2])
+    if length(ts) > 2
+      dt = ts[end-1]-ts[end-2]
+      if dt < 1000eps(interval[2])
+        dt = interval[2] - interval[1]
+      end
+    else
       dt = interval[2] - interval[1]
     end
   end
