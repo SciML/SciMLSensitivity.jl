@@ -207,9 +207,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-
   backwardnoise = reverse(_sol.W)
-  #backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case
@@ -274,9 +272,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-
   backwardnoise = reverse(_sol.W)
-  #backwardnoise = DiffEqNoiseProcess.NoiseGrid(reverse!(_sol.t),reverse!( _sol.W.W))
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case

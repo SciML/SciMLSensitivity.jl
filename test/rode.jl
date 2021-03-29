@@ -143,7 +143,7 @@ end
     ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
-  @test dpReverseDiff ≈ dp' rtol=1e-1
+  @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
@@ -187,6 +187,76 @@ end
   sol = solve(prob_aug,RandomEM(),dt=dt, save_noise=true, dense=true)
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
     ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # test gradients with saveat solution and checkpointing
+  # need to simulate for dt beyond last tspan to avoid errors in NoiseGrid
+  Random.seed!(seed)
+  sol = solve(prob,RandomEM(),dt=dt, save_noise=true, dense=true)
+  Random.seed!(seed)
+  sol_long = solve(remake(prob, tspan=(tspan[1],tspan[2]+10dt)),RandomEM(),dt=dt, save_noise=true, dense=true)
+
+  @test sol_long(t) ≈ sol(t) rtol=1e-12
+  @test sol_long.W.W[1:end-10] ≈ sol.W.W[1:end] rtol=1e-12
+
+  # test gradients with saveat solution and checkpointing
+  noise = NoiseGrid(sol_long.W.t,sol_long.W.W)
+  sol2 = solve(remake(prob,noise=noise,tspan=(tspan[1],tspan[2])),RandomEM(),dt=dt, saveat=t)
+
+  @test sol_long(t) ≈ sol2(t) rtol=1e-12
+  @test sol_long.W.W ≈ sol2.W.W rtol=1e-12
+
+  # ReverseDiff
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # ReverseDiff with compiled tape
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # Zygote
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ZygoteVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # Tracker
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.TrackerVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = true
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=true))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = false
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = false and with jac and paramjac
+  Random.seed!(seed)
+  faug = RODEFunction(f,jac=jac,paramjac=paramjac)
+  prob_aug = RODEProblem{true}(faug,u0,tspan,p, noise=noise)
+  sol = solve(prob_aug,RandomEM(),dt=dt, save_noise=false, dense=false, saveat=t)
+  du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -306,7 +376,6 @@ end
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
-
   ###
   ## InterpolatingAdjoint
   ###
@@ -320,7 +389,7 @@ end
     ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
-  @test dpReverseDiff ≈ dp' rtol=1e-1
+  @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
@@ -367,109 +436,74 @@ end
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # test gradients with saveat solution and checkpointing
+  # need to simulate for dt beyond last tspan to avoid errors in NoiseGrid
+  Random.seed!(seed)
+  sol = solve(prob,RandomEM(),dt=dt, save_noise=true, dense=true)
+  Random.seed!(seed)
+  sol_long = solve(remake(prob, tspan=(tspan[1],tspan[2]+10dt)),RandomEM(),dt=dt, save_noise=true, dense=true)
+
+  @test sol_long(t) ≈ sol(t) rtol=1e-12
+  @test sol_long.W.W[1:end-10] ≈ sol.W.W[1:end] rtol=1e-12
+
+  # test gradients with saveat solution and checkpointing
+  noise = NoiseGrid(sol_long.W.t,sol_long.W.W)
+  sol2 = solve(remake(prob,noise=noise,tspan=(tspan[1],tspan[2])),RandomEM(),dt=dt, saveat=t)
+
+  @test sol_long(t) ≈ sol2(t) rtol=1e-12
+  @test sol_long.W.W ≈ sol2.W.W rtol=1e-12
+
+  # ReverseDiff
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # ReverseDiff with compiled tape
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # Zygote
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ZygoteVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # Tracker
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.TrackerVJP()))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = true
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=true))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = false
+  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
+
+  # isautojacvec = false and with jac and paramjac
+  Random.seed!(seed)
+  faug = RODEFunction(f,jac=jac,paramjac=paramjac)
+  prob_aug = RODEProblem{false}(faug,u0,tspan,p,noise=noise)
+  sol = solve(prob_aug,RandomEM(),dt=dt, save_noise=false, saveat=t, dense=false)
+  du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
+
+  @test du0ReverseDiff ≈ du0 rtol=1e-2
+  @test dpReverseDiff ≈ dp' rtol=1e-2
 end
-
-
-function f(u,p,t,W)
-  dx = p[1]*u[1]*sin(W[1])
-  return [dx]
-end
-
-
-dt = 1e-2
-u0 = [1.00]
-tspan = (0.0,1.0)
-t = tspan[1]:0.1:tspan[2]
-p = [2.0]
-
-prob = RODEProblem{false}(f,u0,tspan,p)
-Random.seed!(seed)
-sol = solve(prob, RandomEM(),dt=dt, save_noise=true, dense=true)
-# check reversion with usage of Noise Grid
-_sol = deepcopy(sol)
-noise_reverse = NoiseGrid(reverse(_sol.t),reverse(_sol.W.W))
-prob_reverse = RODEProblem(f,_sol[end],reverse(tspan),p,noise=noise_reverse)
-sol_reverse = solve(prob_reverse,RandomEM(),dt=dt)
-@test sol(t).u ≈ sol_reverse(t).u rtol=1e-2
-@show minimum(sol.u)
-
-# check with forward noise
-noise_forward = DiffEqNoiseProcess.NoiseWrapper(_sol.W)
-prob_forward = RODEProblem(f,_sol(0.0),tspan,p,noise=noise_forward)
-sol_forward = solve(prob_forward,RandomEM(),dt=dt)
-@test sol(t).u ≈ sol_forward(t).u atol=1e-12
-
-# Test if Forward and ReverseMode AD agree.
-Random.seed!(seed)
-du0ReverseDiff,dpReverseDiff = Zygote.gradient((u0,p)->sum(
-  Array(solve(prob,RandomEM(),dt=dt,u0=u0,p=p,saveat=t,sensealg=ReverseDiffAdjoint())).^2/2)
-  ,u0,p)
-Random.seed!(seed)
-dForward = ForwardDiff.gradient((θ)->sum(
-  #Array(solve(prob,RandomEM(),dt=dt,u0=θ[1:2],p=θ[3:4],saveat=t)).^2/2)
-  Array(solve(prob,RandomEM(),dt=dt,u0=θ[1:1],p=θ[2:2],saveat=t)).^2/2)
-  ,[u0;p])
-
-@info dForward
-
-@test du0ReverseDiff ≈ dForward[1:1]
-@test dpReverseDiff ≈ dForward[2:2]
-
-# test gradients
-Random.seed!(seed)
-sol = solve(prob,RandomEM(),dt=dt, save_noise=true, saveat=t)
-
-du0, dp = adjoint_sensitivities(_sol,RandomEM(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
-
-@test du0ReverseDiff ≈ du0 rtol=1e-2
-@test dpReverseDiff ≈ dp' rtol=1e-1
-
-@info du0, dp'
-
-adj_prob_dense = DiffEqSensitivity.RODEAdjointProblem(_sol,InterpolatingAdjoint(),dg!,t,nothing)
-adj_sol_dense = solve(adj_prob_dense, RandomEM(), dt=dt)
-adj_prob_checkpointing = DiffEqSensitivity.RODEAdjointProblem(sol,InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()),dg!,t,nothing)
-adj_sol_checkpointing = solve(adj_prob_checkpointing, RandomEM(), dt=dt)
-
-@show adj_sol_dense[end]
-@show adj_sol_checkpointing[end]
-
-
-@test du0ReverseDiff ≈ -adj_sol_checkpointing[end][1:1] rtol=1e-2
-@test dpReverseDiff ≈ adj_sol_checkpointing[end][2:2] rtol=1e-2
-
-
-@test du0ReverseDiff ≈ -adj_sol_dense[end][1:1] rtol=1e-2
-@test dpReverseDiff ≈ adj_sol_dense[end][2:2] rtol=1e-2
-
-minimum(abs.(adj_sol_checkpointing.W.t - adj_sol_dense.W.t))
-
-
-using Plots
-pl1 = plot(adj_sol_dense, label="Dense")
-plot!(pl1,adj_sol_checkpointing, label="Checkpointing", legend=false)
-
-pl2 = plot(adj_sol_dense.t,hcat(adj_sol_dense-adj_sol_checkpointing ...)')
-#savefig(pl1, "sense.png")
-maximum(adj_sol_dense - adj_sol_checkpointing)
-
-adj_prob_backsolve = DiffEqSensitivity.RODEAdjointProblem(sol,BacksolveAdjoint(),dg!,t,nothing)
-adj_sol_backsolve = solve(adj_prob_backsolve, RandomEM(), dt=dt)
-
-plot(getindex.(adj_sol_backsolve(t).u, 2) -getindex.(adj_sol_dense(t).u, 2))
-#plot!(getindex.(adj_sol_backsolve(t).u, 4) -getindex.(adj_sol_dense(t).u, 4))
-plot(getindex.(adj_sol_backsolve(t).u, 2) -getindex.(adj_sol_checkpointing(t).u, 2))
-#plot!(getindex.(adj_sol_backsolve(t).u, 4) -getindex.(adj_sol_checkpointing(t).u, 4))
-
-
-@test adj_sol_dense.t == adj_sol_checkpointing.t
-@test adj_sol_dense.W.t == adj_sol_checkpointing.W.t
-@test adj_sol_dense.W.W == adj_sol_checkpointing.W.W
-
-
-@test adj_sol_dense.u == adj_sol_checkpointing.u
-
-difference = adj_sol_dense.u - adj_sol_checkpointing.u
-
-@show difference[1:10]

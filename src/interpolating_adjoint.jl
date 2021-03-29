@@ -34,14 +34,21 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
     if typeof(sol.prob) <: Union{SDEProblem,RODEProblem}
       # replicated noise
       _sol = deepcopy(sol)
-      sol.W.save_everystep = false
-      _sol.W.save_everystep = false
-      idx1 = searchsortedfirst(_sol.t, interval[1]-1000eps(interval[1]))
-      #idx2 = searchsortedfirst(_sol.t, interval[2])
-      #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-      forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
-      dt = choose_dt(abs(_sol.W.dt), _sol.W.t, interval)
-      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
+      idx1 = searchsortedfirst(_sol.W.t, interval[1]-1000eps(interval[1]))
+      if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+        sol.W.save_everystep = false
+        _sol.W.save_everystep = false
+        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+      elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+        #idx2 = searchsortedfirst(_sol.W.t, interval[2]+1000eps(interval[1]))
+        forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx1:end], _sol.W.W[idx1:end])
+      else
+        error("NoiseProcess type not implemented.")
+      end
+      dt = choose_dt((_sol.W.t[idx1]-_sol.W.t[idx1+1]), _sol.W.t, interval)
+
+      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise),
+         sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
     else
       if tstops === nothing
         cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1])),sol.alg; tols...)
@@ -50,6 +57,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
       end
     end
     CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
+
   else
     nothing
   end
@@ -142,11 +150,17 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         if typeof(sol.prob) <: Union{SDEProblem,RODEProblem}
           #idx1 = searchsortedfirst(sol.t, interval[1])
           _sol = deepcopy(sol)
-          _sol.W.save_everystep = false
           idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
-          idx2 = searchsortedfirst(_sol.t, interval[2])
-          #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-          forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+          idx2 = searchsortedfirst(_sol.t, interval[2]+100eps(interval[2]))
+          idx_noise = searchsortedfirst(_sol.W.t, interval[1]-100eps(interval[1]))
+          if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+            _sol.W.save_everystep = false
+            forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx_noise)
+          elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+            forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx_noise:end], _sol.W.W[idx_noise:end])
+          else
+            error("NoiseProcess type not implemented.")
+          end
           prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
           dt = choose_dt(abs(cpsol_t[1]-cpsol_t[2]), cpsol_t, interval)
           cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
@@ -320,7 +334,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  backwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, reverse=true)
+  backwardnoise = reverse(_sol.W)
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case
@@ -402,7 +416,9 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  backwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, reverse=true)
+  backwardnoise = reverse(_sol.W)
+  # make sure noise grid starts at correct time values, e.g., if sol.W.t is longer than sol.t
+  tspan[1]!=backwardnoise.t[1] && reinit!(backwardnoise,backwardnoise.t[2]-backwardnoise.t[1],t0=tspan[1])
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case
