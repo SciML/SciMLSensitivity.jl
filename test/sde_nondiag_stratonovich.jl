@@ -503,7 +503,7 @@ end
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test res_sde_u0 ≈ res_sde_u02 atol = 1e-14
-  @test res_sde_p ≈ res_sde_p2 atol = 1e-14
+  @test res_sde_p ≈ res_sde_p2 atol = 5e-14
 
   @show res_sde_u0
 
@@ -517,7 +517,7 @@ end
   adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=true),dg!,tarray, nothing)
   adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
 
-  @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-15
+  @test adj_soloop[end] ≈ adj_sol[end]  rtol=1e-14
 
 
   adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(noisemixing=true, checkpointing=false),dg!,tarray, nothing)
