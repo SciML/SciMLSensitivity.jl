@@ -504,7 +504,7 @@ end
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
   @test res_sde_u0 ≈ res_sde_u02 atol = 1e-8
-  @test res_sde_p ≈ res_sde_p2 atol = 1e-8
+  @test res_sde_p ≈ res_sde_p2 atol = 5e-8
 
   @show res_sde_u0
 
