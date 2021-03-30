@@ -450,11 +450,13 @@ end
   Random.seed!(seed)
   prob = SDEProblem(f_mixing!,g_mixing!,u₀,trange,p)
   soltsave = collect(trange[1]:dtmix:trange[2])
-  sol = solve(prob, EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave )
+  sol = solve(prob, EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave)
 
   Random.seed!(seed)
   proboop = SDEProblem(f_mixing,g_mixing,u₀,trange,p)
   soloop = solve(proboop,EulerHeun(), dt=dtmix, save_noise=true, saveat=soltsave)
+
+  @test sol.u ≈ soloop.u atol = 1e-14
 
 
   # BacksolveAdjoint
@@ -501,8 +503,8 @@ end
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
     ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true))
 
-  @test res_sde_u0 ≈ res_sde_u02 atol = 1e-9
-  @test res_sde_p ≈ res_sde_p2 atol = 1e-9
+  @test res_sde_u0 ≈ res_sde_u02 atol = 1e-8
+  @test res_sde_p ≈ res_sde_p2 atol = 1e-8
 
   @show res_sde_u0
 
