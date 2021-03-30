@@ -33,8 +33,8 @@ export extract_local_sensitivities
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
-       SDEAdjointProblem, SensitivityAlg,
-       adjoint_sensitivities, adjoint_sensitivities_u0 
+       SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
+       adjoint_sensitivities, adjoint_sensitivities_u0
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,

@@ -1,4 +1,8 @@
 using DiffEqFlux, OrdinaryDiffEq, Flux, DiffEqSensitivity, DiffEqCallbacks, Test
+using Random
+
+Random.seed!(1234)
+
 u0 = Float32[2.; 0.]
 datasize = 100
 tspan = (0.0f0,10.5f0)

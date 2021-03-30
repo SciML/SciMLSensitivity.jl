@@ -28,11 +28,11 @@ transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g)
 du2 = transformed_function(u,p,tspan[2])
 
 #@test du[1] == (p[1]*u[1]-p[2]^2*u[1])
-@test du2[1] == (p[1]*u[1]-p[2]^2*u[1])
+@test isapprox(du2[1], (p[1]*u[1]-p[2]^2*u[1]), atol=1e-15)
 #@test du2 == du
 transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g,(u,p,t)->p[2]^2*u)
 du2 = transformed_function(u,p,tspan[2])
-@test du2[1] == (p[1]*u[1]-p[2]^2*u[1])
+@test isapprox(du2[1], (p[1]*u[1]-p[2]^2*u[1]), atol=1e-15)
 
 linear_analytic_strat(u0,p,t,W) = @.(u0*exp((p[1])*t+p[2]*W))
 

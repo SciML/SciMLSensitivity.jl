@@ -135,8 +135,8 @@ resp = [resp1, resp2]
 @test isapprox(resp, gs_p', atol=1e-2) # exact vs ito adjoint
 @test isapprox(res_p, gs_p, atol=1e-2) # strat vs ito adjoint
 @test isapprox(gs_p', res_forward, atol=1e-2) # ito adjoint vs forward
-@test isapprox(resp, res_p', rtol=1e-5) # exact vs strat adjoint
-@test isapprox(resp, res_forward, rtol=1e-5) # exact vs forward
+@test isapprox(resp, res_p', rtol=2e-5) # exact vs strat adjoint
+@test isapprox(resp, res_forward, rtol=2e-5) # exact vs forward
 @test isapprox(res_reverse, res_forward, rtol=1e-12) # reverse vs forward
 
 # tests for initial state gradients

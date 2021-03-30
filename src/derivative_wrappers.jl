@@ -66,6 +66,57 @@ function (ff::UNonDiagNoiseJacobianWrapper)(du1,uprev)
   return vec(du1)
 end
 
+# RODE wrappers
+mutable struct RODEUJacobianWrapper{fType,tType,P,WType} <: Function
+  f::fType
+  t::tType
+  p::P
+  W::WType
+end
+
+(ff::RODEUJacobianWrapper)(du1,uprev) = ff.f(du1,uprev,ff.p,ff.t,ff.W)
+(ff::RODEUJacobianWrapper)(uprev) = (du1 = similar(uprev); ff.f(du1,uprev,ff.p,ff.t,ff.W); du1)
+
+mutable struct RODEUDerivativeWrapper{F,tType,P,WType} <: Function
+  f::F
+  t::tType
+  p::P
+  W::WType
+end
+(ff::RODEUDerivativeWrapper)(u) = ff.f(u,ff.p,ff.t,ff.W)
+
+mutable struct RODEUGradientWrapper{fType,tType,P,WType} <: Function
+  f::fType
+  t::tType
+  p::P
+  W::WType
+end
+
+(ff::RODEUGradientWrapper)(uprev) = ff.f(uprev,ff.p,ff.t,ff.W)
+
+mutable struct RODEParamGradientWrapper{fType,tType,uType,WType} <: Function
+  f::fType
+  t::tType
+  u::uType
+  W::WType
+end
+
+(ff::RODEParamGradientWrapper)(p) = ff.f(ff.u,p,ff.t,ff.W)
+
+mutable struct RODEParamJacobianWrapper{fType,tType,uType,WType} <: Function
+  f::fType
+  t::tType
+  u::uType
+  W::WType
+end
+
+(ff::RODEParamJacobianWrapper)(du1,p) = ff.f(du1,ff.u,p,ff.t,ff.W)
+
+function (ff::RODEParamJacobianWrapper)(p)
+  du1 = similar(p, size(ff.u))
+  ff.f(du1,ff.u,p,ff.t,ff.W)
+  return du1
+end
 
 Base.@pure function determine_chunksize(u,alg::DiffEqBase.AbstractSensitivityAlgorithm)
   determine_chunksize(u,get_chunksize(alg))
@@ -143,75 +194,125 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
 end
 
 function vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction;
-                      dgrad=nothing, dy=nothing)
-  _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy)
+                      dgrad=nothing, dy=nothing, W=nothing)
+  _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy)
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy, W)
   @unpack sensealg, f = S
   prob = getprob(S)
 
   if isautojacvec isa Bool && !isautojacvec
     @unpack J, uf, f_cache, jac_config = S.diffcache
     if !(prob isa DiffEqBase.SteadyStateProblem)
-      if DiffEqBase.has_jac(f)
-        f.jac(J,y,p,t) # Calculate the Jacobian into J
+      if W===nothing
+        if DiffEqBase.has_jac(f)
+          f.jac(J,y,p,t) # Calculate the Jacobian into J
+        else
+          uf.t = t
+          uf.p = p
+          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        end
       else
-        uf.t = t
-        uf.p = p
-        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        if DiffEqBase.has_jac(f)
+          f.jac(J,y,p,t,W) # Calculate the Jacobian into J
+        else
+          uf.t = t
+          uf.p = p
+          uf.W = W
+          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        end
       end
       mul!(dλ',λ',J)
     end
     if dgrad !== nothing
       @unpack pJ, pf, paramjac_config = S.diffcache
-      if DiffEqBase.has_paramjac(f)
-        # Calculate the parameter Jacobian into pJ
-        f.paramjac(pJ,y,p,t)
-      else
-        pf.t = t
-        pf.u = y
-        if inplace_sensitivity(S)
-          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+      if W===nothing
+        if DiffEqBase.has_paramjac(f)
+          # Calculate the parameter Jacobian into pJ
+          f.paramjac(pJ,y,p,t)
         else
-          temp = jacobian(pf, p, sensealg)
-          pJ .= temp
+          pf.t = t
+          pf.u = y
+          if inplace_sensitivity(S)
+            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+          else
+            temp = jacobian(pf, p, sensealg)
+            pJ .= temp
+          end
+        end
+      else
+        if DiffEqBase.has_paramjac(f)
+          # Calculate the parameter Jacobian into pJ
+          f.paramjac(pJ,y,p,t,W)
+        else
+          pf.t = t
+          pf.u = y
+          pf.W = W
+          if inplace_sensitivity(S)
+            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+          else
+            temp = jacobian(pf, p, sensealg)
+            pJ .= temp
+          end
         end
       end
       mul!(dgrad',λ',pJ)
     end
     if dy !== nothing
-      if inplace_sensitivity(S)
-         f(dy, y, p, t)
+      if W===nothing
+        if inplace_sensitivity(S)
+          f(dy, y, p, t)
+        else
+          dy[:] .= vec(f(y, p, t))
+        end
       else
-        dy[:] .= vec(f(y, p, t))
+        if inplace_sensitivity(S)
+          f(dy, y, p, t, W)
+        else
+          dy[:] .= vec(f(y, p, t, W))
+        end
       end
     end
   elseif inplace_sensitivity(S)
-    _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy)
+    _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy, W)
   else
-    _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy)
+    _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy, W)
   end
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy)
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy, W)
   @unpack sensealg, f = S
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
-    _dy, back = Tracker.forward(y, p) do u, p
-      out_ = map(zero, u)
-      f(out_, u, p, t)
-      Tracker.collect(out_)
+    if W===nothing
+      _dy, back = Tracker.forward(y, p) do u, p
+        out_ = map(zero, u)
+        f(out_, u, p, t)
+        Tracker.collect(out_)
+      end
+    else
+      _dy, back = Tracker.forward(y, p) do u, p
+        out_ = map(zero, u)
+        f(out_, u, p, t, W)
+        Tracker.collect(out_)
+      end
     end
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   else
-    _dy, back = Tracker.forward(y, p) do u, p
-      Tracker.collect(f(u, p, t))
+    if W===nothing
+      _dy, back = Tracker.forward(y, p) do u, p
+        Tracker.collect(f(u, p, t))
+      end
+    else
+      _dy, back = Tracker.forward(y, p) do u, p
+        Tracker.collect(f(u, p, t, W))
+      end
     end
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
@@ -221,7 +322,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::T
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy)
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy, W)
   @unpack sensealg, f = S
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
@@ -232,22 +333,42 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   ## These other cases happen due to autodiff in stiff ODE solvers
   elseif inplace_sensitivity(S)
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
-    tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
-      du1 = similar(u, size(u))
-      f(du1,u,p,first(t))
-      return vec(du1)
-     end
+    if W===nothing
+      tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
+        du1 = similar(u, size(u))
+        f(du1,u,p,first(t))
+        return vec(du1)
+       end
+    else
+      _W = eltype(W) === eltype(λ) ? W : convert.(promote_type(eltype(W),eltype(λ)),W)
+      tape = ReverseDiff.GradientTape((_y, p, [t], _W)) do u,p,t,Wloc
+        du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
+        f(du1,u,p,first(t),Wloc)
+        return vec(du1)
+      end
+    end
   else
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
-    tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
-      vec(f(u,p,first(t)))
+    if W===nothing
+      tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
+        vec(f(u,p,first(t)))
+      end
+    else
+      _W = eltype(W) === eltype(λ) ? W : convert.(promote_type(eltype(W),eltype(λ)),W)
+      tape = ReverseDiff.GradientTape((_y, p, [t], _W)) do u,p,t,Wloc
+        vec(f(u,p,first(t),Wloc))
+      end
     end
   end
 
   if prob isa DiffEqBase.SteadyStateProblem
     tu, tp = ReverseDiff.input_hook(tape)
   else
-    tu, tp, tt = ReverseDiff.input_hook(tape)
+    if W===nothing
+      tu, tp, tt = ReverseDiff.input_hook(tape)
+    else
+      tu, tp, tt, tW = ReverseDiff.input_hook(tape)
+    end
   end
   output = ReverseDiff.output_hook(tape)
   ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
@@ -255,11 +376,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   if !(prob isa DiffEqBase.SteadyStateProblem)
     ReverseDiff.unseed!(tt)
   end
+  W !== nothing && ReverseDiff.unseed!(tW)
   ReverseDiff.value!(tu, y)
   ReverseDiff.value!(tp, prob.p)
   if !(prob isa DiffEqBase.SteadyStateProblem)
     ReverseDiff.value!(tt, [t])
   end
+  W !== nothing && ReverseDiff.value!(tW, W)
   ReverseDiff.forward_pass!(tape)
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)
@@ -270,24 +393,38 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy)
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy, W)
   @unpack sensealg, f = S
   prob = getprob(S)
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
-    _dy, back = Zygote.pullback(y, p) do u, p
-      out_ = Zygote.Buffer(similar(u))
-      f(out_, u, p, t)
-      vec(copy(out_))
+    if W==nothing
+      _dy, back = Zygote.pullback(y, p) do u, p
+        out_ = Zygote.Buffer(similar(u))
+        f(out_, u, p, t)
+        vec(copy(out_))
+      end
+    else
+      _dy, back = Zygote.pullback(y, p) do u, p
+        out_ = Zygote.Buffer(similar(u))
+        f(out_, u, p, t, W)
+        vec(copy(out_))
+      end
     end
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
   else
-    _dy, back = Zygote.pullback(y, p) do u, p
-      vec(f(u, p, t))
+    if W==nothing
+      _dy, back = Zygote.pullback(y, p) do u, p
+        vec(f(u, p, t))
+      end
+    else
+      _dy, back = Zygote.pullback(y, p) do u, p
+        vec(f(u, p, t, W))
+      end
     end
     tmp1,tmp2 = back(λ)
     tmp1 != nothing && (dλ[:] .= vec(tmp1))

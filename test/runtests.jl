@@ -50,6 +50,7 @@ if GROUP == "All" || GROUP == "SDE2"
 end
 
 if GROUP == "All" || GROUP == "SDE3"
+    @time @safetestset "RODE Tests" begin include("rode.jl") end
     @time @safetestset "SDE Ito Conversion Tests" begin include("sde_transformation_test.jl") end
     @time @safetestset "SDE Ito Scalar Noise" begin include("sde_scalar_ito.jl") end
 end

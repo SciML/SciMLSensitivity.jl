@@ -13,15 +13,23 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    callback = nothing,
                                    kwargs...)
 
-  if sol.prob isa SDEProblem
-    adj_prob = SDEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
-                               callback = callback,
-                               abstol=abstol,reltol=reltol,
-                               corfunc_analytical=corfunc_analytical)
-  else
+  if sol.prob isa ODEProblem
     adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
                                  callback = callback,
                                  abstol=abstol,reltol=reltol)
+
+  elseif sol.prob isa SDEProblem
+    adj_prob = SDEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
+                                 callback = callback,
+                                 abstol=abstol,reltol=reltol,
+                                 corfunc_analytical=corfunc_analytical)
+  elseif sol.prob isa RODEProblem
+    adj_prob = RODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
+                                callback = callback,
+                                abstol=abstol,reltol=reltol,
+                                corfunc_analytical=corfunc_analytical)
+  else
+    error("Continuous adjoint sensitivities are only supported for ODE/SDE/RODE problems.")
   end
 
   tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)

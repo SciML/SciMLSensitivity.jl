@@ -31,20 +31,24 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
     cursor = lastindex(intervals)
     interval = intervals[cursor]
 
-    if typeof(sol.prob) <: SDEProblem
+    if typeof(sol.prob) <: Union{SDEProblem,RODEProblem}
       # replicated noise
       _sol = deepcopy(sol)
-      sol.W.save_everystep = false
-      _sol.W.save_everystep = false
-      idx1 = searchsortedfirst(_sol.t, interval[1]-1000eps(interval[1]))
-      #idx2 = searchsortedfirst(_sol.t, interval[2])
-      #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-      forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
-      dt = abs(_sol.W.dt)
-      if dt < 1000eps(_sol.t[end])
-        dt = interval[2] - interval[1]
+      idx1 = searchsortedfirst(_sol.W.t, interval[1]-1000eps(interval[1]))
+      if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+        sol.W.save_everystep = false
+        _sol.W.save_everystep = false
+        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
+      elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+        #idx2 = searchsortedfirst(_sol.W.t, interval[2]+1000eps(interval[1]))
+        forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx1:end], _sol.W.W[idx1:end])
+      else
+        error("NoiseProcess type not implemented.")
       end
-      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise), sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
+      dt = choose_dt((_sol.W.t[idx1]-_sol.W.t[idx1+1]), _sol.W.t, interval)
+
+      cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1]), noise=forwardnoise),
+         sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:end] ,tols...)
     else
       if tstops === nothing
         cpsol = solve(remake(sol.prob, tspan=interval, u0=sol(interval[1])),sol.alg; tols...)
@@ -53,6 +57,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f
       end
     end
     CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
+
   else
     nothing
   end
@@ -68,6 +73,20 @@ function findcursor(intervals, t)
   # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
   lt(x, t) = <(x[2], t)
   return searchsortedfirst(intervals, t, lt=lt)
+end
+
+function choose_dt(dt, ts, interval)
+  if dt < 1000eps(interval[2])
+    if length(ts) > 2
+      dt = ts[end-1]-ts[end-2]
+      if dt < 1000eps(interval[2])
+        dt = interval[2] - interval[1]
+      end
+    else
+      dt = interval[2] - interval[1]
+    end
+  end
+  return dt
 end
 
 # u = λ'
@@ -89,6 +108,19 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   else
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad)
   end
+
+  dλ .*= -one(eltype(λ))
+
+  discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+  return nothing
+end
+
+function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t,W)
+  @unpack sol,checkpoint_sol, discrete, prob, f = S
+
+  λ,grad,y,dλ,dgrad,dy = split_states(du,u,t,S)
+
+  vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, W=W)
 
   dλ .*= -one(eltype(λ))
 
@@ -119,19 +151,22 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         else
           sol(y, interval[1])
         end
-        if typeof(sol.prob) <: SDEProblem
+        if typeof(sol.prob) <: Union{SDEProblem,RODEProblem}
           #idx1 = searchsortedfirst(sol.t, interval[1])
           _sol = deepcopy(sol)
-          _sol.W.save_everystep = false
           idx1 = searchsortedfirst(_sol.t, interval[1]-100eps(interval[1]))
-          idx2 = searchsortedfirst(_sol.t, interval[2])
-          #forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.t[idx1:idx2], _sol.W.W[idx1:idx2])
-          forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx1)
-          prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
-          dt = abs(cpsol_t[end]-cpsol_t[end-1])
-          if dt < 10000eps(cpsol_t[end])
-            dt = interval[2] - interval[1]
+          idx2 = searchsortedfirst(_sol.t, interval[2]+100eps(interval[2]))
+          idx_noise = searchsortedfirst(_sol.W.t, interval[1]-100eps(interval[1]))
+          if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+            _sol.W.save_everystep = false
+            forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx=idx_noise)
+          elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+            forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx_noise:end], _sol.W.W[idx_noise:end])
+          else
+            error("NoiseProcess type not implemented.")
           end
+          prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
+          dt = choose_dt(abs(cpsol_t[1]-cpsol_t[2]), cpsol_t, interval)
           cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
         else
           prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
@@ -247,15 +282,17 @@ end
   tspan = reverse(tspan)
   discrete = t != nothing
 
-  if length(unique(round.(checkpoints, digits=13))) != length(checkpoints)
-    @warn "The given checkpoints are not unique. To avoid issues in the interpolation the checkpoints were redefined. You may want to check sol.t if default checkpoints were used."
-    checkpoints = unique(round.(checkpoints, digits=13))
+  # remove duplicates from checkpoints
+  if ischeckpointing(sensealg) && (length(unique(checkpoints)) != length(checkpoints))
+    _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
+    tstops = duplicate_iterator_times[1]
+    checkpoints = filter(x->x ∉ tstops, _checkpoints)
+  else
+    tstops = nothing
   end
 
-
-  p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
   numstates = length(u0)
-  numparams = length(p)
+  numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = numstates+numparams
 
@@ -301,7 +338,7 @@ end
 
   # replicated noise
   _sol = deepcopy(sol)
-  backwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, reverse=true)
+  backwardnoise = reverse(_sol.W)
 
   if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
     # scalar noise case
@@ -316,4 +353,86 @@ end
     noise=backwardnoise,
     noise_rate_prototype = noise_matrix
     )
+end
+
+
+@noinline function RODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
+                                     g,t=nothing,dg=nothing;
+                                     checkpoints=sol.t,
+                                     callback=CallbackSet(),
+                                     reltol=nothing, abstol=nothing,
+                                     kwargs...)
+  @unpack f, p, u0, tspan = sol.prob
+  tspan = reverse(tspan)
+  discrete = t != nothing
+
+  # remove duplicates from checkpoints
+  if ischeckpointing(sensealg) && (length(unique(checkpoints)) != length(checkpoints))
+    _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
+    tstops =  duplicate_iterator_times[1]
+    checkpoints = filter(x->x ∉ tstops, _checkpoints)
+  else
+    tstops = nothing
+  end
+
+  numstates = length(u0)
+  numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+
+  len = numstates+numparams
+
+  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
+  λ .= false
+
+  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f,
+                                                     checkpoints,
+                                                     (reltol=reltol,abstol=abstol),
+                                                     tstops)
+
+  init_cb = t !== nothing && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  z0 = vec(zero(λ))
+  original_mm = sol.prob.f.mass_matrix
+  if original_mm === I || original_mm === (I,I)
+    mm = I
+  else
+    adjmm = copy(sol.prob.f.mass_matrix')
+    zzz = similar(adjmm, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    # using concrate I is slightly more efficient
+    II = Diagonal(I, numparams)
+    mm = [adjmm       zzz
+          copy(zzz')   II]
+  end
+
+  jac_prototype = sol.prob.f.jac_prototype
+  if !sense.discrete || jac_prototype === nothing
+    adjoint_jac_prototype = nothing
+  else
+    _adjoint_jac_prototype = copy(jac_prototype')
+    zzz = similar(_adjoint_jac_prototype, numstates, numparams)
+    fill!(zzz, zero(eltype(zzz)))
+    II = Diagonal(I, numparams)
+    adjoint_jac_prototype = [_adjoint_jac_prototype zzz
+                             copy(zzz')             II]
+  end
+
+  rodefun = RODEFunction(sense, mass_matrix=mm, jac_prototype=adjoint_jac_prototype)
+
+  # replicated noise
+  _sol = deepcopy(sol)
+  backwardnoise = reverse(_sol.W)
+  # make sure noise grid starts at correct time values, e.g., if sol.W.t is longer than sol.t
+  tspan[1]!=backwardnoise.t[1] && reinit!(backwardnoise,backwardnoise.t[2]-backwardnoise.t[1],t0=tspan[1])
+
+  if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
+    # scalar noise case
+    noise_matrix = nothing
+  else
+    noise_matrix = similar(z0,length(z0),numstates)
+    noise_matrix .= false
+  end
+
+  return RODEProblem(rodefun,z0,tspan,p,callback=cb,
+                    noise=backwardnoise,
+                    noise_rate_prototype = noise_matrix)
 end
