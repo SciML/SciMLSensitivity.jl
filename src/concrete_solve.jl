@@ -160,11 +160,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           end
         else
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+            _out[_save_idxs] = -adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
           elseif _save_idxs isa Colon
-            vec(_out) .= -vec(adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+            vec(_out) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           else
-            vec(@view(_out[_save_idxs])) .= -vec(adapt(typeof(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i]))
+            vec(@view(_out[_save_idxs])) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i]))
           end
         end
       end
