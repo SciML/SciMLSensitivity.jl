@@ -21,6 +21,7 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Concrete Solve Derivatives" begin include("concrete_solve_derivatives.jl") end
     @time @safetestset "Branching Derivatives" begin include("branching_derivatives.jl") end
     @time @safetestset "Derivative Shapes" begin include("derivative_shapes.jl") end
+    @time @safetestset "save_idxs" begin include("save_idxs.jl") end
     @time @safetestset "ArrayPartitions" begin include("array_partitions.jl") end
     @time @safetestset "Complex Adjoints" begin include("complex_adjoints.jl") end
     @time @safetestset "Forward Remake" begin include("forward_remake.jl") end
