@@ -4,141 +4,205 @@ using StochasticDiffEq
 using Statistics
 using DiffEqSensitivity
 using DiffEqBase.EnsembleAnalysis
+using Zygote
 
-function sys!(du, u, p, t)
-    r, e, μ, h, ph, z, i = p
-    du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
-    du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
-    du[3] = 0.2 * exp(u[1]) - 0.05 * u[3] - r * u[3] / (h + u[3]) * u[4] # nutrient concentration
-    du[4] =
-        r * u[3] / (h + u[3]) * u[4] - 0.1 * u[4] -
-        0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
-end
-
-function noise!(du, u, p, t)
-    du[1] = p[end] # n
-    du[2] = p[end] # n
-    du[3] = 0.0
-    du[4] = 0.0
-end
-
-datasize = 10
-tspan = (0.0f0, 3.0f0)
-tsteps = range(tspan[1], tspan[2], length = datasize)
-u0 = [1.0, 1.0, 1.0, 1.0]
-p_ = [1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1e-6, 1.0]
-
-prob = SDEProblem(sys!, noise!, u0, tspan, p_)
-ensembleprob = EnsembleProblem(prob)
-
-solution = solve(
-    ensembleprob,
-    SOSRI(),
-    EnsembleThreads();
-    trajectories = 1000,
-    abstol = 1e-5,
-    reltol = 1e-5,
-    maxiters = 1e8,
-    saveat = tsteps,
-)
-
-(truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
-
-ann = FastChain(FastDense(4, 32, tanh), FastDense(32, 32, tanh), FastDense(32, 2))
-α = Float64.(initial_params(ann))
-
-function dudt_(du, u, p, t)
-    r, e, μ, h, ph, z, i = p_
-
-    MM = ann(u, p)
-
-    du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
-    du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
-    du[3] = 0.2 * exp(u[1]) - 0.05 * u[3] - MM[1] # nutrient concentration
-    du[4] = MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
-    return nothing
-end
-
-function dudt_op(u, p, t)
-    r, e, μ, h, ph, z, i = p_
-
-    MM = ann(u, p)
-
-    [e * 0.5 * (5μ - u[1]), # nutrient input time series
-     e * 0.05 * (10μ - u[2]), # grazer density time series
-     0.2 * exp(u[1]) - 0.05 * u[3] - MM[1], # nutrient concentration
-     MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i] #Algae density
-end
-
-function noise_(du, u, p, t)
-    du[1] = p_[end]
-    du[2] = p_[end]
-    du[3] = 0.0
-    du[4] = 0.0
-    return nothing
-end
-
-function noise_op(u, p, t)
-    [p_[end],
-     p_[end],
-     0.0,
-     0.0]
-end
-
-prob_nn = SDEProblem(dudt_, noise_, u0, tspan, p = nothing)
-prob_nn_op = SDEProblem(dudt_op, noise_op, u0, tspan, p = nothing)
-
-function loss(θ)
-    tmp_prob = remake(prob_nn, p = θ)
-    ensembleprob = EnsembleProblem(tmp_prob)
-    tmp_sol = Array(solve(
-        ensembleprob,
-        EM();
-        dt = tsteps.step,
-        trajectories = 100,
-        sensealg = ReverseDiffAdjoint(),
-       ))
-    tmp_mean = mean(tmp_sol,dims=3)[:,:]
-    tmp_var = var(tmp_sol,dims=3)[:,:]
-    sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
-end
-
-function loss_op(θ)
-    tmp_prob = remake(prob_nn_op, p = θ)
-    ensembleprob = EnsembleProblem(tmp_prob)
-    tmp_sol = Array(solve(
-        ensembleprob,
-        EM();
-        dt = tsteps.step,
-        trajectories = 100,
-        sensealg = ReverseDiffAdjoint(),
-       ))
-    tmp_mean = mean(tmp_sol,dims=3)[:,:]
-    tmp_var = var(tmp_sol,dims=3)[:,:]
-    sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
-end
-
-const losses = []
-callback(θ, l, pred) = begin
-    push!(losses, l)
-    if length(losses)%50 == 0
-        println("Current loss after $(length(losses)) iterations: $(losses[end])")
+@testset "Neural SDE" begin
+    function sys!(du, u, p, t)
+        r, e, μ, h, ph, z, i = p
+        du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
+        du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
+        du[3] = 0.2 * exp(u[1]) - 0.05 * u[3] - r * u[3] / (h + u[3]) * u[4] # nutrient concentration
+        du[4] =
+            r * u[3] / (h + u[3]) * u[4] - 0.1 * u[4] -
+            0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
     end
-    false
+
+    function noise!(du, u, p, t)
+        du[1] = p[end] # n
+        du[2] = p[end] # n
+        du[3] = 0.0
+        du[4] = 0.0
+    end
+
+    datasize = 10
+    tspan = (0.0f0, 3.0f0)
+    tsteps = range(tspan[1], tspan[2], length = datasize)
+    u0 = [1.0, 1.0, 1.0, 1.0]
+    p_ = [1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1e-6, 1.0]
+
+    prob = SDEProblem(sys!, noise!, u0, tspan, p_)
+    ensembleprob = EnsembleProblem(prob)
+
+    solution = solve(
+        ensembleprob,
+        SOSRI(),
+        EnsembleThreads();
+        trajectories = 1000,
+        abstol = 1e-5,
+        reltol = 1e-5,
+        maxiters = 1e8,
+        saveat = tsteps,
+    )
+
+    (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
+
+    ann = FastChain(FastDense(4, 32, tanh), FastDense(32, 32, tanh), FastDense(32, 2))
+    α = Float64.(initial_params(ann))
+
+    function dudt_(du, u, p, t)
+        r, e, μ, h, ph, z, i = p_
+
+        MM = ann(u, p)
+
+        du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
+        du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
+        du[3] = 0.2 * exp(u[1]) - 0.05 * u[3] - MM[1] # nutrient concentration
+        du[4] = MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
+        return nothing
+    end
+
+    function dudt_op(u, p, t)
+        r, e, μ, h, ph, z, i = p_
+
+        MM = ann(u, p)
+
+        [e * 0.5 * (5μ - u[1]), # nutrient input time series
+         e * 0.05 * (10μ - u[2]), # grazer density time series
+         0.2 * exp(u[1]) - 0.05 * u[3] - MM[1], # nutrient concentration
+         MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i] #Algae density
+    end
+
+    function noise_(du, u, p, t)
+        du[1] = p_[end]
+        du[2] = p_[end]
+        du[3] = 0.0
+        du[4] = 0.0
+        return nothing
+    end
+
+    function noise_op(u, p, t)
+        [p_[end],
+         p_[end],
+         0.0,
+         0.0]
+    end
+
+    prob_nn = SDEProblem(dudt_, noise_, u0, tspan, p = nothing)
+    prob_nn_op = SDEProblem(dudt_op, noise_op, u0, tspan, p = nothing)
+
+    function loss(θ)
+        tmp_prob = remake(prob_nn, p = θ)
+        ensembleprob = EnsembleProblem(tmp_prob)
+        tmp_sol = Array(solve(
+            ensembleprob,
+            EM();
+            dt = tsteps.step,
+            trajectories = 100,
+            sensealg = ReverseDiffAdjoint(),
+           ))
+        tmp_mean = mean(tmp_sol,dims=3)[:,:]
+        tmp_var = var(tmp_sol,dims=3)[:,:]
+        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
+    end
+
+    function loss_op(θ)
+        tmp_prob = remake(prob_nn_op, p = θ)
+        ensembleprob = EnsembleProblem(tmp_prob)
+        tmp_sol = Array(solve(
+            ensembleprob,
+            EM();
+            dt = tsteps.step,
+            trajectories = 100,
+            sensealg = ReverseDiffAdjoint(),
+           ))
+        tmp_mean = mean(tmp_sol,dims=3)[:,:]
+        tmp_var = var(tmp_sol,dims=3)[:,:]
+        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
+    end
+
+    losses = []
+    callback(θ, l, pred) = begin
+        push!(losses, l)
+        if length(losses)%50 == 0
+            println("Current loss after $(length(losses)) iterations: $(losses[end])")
+        end
+        false
+    end
+
+    res1 = DiffEqFlux.sciml_train(
+        loss,
+        α,
+        ADAM(0.1),
+        cb = callback,
+        maxiters = 200,
+    )
+
+    res2 = DiffEqFlux.sciml_train(
+        loss_op,
+        α,
+        ADAM(0.1),
+        cb = callback,
+        maxiters = 200,
+    )
 end
 
-res1 = DiffEqFlux.sciml_train(
-    loss,
-    α,
-    ADAM(0.1),
-    cb = callback,
-    maxiters = 200,
-)
+@testset "Adaptive neural SDE" begin
+    x_size = 2 # Size of the spatial dimensions in the SDE
+    v_size = 2 # Output size of the control
 
-res2 = DiffEqFlux.sciml_train(
-    loss_op,
-    α,
-    ADAM(0.1),
-    cb = callback,
-    maxiters = 200,
-)
+    # Define Neural Network for the control input
+    input_size = x_size + 1 # size of the spatial dimensions PLUS one time dimensions
+    nn_initial = Chain(Dense(input_size,v_size)) # The actual neural network
+    p_nn, model = Flux.destructure(nn_initial)
+    nn(x,p) = model(p)(x)
+
+    # Define the right hand side of the SDE
+    const_mat = zeros(Float64, (x_size, v_size))
+    for i = 1:max(x_size,v_size)
+        const_mat[i,i] = 1
+    end
+
+
+    function f!(du,u,p,t)
+        MM = nn([u;t],p)
+        du .= u + const_mat*MM
+    end
+
+    function g!(du,u,p,t)
+        du .= false*u .+ sqrt(2*0.001)
+    end
+
+    # Define SDE problem
+    u0 = vec(rand(Float64, (x_size,1)))
+    tspan = (0.0, 1.0)
+    ts = collect(0:0.1:1)
+    prob = SDEProblem{true}(f!, g!, u0, tspan, p_nn)
+
+    # Defining the loss function
+    function loss(pars, prob, alg)
+        function prob_func(prob, i, repeat)
+            # Prepare new initial state and remake the problem
+            u0tmp = vec(rand(Float64,(x_size,1)))
+
+            remake(prob, p = pars, u0 = u0tmp)
+        end
+
+        ensembleprob = EnsembleProblem(prob, prob_func = prob_func)
+
+        _sol = solve(ensembleprob, alg, EnsembleThreads(), sensealg = BacksolveAdjoint(), saveat = ts, trajectories = 10)
+        A = convert(Array, _sol)
+        sum(abs2, A .- 1), mean(A)
+    end
+
+    # Actually training/fitting the model
+    losses = []
+    callback(θ, l, pred) = begin
+        push!(losses, l)
+        if length(losses)%1 == 0
+            println("Current loss after $(length(losses)) iterations: $(losses[end])")
+        end
+        false
+    end
+    res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRA()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+end
