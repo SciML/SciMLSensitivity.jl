@@ -204,5 +204,5 @@ end
         false
     end
     res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
-    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRA()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRI()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
 end
