@@ -178,6 +178,9 @@ end
     ts = collect(0:0.1:1)
     prob = SDEProblem{true}(f!, g!, u0, tspan, p_nn)
 
+    W = WienerProcess(0.0,0.0,0.0)
+    probscalar = SDEProblem{true}(f!, g!, u0, tspan, p_nn, noise=W)
+
     # Defining the loss function
     function loss(pars, prob, alg)
         function prob_func(prob, i, repeat)
@@ -189,7 +192,8 @@ end
 
         ensembleprob = EnsembleProblem(prob, prob_func = prob_func)
 
-        _sol = solve(ensembleprob, alg, EnsembleThreads(), sensealg = BacksolveAdjoint(), saveat = ts, trajectories = 10)
+        _sol = solve(ensembleprob, alg, EnsembleThreads(), sensealg = BacksolveAdjoint(), saveat = ts, trajectories = 10,
+                     abstol=1e-1, reltol=1e-1)
         A = convert(Array, _sol)
         sum(abs2, A .- 1), mean(A)
     end
@@ -203,6 +207,9 @@ end
         end
         false
     end
+    res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,probscalar, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,probscalar, SOSRI()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+
     res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
-    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRI()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRA()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
 end
