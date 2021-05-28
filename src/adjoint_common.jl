@@ -316,9 +316,7 @@ struct ReverseLossCallback{λType,timeType,yType,RefType,FMType,AlgType,gType,ca
   diffcache::cacheType
 end
 
-function ReverseLossCallback(sensefun, λ, t, g)
-  cur_time = Ref(length(t))
-
+function ReverseLossCallback(sensefun, λ, t, g, cur_time)
   @unpack sensealg, y = sensefun
   isq = (sensealg isa QuadratureAdjoint)
 
@@ -334,6 +332,11 @@ function (f::ReverseLossCallback)(integrator)
   @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
 
   p, u = integrator.p, integrator.u
+
+  if sensealg isa BacksolveAdjoint
+    copyto!(y,integrator.u[end-idx+1:end])
+  end
+
   # Warning: alias here! Be careful with λ
   gᵤ = isq ? λ : @view(λ[1:idx])
   g(gᵤ,y,p,t[cur_time[]],cur_time[])
@@ -365,13 +368,16 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
-  rlcb = ReverseLossCallback(sensefun, λ, _t, g)
+  cur_time = Ref(length(t))
+
+  rlcb = ReverseLossCallback(sensefun, λ, t, g, cur_time)
 
   cb = PresetTimeCallback(_t,rlcb)
 
   # handle duplicates (currently only for double occurances)
   if duplicate_iterator_times!==nothing
-    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, duplicate_iterator_times[1], g)
+    # use same ref for cur_time to cope with concrete_solve
+    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, g, cur_time)
     cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
     return CallbackSet(cb,reverse_cbs,cb_dupl), duplicate_iterator_times
   else

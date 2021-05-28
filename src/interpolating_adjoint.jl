@@ -138,6 +138,7 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         y = sol(t)
       else
         sol(y,t)
+        #TODO need to take right limit here as well
       end
     else
       intervals = checkpoint_sol.intervals
@@ -179,7 +180,16 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         checkpoint_sol.cpsol = cpsol′
         checkpoint_sol.cursor = cursor′
       end
-      checkpoint_sol.cpsol(y, t)
+      if checkpoint_sol.tstops===nothing
+        checkpoint_sol.cpsol(y, t)
+      else
+        if t ∈ checkpoint_sol.tstops
+          # make sure we take the right limit
+          checkpoint_sol.cpsol(y, t+100eps(t))
+        else
+          checkpoint_sol.cpsol(y, t)
+        end
+      end
     end
   end
 
@@ -217,9 +227,9 @@ end
   discrete = t != nothing
 
   # remove duplicates from checkpoints
-  if ischeckpointing(sensealg) && (length(unique(checkpoints)) != length(checkpoints))
+  if ischeckpointing(sensealg) &&  (length(unique(checkpoints)) != length(checkpoints))
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
-    tstops =  duplicate_iterator_times[1]
+    tstops = duplicate_iterator_times[1]
     checkpoints = filter(x->x ∉ tstops, _checkpoints)
   else
     tstops = nothing

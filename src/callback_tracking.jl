@@ -4,38 +4,42 @@ the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
-track_callbacks(cb,t) = track_callbacks(CallbackSet(cb),t)
-track_callbacks(cb::CallbackSet,t) = CallbackSet(_track_callback.(cb.continuous_callbacks,t),
-                                                 _track_callback.(cb.discrete_callbacks,t))
+track_callbacks(cb,t,u) = track_callbacks(CallbackSet(cb),t,u)
+track_callbacks(cb::CallbackSet,t,u) = CallbackSet(
+   map(cb->_track_callback(cb,t,u), cb.continuous_callbacks),
+   map(cb->_track_callback(cb,t,u), cb.discrete_callbacks))
 
-struct TrackedAffect{T,T2}
+struct TrackedAffect{T,T2,T3}
     event_times::Vector{T}
-    affect!::T2
+    uleft::Vector{T2}
+    affect!::T3
 end
 
-TrackedAffect(t::Number,affect!::Nothing) = nothing
-TrackedAffect(t::Number,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),affect!)
+TrackedAffect(t::Number,u,affect!::Nothing) = nothing
+TrackedAffect(t::Number,u,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(u)}(undef,0),affect!)
 
 function (f::TrackedAffect)(integrator)
+    uleft = deepcopy(integrator.u)
     f.affect!(integrator)
     if integrator.u_modified
         push!(f.event_times,integrator.t)
+        push!(f.uleft,uleft)
     end
 end
 
-function _track_callback(cb::DiscreteCallback,t)
+function _track_callback(cb::DiscreteCallback,t,u)
     DiscreteCallback(cb.condition,
-                     TrackedAffect(t,cb.affect!),
+                     TrackedAffect(t,u,cb.affect!),
                      cb.initialize,
                      cb.finalize,
                      cb.save_positions)
 end
 
-function _track_callback(cb::ContinuousCallback,t)
+function _track_callback(cb::ContinuousCallback,t,u)
     ContinuousCallback(
         cb.condition,
-        TrackedAffect(t,cb.affect!),
-        TrackedAffect(t,cb.affect_neg!),
+        TrackedAffect(t,u,cb.affect!),
+        TrackedAffect(t,u,cb.affect_neg!),
         cb.initialize,
         cb.finalize,
         cb.idxs,
@@ -44,11 +48,11 @@ function _track_callback(cb::ContinuousCallback,t)
         cb.dtrelax,cb.abstol,cb.reltol)
 end
 
-function _track_callback(cb::VectorContinuousCallback,t)
+function _track_callback(cb::VectorContinuousCallback,t,u)
     VectorContinuousCallback(
                cb.condition,
-               TrackedAffect(t,cb.affect!),
-               TrackedAffect(t,cb.affect_neg!),
+               TrackedAffect(t,u,cb.affect!),
+               TrackedAffect(t,u,cb.affect_neg!),
                cb.len,cb.initialize,cb.finalize,cb.idxs,
                cb.rootfind,cb.interp_points,
                collect(cb.save_positions),
@@ -95,7 +99,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
           fakeinteg = FakeIntegrator([x for x in u],p,t)
           cb.affect!.affect!(fakeinteg)
           _p = fakeinteg.p
-          du .= u - fakeinteg.u
+          du .= fakeinteg.u
         end
 
         S = integrator.f.f # get the sensitivity function
@@ -106,10 +110,15 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
 
-        vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
-                              dgrad=dgrad, dy=dy)               
+        indx = searchsortedfirst(cb.affect!.event_times,integrator.t)
 
-        integrator.u .+= du
+        copyto!(y, cb.affect!.uleft[indx])
+
+        vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
+                              dgrad=dgrad, dy=dy)
+
+        λ .= dλ
+
         _p != integrator.p && (integrator.p = _p)
     end
 

@@ -43,18 +43,17 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
   if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
     if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1],prob.u0)
     elseif haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1],prob.u0)
     else #haskey(kwargs,:callback)
-      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0)
     end
     _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
     cb = nothing
     _prob = remake(prob,u0=u0,p=p)
   end
-
 
   # Remove callbacks from kwargs since it's already in _prob
   kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
@@ -113,7 +112,15 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     if cb === nothing
       _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
     else
-      _saveat = sol.t
+      if (length(unique(sol.t)) != length(sol.t))
+        # if callbacks are tracked, there is potentially an event_time that must be considered
+        # in the loss function but doesn't occur in saveat/t. So we need to add it.
+        # However if the callbacks are not saving in the forward, we don't want to compute a loss
+        # value for them. This information is given by sol.t/checkpoints.
+        # Additionally we eps increase them to pass the proper out values
+        _, duplicate_iterator_times = separate_nonunique(sol.t)
+        _saveat = sort(vcat(Array(_saveat),  (100eps.(duplicate_iterator_times[1]).+duplicate_iterator_times[1])...))
+      end
     end
 
     ts = _saveat
