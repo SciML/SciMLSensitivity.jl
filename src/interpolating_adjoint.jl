@@ -135,10 +135,9 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
   if update
     if checkpoint_sol === nothing
       if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
-        y = sol(t)
+        y = sol(t, continuity=:right)
       else
-        sol(y,t)
-        #TODO need to take right limit here as well
+        sol(y,t, continuity=:right)
       end
     else
       intervals = checkpoint_sol.intervals
@@ -180,16 +179,7 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         checkpoint_sol.cpsol = cpsol′
         checkpoint_sol.cursor = cursor′
       end
-      if checkpoint_sol.tstops===nothing
-        checkpoint_sol.cpsol(y, t)
-      else
-        if t ∈ checkpoint_sol.tstops
-          # make sure we take the right limit
-          checkpoint_sol.cpsol(y, t+100eps(t))
-        else
-          checkpoint_sol.cpsol(y, t)
-        end
-      end
+      checkpoint_sol.cpsol(y, t, continuity=:right)
     end
   end
 

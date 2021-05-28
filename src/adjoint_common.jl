@@ -409,3 +409,31 @@ function separate_nonunique(t)
 
   return _t, itrs
 end
+
+function out_and_ts(_ts, duplicate_iterator_times, sol)
+  if duplicate_iterator_times === nothing
+    ts = _ts
+    out = sol(ts)
+  else
+    # if callbacks are tracked, there is potentially an event_time that must be considered
+    # in the loss function but doesn't occur in saveat/t. So we need to add it.
+    # Note that if it doens't occur in saveat/t we even need to add it twice
+    # However if the callbacks are not saving in the forward, we don't want to compute a loss
+    # value for them. This information is given by sol.t/checkpoints.
+    # Additionally we need to store the left and the right limit, respectively.
+    duplicate_times = duplicate_iterator_times[1] # just treat two occurances at the moment (see separate_nonunique above) 
+    _ts = Array(_ts)
+    for d in duplicate_times
+      (d ∉ _ts) && push!(_ts, d)
+    end
+
+    u1 = sol(_ts)[:]
+    u2 = sol(duplicate_times,continuity=:right)[:]
+    saveat = vcat(_ts,  duplicate_times...)
+    perm = sortperm(saveat)
+    ts = saveat[perm]
+    u = vcat(u1, u2)[perm]
+    out = DiffEqArray(u,ts)
+  end
+  return out, ts
+end

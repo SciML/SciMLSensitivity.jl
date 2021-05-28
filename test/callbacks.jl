@@ -3,7 +3,7 @@ using DiffEqSensitivity, Test, ForwardDiff
 
 abstol=1e-10
 reltol=1e-10
-savingtimes=0.1
+savingtimes=0.5
 
 function test_discrete_callback(cb, tstops, g, dg!)
   function fiip(du,u,p,t)
@@ -71,8 +71,9 @@ function test_discrete_callback(cb, tstops, g, dg!)
   @test du01c ≈ dstuff[1:2]
   @test dp1c ≈ dstuff[3:6]
   @test du01 ≈ du02
-  @test du01 ≈ du03
-  @test du01 ≈ du03c
+  @test du01 ≈ du03 rtol=1e-7
+  @test du01 ≈ du03c rtol=1e-7
+  @test du03 ≈ du03c
   @test du01 ≈ du04
   @test dp1 ≈ dp2
   @test dp1 ≈ dp3
@@ -324,8 +325,9 @@ function test_continuous_callback(cb, g, dg!)
   @test du01c ≈ dstuff[1:2]
   @test dp1c ≈ dstuff[3:6]
   @test du01 ≈ du02
-  @test du01 ≈ du03
-  @test du01 ≈ du03c
+  @test du01 ≈ du03 rtol=1e-7
+  @test du01 ≈ du03c rtol=1e-7
+  @test du03 ≈ du03c
   @test du01 ≈ du04
   @test dp1 ≈ dp2
   @test dp1 ≈ dp3
@@ -425,7 +427,7 @@ end
           test_discrete_callback(cb,tstops,g,dg!)
         end
         @testset "callback at multiple time points" begin
-          affecttimes = [2.0,4.0,8.0]
+          affecttimes = [2.03,4.0,8.0]
           condition(u,t,integrator) = t ∈ affecttimes
           affect!(integrator) = integrator.u[1] += 2.0
           cb = DiscreteCallback(condition,affect!)
@@ -471,7 +473,7 @@ end
           test_discrete_callback(cb,tstops,g,dg!)
         end
         @testset "callback at multiple time points" begin
-          affecttimes = [2.0,4.0,8.0]
+          affecttimes = [2.03,4.0,8.0]
           condition(u,t,integrator) = t ∈ affecttimes
           affect!(integrator) = integrator.u[1] += 2.0
           cb = DiscreteCallback(condition,affect!)

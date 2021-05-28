@@ -85,11 +85,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
-    if cb !== nothing
+    if cb === nothing
+      _out = sol(ts)
+    else
       _, duplicate_iterator_times = separate_nonunique(sol.t)
-      duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
+      _out, ts = out_and_ts(ts, duplicate_iterator_times, sol)
     end
-    _out = sol(ts)
+
     out = if save_idxs === nothing
       out = DiffEqBase.sensitivity_solution(sol,_out.u,sol.t)
     else
@@ -111,20 +113,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
     if cb === nothing
       _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+      ts = _saveat
+      _out = sol(ts)
     else
-      if (length(unique(sol.t)) != length(sol.t))
-        # if callbacks are tracked, there is potentially an event_time that must be considered
-        # in the loss function but doesn't occur in saveat/t. So we need to add it.
-        # However if the callbacks are not saving in the forward, we don't want to compute a loss
-        # value for them. This information is given by sol.t/checkpoints.
-        # Additionally we eps increase them to pass the proper out values
-        _, duplicate_iterator_times = separate_nonunique(sol.t)
-        _saveat = sort(vcat(Array(_saveat),  (100eps.(duplicate_iterator_times[1]).+duplicate_iterator_times[1])...))
-      end
+      _ts, duplicate_iterator_times = separate_nonunique(sol.t)
+      _out, ts = out_and_ts(_ts, duplicate_iterator_times, sol)
     end
 
-    ts = _saveat
-    _out = sol(ts)
     out = if save_idxs === nothing
       out = DiffEqBase.sensitivity_solution(sol,_out.u,ts)
     else
