@@ -316,9 +316,7 @@ struct ReverseLossCallback{λType,timeType,yType,RefType,FMType,AlgType,gType,ca
   diffcache::cacheType
 end
 
-function ReverseLossCallback(sensefun, λ, t, g)
-  cur_time = Ref(length(t))
-
+function ReverseLossCallback(sensefun, λ, t, g, cur_time)
   @unpack sensealg, y = sensefun
   isq = (sensealg isa QuadratureAdjoint)
 
@@ -334,6 +332,11 @@ function (f::ReverseLossCallback)(integrator)
   @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
 
   p, u = integrator.p, integrator.u
+
+  if sensealg isa BacksolveAdjoint
+    copyto!(y,integrator.u[end-idx+1:end])
+  end
+
   # Warning: alias here! Be careful with λ
   gᵤ = isq ? λ : @view(λ[1:idx])
   g(gᵤ,y,p,t[cur_time[]],cur_time[])
@@ -365,13 +368,16 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
-  rlcb = ReverseLossCallback(sensefun, λ, _t, g)
+  cur_time = Ref(length(t))
+
+  rlcb = ReverseLossCallback(sensefun, λ, t, g, cur_time)
 
   cb = PresetTimeCallback(_t,rlcb)
 
   # handle duplicates (currently only for double occurances)
   if duplicate_iterator_times!==nothing
-    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, duplicate_iterator_times[1], g)
+    # use same ref for cur_time to cope with concrete_solve
+    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, g, cur_time)
     cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
     return CallbackSet(cb,reverse_cbs,cb_dupl), duplicate_iterator_times
   else
@@ -402,4 +408,32 @@ function separate_nonunique(t)
   end
 
   return _t, itrs
+end
+
+function out_and_ts(_ts, duplicate_iterator_times, sol)
+  if duplicate_iterator_times === nothing
+    ts = _ts
+    out = sol(ts)
+  else
+    # if callbacks are tracked, there is potentially an event_time that must be considered
+    # in the loss function but doesn't occur in saveat/t. So we need to add it.
+    # Note that if it doens't occur in saveat/t we even need to add it twice
+    # However if the callbacks are not saving in the forward, we don't want to compute a loss
+    # value for them. This information is given by sol.t/checkpoints.
+    # Additionally we need to store the left and the right limit, respectively.
+    duplicate_times = duplicate_iterator_times[1] # just treat two occurances at the moment (see separate_nonunique above) 
+    _ts = Array(_ts)
+    for d in duplicate_times
+      (d ∉ _ts) && push!(_ts, d)
+    end
+
+    u1 = sol(_ts)[:]
+    u2 = sol(duplicate_times,continuity=:right)[:]
+    saveat = vcat(_ts,  duplicate_times...)
+    perm = sortperm(saveat)
+    ts = saveat[perm]
+    u = vcat(u1, u2)[perm]
+    out = DiffEqArray(u,ts)
+  end
+  return out, ts
 end

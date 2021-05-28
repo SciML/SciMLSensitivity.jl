@@ -43,18 +43,17 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
   if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
     if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1],prob.u0)
     elseif haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1],prob.u0)
     else #haskey(kwargs,:callback)
-      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1])
+      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0)
     end
     _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
     cb = nothing
     _prob = remake(prob,u0=u0,p=p)
   end
-
 
   # Remove callbacks from kwargs since it's already in _prob
   kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
@@ -86,11 +85,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
-    if cb !== nothing
+    if cb === nothing
+      _out = sol(ts)
+    else
       _, duplicate_iterator_times = separate_nonunique(sol.t)
-      duplicate_iterator_times!==nothing && (ts = sort(vcat(ts, vcat(duplicate_iterator_times...))))
+      _out, ts = out_and_ts(ts, duplicate_iterator_times, sol)
     end
-    _out = sol(ts)
+
     out = if save_idxs === nothing
       out = DiffEqBase.sensitivity_solution(sol,_out.u,sol.t)
     else
@@ -112,12 +113,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
     if cb === nothing
       _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+      ts = _saveat
+      _out = sol(ts)
     else
-      _saveat = sol.t
+      _ts, duplicate_iterator_times = separate_nonunique(sol.t)
+      _out, ts = out_and_ts(_ts, duplicate_iterator_times, sol)
     end
 
-    ts = _saveat
-    _out = sol(ts)
     out = if save_idxs === nothing
       out = DiffEqBase.sensitivity_solution(sol,_out.u,ts)
     else

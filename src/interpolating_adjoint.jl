@@ -135,9 +135,9 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
   if update
     if checkpoint_sol === nothing
       if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
-        y = sol(t)
+        y = sol(t, continuity=:right)
       else
-        sol(y,t)
+        sol(y,t, continuity=:right)
       end
     else
       intervals = checkpoint_sol.intervals
@@ -179,7 +179,7 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
         checkpoint_sol.cpsol = cpsol′
         checkpoint_sol.cursor = cursor′
       end
-      checkpoint_sol.cpsol(y, t)
+      checkpoint_sol.cpsol(y, t, continuity=:right)
     end
   end
 
@@ -217,9 +217,9 @@ end
   discrete = t != nothing
 
   # remove duplicates from checkpoints
-  if ischeckpointing(sensealg) && (length(unique(checkpoints)) != length(checkpoints))
+  if ischeckpointing(sensealg) &&  (length(unique(checkpoints)) != length(checkpoints))
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
-    tstops =  duplicate_iterator_times[1]
+    tstops = duplicate_iterator_times[1]
     checkpoints = filter(x->x ∉ tstops, _checkpoints)
   else
     tstops = nothing
