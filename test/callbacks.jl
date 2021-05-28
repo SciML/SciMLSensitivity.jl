@@ -1,8 +1,8 @@
 using StochasticDiffEq, OrdinaryDiffEq, Zygote
 using DiffEqSensitivity, Test, ForwardDiff
 
-abstol=1e-10
-reltol=1e-10
+abstol=1e-12
+reltol=1e-12
 savingtimes=0.5
 
 function test_discrete_callback(cb, tstops, g, dg!)
