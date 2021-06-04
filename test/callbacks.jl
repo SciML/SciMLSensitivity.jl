@@ -83,7 +83,7 @@ function test_discrete_callback(cb, tstops, g, dg!)
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes)
   #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
@@ -337,7 +337,7 @@ function test_continuous_callback(cb, g, dg!)
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,abstol=abstol,reltol=reltol,saveat=savingtimes)
 
   adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(),dg!,sol_track.t,nothing,
@@ -447,6 +447,13 @@ end
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
         end
+        @testset "parameter changing callback at single time point" begin
+          condition(u,t,integrator) = t == 5.1
+          affect!(integrator) = (integrator.p .= 2*integrator.p .- 0.5)
+          cb = DiscreteCallback(condition,affect!)
+          tstops=[5.1]
+          test_discrete_callback(cb,tstops,g,dg!)
+        end
       end
       @testset "MSE loss function" begin
         g(u) = sum((1.0.-u).^2)./2
@@ -491,6 +498,13 @@ end
           affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
+          test_discrete_callback(cb,tstops,g,dg!)
+        end
+        @testset "parameter changing callback at single time point" begin
+          condition(u,t,integrator) = t == 5.1
+          affect!(integrator) = (integrator.p .= 2*integrator.p .- 0.5)
+          cb = DiscreteCallback(condition,affect!)
+          tstops=[5.1]
           test_discrete_callback(cb,tstops,g,dg!)
         end
       end

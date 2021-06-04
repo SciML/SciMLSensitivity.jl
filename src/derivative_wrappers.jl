@@ -378,7 +378,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   end
   W !== nothing && ReverseDiff.unseed!(tW)
   ReverseDiff.value!(tu, y)
-  ReverseDiff.value!(tp, prob.p)
+  ReverseDiff.value!(tp, p)
   if !(prob isa DiffEqBase.SteadyStateProblem)
     ReverseDiff.value!(tt, [t])
   end
