@@ -4,42 +4,45 @@ the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
-track_callbacks(cb,t,u) = track_callbacks(CallbackSet(cb),t,u)
-track_callbacks(cb::CallbackSet,t,u) = CallbackSet(
-   map(cb->_track_callback(cb,t,u), cb.continuous_callbacks),
-   map(cb->_track_callback(cb,t,u), cb.discrete_callbacks))
+track_callbacks(cb,t,u) = track_callbacks(CallbackSet(cb),t,u,p)
+track_callbacks(cb::CallbackSet,t,u,p) = CallbackSet(
+   map(cb->_track_callback(cb,t,u,p), cb.continuous_callbacks),
+   map(cb->_track_callback(cb,t,u,p), cb.discrete_callbacks))
 
-struct TrackedAffect{T,T2,T3}
+struct TrackedAffect{T,T2,T3,T4}
     event_times::Vector{T}
     uleft::Vector{T2}
-    affect!::T3
+    pleft::Vector{T3}
+    affect!::T4
 end
 
-TrackedAffect(t::Number,u,affect!::Nothing) = nothing
-TrackedAffect(t::Number,u,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(u)}(undef,0),affect!)
+TrackedAffect(t::Number,u,p,affect!::Nothing) = nothing
+TrackedAffect(t::Number,u,p,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(p)}(undef,0),Vector{typeof(u)}(undef,0),affect!)
 
 function (f::TrackedAffect)(integrator)
     uleft = deepcopy(integrator.u)
+    pleft = deepcopy(integrator.p)
     f.affect!(integrator)
     if integrator.u_modified
         push!(f.event_times,integrator.t)
         push!(f.uleft,uleft)
+        push!(f.pleft,pleft)
     end
 end
 
-function _track_callback(cb::DiscreteCallback,t,u)
+function _track_callback(cb::DiscreteCallback,t,u,p)
     DiscreteCallback(cb.condition,
-                     TrackedAffect(t,u,cb.affect!),
+                     TrackedAffect(t,u,p,cb.affect!),
                      cb.initialize,
                      cb.finalize,
                      cb.save_positions)
 end
 
-function _track_callback(cb::ContinuousCallback,t,u)
+function _track_callback(cb::ContinuousCallback,t,u,p)
     ContinuousCallback(
         cb.condition,
-        TrackedAffect(t,u,cb.affect!),
-        TrackedAffect(t,u,cb.affect_neg!),
+        TrackedAffect(t,u,p,cb.affect!),
+        TrackedAffect(t,u,p,cb.affect_neg!),
         cb.initialize,
         cb.finalize,
         cb.idxs,
@@ -48,11 +51,11 @@ function _track_callback(cb::ContinuousCallback,t,u)
         cb.dtrelax,cb.abstol,cb.reltol)
 end
 
-function _track_callback(cb::VectorContinuousCallback,t,u)
+function _track_callback(cb::VectorContinuousCallback,t,u,p)
     VectorContinuousCallback(
                cb.condition,
-               TrackedAffect(t,u,cb.affect!),
-               TrackedAffect(t,u,cb.affect_neg!),
+               TrackedAffect(t,u,p,cb.affect!),
+               TrackedAffect(t,u,p,cb.affect_neg!),
                cb.len,cb.initialize,cb.finalize,cb.idxs,
                cb.rootfind,cb.interp_points,
                collect(cb.save_positions),
@@ -93,12 +96,9 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
 
     function affect!(integrator)
 
-        local _p
-
         function w(du,u,p,t)
-          fakeinteg = FakeIntegrator([x for x in u],p,t)
+          fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
           cb.affect!.affect!(fakeinteg)
-          _p = fakeinteg.p
           du .= fakeinteg.u
         end
 
@@ -113,13 +113,29 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         indx = searchsortedfirst(cb.affect!.event_times,integrator.t)
 
         copyto!(y, cb.affect!.uleft[indx])
+        if integrator.p != cb.affect!.pleft[indx]
+          # changes in parameters
+          copyto!(integrator.p, cb.affect!.pleft[indx])
+          if !(sensealg isa QuadratureAdjoint)
+            function wp(dp,p,u,t)
+              fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
+              cb.affect!.affect!(fakeinteg)
+              dp .= fakeinteg.p
+            end
+
+            fakeSp = CallbackSensitivityFunction(wp,sensealg,S.diffcache,integrator.sol.prob)
+            #vjp with Jacobin given by dw/dp before event and vector given by grad
+            vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
+                                  dgrad=nothing, dy=nothing)
+            grad .= dgrad
+          end
+        end
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
 
         λ .= dλ
 
-        _p != integrator.p && (integrator.p = _p)
     end
 
     times = if typeof(cb) <: DiscreteCallback

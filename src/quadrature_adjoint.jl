@@ -191,7 +191,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
   dgdu, dgdp = dg isa Tuple ? dg : (dg, nothing)
   adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu,callback)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
-                               save_everystep=true,save_start=true,kwargs...)                          
+                               save_everystep=true,save_start=true,kwargs...)
 
   p = sol.prob.p
   if p === nothing || p === DiffEqBase.NullParameters()
@@ -204,9 +204,32 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                        atol=sensealg.abstol,rtol=sensealg.reltol)
     else
       res = zero(integrand.p)'
-      for i in 1:length(t)-1
+      for i in length(t)-1:-1:1
         res .+= quadgk(integrand,t[i],t[i+1],
                        atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+        if t[i]==t[i+1]
+          for cb in callback.discrete_callbacks
+            if t[i] ∈ cb.affect!.event_times
+              function wp(dp,p,u,t)
+                fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
+                cb.affect!.affect!(fakeinteg)
+                dp .= fakeinteg.p
+              end
+
+              _p = similar(integrand.p, size(integrand.p))
+              wp(_p,integrand.p,integrand.y,t[i])
+
+              if _p != integrand.p
+                fakeSp = CallbackSensitivityFunction(wp,sensealg,adj_prob.f.f.diffcache,sol.prob)
+                #vjp with Jacobin given by dw/dp before event and vector given by grad
+                vecjacobian!(res, integrand.p, res, integrand.y, t[i], fakeSp;
+                                    dgrad=nothing, dy=nothing)
+                integrand = update_p_integrand(integrand,_p)
+              end
+            end
+          end
+
+        end
       end
       if t[1] != sol.prob.tspan[1]
         res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
@@ -215,4 +238,9 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
     end
     return -adj_sol[end], res
   end
+end
+
+function update_p_integrand(integrand::AdjointSensitivityIntegrand,p)
+  @unpack sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp = integrand
+  AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
 end

@@ -5,7 +5,7 @@ abstol=1e-12
 reltol=1e-12
 savingtimes=0.5
 
-function test_discrete_callback(cb, tstops, g, dg!)
+function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing)
   function fiip(du,u,p,t)
     du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
     du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
@@ -42,9 +42,15 @@ function test_discrete_callback(cb, tstops, g, dg!)
     (u0,p)->g(solve(proboop,Tsit5(),u0=u0,p=p,callback=cb,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=BacksolveAdjoint(checkpointing=false))),
     u0,p)
 
-  du02,dp2 = Zygote.gradient(
+  if cboop === nothing
+    du02,dp2 = Zygote.gradient(
     (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=ReverseDiffAdjoint()))
     ,u0,p)
+  else
+    du02,dp2 = Zygote.gradient(
+      (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cboop,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=ReverseDiffAdjoint()))
+      ,u0,p)
+  end
 
   du03,dp3 = Zygote.gradient(
     (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=InterpolatingAdjoint(checkpointing=true))),
@@ -78,12 +84,12 @@ function test_discrete_callback(cb, tstops, g, dg!)
   @test dp1 ≈ dp2
   @test dp1 ≈ dp3
   @test dp1 ≈ dp3c
-  @test dp1 ≈ dp4
+  @test dp1 ≈ dp4 rtol=1e-7
 
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes)
   #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
@@ -332,12 +338,12 @@ function test_continuous_callback(cb, g, dg!)
   @test dp1 ≈ dp2
   @test dp1 ≈ dp3
   @test dp1 ≈ dp3c
-  @test dp1 ≈ dp4
+  @test dp1 ≈ dp4 rtol=1e-7
 
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,abstol=abstol,reltol=reltol,saveat=savingtimes)
 
   adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(),dg!,sol_track.t,nothing,
@@ -447,6 +453,16 @@ end
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
         end
+        @testset "parameter changing callback at single time point" begin
+          condition(u,t,integrator) = t == 5.1
+          affect!(integrator) = (integrator.p .= 2*integrator.p .- 0.5)
+          affect(integrator) = (integrator.p = 2*integrator.p .- 0.5)
+          cb = DiscreteCallback(condition,affect!)
+          cboop = DiscreteCallback(condition,affect)
+          cb = DiscreteCallback(condition,affect!)
+          tstops=[5.1]
+          test_discrete_callback(cb,tstops,g,dg!,cboop)
+        end
       end
       @testset "MSE loss function" begin
         g(u) = sum((1.0.-u).^2)./2
@@ -492,6 +508,15 @@ end
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
+        end
+        @testset "parameter changing callback at single time point" begin
+          condition(u,t,integrator) = t == 5.1
+          affect!(integrator) = (integrator.p .= 2*integrator.p .- 0.5)
+          affect(integrator) = (integrator.p = 2*integrator.p .- 0.5)
+          cb = DiscreteCallback(condition,affect!)
+          cboop = DiscreteCallback(condition,affect)
+          tstops=[5.1]
+          test_discrete_callback(cb,tstops,g,dg!,cboop)
         end
       end
   	end
