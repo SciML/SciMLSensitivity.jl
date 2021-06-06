@@ -204,7 +204,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                        atol=sensealg.abstol,rtol=sensealg.reltol)
     else
       res = zero(integrand.p)'
-      for i in 1:length(t)-1
+      for i in length(t)-1:-1:1
         res .+= quadgk(integrand,t[i],t[i+1],
                        atol=sensealg.abstol,rtol=sensealg.reltol)[1]
         if t[i]==t[i+1]

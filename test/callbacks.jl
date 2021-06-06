@@ -338,7 +338,7 @@ function test_continuous_callback(cb, g, dg!)
   @test dp1 ≈ dp2
   @test dp1 ≈ dp3
   @test dp1 ≈ dp3c
-  @test dp1 ≈ dp4
+  @test dp1 ≈ dp4 rtol=1e-7
 
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
