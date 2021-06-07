@@ -110,12 +110,10 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
 
-        indx = searchsortedfirst(cb.affect!.event_times,integrator.t)
+        update_p = copy_to_integrator!(cb,y,integrator.p,integrator.t)
 
-        copyto!(y, cb.affect!.uleft[indx])
-        if integrator.p != cb.affect!.pleft[indx]
+        if update_p
           # changes in parameters
-          copyto!(integrator.p, cb.affect!.pleft[indx])
           if !(sensealg isa QuadratureAdjoint)
             function wp(dp,p,u,t)
               fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
@@ -147,4 +145,35 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
     PresetTimeCallback(times,
                        affect!,
                        save_positions = (false,false))
+end
+
+
+function copy_to_integrator!(cb::DiscreteCallback, y, p, t)
+  indx = searchsortedfirst(cb.affect!.event_times,t)
+  copyto!(y, cb.affect!.uleft[indx])
+  update_p = (p != cb.affect!.pleft[indx])
+  update_p && copyto!(p, cb.affect!.pleft[indx])
+  update_p
+end
+
+function copy_to_integrator!(cb::Union{ContinuousCallback,VectorContinuousCallback}, y, p, t)
+  if !isempty(cb.affect!.event_times)
+    indx = searchsortedfirst(cb.affect!.event_times,t)
+    if cb.affect!.event_times[indx]!=t
+      indx = searchsortedfirst(cb.affect_neg!.event_times,t)
+      copyto!(y, cb.affect_neg!.uleft[indx])
+      update_p = (p != cb.affect!.pleft[indx])
+      update_p && copyto!(p, cb.affect_neg!.pleft[indx])
+    else
+      copyto!(y, cb.affect!.uleft[indx])
+      update_p = (p != cb.affect!.pleft[indx])
+      update_p && copyto!(p, cb.affect!.pleft[indx])
+    end
+  else
+    indx = searchsortedfirst(cb.affect_neg!.event_times,t)
+    copyto!(y, cb.affect_neg!.uleft[indx])
+    update_p = (p != cb.affect_neg!.pleft[indx])
+    update_p && copyto!(p, cb.affect_neg!.pleft[indx])
+  end
+  update_p
 end

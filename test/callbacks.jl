@@ -302,7 +302,7 @@ function test_continuous_callback(cb, g, dg!)
     (u0,p)->g(solve(proboop,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=BacksolveAdjoint(checkpointing=false))),
     u0,p)
 
-  du02,dp2 = @time Zygote.gradient(
+  @test_broken du02,dp2 = @time Zygote.gradient(
     (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=ReverseDiffAdjoint()))
     ,u0,p)
 
@@ -319,29 +319,29 @@ function test_continuous_callback(cb, g, dg!)
     u0,p)
 
   dstuff = @time ForwardDiff.gradient(
-    (θ)->g(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:6],callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes)),
+    (θ)->g(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:4],callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes)),
     [u0;p])
 
   @info dstuff
 
   @test du01 ≈ dstuff[1:2]
-  @test dp1 ≈ dstuff[3:6]
+  @test dp1 ≈ dstuff[3:4]
   @test du01b ≈ dstuff[1:2]
-  @test dp1b ≈ dstuff[3:6]
+  @test dp1b ≈ dstuff[3:4]
   @test du01c ≈ dstuff[1:2]
-  @test dp1c ≈ dstuff[3:6]
-  @test du01 ≈ du02
+  @test dp1c ≈ dstuff[3:4]
+  @test_broken du01 ≈ du02
   @test du01 ≈ du03 rtol=1e-7
   @test du01 ≈ du03c rtol=1e-7
   @test du03 ≈ du03c
   @test du01 ≈ du04
-  @test dp1 ≈ dp2
+  @test_broken dp1 ≈ dp2
   @test dp1 ≈ dp3
   @test dp1 ≈ dp3c
   @test dp1 ≈ dp4 rtol=1e-7
 
-  @test du02 ≈ dstuff[1:2]
-  @test dp2 ≈ dstuff[3:6]
+  @test_broken du02 ≈ dstuff[1:2]
+  @test_broken dp2 ≈ dstuff[3:4]
 
   cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,abstol=abstol,reltol=reltol,saveat=savingtimes)
@@ -351,7 +351,7 @@ function test_continuous_callback(cb, g, dg!)
   						 abstol=abstol,reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol,reltol=reltol)
   @test du01 ≈ -adj_sol[1:2,end]
-  @test dp1 ≈ adj_sol[3:6,end]
+  @test dp1 ≈ adj_sol[3:4,end]
 
 
   # adj_prob = ODEAdjointProblem(sol_track,InterpolatingAdjoint(),dg!,sol_track.t,nothing,
@@ -531,19 +531,19 @@ end
     @testset "Compare with respect to discrete callback" begin
       test_continuous_wrt_discrete_callback()
     end
-    # @testset "simple loss function" begin
-    #   g(sol) = sum(sol)
-    #   function dg!(out,u,p,t,i)
-    #     (out.=-1)
-    #   end
-    #   @testset "callbacks with no effect" begin
-    #     condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
-    #     affect!(integrator) = (integrator.u[2] += 0)
-    #     cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
-    #     test_continuous_callback(cb,g,dg!)
-    #   end
+    @testset "simple loss function" begin
+      g(sol) = sum(sol)
+      function dg!(out,u,p,t,i)
+        (out.=-1)
+      end
+      @testset "callbacks with no effect" begin
+        condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
+        affect!(integrator) = (integrator.u[2] += 0)
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        test_continuous_callback(cb,g,dg!)
+      end
     #   @testset "callbacks with no effect except saving the state" begin
-    #     condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
+    #     condition(u,t,integrator) = u[1]
     #     affect!(integrator) = (integrator.u[2] += 0)
     #     cb = ContinuousCallback(condition,affect!)
     #     test_continuous_callback(cb,g,dg!)
@@ -560,6 +560,6 @@ end
     #     cb = ContinuousCallback(condition,affect!)
     #     test_continuous_callback(cb,g,dg!)
     #   end
-    # end
+    end
   end
 end
