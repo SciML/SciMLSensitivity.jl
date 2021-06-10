@@ -176,7 +176,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
   ForwardLSSProblem{typeof(sensealg),typeof(sense),typeof(sol),typeof(dt),
     typeof(umid),typeof(dudt),
     typeof(S),typeof(b),typeof(η),typeof(w),typeof(v),typeof(window),typeof(Δt),
-    typeof(g),typeof(g0),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,b,η,w,v,window,Δt,Nt,g,g0,
+    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,b,η,w,v,window,Δt,Nt,g0,g,
     res)
 end
 
@@ -297,7 +297,7 @@ function solve(prob::ForwardLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.
 end
 
 function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
-  @unpack sol, S, window, Δt, diffcache, b, w, v, η, res, g, g0 = prob
+  @unpack sol, S, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
   @unpack wBinv, wEinv, B, E, Smat = S
   @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
 
@@ -308,23 +308,23 @@ function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0ski
   b!(b,prob)
 
   ures = @view sol.u[n0:n1]
-  umidres = @view umid[n0:n1-1]
+  umidres = @view umid[:,n0:n1-1]
 
   # reset
   res .*=false
-  g0 *= false #running average
 
   for i=1:numparams
+    #running average
+    g0 *= false
     bpar = @view b[:,i]
     w .= Smat\bpar
     v .= Diagonal(wBinv)*(B'*w)
-    η .= Diagonal(we)*(E'*w)
+    η .= Diagonal(wEinv)*(E'*w)
 
-    vres = @view v[n0:n1]
-    ηres =  @view η[n0:n1-1]
+    ηres = @view η[n0:n1-1]
 
-    for (j,u) in enumerate(umidres)
-      vtmp = @view vres[(j-1)*numindvar+1:j*numindvar]
+    for (j,u) in enumerate(ures)
+      vtmp = @view v[(n0+j-2)*numindvar+1:j*numindvar]
       #  final gradient result for ith parameter
       if dg_val isa Tuple
         DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
@@ -335,15 +335,18 @@ function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0ski
         DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
         res[i] += dot(dg_val,vtmp)
       end
+    end
+    # mean value
+    res[i] = res[i]/(n1-n0+1)
 
+    for (j,u) in enumerate(eachcol(umidres))
       # compute objective
       gtmp = g(u,uf.p,nothing)
       g0 += gtmp
-
-      res[i] -= ηres[j]*gtmp
+      res[i] -= ηres[j]*gtmp/(n1-n0)
     end
-    res[i] = res[i]/(n1-n0)
-    res[i] += sum(ηres)*g0/(n1-n0)
+    res[i] = res[i] + sum(ηres)*g0/(n1-n0)^2
+
   end
   return res
 end
