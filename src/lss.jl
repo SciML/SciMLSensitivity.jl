@@ -127,6 +127,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
   isinplace = DiffEqBase.isinplace(f)
 
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
