@@ -421,7 +421,7 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
     # However if the callbacks are not saving in the forward, we don't want to compute a loss
     # value for them. This information is given by sol.t/checkpoints.
     # Additionally we need to store the left and the right limit, respectively.
-    duplicate_times = duplicate_iterator_times[1] # just treat two occurances at the moment (see separate_nonunique above) 
+    duplicate_times = duplicate_iterator_times[1] # just treat two occurances at the moment (see separate_nonunique above)
     _ts = Array(_ts)
     for d in duplicate_times
       (d ∉ _ts) && push!(_ts, d)
