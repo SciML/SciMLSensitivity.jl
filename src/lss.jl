@@ -313,11 +313,13 @@ function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0ski
   # reset
   res .*=false
 
+  _Smat = lu(Smat)
+
   for i=1:numparams
     #running average
     g0 *= false
     bpar = @view b[:,i]
-    w .= Smat\bpar
+    w .= _Smat\bpar
     v .= Diagonal(wBinv)*(B'*w)
     η .= Diagonal(wEinv)*(E'*w)
 
@@ -365,9 +367,11 @@ function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing
 
   res .*= false
 
+  _Smat = lu(Smat)
+
   for i=1:numparams
     bpar = @view b[:,i]
-    w .= Smat\bpar
+    w .= _Smat\bpar
     v .= Diagonal(wBinv)*(B'*w)
     for (j,u) in enumerate(sol.u)
       vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
@@ -400,9 +404,11 @@ function _solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowin
     @. window = (one(eltype(window)) - cos(window))^2
     window ./= sum(window)
 
+    _Smat = lu(Smat)
+
     for i=1:numparams
       bpar = @view b[:,i]
-      w .= Smat\bpar
+      w .= _Smat\bpar
       v .= Diagonal(wBinv)*(B'*w)
       for (j,u) in enumerate(sol.u)
         vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
