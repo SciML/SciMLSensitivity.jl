@@ -28,9 +28,9 @@ using Test
     lss_problem2 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), g)
     lss_problem3 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
 
-    res1 = DiffEqSensitivity.solve(lss_problem1)
-    res2 = DiffEqSensitivity.solve(lss_problem2)
-    res3 = DiffEqSensitivity.solve(lss_problem3)
+    res1 = DiffEqSensitivity.__solve(lss_problem1)
+    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    res3 = DiffEqSensitivity.__solve(lss_problem3)
 
     @test res1[1] ≈ 1 atol=5e-2
     @test res2[1] ≈ 1 atol=5e-2
