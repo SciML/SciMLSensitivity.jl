@@ -42,11 +42,11 @@ res2 = gsa(ishi_batch,Sobol(),A,B,batch=true)
 res1 = gsa(ishi,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000)
 res2 = gsa(ishi_batch,eFAST(),[[lb[i],ub[i]] for i in 1:4],n=15000,batch=true)
 
-@test res1.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
-@test res2.first_order ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
+@test res1.S1 ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
+@test res2.S1 ≈ [0.307599  0.442412  3.0941e-25  3.42372e-28] atol=1e-4
 
-@test res1.total_order ≈ [0.556244  0.446861  0.239259  0.027099] atol=1e-4
-@test res2.total_order ≈ [0.556244  0.446861  0.239259  0.027099] atol=1e-4
+@test res1.ST ≈ [0.556244  0.446861  0.239259  0.027099] atol=1e-4
+@test res2.ST ≈ [0.556244  0.446861  0.239259  0.027099] atol=1e-4
 
 m = gsa(ishi, Morris(num_trajectory=500000), [[lb[i],ub[i]] for i in 1:4])
 @test m.means_star[1,:] ≈ [2.25341,4.40246,2.5049,0.0] atol = 5e-2
