@@ -116,6 +116,24 @@ struct ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,no
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing} end
 
 """
+Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
+chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
+"""
+struct ForwardLSS{CS,AD,FDT,aType} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+  alpha::aType # alpha: weight of the time dilation term in LSS.
+end
+Base.@pure function ForwardLSS(;
+                                chunk_size=0,autodiff=true,
+                                diff_type=Val{:central},
+                                alpha=CosWindowing())
+  ForwardLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
+end
+
+abstract type WindowingChoice end
+struct CosWindowing <: WindowingChoice end
+struct Cos2Windowing <: WindowingChoice end
+
+"""
  Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
  http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
