@@ -36,4 +36,32 @@ using Test
     @test res2[1] ≈ 1 atol=5e-2
     @test res3[1] ≈ 1 atol=5e-2
   end
+
+  @testset "Lorentz" begin
+    function lorenz!(du,u,p,t)
+      du[1] = p[1]*(u[2]-u[1])
+      du[2] = u[1]*(p[2]-u[3]) - u[2]
+      du[3] = u[1]*u[2] - p[3]*u[3]
+    end
+
+    p = [10.0, 28.0, 8/3]
+
+    tspan_init = (0.0,30.0)
+    tspan_attractor = (30.0,50.0)
+    u0 = rand(3)
+    prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
+    sol_init = solve(prob_init,Tsit5())
+    prob_attractor = ODEProblem(lorenz!,sol_init[end],tspan_attractor,p)
+    sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14)
+
+    g(u,p,t) = u[end] + sum(p)
+
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
+    adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
+
+    resfw = DiffEqSensitivity.__solve(lss_problem)
+    resadj = DiffEqSensitivity.__solve(adjointlss_problem)
+
+    @test resfw ≈ resadj rtol=1e-10
+  end
 end

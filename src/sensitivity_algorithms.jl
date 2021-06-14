@@ -129,6 +129,16 @@ Base.@pure function ForwardLSS(;
   ForwardLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
 end
 
+struct AdjointLSS{CS,AD,FDT,aType} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+  alpha::aType # alpha: weight of the time dilation term in LSS.
+end
+Base.@pure function AdjointLSS(;
+                                chunk_size=0,autodiff=true,
+                                diff_type=Val{:central},
+                                alpha=10.0)
+  AdjointLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
+end
+
 abstract type WindowingChoice end
 struct CosWindowing <: WindowingChoice end
 struct Cos2Windowing <: WindowingChoice end
