@@ -340,11 +340,11 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
         if dg_val isa Tuple
           dg[1](dg_val[1],u,uf.p,nothing,j)
           dg[2](dg_val[2],u,uf.p,nothing,j)
-          res[i] += dot(dg_val[1],vtmp)
-          res[i] += dg_val[2][i]
+          res[i] -= dot(dg_val[1],vtmp)
+          res[i] -= dg_val[2][i]
         else
           dg(dg_val,u,uf.p,nothing,j)
-          res[i] += dot(dg_val,vtmp)
+          res[i] -= dot(dg_val,vtmp)
         end
       end
     end
@@ -398,11 +398,11 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowin
         if dg_val isa Tuple
           dg[1](dg_val[1],u,uf.p,nothing,j)
           dg[2](dg_val[2],u,uf.p,nothing,j)
-          res[i] += dot(dg_val[1],vtmp)*window[j]
-          res[i] += dg_val[2][i]*window[j]
+          res[i] -= dot(dg_val[1],vtmp)*window[j]
+          res[i] -= dg_val[2][i]*window[j]
         else
           dg(dg_val,u,uf.p,nothing,j)
-          res[i] += dot(dg_val,vtmp)*window[j]
+          res[i] -= dot(dg_val,vtmp)*window[j]
         end
       end
     end
@@ -445,11 +445,11 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowi
           if dg_val isa Tuple
             dg[1](dg_val[1],u,uf.p,nothing,j)
             dg[2](dg_val[2],u,uf.p,nothing,j)
-            res[i] += dot(dg_val[1],vtmp)*window[j]
-            res[i] += dg_val[2][i]*window[j]
+            res[i] -= dot(dg_val[1],vtmp)*window[j]
+            res[i] -= dg_val[2][i]*window[j]
           else
             dg(dg_val,u,uf.p,nothing,j)
-            res[i] += dot(dg_val,vtmp)*window[j]
+            res[i] -= dot(dg_val,vtmp)*window[j]
           end
         end
       end
@@ -570,10 +570,10 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
     else
       if dg_val isa Tuple
         dg[1](dg_val[1],u,uf.p,nothing,i)
-        @. _wBinv = _wBinv*dg_val[1]/Nt
+        @. _wBinv = -_wBinv*dg_val[1]/Nt
       else
         dg(dg_val,u,uf.p,nothing,i)
-        @. _wBinv = _wBinv*dg_val/Nt
+        @. _wBinv = -_wBinv*dg_val/Nt
       end
     end
   end
@@ -605,10 +605,11 @@ function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0sk
     for (j,u) in enumerate(eachcol(umidres))
       if dg === nothing
         DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
+        @. res += dg_val[2]
       else
         dg[2](dg_val[2],u,uf.p,nothing,j)
+        @. res -= dg_val[2]
       end
-      @. res += dg_val[2]
     end
     res ./= (size(umidres)[2])
   end

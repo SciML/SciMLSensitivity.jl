@@ -432,7 +432,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _prob = remake(prob,u0=u0,p=p)
   end
 
-  @show kwargs
   if haskey(kwargs, :g)
     g = kwargs[:g]
   else
@@ -443,7 +442,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg or use ForwardLSS with windowing")
   end
 
-  sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
+  sol = solve(_prob,alg,args...;save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
 
   if saveat isa Number
     if _prob.tspan[2] > _prob.tspan[1]
