@@ -1,9 +1,8 @@
-struct LSSSchur{wBType,wEType,BType,EType,SType}
+struct LSSSchur{wBType,wEType,BType,EType}
   wBinv::wBType
   wEinv::wEType
   B::BType
   E::EType
-  Smat::SType
 end
 
 struct LSSSensitivityFunction{iip,F,A,J,JP,S,PJ,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV,
@@ -98,7 +97,7 @@ function LSSSensitivityFunction(sensealg,f,analytic,jac,jac_prototype,sparsity,p
 end
 
 
-struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,bType,ηType,wType,vType,windowType,
+struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,Ftype,bType,ηType,wType,vType,windowType,
     ΔtType,G0,G,resType}
   sensealg::A
   diffcache::C
@@ -107,6 +106,7 @@ struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,bType,ηType
   umid::umidType
   dudt::dudtType
   S::SType
+  F::Ftype
   b::bType
   η::ηType
   w::wType
@@ -170,14 +170,14 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
 
   B!(S,dt,umid,sense,sensealg)
   E!(S,dudt,sensealg.alpha)
-  S!(S)
+  F = SchurLU(S)
 
   res = similar(u0, numparams)
 
   ForwardLSSProblem{typeof(sensealg),typeof(sense),typeof(sol),typeof(dt),
     typeof(umid),typeof(dudt),
-    typeof(S),typeof(b),typeof(η),typeof(w),typeof(v),typeof(window),typeof(Δt),
-    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,b,η,w,v,window,Δt,Nt,g0,g,
+    typeof(S),typeof(F),typeof(b),typeof(η),typeof(w),typeof(v),typeof(window),typeof(Δt),
+    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,F,b,η,w,v,window,Δt,Nt,g0,g,
     res)
 end
 
@@ -191,9 +191,8 @@ function LSSSchur(dt,u0,numindvar,Nt,Ndt,alpha)
     E = nothing
   end
   B = Matrix{eltype(u0)}(undef,numindvar*Ndt,numindvar*Nt)
-  Smat = Matrix{eltype(u0)}(undef,numindvar*Ndt,numindvar*Ndt)
 
-  LSSSchur(wBinv,wEinv,B,E,Smat)
+  LSSSchur(wBinv,wEinv,B,E)
 end
 
 
@@ -269,11 +268,12 @@ function E!(S::LSSSchur,dudt,alpha)
 end
 
 # compute Schur
-function S!(S::LSSSchur)
-  @unpack B, E, wBinv, wEinv, Smat = S
-  Smat .= B*Diagonal(wBinv)*B'
+function SchurLU(S::LSSSchur)
+  @unpack B, E, wBinv, wEinv = S
+  Smat = B*Diagonal(wBinv)*B'
   (wEinv !== nothing) && (Smat .+= E*Diagonal(wEinv)*E')
-  return nothing
+  F = lu!(Smat)
+  return F
 end
 
 function b!(b, prob::ForwardLSSProblem)
@@ -298,8 +298,8 @@ function __solve(prob::ForwardLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(pro
 end
 
 function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
-  @unpack sol, S, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
-  @unpack wBinv, wEinv, B, E, Smat = S
+  @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
+  @unpack wBinv, wEinv, B, E = S
   @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
 
 
@@ -314,13 +314,11 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
   # reset
   res .*=false
 
-  _Smat = lu(Smat)
-
   for i=1:numparams
     #running average
     g0 *= false
     bpar = @view b[:,i]
-    w .= _Smat\bpar
+    w .= F\bpar
     v .= Diagonal(wBinv)*(B'*w)
     η .= Diagonal(wEinv)*(E'*w)
 
@@ -355,8 +353,8 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
 end
 
 function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing,t0skip,t1skip)
-  @unpack sol, S, window, Δt, diffcache, b, w, v, res = prob
-  @unpack wBinv, B, Smat = S
+  @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
+  @unpack wBinv, B = S
   @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
 
   b!(b,prob)
@@ -368,11 +366,9 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowin
 
   res .*= false
 
-  _Smat = lu(Smat)
-
   for i=1:numparams
     bpar = @view b[:,i]
-    w .= _Smat\bpar
+    w .= F\bpar
     v .= Diagonal(wBinv)*(B'*w)
     for (j,u) in enumerate(sol.u)
       vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
@@ -392,8 +388,8 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowin
 end
 
 function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowing,t0skip,t1skip)
-    @unpack sol, S, window, Δt, diffcache, b, w, v, res = prob
-    @unpack wBinv, B,  Smat = S
+    @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
+    @unpack wBinv, B = S
     @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
 
     b!(b,prob)
@@ -405,11 +401,9 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowi
     @. window = (one(eltype(window)) - cos(window))^2
     window ./= sum(window)
 
-    _Smat = lu(Smat)
-
     for i=1:numparams
       bpar = @view b[:,i]
-      w .= _Smat\bpar
+      w .= F\bpar
       v .= Diagonal(wBinv)*(B'*w)
       for (j,u) in enumerate(sol.u)
         vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
@@ -429,7 +423,7 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowi
 end
 
 
-struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,hType,bType,wType,
+struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,bType,wType,
     ΔtType,G0,G,resType}
   sensealg::A
   diffcache::C
@@ -438,6 +432,7 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,hType,bType,
   umid::umidType
   dudt::dudtType
   S::SType
+  F::FType
   h::hType
   b::bType
   wa::wType
@@ -495,7 +490,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
 
   B!(S,dt,umid,sense,sensealg)
   E!(S,dudt,sensealg.alpha)
-  S!(S)
+  F = SchurLU(S)
   wBcorrect!(S,sol,g,Nt,sense,sensealg)
 
   h!(h,g0,g,umid,p,S.wEinv)
@@ -504,8 +499,8 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
 
   AdjointLSSProblem{typeof(sensealg),typeof(sense),typeof(sol),typeof(dt),
     typeof(umid),typeof(dudt),
-    typeof(S),typeof(h),typeof(b),typeof(wa),typeof(Δt),
-    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,h,b,wa,Δt,Nt,g0,g,
+    typeof(S),typeof(F),typeof(h),typeof(b),typeof(wa),typeof(Δt),
+    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,F,h,b,wa,Δt,Nt,g0,g,
     res)
 end
 
@@ -544,12 +539,12 @@ function __solve(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(pro
 end
 
 function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
-  @unpack sol, S, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
-  @unpack wBinv, B, E, Smat = S
+  @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
+  @unpack wBinv, B, E = S
   @unpack dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache
 
   b .= E*h + B*wBinv
-  wa .= Smat\b
+  wa .= F\b
 
   n0 = searchsortedfirst(sol.t, sol.t[1]+t0skip)
   n1 = searchsortedfirst(sol.t, sol.t[end]-t1skip)
