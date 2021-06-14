@@ -496,6 +496,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
   B!(S,dt,umid,sense,sensealg)
   E!(S,dudt,sensealg.alpha)
   S!(S)
+  wBcorrect!(S,sol,g,Nt,sense,sensealg)
 
   h!(h,g0,g,umid,p,S.wEinv)
 
@@ -521,6 +522,22 @@ function h!(h,g0,g,u,p,wEinv)
   return nothing
 end
 
+function wBcorrect!(S,sol,g,Nt,sense,sensealg)
+  @unpack dg_val, pgpu, pgpu_config, numparams, numindvar, uf = sense
+  @unpack wBinv = S
+
+  for (i,u) in enumerate(sol.u)
+    _wBinv = @view wBinv[(i-1)*numindvar+1:i*numindvar]
+    if dg_val isa Tuple
+      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+      @. _wBinv = _wBinv*dg_val[1]/Nt
+    else
+      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+      @. _wBinv = _wBinv*dg_val/Nt
+    end
+  end
+  return nothing
+end
 
 function __solve(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
   __solve(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
@@ -529,80 +546,39 @@ end
 function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
   @unpack sol, S, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
   @unpack wBinv, B, E, Smat = S
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
+  @unpack dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache
 
-  mul!(b, E, h)
-
-  for (i,u) in enumerate(sol.u)
-    Btmp = @view B[i,:]
-    #  final gradient result for ith parameter
-    if dg_val isa Tuple
-      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-      b[i] += dot(Brow, dg_val[1])
-    else
-      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-      b[i] += dot(Brow, dg_val)
-    end
-  end
-
-  @show b
-
+  b .= E*h + B*wBinv
+  wa .= Smat\b
 
   n0 = searchsortedfirst(sol.t, sol.t[1]+t0skip)
   n1 = searchsortedfirst(sol.t, sol.t[end]-t1skip)
-  error()
 
-  g = dJdu(self.u, self.s) / self.u.shape[0]
-  b =  + self.B * (self.wBinv * np.ravel(g))
-  wa = splinalg.spsolve(Smat, b)
-
-  self.wa = wa.reshape(self.uMid.shape)
-
-
-  b!(b,prob)
-
-  ures = @view sol.u[n0:n1]
   umidres = @view umid[:,n0:n1-1]
+  wares = @view wa[(n0-1)*numindvar+1:(n1-1)*numindvar]
 
   # reset
-  res .*=false
+  res .*= false
 
-  _Smat = lu(Smat)
-
-  for i=1:numparams
-    #running average
-    g0 *= false
-    bpar = @view b[:,i]
-    w .= _Smat\bpar
-    v .= Diagonal(wBinv)*(B'*w)
-    η .= Diagonal(wEinv)*(E'*w)
-
-    ηres = @view η[n0:n1-1]
-
-    for (j,u) in enumerate(ures)
-      vtmp = @view v[(n0+j-2)*numindvar+1:j*numindvar]
-      #  final gradient result for ith parameter
-      if dg_val isa Tuple
-        DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-        DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg,pgpp_config)
-        res[i] += dot(dg_val[1],vtmp)
-        res[i] += dg_val[2][i]
-      else
-        DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-        res[i] += dot(dg_val,vtmp)
-      end
-    end
-    # mean value
-    res[i] = res[i]/(n1-n0+1)
-
+  if dg_val isa Tuple
     for (j,u) in enumerate(eachcol(umidres))
-      # compute objective
-      gtmp = g(u,uf.p,nothing)
-      g0 += gtmp
-      res[i] -= ηres[j]*gtmp/(n1-n0)
+      DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
+      @. res += dg_val[2]
     end
-    res[i] = res[i] + sum(ηres)*g0/(n1-n0)^2
-
+    res ./= (size(umidres)[2])
   end
+
+  for (j,u) in enumerate(eachcol(umidres))
+    _wares = @view wares[(j-1)*numindvar+1:j*numindvar]
+    if DiffEqBase.has_paramjac(f)
+      f.paramjac(pJ, u, uf.p, pf.t)
+    else
+      pf.u = u
+      jacobian!(pJ, pf, uf.p, f_cache, sensealg, paramjac_config)
+    end
+
+    res .+= pJ'*_wares
+  end
+
   return res
 end
