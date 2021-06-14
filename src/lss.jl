@@ -249,7 +249,7 @@ function B!(S::LSSSchur,dt,umid,sense,sensealg)
       jacobian!(J, uf, u, f_cache, sensealg, jac_config)
     end
     B0 = @view B[(i-1)*numindvar+1:i*numindvar,i*numindvar+1:(i+1)*numindvar]
-    B1 =  @view B[(i-1)*numindvar+1:i*numindvar,(i-1)*numindvar+1:i*numindvar]
+    B1 = @view B[(i-1)*numindvar+1:i*numindvar,(i-1)*numindvar+1:i*numindvar]
     B0 .+= I/dt[i] - J/2
     B1 .+= -I/dt[i] -J/2
   end
@@ -426,4 +426,183 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowi
       end
     end
     return res
+end
+
+
+struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,hType,bType,wType,
+    ΔtType,G0,G,resType}
+  sensealg::A
+  diffcache::C
+  sol::solType
+  dt::dtType
+  umid::umidType
+  dudt::dudtType
+  S::SType
+  h::hType
+  b::bType
+  wa::wType
+  Δt::ΔtType
+  Nt::Int
+  g0::G0
+  g::G
+  res::resType
+end
+
+
+function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
+                            kwargs...)
+
+  @unpack f, p, u0, tspan = sol.prob
+  isinplace = DiffEqBase.isinplace(f)
+
+  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
+
+
+  sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
+                                     f.jac_prototype,f.sparsity,f.paramjac,
+                                     u0,sensealg,
+                                     p,similar(u0),f.mass_matrix,
+                                     f.colorvec,
+                                     tspan,g,dg)
+
+  @unpack numparams, numindvar = sense
+  Nt = length(sol.t)
+  Ndt = Nt-one(Nt)
+
+  # pre-allocate variables
+  dt = similar(sol.t, Ndt)
+  umid = Matrix{eltype(u0)}(undef,numindvar,Ndt)
+  dudt = Matrix{eltype(u0)}(undef,numindvar,Ndt)
+  # compute their values
+  discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
+
+  S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.alpha)
+
+  if sensealg.alpha isa Number
+    g0 = g(u0,p,tspan[1])
+  else
+    g0 = nothing
+  end
+
+  b = Vector{eltype(u0)}(undef,numindvar*Ndt)
+  h = Vector{eltype(u0)}(undef,Ndt)
+  wa = similar(dt,numindvar*Ndt)
+
+  Δt = tspan[2] - tspan[1]
+  wB!(S,Δt,Nt,numindvar,dt)
+  wE!(S,Δt,dt,sensealg.alpha)
+
+  B!(S,dt,umid,sense,sensealg)
+  E!(S,dudt,sensealg.alpha)
+  S!(S)
+
+  h!(h,g0,g,umid,p,S.wEinv)
+
+  res = similar(u0, numparams)
+
+  AdjointLSSProblem{typeof(sensealg),typeof(sense),typeof(sol),typeof(dt),
+    typeof(umid),typeof(dudt),
+    typeof(S),typeof(h),typeof(b),typeof(wa),typeof(Δt),
+    typeof(g0),typeof(g),typeof(res)}(sensealg,sense,sol,dt,umid,dudt,S,h,b,wa,Δt,Nt,g0,g,
+    res)
+end
+
+function h!(h,g0,g,u,p,wEinv)
+
+  for (j,uj) in enumerate(eachcol(u))
+    # compute objective
+    h[j] = g(uj,p,nothing)
+  end
+  h .= -(h .- mean(h)) / (size(u)[2])
+
+  @. h = wEinv*h
+
+  return nothing
+end
+
+
+function __solve(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
+  __solve(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
+end
+
+function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
+  @unpack sol, S, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
+  @unpack wBinv, B, E, Smat = S
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
+
+  mul!(b, E, h)
+
+  for (i,u) in enumerate(sol.u)
+    Btmp = @view B[i,:]
+    #  final gradient result for ith parameter
+    if dg_val isa Tuple
+      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
+      b[i] += dot(Brow, dg_val[1])
+    else
+      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
+      b[i] += dot(Brow, dg_val)
+    end
+  end
+
+  @show b
+
+
+  n0 = searchsortedfirst(sol.t, sol.t[1]+t0skip)
+  n1 = searchsortedfirst(sol.t, sol.t[end]-t1skip)
+  error()
+
+  g = dJdu(self.u, self.s) / self.u.shape[0]
+  b =  + self.B * (self.wBinv * np.ravel(g))
+  wa = splinalg.spsolve(Smat, b)
+
+  self.wa = wa.reshape(self.uMid.shape)
+
+
+  b!(b,prob)
+
+  ures = @view sol.u[n0:n1]
+  umidres = @view umid[:,n0:n1-1]
+
+  # reset
+  res .*=false
+
+  _Smat = lu(Smat)
+
+  for i=1:numparams
+    #running average
+    g0 *= false
+    bpar = @view b[:,i]
+    w .= _Smat\bpar
+    v .= Diagonal(wBinv)*(B'*w)
+    η .= Diagonal(wEinv)*(E'*w)
+
+    ηres = @view η[n0:n1-1]
+
+    for (j,u) in enumerate(ures)
+      vtmp = @view v[(n0+j-2)*numindvar+1:j*numindvar]
+      #  final gradient result for ith parameter
+      if dg_val isa Tuple
+        DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
+        DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg,pgpp_config)
+        res[i] += dot(dg_val[1],vtmp)
+        res[i] += dg_val[2][i]
+      else
+        DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
+        res[i] += dot(dg_val,vtmp)
+      end
+    end
+    # mean value
+    res[i] = res[i]/(n1-n0+1)
+
+    for (j,u) in enumerate(eachcol(umidres))
+      # compute objective
+      gtmp = g(u,uf.p,nothing)
+      g0 += gtmp
+      res[i] -= ηres[j]*gtmp/(n1-n0)
+    end
+    res[i] = res[i] + sum(ηres)*g0/(n1-n0)^2
+
+  end
+  return res
 end
