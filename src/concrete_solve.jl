@@ -510,10 +510,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
     if sensealg isa ForwardLSS
       lss_problem = ForwardLSSProblem(sol, sensealg, g, df)
-      dp = __solve(lss_problem;  t0skip=t0skip, t1skip=t1skip)
+      dp = shadow_forward(lss_problem;  t0skip=t0skip, t1skip=t1skip)
     else
       adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
-      dp = __solve(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
+      dp = shadow_adjoint(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
     end
 
     (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)

@@ -38,15 +38,15 @@ using Zygote
     adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
     adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, dg)
 
-    res1 = DiffEqSensitivity.__solve(lss_problem1)
-    res1a = DiffEqSensitivity.__solve(lss_problem1a)
-    res2 = DiffEqSensitivity.__solve(lss_problem2)
-    res2a = DiffEqSensitivity.__solve(lss_problem2a)
-    res3 = DiffEqSensitivity.__solve(lss_problem3)
-    res3a = DiffEqSensitivity.__solve(lss_problem3a)
+    res1 = shadow_forward(lss_problem1)
+    res1a = shadow_forward(lss_problem1a)
+    res2 = shadow_forward(lss_problem2)
+    res2a = shadow_forward(lss_problem2a)
+    res3 = shadow_forward(lss_problem3)
+    res3a = shadow_forward(lss_problem3a)
 
-    res4 = DiffEqSensitivity.__solve(adjointlss_problem)
-    res4a = DiffEqSensitivity.__solve(adjointlss_problem_a)
+    res4 = shadow_adjoint(adjointlss_problem)
+    res4a = shadow_adjoint(adjointlss_problem_a)
 
     @test res1[1] ≈ 1 atol=5e-2
     @test res2[1] ≈ 1 atol=5e-2
@@ -70,15 +70,15 @@ using Zygote
     adjointlss_problem = AdjointLSSProblem(sol_attractor2, AdjointLSS(alpha=10.0), g)
     adjointlss_problem_a = AdjointLSSProblem(sol_attractor2, AdjointLSS(alpha=10.0), g, dg)
 
-    res1 = DiffEqSensitivity.__solve(lss_problem1)
-    res1a = DiffEqSensitivity.__solve(lss_problem1a)
-    res2 = DiffEqSensitivity.__solve(lss_problem2)
-    res2a = DiffEqSensitivity.__solve(lss_problem2a)
-    res3 = DiffEqSensitivity.__solve(lss_problem3)
-    res3a = DiffEqSensitivity.__solve(lss_problem3a)
+    res1 = shadow_forward(lss_problem1)
+    res1a = shadow_forward(lss_problem1a)
+    res2 = shadow_forward(lss_problem2)
+    res2a = shadow_forward(lss_problem2a)
+    res3 = shadow_forward(lss_problem3)
+    res3a = shadow_forward(lss_problem3a)
 
-    res4 = DiffEqSensitivity.__solve(adjointlss_problem)
-    res4a = DiffEqSensitivity.__solve(adjointlss_problem_a)
+    res4 = shadow_adjoint(adjointlss_problem)
+    res4a = shadow_adjoint(adjointlss_problem_a)
 
     @test res1[1] ≈ 1 atol=5e-2
     @test res2[1] ≈ 1 atol=5e-2
@@ -142,10 +142,10 @@ using Zygote
     adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
     adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
 
-    resfw = DiffEqSensitivity.__solve(lss_problem)
-    resfw_a = DiffEqSensitivity.__solve(lss_problem_a)
-    resadj = DiffEqSensitivity.__solve(adjointlss_problem)
-    resadj_a = DiffEqSensitivity.__solve(adjointlss_problem_a)
+    resfw = shadow_forward(lss_problem)
+    resfw_a = shadow_forward(lss_problem_a)
+    resadj = shadow_adjoint(adjointlss_problem)
+    resadj_a = shadow_adjoint(adjointlss_problem_a)
 
     @test resfw ≈ resadj rtol=1e-10
     @test resfw ≈ resfw_a rtol=1e-10
@@ -153,7 +153,7 @@ using Zygote
 
     sol_attractor2 = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14, saveat=0.01)
     lss_problem = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g)
-    resfw = DiffEqSensitivity.__solve(lss_problem)
+    resfw = shadow_forward(lss_problem)
 
     function G(p; sensealg=ForwardLSS(), dt=0.01, g=nothing)
       _prob = remake(prob_attractor,p=p)
@@ -205,14 +205,14 @@ using Zygote
     ## ForwardLSS
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
-    resfw = DiffEqSensitivity.__solve(lss_problem)
+    resfw = shadow_forward(lss_problem)
 
     res = deepcopy(resfw)
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g),p)
     @test res ≈ dp1[1] atol=1e-10
 
-    resfw = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    resfw = shadow_forward(lss_problem; t0skip=10.0, t1skip=5.0)
     resskip = deepcopy(resfw)
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g, t0skip=10.0, t1skip=5.0),p)
@@ -223,17 +223,17 @@ using Zygote
     ## ForwardLSS with dgdu and dgdp
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
-    res2 = DiffEqSensitivity.__solve(lss_problem)
+    res2 = shadow_forward(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    res2 = shadow_forward(lss_problem; t0skip=10.0, t1skip=5.0)
     @test resskip ≈ res2 atol=1e-10
 
     ## AdjointLSS
 
     lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
-    res2 = DiffEqSensitivity.__solve(lss_problem)
+    res2 = shadow_adjoint(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    res2 = shadow_adjoint(lss_problem; t0skip=10.0, t1skip=5.0)
     @test_broken resskip ≈ res2 atol=1e-10
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
@@ -245,9 +245,9 @@ using Zygote
     ## AdjointLSS with dgdu and dgd
 
     lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
-    res2 = DiffEqSensitivity.__solve(lss_problem)
+    res2 = shadow_adjoint(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    res2 = shadow_adjoint(lss_problem; t0skip=10.0, t1skip=5.0)
     @test_broken resskip ≈ res2 atol=1e-10
   end
 end

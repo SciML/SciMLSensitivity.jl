@@ -292,11 +292,11 @@ function b!(b, prob::ForwardLSSProblem)
   return nothing
 end
 
-function __solve(prob::ForwardLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
-  __solve(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
+  shadow_forward(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
 end
 
-function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, dg, umid = prob
   @unpack wBinv, wEinv, B, E = S
   @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
@@ -363,7 +363,7 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
   return res
 end
 
-function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing,t0skip,t1skip)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
   @unpack wBinv, B = S
   @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
@@ -410,7 +410,7 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowin
   return res
 end
 
-function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowing,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowing,t0skip,t1skip)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
@@ -580,11 +580,11 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
   return nothing
 end
 
-function __solve(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
-  __solve(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
+function shadow_adjoint(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
+  shadow_adjoint(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
 end
 
-function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
+function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
   @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, dg, umid = prob
   @unpack wBinv, B, E = S
   @unpack dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache
