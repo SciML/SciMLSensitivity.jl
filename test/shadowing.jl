@@ -107,6 +107,8 @@ using Zygote
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
     @test res4 ≈ dp1[1] atol=1e-10
+
+    @show res1[1] res2[1] res3[1]
   end
 
   @testset "Lorentz" begin
@@ -164,6 +166,8 @@ using Zygote
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
     @test resfw ≈ dp1[1] atol=1e-10
+
+    @show resfw
   end
 
   @testset "T0skip and T1skip" begin
@@ -207,6 +211,7 @@ using Zygote
     @test resfw ≈ resfw_a rtol=1e-10
     @test resfw ≈ resadj_a rtol=1e-10
 
+    @show resfw
 
     function G(p; sensealg=ForwardLSS(), dt=0.01, g=nothing, t0skip=0.0, t1skip=0.0)
       _prob = remake(prob_attractor,p=p)
@@ -224,6 +229,8 @@ using Zygote
     resfw_a = DiffEqSensitivity.__solve(lss_problem_a; t0skip=10.0, t1skip=5.0)
     resadj = DiffEqSensitivity.__solve(adjointlss_problem; t0skip=10.0, t1skip=5.0)
     resadj_a = DiffEqSensitivity.__solve(adjointlss_problem_a; t0skip=10.0, t1skip=5.0)
+
+    @show resfw
 
     @test_broken resfw ≈ resadj rtol=1e-10
     @test resfw ≈ resfw_a rtol=1e-10
