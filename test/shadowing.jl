@@ -171,7 +171,6 @@ using Zygote
   end
 
   @testset "T0skip and T1skip" begin
-
     function lorenz!(du,u,p,t)
       du[1] = p[1]*(u[2]-u[1])
       du[2] = u[1]*(p[2]-u[3]) - u[2]
@@ -197,49 +196,57 @@ using Zygote
       fill!(out, -one(eltype(p)))
     end
 
-    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
-    lss_problem_a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
-    adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
-    adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
-
-    resfw = DiffEqSensitivity.__solve(lss_problem)
-    resfw_a = DiffEqSensitivity.__solve(lss_problem_a)
-    resadj = DiffEqSensitivity.__solve(adjointlss_problem)
-    resadj_a = DiffEqSensitivity.__solve(adjointlss_problem_a)
-
-    @test resfw ≈ resadj rtol=1e-10
-    @test resfw ≈ resfw_a rtol=1e-10
-    @test resfw ≈ resadj_a rtol=1e-10
-
-    @show resfw
-
     function G(p; sensealg=ForwardLSS(), dt=0.01, g=nothing, t0skip=0.0, t1skip=0.0)
       _prob = remake(prob_attractor,p=p)
       _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=dt,sensealg=sensealg, g=g, t0skip=t0skip, t1skip=t1skip)
       sum(getindex.(_sol.u,3).^2)/2 + sum(p)
     end
 
+    ## ForwardLSS
+
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
+    resfw = DiffEqSensitivity.__solve(lss_problem)
+
+    res = deepcopy(resfw)
+
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g),p)
     @test resfw ≈ dp1[1] atol=1e-10
 
-    dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
-    @test resfw ≈ dp1[1] atol=1e-10
-
     resfw = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
-    resfw_a = DiffEqSensitivity.__solve(lss_problem_a; t0skip=10.0, t1skip=5.0)
-    resadj = DiffEqSensitivity.__solve(adjointlss_problem; t0skip=10.0, t1skip=5.0)
-    resadj_a = DiffEqSensitivity.__solve(adjointlss_problem_a; t0skip=10.0, t1skip=5.0)
-
-    @show resfw
-
-    @test_broken resfw ≈ resadj rtol=1e-10
-    @test resfw ≈ resfw_a rtol=1e-10
-    @test_broken resfw ≈ resadj_a rtol=1e-10
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g, t0skip=10.0, t1skip=5.0),p)
     @test resfw ≈ dp1[1] atol=1e-10
 
-    dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g, t0skip=10.0, t1skip=5.0),p)
-    @test resadj ≈ dp1[1] atol=1e-10
+    @show res resfw
+
+    ## ForwardLSS with dgdu and dgdp
+
+    lss_problem2 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    @test res ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem2; t0skip=10.0, t1skip=5.0)
+    @test resfw ≈ res2 atol=1e-10
+
+    ## AdjointLSS
+
+    lss_problem2 = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
+    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    @test res ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem2; t0skip=10.0, t1skip=5.0)
+    @test_broken resfw ≈ res2 atol=1e-10
+
+    dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
+    @test res ≈ dp1[1] atol=1e-10
+
+    dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10), g=g, t0skip=10.0, t1skip=5.0),p)
+    @test res2 ≈ dp1[1] atol=1e-10
+
+    ## AdjointLSS with dgdu and dgd
+
+    lss_problem2 = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
+    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    @test res ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem_2; t0skip=10.0, t1skip=5.0)
+    @test_broken resfw ≈ res2 atol=1e-10
   end
 end
