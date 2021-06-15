@@ -148,5 +148,21 @@ using Zygote
     @test resfw ≈ resadj rtol=1e-10
     @test resfw ≈ resfw_a rtol=1e-10
     @test resfw ≈ resadj_a rtol=1e-10
+
+    sol_attractor2 = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14, saveat=0.01)
+    lss_problem = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g)
+    resfw = DiffEqSensitivity.__solve(lss_problem)
+
+    function G(p; sensealg=ForwardLSS(), dt=0.01, g=nothing)
+      _prob = remake(prob_attractor,p=p)
+      _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=dt,sensealg=sensealg, g=g)
+      sum(getindex.(_sol.u,3)) + sum(p)
+    end
+
+    dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g),p)
+    @test resfw ≈ dp1[1] atol=1e-10
+
+    dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
+    @test resfw ≈ dp1[1] atol=1e-10
   end
 end
