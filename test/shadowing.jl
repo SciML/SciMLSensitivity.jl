@@ -210,30 +210,31 @@ using Zygote
     res = deepcopy(resfw)
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g),p)
-    @test resfw ≈ dp1[1] atol=1e-10
+    @test res ≈ dp1[1] atol=1e-10
 
     resfw = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    resskip = deepcopy(resfw)
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=ForwardLSS(alpha=10), g=g, t0skip=10.0, t1skip=5.0),p)
-    @test resfw ≈ dp1[1] atol=1e-10
+    @test resskip ≈ dp1[1] atol=1e-10
 
-    @show res resfw
+    @show res resskip
 
     ## ForwardLSS with dgdu and dgdp
 
-    lss_problem2 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
-    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    res2 = DiffEqSensitivity.__solve(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem2; t0skip=10.0, t1skip=5.0)
-    @test resfw ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    @test resskip ≈ res2 atol=1e-10
 
     ## AdjointLSS
 
-    lss_problem2 = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
-    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
+    res2 = DiffEqSensitivity.__solve(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem2; t0skip=10.0, t1skip=5.0)
-    @test_broken resfw ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    @test_broken resskip ≈ res2 atol=1e-10
 
     dp1 = Zygote.gradient((p)->G(p, sensealg=AdjointLSS(alpha=10.0), g=g),p)
     @test res ≈ dp1[1] atol=1e-10
@@ -243,10 +244,10 @@ using Zygote
 
     ## AdjointLSS with dgdu and dgd
 
-    lss_problem2 = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
-    res2 = DiffEqSensitivity.__solve(lss_problem2)
+    lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
+    res2 = DiffEqSensitivity.__solve(lss_problem)
     @test res ≈ res2 atol=1e-10
-    res2 = DiffEqSensitivity.__solve(lss_problem_2; t0skip=10.0, t1skip=5.0)
-    @test_broken resfw ≈ res2 atol=1e-10
+    res2 = DiffEqSensitivity.__solve(lss_problem; t0skip=10.0, t1skip=5.0)
+    @test_broken resskip ≈ res2 atol=1e-10
   end
 end
