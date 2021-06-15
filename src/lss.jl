@@ -324,7 +324,7 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
     ηres = @view η[n0:n1-1]
 
     for (j,u) in enumerate(ures)
-      vtmp = @view v[(n0+j-2)*numindvar+1:j*numindvar]
+      vtmp = @view v[(n0+j-2)*numindvar+1:(n0+j-1)*numindvar]
       #  final gradient result for ith parameter
       if dg===nothing
         if dg_val isa Tuple
@@ -338,12 +338,12 @@ function __solve(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0sk
         end
       else
         if dg_val isa Tuple
-          dg[1](dg_val[1],u,uf.p,nothing,j)
-          dg[2](dg_val[2],u,uf.p,nothing,j)
+          dg[1](dg_val[1],u,uf.p,nothing,n0+j-1)
+          dg[2](dg_val[2],u,uf.p,nothing,n0+j-1)
           res[i] -= dot(dg_val[1],vtmp)
           res[i] -= dg_val[2][i]
         else
-          dg(dg_val,u,uf.p,nothing,j)
+          dg(dg_val,u,uf.p,nothing,n0+j-1)
           res[i] -= dot(dg_val,vtmp)
         end
       end
@@ -607,7 +607,7 @@ function __solve(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0sk
         DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
         @. res += dg_val[2]
       else
-        dg[2](dg_val[2],u,uf.p,nothing,j)
+        dg[2](dg_val[2],u,uf.p,nothing,n0+j-1)
         @. res -= dg_val[2]
       end
     end

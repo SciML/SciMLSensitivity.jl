@@ -424,6 +424,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
+                                 t0skip=zero(eltype(prob.tspan)), t1skip=zero(eltype(prob.tspan)),
                                  kwargs...)
 
   if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
@@ -509,10 +510,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
     if sensealg isa ForwardLSS
       lss_problem = ForwardLSSProblem(sol, sensealg, g, df)
-      dp = __solve(lss_problem)
+      dp = __solve(lss_problem;  t0skip=t0skip, t1skip=t1skip)
     else
       adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
-      dp = __solve(adjointlss_problem)
+      dp = __solve(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
     end
 
     (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
