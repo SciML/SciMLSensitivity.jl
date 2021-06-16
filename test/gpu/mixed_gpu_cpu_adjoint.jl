@@ -9,8 +9,8 @@ function func(x, p, t)
     ann([t],p)[1]*H*x
 end
 
-x0 = gpu(rand(Float32, 2))
-x1 = gpu(rand(Float32, 2))
+x0 = CuArray(rand(Float32, 2))
+x1 = CuArray(rand(Float32, 2))
 
 prob = ODEProblem(func, x0, (0.0f0, 1.0f0))
 
