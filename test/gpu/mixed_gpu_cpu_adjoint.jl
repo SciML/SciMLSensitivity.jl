@@ -2,6 +2,7 @@ using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
 using CUDA, Test, Zygote
 CUDA.allowscalar(false)
 
+H = gpu(rand(Float32, 2, 2))
 ann = FastChain(FastDense(1, 4, tanh))
 p = initial_params(ann)
 
