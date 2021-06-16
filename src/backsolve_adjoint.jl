@@ -119,6 +119,7 @@ end
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
+  @show typeof(vec(zero(λ))),typeof(sense.y)
   z0 = [vec(zero(λ)); vec(sense.y)]
   original_mm = sol.prob.f.mass_matrix
   zzz(A, m, n) = fill!(similar(A, m, n), zero(eltype(original_mm)))
