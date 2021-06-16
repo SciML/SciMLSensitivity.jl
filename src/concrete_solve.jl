@@ -419,6 +419,108 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
 end
 
 
+function DiffEqBase._concrete_solve_adjoint(prob,alg,
+                                 sensealg::Union{AdjointLSS,ForwardLSS},
+                                 u0,p,args...;save_start=true,save_end=true,
+                                 saveat = eltype(prob.tspan)[],
+                                 save_idxs = nothing,
+                                 t0skip=zero(eltype(prob.tspan)), t1skip=zero(eltype(prob.tspan)),
+                                 kwargs...)
+
+  if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
+    error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
+  else
+    _prob = remake(prob,u0=u0,p=p)
+  end
+
+  if haskey(kwargs, :g)
+    g = kwargs[:g]
+  else
+    g = nothing
+  end
+
+  if (sensealg.alpha isa Number && g===nothing)
+    error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg or use ForwardLSS with windowing")
+  end
+
+  sol = solve(_prob,alg,args...;save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
+
+  if saveat isa Number
+    if _prob.tspan[2] > _prob.tspan[1]
+      ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[2]
+    else
+      ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
+    end
+     _out = sol(ts)
+    out = if save_idxs === nothing
+      out = DiffEqBase.sensitivity_solution(sol,_out.u,sol.t)
+    else
+      out = DiffEqBase.sensitivity_solution(sol,[_out[i][save_idxs] for i in 1:length(_out)],ts)
+    end
+    # only_end
+    (length(ts) == 1 && ts[1] == _prob.tspan[2]) && error("Sensitivity analysis based on Least Squares Shadowing requires a long-time averaged quantity.")
+  elseif isempty(saveat)
+    no_start = !save_start
+    no_end = !save_end
+    sol_idxs = 1:length(sol)
+    no_start && (sol_idxs = sol_idxs[2:end])
+    no_end && (sol_idxs = sol_idxs[1:end-1])
+    only_end = length(sol_idxs) <= 1
+    _u = sol.u[sol_idxs]
+    u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
+    ts = sol.t[sol_idxs]
+    out = DiffEqBase.sensitivity_solution(sol,u,ts)
+  else
+    _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
+    _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ? convert.(typeof(_prob.tspan[2]),_saveat) : _saveat
+    ts = _saveat
+    _out = sol(ts)
+
+    out = if save_idxs === nothing
+      out = DiffEqBase.sensitivity_solution(sol,_out.u,ts)
+    else
+      out = DiffEqBase.sensitivity_solution(sol,[_out[i][save_idxs] for i in 1:length(_out)],ts)
+    end
+    # only_end
+    (length(ts) == 1 && ts[1] == _prob.tspan[2]) && error("Sensitivity analysis based on Least Squares Shadowing requires a long-time averaged quantity.")
+  end
+
+  _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+
+  function adjoint_sensitivity_backpass(Δ)
+    function df(_out, u, p, t, i)
+      if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+        if typeof(_save_idxs) <: Number
+          _out[_save_idxs] = -Δ[i][_save_idxs]
+        elseif _save_idxs isa Colon
+          vec(_out) .= -vec(Δ[i])
+        else
+          vec(@view(_out[_save_idxs])) .= -vec(Δ[i][_save_idxs])
+        end
+      else
+        if typeof(_save_idxs) <: Number
+          _out[_save_idxs] = -adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+        elseif _save_idxs isa Colon
+          vec(_out) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+        else
+          vec(@view(_out[_save_idxs])) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+        end
+      end
+    end
+
+    if sensealg isa ForwardLSS
+      lss_problem = ForwardLSSProblem(sol, sensealg, g, df)
+      dp = shadow_forward(lss_problem;  t0skip=t0skip, t1skip=t1skip)
+    else
+      adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
+      dp = shadow_adjoint(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
+    end
+
+    (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
+  end
+  out, adjoint_sensitivity_backpass
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},
                                             alg,sensealg::SteadyStateAdjoint,
                                             u0,p,args...;save_idxs = nothing, kwargs...)

@@ -36,7 +36,8 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
        adjoint_sensitivities, adjoint_sensitivities_u0,
-       ForwardLSSProblem, AdjointLSSProblem
+       ForwardLSSProblem, AdjointLSSProblem,
+       shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,

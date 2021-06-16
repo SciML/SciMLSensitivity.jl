@@ -129,7 +129,11 @@ Base.@pure function ForwardLSS(;
   ForwardLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
 end
 
-struct AdjointLSS{CS,AD,FDT,aType} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+"""
+Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
+chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
+"""
+struct AdjointLSS{CS,AD,FDT,aType} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   alpha::aType # alpha: weight of the time dilation term in LSS.
 end
 Base.@pure function AdjointLSS(;
