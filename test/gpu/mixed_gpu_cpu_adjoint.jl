@@ -1,5 +1,5 @@
 using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
-using CUDA, Test
+using CUDA, Test, Zygote
 CUDA.allowscalar(false)
 
 ann = FastChain(FastDense(1, 4, tanh))
