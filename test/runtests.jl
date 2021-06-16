@@ -67,4 +67,9 @@ if GROUP == "DiffEqFlux"
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
     @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
 end
+
+if GROUP == "GPU"
+    activate_downstream_env()
+    @time @safetestset "Mixed GPU/CPU" begin include("gpu/mixed_gpu_cpu_adjoint.jl") end
+end
 end
