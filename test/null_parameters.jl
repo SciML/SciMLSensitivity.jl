@@ -68,7 +68,7 @@ end
 @test Zygote.gradient(loss4, nothing)[1] == nothing
 @test Zygote.gradient(loss5, nothing)[1] == nothing
 @test Zygote.gradient(loss6, nothing)[1] == nothing
-@test_broken Zygote.gradient(loss7, nothing)[1] == nothing
+@test Zygote.gradient(loss7, nothing)[1] == nothing
 @test Zygote.gradient(loss8, nothing)[1] == nothing
 
 @test Zygote.gradient(loss, zeros(123))[1] == zeros(123)

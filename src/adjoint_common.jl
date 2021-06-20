@@ -115,18 +115,24 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     y = copy(sol.u[end])
   end
 
+  if typeof(prob.p) <: DiffEqBase.NullParameters
+      _p = similar(y,(0,))
+  else
+      _p = prob.p
+  end
+
   if sensealg.autojacvec isa ReverseDiffVJP ||
     (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
 
     if prob isa DiffEqBase.SteadyStateProblem
        if DiffEqBase.isinplace(prob)
-        tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+        tape = ReverseDiff.GradientTape((y, _p)) do u,p
           du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
           f(du1,u,p,nothing)
           return vec(du1)
         end
       else
-        tape = ReverseDiff.GradientTape((y, prob.p)) do u,p
+        tape = ReverseDiff.GradientTape((y, _p)) do u,p
           vec(f(u,p,nothing))
         end
       end
@@ -135,13 +141,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     else
       if DiffEqBase.isinplace(prob)
         if !(prob isa RODEProblem)
-          tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
-            du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
+          tape = ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
+            du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ? similar(p, size(u)) : similar(u)
             f(du1,u,p,first(t))
             return vec(du1)
           end
         else
-          tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]],last(sol.W))) do u,p,t,W
+          tape = ReverseDiff.GradientTape((y, _p, [tspan[2]],last(sol.W))) do u,p,t,W
             du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
             f(du1,u,p,first(t),W)
             return vec(du1)
@@ -149,11 +155,11 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
         end
       else
         if !(prob isa RODEProblem)
-          tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+          tape = ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
             vec(f(u,p,first(t)))
           end
         else
-          tape = ReverseDiff.GradientTape((y, prob.p, [tspan[2]],last(sol.W))) do u,p,t,W
+          tape = ReverseDiff.GradientTape((y, _p, [tspan[2]],last(sol.W))) do u,p,t,W
             return f(u,p,first(t),W)
           end
         end
@@ -202,13 +208,13 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
         for i in 1:numindvar
           function noisetape(indx)
             if StochasticDiffEq.is_diagonal_noise(prob)
-              ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
                 du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
                 f(du1,u,p,first(t))
                 return du1[indx]
               end
             else
-              ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
                 du1 = similar(p, size(prob.noise_rate_prototype))
                 f(du1,u,p,first(t))
                 return du1[:,indx]
@@ -226,11 +232,11 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
         for i in 1:numindvar
           function noisetapeoop(indx)
             if StochasticDiffEq.is_diagonal_noise(prob)
-              ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
                 f(u,p,first(t))[indx]
               end
             else
-              ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
+              ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
                 f(u,p,first(t))[:,indx]
               end
             end
