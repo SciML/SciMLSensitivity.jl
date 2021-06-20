@@ -327,6 +327,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
 
+  if typeof(p) <: DiffEqBase.NullParameters
+      _p = similar(y,(0,))
+  else
+      _p = p
+  end
+
   if typeof(prob) <: SteadyStateProblem || (eltype(λ) <: eltype(prob.u0) && typeof(t) <: eltype(prob.u0) && compile_tape(sensealg.autojacvec))
     tape = S.diffcache.paramjac_config
 
@@ -334,14 +340,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   elseif inplace_sensitivity(S)
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
     if W===nothing
-      tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
+      tape = ReverseDiff.GradientTape((_y, _p, [t])) do u,p,t
         du1 = similar(u, size(u))
         f(du1,u,p,first(t))
         return vec(du1)
        end
     else
       _W = eltype(W) === eltype(λ) ? W : convert.(promote_type(eltype(W),eltype(λ)),W)
-      tape = ReverseDiff.GradientTape((_y, p, [t], _W)) do u,p,t,Wloc
+      tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u,p,t,Wloc
         du1 = p !== nothing && p !== DiffEqBase.NullParameters() ? similar(p, size(u)) : similar(u)
         f(du1,u,p,first(t),Wloc)
         return vec(du1)
@@ -350,12 +356,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   else
     _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y),eltype(λ)),y)
     if W===nothing
-      tape = ReverseDiff.GradientTape((_y, p, [t])) do u,p,t
+      tape = ReverseDiff.GradientTape((_y, _p, [t])) do u,p,t
         vec(f(u,p,first(t)))
       end
     else
       _W = eltype(W) === eltype(λ) ? W : convert.(promote_type(eltype(W),eltype(λ)),W)
-      tape = ReverseDiff.GradientTape((_y, p, [t], _W)) do u,p,t,Wloc
+      tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u,p,t,Wloc
         vec(f(u,p,first(t),Wloc))
       end
     end
@@ -378,7 +384,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   end
   W !== nothing && ReverseDiff.unseed!(tW)
   ReverseDiff.value!(tu, y)
-  ReverseDiff.value!(tp, p)
+  typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   if !(prob isa DiffEqBase.SteadyStateProblem)
     ReverseDiff.value!(tt, [t])
   end
