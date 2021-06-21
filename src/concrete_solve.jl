@@ -22,10 +22,10 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                                             alg,sensealg::Nothing,u0,p,args...;
                                             kwargs...)
-  default_sensealg = if length(u0) + length(p) <= 16
+  default_sensealg = if p !== DiffEqBase.NullParameters() && length(u0) + length(p) <= 16
       ForwardDiffSensitivity() # Only to 16 because it's not chunked!
-  elseif length(u0) + length(p) <= 100
-    ForwardSensitivity()
+  elseif p !== DiffEqBase.NullParameters() && length(u0) + length(p) <= 100
+      ForwardSensitivity()
   elseif isgpu(u0) && !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
@@ -39,9 +39,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
   else
     # Determine if we can compile ReverseDiff
     compile = if DiffEqBase.isinplace(prob)
-      reversediff_compile_compatible(f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
+      reversediff_compile_compatible(prob.f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
     else
-      reversediff_compile_compatible(f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
+      reversediff_compile_compatible(prob.f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
     end
 
     if p === nothing || p === DiffEqBase.NullParameters()
