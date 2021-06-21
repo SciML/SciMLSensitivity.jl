@@ -161,6 +161,7 @@ end
 
 abstract type VJPChoice end
 struct ZygoteVJP <: VJPChoice end
+struct EnzymeVJP <: VJPChoice end
 struct TrackerVJP <: VJPChoice end
 struct ReverseDiffVJP{compile} <: VJPChoice
   ReverseDiffVJP(compile=false) = new{compile}()

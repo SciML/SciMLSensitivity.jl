@@ -440,6 +440,61 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
   return
 end
 
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::EnzymeVJP, dgrad, dy, W)
+  @unpack sensealg, f = S
+  prob = getprob(S)
+
+  isautojacvec = get_jacvec(sensealg)
+  if inplace_sensitivity(S)
+    if W==nothing
+      back = Enzyme.pullback(y, p) do u, p
+        out_ = similar(u)
+        f(out_, u, p, t)
+        vec(copy(out_))
+      end
+    else
+      back = Enzyme.pullback(y, p) do u, p
+        out_ = similar(u)
+        f(out_, u, p, t, W)
+        vec(copy(out_))
+      end
+    end
+    tmp1,tmp2 = back(λ)
+    dλ[:] .= vec(tmp1)
+    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+    if dy !== nothing
+        out_ = similar(y)
+        if W==nothing
+            f(out_, y, p, t, W)
+        else
+            f(out_, y, p, t)
+        end
+        dy[:] .= vec(out_)
+    end
+  else
+    if W==nothing
+      back = Enzyme.pullback(y, p) do u, p
+        vec(f(u, p, t))
+      end
+    else
+      back = Enzyme.pullback(y, p) do u, p
+        vec(f(u, p, t, W))
+      end
+    end
+    tmp1,tmp2 = back(λ)
+    tmp1 != nothing && (dλ[:] .= vec(tmp1))
+    if dy !== nothing
+        out_ = if W==nothing
+            f(y, p, t, W)
+        else
+            f(y, p, t)
+        end
+        dy[:] .= vec(out_)
+    end
+    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+  end
+  return
+end
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
                       dgrad=nothing, dλ=nothing, dy=nothing)

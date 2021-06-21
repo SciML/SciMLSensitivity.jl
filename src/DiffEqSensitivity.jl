@@ -51,7 +51,7 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
 
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, ReverseDiffVJP
+export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
 
