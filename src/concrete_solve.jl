@@ -1,25 +1,55 @@
 ## High level
 
+"""
+reversediff_compile_compatible(f, tt)
+
+Returns a conservative estimate on whether a function can be compiled with
+autojacvec.
+"""
+function reversediff_compile_compatible(f, tt)
+    ci = code_typed(f, tt)[][1]
+    for stmt in ci.code
+        if stmt isa Union{Core.GotoNode, Core.GotoIfNot} ||
+            Meta.isexpr(stmt, :invoke)
+            return false
+        end
+    end
+    return true
+end
+
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
-function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = if isgpu(u0) && !DiffEqBase.isinplace(prob)
+function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
+                                            alg,sensealg::Nothing,u0,p,args...;
+                                            kwargs...)
+  default_sensealg = if length(u0) + length(p) <= 16
+      ForwardDiffSensitivity() # Only to 16 because it's not chunked!
+  elseif length(u0) + length(p) <= 100
+    ForwardSensitivity()
+  elseif isgpu(u0) && !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
-    # so if in-place, try Zygote
+    # so if out-of-place, try Zygote
     if p === nothing || p === DiffEqBase.NullParameters()
-        # QuadratureAdjoint skips all p calculations until the end
-        # So it's the fastest when there are no parameters
-        QuadratureAdjoint(autojacvec=ZygoteVJP())
-      else
-        InterpolatingAdjoint(autojacvec=ZygoteVJP())
-      end
+      # QuadratureAdjoint skips all p calculations until the end
+      # So it's the fastest when there are no parameters
+      QuadratureAdjoint(autojacvec=ZygoteVJP())
     else
-      if p === nothing || p === DiffEqBase.NullParameters()
-        QuadratureAdjoint()
-      else
-        InterpolatingAdjoint()
-      end
+      InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
+  else
+    # Determine if we can compile ReverseDiff
+    compile = if DiffEqBase.isinplace(prob)
+      reversediff_compile_compatible(f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
+    else
+      reversediff_compile_compatible(f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
+    end
+
+    if p === nothing || p === DiffEqBase.NullParameters()
+      QuadratureAdjoint(autojacvec=ReverseDiffVJP(compile))
+    else
+      InterpolatingAdjoint(autojacvec=ReverseDiffVJP(compile))
+    end
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -29,8 +59,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::DiscreteProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = ReverseDiffAdjoint()
+function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem,DDEProblem,
+                                                        SDDEProblem,DAEProblem},
+                                                        alg,sensealg::Nothing,
+                                                        u0,p,args...;kwargs...)
+  if length(u0) + length(p) > 16
+      default_sensealg = ReverseDiffAdjoint()
+  else
+      default_sensealg = ForwardDiffSensitivity()
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
