@@ -187,7 +187,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     du0 = reshape(du0,size(u0))
     dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing : reshape(dp',size(p))
 
-    (nothing,nothing,du0,dp,nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
@@ -211,10 +211,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
        end
        J'v
      end
-     du0 = ChainRulesCore.@not_implemented(
+     du0 = @not_implemented(
          "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
      )
-     (nothing,nothing,du0,adj,nothing,ntuple(_->nothing, length(args))...)
+     (NoTangent(),NoTangent(),NoTangent(),du0,adj,NoTangent(),ntuple(_->NoTangent(), length(args))...)
    end
    out,forward_sensitivity_backpass
 end
@@ -245,7 +245,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   sol = solve(prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
 
   function forward_sensitivity_backpass(Δ)
-    dp = ChainRulesCore.@thunk begin
+    dp = @thunk begin
 
         pdual = seed_duals(p,prob.f)
         u0dual = convert.(eltype(pdual),u0)
@@ -286,10 +286,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             v = @view Δ[:, i]
           end
           ForwardDiff.value.(J'v)
-      end
+        end
     end
 
-    du0 = ChainRulesCore.@thunk begin
+    du0 = @thunk begin
 
         u0dual = seed_duals(u0,prob.f)
         pdual = convert.(eltype(u0dual),p)
@@ -330,9 +330,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             v = @view Δ[:, i]
           end
           ForwardDiff.value.(J'v)
-      end
+        end
     end
-    (nothing,nothing,du0,dp,nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   sol,forward_sensitivity_backpass
 end
@@ -406,7 +406,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   function tracker_adjoint_backpass(ybar)
     u0bar, pbar = pullback(ybar)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
-    (nothing,nothing,_u0bar,Tracker.data(pbar),nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
 
   u = u0 isa Tracker.TrackedArray ? Tracker.data.(sol.u) : Tracker.data.(Tracker.data.(sol.u))
@@ -467,7 +467,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
     _ybar = eltype(ybar) <: AbstractArray ? Array(VectorOfArray(ybar)) : ybar
     ReverseDiff.increment_deriv!(output, _ybar)
     ReverseDiff.reverse_pass!(tape)
-    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   Array(VectorOfArray(u)),reversediff_adjoint_backpass
 end
@@ -570,7 +570,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       dp = shadow_adjoint(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
     end
 
-    (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
@@ -594,7 +594,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
       # del g/del p = 0
       dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ,save_idxs=save_idxs)
       dp
-      (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
+      (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
     end
     out, steadystatebackpass
 end

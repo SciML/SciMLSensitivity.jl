@@ -10,7 +10,7 @@ using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 using Reexport
-import ChainRulesCore
+import ChainRulesCore: @thunk, NoTangent, @not_implemented
 @reexport using GlobalSensitivity
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
