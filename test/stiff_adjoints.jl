@@ -143,7 +143,7 @@ loss_function = function(p)
 end
 
 rdgrad = Zygote.gradient(loss_function,p)[1]
-@test fdgrad ≈ rdgrad rtol=1e-4
+@test fdgrad ≈ rdgrad rtol=1e-3
 
 # all implicit solvers
 solvers = [
