@@ -84,9 +84,10 @@ du01,dp1 = ReverseDiff.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=
 du06,dp6 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardSensitivity())),u0,p)
 du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity())),u0,p)
 @test_broken du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardSensitivity())),u0,p)
-@test_broken du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardDiffSensitivity())),u0,p)
+du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du06 === du07 === nothing
+@test du06 === nothing
+@test ū0 ≈ du07 rtol=1e-12
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
 
@@ -98,7 +99,7 @@ du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1,sensealg=ReverseDiffAdjoint())),u0,p)
 du010,dp10 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=TrackerAdjoint())),u0,p)
 @test_broken du011,dp11 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardSensitivity())),u0,p)
-@test_broken du012,dp12 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardDiffSensitivity())),u0,p)
+du012,dp12 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 
 @test ū02 ≈ du05 rtol=1e-12
 @test ū02 ≈ du06 rtol=1e-12
@@ -106,12 +107,16 @@ du010,dp10 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-
 @test ū02 ≈ du08 rtol=1e-12
 @test ū02 ≈ du09 rtol=1e-12
 @test ū02 ≈ du010 rtol=1e-12
+#@test ū02 ≈ du011 rtol=1e-12
+@test ū02 ≈ du012 rtol=1e-12
 @test adj2 ≈ dp5 rtol=1e-12
 @test adj2 ≈ dp6 rtol=1e-12
 @test adj2 ≈ dp7 rtol=1e-12
 @test adj2 ≈ dp8 rtol=1e-12
 @test adj2 ≈ dp9 rtol=1e-12
 @test adj2 ≈ dp10 rtol=1e-12
+#@test adj2 ≈ dp11 rtol=1e-12
+@test adj2 ≈ dp12 rtol=1e-12
 
 ###
 ### Only End
@@ -176,7 +181,7 @@ du08,dp8 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e
 du09,dp9 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1,sensealg=ReverseDiffAdjoint())),u0,p)
 du010,dp10 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=TrackerAdjoint())),u0,p)
 @test_broken du011,dp11 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardSensitivity())),u0,p)
-@test_broken du012,dp12 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardDiffSensitivity())),u0,p)
+du012,dp12 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 # Redundent to test aliasing
 du013,dp13 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs=1:1,sensealg=InterpolatingAdjoint())),u0,p)
 du014,dp14 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_idxs=1,saveat=0.1,sensealg=InterpolatingAdjoint())),u0,p)
@@ -189,7 +194,7 @@ du014,dp14 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=
 @test ū02 ≈ du09 rtol=1e-12
 @test ū02 ≈ du010 rtol=1e-12
 #@test ū02 ≈ du011 rtol=1e-12
-#@test ū02 ≈ du012 rtol=1e-12
+@test ū02 ≈ du012 rtol=1e-12
 @test ū02 ≈ du013 rtol=1e-12
 @test ū02 ≈ du014 rtol=1e-12
 @test adj2 ≈ dp5 rtol=1e-12
@@ -199,7 +204,7 @@ du014,dp14 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=
 @test adj2 ≈ dp9 rtol=1e-12
 @test adj2 ≈ dp10 rtol=1e-12
 #@test adj2 ≈ dp11 rtol=1e-12
-#@test adj2 ≈ dp12 rtol=1e-12
+@test adj2 ≈ dp12 rtol=1e-12
 @test adj2 ≈ dp13 rtol=1e-12
 @test adj2 ≈ dp14 rtol=1e-12
 

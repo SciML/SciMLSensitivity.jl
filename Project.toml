@@ -5,6 +5,7 @@ version = "6.49.1"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 DiffEqNoiseProcess = "77a26b50-5914-5dd7-bc55-306e6241c503"
