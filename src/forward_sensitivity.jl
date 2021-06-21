@@ -21,17 +21,21 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Al
   mass_matrix::MM
   isautojacvec::Bool
   colorvec::CV
-  homogenous::Bool
+end
+
+struct NILSSForwardSensitivityFunction{iip,sensefunType} <: DiffEqBase.AbstractODEFunction{iip}
+  S::sensefunType
 end
 
 function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
-                                    isautojacvec,colorvec)
+                                    isautojacvec,colorvec,nus)
   numparams = length(p)
   numindvar = length(u0)
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
-  ODEForwardSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
+
+  sensefun = ODEForwardSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
                              typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(sparsity),
                              typeof(paramjac),
                              typeof(Wfact),typeof(Wfact_t),typeof(uf),
@@ -42,6 +46,11 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsi
                              f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
+  if nus!==nothing
+    sensefun = NILSSForwardSensitivityFunction{isinplace(f), typeof(sensefun)}(sensefun)
+  end
+
+  return sensefun
 end
 
 function (S::ODEForwardSensitivityFunction)(du,u,p,t)
@@ -61,15 +70,15 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     end
   end
 
-  if !S.homogenous
-    if DiffEqBase.has_paramjac(S.f)
-      S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
-    else
-      S.pf.t = t
-      S.pf.u .= y
-      jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
-    end
+
+  if DiffEqBase.has_paramjac(S.f)
+    S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
+  else
+    S.pf.t = t
+    S.pf.u .= y
+    jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
   end
+
 
   # Compute the parameter derivatives
   for i in eachindex(p)
@@ -80,9 +89,7 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     else
       jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
     end
-    if !S.homogenous
-      dp .+= @view S.pJ[:,i]
-    end
+    dp .+= @view S.pJ[:,i]
   end
 end
 
@@ -103,7 +110,7 @@ end
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg::ForwardSensitivity = ForwardSensitivity();
-                                    homogenous=false,
+                                    nus=nothing, # determine if Nilss is used
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -150,8 +157,12 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                      uf,pf,u0,jac_config,
                                      paramjac_config,alg,
                                      p,similar(u0),mm,
-                                     isautojacvec,f.colorvec)
-  sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
+                                     isautojacvec,f.colorvec,nus)
+  if nus===nothing
+    sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
+  else
+    sense_u0 = [u0;zeros(eltype(u0),(nus+1)*sense.numindvar*sense.numparams)]
+  end
   ODEProblem(sense,sense_u0,tspan,p,
              ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                           typeof(alg)}(alg);

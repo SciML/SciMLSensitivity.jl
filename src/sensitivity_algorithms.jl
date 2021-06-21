@@ -155,12 +155,14 @@ struct NILSS{CS,AD,FDT,RNG} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   rng::RNG
   nseg::Int
   nstep::Int
+  autojacvec::Bool
 end
-Base.@pure function NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64))
+Base.@pure function NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
+                                autojacvec = autodiff
                                 )
-  NILSS{chunk_size,autodiff,diff_type,typeof(rng)}(rng, nseg, nstep)
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng)}(rng, nseg, nstep, autojacvec)
 end
 
 """

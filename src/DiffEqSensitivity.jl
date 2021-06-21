@@ -9,6 +9,7 @@ using StochasticDiffEq
 using SharedArrays
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
+using Random
 import ZygoteRules, Zygote, ReverseDiff
 using Reexport
 @reexport using GlobalSensitivity
@@ -30,8 +31,10 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("lss.jl")
+include("nilss.jl")
 
 export extract_local_sensitivities
+
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
