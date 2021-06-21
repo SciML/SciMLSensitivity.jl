@@ -23,7 +23,7 @@ tspan = [0.0, 1]
 odef = ODEFunction(foop; jac=jac, jac_prototype=jac(u0, p, 0.0), paramjac=paramjac)
 function g_helper(p; alg=Rosenbrock23(linsolve=linsolve_lu))
     prob = ODEProblem(odef, u0, tspan, p)
-    soln = Array(solve(prob, alg; u0=prob.u0, p=prob.p, abstol=1e-4, reltol=1e-4))[:, end]
+    soln = Array(solve(prob, alg; u0=prob.u0, p=prob.p, abstol=1e-4, reltol=1e-4, sensealg=InterpolatingAdjoint()))[:, end]
     return soln
 end
 function g(p; kwargs...)
