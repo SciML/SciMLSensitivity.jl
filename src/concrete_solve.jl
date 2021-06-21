@@ -211,9 +211,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
        end
        J'v
      end
-     du0 = ChainRulesCore.@thunk begin
-         error("ForwardSensitivity does not differentiate with respect to u0. Change your sensealg.")
-     end
+     du0 = ChainRulesCore.@not_implemented(
+         "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
+     )
      (nothing,nothing,du0,adj,nothing,ntuple(_->nothing, length(args))...)
    end
    out,forward_sensitivity_backpass
