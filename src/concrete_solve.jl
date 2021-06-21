@@ -242,6 +242,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
+
+  if saveat isa Number
+    _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+  else
+    _saveat = saveat
+  end
+  
   sol = solve(prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
 
   function forward_sensitivity_backpass(Δ)
