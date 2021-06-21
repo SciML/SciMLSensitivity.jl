@@ -187,7 +187,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     du0 = reshape(du0,size(u0))
     dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing : reshape(dp',size(p))
 
-    (nothing,nothing,du0,dp,nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
@@ -211,7 +211,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
        end
        J'v
      end
-     (nothing,nothing,nothing,adj,nothing,ntuple(_->nothing, length(args))...)
+     du0 = @not_implemented(
+         "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
+     )
+     (NoTangent(),NoTangent(),NoTangent(),du0,adj,NoTangent(),ntuple(_->NoTangent(), length(args))...)
    end
    out,forward_sensitivity_backpass
 end
@@ -239,50 +242,99 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
-  pdual = seed_duals(p,prob.f)
-  u0dual = convert.(eltype(pdual),u0)
+  sol = solve(prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
 
-  if (convert_tspan(sensealg) === nothing && (
-        (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-        )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
-
-    tspandual = convert.(eltype(pdual),prob.tspan)
-  else
-    tspandual = prob.tspan
-  end
-
-  if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
-    _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-  elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
-    _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-  else
-    _f = prob.f
-  end
-  _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
-
-  if saveat isa Number
-    _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-  else
-    _saveat = saveat
-  end
-
-  sol = solve(_prob,alg,args...;saveat=_saveat,kwargs...)
-  _,du = extract_local_sensitivities(sol, sensealg, Val(true))
-  out = DiffEqBase.sensitivity_solution(sol,[ForwardDiff.value.(sol[i][_save_idxs]) for i in 1:length(sol)],ForwardDiff.value.(sol.t))
   function forward_sensitivity_backpass(Δ)
-    adj = sum(eachindex(du)) do i
-      J = du[i]
-      if Δ isa AbstractVector
-        v = Δ[i]
-      else
-        v = @view Δ[:, i]
-      end
-      ForwardDiff.value.(J'v)
+    dp = @thunk begin
+
+        pdual = seed_duals(p,prob.f)
+        u0dual = convert.(eltype(pdual),u0)
+
+        if (convert_tspan(sensealg) === nothing && (
+              (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+              (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+              )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+
+          tspandual = convert.(eltype(pdual),prob.tspan)
+        else
+          tspandual = prob.tspan
+        end
+
+        if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
+          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+        elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+        else
+          _f = prob.f
+        end
+        _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+
+        if saveat isa Number
+          _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+        else
+          _saveat = saveat
+        end
+
+        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+
+        sum(eachindex(du)) do i
+          J = du[i]
+          if Δ isa AbstractVector
+            v = Δ[i]
+          else
+            v = @view Δ[:, i]
+          end
+          ForwardDiff.value.(J'v)
+        end
     end
-    (nothing,nothing,nothing,adj,nothing,ntuple(_->nothing, length(args))...)
+
+    du0 = @thunk begin
+
+        u0dual = seed_duals(u0,prob.f)
+        pdual = convert.(eltype(u0dual),p)
+
+        if (convert_tspan(sensealg) === nothing && (
+              (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+              (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+              )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+
+          tspandual = convert.(eltype(pdual),prob.tspan)
+        else
+          tspandual = prob.tspan
+        end
+
+        if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
+          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+        elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+        else
+          _f = prob.f
+        end
+        _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+
+        if saveat isa Number
+          _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+        else
+          _saveat = saveat
+        end
+
+        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+
+        sum(eachindex(du)) do i
+          J = du[i]
+          if Δ isa AbstractVector
+            v = Δ[i]
+          else
+            v = @view Δ[:, i]
+          end
+          ForwardDiff.value.(J'v)
+        end
+    end
+    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
-  out,forward_sensitivity_backpass
+  sol,forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
@@ -354,7 +406,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   function tracker_adjoint_backpass(ybar)
     u0bar, pbar = pullback(ybar)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
-    (nothing,nothing,_u0bar,Tracker.data(pbar),nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
 
   u = u0 isa Tracker.TrackedArray ? Tracker.data.(sol.u) : Tracker.data.(Tracker.data.(sol.u))
@@ -415,7 +467,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
     _ybar = eltype(ybar) <: AbstractArray ? Array(VectorOfArray(ybar)) : ybar
     ReverseDiff.increment_deriv!(output, _ybar)
     ReverseDiff.reverse_pass!(tape)
-    (nothing,nothing,ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   Array(VectorOfArray(u)),reversediff_adjoint_backpass
 end
@@ -518,7 +570,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       dp = shadow_adjoint(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
     end
 
-    (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   out, adjoint_sensitivity_backpass
 end
@@ -542,7 +594,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
       # del g/del p = 0
       dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ,save_idxs=save_idxs)
       dp
-      (nothing,nothing,nothing,dp,nothing,ntuple(_->nothing, length(args))...)
+      (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
     end
     out, steadystatebackpass
 end
