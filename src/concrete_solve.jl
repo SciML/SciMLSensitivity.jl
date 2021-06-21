@@ -242,35 +242,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
-  pdual = seed_duals([vec(p);u0],prob.f)
-  u0dual = convert.(eltype(pdual),u0)
-
-  if (convert_tspan(sensealg) === nothing && (
-        (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-        (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-        )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
-
-    tspandual = convert.(eltype(pdual),prob.tspan)
-  else
-    tspandual = prob.tspan
-  end
-
-  if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
-    _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-  elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
-    _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-  else
-    _f = prob.f
-  end
-  _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
-
-  if saveat isa Number
-    _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-  else
-    _saveat = saveat
-  end
-
   sol = solve(prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+
   function forward_sensitivity_backpass(Δ)
     dp = ChainRulesCore.@thunk begin
 
