@@ -69,10 +69,6 @@ end
 ### Other Packages
 ###
 
-du01,dp1 = Tracker.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1)),u0,p)
-@test ū0 == du01
-@test adj' == dp1
-
 du01,dp1 = ReverseDiff.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1)),(u0,p))
 @test ū0 == du01
 @test adj == dp1'
@@ -272,9 +268,6 @@ du02,dp2 = Zygote.gradient(
 
 
 Random.seed!(seed)
-du03,dp3 = Tracker.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
-
-Random.seed!(seed)
 du04,dp4 = ReverseDiff.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01, sensealg=BacksolveAdjoint())),(u0,p))
 
 
@@ -282,9 +275,6 @@ du04,dp4 = ReverseDiff.gradient((u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,
 @test isapprox(adj, dp1', rtol = 1e-4)
 
 @test isapprox(adj, dp2', rtol = 1e-4)
-
-@test isapprox(ū0, du03, rtol = 1e-4)
-@test isapprox(adj', dp3, rtol = 1e-4)
 
 @test isapprox(ū0, du04, rtol = 1e-4)
 @test isapprox(adj, dp4', rtol = 1e-4)
