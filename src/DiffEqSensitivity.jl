@@ -8,6 +8,7 @@ using Requires
 using StochasticDiffEq
 using SharedArrays
 import DiffEqNoiseProcess
+import RandomNumbers: Xorshifts
 import ZygoteRules, Zygote, ReverseDiff
 using Reexport
 @reexport using GlobalSensitivity

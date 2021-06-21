@@ -21,6 +21,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Al
   mass_matrix::MM
   isautojacvec::Bool
   colorvec::CV
+  homogenous::Bool
 end
 
 function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
@@ -60,12 +61,14 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     end
   end
 
-  if DiffEqBase.has_paramjac(S.f)
-    S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
-  else
-    S.pf.t = t
-    S.pf.u .= y
-    jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
+  if !S.homogenous
+    if DiffEqBase.has_paramjac(S.f)
+      S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
+    else
+      S.pf.t = t
+      S.pf.u .= y
+      jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
+    end
   end
 
   # Compute the parameter derivatives
@@ -77,7 +80,9 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     else
       jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
     end
-    dp .+= @view S.pJ[:,i]
+    if !S.homogenous
+      dp .+= @view S.pJ[:,i]
+    end
   end
 end
 
@@ -98,6 +103,7 @@ end
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg::ForwardSensitivity = ForwardSensitivity();
+                                    homogenous=false,
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
