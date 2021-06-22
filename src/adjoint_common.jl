@@ -170,7 +170,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
       paramjac_config = ReverseDiff.compile(tape)
     elseif sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob)
       compile = try
-          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2]))
+          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
       catch
           false
       end
@@ -263,7 +263,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
           elseif sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)
               compile = try
-                  !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2]))
+                  !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
               catch
                   false
               end
