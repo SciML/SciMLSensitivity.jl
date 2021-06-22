@@ -1,6 +1,6 @@
 using DiffEqSensitivity, OrdinaryDiffEq, Zygote
 using Test, ForwardDiff
-import Tracker, ReverseDiff
+import Tracker, ReverseDiff, ChainRulesCore
 
 function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
@@ -74,7 +74,7 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 @test_broken du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardSensitivity())),u0,p)
 du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du06 === nothing
+@test du06 isa ChainRulesCore.NotImplemented
 @test ū0 ≈ du07 rtol=1e-12
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
@@ -113,7 +113,7 @@ du012,dp12 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-
 ū0,adj = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=InterpolatingAdjoint())),u0,p)
 du03,dp3 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=ReverseDiffAdjoint())),u0,p)
 du04,dp4 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,save_everystep=false,save_start=false,sensealg=InterpolatingAdjoint())[end]),u0,p)
-@test ū0 ≈ du03 rtol=1e-12
+@test ū0 ≈ du03 rtol=1e-11
 @test ū0 ≈ du04 rtol=1e-12
 @test adj ≈ dp3 rtol=1e-12
 @test adj ≈ dp4 rtol=1e-12
@@ -157,7 +157,8 @@ du06,dp6 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e
 @test_broken Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardSensitivity())),u0,p) isa Tuple
 du07,dp7 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du07 === nothing
+#@test du06 === nothing
+@test du07 ≈ ū0 rtol=1e-12
 #@test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
 
