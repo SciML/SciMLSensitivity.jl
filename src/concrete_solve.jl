@@ -248,11 +248,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   else
     _saveat = saveat
   end
-  
-  sol = solve(prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
 
+  sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
   function forward_sensitivity_backpass(Δ)
-    dp = @thunk begin
+    dp = begin
 
         pdual = seed_duals(p,prob.f)
         u0dual = convert.(eltype(pdual),u0)
@@ -339,7 +338,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           ForwardDiff.value.(J'v)
         end
     end
-    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+
+    (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   sol,forward_sensitivity_backpass
 end
