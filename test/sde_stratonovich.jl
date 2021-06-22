@@ -52,7 +52,6 @@ p2 = [1.01,0.87]
     res = g(sol,p,nothing)
   end
   res_ode_forward = ForwardDiff.gradient(G,p)
-  #res_ode_reverse = ReverseDiff.gradient(G,p)
 
   @test isapprox(res_ode_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   #@test isapprox(res_ode_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
@@ -84,12 +83,10 @@ p2 = [1.01,0.87]
     res = g(A,p,nothing)
   end
   res_sde_forward = ForwardDiff.gradient(GSDE1,p)
-  res_sde_reverse = ReverseDiff.gradient(GSDE1,p)
 
   noise = vec((@. sol_oop_sde.W(tarray)))
   Wfix = [W[1][1] for W in noise]
   @test isapprox(res_sde_forward[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
-  @test isapprox(res_sde_reverse[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[1], sum(@. u₀^2*exp(2*p[1]*t)*t), rtol = 1e-4)
   @test isapprox(res_sde_p'[2], sum(@. (Wfix)*u₀^2*exp(2*(p[1])*tarray+2*p[2]*Wfix)), rtol = 1e-4)
 end
@@ -147,7 +144,6 @@ end
     res = g(A,p,nothing)
   end
   res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
-  res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
 
 
   Wfix = [sol_oop_sde2.W(t)[1][1] for t in tarray]
@@ -156,13 +152,11 @@ end
   resp = [resp1, resp2]
 
   @test isapprox(res_sde_forward2, resp, rtol = 2e-4)
-  @test isapprox(res_sde_reverse2, resp, rtol = 2e-4)
 
   @test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-3)
   @test isapprox(res_sde_p2', resp, rtol = 1e-3)
 
   @info "ForwardDiff" res_sde_forward2
-  @info "ReverseDiff" res_sde_reverse2
   @info "Exact" resp
   @info "BacksolveAdjoint SDE" res_sde_p2
 
@@ -274,8 +268,6 @@ end
 
   @info "Diagonal ForwardDiff"
   res_sde_forward2 = ForwardDiff.gradient(GSDE2,p2)
-  #@info "Diagonal ReverseDiff"
-  #res_sde_reverse2 = ReverseDiff.gradient(GSDE2,p2)
 
   #@test isapprox(res_sde_forward2, res_sde_reverse2, rtol = 1e-6)
   @test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-3)
@@ -489,13 +481,11 @@ end
     res = g(A,p,nothing)
   end
   res_sde_forward = ForwardDiff.gradient(GSDE1,p2)
-  res_sde_reverse = ReverseDiff.gradient(GSDE1,p2)
 
   Random.seed!(seed)
   res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0,p)->sum(Array(solve(prob_oop_sde,
     RKMil(interpretation=:Stratonovich),dt=5e-4,adaptive=false,u0=u0,p=p,saveat=tarray,
     sensealg=TrackerAdjoint())).^2.0/2.0),u₀,p2)
 
-  @test isapprox(res_sde_forward, res_sde_reverse, rtol = 1e-5)
   @test isapprox(res_sde_forward, res_sde_trackerp, rtol = 1e-5)
 end

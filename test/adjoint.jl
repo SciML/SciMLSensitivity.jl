@@ -226,16 +226,8 @@ G([1.5,1.0,3.0,1.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0,1.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0,1.0])
 
-import Tracker
-res4 = Tracker.gradient(G,[1.5,1.0,3.0,1.0])[1]
-
-import ReverseDiff
-res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0,1.0])
-
 @test norm(res' .- res2) < 1e-7
 @test norm(res' .- res3) < 1e-5
-@test norm(res' .- res4) < 1e-6
-@test norm(res' .- res5) < 1e-6
 
 # check other t handling
 
