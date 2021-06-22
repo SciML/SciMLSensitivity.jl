@@ -12,6 +12,9 @@ import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
 
+using Cassette, DiffRules
+using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
+
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
 @reexport using GlobalSensitivity
@@ -19,6 +22,7 @@ abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
 include("require.jl")
+include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")

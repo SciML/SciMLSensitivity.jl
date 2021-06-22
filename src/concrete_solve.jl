@@ -1,22 +1,5 @@
 ## High level
 
-"""
-reversediff_compile_compatible(f, tt)
-
-Returns a conservative estimate on whether a function can be compiled with
-autojacvec.
-"""
-function reversediff_compile_compatible(f, tt)
-    ci = code_typed(f, tt)[][1]
-    for stmt in ci.code
-        if stmt isa Union{Core.GotoNode, Core.GotoIfNot} ||
-            Meta.isexpr(stmt, :invoke)
-            return false
-        end
-    end
-    return true
-end
-
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
@@ -38,10 +21,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
     end
   else
     # Determine if we can compile ReverseDiff
-    compile = if DiffEqBase.isinplace(prob)
-      reversediff_compile_compatible(prob.f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
-    else
-      reversediff_compile_compatible(prob.f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
+    compile = try
+        if DiffEqBase.isinplace(prob)
+          !hasbranching(prob.f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
+        else
+          !hasbranching(prob.f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
+        end
+    catch
+        false
     end
 
     if p === nothing || p === DiffEqBase.NullParameters()
