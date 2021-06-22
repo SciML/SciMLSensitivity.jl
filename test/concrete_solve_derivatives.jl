@@ -245,22 +245,15 @@ proboop = SDEProblem(foop,σoop,u0,(0.0,1.0),p)
 ### OOPs
 ###
 
-Random.seed!(seed)
-_sol = solve(proboop,EulerHeun(),dt=1e-2,adaptive=false,save_noise=true)
+_sol = solve(proboop,EulerHeun(),dt=1e-2,adaptive=false,save_noise=true,seed=seed)
 ū0,adj = adjoint_sensitivities(_sol,EulerHeun(),((out,u,p,t,i) -> out .= -1),tarray, sensealg=BacksolveAdjoint())
 
-
-Random.seed!(seed)
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(proboop,EulerHeun(),
-  u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint())),u0,p)
+  u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint(),seed=seed)),u0,p)
 
-
-Random.seed!(seed)
 du02,dp2 = Zygote.gradient(
-  (u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=ForwardDiffSensitivity())),u0,p)
-
+  (u0,p)->sum(solve(proboop,EulerHeun(),u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=ForwardDiffSensitivity(),seed=seed)),u0,p)
 
 @test isapprox(ū0, du01, rtol = 1e-4)
 @test isapprox(adj, dp1', rtol = 1e-4)
-
 @test isapprox(adj, dp2', rtol = 1e-4)
