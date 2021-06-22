@@ -13,10 +13,10 @@ ddu03, du03, dp3 = Zygote.gradient((du0,u0,p)->sum(Array(solve(prob, Tsit5(), u0
 ddu04, du04, dp4 = Zygote.gradient((du0,u0,p)->sum(Array(solve(prob, Tsit5(), u0=ArrayPartition(du0,u0), p=p, saveat=t, sensealg = ForwardDiffSensitivity()))),du0,u0,p)
 @test ddu01 ≈ ddu02
 @test ddu01 ≈ ddu03
-@test ddu04 === nothing
+@test ddu01 ≈ ddu04
 @test du01 ≈ du02
 @test du01 ≈ du03
-@test du04 === nothing
+@test du01 ≈ du04
 @test dp1 ≈ dp2
 @test dp1 ≈ dp3
 @test dp1 ≈ dp4

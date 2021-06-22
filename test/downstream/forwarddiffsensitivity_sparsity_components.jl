@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, DiffEqSensitivity, DiffEqFlux, Flux
-using ComponentArrays, LinearAlgebra, Test
+using ComponentArrays, LinearAlgebra, GalacticOptim, Test
 
 const nknots = 10
 const h = 1.0/(nknots+1)
@@ -27,5 +27,5 @@ function loss(prob0, p)
 end
 
 p0 = ComponentArray(k=1.0)
-res = DiffEqFlux.sciml_train(p -> loss(prob,p), p0, ADAM(0.01), maxiters=100)
-@test res.u.k ≈ 0.42461977305259074
+res = DiffEqFlux.sciml_train(p -> loss(prob,p), p0, ADAM(0.01), GalacticOptim.AutoZygote(), maxiters=100)
+@test res.u.k ≈ 0.42461977305259074 rtol=1e-1

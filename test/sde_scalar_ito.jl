@@ -119,10 +119,8 @@ function Gp(p; sensealg = ReverseDiffAdjoint())
 end
 
 res_forward = ForwardDiff.gradient(p -> Gp(p,sensealg=ForwardDiffSensitivity()), p)
-res_reverse = ReverseDiff.gradient(p -> Gp(p,sensealg=ReverseDiffAdjoint()), p)
 
 @info res_forward
-@info res_reverse
 
 Wfix = [solStrat.W(t)[1][1] for t in tarray]
 resp1 = sum(@. tarray*u0^2*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
@@ -137,7 +135,6 @@ resp = [resp1, resp2]
 @test isapprox(gs_p', res_forward, atol=1e-2) # ito adjoint vs forward
 @test isapprox(resp, res_p', rtol=2e-5) # exact vs strat adjoint
 @test isapprox(resp, res_forward, rtol=2e-5) # exact vs forward
-@test isapprox(res_reverse, res_forward, rtol=1e-12) # reverse vs forward
 
 # tests for initial state gradients
 
@@ -150,7 +147,6 @@ function Gu0(u0; sensealg = ReverseDiffAdjoint())
 end
 
 res_forward = ForwardDiff.gradient(u0 -> Gu0(u0,sensealg=ForwardDiffSensitivity()), u0)
-res_reverse = ReverseDiff.gradient(u0 -> Gu0(u0,sensealg=ReverseDiffAdjoint()), u0)
 
 resu0 = sum(@. u0*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
 @show resu0
@@ -161,7 +157,6 @@ resu0 = sum(@. u0*exp(2*(p[1]-p[2]^2/2)*tarray+2*p[2]*Wfix))
 @test isapprox(resu0, res_u0[1], rtol=1e-3) # exact vs strat adjoint
 @test isapprox(res_u0, res_forward, rtol=1e-3) # strat adjoint vs forward
 @test isapprox(resu0, res_forward[1], rtol=1e-3)  # exact vs forward
-@test isapprox(res_reverse, res_forward, rtol=1e-12) # reverse vs forward
 
 
 

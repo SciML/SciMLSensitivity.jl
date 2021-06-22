@@ -9,6 +9,8 @@ using StochasticDiffEq
 using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
+import ArrayInterface
+
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
 @reexport using GlobalSensitivity
