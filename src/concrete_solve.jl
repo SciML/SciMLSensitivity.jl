@@ -339,7 +339,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         end
     end
 
-    (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   sol,forward_sensitivity_backpass
 end
