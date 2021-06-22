@@ -291,9 +291,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         end
 
         if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
-          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(u0dual),prob.f.jac_prototype))
         elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
-          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(u0dual),prob.f.jac_prototype))
         else
           _f = prob.f
         end
@@ -305,8 +305,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           _saveat = saveat
         end
 
-        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
-        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+        _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+        _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
         sum(eachindex(du)) do i
           J = du[i]
@@ -349,8 +349,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           _saveat = saveat
         end
 
-        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
-        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+        _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+        _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
         sum(eachindex(du)) do i
           J = du[i]
