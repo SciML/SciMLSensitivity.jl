@@ -101,6 +101,10 @@ _,easy_res11 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                      reltol=1e-14,
                                      sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
                                      )
+_,easy_res12 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+                                     reltol=1e-14,
+                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+                                     )
 
 adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -124,6 +128,7 @@ res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 @test_broken isapprox(res, easy_res9, rtol = 1e-9)
 @test isapprox(res, easy_res10, rtol = 1e-9)
 @test isapprox(res, easy_res11, rtol = 1e-9)
+@test isapprox(res, easy_res12, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -177,6 +182,10 @@ _,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
                                      reltol=1e-14,
                                      sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
                                      )
+_,easy_res12 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+                                     reltol=1e-14,
+                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+                                     )
 
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
@@ -193,6 +202,7 @@ _,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
 @test isapprox(res, easy_res9, rtol = 1e-9)
 @test isapprox(res, easy_res10, rtol = 1e-9)
 @test isapprox(res, easy_res11, rtol = 1e-9)
+@test isapprox(res, easy_res12, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 

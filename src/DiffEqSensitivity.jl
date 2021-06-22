@@ -10,6 +10,7 @@ using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
+import Enzyme
 
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
