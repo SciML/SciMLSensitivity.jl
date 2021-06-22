@@ -251,7 +251,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
   sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
   function forward_sensitivity_backpass(Δ)
-    dp = begin
+    dp = @thunk begin
 
         pdual = seed_duals(p,prob.f)
         u0dual = convert.(eltype(pdual),u0)
