@@ -23,9 +23,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
     # Determine if we can compile ReverseDiff
     compile = try
         if DiffEqBase.isinplace(prob)
-          !hasbranching(prob.f, (typeof(u0),typeof(u0),typeof(p),typeof(prob.tspan[1])))
+          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
         else
-          !hasbranching(prob.f, (typeof(u0),typeof(p),typeof(prob.tspan[1])))
+          !hasbranching(prob.f,u0,p,prob.tspan[1])
         end
     catch
         false
