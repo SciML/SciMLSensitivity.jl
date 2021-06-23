@@ -449,11 +449,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
   tmp1 = zero(y)
   tmp2 = zero(p)
   tmp3 = zero(y)
+  tmp4 = copy(λ)
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
     if W==nothing
-      Enzyme.autodiff(tmp3,
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),
                       t) do out,u,_p,t
@@ -461,7 +462,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
         nothing
       end
     else
-      Enzyme.autodiff(tmp3,
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),
                       t,W) do out,u,p,t
