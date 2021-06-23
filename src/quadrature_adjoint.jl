@@ -104,7 +104,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
   dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
-  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec)
+  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
     tape = if DiffEqBase.isinplace(prob)
       ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
         du1 = similar(p, size(u))
@@ -119,8 +119,21 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
     end
     if compile_tape(sensealg)
       paramjac_config = ReverseDiff.compile(tape)
-    else
-      paramjac_config = tape
+    elseif sensealg.autojacvec isa Bool && sensealg.autojacvec
+      compile = try
+          if DiffEqBase.isinplace(prob)
+            !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+          else
+            !hasbranching(prob.f,u0,p,prob.tspan[1])
+          end
+      catch
+          false
+      end
+      if compile
+          paramjac_config = ReverseDiff.compile(tape)
+      else
+          paramjac_config = tape
+      end
     end
   elseif isautojacvec
     paramjac_config = nothing
@@ -147,7 +160,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
-  elseif sensealg.autojacvec isa Bool || sensealg.autojacvec isa ReverseDiffVJP
+  elseif (sensealg.autojacvec isa Bool && DiffEqBase.isinplace(sol.prob)) || sensealg.autojacvec isa ReverseDiffVJP
     tape = paramjac_config
     tu, tp, tt = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
@@ -161,7 +174,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     ReverseDiff.increment_deriv!(output, λ)
     ReverseDiff.reverse_pass!(tape)
     copyto!(vec(out), ReverseDiff.deriv(tp))
-  elseif sensealg.autojacvec isa ZygoteVJP
+  elseif (sensealg.autojacvec isa Bool && sensealg.autojacvec) || sensealg.autojacvec isa ZygoteVJP
     _dy, back = Zygote.pullback(p) do p
       vec(f(y, p, t))
     end

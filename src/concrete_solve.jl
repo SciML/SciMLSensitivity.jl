@@ -7,7 +7,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                                             kwargs...)
   default_sensealg = if p !== DiffEqBase.NullParameters() && length(u0) + length(p) <= 100
       ForwardDiffSensitivity()
-  elseif isgpu(u0) && !DiffEqBase.isinplace(prob)
+  elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
     if p === nothing || p === DiffEqBase.NullParameters()
