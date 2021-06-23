@@ -441,53 +441,62 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::EnzymeVJP, dgrad, dy, W)
-  @unpack sensealg, f = S
+  @unpack sensealg = S
+  f = S.f.f
+
   prob = getprob(S)
+
+  tmp1 = zero(y)
+  tmp2 = zero(p)
+  tmp3 = zero(y)
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
     if W==nothing
-      back = Enzyme.pullback(y, p) do u, p
-        out_ = similar(u)
-        f(out_, u, p, t)
-        vec(copy(out_))
+      Enzyme.autodiff(tmp3,
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),
+                      t) do out,u,_p,t
+        f(out, u, _p, t)
+        nothing
       end
     else
-      back = Enzyme.pullback(y, p) do u, p
-        out_ = similar(u)
-        f(out_, u, p, t, W)
-        vec(copy(out_))
+      Enzyme.autodiff(tmp3,
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),
+                      t,W) do out,u,p,t
+        f(out, u, p, t, W)
+        nothing
       end
     end
-    tmp1,tmp2 = back(λ)
-    dλ[:] .= vec(tmp1)
-    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+
+    dλ .= tmp1
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+
     if dy !== nothing
-        out_ = similar(y)
         if W==nothing
-            f(out_, y, p, t, W)
+            f(dy, y, p, t)
         else
-            f(out_, y, p, t)
+            f(dy, y, p, t, W)
         end
-        dy[:] .= vec(out_)
     end
   else
     if W==nothing
-      back = Enzyme.pullback(y, p) do u, p
+      Enzyme.autodiff(Enzyme.Duplicated(y, dλ),
+                      Enzyme.Duplicated(p, tmp2),t) do u,p,t
         vec(f(u, p, t))
       end
     else
-      back = Enzyme.pullback(y, p) do u, p
+      Enzyme.autodiff(Enzyme.Duplicated(y, dλ),
+                      Enzyme.Duplicated(p, tmp2),t,W) do u,p,t
         vec(f(u, p, t, W))
       end
     end
-    tmp1,tmp2 = back(λ)
-    tmp1 != nothing && (dλ[:] .= vec(tmp1))
     if dy !== nothing
         out_ = if W==nothing
-            f(y, p, t, W)
-        else
             f(y, p, t)
+        else
+            f(y, p, t, W)
         end
         dy[:] .= vec(out_)
     end
