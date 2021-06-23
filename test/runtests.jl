@@ -33,6 +33,7 @@ end
 if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "hasbranching" begin include("hasbranching.jl") end
     @time @safetestset "Literal Adjoint" begin include("literal_adjoint.jl") end
+    @time @safetestset "ForwardDiff Chunking Adjoints" begin include("forward_chunking.jl") end
     @time @safetestset "Stiff Adjoints" begin include("stiff_adjoints.jl") end
     @time @safetestset "Null Parameters" begin include("null_parameters.jl") end
     @time @safetestset "Forward Mode Prob Kwargs" begin include("forward_prob_kwargs.jl") end
