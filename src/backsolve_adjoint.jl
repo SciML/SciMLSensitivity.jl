@@ -18,8 +18,9 @@ end
 
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   @unpack y, prob, discrete = S
-
+  idx = length(y)
   λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
+
   copyto!(vec(y), _y)
 
   if S.noiseterm
@@ -34,8 +35,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   else
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
   end
-
-  dλ .*= -one(eltype(λ))
+  dλ .*= -1
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
   return nothing
@@ -86,7 +86,7 @@ function split_states(du,u,t,S::ODEBacksolveSensitivityFunction;update=true)
     dgrad = @view du[idx+1:end-idx,1:idx]
     dy    = @view du[idx2]
 
-  else
+  elseif typeof(du) <: AbstractMatrix 
     # non-diagonal noise
     dλ    = @view du[1:idx, 1:idx]
     dgrad = @view du[idx+1:end-idx,1:idx]
