@@ -134,6 +134,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
       else
           paramjac_config = tape
       end
+    else
+      paramjac_config = tape
     end
   elseif isautojacvec
     paramjac_config = nothing
