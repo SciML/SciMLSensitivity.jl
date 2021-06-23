@@ -23,7 +23,7 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=false)
+function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noiseterm=false) where {G,DG}
   prob = sol.prob
   if prob isa DiffEqBase.SteadyStateProblem
     @unpack u0, p = prob
@@ -174,25 +174,27 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     pf = nothing
   elseif sensealg.autojacvec isa EnzymeVJP
     paramjac_config = zero(y),zero(_p),zero(y),zero(y)
-    if DiffEqBase.isinplace(prob) && prob isa RODEProblem
-        pf = function (out,u,_p,t,W)
-            f.f(out, u, _p, t, W)
-            nothing
-        end
-    elseif DiffEqBase.isinplace(prob)
-        pf = function (out,u,_p,t)
-            f.f(out, u, _p, t)
-            nothing
-        end
-    elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
-        pf = function (out,u,_p,t,W)
-            out .= f(u, _p, t, W)
-            nothing
-        end
-    else !DiffEqBase.isinplace(prob)
-        pf = function (out,u,_p,t)
-            out .= f(u, _p, t)
-            nothing
+    pf = let f = f.f
+        if DiffEqBase.isinplace(prob) && prob isa RODEProblem
+            function (out,u,_p,t,W)
+                f(out, u, _p, t, W)
+                nothing
+            end
+        elseif DiffEqBase.isinplace(prob)
+            function (out,u,_p,t)
+                f(out, u, _p, t)
+                nothing
+            end
+        elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
+            function (out,u,_p,t,W)
+                out .= f(u, _p, t, W)
+                nothing
+            end
+        else !DiffEqBase.isinplace(prob)
+            function (out,u,_p,t)
+                out .= f(u, _p, t)
+                nothing
+            end
         end
     end
   elseif (DiffEqBase.has_paramjac(f) || isautojacvec || quad)
