@@ -182,10 +182,10 @@ _,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
                                      reltol=1e-14,
                                      sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
                                      )
-@test_broken _,easy_res12 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
-                                     reltol=1e-14,
-                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
-                                     ) isa Tuple
+#@test_broken _,easy_res12 = adjoint_sensitivities(soloop_nodense,Tsit5(),dg,t,abstol=1e-14,
+#                                     reltol=1e-14,
+#                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+#                                     ) isa Tuple
 
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
