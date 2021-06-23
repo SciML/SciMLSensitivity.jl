@@ -97,11 +97,10 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   y = zero(sol.prob.u0)
   λ = zero(adj_sol.prob.u0)
   # we need to alias `y`
-  pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = zero(y)
   f_cache .= false
   isautojacvec = get_jacvec(sensealg)
-  pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
+
   dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
   if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
@@ -137,9 +136,41 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
     else
       paramjac_config = tape
     end
-  elseif isautojacvec
+    pf = nothing
+    pJ = nothing
+  elseif sensealg.autojacvec isa EnzymeVJP
+      paramjac_config = zero(y),zero(y)
+      pf = let f = f.f
+          if DiffEqBase.isinplace(prob) && prob isa RODEProblem
+              function (out,u,_p,t,W)
+                  f(out, u, _p, t, W)
+                  nothing
+              end
+          elseif DiffEqBase.isinplace(prob)
+              function (out,u,_p,t)
+                  f(out, u, _p, t)
+                  nothing
+              end
+          elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
+              function (out,u,_p,t,W)
+                  out .= f(u, _p, t, W)
+                  nothing
+              end
+          else !DiffEqBase.isinplace(prob)
+              function (out,u,_p,t)
+                  out .= f(u, _p, t)
+                  nothing
+              end
+          end
+      end
+      pJ = nothing
+  elseif isautojacvec # Zygote
     paramjac_config = nothing
+    pf = nothing
+    pJ = nothing
   else
+    pf = similar(u0,length(u0),numparams)
+    pJ = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
@@ -183,11 +214,11 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     tmp = back(λ)
     out[:] .= vec(tmp[1])
   elseif sensealg.autojacvec isa EnzymeVJP
-    back = Zygote.pullback(p) do p
-      vec(f(y, p, t))
-    end
-    tmp = back(λ)
-    out[:] .= vec(tmp[1])
+      tmp3,tmp4 = paramjac_config
+      tmp4 .= λ
+      out .= 0
+      Enzyme.autodiff(pf,Enzyme.Duplicated(tmp3,tmp4),
+                      y,Enzyme.Duplicated(p, out),t)
   end
 
   # TODO: Add tracker?

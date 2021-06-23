@@ -18,21 +18,44 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    # Determine if we can compile ReverseDiff
-    compile = try
-        if DiffEqBase.isinplace(prob)
-          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
-        else
-          !hasbranching(prob.f,u0,p,prob.tspan[1])
+    local du
+    ez = if DiffEqBase.isinplace(prob)
+        du = copy(u0)
+        try
+          Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                          u0,p,prob.tspan[1]) do out,u,_p,t
+            f(out, u, _p, t)
+            nothing
+          end
+          true
+        catch
+          false
         end
-    catch
-        false
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
-      QuadratureAdjoint(autojacvec=ReverseDiffVJP(compile))
+    if ez
+        if p === nothing || p === DiffEqBase.NullParameters()
+          QuadratureAdjoint(autojacvec=EnzymeVJP())
+        else
+          InterpolatingAdjoint(autojacvec=EnzymeVJP())
+        end
     else
-      InterpolatingAdjoint(autojacvec=ReverseDiffVJP(compile))
+        # Determine if we can compile ReverseDiff
+        compile = try
+            if DiffEqBase.isinplace(prob)
+              !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+            else
+              !hasbranching(prob.f,u0,p,prob.tspan[1])
+            end
+        catch
+            false
+        end
+
+        if p === nothing || p === DiffEqBase.NullParameters()
+          QuadratureAdjoint(autojacvec=ReverseDiffVJP(compile))
+        else
+          InterpolatingAdjoint(autojacvec=ReverseDiffVJP(compile))
+        end
     end
   end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
@@ -48,7 +71,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem,DDEProbl
                                                         SDDEProblem,DAEProblem},
                                                         alg,sensealg::Nothing,
                                                         u0,p,args...;kwargs...)
-  if length(u0) + length(p) > 16
+  if length(u0) + length(p) > 100
       default_sensealg = ReverseDiffAdjoint()
   else
       default_sensealg = ForwardDiffSensitivity()
