@@ -446,10 +446,23 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
 
   prob = getprob(S)
 
-  tmp1 = zero(y)
-  tmp2 = zero(p)
-  tmp3 = zero(y)
-  tmp4 = copy(λ)
+  tmp1,tmp2,tmp3,tmp4 = S.diffcache.paramjac_config
+
+  tmp1 .= 0 # should be removed for dλ
+
+  #if dgrad !== nothing
+    #  tmp2 = dgrad
+  #else
+      tmp2 .= 0
+  #end
+
+  #if dy !== nothing
+  #      tmp3 = dy
+  #else
+      tmp3 .= 0
+  #end
+
+  tmp4 .= λ
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
@@ -473,24 +486,19 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
 
     dλ .= tmp1
     dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-
-    if dy !== nothing
-        if W==nothing
-            f(dy, y, p, t)
-        else
-            f(dy, y, p, t, W)
-        end
-    end
+    dy !== nothing && (dy .= tmp3)
   else
     if W==nothing
-      Enzyme.autodiff(Enzyme.Duplicated(y, dλ),
-                      Enzyme.Duplicated(p, tmp2),t) do u,p,t
-        vec(f(u, p, t))
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),t) do out,u,p,t
+        out .= f(u, p, t)
       end
     else
-      Enzyme.autodiff(Enzyme.Duplicated(y, dλ),
-                      Enzyme.Duplicated(p, tmp2),t,W) do u,p,t
-        vec(f(u, p, t, W))
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),t,W) do out,u,p,t
+        out .= f(u, p, t, W)
       end
     end
     if dy !== nothing
@@ -501,7 +509,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
         end
         dy[:] .= vec(out_)
     end
-    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+    dλ .= tmp1
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy .= tmp3)
   end
   return
 end

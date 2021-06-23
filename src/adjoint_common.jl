@@ -172,6 +172,9 @@ function adjointdiffcache(g,sensealg,discrete,sol,dg,f;quad=false,noiseterm=fals
     end
 
     pf = nothing
+  elseif sensealg.autojacvec isa EnzymeVJP
+    paramjac_config = zero(y),zero(_p),zero(y),zero(y)
+    pf = nothing
   elseif (DiffEqBase.has_paramjac(f) || isautojacvec || quad)
     paramjac_config = nothing
     pf = nothing
