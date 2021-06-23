@@ -181,10 +181,10 @@ end
 @inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)
   alg.autojacvec isa Bool ? alg.autojacvec : true
 end
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, _) = false
+@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol=nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
-@inline ischeckpointing(alg::BacksolveAdjoint, _) = alg.checkpointing
+@inline ischeckpointing(alg::BacksolveAdjoint, sol=nothing) = alg.checkpointing
 
 @inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
 @inline isnoise(alg::InterpolatingAdjoint) = alg.noise
