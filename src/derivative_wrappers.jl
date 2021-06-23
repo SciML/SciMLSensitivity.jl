@@ -193,13 +193,13 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   nothing
 end
 
-function vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction;
-                      dgrad=nothing, dy=nothing, W=nothing)
+function vecjacobian!(dλ, y, λ, p, t, S::TS;
+                      dgrad=nothing, dy=nothing, W=nothing) where TS<:SensitivityFunction
   _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Bool, dgrad, dy, W)
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -283,7 +283,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::B
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::TrackerVJP, dgrad, dy, W)
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
@@ -322,7 +322,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::T
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ReverseDiffVJP, dgrad, dy, W)
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
   isautojacvec = get_jacvec(sensealg)
@@ -399,7 +399,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::R
   return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::ZygoteVJP, dgrad, dy, W)
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -440,6 +440,71 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::Z
   return
 end
 
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy, W) where TS<:SensitivityFunction
+  @unpack sensealg = S
+  f = S.f.f
+
+  prob = getprob(S)
+
+  tmp1,tmp2,tmp3,tmp4 = S.diffcache.paramjac_config
+
+  tmp1 .= 0 # should be removed for dλ
+
+  #if dgrad !== nothing
+    #  tmp2 = dgrad
+  #else
+      tmp2 .= 0
+  #end
+
+  #if dy !== nothing
+  #      tmp3 = dy
+  #else
+      tmp3 .= 0
+  #end
+
+  tmp4 .= λ
+
+  isautojacvec = get_jacvec(sensealg)
+  if inplace_sensitivity(S)
+    if W==nothing
+      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),
+                      t)
+    else
+      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),
+                      t,W)
+    end
+
+    dλ .= tmp1
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy .= tmp3)
+  else
+    if W==nothing
+      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),t)
+    else
+      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+                      Enzyme.Duplicated(y, tmp1),
+                      Enzyme.Duplicated(p, tmp2),t,W)
+    end
+    if dy !== nothing
+        out_ = if W==nothing
+            f(y, p, t)
+        else
+            f(y, p, t, W)
+        end
+        dy[:] .= vec(out_)
+    end
+    dλ .= tmp1
+    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dy !== nothing && (dy .= tmp3)
+  end
+  return
+end
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
                       dgrad=nothing, dλ=nothing, dy=nothing)
@@ -447,7 +512,7 @@ function jacNoise!(λ, y, p, t, S::SensitivityFunction;
   return
 end
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, dλ, dy)
+function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -535,7 +600,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::Bool, dgrad, d
   return
 end
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoise, dgrad, dλ, dy)
+function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffNoise, dgrad, dλ, dy) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -573,7 +638,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ReverseDiffNoi
 end
 
 
-function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, dgrad, dλ, dy)
+function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteNoise, dgrad, dλ, dy) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -630,7 +695,7 @@ function _jacNoise!(λ, y, p, t, S::SensitivityFunction, isnoise::ZygoteNoise, d
 end
 
 
-function accumulate_cost!(dλ, y, p, t, S::SensitivityFunction, dgrad=nothing)
+function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:SensitivityFunction
   @unpack dg, dg_val, g, g_grad_config = S.diffcache
   if dg != nothing
     if !(dg isa Tuple)

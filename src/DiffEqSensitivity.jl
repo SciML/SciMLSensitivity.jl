@@ -10,6 +10,7 @@ using SharedArrays
 import DiffEqNoiseProcess
 import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
+import Enzyme
 
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
@@ -51,7 +52,7 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
 
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, ReverseDiffVJP
+export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
 

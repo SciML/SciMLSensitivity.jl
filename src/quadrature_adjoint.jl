@@ -167,6 +167,12 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     end
     tmp = back(λ)
     out[:] .= vec(tmp[1])
+  elseif sensealg.autojacvec isa EnzymeVJP
+    back = Zygote.pullback(p) do p
+      vec(f(y, p, t))
+    end
+    tmp = back(λ)
+    out[:] .= vec(tmp[1])
   end
 
   # TODO: Add tracker?
