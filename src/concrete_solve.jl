@@ -2,24 +2,39 @@
 
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
-function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = if isgpu(u0) && !DiffEqBase.isinplace(prob)
+function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
+                                            alg,sensealg::Nothing,u0,p,args...;
+                                            kwargs...)
+  default_sensealg = if p !== DiffEqBase.NullParameters() && length(u0) + length(p) <= 100
+      ForwardDiffSensitivity()
+  elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
-    # so if in-place, try Zygote
+    # so if out-of-place, try Zygote
     if p === nothing || p === DiffEqBase.NullParameters()
-        # QuadratureAdjoint skips all p calculations until the end
-        # So it's the fastest when there are no parameters
-        QuadratureAdjoint(autojacvec=ZygoteVJP())
-      else
-        InterpolatingAdjoint(autojacvec=ZygoteVJP())
-      end
+      # QuadratureAdjoint skips all p calculations until the end
+      # So it's the fastest when there are no parameters
+      QuadratureAdjoint(autojacvec=ZygoteVJP())
     else
-      if p === nothing || p === DiffEqBase.NullParameters()
-        QuadratureAdjoint()
-      else
-        InterpolatingAdjoint()
-      end
+      InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
+  else
+    # Determine if we can compile ReverseDiff
+    compile = try
+        if DiffEqBase.isinplace(prob)
+          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+        else
+          !hasbranching(prob.f,u0,p,prob.tspan[1])
+        end
+    catch
+        false
+    end
+
+    if p === nothing || p === DiffEqBase.NullParameters()
+      QuadratureAdjoint(autojacvec=ReverseDiffVJP(compile))
+    else
+      InterpolatingAdjoint(autojacvec=ReverseDiffVJP(compile))
+    end
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -29,8 +44,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::DiscreteProblem,alg,sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = ReverseDiffAdjoint()
+function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem,DDEProblem,
+                                                        SDDEProblem,DAEProblem},
+                                                        alg,sensealg::Nothing,
+                                                        u0,p,args...;kwargs...)
+  if length(u0) + length(p) > 16
+      default_sensealg = ReverseDiffAdjoint()
+  else
+      default_sensealg = ForwardDiffSensitivity()
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -237,10 +259,10 @@ end
 
 # Generic Fallback for ForwardDiff
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
-                                 sensealg::ForwardDiffSensitivity,
+                                 sensealg::ForwardDiffSensitivity{CS,CTS},
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
                                  save_idxs = nothing,
-                                 kwargs...)
+                                 kwargs...) where {CS,CTS}
   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
 
   if saveat isa Number
@@ -249,94 +271,168 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat
   end
 
+
+
   sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
   function forward_sensitivity_backpass(Δ)
     dp = @thunk begin
 
-        pdual = seed_duals(p,prob.f)
-        u0dual = convert.(eltype(pdual),u0)
-
-        if (convert_tspan(sensealg) === nothing && (
-              (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-              (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-              )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
-
-          tspandual = convert.(eltype(pdual),prob.tspan)
+        chunk_size = if CS === 0 && length(p) < 12
+            length(p)
+        elseif CS !== 0
+            CS
         else
-          tspandual = prob.tspan
+            12
         end
 
-        if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
-          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-        elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
-          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-        else
-          _f = prob.f
-        end
-        _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+        num_chunks = length(p) ÷ chunk_size
+        num_chunks * chunk_size != length(p) && (num_chunks += 1)
 
-        if saveat isa Number
-          _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-        else
-          _saveat = saveat
-        end
+        pparts = typeof(p[1:1])[]
+        for j in 0:(num_chunks-1)
 
-        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
-        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+            local chunk
+            if ((j+1)*chunk_size) <= length(p)
+                chunk = ((j*chunk_size+1) : ((j+1)*chunk_size))
+                pchunk = vec(p)[chunk]
+                pdualpart = seed_duals(pchunk,prob.f,ForwardDiff.Chunk{chunk_size}())
+            else
+                chunk = ((j*chunk_size+1) : length(p))
+                pchunk = vec(p)[chunk]
+                pdualpart = seed_duals(pchunk,prob.f,ForwardDiff.Chunk{length(chunk)}())
+            end
 
-        sum(eachindex(du)) do i
-          J = du[i]
-          if Δ isa AbstractVector
-            v = Δ[i]
-          else
-            v = @view Δ[:, i]
-          end
-          ForwardDiff.value.(J'v)
+            pdualvec = if j == 0
+                vcat(pdualpart,p[(j+1)*chunk_size+1 : end])
+            elseif j == num_chunks-1
+                vcat(p[1:j*chunk_size],pdualpart)
+            else
+                vcat(p[1:j*chunk_size],pdualpart,p[((j+1)*chunk_size)+1 : end])
+            end
+
+            pdual = ArrayInterface.restructure(p,pdualvec)
+            u0dual = convert.(eltype(pdualvec),u0)
+
+            if (convert_tspan(sensealg) === nothing && (
+                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+                  (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+                  )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+
+              tspandual = convert.(eltype(pdual),prob.tspan)
+            else
+              tspandual = prob.tspan
+            end
+
+            if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
+              _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(u0dual),prob.f.jac_prototype))
+            elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+              _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(u0dual),prob.f.jac_prototype))
+            else
+              _f = prob.f
+            end
+            _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+
+            if saveat isa Number
+              _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+            else
+              _saveat = saveat
+            end
+
+            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
+
+            _dp = sum(eachindex(du)) do i
+              J = du[i]
+              if Δ isa AbstractVector
+                v = Δ[i]
+              else
+                v = @view Δ[:, i]
+              end
+              ForwardDiff.value.(J'v)
+            end
+            push!(pparts,vec(_dp))
         end
+        ArrayInterface.restructure(p,reduce(vcat,pparts))
     end
 
     du0 = @thunk begin
 
-        u0dual = seed_duals(u0,prob.f)
-        pdual = convert.(eltype(u0dual),p)
-
-        if (convert_tspan(sensealg) === nothing && (
-              (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-              (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-              )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
-
-          tspandual = convert.(eltype(pdual),prob.tspan)
+        chunk_size = if CS === 0 && length(u0) < 12
+            length(u0)
+        elseif CS !== 0
+            CS
         else
-          tspandual = prob.tspan
+            12
         end
 
-        if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
-          _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-        elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
-          _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
-        else
-          _f = prob.f
-        end
-        _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+        num_chunks = length(u0) ÷ chunk_size
+        num_chunks * chunk_size != length(u0) && (num_chunks += 1)
 
-        if saveat isa Number
-          _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-        else
-          _saveat = saveat
-        end
+        du0parts = typeof(u0[1:1])[]
+        for j in 0:(num_chunks-1)
 
-        sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
-        _,du = extract_local_sensitivities(sol, sensealg, Val(true))
+            local chunk
+            if ((j+1)*chunk_size) <= length(u0)
+                chunk = ((j*chunk_size+1) : ((j+1)*chunk_size))
+                u0chunk = vec(u0)[chunk]
+                u0dualpart = seed_duals(u0chunk,prob.f,ForwardDiff.Chunk{chunk_size}())
+            else
+                chunk = ((j*chunk_size+1) : length(u0))
+                u0chunk = vec(u0)[chunk]
+                u0dualpart = seed_duals(u0chunk,prob.f,ForwardDiff.Chunk{length(chunk)}())
+            end
 
-        sum(eachindex(du)) do i
-          J = du[i]
-          if Δ isa AbstractVector
-            v = Δ[i]
-          else
-            v = @view Δ[:, i]
-          end
-          ForwardDiff.value.(J'v)
+            u0dualvec = if j == 0
+                vcat(u0dualpart,u0[(j+1)*chunk_size+1 : end])
+            elseif j == num_chunks-1
+                vcat(u0[1:j*chunk_size],u0dualpart)
+            else
+                vcat(u0[1:j*chunk_size],u0dualpart,u0[((j+1)*chunk_size)+1 : end])
+            end
+
+            u0dual = ArrayInterface.restructure(u0,u0dualvec)
+            pdual = convert.(eltype(u0dual),p)
+
+            if (convert_tspan(sensealg) === nothing && (
+                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
+                  (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
+                  )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+
+              tspandual = convert.(eltype(pdual),prob.tspan)
+            else
+              tspandual = prob.tspan
+            end
+
+            if typeof(prob.f) <: ODEFunction && prob.f.jac_prototype !== nothing
+              _f = ODEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+            elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+              _f = SDEFunction{SciMLBase.isinplace(prob.f),true}(prob.f,jac_prototype = convert.(eltype(pdual),prob.f.jac_prototype))
+            else
+              _f = prob.f
+            end
+            _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+
+            if saveat isa Number
+              _saveat = prob.tspan[1]:saveat:prob.tspan[2]
+            else
+              _saveat = saveat
+            end
+
+            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
+
+            _du0 = sum(eachindex(du)) do i
+              J = du[i]
+              if Δ isa AbstractVector
+                v = Δ[i]
+              else
+                v = @view Δ[:, i]
+              end
+              ForwardDiff.value.(J'v)
+            end
+            push!(du0parts,vec(_du0))
         end
+        ArrayInterface.restructure(u0,reduce(vcat,du0parts))
     end
 
     (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
