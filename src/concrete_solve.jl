@@ -288,7 +288,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         num_chunks = length(p) ÷ chunk_size
         num_chunks * chunk_size != length(p) && (num_chunks += 1)
 
-        pparts = typeof(vec(p))[]
+        pparts = typeof(p[1:1])[]
         for j in 0:(num_chunks-1)
 
             local chunk
@@ -368,7 +368,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         num_chunks = length(u0) ÷ chunk_size
         num_chunks * chunk_size != length(u0) && (num_chunks += 1)
 
-        du0parts = typeof(vec(u0))[]
+        du0parts = typeof(u0[1:1])[]
         for j in 0:(num_chunks-1)
 
             local chunk
