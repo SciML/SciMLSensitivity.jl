@@ -212,7 +212,7 @@ function split_states(du,u,t,S::TS;update=true) where TS<:ODEInterpolatingAdjoin
     dλ    = @view du[idx1]
     dgrad = @view du[idx+1:end,1:idx]
 
-  else
+  elseif typeof(du) <: AbstractMatrix
     # non-diagonal noise and noise mixing case
     dλ    = @view du[1:idx,1:idx]
     dgrad = @view du[idx+1:end,1:idx]
