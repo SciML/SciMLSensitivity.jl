@@ -467,15 +467,21 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
     if W==nothing
-      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),
-                      t)
+                      t) do out,u,_p,t
+        f(out, u, _p, t)
+        nothing
+      end
     else
-      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),
-                      t,W)
+                      t,W) do out,u,p,t
+        f(out, u, p, t, W)
+        nothing
+      end
     end
 
     dλ .= tmp1
@@ -483,13 +489,17 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, isautojacvec::E
     dy !== nothing && (dy .= tmp3)
   else
     if W==nothing
-      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),t)
+                      Enzyme.Duplicated(p, tmp2),t) do out,u,p,t
+        out .= f(u, p, t)
+      end
     else
-      Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
+      Enzyme.autodiff(Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),t,W)
+                      Enzyme.Duplicated(p, tmp2),t,W) do out,u,p,t
+        out .= f(u, p, t, W)
+      end
     end
     if dy !== nothing
         out_ = if W==nothing
