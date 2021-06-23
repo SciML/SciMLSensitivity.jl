@@ -7,7 +7,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                                             kwargs...)
   default_sensealg = if p !== DiffEqBase.NullParameters() &&
                         !(eltype(u0) <: ForwardDiff.Dual) &&
-                        !(eltype(p)) <: ForwardDiff.Dual) &&
+                        !(eltype(p) <: ForwardDiff.Dual) &&
+                        !(eltype(u0) <: Complex) &&
+                        !(eltype(p) <: Complex) &&
                         length(u0) + length(p) <= 100
       ForwardDiffSensitivity()
   elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
