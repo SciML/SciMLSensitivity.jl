@@ -28,3 +28,9 @@ grad_ode = Zygote.gradient(p) do p
 end[1]
 
 @test fd_ode ≈ grad_ode rtol=1e-6
+
+grad_ode = Zygote.gradient(p) do p
+    sum(last(solve(prob_ode, Tsit5(),p=p,abstol=1e-12,reltol=1e-12, sensealg = InterpolatingAdjoint())))
+end[1]
+
+@test fd_ode ≈ grad_ode rtol=1e-6
