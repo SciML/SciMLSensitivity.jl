@@ -5,7 +5,10 @@
 function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                                             alg,sensealg::Nothing,u0,p,args...;
                                             kwargs...)
-  default_sensealg = if p !== DiffEqBase.NullParameters() && length(u0) + length(p) <= 100
+  default_sensealg = if p !== DiffEqBase.NullParameters() &&
+                        !(eltype(u0) <: ForwardDiff.Dual) &&
+                        !(eltype(p)) <: ForwardDiff.Dual) &&
+                        length(u0) + length(p) <= 100
       ForwardDiffSensitivity()
   elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast

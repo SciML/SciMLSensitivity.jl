@@ -169,8 +169,8 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
     pf = nothing
     pJ = nothing
   else
-    pf = similar(u0,length(u0),numparams)
-    pJ = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
+    pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
+    pJ = similar(u0,length(u0),numparams)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
