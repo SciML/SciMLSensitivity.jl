@@ -366,7 +366,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=unique(sol.t),save_idxs = _save_idxs, internalnorm = UNPERTURBED_NORM, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _dp = sum(eachindex(du)) do i
@@ -446,7 +446,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=unique(sol.t),save_idxs = _save_idxs, internalnorm = UNPERTURBED_NORM, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _du0 = sum(eachindex(du)) do i
