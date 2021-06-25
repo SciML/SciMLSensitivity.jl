@@ -291,15 +291,15 @@ SciMLBase.ODEFunction(f::ODEForwardSensitivityFunction; kwargs...) = f
 @inline UNPERTURBED_NORM(u,t) = DiffEqBase.ODE_DEFAULT_NORM(u,t)
 
 # Support adaptive with non-dual time
-@inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual},::Any) = sqrt(sum(DiffEqBase.UNITLESS_ABS2∘value,u) / length(u))
-@inline UNPERTURBED_NORM(u::ForwardDiff.Dual,::Any) = abs(value(u))
+@inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual},::Any) = sqrt(sum(DiffEqBase.UNITLESS_ABS2∘DiffEqBase.value,u) / length(u))
+@inline UNPERTURBED_NORM(u::ForwardDiff.Dual,::Any) = abs(DiffEqBase.value(u))
 
 # When time is dual, it shouldn't drop the duals for adaptivity
 @inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual},::ForwardDiff.Dual) = sqrt(sum(DiffEqBase.UNITLESS_ABS2,u) / length(u))
 @inline UNPERTURBED_NORM(u::ForwardDiff.Dual,::ForwardDiff.Dual) = abs(u)
 
-@inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual{<:Any,<:ForwardDiff.Dual}},::ForwardDiff.Dual) = sqrt(sum(DiffEqBase.UNITLESS_ABS2∘value,u) / length(u))
-@inline UNPERTURBED_NORM(u::ForwardDiff.Dual{<:Any,ForwardDiff.Dual},::ForwardDiff.Dual) = abs(value(u))
+@inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual{<:Any,<:ForwardDiff.Dual}},::ForwardDiff.Dual) = sqrt(sum(DiffEqBase.UNITLESS_ABS2∘DiffEqBase.value,u) / length(u))
+@inline UNPERTURBED_NORM(u::ForwardDiff.Dual{<:Any,ForwardDiff.Dual},::ForwardDiff.Dual) = abs(DiffEqBase.value(u))
 
 @inline UNPERTURBED_NORM(u::AbstractArray{<:ForwardDiff.Dual{<:Any,<:ForwardDiff.Dual}},::ForwardDiff.Dual{<:Any,ForwardDiff.Dual}) = sqrt(sum(DiffEqBase.UNITLESS_ABS2,u) / length(u))
 @inline UNPERTURBED_NORM(u::ForwardDiff.Dual{<:Any,ForwardDiff.Dual},::ForwardDiff.Dual{<:Any,ForwardDiff.Dual}) = abs(u)
