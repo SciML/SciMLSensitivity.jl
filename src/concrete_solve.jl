@@ -24,7 +24,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
     end
   else
     local du
-    #=
     ez = if DiffEqBase.isinplace(prob)
         du = copy(u0)
         try
@@ -38,8 +37,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
           false
         end
     end
-    =#
-    ez = false
 
     if ez
         if p === nothing || p === DiffEqBase.NullParameters()

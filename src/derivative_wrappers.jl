@@ -440,7 +440,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
   return
 end
 
-#=
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg = S
   f = S.f.f
@@ -506,7 +505,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
   end
   return
 end
-=#
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
                       dgrad=nothing, dλ=nothing, dy=nothing)
