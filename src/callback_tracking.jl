@@ -4,45 +4,47 @@ the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
-track_callbacks(cb,t,u) = track_callbacks(CallbackSet(cb),t,u,p)
-track_callbacks(cb::CallbackSet,t,u,p) = CallbackSet(
-   map(cb->_track_callback(cb,t,u,p), cb.continuous_callbacks),
-   map(cb->_track_callback(cb,t,u,p), cb.discrete_callbacks))
+track_callbacks(cb,t,u;save_values = true, always_save_t = false) = track_callbacks(CallbackSet(cb),t,u,p;save_values,always_save_t)
+track_callbacks(cb::CallbackSet,t,u,p; save_values = true, always_save_t = false) = CallbackSet(
+   map(cb->_track_callback(cb,t,u,p,save_values,always_save_t), cb.continuous_callbacks),
+   map(cb->_track_callback(cb,t,u,p,save_values,always_save_t), cb.discrete_callbacks))
 
 struct TrackedAffect{T,T2,T3,T4}
     event_times::Vector{T}
     uleft::Vector{T2}
     pleft::Vector{T3}
     affect!::T4
+    save_values::Bool
+    always_save_t::Bool
 end
 
-TrackedAffect(t::Number,u,p,affect!::Nothing) = nothing
-TrackedAffect(t::Number,u,p,affect!) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(p)}(undef,0),Vector{typeof(u)}(undef,0),affect!)
+TrackedAffect(t::Number,u,p,affect!::Nothing,save_values,always_save_t) = nothing
+TrackedAffect(t::Number,u,p,affect!,save_values,always_save_t) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(p)}(undef,0),Vector{typeof(u)}(undef,0),affect!,save_values,always_save_t)
 
 function (f::TrackedAffect)(integrator)
-    uleft = deepcopy(integrator.u)
-    pleft = deepcopy(integrator.p)
+    f.save_values && (uleft = deepcopy(integrator.u))
+    f.save_values && (pleft = deepcopy(integrator.p))
     f.affect!(integrator)
+    (f.always_save_t || integrator.u_modified) && push!(f.event_times,integrator.t)
     if integrator.u_modified
-        push!(f.event_times,integrator.t)
-        push!(f.uleft,uleft)
-        push!(f.pleft,pleft)
+        f.save_values && push!(f.uleft,uleft)
+        f.save_values && push!(f.pleft,pleft)
     end
 end
 
-function _track_callback(cb::DiscreteCallback,t,u,p)
+function _track_callback(cb::DiscreteCallback,t,u,p,save_values,always_save_t)
     DiscreteCallback(cb.condition,
-                     TrackedAffect(t,u,p,cb.affect!),
+                     TrackedAffect(t,u,p,cb.affect!,save_values,always_save_t),
                      cb.initialize,
                      cb.finalize,
                      cb.save_positions)
 end
 
-function _track_callback(cb::ContinuousCallback,t,u,p)
+function _track_callback(cb::ContinuousCallback,t,u,p,save_values,always_save_t)
     ContinuousCallback(
         cb.condition,
-        TrackedAffect(t,u,p,cb.affect!),
-        TrackedAffect(t,u,p,cb.affect_neg!),
+        TrackedAffect(t,u,p,cb.affect!,save_values,always_save_t),
+        TrackedAffect(t,u,p,cb.affect_neg!,save_values,always_save_t),
         cb.initialize,
         cb.finalize,
         cb.idxs,
@@ -51,11 +53,11 @@ function _track_callback(cb::ContinuousCallback,t,u,p)
         cb.dtrelax,cb.abstol,cb.reltol,cb.repeat_nudge)
 end
 
-function _track_callback(cb::VectorContinuousCallback,t,u,p)
+function _track_callback(cb::VectorContinuousCallback,t,u,p,save_values,always_save_t)
     VectorContinuousCallback(
                cb.condition,
-               TrackedAffect(t,u,p,cb.affect!),
-               TrackedAffect(t,u,p,cb.affect_neg!),
+               TrackedAffect(t,u,p,cb.affect!,save_values,always_save_t),
+               TrackedAffect(t,u,p,cb.affect_neg!,save_values,always_save_t),
                cb.len,cb.initialize,cb.finalize,cb.idxs,
                cb.rootfind,cb.interp_points,
                collect(cb.save_positions),

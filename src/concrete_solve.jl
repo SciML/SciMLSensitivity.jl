@@ -299,9 +299,34 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat
   end
 
+  if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
+    if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,save_values=false,always_save_t=true)
+    elseif haskey(prob.kwargs,:callback)
+      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,save_values=false,always_save_t=true)
+    else #haskey(kwargs,:callback)
+      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,save_values=false,always_save_t=true)
+    end
+    _prob = remake(prob,u0=u0,p=p,callback=cb)
+  else
+    cb = nothing
+    _prob = remake(prob,u0=u0,p=p)
+  end
 
+  # Remove callbacks from kwargs since it's already in _prob
+  kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
+                          values(kwargs)), (:callback,))}(values(kwargs))
 
-  sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+  sol = solve(_prob,alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs_fwd...)
+
+  if cb == nothing
+      ts = sol.t
+  else
+      event_times = reduce(vcat,vcat(map(cb->cb.affect!.event_times, cb.continuous_callbacks),
+                                     map(cb->cb.affect!.event_times, cb.discrete_callbacks)))
+      ts = sol.t[sol.t .∉ event_times]
+  end
+
   function forward_sensitivity_backpass(Δ)
     dp = @thunk begin
 
@@ -360,14 +385,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 
-            if saveat isa Number
-              _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-            else
-              _saveat = saveat
-            end
-
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
+
+            @show ForwardDiff.value.(_sol.t), sol.t
 
             _dp = sum(eachindex(du)) do i
               J = du[i]
@@ -440,14 +461,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 
-            if saveat isa Number
-              _saveat = prob.tspan[1]:saveat:prob.tspan[2]
-            else
-              _saveat = saveat
-            end
-
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
+
+            @show ForwardDiff.value.(_sol.t), sol.t
 
             _du0 = sum(eachindex(du)) do i
               J = du[i]
