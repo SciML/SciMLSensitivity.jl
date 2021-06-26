@@ -481,8 +481,8 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
       (d ∉ _ts) && push!(_ts, d)
     end
 
-    u1 = sol(_ts)[:]
-    u2 = sol(duplicate_times,continuity=:right)[:]
+    u1 = sol(_ts).u
+    u2 = sol(duplicate_times,continuity=:right).u
     saveat = vcat(_ts,  duplicate_times...)
     perm = sortperm(saveat)
     ts = saveat[perm]

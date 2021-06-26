@@ -299,9 +299,27 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat
   end
 
-
-
   sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+
+  # saveat values
+  # seems overcomplicated, but see the PR
+  if length(sol.t) == 1
+      ts = sol.t
+  else
+      ts = eltype(sol.t)[]
+      if sol.t[2] != sol.t[1]
+          push!(ts,sol.t[1])
+      end
+      for i in 2:length(sol.t)-1
+          if sol.t[i] != sol.t[i+1] && sol.t[i] != sol.t[i-1]
+              push!(ts,sol.t[i])
+          end
+      end
+      if sol.t[end] != sol.t[end-1]
+          push!(ts,sol.t[end])
+      end
+  end
+
   function forward_sensitivity_backpass(Δ)
     dp = @thunk begin
 
@@ -366,7 +384,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _dp = sum(eachindex(du)) do i
@@ -446,7 +464,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=sol.t,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _du0 = sum(eachindex(du)) do i
