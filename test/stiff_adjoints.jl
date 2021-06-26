@@ -24,7 +24,7 @@ target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -40,7 +40,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -54,7 +54,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -68,7 +68,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -88,7 +88,7 @@ target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-12,reltol=1e-12)
+    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -105,7 +105,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -119,7 +119,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8,sensealg=InterpolatingAdjoint())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -133,7 +133,21 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol=1e-12,reltol=1e-12)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol=1e-10,reltol=1e-10,sensealg=InterpolatingAdjoint())
+
+    tmpdata=prediction[[1,2],:];
+    tdata=target_data[[1,2],:];
+
+    # Calculate squared error
+    return sum(abs2,tmpdata-tdata)
+end
+
+rdgrad = Zygote.gradient(loss_function,p)[1]
+@test fdgrad ≈ rdgrad rtol=1e-3
+
+loss_function = function(p)
+    prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol=1e-14,reltol=1e-14,sensealg=ForwardDiffSensitivity())
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
