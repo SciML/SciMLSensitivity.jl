@@ -88,7 +88,7 @@ target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-10,reltol=1e-10)
+    prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0,abstol=1e-12,reltol=1e-12)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -133,7 +133,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-12,reltol=1e-12)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol=1e-12,reltol=1e-12)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
