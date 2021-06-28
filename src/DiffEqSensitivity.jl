@@ -11,12 +11,20 @@ import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
 import ZygoteRules, Zygote, ReverseDiff
+import ArrayInterface
+import Enzyme
+
+using Cassette, DiffRules
+using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
+
 using Reexport
+import ChainRulesCore: @thunk, NoTangent, @not_implemented
 @reexport using GlobalSensitivity
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
 include("require.jl")
+include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")
@@ -53,7 +61,7 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
 
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, ReverseDiffVJP
+export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
 

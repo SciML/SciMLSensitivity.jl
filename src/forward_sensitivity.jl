@@ -173,7 +173,7 @@ function seed_duals(x::AbstractArray{V},f,
                     ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x,typemax(Int64)),
                     ) where {V,T,N}
   seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N,V})
-  duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f,eltype(vec(x))))}.(x,seeds)
+  duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f,eltype(vec(x))))}.(vec(x),seeds)
 end
 
 has_continuous_callback(cb::DiscreteCallback) = false

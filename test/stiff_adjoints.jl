@@ -133,7 +133,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
-    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-8,reltol=1e-8)
+    prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0,abstol=1e-12,reltol=1e-12)
 
     tmpdata=prediction[[1,2],:];
     tdata=target_data[[1,2],:];
@@ -143,49 +143,24 @@ loss_function = function(p)
 end
 
 rdgrad = Zygote.gradient(loss_function,p)[1]
-@test fdgrad ≈ rdgrad rtol=1e-4
+@test fdgrad ≈ rdgrad rtol=1e-3
 
 # all implicit solvers
 solvers = [
     # SDIRK Methods (ok)
     ImplicitEuler(),
-    ImplicitMidpoint(),
-    Trapezoid(),
     TRBDF2(),
-    SDIRK2(),
-    Kvaerno3(),
-    KenCarp3(),
-    Cash4(),
-    Hairer4(),
-    Hairer42(),
-    Kvaerno4(),
     KenCarp4(),
-    Kvaerno5(),
-    KenCarp5(),
     # Fully-Implicit Runge-Kutta Methods (FIRK)
     RadauIIA5(),
     # Fully-Implicit Runge-Kutta Methods (FIRK)
     #PDIRK44(),
     # Rosenbrock Methods
-    ROS3P(),
     Rodas3(),
-    RosShamp4(),
-    Veldd4(),
-    Velds4(),
-    GRK4T(),
-    GRK4A(),
-    Ros4LStab(),
     Rodas4(),
-    Rodas42(),
-    Rodas4P(),
     Rodas5(),
     # Rosenbrock-W Methods
     Rosenbrock23(),
-    Rosenbrock32(),
-    RosenbrockW6S4OS(),
-    ROS34PW1a(),
-    ROS34PW1b(),
-    ROS34PW2(),
     ROS34PW3(),
     # Stabilized Explicit Methods (ok)
     ROCK2(),
@@ -209,5 +184,12 @@ for solver in solvers
 
     println(DiffEqBase.parameterless_type(solver))
     loss(p)
+    Zygote.gradient(loss, p)
+
+    function loss(p)
+        prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
+        sol = solve(prob, solver, dt=0.01, sensealg=InterpolatingAdjoint())
+        sum(abs2, Array(sol))
+    end
     Zygote.gradient(loss, p)
 end

@@ -179,6 +179,7 @@ end
 
 abstract type VJPChoice end
 struct ZygoteVJP <: VJPChoice end
+struct EnzymeVJP <: VJPChoice end
 struct TrackerVJP <: VJPChoice end
 struct ReverseDiffVJP{compile} <: VJPChoice
   ReverseDiffVJP(compile=false) = new{compile}()
@@ -198,10 +199,19 @@ end
 @inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)
   alg.autojacvec isa Bool ? alg.autojacvec : true
 end
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :checkpointing) ? alg.checkpointing : false
+@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol=nothing) = false
+@inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
-@inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :noise) ? alg.noise : false
-@inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm, ::Vararg) = isdefined(alg, :noisemixing) ? alg.noisemixing : false
+@inline ischeckpointing(alg::BacksolveAdjoint, sol=nothing) = alg.checkpointing
+
+@inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
+@inline isnoise(alg::InterpolatingAdjoint) = alg.noise
+@inline isnoise(alg::BacksolveAdjoint) = alg.noise
+
+@inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
+@inline isnoisemixing(alg::InterpolatingAdjoint) = alg.noisemixing
+@inline isnoisemixing(alg::BacksolveAdjoint) = alg.noisemixing
+
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
 @inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false

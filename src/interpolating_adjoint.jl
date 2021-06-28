@@ -136,7 +136,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t,W)
   return nothing
 end
 
-function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;update=true)
+function split_states(du,u,t,S::TS;update=true) where TS<:ODEInterpolatingAdjointSensitivityFunction
   @unpack sol, y, checkpoint_sol, discrete, prob, f = S
   idx = length(y)
 
@@ -212,7 +212,7 @@ function split_states(du,u,t,S::ODEInterpolatingAdjointSensitivityFunction;updat
     dλ    = @view du[idx1]
     dgrad = @view du[idx+1:end,1:idx]
 
-  else
+  elseif typeof(du) <: AbstractMatrix
     # non-diagonal noise and noise mixing case
     dλ    = @view du[1:idx,1:idx]
     dgrad = @view du[idx+1:end,1:idx]
@@ -223,11 +223,11 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     g::G,t=nothing,dg::DG=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
-                                     kwargs...)
+                                     kwargs...) where {G,DG}
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
   discrete = t != nothing

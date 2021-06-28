@@ -97,14 +97,13 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
   y = zero(sol.prob.u0)
   λ = zero(adj_sol.prob.u0)
   # we need to alias `y`
-  pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
   f_cache = zero(y)
   f_cache .= false
   isautojacvec = get_jacvec(sensealg)
-  pJ = isautojacvec ? nothing : similar(u0,length(u0),numparams)
+
   dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
-  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec)
+  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
     tape = if DiffEqBase.isinplace(prob)
       ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
         du1 = similar(p, size(u))
@@ -119,12 +118,59 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
     end
     if compile_tape(sensealg)
       paramjac_config = ReverseDiff.compile(tape)
+    elseif sensealg.autojacvec isa Bool && sensealg.autojacvec
+      compile = try
+          if DiffEqBase.isinplace(prob)
+            !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+          else
+            !hasbranching(prob.f,u0,p,prob.tspan[1])
+          end
+      catch
+          false
+      end
+      if compile
+          paramjac_config = ReverseDiff.compile(tape)
+      else
+          paramjac_config = tape
+      end
     else
       paramjac_config = tape
     end
-  elseif isautojacvec
+    pf = nothing
+    pJ = nothing
+  elseif sensealg.autojacvec isa EnzymeVJP
+      paramjac_config = zero(y),zero(y)
+      pf = let f = f.f
+          if DiffEqBase.isinplace(prob) && prob isa RODEProblem
+              function (out,u,_p,t,W)
+                  f(out, u, _p, t, W)
+                  nothing
+              end
+          elseif DiffEqBase.isinplace(prob)
+              function (out,u,_p,t)
+                  f(out, u, _p, t)
+                  nothing
+              end
+          elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
+              function (out,u,_p,t,W)
+                  out .= f(u, _p, t, W)
+                  nothing
+              end
+          else !DiffEqBase.isinplace(prob)
+              function (out,u,_p,t)
+                  out .= f(u, _p, t)
+                  nothing
+              end
+          end
+      end
+      pJ = nothing
+  elseif isautojacvec # Zygote
     paramjac_config = nothing
+    pf = nothing
+    pJ = nothing
   else
+    pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
+    pJ = similar(u0,length(u0),numparams)
     paramjac_config = build_param_jac_config(sensealg,pf,y,p)
   end
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
@@ -147,7 +193,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
-  elseif sensealg.autojacvec isa Bool || sensealg.autojacvec isa ReverseDiffVJP
+  elseif (sensealg.autojacvec isa Bool && DiffEqBase.isinplace(sol.prob)) || sensealg.autojacvec isa ReverseDiffVJP
     tape = paramjac_config
     tu, tp, tt = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
@@ -161,12 +207,18 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     ReverseDiff.increment_deriv!(output, λ)
     ReverseDiff.reverse_pass!(tape)
     copyto!(vec(out), ReverseDiff.deriv(tp))
-  elseif sensealg.autojacvec isa ZygoteVJP
+  elseif (sensealg.autojacvec isa Bool && sensealg.autojacvec) || sensealg.autojacvec isa ZygoteVJP
     _dy, back = Zygote.pullback(p) do p
       vec(f(y, p, t))
     end
     tmp = back(λ)
     out[:] .= vec(tmp[1])
+  elseif sensealg.autojacvec isa EnzymeVJP
+      tmp3,tmp4 = paramjac_config
+      tmp4 .= λ
+      out .= 0
+      Enzyme.autodiff(pf,Enzyme.Duplicated(tmp3,tmp4),
+                      y,Enzyme.Duplicated(p, out),t)
   end
 
   # TODO: Add tracker?

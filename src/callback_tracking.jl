@@ -48,7 +48,7 @@ function _track_callback(cb::ContinuousCallback,t,u,p)
         cb.idxs,
         cb.rootfind,cb.interp_points,
         cb.save_positions,
-        cb.dtrelax,cb.abstol,cb.reltol)
+        cb.dtrelax,cb.abstol,cb.reltol,cb.repeat_nudge)
 end
 
 function _track_callback(cb::VectorContinuousCallback,t,u,p)
@@ -59,7 +59,7 @@ function _track_callback(cb::VectorContinuousCallback,t,u,p)
                cb.len,cb.initialize,cb.finalize,cb.idxs,
                cb.rootfind,cb.interp_points,
                collect(cb.save_positions),
-               cb.dtrelax,cb.abstol,cb.reltol)
+               cb.dtrelax,cb.abstol,cb.reltol,cb.repeat_nudge)
 end
 
 struct FakeIntegrator{uType,P,tType}

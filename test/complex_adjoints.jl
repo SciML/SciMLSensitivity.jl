@@ -13,7 +13,7 @@ prob = ODEProblem{false}(f,u0,tspan,p)
 utarget = [0.0*im 1.0; 1.0 0.0]
 
 function loss_adjoint(p)
-    ufinal = last(solve(prob, Tsit5(), p=p, abstol=1e-12, reltol=1e-12))
+    ufinal = last(solve(prob, Tsit5(), p=p, abstol=1e-12, reltol=1e-12, sensealg = InterpolatingAdjoint()))
     loss = 1 - abs(tr(ufinal*utarget')/2)^2
     return loss
 end
@@ -33,7 +33,7 @@ function loss_fun(sol)
 end
 
 function inner_loop(prob, p, loss_fun; sensealg = InterpolatingAdjoint())
-    sol = solve(prob, Tsit5(), p=p,  saveat=0.1)
+    sol = solve(prob, Tsit5(), p=p,  saveat=0.1; sensealg)
     err = loss_fun(sol)
     return err
 end
