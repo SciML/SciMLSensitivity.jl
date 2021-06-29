@@ -23,8 +23,11 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Al
   colorvec::CV
 end
 
-struct NILSSForwardSensitivityFunction{iip,sensefunType} <: DiffEqBase.AbstractODEFunction{iip}
+struct NILSSForwardSensitivityFunction{iip,sensefunType,senseType,MM} <: DiffEqBase.AbstractODEFunction{iip}
   S::sensefunType
+  sensealg::senseType
+  nus::Int
+  mass_matrix::MM
 end
 
 function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
@@ -47,7 +50,8 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsi
                              jac_config,paramjac_config,alg,
                              numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
   if nus!==nothing
-    sensefun = NILSSForwardSensitivityFunction{isinplace(f), typeof(sensefun)}(sensefun)
+    sensefun = NILSSForwardSensitivityFunction{isinplace(f), typeof(sensefun),
+                             typeof(alg),typeof(mm)}(sensefun,alg,nus,mm)
   end
 
   return sensefun
@@ -111,6 +115,8 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     tspan,p=nothing,
                                     alg::ForwardSensitivity = ForwardSensitivity();
                                     nus=nothing, # determine if Nilss is used
+                                    w0=nothing,
+                                    v0=nothing,
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
@@ -161,7 +167,11 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   if nus===nothing
     sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
   else
-    sense_u0 = [u0;zeros(eltype(u0),(nus+1)*sense.numindvar*sense.numparams)]
+    if w0===nothing && v0===nothing
+      sense_u0 = [u0;zeros(eltype(u0),(nus+1)*sense.S.numindvar*sense.S.numparams)]
+    else
+      sense_u0 = [u0;w0;v0]
+    end
   end
   ODEProblem(sense,sense_u0,tspan,p,
              ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
