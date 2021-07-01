@@ -48,7 +48,7 @@ end
 
 struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
     TType,dtType,gType,yType,vstarType,
-    wType,RType,bType,weightType,CType,dType,BType,aType,vType,ksiType,
+    wType,RType,bType,weightType,CType,dType,BType,aType,vType,xiType,
     G,DG,resType}
   sensealg::A
   diffcache::CacheType
@@ -77,7 +77,7 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
   a::aType
   v::vType
   v_perp::vType
-  ξ::ksiType
+  ξ::xiType
   g::G
   dg::DG
   res::resType
@@ -143,11 +143,11 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
   vstar0 = zeros(eltype(u0), numindvar*numparams)
   w0 = vec(w[:,:,1,1,:])
 
-  R = Array{eltype(u0)}(undef, numparams, nseg, nstep-1, nus, nus)
-  b = Array{eltype(u0)}(undef, numparams, nseg*(nstep-1)*nus)
+  R = Array{eltype(u0)}(undef, numparams, nseg-1, nus, nus)
+  b = Array{eltype(u0)}(undef, numparams, (nseg-1)*nus)
 
   # a weight matrix for integration, 0.5 at interfaces
-  weight = ones(nstep)
+  weight = ones(1,nstep)
   weight[1] /= 2
   weight[end] /= 2
 
@@ -155,8 +155,10 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
   # See the paper on FD-NILSS
   # find C^-1
   Cinv = Matrix{eltype(u0)}(undef, nseg*nus, nseg*nus)
+  Cinv .*= false
   d = Vector{eltype(u0)}(undef, nseg*nus)
   B = Matrix{eltype(u0)}(undef, (nseg-1)*nus, nseg*nus)
+  B .*= false
 
   a = Vector{eltype(u0)}(undef, nseg*nus)
   v = Array{eltype(u0)}(undef, numindvar, nstep, nseg)
@@ -226,10 +228,11 @@ end
 
 function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
   #TODO determine a good dtsave (ΔT in paper, see Sec.4.2)
-  @unpack nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, y, dudt, gsave, forward_prob, u0, vstar0, w0 = prob
+  @unpack nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y, dudt, gsave, dgdu, forward_prob, u0, vstar0, w0 = prob
   @unpack p, f = forward_prob
   @unpack S, sensealg = f
   @unpack nseg, nstep = nilss
+  @unpack numindvar, numparams = S
 
   # push forward
   t1 = forward_prob.tspan[1]
@@ -238,78 +241,238 @@ function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
 
   for iseg=1:nseg
     # compute y, w, vstar
+    # _sol is a numindvar*(1+nus+1) x nstep matrix
     _sol = Array(solve(_prob, alg, saveat=dtsave, dt=dtsave)(_prob.tspan[1]:dtsave:_prob.tspan[2]))
-    @show size(_sol), size(y), size(w), size(vstar)
-    error()
-    store_y_w_vstar!(y, w, vstar, _sol, iseg)
+    store_y_w_vstar!(y, w, vstar, _sol, nus, numindvar, numparams, iseg)
 
     # store dudt, objective g (gsave), and its derivative wrt. to u (dgdu)
-    dudt_g_dgdu!(dudt, gsave, dgdu, u, forward_prob.p, iseg)
+    dudt_g_dgdu!(dudt, gsave, dgdu, prob, y, forward_prob.p, iseg)
 
     # calculate w_perp, vstar_perp
-    _vstar_perp = @view vstar_perp[:, :, :, iseg]
-    _vstar = @view vstar[:, :, :, iseg]
-    perp!(_vstar_perp, _vstar, dudt)
-    for ius=1:nus
-      _w_perp = @view _w_perp[:, :, :, iseg, ius]
-      _w = @view w[]
-      perp!(_w_perp, _w, dudt)
-    end
+    perp!(w_perp, vstar_perp, w, vstar, dudt, iseg, numparams, nstep, nus)
 
-    # renormalize at interfaces
-    Q_temp, R_temp = qr(w_perp[iseg,end].T)
-
+    # update sense problem
     if iseg < nseg
-      set_new_initial_values!(u0,w0,vstar0, y[iseg, -1], Q_temp.T, p_temp)
-      t1 = forward_prob.tspan[1]+j*T_seg
-      t2 = forward_prob.tspan[1]+(j+1)*T_seg
-      _prob = ODEForwardSensitivityProblem(S,u0,(t1,t2),p,sensealg;nus=nus,w0=w0,v0=vstar0,kwargs...)
+      # renormalize at interfaces
+      renormalize!(R,b,w_perp,vstar_perp,y,vstar,w,iseg,numparams,nus)
+      t1 = forward_prob.tspan[1]+iseg*T_seg
+      t2 = forward_prob.tspan[1]+(iseg+1)*T_seg
+      _prob = ODEForwardSensitivityProblem(S.f,y[:,1,iseg+1],(t1,t2),p,sensealg; nus=nus,
+                                 w0=vec(w[:,:,1,iseg+1,:]),v0=vec(vstar[:,:,1,iseg+1]))
     end
 
   end
 end
 
-function store_y_w_vstar!(y, w, vstar, _sol, iseg)
+function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
+  # fill y
+  _y = @view y[:,:,iseg]
+  copyto!(_y, (@view sol[1:numindvar,:]))
+
+  # fill w
+  for j=1:nus
+    for i=1:numparams
+      indx1 = (j-1)*numindvar*numparams + i*numindvar+1
+      indx2 = (j-1)*numindvar*numparams + (i+1)*numindvar
+
+      _w = @view w[i,:,:,iseg, j]
+      copyto!(_w, (@view sol[indx1:indx2,:]))
+    end
+  end
+
+  # fill vstar
+  for i=1:numparams
+    indx1 = nus*numindvar*numparams + i*numindvar+1
+    indx2 = nus*numindvar*numparams + (i+1)*numindvar
+    _vstar = @view vstar[i,:,:,iseg]
+    copyto!(_vstar, (@view sol[indx1:indx2,:]))
+  end
+
   return nothing
 end
 
-function dudt_g_dgdu!(dudt, gsave, dgdu, u, p, iseg)
+function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
+  @unpack sensealg, diffcache, dg, g, prob = nilssprob
+  @unpack prob = nilssprob
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar = diffcache
+
+  _y = @view y[:,:,iseg]
+
+  for (j,u) in enumerate(eachcol(_y))
+    _dgdu = @view dgdu[:,j,iseg]
+    _dudt = @view dudt[:,j,iseg]
+
+    # compute dudt
+    if isinplace(prob)
+      prob.f(_dudt,u,p,nothing)
+    else
+      copyto!(_dudt,prob.f(u,p,nothing))
+    end
+
+    # compute objective
+    gsave[j,iseg] = g(u,p,nothing)
+
+    #  compute gradient of objective wrt. state
+    if dg===nothing
+      if dg_val isa Tuple
+        DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
+        copyto!(_dgdu, dg_val[1])
+      else
+        DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
+        copyto!(_dgdu, dg_val)
+      end
+    else
+      if dg_val isa Tuple
+        dg[1](dg_val[1],u,uf.p,nothing,j)
+        copyto!(_dgdu, dg_val[1])
+      else
+        dg(dg_val,u,uf.p,nothing,j)
+        copyto!(_dgdu, dg_val)
+      end
+    end
+  end
   return nothing
 end
 
-function perp!(v_perp, v, dudt)
-  #w_perp[iseg, i, ius] = w[iseg, i,ius] - dot(w[iseg, i, ius], f[iseg, i]) / dot(f[iseg, i], f[iseg, i]) * f[iseg, i]
+function perp!(w_perp, vstar_perp, w, vstar, dudt, iseg, numparams, nsteps, nus)
+  for indx_steps=1:nsteps
+    _dudt = @view dudt[:,indx_steps,iseg]
+    for indx_params=1:numparams
+      for indx_nus=1:nus
+        _w_perp = @view w_perp[indx_params,:,indx_steps,iseg,indx_nus]
+        _w = @view w[indx_params,:,indx_steps,iseg,indx_nus]
+        perp!(_w_perp, _w, _dudt)
+      end
+      _vstar_perp = @view vstar_perp[indx_params,:,indx_steps,iseg]
+      _vstar = @view vstar[indx_params,:,indx_steps,iseg]
+      perp!(_vstar_perp, _vstar, _dudt)
+    end
+  end
+
   return nothing
 end
 
-function set_new_initial_values!(u0,w0,vstar0, yend, Qtransp, ptemp)
-  u0 .= yend
-  w0 .= Qtransp
-  vstar0 .= ptemp
+function perp!(v1, v2, v3)
+  v1 .= v2 - dot(v2, v3)/dot(v3, v3) * v3
+end
+
+function renormalize!(R,b,w_perp,vstar_perp,y,vstar,w,iseg,numparams,nus)
+  for i=1:numparams
+    _b = @view b[i,(iseg-1)*nus+1:iseg*nus]
+    _R = @view R[i,iseg,:,:]
+    _w_perp = @view w_perp[i,:,end,iseg,:]
+    _vstar_perp = @view vstar_perp[i,:,end,iseg]
+    _w = @view w[i,:,1,iseg+1,:]
+    _vstar = @view vstar[i,:,1,iseg+1]
+
+    Q_temp, R_temp = qr(_w_perp)
+    b_tmp = @view (Q_temp'*_vstar_perp)[1:nus]
+
+    copyto!(_b, b_tmp)
+    copyto!(_R, R_temp)
+    # set new initial values
+    copyto!(_w, (@view Q_temp[:,1:nus]))
+    copyto!(_vstar, _vstar_perp - Q_temp*b_tmp)
+  end
+  _yend = @view y[:,end,iseg]
+  _ystart = @view y[:,1,iseg+1]
+  copyto!(_ystart, _yend)
+
   return nothing
 end
 
-function Cinv()
-  # compute C^-1
-  # Cinvs = []
-  #   for iseg in range(nseg):
-  #       C_iseg = np.zeros([nus, nus])
-  #       for i in range(nus):
-  #           for j in range(nus):
-  #               C_iseg[i,j] = np.sum(w_perp[iseg, :, i, :] * w_perp[iseg, :, j, :] * weight[:, np.newaxis])
-  #       Cinvs.append(np.linalg.inv(C_iseg))
-  #   Cinv = block_diag(*Cinvs)
+
+function compute_Cinv!(Cinv,w_perp,weight,nseg,nus,indxp)
+  # construct Schur complement of Lagrange multiplier
+  _weight = @view weight[1,:]
+  for iseg=1:nseg
+    _C = @view Cinv[(iseg-1)*nus+1:iseg*nus, (iseg-1)*nus+1:iseg*nus]
+    for i=1:nus
+      wi = @view w_perp[indxp,:,:,iseg,i]
+      for j =1:nus
+        wj = @view w_perp[indxp,:,:,iseg,j]
+        _C[i,j] = sum(wi .* wj * _weight)
+      end
+    end
+    invC = inv(_C)
+    copyto!(_C, invC)
+  end
+  return nothing
 end
 
-function compute_d()
+function compute_d!(d,w_perp,vstar_perp,weight,nseg,nus,indxp)
   # construct d
-    # ds = []
-    # for iseg in range(nseg):
-    #     d_iseg = np.zeros(nus)
-    #     for i in range(nus):
-    #         d_iseg[i] = np.sum(w_perp[iseg, :, i, :] * vstar_perp[iseg] * weight[:, np.newaxis])
-    #     ds.append(d_iseg)
-    # d = np.ravel(ds)
+  _weight = @view weight[1,:]
+  for iseg=1:nseg
+    _d = @view d[(iseg-1)*nus+1:iseg*nus]
+    vi = @view vstar_perp[indxp,:,:,iseg]
+    for i=1:nus
+      wi = @view w_perp[indxp,:,:,iseg,i]
+      _d[i] = sum(wi .* vi * _weight)
+    end
+  end
+  return nothing
+end
+
+function compute_B!(B,R,nseg,nus,indxp)
+  for iseg=1:nseg-1
+    _B = @view B[(iseg-1)*nus+1:iseg*nus, (iseg-1)*nus+1:iseg*nus]
+    _R = @view R[indxp,iseg,:,:]
+    copyto!(_B, -_R)
+    # off diagonal one
+    for i=1:nus
+      B[(iseg-1)*nus+i, iseg*nus+i] = one(eltype(R))
+    end
+  end
+  return nothing
+end
+
+function compute_a!(a,B,Cinv,b,d,indxp)
+  _b = @view b[indxp,:]
+
+  lbd = (-B*Cinv*B') \ (B*Cinv*d + _b)
+  a .= -Cinv*(B'*lbd + d)
+  return nothing
+end
+
+function compute_v!(v,v_perp,vstar,vstar_perp,w,w_perp,a,nseg,nus,indxp)
+  _vstar = @view vstar[indxp,:,:,:]
+  _vstar_perp = @view vstar_perp[indxp,:,:,:]
+  _w = @view w[indxp,:,:,:,:]
+  _w_perp = @view w_perp[indxp,:,:,:,:]
+
+  copyto!(v, vstar)
+  copyto!(v_perp, vstar_perp)
+
+  for iseg=1:nseg
+    vi = @view v[:,:,iseg]
+    vpi = @view v_perp[:,:,iseg]
+    for i=1:nus
+      wi = @view _w[:,:,iseg,i]
+      wpi = @view _w_perp[:,:,iseg,i]
+
+      vi .+= a[(iseg-1)*nus+i]*wi
+      vpi .+= a[(iseg-1)*nus+i]*wpi
+    end
+  end
+
+  return nothing
+end
+
+function compute_xi(ξ,v,dudt,nseg)
+  for iseg=1:nseg
+    _v = @view v[:,1,iseg]
+    _dudt = @view dudt[:,1,iseg]
+    ξ[iseg,1] = dot(_v,_dudt)/dot(_dudt,_dudt)
+
+    _v = @view v[:,end,iseg]
+    _dudt = @view dudt[:,end,iseg]
+    ξ[iseg,2] = dot(_v,_dudt)/dot(_dudt,_dudt)
+  end
+  # check if segmentation is chosen correctly
+  _ξ = ξ[:,1]
+  all(_ξ.<1e-4) || @warn "Detected a large value of ξ at the beginning of a segment."
+  return nothing
 end
 
 function shadow_forward(prob::NILSSProblem,alg)
@@ -317,14 +480,39 @@ function shadow_forward(prob::NILSSProblem,alg)
 end
 
 function shadow_forward(prob::NILSSProblem,sensealg::NILSS,alg)
-  @unpack res = prob
+  @unpack nseg, nstep = sensealg
+  @unpack res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
+          gsave, dgdu, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ = prob
+  @unpack numindvar, numparams = forward_prob.f.S
 
   # compute vstar, w
   forward_sense(prob,sensealg,alg)
 
-  # compute Javg
-  #gavg = nsum(J*weight[np.newaxis,:]) / (nstep-1) / nseg
+  # compute avg objective
+  gavg = sum(prob.weight*gsave)/((nstep-1)*nseg)
 
+  # reset gradient
+  res .*= false
+
+  # loop over parameters
+  for i=1:numparams
+    compute_Cinv!(Cinv,w_perp,weight,nseg,nus,i)
+    compute_d!(d,w_perp,vstar_perp,weight,nseg,nus,i)
+    compute_B!(B,R,nseg,nus,i)
+    compute_a!(a,B,Cinv,b,d,i)
+    compute_v!(v,v_perp,vstar,vstar_perp,w,w_perp,a,nseg,nus,i)
+    compute_xi(ξ,v,dudt,nseg)
+
+
+    _weight = @view weight[1,:]
+
+    for iseg=1:nseg
+      _dgdu = @view dgdu[:,:,iseg]
+      _v = @view v[:,:,iseg]
+      res[i] += sum((_v.*_dgdu)*_weight)/((nstep-1)*nseg)
+      res[i] += ξ[iseg,end]*(gavg-gsave[end,iseg])/(dtsave*(nstep-1)*nseg)
+    end
+  end
 
   return res
 end
