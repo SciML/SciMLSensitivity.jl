@@ -148,6 +148,24 @@ struct CosWindowing <: WindowingChoice end
 struct Cos2Windowing <: WindowingChoice end
 
 """
+Ni, A., and Wang, Q. Sensitivity analysis on chaotic dynamical systems by Non-Intrusive
+Least Squares Shadowing (NILSS). Journal of Computational Physics 347, 56-77 (2017).
+"""
+struct NILSS{CS,AD,FDT,RNG} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+  rng::RNG
+  nseg::Int
+  nstep::Int
+  autojacvec::Bool
+end
+Base.@pure function NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+                                chunk_size=0,autodiff=true,
+                                diff_type=Val{:central},
+                                autojacvec = autodiff
+                                )
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng)}(rng, nseg, nstep, autojacvec)
+end
+
+"""
  Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
  http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """

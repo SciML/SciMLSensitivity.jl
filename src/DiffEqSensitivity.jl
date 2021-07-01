@@ -8,6 +8,8 @@ using Requires
 using StochasticDiffEq
 using SharedArrays
 import DiffEqNoiseProcess
+import RandomNumbers: Xorshifts
+using Random
 import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
@@ -37,14 +39,17 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("lss.jl")
+include("nilss.jl")
 
 export extract_local_sensitivities
+
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
        SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
        adjoint_sensitivities, adjoint_sensitivities_u0,
        ForwardLSSProblem, AdjointLSSProblem,
+       NILSSProblem,
        shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
@@ -52,7 +57,7 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
-       ForwardLSS, AdjointLSS
+       ForwardLSS, AdjointLSS, NILSS
 
 export second_order_sensitivities, second_order_sensitivity_product
 
