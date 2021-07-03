@@ -1,3 +1,5 @@
+using BlockDiagonals
+
 struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
@@ -55,6 +57,26 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsi
   end
 
   return sensefun
+end
+
+function sensefun2odefun(sense::ODEForwardSensitivityFunction, u0)
+  @unpack jac_prototype, jac, sparsity, uf, J, jac_config, alg, f_cache, mass_matrix, colorvec = sense
+  jac_prototype === nothing && (jac_prototype = u0 .* u0' .* false)
+  jac_prototype = ForwardSensitivityJacobian(jac_prototype)
+  mass_matrix = mass_matrix === I ? I : BlockDiagonal(mass_matrix, Diagonal(I, size(J, 1)))
+  colorvec !== nothing && (colorvec = [colorvec; colorvec])
+  newjac = if DiffEqBase.has_jac(sense)
+    let jac=sense.jac, n=length(u0)
+      (J, u, p, t) -> begin
+        @assert J isa DiffEqBase.ForwardSensitivityJacobian
+        J = parent(J)
+        jac(J, u[1:n], p, t)
+      end
+    end
+  else
+    nothing
+  end
+  ODEFunction(sense; jac=newjac, jac_prototype=jac_prototype, colorvec=colorvec, mass_matrix=mass_matrix)
 end
 
 function (S::ODEForwardSensitivityFunction)(du,u,p,t)
@@ -121,7 +143,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacvec = get_jacvec(alg)
-  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if isautojacvec
@@ -173,7 +195,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
       sense_u0 = [u0;w0;v0]
     end
   end
-  ODEProblem(sense,sense_u0,tspan,p,
+  ODEProblem(sensefun2odefun(sense,u0),sense_u0,tspan,p,
              ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                           typeof(alg)}(alg);
              kwargs...)
@@ -301,16 +323,22 @@ end
 
 
 ### Bonus Pieces
+#=
+using Setfield
+_unwrapfun(f::Union{ODEFunction,ODEForwardSensitivityFunction}) = _unwrapfun(f.f)
+_unwrapfun(f) = f
+unwrapfun(f::ODEFunction) = @set f.f = _unwrapfun(f.f)
+unwrapfun(f) = f
 
 function SciMLBase.remake(prob::ODEProblem{uType,tType,isinplace,P,F,K,<:ODEForwardSensitivityProblem};
                           f=nothing,tspan=nothing,u0=nothing,p=nothing,kwargs...) where
                           {uType,tType,isinplace,P,F,K}
     _p     = p     === nothing ? prob.p : p
-    _f     = f     === nothing ? prob.f.f : f
-    _u0    = u0    === nothing ? prob.u0[1:prob.f.numindvar] : u0[1:prob.f.numindvar]
+    _f     = f     === nothing ? unwrapfun(prob.f) : unwrapfun(f)
+    _u0    = u0    === nothing ? prob.u0[1:prob.f.f.numindvar] : u0[1:prob.f.f.numindvar]
     _tspan = tspan === nothing ? prob.tspan : tspan
-    ODEForwardSensitivityProblem(_f,_u0,
-                                 _tspan,_p,ForwardSensitivity();
-                                 prob.kwargs...,kwargs...)
+    prob = ODEForwardSensitivityProblem(_f,_u0,
+                                        _tspan,_p,ForwardSensitivity();
+                                        prob.kwargs...,kwargs...)
 end
-SciMLBase.ODEFunction(f::ODEForwardSensitivityFunction; kwargs...) = f
+=#
