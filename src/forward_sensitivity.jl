@@ -1,7 +1,8 @@
-struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
+struct ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   analytic::A
   tgrad::Tt
+  orginal::OJ
   jac::J
   jac_prototype::JP
   sparsity::S
@@ -22,6 +23,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Al
   isautojacvec::Bool
   colorvec::CV
 end
+has_original_jac(f) = isdefined(f, :original_jac)
 
 struct NILSSForwardSensitivityFunction{iip,sensefunType,senseType,MM} <: DiffEqBase.AbstractODEFunction{iip}
   S::sensefunType
@@ -30,7 +32,7 @@ struct NILSSForwardSensitivityFunction{iip,sensefunType,senseType,MM} <: DiffEqB
   mass_matrix::MM
 end
 
-function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
+function ODEForwardSensitivityFunction(f,analytic,tgrad,original_jac,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
                                     isautojacvec,colorvec,nus)
   numparams = length(p)
@@ -39,16 +41,19 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,jac,jac_prototype,sparsi
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
 
   sensefun = ODEForwardSensitivityFunction{isinplace(f),typeof(f),typeof(analytic),
-                             typeof(tgrad),typeof(jac),typeof(jac_prototype),typeof(sparsity),
-                             typeof(paramjac),
-                             typeof(Wfact),typeof(Wfact_t),typeof(uf),
-                             typeof(pf),typeof(jac_config),
-                             typeof(paramjac_config),typeof(alg),
-                             typeof(f_cache),
-                             typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
-                             f,analytic,tgrad,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
-                             jac_config,paramjac_config,alg,
-                             numparams,numindvar,f_cache,mm,isautojacvec,colorvec)
+                                           typeof(tgrad),typeof(original_jac),
+                                           typeof(jac),typeof(jac_prototype),typeof(sparsity),
+                                           typeof(paramjac),
+                                           typeof(Wfact),typeof(Wfact_t),typeof(uf),
+                                           typeof(pf),typeof(jac_config),
+                                           typeof(paramjac_config),typeof(alg),
+                                           typeof(f_cache),
+                                           typeof(J),typeof(pJ),typeof(mm),typeof(f.colorvec)}(
+                           f,analytic,tgrad,original_jac,jac,jac_prototype,
+                           sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
+                           jac_config,paramjac_config,alg,
+                           numparams,numindvar,f_cache,mm,isautojacvec,colorvec,
+                          )
   if nus!==nothing
     sensefun = NILSSForwardSensitivityFunction{isinplace(f), typeof(sensefun),
                              typeof(alg),typeof(mm)}(sensefun,alg,nus,mm)
@@ -66,8 +71,8 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   # Compute the Jacobian
 
   if !S.isautojacvec
-    if DiffEqBase.has_jac(S.f)
-      S.jac(S.J,y,p,t) # Calculate the Jacobian into J
+    if has_original_jac(S.f)
+      S.original_jac(S.J,y,p,t) # Calculate the Jacobian into J
     else
       S.uf.t = t
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
@@ -134,7 +139,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     else
       jac_config = (similar(u0),similar(u0))
     end
-  elseif DiffEqBase.has_jac(f)
+  elseif has_original_jac(f)
     jac_config = nothing
   else
     jac_config = build_jac_config(alg,uf,u0)
@@ -157,13 +162,13 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   end
 
   # TODO: Use user tgrad. iW can be safely ignored here.
-  sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,
-                                     f.jac_prototype,f.sparsity,f.paramjac,
-                                     nothing,nothing,
-                                     uf,pf,u0,jac_config,
-                                     paramjac_config,alg,
-                                     p,similar(u0),mm,
-                                     isautojacvec,f.colorvec,nus)
+  sense = ODEForwardSensitivityFunction(f,f.analytic,nothing,f.jac,nothing,
+                                        nothing,nothing,f.paramjac,
+                                        nothing,nothing,
+                                        uf,pf,u0,jac_config,
+                                        paramjac_config,alg,
+                                        p,similar(u0),mm,
+                                        isautojacvec,f.colorvec,nus)
   if nus===nothing
     sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
   else
