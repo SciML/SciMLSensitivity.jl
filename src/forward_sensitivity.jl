@@ -323,22 +323,20 @@ end
 
 
 ### Bonus Pieces
-#=
-using Setfield
-_unwrapfun(f::Union{ODEFunction,ODEForwardSensitivityFunction}) = _unwrapfun(f.f)
-_unwrapfun(f) = f
-unwrapfun(f::ODEFunction) = @set f.f = _unwrapfun(f.f)
-unwrapfun(f) = f
-
 function SciMLBase.remake(prob::ODEProblem{uType,tType,isinplace,P,F,K,<:ODEForwardSensitivityProblem};
                           f=nothing,tspan=nothing,u0=nothing,p=nothing,kwargs...) where
                           {uType,tType,isinplace,P,F,K}
     _p     = p     === nothing ? prob.p : p
-    _f     = f     === nothing ? unwrapfun(prob.f) : unwrapfun(f)
+    if f === nothing
+      _f = prob.f.f.f
+    elseif f isa ODEFunction && f.f isa ODEForwardSensitivityFunction
+      _f = f.f.f
+    else
+      _f = f
+    end
     _u0    = u0    === nothing ? prob.u0[1:prob.f.f.numindvar] : u0[1:prob.f.f.numindvar]
     _tspan = tspan === nothing ? prob.tspan : tspan
-    prob = ODEForwardSensitivityProblem(_f,_u0,
-                                        _tspan,_p,ForwardSensitivity();
-                                        prob.kwargs...,kwargs...)
+    ODEForwardSensitivityProblem(_f,_u0,
+                                 _tspan,_p,ForwardSensitivity();
+                                 prob.kwargs...,kwargs...)
 end
-=#
