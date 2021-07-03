@@ -462,8 +462,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
       tmp3 .= 0
   #end
 
-  tmp4 .= λ
-
+  vec(tmp4) .= vec(λ)
+                        
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
     if W==nothing
