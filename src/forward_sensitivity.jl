@@ -70,7 +70,7 @@ function sensefun2odefun(sense::ODEForwardSensitivityFunction, u0)
       (J, u, p, t) -> begin
         @assert J isa DiffEqBase.ForwardSensitivityJacobian
         J = parent(J)
-        jac(J, u[1:n], p, t)
+        @views jac(J, u[1:n], p, t)
       end
     end
   else
