@@ -189,8 +189,8 @@ function (NS::NILSSForwardSensitivityFunction)(du,u,p,t)
   # Compute the Jacobian
 
   if !S.isautojacvec
-    if DiffEqBase.has_jac(S.f)
-      S.jac(S.J,y,p,t) # Calculate the Jacobian into J
+    if has_original_jac(S.f)
+      S.original_jac(S.J,y,p,t) # Calculate the Jacobian into J
     else
       S.uf.t = t
       jacobian!(S.J, S.uf, y, S.f_cache, S.alg, S.jac_config)
