@@ -1,28 +1,3 @@
-struct ODEForwardSensitivityFunction{iip,F,A,Tt,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
-  f::F
-  analytic::A
-  tgrad::Tt
-  jac::J
-  jac_prototype::JP
-  sparsity::S
-  paramjac::PJ
-  Wfact::TW
-  Wfact_t::TWt
-  uf::UF
-  pf::PF
-  J::JM
-  pJ::pJM
-  jac_config::JC
-  paramjac_config::PJC
-  alg::Alg
-  numparams::Int
-  numindvar::Int
-  f_cache::fc
-  mass_matrix::MM
-  isautojacvec::Bool
-  colorvec::CV
-end
-
 struct NILSSForwardSensitivityFunction{iip,sensefunType,senseType,MM} <: DiffEqBase.AbstractODEFunction{iip}
   S::sensefunType
   sensealg::senseType

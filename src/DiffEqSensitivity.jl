@@ -1,5 +1,6 @@
 module DiffEqSensitivity
 
+using SciMLBase: ODEForwardSensitivityFunction
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using Adapt
