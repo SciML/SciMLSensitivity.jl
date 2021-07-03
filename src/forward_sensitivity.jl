@@ -243,9 +243,9 @@ extract_local_sensitivities(tmp, sol, t, asmatrix::Bool) = extract_local_sensiti
 
 # Get ODE u vector and sensitivity values from all time points
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{false})
-  ni = sol.prob.f.numindvar
+  ni = sol.prob.f.f.numindvar
   u = sol[1:ni, :]
-  du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.numparams]
+  du = [sol[ni*j+1:ni*(j+1),:] for j in 1:sol.prob.f.f.numparams]
   return u, du
 end
 
@@ -264,8 +264,8 @@ end
 
 function extract_local_sensitivities(sol,::ForwardSensitivity, ::Val{true})
   prob = sol.prob
-  ni = prob.f.numindvar
-  pn = prob.f.numparams
+  ni = prob.f.f.numindvar
+  pn = prob.f.f.numparams
   jsize = (ni, pn)
   sol[1:ni, :], map(sol.u) do u
     collect(reshape((@view u[ni+1:end]), jsize))
@@ -287,7 +287,7 @@ end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector
 function _extract(sol, sensealg::ForwardSensitivity, su::AbstractVector, asmatrix::Val = Val(false))
-  u = view(su, 1:sol.prob.f.numindvar)
+  u = view(su, 1:sol.prob.f.f.numindvar)
   du = _extract_du(sol, sensealg, su, asmatrix)
   return u, du
 end
@@ -300,8 +300,8 @@ end
 
 # Get sensitivity values from sensitivity problem u vector (nested form)
 function _extract_du(sol, ::ForwardSensitivity, su::Vector, ::Val{false})
-  ni = sol.prob.f.numindvar
-  return [view(su, ni*j+1:ni*(j+1)) for j in 1:sol.prob.f.numparams]
+  ni = sol.prob.f.f.numindvar
+  return [view(su, ni*j+1:ni*(j+1)) for j in 1:sol.prob.f.f.numparams]
 end
 
 function _extract_du(sol, ::ForwardDiffSensitivity, su::Vector, ::Val{false})
@@ -311,8 +311,8 @@ end
 
 # Get sensitivity values from sensitivity problem u vector (matrix form)
 function _extract_du(sol, ::ForwardSensitivity, su::Vector, ::Val{true})
-  ni = sol.prob.f.numindvar
-  np = sol.prob.f.numparams
+  ni = sol.prob.f.f.numindvar
+  np = sol.prob.f.f.numparams
   return view(reshape(su, ni, np+1), :, 2:np+1)
 end
 
