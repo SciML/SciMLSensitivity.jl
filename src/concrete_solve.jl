@@ -623,7 +623,7 @@ end
 
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
-                                 sensealg::Union{AdjointLSS,ForwardLSS},
+                                 sensealg::Union{AdjointLSS,ForwardLSS,NILSS},
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
@@ -713,10 +713,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
     if sensealg isa ForwardLSS
       lss_problem = ForwardLSSProblem(sol, sensealg, g, df)
-      dp = shadow_forward(lss_problem;  t0skip=t0skip, t1skip=t1skip)
-    else
+      dp = shadow_forward(lss_problem; t0skip=t0skip, t1skip=t1skip)
+    elseif AdjointLSS
       adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
-      dp = shadow_adjoint(adjointlss_problem;  t0skip=t0skip, t1skip=t1skip)
+      dp = shadow_adjoint(adjointlss_problem; t0skip=t0skip, t1skip=t1skip)
+    else
+      nilss_prob = NILSSProblem(_prob, sensealg, g, df)
+      dp = shadow_forward(nilss_prob,alg)
     end
 
     (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
