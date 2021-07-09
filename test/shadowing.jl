@@ -291,7 +291,7 @@ end
     @test res2[1] ≈ 1 atol=5e-2
     @test res1 ≈ res2 atol=1e-10
 
-    function G(p; dt=nilss_prob.dtsave)
+    function G(p; dt=nilss_prob1.dtsave)
       _prob = remake(prob_attractor,p=p)
       _sol = solve(_prob,Tsit5(),saveat=dt,sensealg=NILSS(nseg, nstep), g=g)
       sum(getindex.(_sol.u,3))
