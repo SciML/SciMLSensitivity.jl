@@ -628,3 +628,5 @@ function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Numb
 
   return res
 end
+
+check_for_g(sensealg::Union{ForwardLSS,AdjointLSS},g)=((sensealg.alpha isa Number && g===nothing) && error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg or use ForwardLSS/AdjointLSS with windowing."))

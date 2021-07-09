@@ -642,9 +642,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     g = nothing
   end
 
-  if (sensealg.alpha isa Number && g===nothing)
-    error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg or use ForwardLSS with windowing")
-  end
+  # some shadowing sensealgs require knowledge of g
+  check_for_g(sensealg,g)
 
   sol = solve(_prob,alg,args...;save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
 
@@ -714,7 +713,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     if sensealg isa ForwardLSS
       lss_problem = ForwardLSSProblem(sol, sensealg, g, df)
       dp = shadow_forward(lss_problem; t0skip=t0skip, t1skip=t1skip)
-    elseif AdjointLSS
+    elseif sensealg isa AdjointLSS
       adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
       dp = shadow_adjoint(adjointlss_problem; t0skip=t0skip, t1skip=t1skip)
     else
