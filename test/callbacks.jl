@@ -110,7 +110,6 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing)
   # @test dp1 ≈ adj_sol[3:6,end]
 end
 
-
 function test_continuous_wrt_discrete_callback()
   # test the continuous callbacks wrt to the equivalent discrete callback
   function f(du,u,p,t)
@@ -255,9 +254,9 @@ function test_continuous_wrt_discrete_callback()
 
   @info dstuff
   @test du01 ≈ dstuff[1:2]
-  @test_broken dp1 ≈ dstuff[3:4]
+  @test dp1 ≈ dstuff[3:4]
   @test du02 ≈ dstuff[1:2]
-  @test_broken dp2 ≈ dstuff[3:4]
+  @test dp2 ≈ dstuff[3:4]
   @test du01 ≈ du02
   @test dp1 ≈ dp2
 end
@@ -441,7 +440,7 @@ end
         end
         @testset "state-dependent += callback at single time point" begin
           condition(u,t,integrator) = t == 5
-          affect!(integrator) = (integrator.u .+= 1//8*sin.(integrator.u))
+          affect!(integrator) = (integrator.u .+= integrator.p[2]/8*sin.(integrator.u))
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
@@ -497,7 +496,7 @@ end
         end
         @testset "state-dependent += callback at single time point" begin
           condition(u,t,integrator) = t == 5
-          affect!(integrator) = (integrator.u .+= 1//8*sin.(integrator.u))
+          affect!(integrator) = (integrator.u .+= integrator.p[2]/8*sin.(integrator.u))
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
