@@ -327,7 +327,7 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
         @. _dgdu = -dg_val[1]
       else
         dg(dg_val,u,p,nothing,j)
-        _dgdu .= -dg_val
+        @. _dgdu = -dg_val
       end
     end
   end
