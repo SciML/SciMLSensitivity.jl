@@ -324,7 +324,7 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
     else
       if dg_val isa Tuple
         dg[1](dg_val[1],u,p,nothing,j)
-        _dgdu .= -dg_val[1]
+        @. _dgdu = -dg_val[1]
       else
         dg(dg_val,u,p,nothing,j)
         _dgdu .= -dg_val
