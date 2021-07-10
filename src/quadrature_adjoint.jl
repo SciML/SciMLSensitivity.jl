@@ -259,12 +259,14 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
 
       if callback!==nothing
         _ts, _duplicate_iterator_times = separate_nonunique(t)
-        duplicate_iterator_times = _duplicate_iterator_times[1]
-        cur_time = length(duplicate_iterator_times)
-        dλ = similar(integrand.λ)
-        dλ .*= false
-        dgrad = similar(res)
-        dgrad .*= false
+        if _duplicate_iterator_times !== nothing
+          duplicate_iterator_times = _duplicate_iterator_times[1]
+          cur_time = length(duplicate_iterator_times)
+          dλ = similar(integrand.λ)
+          dλ .*= false
+          dgrad = similar(res)
+          dgrad .*= false
+        end
       end
 
       for i in length(t)-1:-1:1
@@ -305,7 +307,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
               else
                 dgdu(dλ,integrand.y,integrand.p,duplicate_iterator_times[cur_time],cur_time)
               end
-              dλ .= integrand.λ-dλ 
+              dλ .= integrand.λ-dλ
               vecjacobian!(dλ, integrand.y, dλ, integrand.p, t[i], fakeS; dgrad=dgrad)
               res .+= dgrad
               cur_time -= one(cur_time)

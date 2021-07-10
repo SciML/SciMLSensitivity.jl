@@ -440,7 +440,7 @@ end
         end
         @testset "state-dependent += callback at single time point" begin
           condition(u,t,integrator) = t == 5
-          affect!(integrator) = (integrator.u .+= integrator.p[2]//8*sin.(integrator.u))
+          affect!(integrator) = (integrator.u .+= integrator.p[2]/8*sin.(integrator.u))
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
@@ -496,7 +496,7 @@ end
         end
         @testset "state-dependent += callback at single time point" begin
           condition(u,t,integrator) = t == 5
-          affect!(integrator) = (integrator.u .+= integrator.p[2]//8*sin.(integrator.u))
+          affect!(integrator) = (integrator.u .+= integrator.p[2]/8*sin.(integrator.u))
           cb = DiscreteCallback(condition,affect!)
           tstops=[5.0]
           test_discrete_callback(cb,tstops,g,dg!)
