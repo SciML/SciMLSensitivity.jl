@@ -133,7 +133,9 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
                               dgrad=dgrad, dy=dy)
 
         λ .= dλ
-
+        if !(sensealg isa QuadratureAdjoint)
+          grad .-= dgrad
+        end
     end
 
     times = if typeof(cb) <: DiscreteCallback

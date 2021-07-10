@@ -256,12 +256,24 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                        atol=sensealg.abstol,rtol=sensealg.reltol)
     else
       res = zero(integrand.p)'
+
+      if callback!==nothing
+        _ts, _duplicate_iterator_times = separate_nonunique(t)
+        duplicate_iterator_times = _duplicate_iterator_times[1]
+        cur_time = length(duplicate_iterator_times)
+        dλ = similar(integrand.λ)
+        dλ .*= false
+        dgrad = similar(res)
+        dgrad .*= false
+      end
+
       for i in length(t)-1:-1:1
         res .+= quadgk(integrand,t[i],t[i+1],
                        atol=sensealg.abstol,rtol=sensealg.reltol)[1]
         if t[i]==t[i+1]
           for cb in callback.discrete_callbacks
             if t[i] ∈ cb.affect!.event_times
+
               function wp(dp,p,u,t)
                 fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
                 cb.affect!.affect!(fakeinteg)
@@ -278,6 +290,25 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                                     dgrad=nothing, dy=nothing)
                 integrand = update_p_integrand(integrand,_p)
               end
+
+              function w(du,u,p,t)
+                fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
+                cb.affect!.affect!(fakeinteg)
+                du .= fakeinteg.u
+              end
+
+              # Create a fake sensitivity function to do the vjps needs to be done
+              # to account for parameter dependence of affect function
+              fakeS = CallbackSensitivityFunction(w,sensealg,adj_prob.f.f.diffcache,sol.prob)
+              if dgdu === nothing
+                g(dλ,integrand.y,integrand.p,duplicate_iterator_times[cur_time],cur_time)
+              else
+                dgdu(dλ,integrand.y,integrand.p,duplicate_iterator_times[cur_time],cur_time)
+              end
+              dλ .= integrand.λ-dλ 
+              vecjacobian!(dλ, integrand.y, dλ, integrand.p, t[i], fakeS; dgrad=dgrad)
+              res .+= dgrad
+              cur_time -= one(cur_time)
             end
           end
 
