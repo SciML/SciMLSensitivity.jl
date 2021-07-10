@@ -323,11 +323,11 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
       end
     else
       if dg_val isa Tuple
-        dg[1](dg_val[1],u,uf.p,nothing,j)
-        copyto!(_dgdu, dg_val[1])
+        dg[1](dg_val[1],u,p,nothing,j)
+        copyto!(_dgdu, -dg_val[1])
       else
-        dg(dg_val,u,uf.p,nothing,j)
-        copyto!(_dgdu, dg_val)
+        dg(dg_val,u,p,nothing,j)
+        copyto!(_dgdu, -dg_val)
       end
     end
   end
@@ -516,3 +516,5 @@ function shadow_forward(prob::NILSSProblem,sensealg::NILSS,alg)
 
   return res
 end
+
+check_for_g(sensealg::NILSS,g) = (g===nothing && error("To use NILSS, g must be passed as a kwarg."))

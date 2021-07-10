@@ -277,9 +277,28 @@ end
     nseg = 50 # number of segments on time interval
     nstep = 2001 # number of steps on each segment
 
-    nilss_prob = NILSSProblem(prob_attractor, NILSS(nseg, nstep), g)
-    res1 = DiffEqSensitivity.shadow_forward(nilss_prob,Tsit5())
+    # fix seed here for res1==res2 check, otherwise hom. tangent
+    # are initialized randomly
+    Random.seed!(1234)
+    nilss_prob1 = NILSSProblem(prob_attractor, NILSS(nseg, nstep), g)
+    res1 = DiffEqSensitivity.shadow_forward(nilss_prob1,Tsit5())
+
+    Random.seed!(1234)
+    nilss_prob2 = NILSSProblem(prob_attractor, NILSS(nseg, nstep), g, dg)
+    res2 = DiffEqSensitivity.shadow_forward(nilss_prob2,Tsit5())
 
     @test res1[1] ≈ 1 atol=5e-2
+    @test res2[1] ≈ 1 atol=5e-2
+    @test res1 ≈ res2 atol=1e-10
+
+    function G(p; dt=nilss_prob1.dtsave)
+      _prob = remake(prob_attractor,p=p)
+      _sol = solve(_prob,Tsit5(),saveat=dt,sensealg=NILSS(nseg, nstep), g=g)
+      sum(getindex.(_sol.u,3))
+    end
+
+    Random.seed!(1234)
+    dp1 = Zygote.gradient((p)->G(p),p)
+    @test res1 ≈ dp1[1] atol=1e-10
   end
 end
