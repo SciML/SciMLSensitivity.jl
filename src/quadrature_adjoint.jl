@@ -258,15 +258,11 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
       res = zero(integrand.p)'
 
       if callback!==nothing
-        _ts, _duplicate_iterator_times = separate_nonunique(t)
-        if _duplicate_iterator_times !== nothing
-          duplicate_iterator_times = _duplicate_iterator_times[1]
-          cur_time = length(duplicate_iterator_times)
-          dλ = similar(integrand.λ)
-          dλ .*= false
-          dgrad = similar(res)
-          dgrad .*= false
-        end
+        cur_time = length(t)
+        dλ = similar(integrand.λ)
+        dλ .*= false
+        dgrad = similar(res)
+        dgrad .*= false
       end
 
       for i in length(t)-1:-1:1
@@ -303,18 +299,18 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
               # to account for parameter dependence of affect function
               fakeS = CallbackSensitivityFunction(w,sensealg,adj_prob.f.f.diffcache,sol.prob)
               if dgdu === nothing
-                g(dλ,integrand.y,integrand.p,duplicate_iterator_times[cur_time],cur_time)
+                g(dλ,integrand.y,integrand.p,t[i],cur_time)
               else
-                dgdu(dλ,integrand.y,integrand.p,duplicate_iterator_times[cur_time],cur_time)
+                dgdu(dλ,integrand.y,integrand.p,t[i],cur_time)
               end
-              dλ .= integrand.λ-dλ
+
+              dλ .= dλ-integrand.λ
               vecjacobian!(dλ, integrand.y, dλ, integrand.p, t[i], fakeS; dgrad=dgrad)
-              res .+= dgrad
-              cur_time -= one(cur_time)
+              res .-= dgrad
             end
           end
-
         end
+        callback!==nothing && (cur_time -= one(cur_time))
       end
       if t[1] != sol.prob.tspan[1]
         res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
