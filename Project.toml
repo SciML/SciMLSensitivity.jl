@@ -37,7 +37,7 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 Adapt = "1.0, 2.0, 3.0"
-ArrayInterface = "3"
+ArrayInterface = "3.1.18"
 Cassette = "0.3.6"
 ChainRulesCore = "0.10.7"
 DiffEqBase = "6.70"
