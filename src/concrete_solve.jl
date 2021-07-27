@@ -91,14 +91,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
 
-  if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
-    if haskey(kwargs, :callback) && haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback],kwargs[:callback]),prob.tspan[1],prob.u0,prob.p)
-    elseif haskey(prob.kwargs,:callback)
-      cb = track_callbacks(CallbackSet(prob.kwargs[:callback]),prob.tspan[1],prob.u0,prob.p)
-    else #haskey(kwargs,:callback)
-      cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p)
-    end
+  if haskey(kwargs, :callback)
+    cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p)
     _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
     cb = nothing
@@ -229,7 +223,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       cb2 = cb
     end
-    
+
     du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
                                     callback = cb2,
                                     kwargs_adj...)
@@ -248,7 +242,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
                                  kwargs...)
    _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,alg,args...;prob.kwargs...,kwargs...)
+   sol = solve(_prob,alg,args...;kwargs...)
    _,du = extract_local_sensitivities(sol, sensealg, Val(true))
    out = DiffEqBase.sensitivity_solution(sol,[sol[i][_save_idxs] for i in 1:length(sol)],sol.t)
    function forward_sensitivity_backpass(Δ)
@@ -274,7 +268,7 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
                                  u0,p,args...;save_idxs = nothing,
                                  kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,args...;prob.kwargs...,kwargs...)
+   sol = solve(_prob,args...;kwargs...)
    u,du = extract_local_sensitivities(sol,Val(true))
    _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
    out = DiffEqBase.sensitivity_solution(sol,[ForwardDiff.value.(sol[i][_save_idxs]) for i in 1:length(sol)],sol.t)
@@ -360,9 +354,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             u0dual = convert.(eltype(pdualvec),u0)
 
             if (convert_tspan(sensealg) === nothing && (
-                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-                  (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-                  )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])))) ||
+                  (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
 
               tspandual = convert.(eltype(pdual),prob.tspan)
             else
@@ -440,9 +433,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             pdual = convert.(eltype(u0dual),p)
 
             if (convert_tspan(sensealg) === nothing && (
-                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-                  (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-                  )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+                  (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])))) ||
+                  (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
 
               tspandual = convert.(eltype(pdual),prob.tspan)
             else
@@ -500,9 +492,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   function tracker_adjoint_forwardpass(_u0,_p)
 
     if (convert_tspan(sensealg) === nothing && (
-          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-          (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-          )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])))) ||
+          (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
       _tspan = convert.(eltype(_p),prob.tspan)
     else
       _tspan = prob.tspan
@@ -573,9 +564,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   function reversediff_adjoint_forwardpass(_u0,_p)
 
     if (convert_tspan(sensealg) === nothing && (
-          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])) ||
-          (haskey(prob.kwargs,:callback) && has_continuous_callback(prob.kwargs[:callback]))
-          )) || (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
+          (haskey(kwargs,:callback) && has_continuous_callback(kwargs[:callback])))) ||
+          (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
       _tspan = convert.(eltype(_p),prob.tspan)
     else
       _tspan = prob.tspan
@@ -630,7 +620,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  t0skip=zero(eltype(prob.tspan)), t1skip=zero(eltype(prob.tspan)),
                                  kwargs...)
 
-  if haskey(kwargs, :callback) || haskey(prob.kwargs,:callback)
+  if haskey(kwargs, :callback)
     error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
   else
     _prob = remake(prob,u0=u0,p=p)
