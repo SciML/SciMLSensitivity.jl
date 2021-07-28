@@ -132,24 +132,11 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
 
-  numparams = length(p)
-  numindvar = length(u0)
-
-  if nus===nothing
-    sense_u0 = [u0;zeros(eltype(u0),numindvar*numparams)]
-  else
-    if w0===nothing && v0===nothing
-      sense_u0 = [u0;zeros(eltype(u0),(nus+1)*numindvar*numparams)]
-    else
-      sense_u0 = [u0;w0;v0]
-    end
-  end
-
   if isautojacvec
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
       # that is a tuple in the form of `(seed, buffer)`
-      jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(sense_u0,sense_u0)
+      jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(u0,u0)
       jac_config_buffer = similar(jac_config_seed)
       jac_config = jac_config_seed, jac_config_buffer
     else
@@ -185,6 +172,15 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                         paramjac_config,alg,
                                         p,similar(u0),mm,
                                         isautojacvec,f.colorvec,nus)
+  if nus===nothing
+    sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
+  else
+    if w0===nothing && v0===nothing
+      sense_u0 = [u0;zeros(eltype(u0),(nus+1)*sense.S.numindvar*sense.S.numparams)]
+    else
+      sense_u0 = [u0;w0;v0]
+    end
+  end
   ODEProblem(sense,sense_u0,tspan,p,
              ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                           typeof(alg)}(alg);
