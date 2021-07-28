@@ -84,21 +84,23 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
   else
     S.pf.t = t
-    S.pf.u .= y
+    copyto!(S.pf.u,y)
     jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
   end
 
-
   # Compute the parameter derivatives
-  for i in eachindex(p)
-    Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
-    dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
-    if !S.isautojacvec
-      mul!(dp,S.J,Sj)
-    else
+  if !S.isautojacvec
+    dp = @view du[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
+    Sj = @view u[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
+    mul!(dp,S.J,Sj)
+    DiffEqBase.@.. dp += S.pJ
+  else
+    for i in eachindex(p)
+      Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
+      dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
       jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
+      dp .+= @view S.pJ[:,i]
     end
-    dp .+= @view S.pJ[:,i]
   end
 end
 
@@ -129,11 +131,25 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
+
+  numparams = length(p)
+  numindvar = length(u0)
+
+  if nus===nothing
+    sense_u0 = [u0;zeros(eltype(u0),numindvar*numparams)]
+  else
+    if w0===nothing && v0===nothing
+      sense_u0 = [u0;zeros(eltype(u0),(nus+1)*numindvar*numparams)]
+    else
+      sense_u0 = [u0;w0;v0]
+    end
+  end
+
   if isautojacvec
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
       # that is a tuple in the form of `(seed, buffer)`
-      jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(u0,u0)
+      jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(sense_u0,sense_u0)
       jac_config_buffer = similar(jac_config_seed)
       jac_config = jac_config_seed, jac_config_buffer
     else
@@ -169,15 +185,6 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                         paramjac_config,alg,
                                         p,similar(u0),mm,
                                         isautojacvec,f.colorvec,nus)
-  if nus===nothing
-    sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
-  else
-    if w0===nothing && v0===nothing
-      sense_u0 = [u0;zeros(eltype(u0),(nus+1)*sense.S.numindvar*sense.S.numparams)]
-    else
-      sense_u0 = [u0;w0;v0]
-    end
-  end
   ODEProblem(sense,sense_u0,tspan,p,
              ODEForwardSensitivityProblem{DiffEqBase.isinplace(f),
                                           typeof(alg)}(alg);
