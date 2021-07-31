@@ -46,7 +46,7 @@ sol_strat1 = solve(prob_strat1,RKMil(interpretation=:Stratonovich),adaptive=fals
 # Test if we recover Ito solution in Stratonovich sense
 @test isapprox(sol_strat.u, sol_strat1.u, atol=1e-4) # own transformation and custom function agree
 @test !isapprox(sol_strat.u_analytic,sol_strat.u, atol=1e-4) # we don't get the stratonovich solution for the linear SDE
-@test isapprox(sol_strat1.u_analytic,sol_strat.u, atol=1e-4) # we do recover the analytic solution from the Ito sense
+@test isapprox(sol_strat1.u_analytic,sol_strat.u, atol=1e-3) # we do recover the analytic solution from the Ito sense
 
 # inplace
 
