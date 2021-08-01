@@ -176,7 +176,7 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
     buffer, seed = config
     TD = typeof(first(seed))
     T  = typeof(first(seed).partials)
-    @. seed = TD(x, T(tuple(v)))
+    DiffEqBase.@.. seed = TD(x, T(tuple(v)))
     f(buffer, seed)
     Jv .= ForwardDiff.partials.(buffer, 1)
   else
@@ -463,7 +463,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
   #end
 
   vec(tmp4) .= vec(λ)
-                        
+
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
     if W==nothing
