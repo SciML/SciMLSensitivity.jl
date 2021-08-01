@@ -84,21 +84,23 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     S.paramjac(S.pJ,y,p,t) # Calculate the parameter Jacobian into pJ
   else
     S.pf.t = t
-    S.pf.u .= y
+    copyto!(S.pf.u,y)
     jacobian!(S.pJ, S.pf, p, S.f_cache, S.alg, S.paramjac_config)
   end
 
-
   # Compute the parameter derivatives
-  for i in eachindex(p)
-    Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
-    dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
-    if !S.isautojacvec
-      mul!(dp,S.J,Sj)
-    else
+  if !S.isautojacvec
+    dp = @view du[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
+    Sj = @view u[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
+    mul!(dp,S.J,Sj)
+    DiffEqBase.@.. dp += S.pJ
+  else
+    for i in eachindex(p)
+      Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
+      dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
       jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
+      dp .+= @view S.pJ[:,i]
     end
-    dp .+= @view S.pJ[:,i]
   end
 end
 
@@ -129,6 +131,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
+
   if isautojacvec
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
