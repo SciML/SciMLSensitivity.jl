@@ -59,3 +59,4 @@ Cassette.overdub(::HasBranchingCtx, ::typeof(Base.materialize), x...) = Base.mat
 Cassette.overdub(::HasBranchingCtx, ::typeof(Base.literal_pow), x...) = Base.literal_pow(x...)
 Cassette.overdub(::HasBranchingCtx, ::typeof(Base.getindex), x...) = Base.getindex(x...)
 Cassette.overdub(::HasBranchingCtx, ::typeof(Core.Typeof), x...) = Core.Typeof(x...)
+Cassette.overdub(::HasBranchingCtx, ::typeof(Zygote._pullback), x...) = Zygote._pullback(x...)
