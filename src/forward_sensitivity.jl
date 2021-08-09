@@ -142,7 +142,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if isautojacmat
     if alg_autodiff(alg)
-      jac_config_seed = ForwardDiff.Dual{typeof(uf)}.(u0,[ntuple(x -> 0, length(p)) for i in eachindex(u0)])
+      jac_config_seed = ForwardDiff.Dual{typeof(uf)}.(u0,[ntuple(x -> zero(eltype(u0)), length(p)) for i in eachindex(u0)])
       jac_config_buffer = similar(jac_config_seed)
       jac_config = jac_config_seed, jac_config_buffer
     else
