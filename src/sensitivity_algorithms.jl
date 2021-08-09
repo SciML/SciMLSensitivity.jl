@@ -6,12 +6,16 @@ abstract type AbstractSecondOrderSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.A
 
 struct ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
+  autojacmat::Bool
 end
 Base.@pure function ForwardSensitivity(;
                                        chunk_size=0,autodiff=true,
                                        diff_type=Val{:central},
-                                       autojacvec=autodiff)
-  ForwardSensitivity{chunk_size,autodiff,diff_type}(autojacvec)
+                                       autojacvec=autodiff,
+                                       autojacmat=false)
+  autojacvec && autojacmat && error("Choose either Jacobian matrix products or Jacobian vector products,
+                                      autojacmat and autojacvec cannot both be true")
+  ForwardSensitivity{chunk_size,autodiff,diff_type}(autojacvec,autojacmat)
 end
 
 struct ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
@@ -198,6 +202,9 @@ end
 @inline diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = FDT
 @inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)
   alg.autojacvec isa Bool ? alg.autojacvec : true
+end
+@inline function get_jacmat(alg::DiffEqBase.AbstractSensitivityAlgorithm)
+  alg.autojacmat isa Bool ? alg.autojacmat : true
 end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol=nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing

@@ -21,6 +21,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC
   f_cache::fc
   mass_matrix::MM
   isautojacvec::Bool
+  isautojacmat::Bool
   colorvec::CV
 end
 has_original_jac(f) = isdefined(f, :original_jac)
@@ -34,7 +35,7 @@ end
 
 function ODEForwardSensitivityFunction(f,analytic,tgrad,original_jac,jac,jac_prototype,sparsity,paramjac,Wfact,Wfact_t,uf,pf,u0,
                                     jac_config,paramjac_config,alg,p,f_cache,mm,
-                                    isautojacvec,colorvec,nus)
+                                    isautojacvec,isautojacmat,colorvec,nus)
   numparams = length(p)
   numindvar = length(u0)
   J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef,numindvar,numindvar)
@@ -52,7 +53,7 @@ function ODEForwardSensitivityFunction(f,analytic,tgrad,original_jac,jac,jac_pro
                            f,analytic,tgrad,original_jac,jac,jac_prototype,
                            sparsity,paramjac,Wfact,Wfact_t,uf,pf,J,pJ,
                            jac_config,paramjac_config,alg,
-                           numparams,numindvar,f_cache,mm,isautojacvec,colorvec,
+                           numparams,numindvar,f_cache,mm,isautojacvec,isautojacmat,colorvec,
                           )
   if nus!==nothing
     sensefun = NILSSForwardSensitivityFunction{isinplace(f), typeof(sensefun),
@@ -70,7 +71,7 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   # Now do sensitivities
   # Compute the Jacobian
 
-  if !S.isautojacvec
+  if !S.isautojacvec && !S.isautojacmat
     if has_original_jac(S.f)
       S.original_jac(S.J,y,p,t) # Calculate the Jacobian into J
     else
@@ -89,12 +90,19 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   end
 
   # Compute the parameter derivatives
-  if !S.isautojacvec
+  if !S.isautojacvec && !S.isautojacmat
     dp = @view du[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
     Sj = @view u[reshape(S.numindvar+1:(length(p)+1)*S.numindvar,S.numindvar,length(p))]
     mul!(dp,S.J,Sj)
     DiffEqBase.@.. dp += S.pJ
-  else
+  elseif S.isautojacmat
+    S.uf.t = t
+    Sj = @view u[reshape(S.numindvar+1:end,S.numindvar,S.numparams)]
+    dp = @view du[reshape(S.numindvar+1:end,S.numindvar,S.numparams)]
+    jacobianmat!(dp, S.uf, y, Sj, S.alg, S.jac_config)
+    DiffEqBase.@.. dp += S.pJ
+  else 
+    S.uf.t = t
     for i in eachindex(p)
       Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
       dp = @view du[i*S.numindvar+1:(i+1)*S.numindvar]
@@ -102,8 +110,8 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
       dp .+= @view S.pJ[:,i]
     end
   end
+  return nothing
 end
-
 @deprecate ODELocalSensitivityProblem(args...;kwargs...) ODEForwardSensitivityProblem(args...;kwargs...)
 
 struct ODEForwardSensitivityProblem{iip,A}
@@ -127,12 +135,20 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                     kwargs...)
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
+  isautojacmat = get_jacmat(alg)
   isautojacvec = get_jacvec(alg)
   p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
-
-  if isautojacvec
+  if isautojacmat
+    if alg_autodiff(alg)
+      jac_config_seed = ForwardDiff.Dual{typeof(uf)}.(u0,[ntuple(x -> 0, length(p)) for i in eachindex(u0)])
+      jac_config_buffer = similar(jac_config_seed)
+      jac_config = jac_config_seed, jac_config_buffer
+    else
+      error("Jacobian matrix products only work with automatic differentiation.")
+    end
+  elseif isautojacvec
     if alg_autodiff(alg)
       # if we are using automatic `jac*vec`, then we need to use a `jac_config`
       # that is a tuple in the form of `(seed, buffer)`
@@ -171,7 +187,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                         uf,pf,u0,jac_config,
                                         paramjac_config,alg,
                                         p,similar(u0),mm,
-                                        isautojacvec,f.colorvec,nus)
+                                        isautojacvec,isautojacmat,f.colorvec,nus)
   if nus===nothing
     sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
   else
