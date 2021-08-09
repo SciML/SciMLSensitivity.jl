@@ -553,9 +553,21 @@ end
         cb = ContinuousCallback(condition,affect!)
         test_continuous_callback(cb,g,dg!)
       end
-      @testset "= callback" begin
+      @testset "= callback 1" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
+        cb = ContinuousCallback(condition,affect!)
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback 2" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback 3" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
         cb = ContinuousCallback(condition,affect!)
         test_continuous_callback(cb,g,dg!)
       end

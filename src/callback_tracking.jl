@@ -9,7 +9,7 @@ track_callbacks(cb::CallbackSet,t,u,p,sensealg) = CallbackSet(
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.continuous_callbacks),
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.discrete_callbacks))
 
-mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,RefType}
+mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10}
   gt_val::T1
   gu_val::T2
   gt::T3
@@ -17,9 +17,9 @@ mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,RefType}
   gt_conf::T5
   gu_conf::T6
   condition::T7
-  Lu::T8
-  dy::T9
-  cur_time::RefType # initialized as "dummy" Ref that gets overwritten by Ref of loss
+  Lu_left::T8
+  Lu_right::T9
+  dy::T10
 end
 
 ImplicitCorrection(cb::DiscreteCallback,t,u,p,sensealg) = nothing
@@ -36,13 +36,12 @@ function ImplicitCorrection(cb,t,u,p,sensealg)
   gt_conf = build_deriv_config(sensealg,gt,gt_val,t)
   gu_conf = build_grad_config(sensealg,gu,u,p)
 
-  cur_time = Ref(1) # initialize the Ref, set to Ref of loss below
-
   dy = similar(u)
 
-  Lu = similar(u)
+  Lu_left = similar(u)
+  Lu_right = similar(u)
 
-  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu,dy,cur_time)
+  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu_left,Lu_right,dy)
 end
 
 struct TrackedAffect{T,T2,T3,T4,T5}
@@ -133,18 +132,14 @@ vjps as described in https://arxiv.org/pdf/1905.10403.pdf Equation 13.
 
 For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
-setup_reverse_callbacks(cb,sensealg,g,cur_time) = setup_reverse_callbacks(CallbackSet(cb),sensealg,g,cur_time)
-function setup_reverse_callbacks(cb::CallbackSet,sensealg,g,cur_time)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,),(g,),(cur_time,))...,
-                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,),(g,),(cur_time,)))...)
+setup_reverse_callbacks(cb,sensealg) = setup_reverse_callbacks(CallbackSet(cb),sensealg)
+function setup_reverse_callbacks(cb::CallbackSet,sensealg)
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,))...,
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,)))...)
     cb
 end
 
-function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg,g,loss_ref)
-
-    if cb isa Union{ContinuousCallback,VectorContinuousCallback} && cb.affect! !== nothing
-      cb.affect!.correction.cur_time = loss_ref # set cur_time
-    end
+function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg)
 
     function affect!(integrator)
 
@@ -158,6 +153,16 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
 
         # Create a fake sensitivity function to do the vjps
         fakeS = CallbackSensitivityFunction(w,sensealg,S.diffcache,integrator.sol.prob)
+
+        if cb isa Union{ContinuousCallback,VectorContinuousCallback}
+          # correction of the loss function sensitivity for continuous callbacks
+          # wrt dependence of event time t on parameters and initial state.
+          # Must be handled here because otherwise it is unclear if continuous or
+          # discrete callback was triggered.
+          @unpack correction = cb.affect!
+          @unpack Lu_right = correction
+          implicit_correction!(Lu_right,λ,correction,sensealg,S,y,integrator)
+        end
 
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
@@ -181,20 +186,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
           end
         end
 
-        if cb isa Union{ContinuousCallback,VectorContinuousCallback}
-          # correction of the loss function sensitivity for continuous callbacks
-          # wrt dependence of event time t on parameters and initial state.
-          # Must be handled here because otherwise it is unclear if continuous or
-          # discrete callback was triggered.
-          if cb.save_positions == Bool[1, 1]
-            # only correct if loss explicitly depends on state at event time.
-            @unpack correction = cb.affect!
-            # 1 shifts the cur_time by 1 to extract the correct loss value
-            indx = correction.cur_time[] + 1
-
-            implicit_correction!(λ,correction,sensealg,S,g,y,integrator,indx)
-          end
-        end
+        
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
@@ -205,12 +197,10 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         end
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
-          # second correction to correct for other saved value
-          if cb.save_positions == Bool[1, 1]
-            @unpack correction = cb.affect!
-            indx -= 1
-            implicit_correction!(λ,correction,sensealg,S,g,y,integrator,indx)
-          end
+          # second correction to correct for other value
+          @unpack Lu_left = correction
+          implicit_correction!(Lu_left,λ,correction,sensealg,S,y,integrator)
+          λ .-= Lu_left - Lu_right
         end
     end
 
@@ -256,8 +246,8 @@ function copy_to_integrator!(cb::Union{ContinuousCallback,VectorContinuousCallba
   update_p
 end
 
-function implicit_correction!(λ,correction,sensealg,S,g,y,integrator,indx)
-  @unpack gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition, Lu, dy = correction
+function implicit_correction!(Lu,λ,correction,sensealg,S,y,integrator)
+  @unpack gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition, dy = correction
 
   p, t = integrator.p, integrator.t
 
@@ -285,11 +275,9 @@ function implicit_correction!(λ,correction,sensealg,S,g,y,integrator,indx)
   @. gu_val *= -gt_val
 
   # loss function gradient (not condition!)
-  # need to use cur_time[] from loss
-  g(Lu,y,p,t,indx)
-
+  # ∂L∂t correction should be added
   # correct adjoint
-  λ .+= dot(Lu,dy)*gu_val
+  Lu .= dot(λ,dy)*gu_val
   return nothing
 end
 

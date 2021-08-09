@@ -418,17 +418,12 @@ end
 
 function generate_callbacks(sensefun, g, λ, t, callback, init_cb)
 
-  if !sensefun.discrete
-    cur_time = Ref(1)
-  else
-    cur_time = Ref(length(t))
-  end
-
-  reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg,g,cur_time)
+  reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg)
   sensefun.discrete || return reverse_cbs, nothing
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
+  cur_time = Ref(length(t))
 
   rlcb = ReverseLossCallback(sensefun, λ, t, g, cur_time)
 
