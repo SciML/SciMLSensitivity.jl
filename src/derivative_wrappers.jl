@@ -192,7 +192,22 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
   end
   nothing
 end
-
+function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
+                      M, alg::DiffEqBase.AbstractSensitivityAlgorithm, config)
+  buffer, seed = config
+  T = eltype(seed)
+  numparams = length(ForwardDiff.partials(seed[1]))
+  for i in eachindex(seed)
+    seed[i] = T(x[i],ForwardDiff.Partials(ntuple(j -> M[i,j], numparams)))
+  end
+  f(buffer,seed)
+  for (j,dual) in enumerate(buffer)
+    for (i,partial) in enumerate(ForwardDiff.partials(dual))
+       JM[j,i] = partial
+    end
+  end
+  return nothing
+end
 function vecjacobian!(dλ, y, λ, p, t, S::TS;
                       dgrad=nothing, dy=nothing, W=nothing) where TS<:SensitivityFunction
   _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
