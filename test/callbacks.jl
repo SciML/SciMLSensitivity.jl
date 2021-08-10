@@ -262,24 +262,7 @@ function test_continuous_wrt_discrete_callback()
 end
 
 
-function test_continuous_callback(cb, g, dg!)
-  function fiip(du,u,p,t)
-    du[1] = u[2]
-    du[2] = -p[1]
-  end
-  function foop(u,p,t)
-    dx = u[2]
-    dy = -p[1]
-    [dx,dy]
-  end
-
-  u0 = [50.0,0.0]
-  tspan = (0.0,5.0)
-  p = [9.8, 0.8]
-
-  prob = ODEProblem(fiip,u0,tspan,p)
-  proboop = ODEProblem(fiip,u0,tspan,p)
-
+function test_continuous_callback(prob, proboop, cb, g, dg!)
   sol1 = solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes)
   sol2 = solve(prob,Tsit5(),u0=u0,p=p,abstol=abstol,reltol=reltol,saveat=savingtimes)
 
@@ -530,46 +513,96 @@ end
     @testset "Compare with respect to discrete callback" begin
       test_continuous_wrt_discrete_callback()
     end
-    @testset "simple loss function" begin
+    @testset "simple loss function bouncing ball" begin
       g(sol) = sum(sol)
       function dg!(out,u,p,t,i)
         (out.=-1)
       end
+      function fiip(du,u,p,t)
+        du[1] = u[2]
+        du[2] = -p[1]
+      end
+      function foop(u,p,t)
+        dx = u[2]
+        dy = -p[1]
+        [dx,dy]
+      end
+    
+      u0 = [5.0,0.0]
+      tspan = (0.0,2.4)
+      p = [9.8, 0.8]
+    
+      prob = ODEProblem(fiip,u0,tspan,p)
+      proboop = ODEProblem(fiip,u0,tspan,p)
+
       @testset "callbacks with no effect" begin
         condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
         affect!(integrator) = (integrator.u[2] += 0)
         cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
       @testset "callbacks with no effect except saving the state" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] += 0)
         cb = ContinuousCallback(condition,affect!)
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
       @testset "+= callback" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] += 50.0)
         cb = ContinuousCallback(condition,affect!)
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
-      @testset "= callback 1" begin
+      @testset "= callback with save" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
         cb = ContinuousCallback(condition,affect!)
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
-      @testset "= callback 2" begin
+      @testset "= callback without save" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
         cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
-      @testset "= callback 3" begin
+      @testset "= callback with non-linear affect" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = integrator.u[2]^2)
+        cb = ContinuousCallback(condition,affect!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
+      end
+      @testset "= callback with terminate" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
         cb = ContinuousCallback(condition,affect!)
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
+      end
+    end
+    @testset "MSE loss function free particle" begin
+      g(u) = sum((1.0.-u).^2)./2
+      dg!(out,u,p,t,i) = (out.=1.0.-u)
+      function fiip(du,u,p,t)
+        du[1] = u[2]
+        du[2] = 0
+      end
+      function foop(u,p,t)
+        dx = u[2]
+        dy = 0
+        [dx,dy]
+      end
+    
+      u0 = [5.0,-1.0]
+      p = [0.0,0.0]
+      tspan = (0.0,2.0)
+    
+      prob = ODEProblem(fiip,u0,tspan,p)
+      proboop = ODEProblem(fiip,u0,tspan,p)
+
+      @testset "callback with reflection" begin
+        condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
+        affect!(integrator) = (integrator.u[2] = -integrator.u[2])
+        cb = ContinuousCallback(condition,affect!)
+        test_continuous_callback(prob,proboop,cb,g,dg!)
       end
     end
   end

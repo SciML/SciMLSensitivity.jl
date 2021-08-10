@@ -9,7 +9,7 @@ track_callbacks(cb::CallbackSet,t,u,p,sensealg) = CallbackSet(
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.continuous_callbacks),
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.discrete_callbacks))
 
-mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10}
+mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11}
   gt_val::T1
   gu_val::T2
   gt::T3
@@ -19,7 +19,8 @@ mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10}
   condition::T7
   Lu_left::T8
   Lu_right::T9
-  dy::T10
+  dy_left::T10
+  dy_right::T11
 end
 
 ImplicitCorrection(cb::DiscreteCallback,t,u,p,sensealg) = nothing
@@ -36,12 +37,14 @@ function ImplicitCorrection(cb,t,u,p,sensealg)
   gt_conf = build_deriv_config(sensealg,gt,gt_val,t)
   gu_conf = build_grad_config(sensealg,gu,u,p)
 
-  dy = similar(u)
 
+  dy_left = similar(u)
+  dy_right = similar(u)
+  
   Lu_left = similar(u)
   Lu_right = similar(u)
 
-  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu_left,Lu_right,dy)
+  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu_left,Lu_right,dy_left,dy_right)
 end
 
 struct TrackedAffect{T,T2,T3,T4,T5}
@@ -154,20 +157,29 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         # Create a fake sensitivity function to do the vjps
         fakeS = CallbackSensitivityFunction(w,sensealg,S.diffcache,integrator.sol.prob)
 
+        du = first(get_tmp_cache(integrator))
+        λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
+
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # correction of the loss function sensitivity for continuous callbacks
           # wrt dependence of event time t on parameters and initial state.
           # Must be handled here because otherwise it is unclear if continuous or
           # discrete callback was triggered.
           @unpack correction = cb.affect!
-          @unpack Lu_right = correction
-          implicit_correction!(Lu_right,λ,correction,sensealg,S,y,integrator)
+          @unpack dy_right = correction
+          # compute #f(xτ_right,p_right,τ(x₀,p))
+          compute_f!(dy_right,S,y,integrator)
         end
 
-        du = first(get_tmp_cache(integrator))
-        λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
-
         update_p = copy_to_integrator!(cb,y,integrator.p,integrator.t)
+
+        if cb isa Union{ContinuousCallback,VectorContinuousCallback}
+          # compute the correction of the right limit (with left state limit inserted into dgdt)
+          @unpack dy_left, Lu_right = correction
+          compute_f!(dy_left,S,y,integrator)
+          dgdt(dy_left,correction,sensealg,y,integrator)
+          implicit_correction!(Lu_right,dy_right,λ,correction)
+        end
 
         if update_p
           # changes in parameters
@@ -185,23 +197,24 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
             grad .= dgrad
           end
         end
-
         
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
 
         λ .= dλ
+
+        if cb isa Union{ContinuousCallback,VectorContinuousCallback}
+          # second correction to correct for left limit
+          @unpack Lu_left = correction
+          implicit_correction!(Lu_left,dy_left,λ,correction)
+          λ .+= Lu_left - Lu_right
+        end
+
         if !(sensealg isa QuadratureAdjoint)
           grad .-= dgrad
         end
-
-        if cb isa Union{ContinuousCallback,VectorContinuousCallback}
-          # second correction to correct for other value
-          @unpack Lu_left = correction
-          implicit_correction!(Lu_left,λ,correction,sensealg,S,y,integrator)
-          λ .-= Lu_left - Lu_right
-        end
+        
     end
 
     times = if typeof(cb) <: DiscreteCallback
@@ -246,8 +259,20 @@ function copy_to_integrator!(cb::Union{ContinuousCallback,VectorContinuousCallba
   update_p
 end
 
-function implicit_correction!(Lu,λ,correction,sensealg,S,y,integrator)
-  @unpack gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition, dy = correction
+function compute_f!(dy,S,y,integrator)
+  p, t = integrator.p, integrator.t
+
+  if inplace_sensitivity(S)
+    S.f(dy,y,p,t)
+  else
+    dy[:] .= S.f(y,p,t)
+  end
+  return nothing
+end
+
+function dgdt(dy,correction,sensealg,y,integrator)
+  # dy refers to f evaluated on left limit
+  @unpack gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition = correction
 
   p, t = integrator.p, integrator.t
 
@@ -263,20 +288,21 @@ function implicit_correction!(Lu,λ,correction,sensealg,S,y,integrator)
   derivative!(gt_val, gt, t, sensealg, gt_conf)
   gradient!(gu_val, gu, y, sensealg, gu_conf)
 
-  if inplace_sensitivity(S)
-    S.f(dy,y,p,t)
-  else
-    dy[:] .= S.f(y,p,t)
-  end
-
   gt_val .+= dot(gu_val,dy)
   @. gt_val = inv(gt_val) # allocates?
 
   @. gu_val *= -gt_val
 
+  return nothing
+end
+
+function implicit_correction!(Lu,dy,λ,correction)
+  @unpack gu_val = correction
+
   # loss function gradient (not condition!)
   # ∂L∂t correction should be added
   # correct adjoint
+
   Lu .= dot(λ,dy)*gu_val
   return nothing
 end
@@ -294,3 +320,5 @@ mutable struct ConditionUWrapper{F,tType,Integrator} <: Function
   integrator::Integrator
 end
 (ff::ConditionUWrapper)(u) = ff.f(u,ff.t,ff.integrator)
+
+DiffEqBase.terminate!(i::FakeIntegrator) = nothing
