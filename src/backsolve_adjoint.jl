@@ -101,7 +101,16 @@ end
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),kwargs...)
   @unpack f, p, u0, tspan = sol.prob
+
+  # check if solution was terminated, then use reduced time span
+  if hasfield(typeof(sol),:retcode)
+    if sol.retcode == :Terminated
+      tspan = (tspan[1], sol.t[end])
+    end
+  end
+
   tspan = reverse(tspan)
+  
   discrete = t != nothing
 
   numstates = length(u0)
