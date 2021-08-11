@@ -545,19 +545,19 @@ end
       @testset "callbacks with no effect except saving the state" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] += 0)
-        cb = ContinuousCallback(condition,affect!)
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
         test_continuous_callback(cb,g,dg!)
       end
       @testset "+= callback" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] += 50.0)
-        cb = ContinuousCallback(condition,affect!)
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
         test_continuous_callback(cb,g,dg!)
       end
       @testset "= callback with save" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
-        cb = ContinuousCallback(condition,affect!)
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
         test_continuous_callback(cb,g,dg!)
       end
       @testset "= callback without save" begin
@@ -569,13 +569,13 @@ end
       @testset "= callback with non-linear affect" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = integrator.u[2]^2)
-        cb = ContinuousCallback(condition,affect!)
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
         test_continuous_callback(cb,g,dg!)
       end
       @testset "= callback with terminate" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
-        cb = ContinuousCallback(condition,affect!)
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
         test_continuous_callback(cb,g,dg!)
       end
     end
