@@ -14,6 +14,8 @@ import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
 
+import OrdinaryDiffEq
+
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
 
@@ -40,6 +42,8 @@ include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("lss.jl")
 include("nilss.jl")
+
+include("precompile.jl")
 
 export extract_local_sensitivities
 
