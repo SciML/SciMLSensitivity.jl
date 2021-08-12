@@ -169,13 +169,12 @@ end
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   # check if solution was terminated, then use reduced time span
+  terminated = false
   if hasfield(typeof(sol),:retcode)
     if sol.retcode == :Terminated
       tspan = (tspan[1], sol.t[end])
       terminated = true
     end
-  else
-    terminated = false
   end
 
   tspan = reverse(tspan)
@@ -253,13 +252,12 @@ end
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   # check if solution was terminated, then use reduced time span
+  terminated = false
   if hasfield(typeof(sol),:retcode)
     if sol.retcode == :Terminated
       tspan = (tspan[1], sol.t[end])
       terminated = true
     end
-  else
-    terminated = false
   end
   tspan = reverse(tspan)
   discrete = t != nothing
