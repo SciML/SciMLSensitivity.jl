@@ -185,25 +185,28 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
           # Must be handled here because otherwise it is unclear if continuous or
           # discrete callback was triggered.
           @unpack correction = cb.affect!
-          @unpack dy_right = correction
+          @unpack dy_right, Lu_right = correction
           # compute #f(xτ_right,p_right,τ(x₀,p))
           compute_f!(dy_right,S,y,integrator)
+          # if callback did not terminate the time evolution, we have to compute one more correction term.
+          if cb.save_positions[2] && !correction.terminated
+            indx = correction.cur_time[] + 1
+            loss_correction!(Lu_right,y,integrator,g,indx)
+          else
+            Lu_right .*= false
+          end
         end
 
         update_p = copy_to_integrator!(cb,y,integrator.p,integrator.t)
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # compute the correction of the right limit (with left state limit inserted into dgdt)
-          @unpack dy_left, Lu_right, cur_time = correction
+          @unpack dy_left, cur_time = correction
           compute_f!(dy_left,S,y,integrator)
           dgdt(dy_left,correction,sensealg,y,integrator)
           if !correction.terminated
-            # if callback did not terminate the time evolution, we have to compute one more correction term.
-            indx = correction.cur_time[] + 1
-            implicit_correction!(Lu_right,dλ,λ,dy_right,correction,y,integrator,g,indx,cb.save_positions[2])
-            correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution
-          else
-            Lu_right .*= false
+            implicit_correction!(Lu_right,dλ,λ,dy_right,correction)
+            correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution  
           end
         end
 
@@ -330,21 +333,18 @@ function dgdt(dy,correction,sensealg,y,integrator)
   return nothing
 end
 
-function implicit_correction!(Lu,dλ,λ,dy,correction,y,integrator,g,indx,saved_right_limit)
-  @unpack gu_val = correction
-
+function loss_correction!(Lu,y,integrator,g,indx)
   # ∂L∂t correction should be added if L depends explicitly on time.
   p, t = integrator.p, integrator.t
+  g(Lu,y,p,t,indx)
+  return nothing
+end
 
-  if saved_right_limit
-    g(Lu,y,p,t,indx)
+function implicit_correction!(Lu,dλ,λ,dy,correction)
+  @unpack gu_val = correction
 
-    # remove gradients from adjoint state to compute correction factor
-    @. dλ = λ - Lu
-  else
-    dλ .= λ
-  end
-
+  # remove gradients from adjoint state to compute correction factor
+  @. dλ = λ - Lu
   Lu .= dot(dλ,dy)*gu_val
 
   return nothing
