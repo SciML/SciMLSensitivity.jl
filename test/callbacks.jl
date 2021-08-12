@@ -332,7 +332,7 @@ function test_continuous_callback(cb, g, dg!)
   @test_broken du01 ≈ du02
   @test_broken du01 ≈ du03 rtol=1e-7
   @test_broken du01 ≈ du03c rtol=1e-7
-  @test_broken du03 ≈ du03c
+  @test du03 ≈ du03c
   @test_broken du01 ≈ du04
   @test_broken dp1 ≈ dp2
   @test_broken dp1 ≈ dp3
@@ -551,16 +551,16 @@ end
       @testset "+= callback" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] += 50.0)
-        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
         test_continuous_callback(cb,g,dg!)
       end
-      @testset "= callback with save" begin
+      @testset "= callback with parameter dependence and save" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
-        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
         test_continuous_callback(cb,g,dg!)
       end
-      @testset "= callback without save" begin
+      @testset "= callback with parameter dependence but without save" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
         cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
@@ -569,13 +569,35 @@ end
       @testset "= callback with non-linear affect" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = integrator.u[2]^2)
-        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
         test_continuous_callback(cb,g,dg!)
       end
       @testset "= callback with terminate" begin
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
-        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+    end
+    @testset "MSE loss function bouncing-ball like" begin
+      g(u) = sum((1.0.-u).^2)./2
+      dg!(out,u,p,t,i) = (out.=1.0.-u)
+      condition(u,t,integrator) = u[1]
+      @testset "callback with non-linear affect" begin
+        function affect!(integrator) 
+          integrator.u[1] += 3.0
+          integrator.u[2] = integrator.u[2]^2
+        end
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "callback with non-linear affect and terminate" begin
+        function affect!(integrator) 
+          integrator.u[1] += 3.0
+          integrator.u[2] = integrator.u[2]^2
+          terminate!(integrator)
+        end
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
         test_continuous_callback(cb,g,dg!)
       end
     end

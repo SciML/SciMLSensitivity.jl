@@ -9,7 +9,7 @@ track_callbacks(cb::CallbackSet,t,u,p,sensealg) = CallbackSet(
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.continuous_callbacks),
    map(cb->_track_callback(cb,t,u,p,sensealg), cb.discrete_callbacks))
 
-mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11}
+mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11,RefType}
   gt_val::T1
   gu_val::T2
   gt::T3
@@ -21,6 +21,8 @@ mutable struct ImplicitCorrection{T1,T2,T3,T4,T5,T6,T7,T8,T9,T10,T11}
   Lu_right::T9
   dy_left::T10
   dy_right::T11
+  cur_time::RefType # initialized as "dummy" Ref that gets overwritten by Ref of loss
+  terminated::Bool
 end
 
 ImplicitCorrection(cb::DiscreteCallback,t,u,p,sensealg) = nothing
@@ -44,7 +46,10 @@ function ImplicitCorrection(cb,t,u,p,sensealg)
   Lu_left = similar(u)
   Lu_right = similar(u)
 
-  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu_left,Lu_right,dy_left,dy_right)
+  cur_time = Ref(1) # initialize the Ref, set to Ref of loss below
+  terminated = false
+
+  ImplicitCorrection(gt_val,gu_val,gt,gu,gt_conf,gu_conf,condition,Lu_left,Lu_right,dy_left,dy_right,cur_time,terminated)
 end
 
 struct TrackedAffect{T,T2,T3,T4,T5}
@@ -135,14 +140,28 @@ vjps as described in https://arxiv.org/pdf/1905.10403.pdf Equation 13.
 
 For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
 """
-setup_reverse_callbacks(cb,sensealg) = setup_reverse_callbacks(CallbackSet(cb),sensealg)
-function setup_reverse_callbacks(cb::CallbackSet,sensealg)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,))...,
-                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,)))...)
-    cb
+setup_reverse_callbacks(cb,sensealg,g,cur_time,terminated) = setup_reverse_callbacks(CallbackSet(cb),sensealg,g,cur_time,terminated)
+function setup_reverse_callbacks(cb::CallbackSet,sensealg,g,cur_time,terminated)
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,(sensealg,),(g,),(cur_time,),(terminated,))...,
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,(sensealg,),(g,),(cur_time,),(terminated,)))...)
+    return cb
 end
 
-function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg)
+function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,VectorContinuousCallback},sensealg,g,loss_ref,terminated)
+
+    if cb isa Union{ContinuousCallback,VectorContinuousCallback} && cb.affect! !== nothing
+      cb.affect!.correction.cur_time = loss_ref # set cur_time
+      cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
+    end
+
+    # ReverseLossCallback adds gradients before and after the callback if save_positions is (true, true). 
+    # This, however, means that we must check the save_positions setting within the callback. 
+    # if save_positions = [1,1] is true the loss gradient is accumulated correctly before and after callback. 
+    # if save_positions = [0,0] no extra gradient is added. 
+    # if save_positions = [0,1] the gradient contribution is added before the callback but no additional gradient is added afterwards. 
+    # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Thefore,
+    
+    cb.save_positions == [1,0] && error("save_positions=[1,0] is currently not supported.")
 
     function affect!(integrator)
 
@@ -175,10 +194,17 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # compute the correction of the right limit (with left state limit inserted into dgdt)
-          @unpack dy_left, Lu_right = correction
+          @unpack dy_left, Lu_right, cur_time = correction
           compute_f!(dy_left,S,y,integrator)
           dgdt(dy_left,correction,sensealg,y,integrator)
-          implicit_correction!(Lu_right,dy_right,λ,correction)
+          if !correction.terminated
+            # if callback did not terminate the time evolution, we have to compute one more correction term.
+            indx = correction.cur_time[] + 1
+            implicit_correction!(Lu_right,dλ,λ,dy_right,correction,y,integrator,g,indx,cb.save_positions[2])
+            correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution
+          else
+            Lu_right .*= false
+          end
         end
 
         if update_p
@@ -202,14 +228,22 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
 
-        λ .= dλ
-
+      
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # second correction to correct for left limit
           @unpack Lu_left = correction
-          implicit_correction!(Lu_left,dy_left,λ,correction)
-          λ .+= Lu_left - Lu_right
+          implicit_correction!(Lu_left,dλ,dy_left,correction)
+          dλ .+= Lu_left - Lu_right
+
+          if cb.save_positions[1] == true
+            # if the callback saved the first position, we need to implicitly correct this value as well
+            indx = correction.cur_time[] 
+            implicit_correction!(Lu_left,dy_left,correction,y,integrator,g,indx)
+            dλ .+= Lu_left
+          end
         end
+
+        λ .= dλ
 
         if !(sensealg isa QuadratureAdjoint)
           grad .-= dgrad
@@ -296,14 +330,47 @@ function dgdt(dy,correction,sensealg,y,integrator)
   return nothing
 end
 
-function implicit_correction!(Lu,dy,λ,correction)
+function implicit_correction!(Lu,dλ,λ,dy,correction,y,integrator,g,indx,saved_right_limit)
   @unpack gu_val = correction
 
-  # loss function gradient (not condition!)
-  # ∂L∂t correction should be added
-  # correct adjoint
+  # ∂L∂t correction should be added if L depends explicitly on time.
+  p, t = integrator.p, integrator.t
+
+  if saved_right_limit
+    g(Lu,y,p,t,indx)
+
+    # remove gradients from adjoint state to compute correction factor
+    @. dλ = λ - Lu
+  else
+    dλ .= λ
+  end
+
+  Lu .= dot(dλ,dy)*gu_val
+
+  return nothing
+end
+
+function implicit_correction!(Lu,λ,dy,correction)
+  @unpack gu_val = correction
 
   Lu .= dot(λ,dy)*gu_val
+
+  return nothing
+end
+
+function implicit_correction!(Lu,dy,correction,y,integrator,g,indx)
+  @unpack gu_val = correction
+
+  p, t = integrator.p, integrator.t
+
+  # loss function gradient (not condition!)
+  # ∂L∂t correction should be added, also ∂L∂p is missing.
+  # correct adjoint
+  g(Lu,y,p,t,indx)
+
+  Lu .= dot(Lu,dy)*gu_val
+
+  # note that we don't add the gradient Lu here again to the correction because it will be added by the ReverseLossCallback. 
   return nothing
 end
 
