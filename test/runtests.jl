@@ -71,8 +71,10 @@ if GROUP == "DiffEqFlux"
 end
 
 if GROUP == "Callbacks"
+    activate_downstream_env()
     @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
 end
+
 
 if GROUP == "GPU"
     activate_downstream_env()
