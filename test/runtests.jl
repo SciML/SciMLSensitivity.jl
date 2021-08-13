@@ -38,7 +38,6 @@ if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "Autodiff Events" begin include("autodiff_events.jl") end
     @time @safetestset "Null Parameters" begin include("null_parameters.jl") end
     @time @safetestset "Forward Mode Prob Kwargs" begin include("forward_prob_kwargs.jl") end
-    @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
     @time @safetestset "Steady State Adjoint" begin include("steady_state.jl") end
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("second_order_odes.jl") end
 end
@@ -70,6 +69,12 @@ if GROUP == "DiffEqFlux"
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
     @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
 end
+
+if GROUP == "Callbacks"
+    @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
+end
+
+
 
 if GROUP == "GPU"
     activate_downstream_env()

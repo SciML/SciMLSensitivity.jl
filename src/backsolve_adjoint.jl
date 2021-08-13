@@ -101,7 +101,18 @@ end
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),kwargs...)
   @unpack f, p, u0, tspan = sol.prob
+
+  # check if solution was terminated, then use reduced time span
+  terminated = false
+  if hasfield(typeof(sol),:retcode)
+    if sol.retcode == :Terminated
+      tspan = (tspan[1], sol.t[end])
+      terminated = true
+    end
+  end
+
   tspan = reverse(tspan)
+  
   discrete = t != nothing
 
   numstates = length(u0)
@@ -113,7 +124,7 @@ end
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
@@ -157,6 +168,15 @@ end
                                      corfunc_analytical=nothing,diffusion_jac=nothing, diffusion_paramjac=nothing,
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
+  # check if solution was terminated, then use reduced time span
+  terminated = false
+  if hasfield(typeof(sol),:retcode)
+    if sol.retcode == :Terminated
+      tspan = (tspan[1], sol.t[end])
+      terminated = true
+    end
+  end
+
   tspan = reverse(tspan)
   discrete = t != nothing
 
@@ -180,7 +200,7 @@ end
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb, duplicate_iterator_times)
@@ -231,6 +251,14 @@ end
                                      callback=CallbackSet(),
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
+  # check if solution was terminated, then use reduced time span
+  terminated = false
+  if hasfield(typeof(sol),:retcode)
+    if sol.retcode == :Terminated
+      tspan = (tspan[1], sol.t[end])
+      terminated = true
+    end
+  end
   tspan = reverse(tspan)
   discrete = t != nothing
 
@@ -245,7 +273,7 @@ end
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)

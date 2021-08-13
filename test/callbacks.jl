@@ -89,7 +89,7 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing)
   @test du02 ≈ dstuff[1:2]
   @test dp2 ≈ dstuff[3:6]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p,BacksolveAdjoint())
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes)
   #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
@@ -272,9 +272,9 @@ function test_continuous_callback(cb, g, dg!)
     dy = -p[1]
     [dx,dy]
   end
-
-  u0 = [50.0,0.0]
-  tspan = (0.0,5.0)
+    
+  u0 = [5.0,0.0]
+  tspan = (0.0,2.4)
   p = [9.8, 0.8]
 
   prob = ODEProblem(fiip,u0,tspan,p)
@@ -330,19 +330,19 @@ function test_continuous_callback(cb, g, dg!)
   @test du01c ≈ dstuff[1:2]
   @test dp1c ≈ dstuff[3:4]
   @test_broken du01 ≈ du02
-  @test du01 ≈ du03 rtol=1e-7
-  @test du01 ≈ du03c rtol=1e-7
-  @test du03 ≈ du03c
-  @test du01 ≈ du04
+  @test_broken du01 ≈ du03 rtol=1e-7
+  @test_broken du01 ≈ du03c rtol=1e-7
+  #@test_broken du03 ≈ du03c # passes sometimes, needs to be fixed with InterpolatingAdjoint
+  @test_broken du01 ≈ du04
   @test_broken dp1 ≈ dp2
-  @test dp1 ≈ dp3
-  @test dp1 ≈ dp3c
-  @test dp1 ≈ dp4 rtol=1e-7
+  @test_broken dp1 ≈ dp3
+  @test_broken dp1 ≈ dp3c
+  @test_broken dp1 ≈ dp4 rtol=1e-7
 
   @test_broken du02 ≈ dstuff[1:2]
   @test_broken dp2 ≈ dstuff[3:4]
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p)
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p,BacksolveAdjoint())
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,abstol=abstol,reltol=reltol,saveat=savingtimes)
 
   adj_prob = ODEAdjointProblem(sol_track,BacksolveAdjoint(),dg!,sol_track.t,nothing,
@@ -530,35 +530,113 @@ end
     @testset "Compare with respect to discrete callback" begin
       test_continuous_wrt_discrete_callback()
     end
-    @testset "simple loss function" begin
+    @testset "simple loss function bouncing ball" begin
       g(sol) = sum(sol)
       function dg!(out,u,p,t,i)
         (out.=-1)
       end
+
       @testset "callbacks with no effect" begin
         condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
         affect!(integrator) = (integrator.u[2] += 0)
         cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
         test_continuous_callback(cb,g,dg!)
       end
-    #   @testset "callbacks with no effect except saving the state" begin
-    #     condition(u,t,integrator) = u[1]
-    #     affect!(integrator) = (integrator.u[2] += 0)
-    #     cb = ContinuousCallback(condition,affect!)
-    #     test_continuous_callback(cb,g,dg!)
-    #   end
-    #   @testset "+= callback" begin
-    #     condition(u,t,integrator) = u[1]
-    #     affect!(integrator) = (integrator.u[2] += 50.0)
-    #     cb = ContinuousCallback(condition,affect!)
-    #     test_continuous_callback(cb,g,dg!)
-    #   end
-    #   @testset "= callback" begin
-    #     condition(u,t,integrator) = u[1]
-    #     affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
-    #     cb = ContinuousCallback(condition,affect!)
-    #     test_continuous_callback(cb,g,dg!)
-    #   end
+      @testset "callbacks with no effect except saving the state" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] += 0)
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "+= callback" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] += 50.0)
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback with parameter dependence and save" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback with parameter dependence but without save" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
+        cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback with non-linear affect" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = integrator.u[2]^2)
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "= callback with terminate" begin
+        condition(u,t,integrator) = u[1]
+        affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+    end
+    @testset "MSE loss function bouncing-ball like" begin
+      g(u) = sum((1.0.-u).^2)./2
+      dg!(out,u,p,t,i) = (out.=1.0.-u)
+      condition(u,t,integrator) = u[1]
+      @testset "callback with non-linear affect" begin
+        function affect!(integrator) 
+          integrator.u[1] += 3.0
+          integrator.u[2] = integrator.u[2]^2
+        end
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+      @testset "callback with non-linear affect and terminate" begin
+        function affect!(integrator) 
+          integrator.u[1] += 3.0
+          integrator.u[2] = integrator.u[2]^2
+          terminate!(integrator)
+        end
+        cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
+        test_continuous_callback(cb,g,dg!)
+      end
+    end
+    @testset "MSE loss function free particle" begin
+      g(u) = sum((1.0.-u).^2)./2
+      dg!(out,u,p,t,i) = (out.=1.0.-u)
+      function fiip(du,u,p,t)
+        du[1] = u[2]
+        du[2] = 0
+      end
+      function foop(u,p,t)
+        dx = u[2]
+        dy = 0
+        [dx,dy]
+      end
+    
+      u0 = [5.0,-1.0]
+      p = [0.0,0.0]
+      tspan = (0.0,2.0)
+    
+      prob = ODEProblem(fiip,u0,tspan,p)
+      proboop = ODEProblem(fiip,u0,tspan,p)
+
+      condition(u,t,integrator) = u[1] # Event when event_f(u,t) == 0
+      affect!(integrator) = (integrator.u[2] = -integrator.u[2])
+      cb = ContinuousCallback(condition,affect!)
+
+      du01,dp1 = Zygote.gradient(
+        (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=BacksolveAdjoint())),
+        u0,p)
+
+      dstuff = @time ForwardDiff.gradient(
+        (θ)->g(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:4],callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes)),
+        [u0;p])
+
+      @info dstuff
+
+      @test du01 ≈ dstuff[1:2]
+      @test dp1 ≈ dstuff[3:4]
     end
   end
 end

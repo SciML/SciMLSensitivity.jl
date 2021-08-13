@@ -92,7 +92,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  kwargs...)
 
   if haskey(kwargs, :callback)
-    cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p)
+    cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,sensealg)
     _prob = remake(prob,u0=u0,p=p,callback=cb)
   else
     cb = nothing
