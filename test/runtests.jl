@@ -43,7 +43,6 @@ if GROUP == "All" || GROUP == "Core2"
 end
 
 if GROUP == "All" || GROUP == "Core3"
-    @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
 end
 
@@ -69,6 +68,10 @@ if GROUP == "DiffEqFlux"
     @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
     @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
+end
+
+if GROUP == "Callbacks"
+    @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
 end
 
 if GROUP == "GPU"
