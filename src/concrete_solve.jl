@@ -130,7 +130,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
     # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
-    sol.t[end] !== ts[end] && error("Endpoints do not match. Likely your time range is not a multiple of `saveat`. End times: ", sol.t[end], " ", ts[end])
+    sol.t[end] !== ts[end] && @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(sol.t[end]), ts[end]: $(ts[end])"
     if cb === nothing
       _out = sol(ts)
     else
