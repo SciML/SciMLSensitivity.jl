@@ -33,9 +33,9 @@ function split_states(du,u,t,S::ODEQuadratureAdjointSensitivityFunction;update=t
 
   if update
     if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
-      y = sol(t)
+      y = sol(t, continuity=:right)
     else
-      sol(y,t)
+      sol(y,t, continuity=:right)
     end
   end
 
@@ -51,7 +51,15 @@ end
                                      callback=CallbackSet())
 
   @unpack f, p, u0, tspan = sol.prob
+  terminated = false
+  if hasfield(typeof(sol),:retcode)
+    if sol.retcode == :Terminated
+      tspan = (tspan[1], sol.t[end])
+      terminated = true
+    end
+  end
   tspan = reverse(tspan)
+
   discrete = t != nothing
 
   len = length(u0)
@@ -61,7 +69,7 @@ end
 
   init_cb = t !== nothing && tspan[1] == t[end]
   z0 = vec(zero(λ))
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb, terminated)
 
   jac_prototype = sol.prob.f.jac_prototype
   adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')

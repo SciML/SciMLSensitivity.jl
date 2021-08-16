@@ -129,6 +129,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     else
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
+    # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
+    sol.t[end] !== ts[end] && error("Endpoints do not match. Likely your time range is not a multiple of `saveat`.")
     if cb === nothing
       _out = sol(ts)
     else

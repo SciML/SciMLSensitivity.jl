@@ -178,6 +178,12 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
 
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
+        # if save_positions[2] = false, then the right limit is not saved. Thus, for 
+        # the QuadratureAdjoint we would need to lift y from the left to the right limit.
+        # However, one also needs to update dgrad later on.
+        if sensealg isa QuadratureAdjoint && !cb.save_positions[2]
+          w(y,y,integrator.p,integrator.t)
+        end 
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # correction of the loss function sensitivity for continuous callbacks
