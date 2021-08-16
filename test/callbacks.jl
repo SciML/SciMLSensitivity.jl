@@ -332,13 +332,14 @@ function test_continuous_callback(cb, g, dg!;only_backsolve=false)
   @test dp1c ≈ dstuff[3:4]
   if !only_backsolve
     @test_broken du01 ≈ du02
-    @test_broken du01 ≈ du03 rtol=1e-7
-    @test_broken du01 ≈ du03c rtol=1e-7
-    #@test_broken du03 ≈ du03c # passes sometimes, needs to be fixed with InterpolatingAdjoint
+    @test du01 ≈ du03 rtol=1e-7
+    @test du01 ≈ du03c rtol=1e-7
+    @test du03 ≈ du03c 
     @test du01 ≈ du04
     @test_broken dp1 ≈ dp2
-    @test_broken dp1 ≈ dp3
-    @test_broken dp1 ≈ dp3c
+    @test dp1 ≈ dp3
+    @test dp1 ≈ dp3c
+    @test dp3 ≈ dp3c 
     @test dp1 ≈ dp4 rtol=1e-7
 
     @test_broken du02 ≈ dstuff[1:2]
