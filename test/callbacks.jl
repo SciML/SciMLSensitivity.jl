@@ -262,7 +262,7 @@ function test_continuous_wrt_discrete_callback()
 end
 
 
-function test_continuous_callback(cb, g, dg!)
+function test_continuous_callback(cb, g, dg!;only_backsolve=false)
   function fiip(du,u,p,t)
     du[1] = u[2]
     du[2] = -p[1]
@@ -274,7 +274,7 @@ function test_continuous_callback(cb, g, dg!)
   end
     
   u0 = [5.0,0.0]
-  tspan = (0.0,2.4)
+  tspan = (0.0,2.5)
   p = [9.8, 0.8]
 
   prob = ODEProblem(fiip,u0,tspan,p)
@@ -301,22 +301,23 @@ function test_continuous_callback(cb, g, dg!)
     (u0,p)->g(solve(proboop,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=BacksolveAdjoint(checkpointing=false))),
     u0,p)
 
-  @test_broken du02,dp2 = @time Zygote.gradient(
-    (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=ReverseDiffAdjoint()))
-    ,u0,p)
+  if !only_backsolve
+    @test_broken du02,dp2 = @time Zygote.gradient(
+     (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=ReverseDiffAdjoint()))
+     ,u0,p)
 
-  du03,dp3 = @time Zygote.gradient(
-    (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=InterpolatingAdjoint(checkpointing=true))),
-    u0,p)
+    du03,dp3 = @time Zygote.gradient(
+      (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=InterpolatingAdjoint(checkpointing=true))),
+      u0,p)
 
-  du03c,dp3c = Zygote.gradient(
-    (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=InterpolatingAdjoint(checkpointing=false))),
-    u0,p)
+    du03c,dp3c = Zygote.gradient(
+      (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=InterpolatingAdjoint(checkpointing=false))),
+      u0,p)
 
-  du04,dp4 = @time Zygote.gradient(
-    (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=QuadratureAdjoint())),
-    u0,p)
-
+    du04,dp4 = @time Zygote.gradient(
+      (u0,p)->g(solve(prob,Tsit5(),u0=u0,p=p,callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes,sensealg=QuadratureAdjoint())),
+      u0,p)
+  end
   dstuff = @time ForwardDiff.gradient(
     (θ)->g(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:4],callback=cb,abstol=abstol,reltol=reltol,saveat=savingtimes)),
     [u0;p])
@@ -329,18 +330,21 @@ function test_continuous_callback(cb, g, dg!)
   @test dp1b ≈ dstuff[3:4]
   @test du01c ≈ dstuff[1:2]
   @test dp1c ≈ dstuff[3:4]
-  @test_broken du01 ≈ du02
-  @test_broken du01 ≈ du03 rtol=1e-7
-  @test_broken du01 ≈ du03c rtol=1e-7
-  #@test_broken du03 ≈ du03c # passes sometimes, needs to be fixed with InterpolatingAdjoint
-  @test_broken du01 ≈ du04
-  @test_broken dp1 ≈ dp2
-  @test_broken dp1 ≈ dp3
-  @test_broken dp1 ≈ dp3c
-  @test_broken dp1 ≈ dp4 rtol=1e-7
+  if !only_backsolve
+    @test_broken du01 ≈ du02
+    @test du01 ≈ du03 rtol=1e-7
+    @test du01 ≈ du03c rtol=1e-7
+    @test du03 ≈ du03c 
+    @test du01 ≈ du04
+    @test_broken dp1 ≈ dp2
+    @test dp1 ≈ dp3
+    @test dp1 ≈ dp3c
+    @test dp3 ≈ dp3c 
+    @test dp1 ≈ dp4 rtol=1e-7
 
-  @test_broken du02 ≈ dstuff[1:2]
-  @test_broken dp2 ≈ dstuff[3:4]
+    @test_broken du02 ≈ dstuff[1:2]
+    @test_broken dp2 ≈ dstuff[3:4]
+  end
 
   cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p,BacksolveAdjoint())
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,abstol=abstol,reltol=reltol,saveat=savingtimes)
@@ -564,7 +568,7 @@ end
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2])
         cb = ContinuousCallback(condition,affect!,save_positions=(false,false))
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(cb,g,dg!;only_backsolve=true)
       end
       @testset "= callback with non-linear affect" begin
         condition(u,t,integrator) = u[1]
@@ -576,7 +580,7 @@ end
         condition(u,t,integrator) = u[1]
         affect!(integrator) = (integrator.u[2] = -integrator.p[2]*integrator.u[2]; terminate!(integrator))
         cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(cb,g,dg!;only_backsolve=true)
       end
     end
     @testset "MSE loss function bouncing-ball like" begin
@@ -598,7 +602,7 @@ end
           terminate!(integrator)
         end
         cb = ContinuousCallback(condition,affect!,save_positions=(true,true))
-        test_continuous_callback(cb,g,dg!)
+        test_continuous_callback(cb,g,dg!;only_backsolve=true)
       end
     end
     @testset "MSE loss function free particle" begin
