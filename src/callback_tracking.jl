@@ -181,7 +181,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         # if save_positions[2] = false, then the right limit is not saved. Thus, for 
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
-        if sensealg isa QuadratureAdjoint && !cb.save_positions[2]
+        if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) || (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
           w(y,y,integrator.p,integrator.t)
         end 
 
