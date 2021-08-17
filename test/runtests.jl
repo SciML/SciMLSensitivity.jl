@@ -68,6 +68,7 @@ if GROUP == "DiffEqFlux"
     @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
     @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
     @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
+    @time @safetestset "HybridNODE" begin include("downstream/HybridNODE.jl") end
 end
 
 if GROUP == "Callbacks"
