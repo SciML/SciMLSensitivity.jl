@@ -1,4 +1,4 @@
-using DiffEqSensitivity, DifferentialEquations, DiffEqFlux, Flux
+using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, DiffEqFlux, Flux
 using Random, Test
 
 function test_hybridNODE(sensealg)
