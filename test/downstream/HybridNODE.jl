@@ -46,9 +46,82 @@ function test_hybridNODE(sensealg)
     println("  ")
 end
 
+function test_hybridNODE2(sensealg)
+    Random.seed!(12345)
+    u0 = Float32[2.; 0.; 0.; 0.]
+    tspan = (0f0,1f0)
+
+    ## Get goal data
+    function trueaffect!(integrator)
+        integrator.u[3:4] = -3*integrator.u[1:2]
+    end
+    function trueODEfunc(dx,x,p,t)
+        @views dx[1:2] .= x[1:2] + x[3:4]
+        dx[1] += x[2]
+        dx[2] += x[1]
+        dx[3:4] .= 0f0
+    end
+    cb_ = PeriodicCallback(trueaffect!,0.1f0,save_positions=(true,true),initial_affect=true)
+    prob = ODEProblem(trueODEfunc,u0,tspan)
+    sol = solve(prob,Tsit5(),callback=cb_,save_everystep=false,save_start=true)
+    ode_data = Array(sol)[1:2,1:end]'
+
+    ## Make model
+    dudt2 = Chain(Dense(4,50,tanh),
+                    Dense(50,2))
+    p,re = Flux.destructure(dudt2) # use this p as the initial condition!
+    function affect!(integrator)
+        integrator.u[3:4] = -3*integrator.u[1:2]
+    end
+    function ODEfunc(dx,x,p,t)
+        dx[1:2] .= re(p)(x)
+        dx[3:4] .= 0f0
+    end
+    z0 = u0
+    prob = ODEProblem(ODEfunc,z0,tspan)
+    cb = PeriodicCallback(affect!,0.1f0,save_positions=(true,true),initial_affect=true)
+
+    ## Initialize learning functions
+    function predict_n_ode()
+        _prob = remake(prob,p=p)
+        Array(solve(_prob,Tsit5(),u0=z0,p=p,callback=cb,save_everystep=false,save_start=true,sensealg=sensealg))[1:2,:]
+    end
+    function loss_n_ode()
+        pred = predict_n_ode()[1:2,1:end]'
+        loss = sum(abs2,ode_data .- pred)
+        loss
+    end
+    loss_n_ode() # n_ode.p stores the initial parameters of the neural ODE
+    cba = function ()  #callback function to observe training
+        pred = predict_n_ode()[1:2,1:end]'
+        display(sum(abs2,ode_data .- pred))
+        return false
+    end
+    cba()
+
+    ## Learn
+    ps = Flux.params(p)
+    data = Iterators.repeated((), 25)
+
+    @show sensealg
+
+    Flux.train!(loss_n_ode, ps, data, ADAM(0.0025), cb = cba)
+
+    @test loss_n_ode() < 0.5
+
+    println("  ")
+end
+
 @testset "PresetTimeCallback" begin
     test_hybridNODE(ForwardDiffSensitivity())
     test_hybridNODE(BacksolveAdjoint())
     test_hybridNODE(InterpolatingAdjoint())
     test_hybridNODE(QuadratureAdjoint())
+end
+
+@testset "PeriodicCallback" begin
+    test_hybridNODE2(ReverseDiffAdjoint())
+    test_hybridNODE2(BacksolveAdjoint())
+    test_hybridNODE2(InterpolatingAdjoint())
+    test_hybridNODE2(QuadratureAdjoint())
 end

@@ -308,7 +308,8 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
 
   function wp(dp,p,u,t)
     fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
-    cb.affect!.affect!(fakeinteg)
+    _affect! = get_affect!(cb.affect!.affect!)
+    _affect!(fakeinteg)
     dp .= fakeinteg.p
   end
 
@@ -325,7 +326,8 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
 
   function w(du,u,p,t)
     fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t)
-    cb.affect!.affect!(fakeinteg)
+    _affect! = get_affect!(cb.affect!.affect!)
+    _affect!(fakeinteg)
     du .= fakeinteg.u
   end
 
