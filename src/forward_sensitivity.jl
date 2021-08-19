@@ -2,7 +2,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC
   f::F
   analytic::A
   tgrad::Tt
-  orginal::OJ
+  original_jac::OJ
   jac::J
   jac_prototype::JP
   sparsity::S
@@ -24,7 +24,7 @@ struct ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC
   isautojacmat::Bool
   colorvec::CV
 end
-has_original_jac(f) = isdefined(f, :original_jac)
+has_original_jac(S) = isdefined(S, :original_jac) && S.jac !== nothing
 
 struct NILSSForwardSensitivityFunction{iip,sensefunType,senseType,MM} <: DiffEqBase.AbstractODEFunction{iip}
   S::sensefunType
@@ -72,7 +72,7 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
   # Compute the Jacobian
 
   if !S.isautojacvec && !S.isautojacmat
-    if has_original_jac(S.f)
+    if has_original_jac(S)
       S.original_jac(S.J,y,p,t) # Calculate the Jacobian into J
     else
       S.uf.t = t
@@ -158,7 +158,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
     else
       jac_config = (similar(u0),similar(u0))
     end
-  elseif has_original_jac(f)
+  elseif DiffEqBase.has_jac(f)
     jac_config = nothing
   else
     jac_config = build_jac_config(alg,uf,u0)
