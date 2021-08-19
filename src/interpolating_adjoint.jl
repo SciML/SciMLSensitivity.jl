@@ -236,6 +236,10 @@ end
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
     tstops = duplicate_iterator_times[1]
     checkpoints = filter(x->x ∉ tstops, _checkpoints)
+    # check if start is in checkpoints. Otherwise first interval is missed.
+    if checkpoints[1] != tspan[2]
+      pushfirst!(checkpoints,tspan[2])
+    end
   else
     tstops = nothing
   end
@@ -302,6 +306,10 @@ end
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
     tstops = duplicate_iterator_times[1]
     checkpoints = filter(x->x ∉ tstops, _checkpoints)
+    # check if start is in checkpoints. Otherwise first interval is missed.
+    if checkpoints[1] != tspan[2]
+      pushfirst!(checkpoints,tspan[2])
+    end
   else
     tstops = nothing
   end
@@ -386,6 +394,10 @@ end
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
     tstops =  duplicate_iterator_times[1]
     checkpoints = filter(x->x ∉ tstops, _checkpoints)
+    # check if start is in checkpoints. Otherwise first interval is missed.
+    if checkpoints[1] != tspan[2]
+      pushfirst!(checkpoints,tspan[2])
+    end
   else
     tstops = nothing
   end
