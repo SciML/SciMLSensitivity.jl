@@ -12,11 +12,11 @@ function foop(u,p,t)
   [dx,dy]
 end
 function jac(J,u,p,t)
-  (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
+  (x, y, a, b, c, d) = (u[1], u[2], p[1], p[2], p[3], p[4])
   J[1,1] = a + y * b * -1 * t
-  J[2,1] = t*y
+  J[2,1] = t * y * d
   J[1,2] = b * x * -1 * t
-  J[2,2] = c * -1 + t*x
+  J[2,2] = c * -1 + t * x * d
 end
 
 f = ODEFunction(fb,jac=jac)
