@@ -1,26 +1,35 @@
-using DiffEqSensitivity,OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus
+using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus
 using Test
-using DiffEqSensitivity: ForwardSensitivity
-
 function fb(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  du[2] = dy = -p[3]*u[2] + t*u[1]*u[2]
+  du[2] = dy = -t*p[3]*u[2] + t*u[1]*u[2]
 end
 function jac(J,u,p,t)
   (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
   J[1,1] = a + y * b * -1
-  J[2,1] = t*y
+  J[2,1] = t * y
   J[1,2] = b * x * -1
-  J[2,2] = c * -1 + t*x
+  J[2,2] = t * c * -1 + t * x
+end
+function paramjac(pJ,u,p,t)
+  (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
+  pJ[1,1] = x
+  pJ[2,1] = 0.0
+  pJ[1,2] = - x * y
+  pJ[2,2] = 0.0
+  pJ[1,3] = 0.0
+  pJ[2,3] = - t * y
 end
 
-f = ODEFunction(fb,jac=jac)
+
+f = ODEFunction(fb,jac=jac,paramjac=paramjac)
 p = [1.5,1.0,3.0]
 prob = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p)
 probnoad = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
                                         ForwardSensitivity(autodiff=false))
+probnoad2 = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p,
+                                        ForwardSensitivity(autodiff=false))                                        
 probvecmat = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
                                           ForwardSensitivity(autojacvec=false,autojacmat=true))                                   
 sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
@@ -28,11 +37,13 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 solInpl = solve(probInpl,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-10,reltol=1e-10)
 solnoad = solve(probnoad,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
+solnoad2 = solve(probnoad,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solvecmat = solve(probvecmat,Tsit5(),abstol=1e-14,reltol=1e-14)
 
 x = sol[1:sol.prob.f.numindvar,:]
 
 @test sol(5.0) ≈ solnoad(5.0)
+@test sol(5.0) ≈ solnoad2(5.0)
 @test sol(5.0) ≈ solInpl(5.0)
 @test isapprox(solInpl(5.0), solInpl2(5.0),rtol=1e-5) 
 @test sol(5.0) ≈ solvecmat(5.0)
@@ -113,7 +124,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
 xall, dpall = extract_local_sensitivities(sol)
 @test xall ≈ res
-@test dpall[1] ≈ da atol=1e-10
+@test dpall[1] ≈ da atol=1e-9
 
 _,dpall_matrix = extract_local_sensitivities(sol,Val(true))
 @test mapreduce(x->x[:, 2], hcat, dpall) == dpall_matrix[2]
