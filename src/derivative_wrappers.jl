@@ -542,7 +542,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<
   @unpack sensealg, f = S
   prob = getprob(S)
 
-  if isnoise isa Bool && !isnoise
+  if !isnoise
     if dgrad !== nothing
       @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
       if DiffEqBase.has_paramjac(f)
