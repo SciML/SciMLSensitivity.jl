@@ -137,7 +137,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacmat = get_jacmat(alg)
   isautojacvec = get_jacvec(alg)
-  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if isautojacmat

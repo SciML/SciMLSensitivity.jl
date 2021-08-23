@@ -56,7 +56,7 @@ function LSSSensitivityFunction(sensealg,f,analytic,jac,jac_prototype,sparsity,p
   pJ = Matrix{eltype(u0)}(undef,numindvar,numparams) # number of funcs size
 
   # compute gradients of objective
-  if dg != nothing
+  if dg !== nothing
     pgpu = nothing
     pgpp = nothing
     pgpu_config = nothing
@@ -125,7 +125,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
   @unpack f, p, u0, tspan = sol.prob
   isinplace = DiffEqBase.isinplace(f)
 
-  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
 
@@ -486,7 +486,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
   @unpack f, p, u0, tspan = sol.prob
   isinplace = DiffEqBase.isinplace(f)
 
-  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
 

@@ -17,7 +17,7 @@ function NILSSSensitivityFunction(sensealg,f,u0,alg,p,tspan,g,dg)
   numindvar = length(u0)
 
   # compute gradients of objective
-  if dg != nothing
+  if dg !== nothing
     pgpu = nothing
     pgpp = nothing
     pgpu_config = nothing
@@ -101,7 +101,7 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
 
   isinplace = DiffEqBase.isinplace(f)
 
-  p == nothing && error("You must have parameters to use parameter sensitivity calculations!")
+  p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
   # segmentation: determine length of segmentation and spacing between saved points

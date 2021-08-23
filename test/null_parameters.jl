@@ -62,14 +62,14 @@ end
 
 @test Zygote.gradient(dynamics, 0.0, nothing, nothing) == (1.0,nothing,nothing)
 
-@test Zygote.gradient(loss, nothing)[1] == nothing
+@test Zygote.gradient(loss, nothing)[1] === nothing
 @test_broken Zygote.gradient(loss2, nothing)
 @test_broken Zygote.gradient(loss3, nothing)
-@test Zygote.gradient(loss4, nothing)[1] == nothing
-@test Zygote.gradient(loss5, nothing)[1] == nothing
-@test Zygote.gradient(loss6, nothing)[1] == nothing
-@test Zygote.gradient(loss7, nothing)[1] == nothing
-@test Zygote.gradient(loss8, nothing)[1] == nothing
+@test Zygote.gradient(loss4, nothing)[1] === nothing
+@test Zygote.gradient(loss5, nothing)[1] === nothing
+@test Zygote.gradient(loss6, nothing)[1] === nothing
+@test Zygote.gradient(loss7, nothing)[1] === nothing
+@test Zygote.gradient(loss8, nothing)[1] === nothing
 
 @test Zygote.gradient(loss, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss2, zeros(123))[1] == zeros(123)

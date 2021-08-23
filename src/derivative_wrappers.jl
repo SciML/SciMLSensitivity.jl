@@ -431,7 +431,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
-    if W==nothing
+    if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
         out_ = Zygote.Buffer(similar(u))
         f(out_, u, p, t)
@@ -446,10 +446,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     end
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
   else
-    if W==nothing
+    if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
         vec(f(u, p, t))
       end
@@ -459,9 +459,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
       end
     end
     tmp1,tmp2 = back(λ)
-    tmp1 != nothing && (dλ[:] .= vec(tmp1))
+    tmp1 !== nothing && (dλ[:] .= vec(tmp1))
     dy !== nothing && (dy[:] .= vec(_dy))
-    dgrad !== nothing && tmp2 != nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
   end
   return
 end
@@ -492,7 +492,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
-    if W==nothing
+    if W===nothing
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),
@@ -508,7 +508,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     dgrad !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy .= tmp3)
   else
-    if W==nothing
+    if W===nothing
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
                       Enzyme.Duplicated(p, tmp2),t)
@@ -518,7 +518,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                       Enzyme.Duplicated(p, tmp2),t,W)
     end
     if dy !== nothing
-        out_ = if W==nothing
+        out_ = if W===nothing
             f(y, p, t)
         else
             f(y, p, t, W)
@@ -574,7 +574,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<
 
     if dλ !== nothing && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
       @unpack J, uf, f_cache, jac_noise_config = S.diffcache
-      if dy!=nothing
+      if dy!== nothing
         if inplace_sensitivity(S)
           f(dy, y, p, t)
         else
@@ -586,7 +586,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<
         f.jac(J,y,p,t) # Calculate the Jacobian into J
       else
         if inplace_sensitivity(S)
-          if dy != nothing
+          if dy !== nothing
             ForwardDiff.jacobian!(J,uf,dy,y)
           else
             if StochasticDiffEq.is_diagonal_noise(prob)
@@ -723,7 +723,7 @@ end
 
 function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:SensitivityFunction
   @unpack dg, dg_val, g, g_grad_config = S.diffcache
-  if dg != nothing
+  if dg !== nothing
     if !(dg isa Tuple)
       dg(dg_val,y,p,t)
       dλ .+= vec(dg_val)
