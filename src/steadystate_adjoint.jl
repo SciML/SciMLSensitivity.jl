@@ -44,8 +44,8 @@ end
   end
 
   _save_idxs = save_idxs === nothing ? Colon() : save_idxs
-  if dg != nothing
-    if g!= nothing
+  if dg !== nothing
+    if g!== nothing
       dg(vec(diffcache.dg_val),y,p,nothing,nothing)
     else
       if typeof(_save_idxs) <: Number
@@ -57,7 +57,7 @@ end
       end
     end
   else
-    if g != nothing
+    if g !== nothing
       gradient!(vec(diffcache.dg_val),diffcache.g,y,sensealg,diffcache.g_grad_config)
     end
   end
@@ -65,7 +65,7 @@ end
   copyto!(vec(λ), diffcache.J'\vec(diffcache.dg_val')) # use linsolve here
   vecjacobian!(vec(diffcache.dg_val), y, λ, p, nothing, sense, dgrad=vjp, dy=nothing)
 
-  if g != nothing
+  if g !== nothing
     # compute del g/del p
     dg_dp_val = zero(p)
     dg_dp = ParamGradientWrapper(g,nothing,y)

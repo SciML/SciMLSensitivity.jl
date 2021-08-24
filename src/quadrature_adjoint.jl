@@ -60,7 +60,7 @@ end
   end
   tspan = reverse(tspan)
 
-  discrete = t != nothing
+  discrete = t !== nothing
 
   len = length(u0)
   λ = similar(u0, len)

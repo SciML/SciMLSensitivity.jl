@@ -61,7 +61,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
   J = (issemiexplicitdae || !isautojacvec || prob isa DiffEqBase.SteadyStateProblem) ? similar(u0, numindvar, numindvar) : nothing
 
   if !discrete
-    if dg != nothing
+    if dg !== nothing
       pg = nothing
       pg_config = nothing
       if dg isa Tuple && length(dg) == 2
@@ -261,7 +261,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
           tapei = noisetape(i)
           if compile_tape(sensealg.noise)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
-          elseif tapei != nothing && sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)
+          elseif tapei !== nothing && sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)
               compile = try
                   !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
               catch

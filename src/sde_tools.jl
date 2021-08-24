@@ -27,7 +27,7 @@ function (Tfunc::StochasticTransformedFunction)(du,u,p,t)
 
   ducor = similar(u, size(u))
 
-  if corfunc_analytical != nothing
+  if corfunc_analytical !== nothing
     corfunc_analytical(ducor,u,p,t)
   else
     tape = ReverseDiff.GradientTape((u, p, [t])) do uloc,ploc,tloc
@@ -66,7 +66,7 @@ function (Tfunc::StochasticTransformedFunction)(u,p,t)
   @unpack f, g, corfunc_analytical = Tfunc
   #ducor = vecjacobian(u, p, t, Tfunc)
 
-  if corfunc_analytical != nothing
+  if corfunc_analytical !== nothing
     ducor = corfunc_analytical(u,p,t)
   else
     _dy, back = Zygote.pullback(u, p) do uloc, ploc

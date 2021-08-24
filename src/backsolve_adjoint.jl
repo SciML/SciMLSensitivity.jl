@@ -113,7 +113,7 @@ end
 
   tspan = reverse(tspan)
   
-  discrete = t != nothing
+  discrete = t !== nothing
 
   numstates = length(u0)
   numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
@@ -178,7 +178,7 @@ end
   end
 
   tspan = reverse(tspan)
-  discrete = t != nothing
+  discrete = t !== nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
@@ -260,7 +260,7 @@ end
     end
   end
   tspan = reverse(tspan)
-  discrete = t != nothing
+  discrete = t !== nothing
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 

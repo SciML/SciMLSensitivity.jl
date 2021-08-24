@@ -229,7 +229,7 @@ end
                                      kwargs...) where {G,DG}
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t != nothing
+  discrete = t !== nothing
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg,sol) &&  (length(unique(checkpoints)) != length(checkpoints))
@@ -299,7 +299,7 @@ end
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t != nothing
+  discrete = t !== nothing
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg,sol) && (length(unique(checkpoints)) != length(checkpoints))
@@ -387,7 +387,7 @@ end
                                      kwargs...)
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t != nothing
+  discrete = t !== nothing
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg,sol) && (length(unique(checkpoints)) != length(checkpoints))
