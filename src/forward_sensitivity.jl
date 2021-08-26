@@ -101,7 +101,7 @@ function (S::ODEForwardSensitivityFunction)(du,u,p,t)
     dp = @view du[reshape(S.numindvar+1:end,S.numindvar,S.numparams)]
     jacobianmat!(dp, S.uf, y, Sj, S.alg, S.jac_config)
     DiffEqBase.@.. dp += S.pJ
-  else 
+  else
     S.uf.t = t
     for i in eachindex(p)
       Sj = @view u[i*S.numindvar+1:(i+1)*S.numindvar]
@@ -118,7 +118,7 @@ struct ODEForwardSensitivityProblem{iip,A}
   sensealg::A
 end
 
-function ODEForwardSensitivityProblem(f,args...;kwargs...)
+function ODEForwardSensitivityProblem(f::F,args...;kwargs...) where F
   ODEForwardSensitivityProblem(ODEFunction(f),args...;kwargs...)
 end
 
@@ -126,13 +126,13 @@ function ODEForwardSensitivityProblem(prob::ODEProblem,alg;kwargs...)
   ODEForwardSensitivityProblem(prob.f,prob.u0,prob.tspan,prob.p,alg;kwargs...)
 end
 
-function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
+function ODEForwardSensitivityProblem(f::F,u0,
                                     tspan,p=nothing,
                                     alg::ForwardSensitivity = ForwardSensitivity();
                                     nus=nothing, # determine if Nilss is used
                                     w0=nothing,
                                     v0=nothing,
-                                    kwargs...)
+                                    kwargs...) where F<:DiffEqBase.AbstractODEFunction
   isinplace = DiffEqBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacmat = get_jacmat(alg)
