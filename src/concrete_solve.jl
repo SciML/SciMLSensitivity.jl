@@ -243,6 +243,11 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
                                  u0,p,args...;save_idxs = nothing,
                                  kwargs...)
    _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
+
+   if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual && !(eltype(u0) <: ForwardDiff.Dual)
+     # Handle double differentiation case
+     u0 = eltype(p).(u0)
+   end
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
    _,du = extract_local_sensitivities(sol, sensealg, Val(true))
