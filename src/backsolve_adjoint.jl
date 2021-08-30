@@ -157,7 +157,7 @@ end
                              Z2       II     Z2
                              Z1              J]
   end
-  odefun = ODEFunction(sense, mass_matrix=mm)
+  odefun = ODEFunction(sense, mass_matrix=mm, jac_prototype=adjoint_jac_prototype)
   return ODEProblem(odefun,z0,tspan,p,callback=cb)
 end
 
