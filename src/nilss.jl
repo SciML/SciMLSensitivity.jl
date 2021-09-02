@@ -1,5 +1,5 @@
 struct NILSSSensitivityFunction{iip,F,Alg,
-     PGPU,PGPP,CONFU,CONGP,DG} <: DiffEqBase.AbstractODEFunction{iip}
+     PGPU,PGPP,CONFU,CONGP,DGVAL,DG} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   alg::Alg
   numparams::Int
@@ -8,10 +8,11 @@ struct NILSSSensitivityFunction{iip,F,Alg,
   pgpp::PGPP
   pgpu_config::CONFU
   pgpp_config::CONGP
-  dg_val::DG
+  dg_val::DGVAL
+  dg::DG
 end
 
-function NILSSSensitivityFunction(sensealg,f,u0,alg,p,tspan,g,dg)
+function NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
 
   numparams = length(p)
   numindvar = length(u0)
@@ -40,9 +41,9 @@ function NILSSSensitivityFunction(sensealg,f,u0,alg,p,tspan,g,dg)
     dg_val[2] .= false
   end
 
-  NILSSSensitivityFunction{isinplace(f),typeof(f),typeof(alg),
-                             typeof(pgpu),typeof(pgpp),typeof(pgpu_config),typeof(pgpp_config),typeof(dg_val)}(
-                             f,alg,numparams,numindvar,pgpu,pgpp,pgpu_config,pgpp_config,dg_val)
+  NILSSSensitivityFunction{isinplace(f),typeof(f),typeof(sensealg),
+                             typeof(pgpu),typeof(pgpp),typeof(pgpu_config),typeof(pgpp_config),typeof(dg_val),typeof(dg)}(
+                             f,sensealg,numparams,numindvar,pgpu,pgpp,pgpu_config,pgpp_config,dg_val,dg)
 end
 
 
@@ -117,7 +118,7 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
   forward_prob = ODEForwardSensitivityProblem(f,u0,tspan,p,ForwardSensitivity(chunk_size=chunk_size,autodiff=autodiff,
                                                 diff_type=difftype,autojacvec=autojacvec);nus=nus, kwargs...)
 
-  sense = NILSSSensitivityFunction(sensealg,f,u0,sensealg,p,tspan,g,dg)
+  sense = NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
 
   # pre-allocate variables
   gsave = Matrix{eltype(u0)}(undef, nstep, nseg)

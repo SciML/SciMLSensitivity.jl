@@ -30,6 +30,9 @@ include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")
 include("forward_sensitivity.jl")
 include("adjoint_common.jl")
+include("lss.jl")
+include("nilss.jl")
+include("nilsas.jl")
 include("backsolve_adjoint.jl")
 include("interpolating_adjoint.jl")
 include("quadrature_adjoint.jl")
@@ -38,8 +41,8 @@ include("concrete_solve.jl")
 include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
-include("lss.jl")
-include("nilss.jl")
+
+
 
 export extract_local_sensitivities
 
@@ -49,7 +52,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
        adjoint_sensitivities, adjoint_sensitivities_u0,
        ForwardLSSProblem, AdjointLSSProblem,
-       NILSSProblem,
+       NILSSProblem, NILSASProblem
        shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
@@ -57,7 +60,7 @@ export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
-       ForwardLSS, AdjointLSS, NILSS
+       ForwardLSS, AdjointLSS, NILSS, NILSAS
 
 export second_order_sensitivities, second_order_sensitivity_product
 

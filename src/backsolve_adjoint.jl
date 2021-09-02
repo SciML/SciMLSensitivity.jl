@@ -18,7 +18,7 @@ end
 
 function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
   @unpack y, prob, discrete = S
-  idx = length(y)
+
   λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
 
   copyto!(vec(y), _y)
@@ -99,8 +99,14 @@ end
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
-                                     callback=CallbackSet(),kwargs...)
-  @unpack f, p, u0, tspan = sol.prob
+                                     callback=CallbackSet(),
+                                     z0=nothing, 
+                                     M=nothing,
+                                     nilss=nothing,
+                                     tspan=sol.prob.tspan,
+                                     kwargs...)
+  # add homogenous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
+  @unpack f, p, u0 = sol.prob
 
   # check if solution was terminated, then use reduced time span
   terminated = false
@@ -119,9 +125,19 @@ end
   numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = length(u0)+numparams
-  λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
-  λ .= false
+  
+  if z0===nothing
+    λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
+    λ .= false
+  else
+    λ = nothing
+  end
+
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
+
+  if z0!==nothing
+    sense = NILSASSensitivityFunction{isinplace(f),typeof(nilss),typeof(sense),typeof(M)}(nilss,sense,M,discrete)
+  end
 
   init_cb = t !== nothing && tspan[1] == t[end]
   cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb,terminated)
@@ -130,7 +146,9 @@ end
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
   end
 
-  z0 = [vec(zero(λ)); vec(sense.y)]
+  if z0===nothing
+    z0 = [vec(zero(λ)); vec(sense.y)]
+  end
   original_mm = sol.prob.f.mass_matrix
   zzz(A, m, n) = fill!(similar(A, m, n), zero(eltype(original_mm)))
   if original_mm === I || original_mm === (I,I)
@@ -329,6 +347,30 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback, du
   affect! = let sol=sol, cur_time=cur_time, idx=length(prob.u0)
     function (integrator)
       _y = reshape(@view(integrator.u[end-idx+1:end]), axes(prob.u0))
+      sol(_y, integrator.t)
+      u_modified!(integrator,true)
+      cur_time[] -= 1
+      return nothing
+    end
+  end
+
+
+  cb = PresetTimeCallback(_checkpoints,affect!)
+  return CallbackSet(cb,callback)
+end
+
+
+function backsolve_checkpoint_callbacks(sensefun::NILSASSensitivityFunction, sol, checkpoints, callback, duplicate_iterator_times=nothing)
+  prob = sol.prob
+  if duplicate_iterator_times !== nothing
+    _checkpoints = filter(x->x ∉ duplicate_iterator_times[1], checkpoints)
+  else
+    _checkpoints = checkpoints
+  end
+  cur_time = Ref(length(_checkpoints))
+  affect! = let sol=sol, cur_time=cur_time
+    function (integrator)
+      _y = integrator.u.x[3]
       sol(_y, integrator.t)
       u_modified!(integrator,true)
       cur_time[] -= 1
