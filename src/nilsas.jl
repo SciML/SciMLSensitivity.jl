@@ -344,17 +344,49 @@ end
 
 function nilsas_min(cache::QuadratureCache)
   @unpack dwv,dwf,dvf,C,R,b = cache
-
+  
+  # see description in Appendix A of Nilsas paper.
+  # M= # unstable CLVs, K = # segments
+  M, K = size(dwv)
+  
   # construct Cinv
+  # Cinv is a block diagonal matrix
+  Cinv = zeros(eltype(C), M*K, M*K)
 
-  # construct B
+  for i=1:K
+    Ci = @view C[:, :, i]
+    _Cinv = @view Cinv[(i-1)*M+1:i*M, (i-1)*M+1:i*M]
+    Ciinv = inv(Ci)
+    copyto!(_Cinv,Ciinv)
+  end
 
+  # construct B, also very sparse if K >> M
+  B = zeros(eltype(C), M*K-M+1, M*K)
+
+  for i=2:K
+    # off diagonal Rs
+    _B = @view B[(i-2)*M+1:(i-1)*M, (i-2)*M+1:(i-1)*M]
+    _R = @view R[:,:,i]
+    copyto!(_B, _R)
+    _B .*= -1
+    # diagonal ones
+    for j=1:M
+      B[(i-2)*M+j, (i-2)*M+j] = one(eltype(R))
+    end
+    # last row
+    dwfi = dwf[:,i]
+    _B = @view B[end, (i-2)*M+1:(i-1)*M] 
+    copyto!(_B, dwfi)
+  end
 
   # construct d
+  d = vec(dwv)
 
+  # construct b
+  _b = [b[2:end]; -sum(dvf)]
 
   # compute Lagrange multiplier
-  λ = (-B*Cinv*B') \ (B*Cinv*d + b)
+  λ = (-B*Cinv*B') \ (B*Cinv*d + _b)
   
   # return a
   return -Cinv*(B'*λ + d) 
@@ -377,6 +409,7 @@ function shadow_adjoint(prob::NILSASProblem,sensealg::NILSAS,alg; kwargs...)
   res .*= false
 
   # compute gradient, Eq. (28) -- second part to avoid explicit construction of vbar
+  #@show a prob.quadcache.dvfs prob.quadcache.dwfs prob.quadcache.dJs
   
   return res
 end
