@@ -389,6 +389,13 @@ end
     @info res
 
     @test resfw ≈ res atol=1e-1
+
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, dg)
+    res = shadow_adjoint(nilsas_prob, Tsit5())
+
+    @info res
+
+    @test resfw ≈ res atol=1e-1
   end
 
 end
