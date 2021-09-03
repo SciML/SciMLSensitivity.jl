@@ -195,6 +195,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     else
       dg(dg_val,y,p,t,nothing)
     end
+    dg_val .*= -1
   end
 
 
