@@ -47,7 +47,7 @@ function QuadratureCache(u0, M, nseg, numparams)
   QuadratureCache{typeof(dwv),typeof(dwfs),typeof(dvf),typeof(dvfs),typeof(C)}(dwv,dwf,dwfs,dvf,dvfs,dJs,C,R,b)
 end
 
-struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,G,DG,T,resType}
+struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,G,DG,T}
   sensealg::A
   nilss::NILSS # diffcache
   adjoint_prob::Aprob
@@ -58,7 +58,6 @@ struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,G,DG,T,resType}
   dg::DG
   T_seg::T
   dtsave::T
-  res::resType
 end
 
 
@@ -94,13 +93,9 @@ function NILSASProblem(sol, sensealg::NILSAS, g, dg = nothing; kwargs...)
   # pre-allocate variables for integration Eq.(23) in NILSAS paper.
   quadcache = QuadratureCache(u0, M, nseg, numparams)
 
-  # Construct Schur complement of the Lagrange multiplier method of the NILSAS problem.
-
-  res = similar(u0, numparams)
-
   NILSASProblem{typeof(sensealg),typeof(nilss),typeof(adjoint_prob),typeof(quadcache),
-    typeof(sol),typeof(z0),typeof(g),typeof(dg),typeof(T_seg),typeof(res)}(sensealg,nilss,
-    adjoint_prob,quadcache,sol,deepcopy(z0),g,dg,T_seg,dtsave,res)
+    typeof(sol),typeof(z0),typeof(g),typeof(dg),typeof(T_seg)}(sensealg,nilss,
+    adjoint_prob,quadcache,sol,deepcopy(z0),g,dg,T_seg,dtsave)
 end
 
 function terminate_conditions(alg::BacksolveAdjoint,rng,f,y,p,t,numindvar,numparams,M)
@@ -255,10 +250,12 @@ function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
   for iseg=nseg:-1:1 
     t1 = tspan[1]-(nseg-iseg+1)*T_seg
     t2 = tspan[1]-(nseg-iseg)*T_seg
+    checkpoints=t1:dtsave:t2
     _prob = ODEAdjointProblem(sol,adjoint_sensealg,g,nothing,dg;
-              checkpoints=t1:dtsave:t2,z0=z0,M=M,nilss=nilss,tspan=(t1,t2),kwargs...)
+              checkpoints=checkpoints,z0=z0,M=M,nilss=nilss,tspan=(t1,t2),kwargs...)
     _sol = solve(_prob,alg; save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
                   dt = dtsave,
+                  tstops=checkpoints,
                   kwargs...)
 
     # renormalize at interfaces and store quadratures
@@ -344,6 +341,8 @@ end
 
 function nilsas_min(cache::QuadratureCache)
   @unpack dwv,dwf,dvf,C,R,b = cache
+
+  # Construct Schur complement of the Lagrange multiplier method of the NILSAS problem.
   
   # see description in Appendix A of Nilsas paper.
   # M= # unstable CLVs, K = # segments
@@ -383,13 +382,13 @@ function nilsas_min(cache::QuadratureCache)
   d = vec(dwv)
 
   # construct b
-  _b = [b[2:end]; -sum(dvf)]
+  _b = [b[M+1:end]; -sum(dvf)]
 
   # compute Lagrange multiplier
   λ = (-B*Cinv*B') \ (B*Cinv*d + _b)
   
   # return a
-  return -Cinv*(B'*λ + d) 
+  return reshape(-Cinv*(B'*λ + d), M, K)
 end
 
 function shadow_adjoint(prob::NILSASProblem,alg; kwargs...)
@@ -397,21 +396,28 @@ function shadow_adjoint(prob::NILSASProblem,alg; kwargs...)
 end
 
 function shadow_adjoint(prob::NILSASProblem,sensealg::NILSAS,alg; kwargs...)
-  @unpack res = prob
 
   # compute adjoint sensitivities
-  adjoint_sense(prob,nilsas,alg; kwargs...)
+  adjoint_sense(prob,sensealg,alg; kwargs...)
   
   # compute NILSAS problem on multiple segments
   a = nilsas_min(prob.quadcache)
 
-  # reset gradient
-  res .*= false
-
   # compute gradient, Eq. (28) -- second part to avoid explicit construction of vbar
-  #@show a prob.quadcache.dvfs prob.quadcache.dwfs prob.quadcache.dJs
+  @unpack M, nseg = sensealg
+  @unpack dvfs, dJs, dwfs = prob.quadcache
   
-  return res
+  res = vec(sum(dvfs,dims=2)) + vec(sum(dJs,dims=2))
+  NP = length(res) # number of parameters
+
+  # loop over segments
+  for (i,ai) in enumerate(eachcol(a))
+    dwfsi = @view dwfs[:,i]
+    dwfsi = reshape(dwfsi,NP,M)
+    res .+= dwfsi*ai
+  end
+
+  return res/(nseg*prob.T_seg)
 end
 
 check_for_g(sensealg::NILSAS,g) = (g===nothing && error("To use NILSAS, g must be passed as a kwarg."))

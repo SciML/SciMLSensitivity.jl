@@ -52,7 +52,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
        adjoint_sensitivities, adjoint_sensitivities_u0,
        ForwardLSSProblem, AdjointLSSProblem,
-       NILSSProblem, NILSASProblem
+       NILSSProblem, NILSASProblem,
        shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,

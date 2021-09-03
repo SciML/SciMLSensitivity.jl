@@ -345,5 +345,5 @@ end
 
   @info res
 
-  @test resfw ≈ res
+  @test resfw ≈ res atol=1e-1
 end
