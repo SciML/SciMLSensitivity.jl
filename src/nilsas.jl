@@ -362,19 +362,22 @@ function nilsas_min(cache::QuadratureCache)
   # construct B, also very sparse if K >> M
   B = zeros(eltype(C), M*K-M+1, M*K)
 
-  for i=2:K
-    # off diagonal Rs
-    _B = @view B[(i-2)*M+1:(i-1)*M, (i-2)*M+1:(i-1)*M]
-    _R = @view R[:,:,i]
-    copyto!(_B, _R)
-    _B .*= -1
-    # diagonal ones
-    for j=1:M
-      B[(i-2)*M+j, (i-2)*M+j] = one(eltype(R))
+  for i=1:K
+    if i<K
+      # off diagonal Rs
+      _B = @view B[(i-1)*M+1:i*M, i*M+1:(i+1)*M]
+      _R = @view R[:,:,i+1]
+      copyto!(_B, _R)
+      _B .*= -1
+
+      # diagonal ones
+      for j=1:M
+        B[(i-1)*M+j, (i-1)*M+j] = one(eltype(R))
+      end
     end
     # last row
     dwfi = dwf[:,i]
-    _B = @view B[end, (i-2)*M+1:(i-1)*M] 
+    _B = @view B[end, (i-1)*M+1:i*M]
     copyto!(_B, dwfi)
   end
 
