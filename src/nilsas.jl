@@ -185,8 +185,11 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     if dg_val isa Tuple
       DiffEqSensitivity.gradient!(dg_val[1],pgpu,y,alg,pgpu_config)
       DiffEqSensitivity.gradient!(dg_val[2],pgpp,y,alg,pgpp_config)
+      dg_val[1] .*= -1
+      dg_val[2] .*= -1
     else
       DiffEqSensitivity.gradient!(dg_val,pgpu,y,alg,pgpu_config)
+      dg_val .*= -1
     end
   else
     if dg_val isa Tuple
@@ -194,8 +197,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
       dg[2](dg_val[2],y,p,t,nothing)
     else
       dg(dg_val,y,p,t,nothing)
-    end
-    dg_val .*= -1
+    end    
   end
 
 
@@ -208,9 +210,9 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     if j==1
       # j = 1 is the inhomogenous adjoint solution
       if dg_val isa Tuple
-        dλ .+= vec(dg_val[1])
+        dλ .-= vec(dg_val[1])
       else
-        dλ .+= vec(dg_val)
+        dλ .-= vec(dg_val)
       end
     end
   end
