@@ -411,16 +411,16 @@ end
 
     # parameter passing to NILSAS
     M = 2
-    nseg = 80
+    nseg = 160
     nstep = 101
 
-    tspan_transient = (0.0,30.0)
+    tspan_transient = (0.0,50.0)
     prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
     sol_transient = solve(prob_transient, Tsit5())
     
     u0 = sol_transient.u[end]
 
-    tspan_attractor = (0.0,40.0)
+    tspan_attractor = (0.0,80.0)
     prob_attractor = ODEProblem(lorenz!,u0,tspan_attractor,p)
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
