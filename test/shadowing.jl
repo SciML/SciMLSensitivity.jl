@@ -411,16 +411,16 @@ end
 
     # parameter passing to NILSAS
     M = 2
-    nseg = 160
+    nseg = 100
     nstep = 101
 
-    tspan_transient = (0.0,50.0)
+    tspan_transient = (0.0,100.0)
     prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
     sol_transient = solve(prob_transient, Tsit5())
     
     u0 = sol_transient.u[end]
 
-    tspan_attractor = (0.0,80.0)
+    tspan_attractor = (0.0,50.0)
     prob_attractor = ODEProblem(lorenz!,u0,tspan_attractor,p)
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
@@ -443,14 +443,14 @@ end
 
     @info res
 
-    @test resfw ≈ res rtol=5e-2
+    @test resfw ≈ res rtol=1e-1
 
     nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, (dgu,dgp))
     res = shadow_adjoint(nilsas_prob, Tsit5())
 
     @info res
 
-    @test resfw ≈ res rtol=5e-2
+    @test resfw ≈ res rtol=1e-1
   end
 end
 
