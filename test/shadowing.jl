@@ -302,3 +302,155 @@ end
     @test res1 ≈ dp1[1] atol=1e-10
   end
 end
+
+@testset "NILSAS" begin
+  @testset "nilsas_min function" begin
+    u0 = rand(3)
+    M = 2
+    nseg = 2
+    numparams = 1
+    quadcache = DiffEqSensitivity.QuadratureCache(u0, M, nseg, numparams)
+
+    C = quadcache.C
+    C[:,:,1] .= [
+                1. 0.
+                0. 1.]
+    C[:,:,2] .= [
+                4. 0.
+                0. 1.]
+
+    dwv = quadcache.dwv
+    dwv[:,1] .= [1., 0.]
+    dwv[:,2] .= [1., 4.]
+
+    dwf = quadcache.dwf
+    dwf[:,1] .= [1., 1.]
+    dwf[:,2] .= [3., 1.]
+
+    dvf = quadcache.dvf
+    dvf[1] = 1.
+    dvf[2] = 2.
+
+    R = quadcache.R
+    R[:,:,1] .= [
+                Inf Inf 
+                Inf Inf]
+    R[:,:,2] .= [
+                1. 1.
+                0. 2.]
+
+    b = quadcache.b
+    b[:,1] = [Inf, Inf]
+    b[:,2] = [0., 1.]
+
+    @test DiffEqSensitivity.nilsas_min(quadcache) ≈ [-1. 0.
+                                                     -1. -1.]
+  end
+  @testset "Lorenz" begin
+    function lorenz!(du,u,p,t)
+      du[1] = p[1]*(u[2]-u[1])
+      du[2] = u[1]*(p[2]-u[3]) - u[2]
+      du[3] = u[1]*u[2] - p[3]*u[3]
+      return nothing
+    end
+
+    u0_trans = rand(3)
+    p = [10.0, 28.0, 8/3]
+
+    # parameter passing to NILSAS
+    M = 2
+    nseg = 40
+    nstep = 101
+
+    tspan_transient = (0.0,30.0)
+    prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
+    sol_transient = solve(prob_transient, Tsit5())
+    
+    u0 = sol_transient.u[end]
+
+    tspan_attractor = (0.0,20.0)
+    prob_attractor = ODEProblem(lorenz!,u0,tspan_attractor,p)
+    sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
+
+    g(u,p,t) = u[end]
+    function dg(out,u,p,t,i)
+      fill!(out, zero(eltype(u)))
+      out[end] = -one(eltype(u))
+    end
+
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, dg)
+    resfw = shadow_forward(lss_problem)
+
+    @info resfw
+
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g)
+    res = shadow_adjoint(nilsas_prob, Tsit5())
+
+    @info res
+
+    @test resfw ≈ res atol=1e-1
+
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, dg)
+    res = shadow_adjoint(nilsas_prob, Tsit5())
+
+    @info res
+
+    @test resfw ≈ res atol=1e-1
+  end
+
+  @testset "Lorenz parameter-dependent loss function" begin
+    function lorenz!(du,u,p,t)
+      du[1] = p[1]*(u[2]-u[1])
+      du[2] = u[1]*(p[2]-u[3]) - u[2]
+      du[3] = u[1]*u[2] - p[3]*u[3]
+      return nothing
+    end
+
+    u0_trans = rand(3)
+    p = [10.0, 28.0, 8/3]
+
+    # parameter passing to NILSAS
+    M = 2
+    nseg = 100
+    nstep = 101
+
+    tspan_transient = (0.0,100.0)
+    prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
+    sol_transient = solve(prob_transient, Tsit5())
+    
+    u0 = sol_transient.u[end]
+
+    tspan_attractor = (0.0,50.0)
+    prob_attractor = ODEProblem(lorenz!,u0,tspan_attractor,p)
+    sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
+
+    g(u,p,t) = u[end]^2/2 + sum(p)
+    function dgu(out,u,p,t,i)
+      fill!(out, zero(eltype(u)))
+      out[end] = -u[end]
+    end
+    function dgp(out,u,p,t,i)
+      fill!(out, -one(eltype(p)))
+    end
+
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    resfw = shadow_forward(lss_problem)
+
+    @info resfw
+
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g)
+    res = shadow_adjoint(nilsas_prob, Tsit5())
+
+    @info res
+
+    @test resfw ≈ res rtol=1e-1
+
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, (dgu,dgp))
+    res = shadow_adjoint(nilsas_prob, Tsit5())
+
+    @info res
+
+    @test resfw ≈ res rtol=1e-1
+  end
+end
+

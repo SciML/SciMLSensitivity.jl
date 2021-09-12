@@ -170,6 +170,32 @@ Base.@pure function NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UIn
 end
 
 """
+Ni, A., and Talnikar, C., Adjoint sensitivity analysis on chaotic dynamical systems 
+by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computational 
+Physics 395, 690-709 (2019).
+"""
+struct NILSAS{CS,AD,FDT,RNG,SENSE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+  rng::RNG
+  adjoint_sensealg::SENSE
+  M::Int
+  nseg::Int
+  nstep::Int
+  autojacvec::Bool
+end
+Base.@pure function NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+                                adjoint_sensealg = BacksolveAdjoint(),
+                                chunk_size=0,autodiff=true,
+                                diff_type=Val{:central},
+                                autojacvec = autodiff
+                                )
+  # integer dimension of the unstable subspace
+  M === nothing && error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
+
+  NILSAS{chunk_size,autodiff,diff_type,typeof(rng),typeof(adjoint_sensealg)}(rng, adjoint_sensealg, M, 
+    nseg, nstep, autojacvec)
+end
+
+"""
  Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
  http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
