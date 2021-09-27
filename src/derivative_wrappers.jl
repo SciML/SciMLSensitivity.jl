@@ -712,7 +712,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteNoise, dgrad, dλ, dy) wh
         end
         tmp1,tmp2 = back(λ)
         dgrad[:,i] .= vec(tmp2)
-        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        if tmp1 === nothing
+          # if a column of the noise matrix is zero, Zygote returns nothing.
+          dλ !== nothing && (dλ[:,i] .= false)
+        else
+          dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        end
         dy !== nothing && (dy[:,i] .= vec(_dy))
       end
     end
