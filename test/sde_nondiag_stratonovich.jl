@@ -579,10 +579,10 @@ end
 
   # mutating 
   _dp1 = compute_dp(p, prob!, ForwardDiffSensitivity())
-  _dp2 = @test_broken compute_dp(p, prob!, BacksolveAdjoint())
-  _dp3 = @test_broken compute_dp(p, prob!, InterpolatingAdjoint())
+  _dp2 = compute_dp(p, prob!, BacksolveAdjoint())
+  _dp3 = compute_dp(p, prob!, InterpolatingAdjoint())
 
   @test dp1 ≈ _dp1 rtol=1e-8
-  @test_broken dp2 ≈ _dp2 rtol=1e-8
-  @test_broken dp3 ≈ _dp3 rtol=1e-8
+  @test dp2 ≈ _dp2 rtol=1e-8
+  @test dp3 ≈ _dp3 rtol=1e-8
 end
