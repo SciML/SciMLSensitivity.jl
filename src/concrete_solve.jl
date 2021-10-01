@@ -470,12 +470,14 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
             _du0 = sum(eachindex(du)) do i
               J = du[i]
-              if Δ isa AbstractVector
-                v = Δ[i]
-              else
-                v = @view Δ[:, i]
+              if !(Δ isa NoTangent)
+                if Δ isa AbstractVector
+                  v = Δ[i]
+                else
+                  v = @view Δ[:, i]
+                end
+                ForwardDiff.value.(J'v)
               end
-              ForwardDiff.value.(J'v)
             end
             push!(du0parts,vec(_du0))
         end
