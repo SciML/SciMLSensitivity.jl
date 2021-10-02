@@ -68,7 +68,44 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
                                             sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = SteadyStateAdjoint()
+
+  default_sensealg = if isgpu(u0)
+    # autodiff = false because forwarddiff fails on many GPU kernels
+    # this only effects the Jacobian calculation and is same computation order
+    SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
+  else
+    local du
+    ez = if DiffEqBase.isinplace(prob)
+        du = copy(u0)
+        try
+          Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                          u0,p,prob.tspan[1]) do out,u,_p,t
+            f(out, u, _p, t)
+            nothing
+          end
+          true
+        catch
+          false
+        end
+    end
+
+    vjp = if ez
+      EnzymeVJP()
+    else
+        # Determine if we can compile ReverseDiff
+        compile = try
+            if DiffEqBase.isinplace(prob)
+              !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+            else
+              !hasbranching(prob.f,u0,p,prob.tspan[1])
+            end
+        catch
+            false
+        end
+        ReverseDiffVJP(compile)
+    end
+    SteadyStateAdjoint(autojacvec = vjp)
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
