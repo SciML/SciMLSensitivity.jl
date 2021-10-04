@@ -1,6 +1,6 @@
 using Test, LinearAlgebra
 using DiffEqSensitivity, StochasticDiffEq
-using ForwardDiff
+using ForwardDiff, Zygote
 using Random
 
 @info "SDE Non-Diagonal Noise Adjoints"
