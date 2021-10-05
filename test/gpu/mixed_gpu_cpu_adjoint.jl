@@ -1,5 +1,6 @@
 using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
-using CUDA, Test, Zygote
+using CUDA, Test, Zygote, Random
+
 CUDA.allowscalar(false)
 
 H = CuArray(rand(Float32, 2, 2))
