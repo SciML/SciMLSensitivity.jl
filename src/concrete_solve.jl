@@ -221,7 +221,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
           # user did sol[end] on only_end
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] .= .-adapt(outtype,vec(Δ[1])[_save_idxs])
+            x = vec(Δ[1])
+            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
             vec(_out) .= .-adapt(outtype,vec(Δ[1]))
           else
@@ -230,26 +231,29 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         else
           Δ isa NoTangent && return
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] .= .-adapt(outtype,vec(Δ)[_save_idxs])
+            x = vec(Δ)
+            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
             vec(_out) .= .-adapt(outtype,vec(Δ))
           else
-            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,vec(Δ)[_save_idxs])
+            x = vec(Δ)
+            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,@view(x[_save_idxs]))
           end
         end
       else
         Δ[i] isa NoTangent && return
         if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+          x = Δ[i]
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] .= .-Δ[i][_save_idxs]
+            _out[_save_idxs] = .-@view(x[_save_idxs])
           elseif _save_idxs isa Colon
-            vec(_out) .= .-vec(Δ[i])
+            vec(_out) .= .-vec(x)
           else
-            vec(@view(_out[_save_idxs])) .= .-vec(Δ[i][_save_idxs])
+            vec(@view(_out[_save_idxs])) .= .-vec(@view(x[_save_idxs]))
           end
         else
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] .= .-adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+            _out[_save_idxs] = .-adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
           elseif _save_idxs isa Colon
             vec(_out) .= .-vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           else
