@@ -29,15 +29,15 @@ function cost(p)
     c
 end
 
-###
-# https://github.com/SciML/DiffEqFlux.jl/issues/632
-###
-
 grad = Zygote.gradient(cost,p)[1]
 @test !iszero(grad[1])
 @test iszero(grad[2:4])
 @test !iszero(grad[5])
 @test iszero(grad[6:end])
+
+###
+# https://github.com/SciML/DiffEqFlux.jl/issues/632
+###
 
 rng = MersenneTwister(1234)
 m = 32
@@ -61,10 +61,7 @@ end
 function c(Z)
   prob = ODEProblem(f, ca_init, (0.,𝒯), Z, saveat=Δτ)
   sol = solve(prob, Tsit5(), sensealg=BacksolveAdjoint(), saveat=Δτ)
-  #try this:
-  return last(sol.u)[1]
-  #or this:
-  #return sol.u[20][1]
+  sum(last(sol.u))
 end
 
 println("forward:", c(Z))
