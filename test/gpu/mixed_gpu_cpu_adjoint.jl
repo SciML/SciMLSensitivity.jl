@@ -1,5 +1,6 @@
 using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
-using CUDA, Test, Zygote
+using CUDA, Test, Zygote, Random, LinearAlgebra
+
 CUDA.allowscalar(false)
 
 H = CuArray(rand(Float32, 2, 2))
@@ -33,3 +34,35 @@ grad = Zygote.gradient(cost,p)[1]
 @test iszero(grad[2:4])
 @test !iszero(grad[5])
 @test iszero(grad[6:end])
+
+###
+# https://github.com/SciML/DiffEqFlux.jl/issues/632
+###
+
+rng = MersenneTwister(1234)
+m = 32
+n = 16
+Z = randn(rng, Float32, (n,m)) |> gpu
+𝒯 = 2.0
+Δτ = 0.1
+ca_init = [zeros(1) ; ones(m)] |> gpu
+
+function f(ca, Z, t)
+  a = ca[2:end]
+
+  a_unit = a / sum(a)
+  w_unit = Z*a_unit
+  Ka_unit = Z'*w_unit
+  z_unit = dot(abs.(Ka_unit), a_unit)
+  aKa_over_z = a .* Ka_unit / z_unit
+  [sum(aKa_over_z) / m; -abs.(aKa_over_z)] |> gpu
+end
+
+function c(Z)
+  prob = ODEProblem(f, ca_init, (0.,𝒯), Z, saveat=Δτ)
+  sol = solve(prob, Tsit5(), sensealg=BacksolveAdjoint(), saveat=Δτ)
+  sum(last(sol.u))
+end
+
+println("forward:", c(Z))
+println("backward: ", Zygote.gradient(c, Z))
