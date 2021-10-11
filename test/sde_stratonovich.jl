@@ -151,7 +151,7 @@ end
   resp2 = sum(@. (Wfix)*u₀^2*exp(2*(p2[1])*tarray+2*p2[2]*Wfix))
   resp = [resp1, resp2]
 
-  @test isapprox(res_sde_forward2, resp, rtol = 2e-4)
+  @test isapprox(res_sde_forward2, resp, rtol = 8e-4)
 
   @test isapprox(res_sde_p2', res_sde_forward2, rtol = 1e-3)
   @test isapprox(res_sde_p2', resp, rtol = 1e-3)
@@ -220,25 +220,25 @@ end
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
-  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
+  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
 
-  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
+  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
-  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
+  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
   res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
 
-  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-4)
+  @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
   @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
 
@@ -433,19 +433,19 @@ end
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
 
-  @test isapprox(res_sde_p, res_oop_p, rtol = 1e-4)
+  @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
 
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
-  @test isapprox(res_sde_p, res_oop_p, rtol = 1e-4)
+  @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
 
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
 
-  @test isapprox(res_sde_p, res_oop_p, rtol = 1e-4)
+  @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
 
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
