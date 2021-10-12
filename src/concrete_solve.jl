@@ -421,6 +421,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 
+            if _prob isa SDEProblem
+              _prob.noise_rate_prototype!==nothing && (_prob = remake(_prob, noise_rate_prototype = convert.(eltype(pdual), _prob.noise_rate_prototype)))
+            end
+
             if saveat isa Number
               _saveat = prob.tspan[1]:saveat:prob.tspan[2]
             else
@@ -503,6 +507,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _f = prob.f
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
+
+            if _prob isa SDEProblem
+              _prob.noise_rate_prototype!==nothing && (_prob = remake(_prob, noise_rate_prototype = convert.(eltype(pdual), _prob.noise_rate_prototype)))
+            end
 
             if saveat isa Number
               _saveat = prob.tspan[1]:saveat:prob.tspan[2]

@@ -253,6 +253,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             else
               ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u,p,t
                 du1 = similar(p, size(prob.noise_rate_prototype))
+                du1 .= false
                 f(du1,u,p,first(t))
                 return du1[:,indx]
               end

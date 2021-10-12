@@ -1,6 +1,6 @@
 using Test, LinearAlgebra
 using DiffEqSensitivity, StochasticDiffEq
-using ForwardDiff
+using ForwardDiff, Zygote
 using Random
 
 @info "SDE Non-Diagonal Noise Adjoints"
@@ -525,4 +525,64 @@ end
   adj_sol = solve(adjprob,EulerHeun(); dt=dtmix, adaptive=false,tstops=soloop.t)
 
   @test adj_soloop[end] ≈  adj_sol[end]  rtol=1e-8
+end
+
+@testset "mutating non-diagonal noise" begin
+  a!(du,u,_p,t) = (du .= -u) 
+  a(u,_p,t) = -u 
+
+  function b!(du,u,_p,t)
+    KR, KI = _p[1:2]
+
+    du[1,1] = KR
+    du[2,1] = KI  
+  end
+
+  function b(u,_p,t)
+    KR, KI = _p[1:2]
+
+    [ KR zero(KR)
+      KI zero(KR) ]
+  end
+
+  p = [1.,0.]
+
+  prob! = SDEProblem{true}(a!,b!,[0.,0.],(0.0,0.1),p,noise_rate_prototype=eltype(p).(zeros(2,2)))
+  prob = SDEProblem{false}(a,b,[0.,0.],(0.0,0.1),p,noise_rate_prototype=eltype(p).(zeros(2,2)))
+
+  function loss(p;SDEprob=prob,sensealg=BacksolveAdjoint())
+    _prob = remake(SDEprob,p=p)
+    sol = solve(_prob, EulerHeun(), dt=1e-5, sensealg=sensealg)
+    return sum(Array(sol))
+  end
+
+  function compute_dp(p, SDEprob, sensealg)
+    Random.seed!(seed)
+    Zygote.gradient(p->loss(p,SDEprob=SDEprob,sensealg=sensealg), p)[1]
+  end
+
+  # test mutating against non-mutating
+
+  # non-mutating
+  
+  dp1 = compute_dp(p, prob, ForwardDiffSensitivity())
+  dp2 = compute_dp(p, prob, BacksolveAdjoint())
+  dp3 = compute_dp(p, prob, InterpolatingAdjoint())
+
+  @show dp1 dp2 dp3
+
+  # different vjp choice
+  _dp2 = compute_dp(p, prob, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
+  @test dp2 ≈ _dp2 rtol=1e-8
+  _dp3 = compute_dp(p, prob, InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))
+  @test dp3 ≈ _dp3 rtol=1e-8
+
+  # mutating 
+  _dp1 = compute_dp(p, prob!, ForwardDiffSensitivity())
+  _dp2 = compute_dp(p, prob!, BacksolveAdjoint())
+  _dp3 = compute_dp(p, prob!, InterpolatingAdjoint())
+
+  @test dp1 ≈ _dp1 rtol=1e-8
+  @test dp2 ≈ _dp2 rtol=1e-8
+  @test dp3 ≈ _dp3 rtol=1e-8
 end
