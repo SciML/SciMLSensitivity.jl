@@ -104,7 +104,7 @@ end
 
     linsolve(
         vec(λ),
-        Diagonal(one.(vec(y))) - VecJacOperator(f, y, p; autodiff = true),
+        VecJacOperator(f, y, p; autodiff = true),
         vec(diffcache.dg_val),
     )
 
@@ -126,9 +126,9 @@ end
         dg_dp_config = build_grad_config(sensealg, dg_dp, p, p)
         gradient!(dg_dp_val, dg_dp, p, sensealg, dg_dp_config)
 
-        @. dg_dp_val = dg_dp_val + vjp
+        @. dg_dp_val = dg_dp_val - vjp
         return dg_dp_val
     else
-        return vjp
+        return -vjp
     end
 end
