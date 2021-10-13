@@ -451,14 +451,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
-        vec(f(u, p, t))
+        f(u, p, t)
       end
     else
       _dy, back = Zygote.pullback(y, p) do u, p
-        vec(f(u, p, t, W))
+        f(u, p, t, W)
       end
     end
-    tmp1,tmp2 = back(λ)
+    tmp1, tmp2 = back(λ)
     tmp1 !== nothing && (dλ[:] .= vec(tmp1))
     dy !== nothing && (dy[:] .= vec(_dy))
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))

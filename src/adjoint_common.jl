@@ -58,7 +58,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
     algevar_idxs = 1:0
   end
 
-  J = (issemiexplicitdae || !isautojacvec || prob isa DiffEqBase.SteadyStateProblem) ? similar(u0, numindvar, numindvar) : nothing
+  J = (issemiexplicitdae || !isautojacvec) ? similar(u0, numindvar, numindvar) : nothing
 
   if !discrete
     if dg !== nothing
