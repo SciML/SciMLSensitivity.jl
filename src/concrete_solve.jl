@@ -68,7 +68,44 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
                                             sensealg::Nothing,u0,p,args...;kwargs...)
-  default_sensealg = SteadyStateAdjoint()
+
+  default_sensealg = if isgpu(u0)
+    # autodiff = false because forwarddiff fails on many GPU kernels
+    # this only effects the Jacobian calculation and is same computation order
+    SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
+  else
+    local du
+    ez = if DiffEqBase.isinplace(prob)
+        du = copy(u0)
+        try
+          Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                          u0,p,prob.tspan[1]) do out,u,_p,t
+            f(out, u, _p, t)
+            nothing
+          end
+          true
+        catch
+          false
+        end
+    end
+
+    vjp = if ez
+      EnzymeVJP()
+    else
+        # Determine if we can compile ReverseDiff
+        compile = try
+            if DiffEqBase.isinplace(prob)
+              !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+            else
+              !hasbranching(prob.f,u0,p,prob.tspan[1])
+            end
+        catch
+            false
+        end
+        ReverseDiffVJP(compile)
+    end
+    SteadyStateAdjoint(autojacvec = vjp)
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
 end
 
@@ -179,42 +216,48 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   function adjoint_sensitivity_backpass(Δ)
     function df(_out, u, p, t, i)
       outtype = typeof(_out) <: SubArray ? DiffEqBase.parameterless_type(_out.parent) : DiffEqBase.parameterless_type(_out)
-
       if only_end
+        Δ[1] isa NoTangent && return
         if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
           # user did sol[end] on only_end
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -adapt(outtype,vec(Δ[1])[_save_idxs])
+            x = vec(Δ[1])
+            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
-            vec(_out) .= -adapt(outtype,vec(Δ[1]))
+            vec(_out) .= .-adapt(outtype,vec(Δ[1]))
           else
-            vec(@view(_out[_save_idxs])) .= -adapt(outtype,vec(Δ[1])[_save_idxs])
+            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,vec(Δ[1])[_save_idxs])
         end
         else
+          Δ isa NoTangent && return
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -adapt(outtype,vec(Δ)[_save_idxs])
+            x = vec(Δ)
+            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
-            vec(_out) .= -adapt(outtype,vec(Δ))
+            vec(_out) .= .-adapt(outtype,vec(Δ))
           else
-            vec(@view(_out[_save_idxs])) .= -adapt(outtype,vec(Δ)[_save_idxs])
+            x = vec(Δ)
+            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,@view(x[_save_idxs]))
           end
         end
       else
+        Δ[i] isa NoTangent && return
         if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+          x = Δ[i]
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -Δ[i][_save_idxs]
+            _out[_save_idxs] = .-@view(x[_save_idxs])
           elseif _save_idxs isa Colon
-            vec(_out) .= -vec(Δ[i])
+            vec(_out) .= .-vec(x)
           else
-            vec(@view(_out[_save_idxs])) .= -vec(Δ[i][_save_idxs])
+            vec(@view(_out[_save_idxs])) .= .-vec(@view(x[_save_idxs]))
           end
         else
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = -adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+            _out[_save_idxs] = .-adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
           elseif _save_idxs isa Colon
-            vec(_out) .= -vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+            vec(_out) .= .-vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           else
-            vec(@view(_out[_save_idxs])) .= -vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+            vec(@view(_out[_save_idxs])) .= .-vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           end
         end
       end
@@ -378,6 +421,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 
+            if _prob isa SDEProblem
+              _prob.noise_rate_prototype!==nothing && (_prob = remake(_prob, noise_rate_prototype = convert.(eltype(pdual), _prob.noise_rate_prototype)))
+            end
+
             if saveat isa Number
               _saveat = prob.tspan[1]:saveat:prob.tspan[2]
             else
@@ -389,12 +436,16 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
             _dp = sum(eachindex(du)) do i
               J = du[i]
-              if Δ isa AbstractVector
+              if Δ isa AbstractVector || Δ isa DESolution
                 v = Δ[i]
               else
                 v = @view Δ[:, i]
               end
-              ForwardDiff.value.(J'v)
+              if !(Δ isa NoTangent)
+                ForwardDiff.value.(J'v)
+              else
+                zero(p)
+              end
             end
             push!(pparts,vec(_dp))
         end
@@ -457,6 +508,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             _prob = remake(prob,f=_f,u0=u0dual,p=pdual,tspan=tspandual)
 
+            if _prob isa SDEProblem
+              _prob.noise_rate_prototype!==nothing && (_prob = remake(_prob, noise_rate_prototype = convert.(eltype(pdual), _prob.noise_rate_prototype)))
+            end
+
             if saveat isa Number
               _saveat = prob.tspan[1]:saveat:prob.tspan[2]
             else
@@ -468,12 +523,16 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 
             _du0 = sum(eachindex(du)) do i
               J = du[i]
-              if Δ isa AbstractVector
+              if Δ isa AbstractVector || Δ isa DESolution
                 v = Δ[i]
               else
                 v = @view Δ[:, i]
               end
-              ForwardDiff.value.(J'v)
+              if !(Δ isa NoTangent)
+                ForwardDiff.value.(J'v)
+              else
+                zero(u0)
+              end
             end
             push!(du0parts,vec(_du0))
         end
@@ -551,7 +610,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   out,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar, pbar = pullback(ybar)
+    u0bar, pbar = pullback(Array(ybar))
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
@@ -610,7 +669,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
   ReverseDiff.forward_pass!(tape)
   function reversediff_adjoint_backpass(ybar)
-    _ybar = eltype(ybar) <: AbstractArray ? Array(VectorOfArray(ybar)) : ybar
+    _ybar = if ybar isa VectorOfArray
+        Array(ybar)
+      elseif eltype(ybar) <: AbstractArray
+        Array(VectorOfArray(ybar))
+      else
+        ybar
+      end
     ReverseDiff.increment_deriv!(output, _ybar)
     ReverseDiff.reverse_pass!(tape)
     (NoTangent(),NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)

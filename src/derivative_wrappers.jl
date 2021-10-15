@@ -712,7 +712,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteNoise, dgrad, dλ, dy) wh
         end
         tmp1,tmp2 = back(λ)
         dgrad[:,i] .= vec(tmp2)
-        dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        if tmp1 === nothing
+          # if a column of the noise matrix is zero, Zygote returns nothing.
+          dλ !== nothing && (dλ[:,i] .= false)
+        else
+          dλ !== nothing && (dλ[:,i] .= vec(tmp1))
+        end
         dy !== nothing && (dy[:,i] .= vec(_dy))
       end
     end
@@ -760,9 +765,9 @@ function build_jac_config(alg,uf,u)
   jac_config
 end
 
-function build_param_jac_config(alg,uf,u,p)
+function build_param_jac_config(alg,pf,u,p)
   if alg_autodiff(alg)
-    jac_config = ForwardDiff.JacobianConfig(uf,u,p,
+    jac_config = ForwardDiff.JacobianConfig(pf,u,p,
                  ForwardDiff.Chunk{determine_chunksize(p,alg)}())
   else
     if diff_type(alg) != Val{:complex}
