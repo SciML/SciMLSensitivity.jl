@@ -176,7 +176,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
 
     out = if save_idxs === nothing
-      out = DiffEqBase.sensitivity_solution(sol,_out.u,sol.t)
+      out = DiffEqBase.sensitivity_solution(sol,_out.u,ts)
     else
       out = DiffEqBase.sensitivity_solution(sol,[_out[i][save_idxs] for i in 1:length(_out)],ts)
     end
