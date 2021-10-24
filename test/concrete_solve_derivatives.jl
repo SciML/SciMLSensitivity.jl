@@ -208,6 +208,21 @@ dp2 = ForwardDiff.gradient((p)->sum(last(solve(proboop,Tsit5(),u0=u0,p=p,saveat=
 @test dp1 ≈ dp2
 
 
+# tspan[2]-tspan[1] not a multiple of saveat tests 
+du0,dp = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=2.3,sensealg=ReverseDiffAdjoint())),u0,p)
+du01,dp1 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=2.3,sensealg=QuadratureAdjoint())),u0,p)
+du02,dp2 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=2.3,sensealg=InterpolatingAdjoint())),u0,p)
+du03,dp3 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=2.3,sensealg=BacksolveAdjoint())),u0,p)
+du04,dp4 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),save_end=true,u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=2.3,sensealg=ForwardDiffSensitivity())),u0,p)
+
+@test du0 ≈ du01 rtol=1e-12
+@test du0 ≈ du02 rtol=1e-12
+@test du0 ≈ du03 rtol=1e-12
+@test du0 ≈ du04 rtol=1e-12
+@test dp ≈ dp1 rtol=1e-7
+@test dp ≈ dp2 rtol=1e-12
+@test dp ≈ dp3 rtol=1e-12
+@test dp ≈ dp4 rtol=1e-12
 
 ###
 ### SDE

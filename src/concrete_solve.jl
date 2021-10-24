@@ -167,7 +167,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
     # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
-    sol.t[end] !== ts[end] && @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(sol.t[end]), ts[end]: $(ts[end])"
+    sol.t[end] !== ts[end] && (ts = fix_endpoints(sensealg,sol,ts))
     if cb === nothing
       _out = sol(ts)
     else
@@ -810,4 +810,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
       (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
     end
     out, steadystatebackpass
+end
+
+function fix_endpoints(sensealg,sol,ts)
+  @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(sol.t[end]), ts[end]: $(ts[end])"
+  ts = collect(ts)
+  push!(ts, sol.t[end])
 end
