@@ -28,14 +28,24 @@ function SteadyStateAdjointSensitivityFunction(
     sol,
     dg,
     colorvec,
+    needs_jac,
 )
     @unpack f, p, u0 = sol.prob
 
-    diffcache, y =
-        adjointdiffcache(g, sensealg, discrete, sol, dg, f; quad = false)
+    diffcache, y = adjointdiffcache(
+        g,
+        sensealg,
+        discrete,
+        sol,
+        dg,
+        f;
+        quad = false,
+        needs_jac = needs_jac,
+    )
 
     λ = zero(y)
-    linsolve = sensealg.linsolve(Val{:init}, diffcache.uf, y)
+    linsolve =
+        needs_jac ? nothing : sensealg.linsolve(Val{:init}, diffcache.uf, y)
     vjp = similar(λ, length(p))
 
     SteadyStateAdjointSensitivityFunction(
@@ -59,9 +69,12 @@ end
     dg;
     save_idxs = nothing,
 )
-    @unpack f, p = sol.prob
+    @unpack f, p, u0 = sol.prob
 
     discrete = false
+    # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
+    #       cases where the length(u0) > 100 and if yes till what threshold
+    needs_jac = length(u0) <= 100
 
     p === DiffEqBase.NullParameters() && error(
         "Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!",
@@ -74,8 +87,29 @@ end
         sol,
         dg,
         f.colorvec,
+        needs_jac,
     )
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
+
+    if needs_jac
+        if DiffEqBase.has_jac(f)
+            f.jac(diffcache.J, y, p, nothing)
+        else
+            if DiffEqBase.isinplace(sol.prob)
+                jacobian!(
+                    diffcache.J,
+                    diffcache.uf,
+                    y,
+                    diffcache.f_cache,
+                    sensealg,
+                    diffcache.jac_config,
+                )
+            else
+                temp = jacobian(diffcache.uf, y, sensealg)
+                @. diffcache.J = temp
+            end
+        end
+    end
 
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
     if dg !== nothing
@@ -102,11 +136,15 @@ end
         end
     end
 
-    linsolve(
-        vec(λ),
-        VecJacOperator(f, y, p; autodiff = true),
-        vec(diffcache.dg_val),
-    )
+    if !needs_jac
+        linsolve(
+            vec(λ),
+            VecJacOperator(f, y, p; autodiff = true),
+            vec(diffcache.dg_val),
+        )
+    else
+        copyto!(vec(λ), diffcache.J' \ vec(diffcache.dg_val'))
+    end
 
     vecjacobian!(
         vec(diffcache.dg_val),
