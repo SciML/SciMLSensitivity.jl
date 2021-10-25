@@ -137,6 +137,8 @@ end
     end
 
     if !needs_jac
+        # FIXME: Won't work if the matrix A is explicitly required for solving
+        #        the linear system.
         linsolve(
             vec(λ),
             VecJacOperator(f, y, p; autodiff = true),
