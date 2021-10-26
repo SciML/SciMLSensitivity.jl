@@ -219,7 +219,7 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(solve(proboop,Tsit5(),save_end=true,u0=u0
 @test du0 ≈ du02 rtol=1e-12
 @test du0 ≈ du03 rtol=1e-12
 @test du0 ≈ du04 rtol=1e-12
-@test dp ≈ dp1 rtol=1e-7
+@test dp ≈ dp1 rtol=1e-12
 @test dp ≈ dp2 rtol=1e-12
 @test dp ≈ dp3 rtol=1e-12
 @test dp ≈ dp4 rtol=1e-12
