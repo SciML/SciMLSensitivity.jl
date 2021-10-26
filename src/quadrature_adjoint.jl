@@ -245,7 +245,7 @@ end
 
 function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                                 t=nothing,dg=nothing;
-                                abstol=1e-6,reltol=1e-3,
+                                abstol=sensealg.abstol,reltol=sensealg.reltol,
                                 callback = nothing,
                                 kwargs...)
   dgdu, dgdp = dg isa Tuple ? dg : (dg, nothing)
@@ -261,7 +261,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
 
     if t === nothing
       res,err = quadgk(integrand,sol.prob.tspan[1],sol.prob.tspan[2],
-                       atol=sensealg.abstol,rtol=sensealg.reltol)
+                       atol=abstol,rtol=reltol)
     else
       res = zero(integrand.p)'
 
@@ -275,7 +275,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
 
       for i in length(t)-1:-1:1
         res .+= quadgk(integrand,t[i],t[i+1],
-                       atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+                       atol=abstol,rtol=reltol)[1]
         if t[i]==t[i+1]
           for cb in callback.discrete_callbacks
             if t[i] ∈ cb.affect!.event_times
@@ -292,7 +292,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
       end
       if t[1] != sol.prob.tspan[1]
         res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
-                       atol=sensealg.abstol,rtol=sensealg.reltol)[1]
+                       atol=abstol,rtol=reltol)[1]
       end
     end
     return -adj_sol[end], res
