@@ -610,7 +610,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   out,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar, pbar = pullback(ybar) # No Array for GPU!
+    tmp = if eltype(ybar) <: Number
+      ybar
+    elseif typeof(ybar[1]) <: Array
+      return Array(ybar)
+    else
+      tmp = vec(ybar.u[1])
+      for i in 2:length(ybar.u)
+        tmp = hcat(tmp,vec(ybar.u[i]))
+      end
+      return reshape(tmp,size(ybar.u[1])...,length(ybar.u))
+    end
+    u0bar, pbar = pullback(tmp)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
