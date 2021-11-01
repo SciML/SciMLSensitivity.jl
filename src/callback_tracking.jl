@@ -61,7 +61,7 @@ struct TrackedAffect{T,T2,T3,T4,T5}
 end
 
 TrackedAffect(t::Number,u,p,affect!::Nothing,correction) = nothing
-TrackedAffect(t::Number,u,p,affect!,correction) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(p)}(undef,0),Vector{typeof(u)}(undef,0),affect!,correction)
+TrackedAffect(t::Number,u,p,affect!,correction) = TrackedAffect(Vector{typeof(t)}(undef,0),Vector{typeof(u)}(undef,0),Vector{typeof(p)}(undef,0),affect!,correction)
 
 function (f::TrackedAffect)(integrator)
     uleft = deepcopy(integrator.u)
