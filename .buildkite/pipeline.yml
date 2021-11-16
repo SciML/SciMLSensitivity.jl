@@ -6,7 +6,7 @@ steps:
       - JuliaCI/julia-test#v1:
           coverage: false
     agents:
-      queue: "juliacpu"
+      queue: "juliaecosystem"
     env:
       GROUP: 'Callbacks'
     timeout_in_minutes: 120
