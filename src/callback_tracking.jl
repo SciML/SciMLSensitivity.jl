@@ -126,7 +126,7 @@ struct FakeIntegrator{uType,P,tType}
     t::tType
     tprev::tType
 end
-FakeIntegrator(u,p,t,tprev=t) = FakeIntegrator(u,p,t,tprev)
+FakeIntegrator(u,p,t,tprev) = FakeIntegrator{eltype(u),eltype(p),eltype(t)}(u,p,t,tprev)
 
 struct CallbackSensitivityFunction{fType,Alg<:DiffEqBase.AbstractSensitivityAlgorithm,C<:AdjointDiffCache,pType} <: SensitivityFunction
     f::fType

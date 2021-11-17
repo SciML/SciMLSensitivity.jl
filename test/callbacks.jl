@@ -466,6 +466,13 @@ end
           tstops=[5.1]
           test_discrete_callback(cb,tstops,g,dg!,cboop)
         end
+        @testset "tprev dependent callback" begin
+          condition(u,t,integrator) = t == 5
+          affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
+          cb = DiscreteCallback(condition,affect!)
+          tstops=[5.0]
+          test_discrete_callback(cb,tstops,g,dg!)
+        end
       end
       @testset "MSE loss function" begin
         g(u) = sum((1.0.-u).^2)./2
@@ -520,6 +527,13 @@ end
           cboop = DiscreteCallback(condition,affect)
           tstops=[5.1]
           test_discrete_callback(cb,tstops,g,dg!,cboop)
+        end
+        @testset "tprev dependent callback" begin
+          condition(u,t,integrator) = t == 5
+          affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
+          cb = DiscreteCallback(condition,affect!)
+          tstops=[5.0]
+          test_discrete_callback(cb,tstops,g,dg!)
         end
       end
   	end
