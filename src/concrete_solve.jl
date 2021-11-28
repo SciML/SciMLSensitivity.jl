@@ -167,7 +167,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]),abs(saveat)):_prob.tspan[1]
     end
     # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
-    sol.t[end] !== ts[end] && @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(sol.t[end]), ts[end]: $(ts[end])"
+    sol.t[end] !== ts[end] && (ts = fix_endpoints(sensealg,sol,ts))
     if cb === nothing
       _out = sol(ts)
     else
@@ -610,7 +610,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   out,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    u0bar, pbar = pullback(Array(ybar))
+    tmp = if eltype(ybar) <: Number
+      ybar
+    elseif typeof(ybar[1]) <: Array
+      return Array(ybar)
+    else
+      tmp = vec(ybar.u[1])
+      for i in 2:length(ybar.u)
+        tmp = hcat(tmp,vec(ybar.u[i]))
+      end
+      return reshape(tmp,size(ybar.u[1])...,length(ybar.u))
+    end
+    u0bar, pbar = pullback(tmp)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
     (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
@@ -809,4 +820,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
       (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
     end
     out, steadystatebackpass
+end
+
+function fix_endpoints(sensealg,sol,ts)
+  @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(sol.t[end]), ts[end]: $(ts[end])"
+  ts = collect(ts)
+  push!(ts, sol.t[end])
 end
