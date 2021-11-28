@@ -55,8 +55,8 @@ using ForwardDiff, Calculus
     dg!(vec(gx),sol_analytical,p,nothing,nothing)
     paramjac!(fp,sol_analytical,p,nothing)
 
-    lambda = J' \gx'
-    res_analytical = delg_delp'-lambda' * fp # = -gx*inv(J)*fp
+    lambda = J' \ gx'
+    res_analytical = delg_delp' - lambda' * fp # = -gx*inv(J)*fp
 
     @info "Expected result" sol_analytical, res_analytical, delg_delp'-gx*inv(J)*fp
 
