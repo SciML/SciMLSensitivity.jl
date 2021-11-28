@@ -206,7 +206,8 @@ end
 
 # NOTE: This linsolve is based on the master branch of LinearSolve.jl
 Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_type = Val{:central},
-                                        autojacvec = autodiff, linsolve = KrylovJL_GMRES())
+                                        autojacvec = autodiff, linsolve = nothing)
+
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
 
