@@ -44,8 +44,7 @@ function SteadyStateAdjointSensitivityFunction(
     )
 
     λ = zero(y)
-    linsolve =
-        needs_jac ? nothing : sensealg.linsolve(Val{:init}, diffcache.uf, y)
+    linsolve = needs_jac ? nothing : sensealg.linsolve
     vjp = similar(λ, length(p))
 
     SteadyStateAdjointSensitivityFunction(
@@ -139,11 +138,9 @@ end
     if !needs_jac
         # FIXME: Won't work if the matrix A is explicitly required for solving
         #        the linear system.
-        linsolve(
-            vec(λ),
-            VecJacOperator(f, y, p; autodiff = true),
-            vec(diffcache.dg_val),
-        )
+        linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff = true),
+                                       vec(diffcache.dg_val))
+        copyto!(vec(λ), solve(linear_problem, linsolve))
     else
         copyto!(vec(λ), diffcache.J' \ vec(diffcache.dg_val'))
     end

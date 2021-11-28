@@ -203,7 +203,10 @@ struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorit
   autojacvec::VJP
   linsolve::LS
 end
-Base.@pure function SteadyStateAdjoint(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,linsolve=DEFAULT_LINSOLVE)
+
+# NOTE: This linsolve is based on the master branch of LinearSolve.jl
+Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_type = Val{:central},
+                                        autojacvec = autodiff, linsolve = KrylovJL_GMRES())
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
 

@@ -4,6 +4,7 @@ using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using DiffEqOperators
 using Adapt
+using LinearSolve
 using Parameters: @unpack
 using Requires
 using StochasticDiffEq
