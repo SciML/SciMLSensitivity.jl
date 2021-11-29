@@ -203,7 +203,9 @@ struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorit
   autojacvec::VJP
   linsolve::LS
 end
-Base.@pure function SteadyStateAdjoint(;chunk_size=0,autodiff=true,diff_type=Val{:central},autojacvec=autodiff,linsolve=DEFAULT_LINSOLVE)
+
+Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_type = Val{:central},
+                                        autojacvec = autodiff, linsolve = nothing)
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
 

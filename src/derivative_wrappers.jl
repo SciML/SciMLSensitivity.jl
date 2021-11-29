@@ -458,7 +458,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         vec(f(u, p, t, W))
       end
     end
-    tmp1,tmp2 = back(λ)
+    tmp1, tmp2 = back(λ)
     tmp1 !== nothing && (dλ[:] .= vec(tmp1))
     dy !== nothing && (dy[:] .= vec(_dy))
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))

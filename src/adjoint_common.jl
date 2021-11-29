@@ -23,7 +23,7 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noiseterm=false) where {G,DG}
+function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noiseterm=false,needs_jac=false) where {G,DG}
   prob = sol.prob
   if prob isa DiffEqBase.SteadyStateProblem
     @unpack u0, p = prob
@@ -58,7 +58,12 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
     algevar_idxs = 1:0
   end
 
-  J = (issemiexplicitdae || !isautojacvec || prob isa DiffEqBase.SteadyStateProblem) ? similar(u0, numindvar, numindvar) : nothing
+  if !needs_jac
+    J = (issemiexplicitdae || !isautojacvec) ? similar(u0, numindvar, numindvar) : nothing
+  else
+    # Force construction of the Jacobian
+    J = similar(u0, numindvar, numindvar)
+  end
 
   if !discrete
     if dg !== nothing
