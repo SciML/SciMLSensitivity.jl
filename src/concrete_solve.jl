@@ -29,7 +29,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
         try
           Enzyme.autodiff(Enzyme.Duplicated(du, du),
                           u0,p,prob.tspan[1]) do out,u,_p,t
-            f(out, u, _p, t)
+            prob.f(out, u, _p, t)
             nothing
           end
           true
