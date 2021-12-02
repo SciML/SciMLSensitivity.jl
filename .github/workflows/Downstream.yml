@@ -7,7 +7,7 @@ on:
 
 jobs:
   test:
-    name: ${{ matrix.package.repo }}/${{ matrix.package.group }}
+    name: ${{ matrix.package.repo }}/${{ matrix.package.group }}/${{ matrix.julia-version }}
     runs-on: ${{ matrix.os }}
     env:
       GROUP: ${{ matrix.package.group }}
