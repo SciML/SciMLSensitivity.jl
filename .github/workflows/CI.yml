@@ -19,14 +19,12 @@ jobs:
           - SDE2
           - SDE3
           - DiffEqFlux
+        version:
+          - '1.6'
+          - '1'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
-        with:
-          matrix:
-            version:
-              - '1.6'
-              - '1'
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
