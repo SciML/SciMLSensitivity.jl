@@ -19,7 +19,7 @@ function _pass(::Type{<:HasBranchingCtx}, reflection::Cassette.Reflection)
     ir = reflection.code_info
 
     if any(x -> isa(x, GotoIfNot), ir.code)
-        printbranch && ccall(:jl_safe_printf, Cvoid, (Cstring,), "GotoIfNot detected in $(reflection.method)\nir = $ir\n")
+        printbranch && println("GotoIfNot detected in $(reflection.method)\nir = $ir\n")
         Cassette.insert_statements!(
             ir.code, ir.codelocs,
             (stmt, i) -> i == 1 ? 3 : nothing,
@@ -59,3 +59,4 @@ Cassette.overdub(::HasBranchingCtx, ::typeof(Base.materialize), x...) = Base.mat
 Cassette.overdub(::HasBranchingCtx, ::typeof(Base.literal_pow), x...) = Base.literal_pow(x...)
 Cassette.overdub(::HasBranchingCtx, ::typeof(Base.getindex), x...) = Base.getindex(x...)
 Cassette.overdub(::HasBranchingCtx, ::typeof(Core.Typeof), x...) = Core.Typeof(x...)
+Cassette.overdub(::HasBranchingCtx, ::Type{Base.OneTo{T}}, stop) where {T <: Integer} = Base.OneTo{T}(stop)
