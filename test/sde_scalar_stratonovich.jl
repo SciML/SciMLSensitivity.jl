@@ -4,7 +4,7 @@ using Random
 
 @info "SDE Adjoints"
 
-seed = 5
+seed = 100
 Random.seed!(seed)
 
 tstart = 0.0
@@ -29,7 +29,7 @@ p2 = [1.01,0.87]
 @testset "SDE inplace scalar noise tests" begin
   using DiffEqNoiseProcess
 
-  dtscalar = tend/1e2
+  dtscalar = tend/1e3
 
   f!(du,u,p,t) = (du .= p[1]*u)
   σ!(du,u,p,t) = (du .= p[2]*u)
@@ -57,14 +57,14 @@ p2 = [1.01,0.87]
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
     ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false))
 
-  @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_u0, res_sde_u02,  atol=1e-8)
+  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-8)
 
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
     ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
-  @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_u0, res_sde_u02,  atol=1e-8)
+  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-8)
 
   @show res_sde_u02, res_sde_p2
 
@@ -74,7 +74,7 @@ p2 = [1.01,0.87]
 
 
   @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_p, res_sde_p2,  rtol=1e-4)
 
   @show res_sde_u02, res_sde_p2
 
@@ -82,7 +82,7 @@ p2 = [1.01,0.87]
     ,dt=dtscalar,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false))
 
   @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_p, res_sde_p2,  rtol=1e-4)
 
   @show res_sde_u02, res_sde_p2
 
@@ -90,7 +90,7 @@ p2 = [1.01,0.87]
     ,dt=dtscalar,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
   @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_p, res_sde_p2,  rtol=1e-4)
 
   @show res_sde_u02, res_sde_p2
 
@@ -114,7 +114,7 @@ p2 = [1.01,0.87]
   @show  true_grads
 
   @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_p, res_sde_p2,  rtol=1e-4)
   @test isapprox(true_grads[2], res_sde_p', atol=1e-4)
   @test isapprox(true_grads[1], res_sde_u0, rtol=1e-4)
   @test isapprox(true_grads[2], res_sde_p2', atol=1e-4)
@@ -124,7 +124,7 @@ end
 @testset "SDE oop scalar noise tests" begin
   using DiffEqNoiseProcess
 
-  dtscalar = tend/1e2
+  dtscalar = tend/1e3
 
   f(u,p,t) = p[1]*u
   σ(u,p,t) = p[2]*u
@@ -150,14 +150,14 @@ end
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
     ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false))
 
-  @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_u0, res_sde_u02,  atol=1e-8)
+  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-8)
 
   res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
     ,dt=dtscalar,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
-  @test isapprox(res_sde_u0, res_sde_u02,  rtol=1e-4)
-  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-4)
+  @test isapprox(res_sde_u0, res_sde_u02,  atol=1e-8)
+  @test isapprox(res_sde_p, res_sde_p2,  atol=1e-8)
 
   @show res_sde_u02, res_sde_p2
 
