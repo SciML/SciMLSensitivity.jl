@@ -3,7 +3,7 @@ using DiffEqSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq
 using ForwardDiff, Calculus
 using Random
-Random.seed!(1245)
+Random.seed!(12345)
 
 @testset "Adjoint sensitivities of steady state solver" begin
   function f!(du,u,p,t)
