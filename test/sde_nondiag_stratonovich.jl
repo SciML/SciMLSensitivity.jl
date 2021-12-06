@@ -205,7 +205,7 @@ end
 
     res1, res2 = compute_grads_nd(soloop)
 
-    @test isapprox(res1, res_sde_u0, rtol=1e-5)
+    @test isapprox(res1, res_sde_u0, rtol=1e-4)
     @test isapprox(res2, res_sde_p', rtol=1e-4)
 
 end
