@@ -531,7 +531,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy[:] .= vec(out_)
     end
     dλ .= tmp1
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy .= tmp3)
   end
   return
