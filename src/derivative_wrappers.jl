@@ -479,7 +479,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
   #if dgrad !== nothing
     #  tmp2 = dgrad
   #else
-      tmp2 .= 0
+  dup = if !(typeof(tmp2) <: DiffEqBase.NullParameters)
+    tmp2 .= 0
+    Enzyme.Duplicated(p, tmp2)
+  else
+    p
+  end
   #end
 
   #if dy !== nothing
@@ -495,12 +500,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     if W===nothing
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),
+                      dup,
                       t)
     else
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),
+                      dup,
                       t,W)
     end
 
@@ -511,11 +516,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     if W===nothing
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),t)
+                      dup,t)
     else
       Enzyme.autodiff(S.diffcache.pf,Enzyme.Duplicated(tmp3, tmp4),
                       Enzyme.Duplicated(y, tmp1),
-                      Enzyme.Duplicated(p, tmp2),t,W)
+                      dup,t,W)
     end
     if dy !== nothing
         out_ = if W===nothing
