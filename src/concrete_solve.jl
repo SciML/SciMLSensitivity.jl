@@ -24,7 +24,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
     end
   else
     local du
-    ez = if DiffEqBase.isinplace(prob)
+    ez = if DiffEqBase.isinplace(prob) && p !== DiffEqBase.NullParameters() && p !== nothing
         du = copy(u0)
         try
           Enzyme.autodiff(Enzyme.Duplicated(du, du),
@@ -36,6 +36,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
         catch
           false
         end
+    else
+      false
     end
 
     if ez
