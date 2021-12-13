@@ -139,7 +139,7 @@ end
         # NOTE: Zygote doesn't support inplace
         linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff = !DiffEqBase.isinplace(sol.prob)),
                                        vec(diffcache.dg_val))
-        copyto!(vec(λ), solve(linear_problem, linsolve))
+        copyto!(vec(λ), solve(linear_problem, linsolve).u)
     else
         copyto!(vec(λ), diffcache.J' \ vec(diffcache.dg_val'))
     end
