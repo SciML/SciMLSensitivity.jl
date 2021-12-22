@@ -8,7 +8,7 @@ ann = FastChain(FastDense(1, 4, tanh))
 p = initial_params(ann)
 
 function func(x, p, t)
-    (ann([t],p)[1]*H)*x
+    ann([t],p)[1]*H*x
 end
 
 x0 = CuArray(rand(Float32, 2))
