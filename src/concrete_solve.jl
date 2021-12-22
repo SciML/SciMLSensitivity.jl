@@ -217,7 +217,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     function df(_out, u, p, t, i)
       outtype = typeof(_out) <: SubArray ? DiffEqBase.parameterless_type(_out.parent) : DiffEqBase.parameterless_type(_out)
       if only_end
-        Δ[1] isa NoTangent && return
+        eltype(Δ) isa NoTangent && return
         if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
           # user did sol[end] on only_end
           if typeof(_save_idxs) <: Number
