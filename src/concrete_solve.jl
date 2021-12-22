@@ -610,8 +610,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
   out,pullback = Tracker.forward(tracker_adjoint_forwardpass,u0,p)
   function tracker_adjoint_backpass(ybar)
-    tmp = if eltype(ybar) <: Number
+    tmp = if eltype(ybar) <: Number && typeof(u0) <: Array
       Array(ybar)
+    elseif eltype(ybar) <: Number # CuArray{Floats}
+      ybar
     elseif typeof(ybar[1]) <: Array
       return Array(ybar)
     else
