@@ -241,7 +241,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           end
         end
       else
-        Δ[i] isa NoTangent && return
+        !Base.isconcretetype(eltype(Δ)) && (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
         if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
           x = Δ[i]
           if typeof(_save_idxs) <: Number
