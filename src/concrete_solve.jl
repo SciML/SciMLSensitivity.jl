@@ -128,15 +128,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
 
+  # Remove saveat, etc. from kwargs since it's handled separately
+  # and letting it jump back in there can break the adjoint
+  kwargs_prob = NamedTuple(filter(x->x[1] != :saveat && x[1] != :save_start && x[1] != :save_end && x[1] != :save_idxs,prob.kwargs))
   if haskey(kwargs, :callback)
     cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,sensealg)
-    _prob = remake(prob,u0=u0,p=p,callback=cb)
+    _prob = remake(prob;u0=u0,p=p,callback=cb,kwargs = kwargs_prob)
   else
     cb = nothing
-    _prob = remake(prob,u0=u0,p=p)
+    _prob = remake(prob;u0=u0,p=p,kwargs = kwargs_prob)
   end
 
-  # Remove callbacks from kwargs since it's already in _prob
+  # Remove callbacks, saveat, etc. from kwargs since it's handled separately
   kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(
   values(kwargs)), (:callback,))}(values(kwargs))
 
