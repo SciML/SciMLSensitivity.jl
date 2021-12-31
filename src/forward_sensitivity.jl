@@ -175,9 +175,11 @@ function ODEForwardSensitivityProblem(f::F,u0,
     mm = f.mass_matrix
   else
     nn = size(f.mass_matrix, 1)
-    mm = similar(f.mass_matrix, 2nn, 2nn)
+    mm = zeros(eltype(f.mass_matrix), (length(p)+1)*nn, (length(p)+1)*nn)
     mm[1:nn, 1:nn] = f.mass_matrix
-    mm[nn+1:2nn, nn+1:2nn] = f.mass_matrix
+    for i = 1:length(p)
+      mm[i*nn+1:(i+1)nn, i*nn+1:(i+1)nn] = f.mass_matrix
+    end
   end
 
   # TODO: Use user tgrad. iW can be safely ignored here.
