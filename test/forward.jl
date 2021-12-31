@@ -152,7 +152,48 @@ tmp = similar(sol[1])
 @inferred extract_local_sensitivities(sol, sol.t[3], Val(true))
 @inferred extract_local_sensitivities(tmp, sol, sol.t[3])
 @inferred extract_local_sensitivities(tmp, sol, sol.t[3], Val(true))
+  
+# Test mass matrix
+function rober_MM(du, u, p, t)
+    y₁, y₂, y₃ = u
+    k₁, k₂, k₃ = p
+    du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
+    du[2] = k₁ * y₁ - k₂ * y₂^2 - k₃ * y₂ * y₃
+    du[3] = y₁ + y₂ + y₃ - 1
+    nothing
+end
+function rober_no_MM(du, u, p, t)
+    y₁, y₂, y₃ = u
+    k₁, k₂, k₃ = p
+    du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
+    du[2] = k₁ * y₁ - k₂ * y₂^2 - k₃ * y₂ * y₃
+    du[3] = k₂*y₂^2
+    nothing
+end
 
+M = [1.0 0 0; 0 1.0 0; 0 0 0]
+p = [0.04, 3e7, 1e4]
+u0 = [1.0, 0.0, 0.0]
+tspan = (0.0, 12.0)
+
+f_MM= ODEFunction(rober_MM, mass_matrix = M)
+f_no_MM= ODEFunction(rober_no_MM)
+
+prob_MM_ForwardSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p, ForwardSensitivity())
+sol_MM_ForwardSensitivity = solve(prob_MM_ForwardSensitivity , Rodas5(autodiff = false), reltol = 1e-14, abstol = 1e-14)
+
+prob_MM_ForwardDiffSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p, ForwardDiffSensitivity())
+sol_MM_ForwardDiffSensitivity = solve(prob_MM_ForwardDiffSensitivity, Rodas5(autodiff = false), reltol = 1e-14, abstol = 1e-14)
+
+prob_no_MM = ODEForwardSensitivityProblem(f_no_MM, u0, tspan, p, ForwardSensitivity())
+sol_no_MM= solve(prob_no_MM, Rodas5(autodiff = false), reltol = 1e-14, abstol = 1e-14)
+
+sen_MM_ForwardSensitivity = extract_local_sensitivities(sol_MM_ForwardSensitivity,10.0,true)
+sen_MM_ForwardDiffSensitivity = extract_local_sensitivities(sol_MM_ForwardDiffSensitivity,10.0,true)
+sen_no_MM = extract_local_sensitivities(sol_no_MM,10.0,true)
+
+@test sen_MM_ForwardSensitivity[2] ≈ sen_MM_ForwardDiffSensitivity[2] atol=1e-6 rtol=1e-6
+@test sen_MM_ForwardSensitivity[2] ≈ sen_no_MM[2] atol=1e-6 rtol=1e-6
 # Test Float32
 
 function f32(du,u,p,t)
