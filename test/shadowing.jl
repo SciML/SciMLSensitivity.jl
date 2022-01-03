@@ -1,4 +1,4 @@
-using Random; Random.seed!(1234)
+using Random; Random.seed!(1235)
 using OrdinaryDiffEq
 using Statistics
 using ForwardDiff, Calculus
@@ -333,7 +333,7 @@ end
 
     R = quadcache.R
     R[:,:,1] .= [
-                Inf Inf 
+                Inf Inf
                 Inf Inf]
     R[:,:,2] .= [
                 1. 1.
@@ -365,7 +365,7 @@ end
     tspan_transient = (0.0,30.0)
     prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
     sol_transient = solve(prob_transient, Tsit5())
-    
+
     u0 = sol_transient.u[end]
 
     tspan_attractor = (0.0,20.0)
@@ -417,7 +417,7 @@ end
     tspan_transient = (0.0,100.0)
     prob_transient = ODEProblem(lorenz!,u0_trans,tspan_transient,p)
     sol_transient = solve(prob_transient, Tsit5())
-    
+
     u0 = sol_transient.u[end]
 
     tspan_attractor = (0.0,50.0)
@@ -453,4 +453,3 @@ end
     @test resfw ≈ res rtol=1e-1
   end
 end
-
