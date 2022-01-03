@@ -16,7 +16,7 @@ using Zygote
 
     p = [28.0]
     tspan_init = (0.0,30.0)
-    tspan_attractor = (30.0,50.0)
+    tspan_attractor = (30.0,60.0)
     u0 = rand(3)
     prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
     sol_init = solve(prob_init,Tsit5())
