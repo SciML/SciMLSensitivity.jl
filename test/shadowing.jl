@@ -16,7 +16,7 @@ using Zygote
 
     p = [28.0]
     tspan_init = (0.0,30.0)
-    tspan_attractor = (30.0,60.0)
+    tspan_attractor = (30.0,50.0)
     u0 = rand(3)
     prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
     sol_init = solve(prob_init,Tsit5())
@@ -48,8 +48,8 @@ using Zygote
     res4 = shadow_adjoint(adjointlss_problem)
     res4a = shadow_adjoint(adjointlss_problem_a)
 
-    @test res1[1] ≈ 1 atol=5e-2
-    @test res2[1] ≈ 1 atol=5e-2
+    @test res1[1] ≈ 1 atol=1e-1
+    @test res2[1] ≈ 1 atol=1e-1
     @test res3[1] ≈ 1 atol=5e-2
 
     @test res1 ≈ res1a atol=1e-10
