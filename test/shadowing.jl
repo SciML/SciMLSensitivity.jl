@@ -1,4 +1,4 @@
-using Random; Random.seed!(1235)
+using Random; Random.seed!(1236)
 using OrdinaryDiffEq
 using Statistics
 using ForwardDiff, Calculus
@@ -368,7 +368,7 @@ end
 
     u0 = sol_transient.u[end]
 
-    tspan_attractor = (0.0,60.0)
+    tspan_attractor = (0.0,40.0)
     prob_attractor = ODEProblem(lorenz!,u0,tspan_attractor,p)
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
