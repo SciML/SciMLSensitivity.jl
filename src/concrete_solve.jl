@@ -131,9 +131,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   # Remove saveat, etc. from kwargs since it's handled separately
   # and letting it jump back in there can break the adjoint
   kwargs_prob = NamedTuple(filter(x->x[1] != :saveat && x[1] != :save_start && x[1] != :save_end && x[1] != :save_idxs,prob.kwargs))
+
   if haskey(kwargs, :callback)
     cb = track_callbacks(CallbackSet(kwargs[:callback]),prob.tspan[1],prob.u0,prob.p,sensealg)
-    _prob = remake(prob;u0=u0,p=p,callback=cb,kwargs = kwargs_prob)
+    _prob = remake(prob;u0=u0,p=p,kwargs = merge(kwargs_prob,(;callback=cb)))
   else
     cb = nothing
     _prob = remake(prob;u0=u0,p=p,kwargs = kwargs_prob)
@@ -147,15 +148,15 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
   isq = sensealg isa QuadratureAdjoint
   if typeof(sensealg) <: BacksolveAdjoint
-    sol = solve(_prob,alg,args...;save_noise=true,callback=cb,
+    sol = solve(_prob,alg,args...;save_noise=true,
                                   save_start=save_start,save_end=save_end,
                                   saveat=saveat,kwargs_fwd...)
   elseif ischeckpointing(sensealg)
-    sol = solve(_prob,alg,args...;save_noise=true,callback=cb,
+    sol = solve(_prob,alg,args...;save_noise=true,
                                   save_start=true,save_end=true,
                                   saveat=saveat,kwargs_fwd...)
   else
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,callback=cb,
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,
                                   save_end=true,kwargs_fwd...)
   end
 
