@@ -147,11 +147,16 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   kwargs_adj = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback_adj,:callback))}(values(kwargs))
   isq = sensealg isa QuadratureAdjoint
   if typeof(sensealg) <: BacksolveAdjoint
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=save_start,save_end=save_end,saveat=saveat,kwargs_fwd...)
+    sol = solve(_prob,alg,args...;save_noise=true,callback=cb,
+                                  save_start=save_start,save_end=save_end,
+                                  saveat=saveat,kwargs_fwd...)
   elseif ischeckpointing(sensealg)
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,saveat=saveat,kwargs_fwd...)
+    sol = solve(_prob,alg,args...;save_noise=true,callback=cb,
+                                  save_start=true,save_end=true,
+                                  saveat=saveat,kwargs_fwd...)
   else
-    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,save_end=true,kwargs_fwd...)
+    sol = solve(_prob,alg,args...;save_noise=true,save_start=true,callback=cb,
+                                  save_end=true,kwargs_fwd...)
   end
 
   # Force `save_start` and `save_end` in the forward pass This forces the
