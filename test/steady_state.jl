@@ -87,7 +87,8 @@ Random.seed!(12345)
     # with jac, param_jac
     f1 = ODEFunction(f!;jac=jac!, paramjac=paramjac!)
     prob1 = SteadyStateProblem(f1,u0,p)
-    sol1 = solve(prob1,DynamicSS(Rodas5()))
+    sol1 = solve(prob1,DynamicSS(Rodas5(),reltol=1e-14,abstol=1e-14),reltol=1e-14,abstol=1e-14)
+
     res1a = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res1b = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
     res1c = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
@@ -99,7 +100,7 @@ Random.seed!(12345)
     # with jac, without param_jac
     f2 = ODEFunction(f!;jac=jac!)
     prob2 = SteadyStateProblem(f2,u0,p)
-    sol2 = solve(prob2,DynamicSS(Rodas5()))
+    sol2 = solve(prob2,DynamicSS(Rodas5(),reltol=1e-14,abstol=1e-14),reltol=1e-14,abstol=1e-14)
     res2a = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res2b = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
     res2c = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
@@ -111,7 +112,7 @@ Random.seed!(12345)
     # without jac, without param_jac
     f3 = ODEFunction(f!)
     prob3 = SteadyStateProblem(f3,u0,p)
-    sol3 = solve(prob3,DynamicSS(Rodas5()))
+    sol3 = solve(prob3,DynamicSS(Rodas5(),reltol=1e-14,abstol=1e-14),reltol=1e-14,abstol=1e-14)
     res3a = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
     res3b = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,nothing)
     res3c = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false),g,nothing)
@@ -149,7 +150,7 @@ Random.seed!(12345)
       [dx,dy]
     end
     proboop = SteadyStateProblem(foop,u0,p)
-    soloop = solve(proboop,DynamicSS(Rodas5()))
+    soloop = solve(proboop,DynamicSS(Rodas5(),reltol=1e-14,abstol=1e-14),reltol=1e-14,abstol=1e-14)
 
 
     res4a = adjoint_sensitivities(soloop,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(),g,dg!)
