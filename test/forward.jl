@@ -28,6 +28,8 @@ prob = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 probInpl = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p)
 probnoad = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
                                         ForwardSensitivity(autodiff=false))
+probnoadjacvec = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
+                                        ForwardSensitivity(autodiff=false,autojacvec=true))
 probnoad2 = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p,
                                         ForwardSensitivity(autodiff=false))                                        
 probvecmat = ODEForwardSensitivityProblem(fb,[1.0;1.0],(0.0,10.0),p,
@@ -37,6 +39,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 solInpl = solve(probInpl,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solInpl2 = solve(probInpl,Rodas4(autodiff=false),abstol=1e-10,reltol=1e-10)
 solnoad = solve(probnoad,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
+solnoadjacvec = solve(probnoadjacvec,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solnoad2 = solve(probnoad,KenCarp4(autodiff=false),abstol=1e-14,reltol=1e-14)
 solvecmat = solve(probvecmat,Tsit5(),abstol=1e-14,reltol=1e-14)
 
@@ -44,6 +47,7 @@ x = sol[1:sol.prob.f.numindvar,:]
 
 @test sol(5.0) ≈ solnoad(5.0)
 @test sol(5.0) ≈ solnoad2(5.0)
+@test sol(5.0) ≈ solnoadjacvec(5.0)
 @test sol(5.0) ≈ solInpl(5.0)
 @test isapprox(solInpl(5.0), solInpl2(5.0),rtol=1e-5) 
 @test sol(5.0) ≈ solvecmat(5.0)
