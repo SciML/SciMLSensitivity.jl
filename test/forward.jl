@@ -47,7 +47,7 @@ x = sol[1:sol.prob.f.numindvar,:]
 
 @test sol(5.0) ≈ solnoad(5.0)
 @test sol(5.0) ≈ solnoad2(5.0)
-@test sol(5.0) ≈ solnoadjacvec(5.0) atol=1e-8 rtol=1e-8
+@test sol(5.0) ≈ solnoadjacvec(5.0) atol=1e-6 rtol=1e-6
 @test sol(5.0) ≈ solInpl(5.0)
 @test isapprox(solInpl(5.0), solInpl2(5.0),rtol=1e-5) 
 @test sol(5.0) ≈ solvecmat(5.0)
