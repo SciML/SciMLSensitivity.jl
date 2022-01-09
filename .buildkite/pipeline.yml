@@ -6,6 +6,7 @@ steps:
       - JuliaCI/julia-test#v1:
           coverage: false
     agents:
+      os: "linux"
       queue: "juliaecosystem"
     env:
       GROUP: 'Callbacks'
