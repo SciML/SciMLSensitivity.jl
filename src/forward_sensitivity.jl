@@ -175,9 +175,11 @@ function ODEForwardSensitivityProblem(f::F,u0,
     mm = f.mass_matrix
   else
     nn = size(f.mass_matrix, 1)
-    mm = similar(f.mass_matrix, 2nn, 2nn)
+    mm = zeros(eltype(f.mass_matrix), (length(p)+1)*nn, (length(p)+1)*nn)
     mm[1:nn, 1:nn] = f.mass_matrix
-    mm[nn+1:2nn, nn+1:2nn] = f.mass_matrix
+    for i = 1:length(p)
+      mm[i*nn+1:(i+1)nn, i*nn+1:(i+1)nn] = f.mass_matrix
+    end
   end
 
   # TODO: Use user tgrad. iW can be safely ignored here.
@@ -216,9 +218,22 @@ has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction,u0,
                                       tspan,p,alg::ForwardDiffSensitivity;
+                                      du0=zeros(eltype(u0),length(u0),length(p)), # perturbations of initial condition
+                                      dp=I(length(p)), # perturbations of parameters
                                       kwargs...)
-  pdual = seed_duals(p,f)
-  u0dual = convert.(eltype(pdual),u0)
+  num_sen_par = size(du0,2)
+  if num_sen_par != size(dp,2)
+    error("Same number of perturbations of initial conditions and parameters required")
+  end
+  if size(du0,1) != length(u0)
+    error("Perturbations for all initial conditions required")
+  end
+  if size(dp,1) != length(p)
+    error("Perturbations for all parameters required")
+  end  
+
+  pdual = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f,eltype(vec(p))))}.(p, [ntuple(j -> dp[i,j], num_sen_par) for i in eachindex(p)])
+  u0dual = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f,eltype(vec(u0))))}.(u0, [ntuple(j -> du0[i,j], num_sen_par) for i in eachindex(u0)])
 
   if (convert_tspan(alg) === nothing &&
     haskey(kwargs,:callback) && has_continuous_callback(kwargs.callback)

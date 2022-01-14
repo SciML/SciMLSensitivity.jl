@@ -199,7 +199,7 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
     @. x += ϵ*v
     f(buffer2,x)
     @. x -= ϵ*v
-    @. du = (buffer2 - buffer1)/ϵ
+    @. Jv = (buffer2 - buffer1)/ϵ
   end
   nothing
 end
