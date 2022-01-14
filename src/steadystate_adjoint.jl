@@ -1,5 +1,3 @@
-include("operator.jl")
-
 struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache,Alg<:SteadyStateAdjoint,uType,SType,fType<:ODEFunction,
                                              CV,λType,VJPType,LS} <: SensitivityFunction
     diffcache::C
@@ -20,7 +18,7 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, discrete, sol, dg, c
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dg, f; quad=false, needs_jac=needs_jac)
 
     λ = zero(y)
-    linsolve = needs_jac ? nothing : sensealg.linsolve
+    linsolve = sensealg.linsolve
     vjp = similar(λ, length(p))
 
     return SteadyStateAdjointSensitivityFunction(diffcache, sensealg, discrete, y, sol, f, colorvec, λ, vjp, linsolve)
@@ -30,14 +28,13 @@ end
     @unpack f, p, u0 = sol.prob
 
     discrete = false
-    # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
-    #       cases where the length(u0) > 50 and if yes till what threshold
     needs_jac = length(u0) <= 50
 
     p === DiffEqBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, discrete, sol, dg, f.colorvec, needs_jac)
+    needs_jac = needs_jac || (linsolve !== nothing && needs_concrete_A(linsolve))
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
 
     if needs_jac
@@ -74,19 +71,12 @@ end
 
     if !needs_jac
         # NOTE: Zygote doesn't support inplace
-        # Currently we are performing multiple forward and backward passes in the LinearProblem
-        # solver. However, our `y` is fixed. So we can perform the forward pass and repeatedly
-        # evaluate the pullback to get the vecjac product.
-        if DiffEqBase.isinplace(sol.prob)
-            linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff=!DiffEqBase.isinplace(sol.prob)),
-                                           vec(diffcache.dg_val))
+        operator = if DiffEqBase.isinplace(sol.prob) && sensealg.autojacvec isa ZygoteVJP
+            VecJacOperator(f, y, p; autodiff=false)
         else
-            _val, back = Zygote.pullback(x -> f(x, p, nothing), y)
-            s_val = size(_val)
-            linear_problem = LinearProblem(ZygotePullbackMultiplyOperator{eltype(y),typeof(back),typeof(s_val)}(back,
-                                                                                                                s_val),
-                                           vec(diffcache.dg_val))
+            PullbackMultiplyOperator(sensealg.autojacvec, f, y, p, nothing)
         end
+        linear_problem = LinearProblem(operator, vec(diffcache.dg_val))
         copyto!(vec(λ), solve(linear_problem, linsolve).u)
     else
         copyto!(vec(λ), diffcache.J' \ vec(diffcache.dg_val'))

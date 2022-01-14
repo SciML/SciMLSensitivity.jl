@@ -28,6 +28,7 @@ abstract type TransformedFunction end
 include("require.jl")
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
+include("operators.jl")
 include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")
 include("forward_sensitivity.jl")
