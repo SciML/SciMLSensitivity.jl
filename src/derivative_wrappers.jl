@@ -724,7 +724,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:Sensitiv
   if dg !== nothing
     if !(dg isa Tuple)
       dg(dg_val,y,p,t)
-      dλ .+= vec(dg_val)
+      dλ .-= vec(dg_val)
     else
       dg[1](dg_val[1],y,p,t)
       dλ .+= vec(dg_val[1])

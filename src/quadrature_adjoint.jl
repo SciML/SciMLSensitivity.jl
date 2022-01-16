@@ -174,7 +174,6 @@ function (S::AdjointSensitivityIntegrand)(out,t)
   f = sol.prob.f
   sol(y,t)
   adj_sol(λ,t)
-  λ .*= -one(eltype(λ))
   isautojacvec = get_jacvec(sensealg)
   # y is aliased
 
@@ -280,7 +279,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
                        atol=abstol,rtol=reltol)[1]
       end
     end
-    return -adj_sol[end], res
+    return adj_sol[end], res
   end
 end
 
