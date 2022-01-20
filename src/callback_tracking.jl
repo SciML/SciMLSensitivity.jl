@@ -193,7 +193,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         # However, one also needs to update dgrad later on.
         if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) # || (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
           # lifting for InterpolatingAdjoint is not needed anymore. Callback is already applied. 
-          w(y,y,integrator.p,integrator.t)
+          w(y,y,integrator.p,integrator.t,tprev)
         end 
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
