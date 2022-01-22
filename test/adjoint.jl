@@ -90,7 +90,7 @@ _,easy_res7 = adjoint_sensitivities(sol_nodense,Tsit5(),dg,t,abstol=1e-14,
 _,easy_res8 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
-_,easy_res9 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
+@test_throws DiffEqSensitivity.ZygoteMutationException adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
 _,easy_res10 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,

@@ -25,6 +25,10 @@ import ChainRulesCore: @thunk, NoTangent, @not_implemented
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
+struct ZygoteMutationException <: Exception end
+Base.showerror(io::IO, ex::ZygoteMutationException) =
+    print(io, "ZygoteMutationException: In-place differential equations are incompatible with ZygoteVJP since that requires mutation. Choose a different VJP.")
+
 include("require.jl")
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")

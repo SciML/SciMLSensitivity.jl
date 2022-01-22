@@ -9,7 +9,7 @@ function adjoint_sensitivities(sol,args...;
     try
       sol.prob.f(sol.prob.u0,sol.prob.p,sol.prob.tspan[1])
     catch e
-      throw(error("In-place differential equations are incompatible with ZygoteVJP since that requires mutation. Choose a different VJP."))
+      throw(ZygoteMutationException())
     end
   end
 

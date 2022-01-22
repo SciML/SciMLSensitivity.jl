@@ -431,6 +431,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
 
   isautojacvec = get_jacvec(sensealg)
   if inplace_sensitivity(S)
+    throw(ZygoteMutationException())
+    #=
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
         out_ = Zygote.Buffer(similar(u))
@@ -448,6 +450,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
+    =#
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
