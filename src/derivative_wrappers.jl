@@ -430,17 +430,18 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
   prob = getprob(S)
 
   isautojacvec = get_jacvec(sensealg)
+
   if inplace_sensitivity(S)
     if W===nothing
-      _dy, back = Zygote.pullback(y, p) do u, p
+      _dy, back = Zygote.pullback(y, p) do u, _p
         out_ = Zygote.Buffer(similar(u))
-        f(out_, u, p, t)
+        f.f(out_, u, _p, t)
         vec(copy(out_))
       end
     else
-      _dy, back = Zygote.pullback(y, p) do u, p
+      _dy, back = Zygote.pullback(y, p) do u, _p
         out_ = Zygote.Buffer(similar(u))
-        f(out_, u, p, t, W)
+        f.f(out_, u, _p, t, W)
         vec(copy(out_))
       end
     end
@@ -449,14 +450,17 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
 
+    #=
     _dy2, back2 = Tracker.forward(y, p) do u, p
       out_ = map(zero, u)
       f(out_, u, p, t)
       Tracker.collect(out_)
     end
     tmp12,tmp22 = back2(λ)
+    @show _dy, _dy2
     @show tmp1, tmp12
     @show tmp2, tmp22
+    =#
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
