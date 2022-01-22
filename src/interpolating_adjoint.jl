@@ -258,7 +258,7 @@ end
                                                      tstops)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)
@@ -330,7 +330,7 @@ end
                                                      checkpoints,(reltol=reltol,abstol=abstol);noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)
@@ -416,7 +416,7 @@ end
                                                      tstops)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)

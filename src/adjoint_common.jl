@@ -426,7 +426,7 @@ function (f::ReverseLossCallback)(integrator)
   return nothing
 end
 
-function generate_callbacks(sensefun, g, λ, t, callback, init_cb,terminated=false)
+function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated=false)
 
   if !sensefun.discrete
     cur_time = Ref(1)
@@ -442,6 +442,9 @@ function generate_callbacks(sensefun, g, λ, t, callback, init_cb,terminated=fal
 
   rlcb = ReverseLossCallback(sensefun, λ, t, g, cur_time)
 
+  if eltype(_t) !== typeof(t0)
+    _t = convert.(typeof(t0),_t)
+  end
   cb = PresetTimeCallback(_t,rlcb)
 
   # handle duplicates (currently only for double occurances)

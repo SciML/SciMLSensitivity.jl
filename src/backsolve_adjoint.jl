@@ -86,7 +86,7 @@ function split_states(du,u,t,S::ODEBacksolveSensitivityFunction;update=true)
     dgrad = @view du[idx+1:end-idx,1:idx]
     dy    = @view du[idx2]
 
-  elseif typeof(du) <: AbstractMatrix 
+  elseif typeof(du) <: AbstractMatrix
     # non-diagonal noise
     dλ    = @view du[1:idx, 1:idx]
     dgrad = @view du[idx+1:end-idx,1:idx]
@@ -100,7 +100,7 @@ end
                                      g,t=nothing,dg=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
-                                     z0=nothing, 
+                                     z0=nothing,
                                      M=nothing,
                                      nilss=nothing,
                                      tspan=sol.prob.tspan,
@@ -118,14 +118,14 @@ end
   end
 
   tspan = reverse(tspan)
-  
+
   discrete = t !== nothing
 
   numstates = length(u0)
   numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
   len = length(u0)+numparams
-  
+
   if z0===nothing
     λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
     λ .= false
@@ -140,7 +140,7 @@ end
   end
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb,terminated)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
@@ -218,7 +218,7 @@ end
   sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, callback, init_cb,terminated)
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, tspan[2], callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb, duplicate_iterator_times)
@@ -291,7 +291,7 @@ end
   sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
 
   init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, callback, init_cb,terminated)
+  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb,terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
