@@ -5,7 +5,12 @@ function adjoint_sensitivities(sol,args...;
                                   kwargs...)
 
   if DiffEqBase.isinplace(sol.prob) && sensealg.autojacvec isa ZygoteVJP
-    error("In-place differential equations are incompatible with ZygoteVJP since that requires mutation. Choose a different VJP.")
+    # Allow if there's also a 3-arg version
+    try
+      sol.prob.f(prob.u0,prob.p,prob.tspan[1])
+    catch e
+      error("In-place differential equations are incompatible with ZygoteVJP since that requires mutation. Choose a different VJP.")
+    end
   end
 
   _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
