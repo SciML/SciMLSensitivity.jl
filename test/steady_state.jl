@@ -126,21 +126,21 @@ Random.seed!(12345)
     @test norm(res_analytical' .- res1c) < 1e-7
     @test norm(res_analytical' .- res1d) < 1e-7
     @test norm(res_analytical' .- res1e) < 1e-7
-    @test_broken norm(res_analytical' .- res1f) < 1e-7
+    @test norm(res_analytical' .- res1f) < 1e-7
     @test norm(res_analytical' .- res1g) < 1e-7
     @test norm(res_analytical' .- res2a) < 1e-7
     @test norm(res_analytical' .- res2b) < 1e-7
     @test norm(res_analytical' .- res2c) < 1e-7
     @test norm(res_analytical' .- res2d) < 1e-7
     @test norm(res_analytical' .- res2e) < 1e-7
-    @test_broken norm(res_analytical' .- res2f) < 1e-7
+    @test norm(res_analytical' .- res2f) < 1e-7
     @test norm(res_analytical' .- res2g) < 1e-7
     @test norm(res_analytical' .- res3a) < 1e-7
     @test norm(res_analytical' .- res3b) < 1e-7
     @test norm(res_analytical' .- res3c) < 1e-7
     @test norm(res_analytical' .- res3d) < 1e-7
     @test norm(res_analytical' .- res3e) < 1e-7
-    @test_broken norm(res_analytical' .- res3f) < 1e-7
+    @test norm(res_analytical' .- res3f) < 1e-7
     @test norm(res_analytical' .- res3g) < 1e-7
 
     @info "oop checks"
