@@ -3,6 +3,11 @@
 function adjoint_sensitivities(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
                                   kwargs...)
+
+  if DiffEqBase.isinplace(sol.prob) && sensealg.autojacvec isa ZygoteVJP
+    error("In-place differential equations are incompatible with ZygoteVJP since that requires mutation. Choose a different VJP.")
+  end
+
   _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
 end
 

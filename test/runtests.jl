@@ -33,6 +33,7 @@ end
 
 if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "hasbranching" begin include("hasbranching.jl") end
+    @time @safetestset "VJP Errors" begin include("vjp_errors.jl") end
     @time @safetestset "Literal Adjoint" begin include("literal_adjoint.jl") end
     @time @safetestset "ForwardDiff Chunking Adjoints" begin include("forward_chunking.jl") end
     @time @safetestset "Stiff Adjoints" begin include("stiff_adjoints.jl") end
