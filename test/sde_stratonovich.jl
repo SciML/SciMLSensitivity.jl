@@ -416,7 +416,7 @@ end
   res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
-  @test_broken isapprox(res_sde_p, res_oop_p, rtol = 1e-6)
+  @test isapprox(res_sde_p, res_oop_p, rtol = 1e-6)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-6)
 
   @info res_sde_p
