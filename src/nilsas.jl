@@ -5,7 +5,7 @@ struct NILSASSensitivityFunction{iip,NILSS,ASF,Mtype} <: DiffEqBase.AbstractODEF
   discrete::Bool
 end
 
-function generate_callbacks(sensefun::NILSASSensitivityFunction, g, λ, t, callback, init_cb,terminated=false)
+function generate_callbacks(sensefun::NILSASSensitivityFunction, g, λ, t, t0, callback, init_cb,terminated=false)
   if sensefun.discrete
     error("Please, use a continuous loss definition for `NILSAS`.")
     # NILSAS is formulated with continuous cost function; see D.A. NILSS
@@ -73,7 +73,7 @@ function NILSASProblem(sol, sensealg::NILSAS, g, dg = nothing; kwargs...)
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
   nstep <= 1 && error("At least the start and the end point of each segment must be stored. Please use `nstep >=2`.")
-  
+
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
   # segmentation: determine length of segmentation and spacing between saved points
@@ -107,7 +107,7 @@ function terminate_conditions(alg::BacksolveAdjoint,rng,f,y,p,t,numindvar,numpar
     f_unit = f(y,p,t)
     normalize!(f_unit)
   end
-  
+
   if M>1
     W = rand(rng,numindvar,M-1)
     W .-= (f_unit'*W) .* f_unit
@@ -148,7 +148,7 @@ function split_states(du,u,t,NS::NILSASSensitivityFunction,j;update=true)
   dgrad = @view du.x[2][indx3:indx4]
   dy    = du.x[3]
 
-  
+
   λ,grad,_y,dλ,dgrad,dy
 end
 
@@ -167,8 +167,8 @@ function split_quadratures(du,u,t,NS::NILSASSensitivityFunction;update=true)
   ddwf   = du.x[6]
   ddvf   = du.x[7]
   ddJs   = du.x[8]
-  
-  dC,ddwv,ddwf,ddvf,ddJs, C,dwv,dwf,dvf,dJs 
+
+  dC,ddwv,ddwf,ddvf,ddJs, C,dwv,dwf,dvf,dJs
 end
 
 
@@ -197,7 +197,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
       dg[2](dg_val[2],y,p,t,nothing)
     else
       dg(dg_val,y,p,t,nothing)
-    end    
+    end
   end
 
 
@@ -237,7 +237,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
   if dg_val isa Tuple
     ddJs = -vec(dg_val[2])
   end
-   
+
   return nothing
 end
 
@@ -246,11 +246,11 @@ function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
   @unpack M, nseg, nstep, adjoint_sensealg = nilsas
   @unpack sol, nilss, z0, g, dg, T_seg, dtsave = prob
   @unpack u0, tspan = prob.adjoint_prob
-  
+
   copyto!(z0,u0)
 
   # adjoint sensitivities on segments
-  for iseg=nseg:-1:1 
+  for iseg=nseg:-1:1
     t1 = tspan[1]-(nseg-iseg+1)*T_seg
     t2 = tspan[1]-(nseg-iseg)*T_seg
     checkpoints=t1:dtsave:t2
@@ -269,13 +269,13 @@ function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
 end
 
 function renormalize!(prob::NILSASProblem, sol, z0, iseg)
-  @unpack quadcache, nilss, sensealg = prob 
+  @unpack quadcache, nilss, sensealg = prob
   @unpack M = sensealg
   @unpack numparams, numindvar = nilss
   @unpack R,b = quadcache
 
   x = sol.u[end].x
-  # vstar_right (inhomogenous adjoint on the rhs of the interface) 
+  # vstar_right (inhomogenous adjoint on the rhs of the interface)
   vstar = @view x[1][1:numindvar]
   # homogenous adjoint on the rhs of the interface
   W = @view x[1][numindvar+1:end]
@@ -285,10 +285,10 @@ function renormalize!(prob::NILSASProblem, sol, z0, iseg)
   Q = @view Q_[:,1:M]
   b_ = (Q'*vstar)
 
-  # store R and b to solve NILSAS problem 
+  # store R and b to solve NILSAS problem
   copyto!( (@view R[:,:,iseg]), R_)
   copyto!( (@view b[:,iseg]), b_)
-  
+
   # store quadrature values
   store_quad(quadcache, x, numparams, iseg)
 
@@ -346,11 +346,11 @@ function nilsas_min(cache::QuadratureCache)
   @unpack dwv,dwf,dvf,C,R,b = cache
 
   # Construct Schur complement of the Lagrange multiplier method of the NILSAS problem.
-  
+
   # see description in Appendix A of Nilsas paper.
   # M= # unstable CLVs, K = # segments
   M, K = size(dwv)
-  
+
   # construct Cinv
   # Cinv is a block diagonal matrix
   Cinv = zeros(eltype(C), M*K, M*K)
@@ -392,7 +392,7 @@ function nilsas_min(cache::QuadratureCache)
 
   # compute Lagrange multiplier
   λ = (-B*Cinv*B') \ (B*Cinv*d + _b)
-  
+
   # return a
   return reshape(-Cinv*(B'*λ + d), M, K)
 end
@@ -405,14 +405,14 @@ function shadow_adjoint(prob::NILSASProblem,sensealg::NILSAS,alg; kwargs...)
 
   # compute adjoint sensitivities
   adjoint_sense(prob,sensealg,alg; kwargs...)
-  
+
   # compute NILSAS problem on multiple segments
   a = nilsas_min(prob.quadcache)
 
   # compute gradient, Eq. (28) -- second part to avoid explicit construction of vbar
   @unpack M, nseg = sensealg
   @unpack dvfs, dJs, dwfs = prob.quadcache
-  
+
   res = vec(sum(dvfs,dims=2)) + vec(sum(dJs,dims=2))
   NP = length(res) # number of parameters
 

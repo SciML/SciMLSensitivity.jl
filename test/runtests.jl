@@ -15,7 +15,6 @@ end
 
 if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Forward Sensitivity" begin include("forward.jl") end
-    @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
     @time @safetestset "Sparse Adjoint Sensitivity" begin include("sparse_adjoint.jl") end
     @time @safetestset "Second Order Sensitivity" begin include("second_order.jl") end
     @time @safetestset "Concrete Solve Derivatives" begin include("concrete_solve_derivatives.jl") end
@@ -45,6 +44,10 @@ end
 
 if GROUP == "All" || GROUP == "Core3"
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
+end
+
+if GROUP == "All" || GROUP == "Core4" || GROUP == "Downstream"
+    @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
 end
 
 if GROUP == "All" || GROUP == "SDE1"
