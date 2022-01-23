@@ -142,8 +142,8 @@ end
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
         ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
-    @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
-    @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
+    @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
 
     @info res_sde_pa
 
@@ -166,8 +166,8 @@ end
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
         ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
 
-    @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-    @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+    @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
 
     @info res_sde_pa
 
@@ -333,8 +333,8 @@ end
       ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
 
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
 
   @info res_sde_pa
 
@@ -366,8 +366,8 @@ end
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
       ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
 
-  @test_broken isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
-  @test_broken isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
+  @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
+  @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
 
   @info res_sde_pa
 
