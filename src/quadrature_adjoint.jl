@@ -201,7 +201,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
       jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
     end
     mul!(out',λ',pJ)
-  elseif (sensealg.autojacvec isa Bool && DiffEqBase.isinplace(sol.prob)) || sensealg.autojacvec isa ReverseDiffVJP
+  elseif sensealg.autojacvec isa ReverseDiffVJP
     tape = paramjac_config
     tu, tp, tt = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
@@ -215,7 +215,7 @@ function (S::AdjointSensitivityIntegrand)(out,t)
     ReverseDiff.increment_deriv!(output, λ)
     ReverseDiff.reverse_pass!(tape)
     copyto!(vec(out), ReverseDiff.deriv(tp))
-  elseif (sensealg.autojacvec isa Bool && sensealg.autojacvec) || sensealg.autojacvec isa ZygoteVJP
+  elseif sensealg.autojacvec isa ZygoteVJP
     _dy, back = Zygote.pullback(p) do p
       vec(f(y, p, t))
     end
