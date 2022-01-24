@@ -111,7 +111,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
 
   dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
-  if DiffEqBase.has_paramjac(f) || sensealg.autojacvec isa ReverseDiffVJP || (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
+  if sensealg.autojacvec isa ReverseDiffVJP
     tape = if DiffEqBase.isinplace(prob)
       ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u,p,t
         du1 = similar(p, size(u))
@@ -126,21 +126,6 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
     end
     if compile_tape(sensealg)
       paramjac_config = ReverseDiff.compile(tape)
-    elseif sensealg.autojacvec isa Bool && sensealg.autojacvec
-      compile = try
-          if DiffEqBase.isinplace(prob)
-            !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
-          else
-            !hasbranching(prob.f,u0,p,prob.tspan[1])
-          end
-      catch
-          false
-      end
-      if compile
-          paramjac_config = ReverseDiff.compile(tape)
-      else
-          paramjac_config = tape
-      end
     else
       paramjac_config = tape
     end
