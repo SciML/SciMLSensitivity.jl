@@ -261,8 +261,8 @@ using Zygote
 
     @test res1oop ≈ dp1oop[1] rtol=1e-12
     @test res2oop ≈ dp2oop[1] rtol=1e-12
-    @test res1oop ≈ dp1oopd[1] rtol=1e-10
-    @test res2oop ≈ dp2oopd[1] rtol=1e-10
+    @test res1oop ≈ dp1oopd[1] rtol=1e-8
+    @test res2oop ≈ dp2oopd[1] rtol=1e-8
 
 
     res1oop = Zygote.gradient(p->sum(Array(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint()))[1]),p)
