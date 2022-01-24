@@ -268,7 +268,7 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 function adjoint_sensitivities(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
                                   verbose=true,kwargs...)
-  if hasfield(sensealg,:autojacvec) && sensealg.autojacvec === nothing
+  if hasfield(typeof(sensealg),:autojacvec) && sensealg.autojacvec === nothing
     _sensealg = if isinplace(sol.prob)
       setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,verbose))
     else
