@@ -96,6 +96,7 @@ Random.seed!(12345)
     res1e = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
     res1f = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
     res1g = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
+    res1h = adjoint_sensitivities(sol1,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=EnzymeVJP()),g,nothing)
 
     # with jac, without param_jac
     f2 = ODEFunction(f!;jac=jac!)
@@ -108,6 +109,7 @@ Random.seed!(12345)
     res2e = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
     res2f = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
     res2g = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
+    res2h = adjoint_sensitivities(sol2,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=EnzymeVJP()),g,nothing)
 
     # without jac, without param_jac
     f3 = ODEFunction(f!)
@@ -120,6 +122,7 @@ Random.seed!(12345)
     res3e = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ReverseDiffVJP()),g,nothing)
     res3f = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=ZygoteVJP()),g,nothing)
     res3g = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autodiff=false,autojacvec=false),g,nothing)
+    res3h = adjoint_sensitivities(sol3,DynamicSS(Rodas5()),sensealg=SteadyStateAdjoint(autojacvec=EnzymeVJP()),g,nothing)
 
     @test norm(res_analytical' .- res1a) < 1e-7
     @test norm(res_analytical' .- res1b) < 1e-7
@@ -128,6 +131,7 @@ Random.seed!(12345)
     @test norm(res_analytical' .- res1e) < 1e-7
     @test norm(res_analytical' .- res1f) < 1e-7
     @test norm(res_analytical' .- res1g) < 1e-7
+    @test norm(res_analytical' .- res1h) < 1e-7
     @test norm(res_analytical' .- res2a) < 1e-7
     @test norm(res_analytical' .- res2b) < 1e-7
     @test norm(res_analytical' .- res2c) < 1e-7
@@ -135,6 +139,7 @@ Random.seed!(12345)
     @test norm(res_analytical' .- res2e) < 1e-7
     @test norm(res_analytical' .- res2f) < 1e-7
     @test norm(res_analytical' .- res2g) < 1e-7
+    @test norm(res_analytical' .- res2h) < 1e-7
     @test norm(res_analytical' .- res3a) < 1e-7
     @test norm(res_analytical' .- res3b) < 1e-7
     @test norm(res_analytical' .- res3c) < 1e-7
@@ -142,6 +147,7 @@ Random.seed!(12345)
     @test norm(res_analytical' .- res3e) < 1e-7
     @test norm(res_analytical' .- res3f) < 1e-7
     @test norm(res_analytical' .- res3g) < 1e-7
+    @test norm(res_analytical' .- res3h) < 1e-7
 
     @info "oop checks"
     function foop(u,p,t)
@@ -214,14 +220,24 @@ using Zygote
     dp1 = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint())),p)
     dp2 = Zygote.gradient(p->sum((2.0.-solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint())).^2)/2.0,p)
 
+    dp1d = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p)),p)
+    dp2d = Zygote.gradient(p->sum((2.0.-solve(prob,DynamicSS(Rodas5()),u0=u0,p=p)).^2)/2.0,p)
+
     @test res1 ≈ dp1[1] rtol=1e-12
     @test res2 ≈ dp2[1] rtol=1e-12
+    @test res1 ≈ dp1d[1] rtol=1e-12
+    @test res2 ≈ dp2d[1] rtol=1e-12
 
     res1 = Zygote.gradient(p->sum(Array(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint()))[1]),p)
     dp1 = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1,sensealg=SteadyStateAdjoint())),p)
     dp2 = Zygote.gradient(p->solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1,sensealg=SteadyStateAdjoint())[1],p)
+
+    dp1d = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1)),p)
+    dp2d = Zygote.gradient(p->solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1)[1],p)
     @test res1[1] ≈ dp1[1] rtol=1e-10
     @test res1[1] ≈ dp2[1] rtol=1e-10
+    @test res1[1] ≈ dp1d[1] rtol=1e-10
+    @test res1[1] ≈ dp2d[1] rtol=1e-10
   end
 
   @testset "oop" begin
@@ -240,13 +256,20 @@ using Zygote
 
     dp1oop = Zygote.gradient(p->sum(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint())),p)
     dp2oop = Zygote.gradient(p->sum((2.0.-solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint())).^2)/2.0,p)
+    dp1oopd = Zygote.gradient(p->sum(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p)),p)
+    dp2oopd = Zygote.gradient(p->sum((2.0.-solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p)).^2)/2.0,p)
 
     @test res1oop ≈ dp1oop[1] rtol=1e-12
     @test res2oop ≈ dp2oop[1] rtol=1e-12
+    @test res1oop ≈ dp1oopd[1] rtol=1e-8
+    @test res2oop ≈ dp2oopd[1] rtol=1e-8
+
 
     res1oop = Zygote.gradient(p->sum(Array(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,sensealg=SteadyStateAdjoint()))[1]),p)
     dp1oop = Zygote.gradient(p->sum(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1,sensealg=SteadyStateAdjoint())),p)
     dp2oop = Zygote.gradient(p->solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1,sensealg=SteadyStateAdjoint())[1],p)
+    dp1oopd = Zygote.gradient(p->sum(solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1)),p)
+    dp2oopd = Zygote.gradient(p->solve(proboop,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1)[1],p)
     @test res1oop[1] ≈ dp1oop[1] rtol=1e-10
     @test res1oop[1] ≈ dp2oop[1] rtol=1e-10
   end
