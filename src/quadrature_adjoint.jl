@@ -124,7 +124,7 @@ function AdjointSensitivityIntegrand(sol,adj_sol,sensealg,dgdp=nothing)
         vec(f(u,p,first(t)))
       end
     end
-    if compile_tape(sensealg)
+    if compile_tape(sensealg.autojacvec)
       paramjac_config = ReverseDiff.compile(tape)
     else
       paramjac_config = tape
