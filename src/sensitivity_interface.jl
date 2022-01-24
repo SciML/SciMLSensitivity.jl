@@ -267,8 +267,23 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 """
 function adjoint_sensitivities(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
-                                  kwargs...)
-  _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
+                                  verbose=true,kwargs...)
+  if hasfield(sensealg,:autojacvec) && sensealg.autojacvec === nothing
+    _sensealg = if isinplace(sol.prob)
+      setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,verbose))
+    else
+      setvjp(sensealg,ZygoteVJP())
+    end
+
+    return try
+      _adjoint_sensitivities(sol,_sensealg,args...;verbose,kwargs...)
+    catch e
+      verbose && @warn "Automatic AD choice of autojacvec failed in ODE adjoint, failing back to ODE adjoint + numerical vjp"
+      _adjoint_sensitivities(sol,sensealg,args...;verbose,kwargs...)
+    end
+  else
+    return _adjoint_sensitivities(sol,sensealg,args...;verbose,kwargs...)
+  end
 end
 
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;

@@ -253,10 +253,13 @@ struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgori
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
-                                      autojacvec=autodiff,
+                                      autojacvec=nothing,
                                       checkpointing=true, noise=true,noisemixing=false)
   BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
+setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing,NOISE},vjp) where {CS,AD,FDT,NOISE} =
+        BacksolveAdjoint{CS,AD,FDT,typeof(vjp),NOISE}(vjp,sensealg.checkpointing,
+        sensealg.noise,sensealg.noisemixing)
 
 """
 InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -361,10 +364,13 @@ struct InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAl
 end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
-                                         autojacvec=autodiff,
+                                         autojacvec=nothing,
                                          checkpointing=false, noise=true,noisemixing=false)
   InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
+setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing,NOISE},vjp) where {CS,AD,FDT,NOISE} =
+        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp),NOISE}(vjp,sensealg.checkpointing,
+        sensealg.noise,sensealg.noisemixing)
 
 """
 QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -446,14 +452,16 @@ struct QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{C
   autojacvec::VJP
   abstol::Float64
   reltol::Float64
-  compile::Bool
 end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
-                                         autojacvec=autodiff,abstol=1e-6,
+                                         autojacvec=nothing,abstol=1e-6,
                                          reltol=1e-3,compile=false)
   QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol,compile)
 end
+setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
+        QuadratureAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.abstol,
+        sensealg.reltol)
 
 """
 TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
@@ -1091,7 +1099,6 @@ end
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
 @inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false
-@inline compile_tape(sensealg::QuadratureAdjoint) = sensealg.compile
 
 """
 ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}

@@ -147,16 +147,26 @@ end
 
     solve(linear_problem, linsolve) # u is vec(λ)
 
-    vecjacobian!(
-        vec(diffcache.dg_val),
-        y,
-        λ,
-        p,
-        nothing,
-        sense,
-        dgrad = vjp,
-        dy = nothing,
-    )
+    try
+        vecjacobian!(
+            vec(diffcache.dg_val),
+            y,
+            λ,
+            p,
+            nothing,
+            sense,
+            dgrad = vjp,
+            dy = nothing
+        )
+    catch e
+        if sense.originalvjp === nothing
+            @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
+            vecjacobian!(vec(diffcache.dg_val),y,λ,p,nothing,false,dgrad = vjp,dy = nothing)
+        else
+            @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
+            throw(e)
+        end
+    end
 
     if g !== nothing
         # compute del g/del p

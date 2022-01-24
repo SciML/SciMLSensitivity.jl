@@ -229,82 +229,76 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
   @unpack sensealg, f = S
   prob = getprob(S)
 
-  if isautojacvec isa Bool && !isautojacvec
-    @unpack J, uf, f_cache, jac_config = S.diffcache
-    if !(prob isa DiffEqBase.SteadyStateProblem)
-      if W===nothing
-        if DiffEqBase.has_jac(f)
-          f.jac(J,y,p,t) # Calculate the Jacobian into J
-        else
-          uf.t = t
-          uf.p = p
-          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-        end
+  @unpack J, uf, f_cache, jac_config = S.diffcache
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    if W===nothing
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t) # Calculate the Jacobian into J
       else
-        if DiffEqBase.has_jac(f)
-          f.jac(J,y,p,t,W) # Calculate the Jacobian into J
-        else
-          uf.t = t
-          uf.p = p
-          uf.W = W
-          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-        end
+        uf.t = t
+        uf.p = p
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
       end
-      mul!(dλ',λ',J)
-    end
-    if dgrad !== nothing
-      @unpack pJ, pf, paramjac_config = S.diffcache
-      if W===nothing
-        if DiffEqBase.has_paramjac(f)
-          # Calculate the parameter Jacobian into pJ
-          f.paramjac(pJ,y,p,t)
-        else
-          pf.t = t
-          pf.u = y
-          if inplace_sensitivity(S)
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
-          else
-            temp = jacobian(pf, p, sensealg)
-            pJ .= temp
-          end
-        end
+    else
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t,W) # Calculate the Jacobian into J
       else
-        if DiffEqBase.has_paramjac(f)
-          # Calculate the parameter Jacobian into pJ
-          f.paramjac(pJ,y,p,t,W)
-        else
-          pf.t = t
-          pf.u = y
-          pf.W = W
-          if inplace_sensitivity(S)
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
-          else
-            temp = jacobian(pf, p, sensealg)
-            pJ .= temp
-          end
-        end
+        uf.t = t
+        uf.p = p
+        uf.W = W
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
       end
-      mul!(dgrad',λ',pJ)
     end
-    if dy !== nothing
-      if W===nothing
+    mul!(dλ',λ',J)
+  end
+  if dgrad !== nothing
+    @unpack pJ, pf, paramjac_config = S.diffcache
+    if W===nothing
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,p,t)
+      else
+        pf.t = t
+        pf.u = y
         if inplace_sensitivity(S)
-          f(dy, y, p, t)
+          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         else
-          dy[:] .= vec(f(y, p, t))
+          temp = jacobian(pf, p, sensealg)
+          pJ .= temp
         end
+      end
+    else
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,p,t,W)
       else
+        pf.t = t
+        pf.u = y
+        pf.W = W
         if inplace_sensitivity(S)
-          f(dy, y, p, t, W)
+          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         else
-          dy[:] .= vec(f(y, p, t, W))
+          temp = jacobian(pf, p, sensealg)
+          pJ .= temp
         end
       end
     end
-  elseif inplace_sensitivity(S)
-    _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy, W)
-  else
-    _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy, W)
+    mul!(dgrad',λ',pJ)
+  end
+  if dy !== nothing
+    if W===nothing
+      if inplace_sensitivity(S)
+        f(dy, y, p, t)
+      else
+        dy[:] .= vec(f(y, p, t))
+      end
+    else
+      if inplace_sensitivity(S)
+        f(dy, y, p, t, W)
+      else
+        dy[:] .= vec(f(y, p, t, W))
+      end
+    end
   end
   return
 end
