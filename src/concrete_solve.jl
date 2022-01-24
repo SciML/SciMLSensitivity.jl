@@ -23,19 +23,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    local du
-    ez = if DiffEqBase.isinplace(prob)
-        du = copy(u0)
-        try
-          Enzyme.autodiff(Enzyme.Duplicated(du, du),
-                          u0,p,prob.tspan[1]) do out,u,_p,t
-            prob.f(out, u, _p, t)
-            nothing
-          end
-          true
-        catch
-          false
-        end
+    du = copy(u0)
+    ez = try
+      Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                      u0,p,prob.tspan[1]) do out,u,_p,t
+        prob.f(out, u, _p, t)
+        nothing
+      end
+      true
+    catch
+      false
     end
 
     if ez
@@ -69,40 +66,44 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
                                             sensealg::Nothing,u0,p,args...;kwargs...)
 
-  default_sensealg = if isgpu(u0)
+  default_sensealg = if p !== DiffEqBase.NullParameters() &&
+                        !(eltype(u0) <: ForwardDiff.Dual) &&
+                        !(eltype(p) <: ForwardDiff.Dual) &&
+                        !(eltype(u0) <: Complex) &&
+                        !(eltype(p) <: Complex) &&
+                        length(u0) + length(p) <= 100
+      ForwardDiffSensitivity()
+  elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
     # autodiff = false because forwarddiff fails on many GPU kernels
     # this only effects the Jacobian calculation and is same computation order
     SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
   else
-    local du
-    ez = if DiffEqBase.isinplace(prob)
-        du = copy(u0)
-        try
-          Enzyme.autodiff(Enzyme.Duplicated(du, du),
-                          u0,p,prob.tspan[1]) do out,u,_p,t
-            f(out, u, _p, t)
-            nothing
-          end
-          true
-        catch
-          false
-        end
+    du = copy(u0)
+    ez = try
+      Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                      u0,p,prob.tspan[1]) do out,u,_p,t
+        f(out, u, _p, t)
+        nothing
+      end
+      true
+    catch
+      false
     end
 
     vjp = if ez
       EnzymeVJP()
     else
-        # Determine if we can compile ReverseDiff
-        compile = try
-            if DiffEqBase.isinplace(prob)
-              !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
-            else
-              !hasbranching(prob.f,u0,p,prob.tspan[1])
-            end
-        catch
-            false
-        end
-        ReverseDiffVJP(compile)
+      # Determine if we can compile ReverseDiff
+      compile = try
+          if DiffEqBase.isinplace(prob)
+            !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+          else
+            !hasbranching(prob.f,u0,p,prob.tspan[1])
+          end
+      catch
+          false
+      end
+      ReverseDiffVJP(compile)
     end
     SteadyStateAdjoint(autojacvec = vjp)
   end
