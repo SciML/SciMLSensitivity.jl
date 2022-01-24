@@ -32,7 +32,7 @@ function ImplicitCorrection(cb,t,u,p,sensealg)
   gt_val = similar(u,1)
   gu_val = similar(u)
 
-  fakeinteg = FakeIntegrator(u,p,t)
+  fakeinteg = FakeIntegrator(u,p,t,t)
   gt = ConditionTimeWrapper(condition,u,fakeinteg)
   gu = ConditionUWrapper(condition,t,fakeinteg)
 
@@ -120,13 +120,12 @@ function _track_callback(cb::VectorContinuousCallback,t,u,p,sensealg)
                cb.dtrelax,cb.abstol,cb.reltol,cb.repeat_nudge)
 end
 
-struct FakeIntegrator{uType,P,tType}
+struct FakeIntegrator{uType,P,tType,tprevType}
     u::uType
     p::P
     t::tType
-    tprev::tType
+    tprev::tprevType
 end
-FakeIntegrator(u,p,t,tprev) = FakeIntegrator{eltype(u),eltype(p),eltype(t)}(u,p,t,tprev)
 
 struct CallbackSensitivityFunction{fType,Alg<:DiffEqBase.AbstractSensitivityAlgorithm,C<:AdjointDiffCache,pType} <: SensitivityFunction
     f::fType
@@ -302,7 +301,7 @@ function get_indx(cb::Union{ContinuousCallback,VectorContinuousCallback}, t)
 end
 
 get_tprev(cb::DiscreteCallback,indx,bool) = cb.affect!.tprev[indx]
-function copy_to_integrator!(cb::Union{ContinuousCallback,VectorContinuousCallback}, indx, bool)
+function get_tprev(cb::Union{ContinuousCallback,VectorContinuousCallback}, indx, bool)
   if bool
     return cb.affect!.tprev[indx]
   else
