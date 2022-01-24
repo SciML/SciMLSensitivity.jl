@@ -52,7 +52,7 @@ _,easy_res22 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))
 _,easy_res23 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
-                                  sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiff(true)))
+                                  sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiffVJP(true)))
 _,easy_res3 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
@@ -147,7 +147,7 @@ _,easy_res2 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                   sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))[1] isa AbstractArray
 _,easy_res2 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14,
-                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiff(true)))
+                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiffVJP(true)))
 _,easy_res3 = adjoint_sensitivities(soloop,Tsit5(),dg,t,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
@@ -332,7 +332,7 @@ ū052,adj52 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
                                     reltol=1e-14)
 
 ū05,adj53 = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
-                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiff(true)),
+                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=ReverseDiffVJP(true)),
                                     reltol=1e-14)
 
 ū0args,adjargs = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
