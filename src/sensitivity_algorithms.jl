@@ -456,8 +456,8 @@ end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=nothing,abstol=1e-6,
-                                         reltol=1e-3,compile=false)
-  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol,compile)
+                                         reltol=1e-3)
+  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol)
 end
 setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
         QuadratureAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.abstol,
