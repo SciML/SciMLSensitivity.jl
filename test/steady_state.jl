@@ -232,7 +232,7 @@ using Zygote
     dp1 = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1,sensealg=SteadyStateAdjoint())),p)
     dp2 = Zygote.gradient(p->solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1,sensealg=SteadyStateAdjoint())[1],p)
 
-    dp1d = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1),p)
+    dp1d = Zygote.gradient(p->sum(solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1:1)),p)
     dp2d = Zygote.gradient(p->solve(prob,DynamicSS(Rodas5()),u0=u0,p=p,save_idxs=1)[1],p)
     @test res1[1] ≈ dp1[1] rtol=1e-10
     @test res1[1] ≈ dp2[1] rtol=1e-10
