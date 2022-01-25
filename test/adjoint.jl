@@ -110,9 +110,9 @@ _,easy_res13 = adjoint_sensitivities(solb,Tsit5(),dg,t,abstol=1e-14,
                                      sensealg=QuadratureAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
                                      )
 
-adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.EnzymeVJP()),dg,t)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()),dg,t)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
 @test isapprox(res, easy_res, rtol = 1e-10)
