@@ -126,9 +126,9 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
       _p = prob.p
   end
 
-  if sensealg.autojacvec isa ReverseDiffVJP ||
-    (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
+  @assert sensealg.autojacvec !== nothing
 
+  if sensealg.autojacvec isa ReverseDiffVJP
     if prob isa DiffEqBase.SteadyStateProblem
        if DiffEqBase.isinplace(prob)
         tape = ReverseDiff.GradientTape((y, _p)) do u,p
@@ -173,17 +173,6 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
 
     if compile_tape(sensealg.autojacvec)
       paramjac_config = ReverseDiff.compile(tape)
-    elseif tape !== nothing && sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob)
-      compile = try
-          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
-      catch
-          false
-      end
-      if compile
-          paramjac_config = ReverseDiff.compile(tape)
-      else
-          paramjac_config = tape
-      end
     else
       paramjac_config = tape
     end
@@ -218,7 +207,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             end
         end
     end
-  elseif (DiffEqBase.has_paramjac(f) || isautojacvec || quad)
+  elseif DiffEqBase.has_paramjac(f) || isautojacvec || quad || sensealg.autojacvec isa EnzymeVJP
     paramjac_config = nothing
     pf = nothing
   else
