@@ -112,6 +112,9 @@ function test_hybridNODE2(sensealg)
     println("  ")
 end
 
+mutable struct Affect{T}
+      callback_data::T
+end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.; 0.]
     datasize = 100
@@ -139,9 +142,7 @@ function test_hybridNODE3(sensealg)
     z0 = Float32[2.; 0.]
     prob = ODEProblem(dudt,z0,tspan)
     
-    mutable struct Affect{T}
-      callback_data::T
-    end
+    
     function callback_(callback_data)
         affect! = Affect(callback_data)
         condition(u,t,integrator) = integrator.t > 0 
