@@ -115,6 +115,9 @@ end
 mutable struct Affect{T}
       callback_data::T
 end
+function (cb::Affect)(integrator)
+    integrator.u .= integrator.u .+ cb.callback_data[:,Int(integrator.t÷60+1),1] * (integrator.t-integrator.tprev)
+end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.; 0.]
     datasize = 100
@@ -147,10 +150,6 @@ function test_hybridNODE3(sensealg)
         affect! = Affect(callback_data)
         condition(u,t,integrator) = integrator.t > 0 
         DiscreteCallback(condition,affect!,save_positions=(false,false))
-    end
-    
-    function (cb::Affect)(integrator)
-        integrator.u .= integrator.u .+ cb.callback_data[:,Int(integrator.t÷60+1),1] * (integrator.t-integrator.tprev)
     end
     
     function predict_n_ode(true_data_0,callback_data, sense)
