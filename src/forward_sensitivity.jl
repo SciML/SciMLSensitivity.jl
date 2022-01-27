@@ -349,7 +349,7 @@ function SciMLBase.remake(prob::ODEProblem{uType,tType,isinplace,P,F,K,<:ODEForw
     _u0    = u0    === nothing ? prob.u0[1:prob.f.numindvar] : u0[1:prob.f.numindvar]
     _tspan = tspan === nothing ? prob.tspan : tspan
     ODEForwardSensitivityProblem(_f,_u0,
-                                 _tspan,_p,ForwardSensitivity();
+                                 _tspan,_p,prob.problem_type.sensealg;
                                  prob.kwargs...,kwargs...)
 end
 SciMLBase.ODEFunction(f::ODEForwardSensitivityFunction; kwargs...) = f
