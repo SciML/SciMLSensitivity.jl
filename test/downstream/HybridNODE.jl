@@ -116,12 +116,12 @@ mutable struct Affect{T}
       callback_data::T
 end
 function (cb::Affect)(integrator)
-    integrator.u .= integrator.u .+ cb.callback_data[:,Int(integrator.t÷60+1),1] * (integrator.t-integrator.tprev)
+    integrator.u .= integrator.u .+ @view(cb.callback_data[:,Int(integrator.t÷60+1),1]) * (integrator.t-integrator.tprev)
 end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.; 0.]
-    datasize = 100
-    tspan = (0.0f0,10.5f0)
+    datasize = 101
+    tspan = (0.0f0,10.0f0)
     
     function trueODEfunc(du,u,p,t)
         du .= -u
@@ -129,9 +129,8 @@ function test_hybridNODE3(sensealg)
     t = range(tspan[1],tspan[2],length=datasize)
     prob = ODEProblem(trueODEfunc,u0,tspan)
     ode_data = Array(solve(prob,Tsit5(),saveat=t))
-    
-    ode_data = hcat(ode_data,ode_data,ode_data,ode_data)
-    true_data = reshape(ode_data,(2,100,4))
+   
+    true_data = reshape(ode_data,(2,length(t),1))
     true_data = convert.(Float32,true_data)
     callback_data = true_data .* 1e-3 
     callback_data = convert.(Float32,callback_data)
@@ -153,40 +152,41 @@ function test_hybridNODE3(sensealg)
     end
     
     function predict_n_ode(true_data_0,callback_data, sense)
-        _prob = remake(prob,p=p)
-        Array(solve(_prob,Tsit5(),u0=true_data_0,p=p,callback=callback_(callback_data),saveat=t,sensealg=sense))
+        _prob = remake(prob,p=p,u0=true_data_0)
+        solve(_prob,Tsit5(),callback=callback_(callback_data),saveat=t,sensealg=sense)
     end
     
     function loss_n_ode(true_data,callback_data)
-        pred = predict_n_ode((vec(true_data[:,1,:])),callback_data,sensealg)
-        loss = Flux.mse(true_data,pred)
+        sol = predict_n_ode((vec(true_data[:,1,:])),callback_data,sensealg)
+        pred = Array(sol)
+        loss = Flux.mse((true_data[:,:,1]),pred)
         loss
     end
 
-    for (true_data,callback_data) in train_dataloader
-        display(loss_n_ode(true_data,callback_data))
-    end
-
     ps = Flux.params(p)
-    opt = ADAM(0.01)
-    epochs= 4
-
-    function cb1() 
-        display(loss_n_ode(train_dataloader.data.true_data,train_dataloader.data.callback_data))
+    opt = ADAM(0.1)
+    epochs = 10
+    function cb1(true_data,callback_data) 
+        display(loss_n_ode(true_data,callback_data))
+        return false
     end
-    cb1()
 
-    function train!(loss, ps, data, opt)
+    function train!(loss, ps, data, opt, cb)
         ps = Params(ps)
         for (true_data,callback_data) in data
             gs = gradient(ps) do
                 loss(true_data,callback_data)
             end
             Flux.update!(opt, ps, gs)      
+            cb(true_data,callback_data)
         end
+        return nothing
     end
 
-    @Flux.epochs epochs train!(loss_n_ode, Params(ps),train_dataloader, opt)
+    @Flux.epochs epochs train!(loss_n_ode, Params(ps),train_dataloader, opt, cb1)
+    loss =  loss_n_ode(true_data[:,:,1],callback_data)
+    @info loss
+    @test loss < 0.5
 end
 
 @testset "PresetTimeCallback" begin
@@ -209,3 +209,4 @@ end
     test_hybridNODE3(InterpolatingAdjoint())
     test_hybridNODE3(QuadratureAdjoint())
 end
+
