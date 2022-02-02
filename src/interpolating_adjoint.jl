@@ -232,14 +232,19 @@ end
   discrete = t !== nothing
 
   # remove duplicates from checkpoints
-  if ischeckpointing(sensealg,sol) &&  (length(unique(checkpoints)) != length(checkpoints))
+  if ischeckpointing(sensealg, sol) && (length(unique(checkpoints)) != length(checkpoints))
     _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
     tstops = duplicate_iterator_times[1]
-    checkpoints = filter(x->x ∉ tstops, _checkpoints)
+    checkpoints = filter(x -> x ∉ tstops, _checkpoints)
     # check if start is in checkpoints. Otherwise first interval is missed.
     if checkpoints[1] != tspan[2]
-      pushfirst!(checkpoints,tspan[2])
+      pushfirst!(checkpoints, tspan[2])
     end
+  
+    if haskey(kwargs, :tstops)
+     (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
+    end
+
   else
     tstops = nothing
   end

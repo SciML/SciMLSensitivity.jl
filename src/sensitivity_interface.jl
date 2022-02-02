@@ -14,9 +14,9 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    kwargs...)
 
   if sol.prob isa ODEProblem
-    adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,
+    adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg; checkpoints=checkpoints,
                                  callback = callback,
-                                 abstol=abstol,reltol=reltol)
+                                 abstol=abstol,reltol=reltol, kwargs...)
 
   elseif sol.prob isa SDEProblem
     adj_prob = SDEAdjointProblem(sol,sensealg,g,t,dg,checkpoints=checkpoints,

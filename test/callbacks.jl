@@ -482,7 +482,7 @@ end
           condition(u,t,integrator) = t == 5
           affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
           cb = DiscreteCallback(condition,affect!)
-          tstops=[5.0]
+          tstops = [4.999, 5.0]
           test_discrete_callback(cb,tstops,g,dg!,nothing,true)
         end
       end
@@ -544,7 +544,7 @@ end
           condition(u,t,integrator) = t == 5
           affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
           cb = DiscreteCallback(condition,affect!)
-          tstops=[5.0]
+          tstops = [4.999, 5.0]
           test_discrete_callback(cb,tstops,g,dg!,nothing,true)
         end
       end

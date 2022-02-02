@@ -209,7 +209,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       _out = sol(ts)
     else
       _ts, duplicate_iterator_times = separate_nonunique(sol.t)
-      _out, ts = out_and_ts(_ts, duplicate_iterator_times, sol)
+      _out, ts = out_and_ts(_saveat, duplicate_iterator_times, sol)
     end
 
     out = if save_idxs === nothing
