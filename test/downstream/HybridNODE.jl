@@ -1,5 +1,6 @@
 using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, DiffEqFlux, Flux
 using Random, Test
+using Zygote
 
 function test_hybridNODE(sensealg)
     Random.seed!(12345)
@@ -115,8 +116,11 @@ end
 mutable struct Affect{T}
       callback_data::T
 end
+compute_index(t) = Int(t ÷ 1 + 1)
+Zygote.@nograd compute_index #avoid taking grads of this function
 function (cb::Affect)(integrator)
-    integrator.u .= integrator.u .+ @view(cb.callback_data[:,Int(integrator.t÷60+1),1]) * (integrator.t-integrator.tprev)
+    indx = compute_index(integrator.t)
+    integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
 end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.; 0.]
@@ -132,8 +136,7 @@ function test_hybridNODE3(sensealg)
    
     true_data = reshape(ode_data,(2,length(t),1))
     true_data = convert.(Float32,true_data)
-    callback_data = true_data .* 1e-3 
-    callback_data = convert.(Float32,callback_data)
+    callback_data = true_data * 1f-3 
     train_dataloader = Flux.Data.DataLoader((true_data = true_data,callback_data = callback_data),batchsize=1)
     dudt2 = Chain(Dense(2,50,tanh),
                  Dense(50,2))
