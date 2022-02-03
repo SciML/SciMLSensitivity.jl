@@ -116,8 +116,7 @@ end
 mutable struct Affect{T}
       callback_data::T
 end
-compute_index(t) = Int(t ÷ 1 + 1)
-Zygote.@nograd compute_index #avoid taking grads of this function
+compute_index(t) = round(Int,t)+1
 function (cb::Affect)(integrator)
     indx = compute_index(integrator.t)
     integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
