@@ -1,5 +1,6 @@
 using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, DiffEqFlux, Flux
 using Random, Test
+using Zygote
 
 function test_hybridNODE(sensealg)
     Random.seed!(12345)
@@ -112,6 +113,84 @@ function test_hybridNODE2(sensealg)
     println("  ")
 end
 
+mutable struct Affect{T}
+      callback_data::T
+end
+compute_index(t) = round(Int,t)+1
+function (cb::Affect)(integrator)
+    indx = compute_index(integrator.t)
+    integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
+end
+function test_hybridNODE3(sensealg)
+    u0 = Float32[2.; 0.]
+    datasize = 101
+    tspan = (0.0f0,10.0f0)
+    
+    function trueODEfunc(du,u,p,t)
+        du .= -u
+    end
+    t = range(tspan[1],tspan[2],length=datasize)
+    prob = ODEProblem(trueODEfunc,u0,tspan)
+    ode_data = Array(solve(prob,Tsit5(),saveat=t))
+   
+    true_data = reshape(ode_data,(2,length(t),1))
+    true_data = convert.(Float32,true_data)
+    callback_data = true_data * 1f-3 
+    train_dataloader = Flux.Data.DataLoader((true_data = true_data,callback_data = callback_data),batchsize=1)
+    dudt2 = Chain(Dense(2,50,tanh),
+                 Dense(50,2))
+    p,re = Flux.destructure(dudt2)
+    function dudt(du,u,p,t)
+        du .= re(p)(u) 
+    end
+    z0 = Float32[2.; 0.]
+    prob = ODEProblem(dudt,z0,tspan)
+    
+    
+    function callback_(callback_data)
+        affect! = Affect(callback_data)
+        condition(u,t,integrator) = integrator.t > 0 
+        DiscreteCallback(condition,affect!,save_positions=(false,false))
+    end
+    
+    function predict_n_ode(true_data_0,callback_data, sense)
+        _prob = remake(prob,p=p,u0=true_data_0)
+        solve(_prob,Tsit5(),callback=callback_(callback_data),saveat=t,sensealg=sense)
+    end
+    
+    function loss_n_ode(true_data,callback_data)
+        sol = predict_n_ode((vec(true_data[:,1,:])),callback_data,sensealg)
+        pred = Array(sol)
+        loss = Flux.mse((true_data[:,:,1]),pred)
+        loss
+    end
+
+    ps = Flux.params(p)
+    opt = ADAM(0.1)
+    epochs = 10
+    function cb1(true_data,callback_data) 
+        display(loss_n_ode(true_data,callback_data))
+        return false
+    end
+
+    function train!(loss, ps, data, opt, cb)
+        ps = Params(ps)
+        for (true_data,callback_data) in data
+            gs = gradient(ps) do
+                loss(true_data,callback_data)
+            end
+            Flux.update!(opt, ps, gs)      
+            cb(true_data,callback_data)
+        end
+        return nothing
+    end
+
+    @Flux.epochs epochs train!(loss_n_ode, Params(ps),train_dataloader, opt, cb1)
+    loss =  loss_n_ode(true_data[:,:,1],callback_data)
+    @info loss
+    @test loss < 0.5
+end
+
 @testset "PresetTimeCallback" begin
     test_hybridNODE(ForwardDiffSensitivity())
     test_hybridNODE(BacksolveAdjoint())
@@ -125,3 +204,11 @@ end
     test_hybridNODE2(InterpolatingAdjoint())
     test_hybridNODE2(QuadratureAdjoint())
 end
+
+@testset "tprevCallback" begin
+    test_hybridNODE3(ReverseDiffAdjoint())
+    test_hybridNODE3(BacksolveAdjoint())
+    test_hybridNODE3(InterpolatingAdjoint())
+    test_hybridNODE3(QuadratureAdjoint())
+end
+

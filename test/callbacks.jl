@@ -5,7 +5,7 @@ abstol=1e-12
 reltol=1e-12
 savingtimes=0.5
 
-function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing)
+function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
   function fiip(du,u,p,t)
     du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
     du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
@@ -70,24 +70,36 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing)
 
   @info dstuff
 
-  @test du01 ≈ dstuff[1:2]
-  @test dp1 ≈ dstuff[3:6]
-  @test du01b ≈ dstuff[1:2]
-  @test dp1b ≈ dstuff[3:6]
-  @test du01c ≈ dstuff[1:2]
-  @test dp1c ≈ dstuff[3:6]
-  @test du01 ≈ du02
+  # tests wrt discrete sensitivities
+  if tprev
+    # tprev depends on stepping behaviour of integrator. Thus sensitivities are necessarily (slightly) different. 
+    @test du02 ≈ dstuff[1:2] rtol=1e-3
+    @test dp2 ≈ dstuff[3:6]  rtol=1e-3
+    @test du01 ≈ dstuff[1:2] rtol=1e-3
+    @test dp1 ≈ dstuff[3:6] rtol=1e-3
+    @test du01 ≈ du02 rtol=1e-3
+    @test dp1 ≈ dp2 rtol=1e-3
+  else
+    @test du02 ≈ dstuff[1:2]
+    @test dp2 ≈ dstuff[3:6]
+    @test du01 ≈ dstuff[1:2]
+    @test dp1 ≈ dstuff[3:6]
+    @test du01 ≈ du02
+    @test dp1 ≈ dp2
+  end
+
+  # tests wrt continuous sensitivities
+  @test du01b ≈ du01
+  @test dp1b ≈ dp1
+  @test du01c ≈ du01
+  @test dp1c ≈ dp1
   @test du01 ≈ du03 rtol=1e-7
   @test du01 ≈ du03c rtol=1e-7
   @test du03 ≈ du03c
   @test du01 ≈ du04
-  @test dp1 ≈ dp2
   @test dp1 ≈ dp3
   @test dp1 ≈ dp3c
   @test dp1 ≈ dp4 rtol=1e-7
-
-  @test du02 ≈ dstuff[1:2]
-  @test dp2 ≈ dstuff[3:6]
 
   cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb),prob.tspan[1],prob.u0,prob.p,BacksolveAdjoint())
   sol_track = solve(prob,Tsit5(),u0=u0,p=p,callback=cb2,tstops=tstops,abstol=abstol,reltol=reltol,saveat=savingtimes)
@@ -466,6 +478,13 @@ end
           tstops=[5.1]
           test_discrete_callback(cb,tstops,g,dg!,cboop)
         end
+        @testset "tprev dependent callback" begin
+          condition(u,t,integrator) = t == 5
+          affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
+          cb = DiscreteCallback(condition,affect!)
+          tstops = [4.999, 5.0]
+          test_discrete_callback(cb,tstops,g,dg!,nothing,true)
+        end
       end
       @testset "MSE loss function" begin
         g(u) = sum((1.0.-u).^2)./2
@@ -520,6 +539,13 @@ end
           cboop = DiscreteCallback(condition,affect)
           tstops=[5.1]
           test_discrete_callback(cb,tstops,g,dg!,cboop)
+        end
+        @testset "tprev dependent callback" begin
+          condition(u,t,integrator) = t == 5
+          affect!(integrator) = (@show integrator.tprev; integrator.u[1] += integrator.t-integrator.tprev)
+          cb = DiscreteCallback(condition,affect!)
+          tstops = [4.999, 5.0]
+          test_discrete_callback(cb,tstops,g,dg!,nothing,true)
         end
       end
   	end
