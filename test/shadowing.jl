@@ -373,7 +373,7 @@ end
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
     g(u,p,t) = u[end]
-    function dg(out,u,p,t)
+    function dg(out,u,p,t,i=nothing)
       fill!(out, zero(eltype(u)))
       out[end] = -one(eltype(u))
     end
@@ -425,11 +425,11 @@ end
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01)
 
     g(u,p,t) = u[end]^2/2 + sum(p)
-    function dgu(out,u,p,t)
+    function dgu(out,u,p,t,i=nothing)
       fill!(out, zero(eltype(u)))
       out[end] = -u[end]
     end
-    function dgp(out,u,p,t)
+    function dgp(out,u,p,t,i=nothing)
       fill!(out, -one(eltype(p)))
     end
 
