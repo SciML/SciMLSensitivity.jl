@@ -675,7 +675,7 @@ end
 
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
-                                 sensealg::Union{AdjointLSS,ForwardLSS,NILSS},
+                                 sensealg::AbstractShadowingSensitivityAlgorithm,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
@@ -768,9 +768,13 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     elseif sensealg isa AdjointLSS
       adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, df)
       dp = shadow_adjoint(adjointlss_problem; t0skip=t0skip, t1skip=t1skip)
-    else
+    elseif sensealg isa NILSS
       nilss_prob = NILSSProblem(_prob, sensealg, g, df)
       dp = shadow_forward(nilss_prob,alg)
+    elseif sensealg isa NILSAS
+      error("NILSAS is only compatible with continuous cost functionals.")
+    else
+      error("No concrete_solve implementation found for sensealg `$sensealg`. Did you spell the sensitivity algorithm correctly? Please report this error.")
     end
 
     (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)

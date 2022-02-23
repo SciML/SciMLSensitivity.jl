@@ -3,6 +3,7 @@ SensitivityAlg(args...;kwargs...) = @error("The SensitivtyAlg choice mechanism w
 abstract type AbstractForwardSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
 abstract type AbstractAdjointSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
 abstract type AbstractSecondOrderSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
+abstract type AbstractShadowingSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT} end
 
 struct ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::Bool
@@ -123,7 +124,7 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing
 Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
 chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
 """
-struct ForwardLSS{CS,AD,FDT,aType} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+struct ForwardLSS{CS,AD,FDT,aType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   alpha::aType # alpha: weight of the time dilation term in LSS.
 end
 Base.@pure function ForwardLSS(;
@@ -137,7 +138,7 @@ end
 Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
 chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
 """
-struct AdjointLSS{CS,AD,FDT,aType} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct AdjointLSS{CS,AD,FDT,aType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   alpha::aType # alpha: weight of the time dilation term in LSS.
 end
 Base.@pure function AdjointLSS(;
@@ -155,7 +156,7 @@ struct Cos2Windowing <: WindowingChoice end
 Ni, A., and Wang, Q. Sensitivity analysis on chaotic dynamical systems by Non-Intrusive
 Least Squares Shadowing (NILSS). Journal of Computational Physics 347, 56-77 (2017).
 """
-struct NILSS{CS,AD,FDT,RNG} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct NILSS{CS,AD,FDT,RNG} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   rng::RNG
   nseg::Int
   nstep::Int
@@ -174,7 +175,7 @@ Ni, A., and Talnikar, C., Adjoint sensitivity analysis on chaotic dynamical syst
 by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computational 
 Physics 395, 690-709 (2019).
 """
-struct NILSAS{CS,AD,FDT,RNG,SENSE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct NILSAS{CS,AD,FDT,RNG,SENSE} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   rng::RNG
   adjoint_sensealg::SENSE
   M::Int

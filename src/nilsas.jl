@@ -193,10 +193,10 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     end
   else
     if dg_val isa Tuple
-      dg[1](dg_val[1],y,p,t,nothing)
-      dg[2](dg_val[2],y,p,t,nothing)
+      dg[1](dg_val[1],y,p,t)
+      dg[2](dg_val[2],y,p,t)
     else
-      dg(dg_val,y,p,t,nothing)
+      dg(dg_val,y,p,t)
     end
   end
 
