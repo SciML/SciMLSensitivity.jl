@@ -1,5 +1,5 @@
 struct NILSSSensitivityFunction{iip,F,Alg,
-     PGPU,PGPP,CONFU,CONGP,DGVAL,DG} <: DiffEqBase.AbstractODEFunction{iip}
+     PGPU,PGPP,CONFU,CONGP,DGVAL,DG,jType,RefType} <: DiffEqBase.AbstractODEFunction{iip}
   f::F
   alg::Alg
   numparams::Int
@@ -10,9 +10,11 @@ struct NILSSSensitivityFunction{iip,F,Alg,
   pgpp_config::CONGP
   dg_val::DGVAL
   dg::DG
+  jevery::jType # if concrete_solve interface for discrete cost functions is used
+  cur_time::RefType
 end
 
-function NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
+function NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg,jevery=nothing,cur_time=nothing)
 
   numparams = length(p)
   numindvar = length(u0)
@@ -42,8 +44,8 @@ function NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
   end
 
   NILSSSensitivityFunction{isinplace(f),typeof(f),typeof(sensealg),
-                             typeof(pgpu),typeof(pgpp),typeof(pgpu_config),typeof(pgpp_config),typeof(dg_val),typeof(dg)}(
-                             f,sensealg,numparams,numindvar,pgpu,pgpp,pgpu_config,pgpp_config,dg_val,dg)
+                             typeof(pgpu),typeof(pgpp),typeof(pgpu_config),typeof(pgpp_config),typeof(dg_val),typeof(dg),typeof(jevery),typeof(cur_time)}(
+                             f,sensealg,numparams,numindvar,pgpu,pgpp,pgpu_config,pgpp_config,dg_val,dg,jevery,cur_time)
 end
 
 
@@ -85,7 +87,7 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
 end
 
 
-function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
+function NILSSProblem(prob, sensealg::NILSS, g, t=nothing, dg = nothing; nus = nothing,
                             kwargs...)
 
   @unpack f, p, u0, tspan = prob
@@ -109,6 +111,19 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
   T_seg = (tspan[2]-tspan[1])/nseg # length of each segment
   dtsave = T_seg/(nstep-1)
 
+  # assert that dtsave is chosen such that all ts are hit if concrete solve interface/discrete costs are used
+  if t!==nothing
+    @assert t isa StepRangeLen
+    dt_ts = step(t)
+    @assert dt_ts >= dtsave  
+    @assert T_seg >= dt_ts
+    jevery = Int(dt_ts/dtsave) # will throw an inexact error if dt_ts is not a multiple of dtsave. (could be more sophisticated)
+    cur_time = Ref(1)
+  else
+    jevery = nothing
+    cur_time = nothing
+  end
+
   # inhomogenous forward sensitivity problem
   chunk_size = determine_chunksize(numparams,sensealg)
   autodiff = alg_autodiff(sensealg)
@@ -118,7 +133,7 @@ function NILSSProblem(prob, sensealg::NILSS, g, dg = nothing; nus = nothing,
   forward_prob = ODEForwardSensitivityProblem(f,u0,tspan,p,ForwardSensitivity(chunk_size=chunk_size,autodiff=autodiff,
                                                 diff_type=difftype,autojacvec=autojacvec);nus=nus, kwargs...)
 
-  sense = NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
+  sense = NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg,jevery,cur_time)
 
   # pre-allocate variables
   gsave = Matrix{eltype(u0)}(undef, nstep, nseg)
@@ -295,7 +310,7 @@ end
 function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
   @unpack sensealg, diffcache, dg, g, prob = nilssprob
   @unpack prob = nilssprob
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar = diffcache
+  @unpack jevery, cur_time = diffcache # akin to ``discrete"
 
   _y = @view y[:,:,iseg]
 
@@ -314,22 +329,16 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
     gsave[j,iseg] = g(u,p,nothing)
 
     #  compute gradient of objective wrt. state
-    if dg===nothing
-      if dg_val isa Tuple
-        DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-        copyto!(_dgdu, dg_val[1])
-      else
-        DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-        copyto!(_dgdu, dg_val)
+    if jevery!==nothing
+      # only bump on every jevery entry
+      # corresponds to (iseg-1)* value of dg
+      if (j-1) % jevery == 0
+        accumulate_cost!(_dgdu, dg, u, p, nothing, sensealg, diffcache, cur_time[])
+        cur_time[] += one(jevery)
       end
     else
-      if dg_val isa Tuple
-        dg[1](dg_val[1],u,p,nothing,j)
-        @. _dgdu = -dg_val[1]
-      else
-        dg(dg_val,u,p,nothing,j)
-        @. _dgdu = -dg_val
-      end
+      # continuous cost function
+      accumulate_cost!(_dgdu, dg, u, p, nothing, sensealg, diffcache, j)
     end
   end
   return nothing
@@ -476,6 +485,30 @@ function compute_xi(ξ,v,dudt,nseg)
   return nothing
 end
 
+function accumulate_cost!(_dgdu, dg, u, p, t, sensealg::NILSS, diffcache::NILSSSensitivityFunction, j)
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config = diffcache 
+  
+  if dg===nothing
+    if dg_val isa Tuple
+      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+      copyto!(_dgdu, dg_val[1])
+    else
+      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+      copyto!(_dgdu, dg_val)
+    end
+  else
+    if dg_val isa Tuple
+      dg[1](dg_val[1],u,p,nothing,j)
+      @. _dgdu = -dg_val[1]
+    else
+      dg(dg_val,u,p,nothing,j)
+      @. _dgdu = -dg_val
+    end
+  end
+  
+  return nothing
+end
+
 function shadow_forward(prob::NILSSProblem,alg)
   shadow_forward(prob,prob.sensealg,alg)
 end
@@ -485,6 +518,10 @@ function shadow_forward(prob::NILSSProblem,sensealg::NILSS,alg)
   @unpack res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
           gsave, dgdu, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ = prob
   @unpack numindvar, numparams = forward_prob.f.S
+
+  # reset dg pointer
+  @unpack jevery, cur_time = prob.diffcache
+  jevery !== nothing && (cur_time[] = one(jevery))
 
   # compute vstar, w
   forward_sense(prob,sensealg,alg)

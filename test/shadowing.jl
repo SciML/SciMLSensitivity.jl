@@ -33,10 +33,10 @@ using Zygote
     lss_problem2 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), g)
     lss_problem2a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, dg)
     lss_problem3 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
-    lss_problem3a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, dg) #ForwardLSS with time dilation requires knowledge of g
+    lss_problem3a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, dg) #ForwardLSS with time dilation requires knowledge of g
 
     adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
-    adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, dg)
+    adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, nothing, dg)
 
     res1 = shadow_forward(lss_problem1)
     res1a = shadow_forward(lss_problem1a)
@@ -65,10 +65,10 @@ using Zygote
     lss_problem2 = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), g)
     lss_problem2a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, dg)
     lss_problem3 = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g)
-    lss_problem3a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g, dg) #ForwardLSS with time dilation requires knowledge of g
+    lss_problem3a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g, nothing, dg) #ForwardLSS with time dilation requires knowledge of g
 
     adjointlss_problem = AdjointLSSProblem(sol_attractor2, AdjointLSS(alpha=10.0), g)
-    adjointlss_problem_a = AdjointLSSProblem(sol_attractor2, AdjointLSS(alpha=10.0), g, dg)
+    adjointlss_problem_a = AdjointLSSProblem(sol_attractor2, AdjointLSS(alpha=10.0), g, nothing, dg)
 
     res1 = shadow_forward(lss_problem1)
     res1a = shadow_forward(lss_problem1a)
@@ -284,7 +284,7 @@ end
     res1 = DiffEqSensitivity.shadow_forward(nilss_prob1,Tsit5())
 
     Random.seed!(1234)
-    nilss_prob2 = NILSSProblem(prob_attractor, NILSS(nseg, nstep), g, dg)
+    nilss_prob2 = NILSSProblem(prob_attractor, NILSS(nseg, nstep), g, nothing, dg)
     res2 = DiffEqSensitivity.shadow_forward(nilss_prob2,Tsit5())
 
     @test res1[1] ≈ 1 atol=5e-2
@@ -378,7 +378,7 @@ end
       out[end] = -one(eltype(u))
     end
 
-    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, dg)
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, dg)
     resfw = shadow_forward(lss_problem)
 
     @info resfw
@@ -390,7 +390,7 @@ end
 
     @test resfw ≈ res atol=1e-1
 
-    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, dg)
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, nothing, dg)
     res = shadow_adjoint(nilsas_prob, Tsit5())
 
     @info res
@@ -445,7 +445,7 @@ end
 
     @test resfw ≈ res rtol=1e-1
 
-    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, (dgu,dgp))
+    nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg,nstep,M), g, nothing, (dgu,dgp))
     res = shadow_adjoint(nilsas_prob, Tsit5())
 
     @info res

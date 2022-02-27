@@ -119,7 +119,7 @@ struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,Ftype,bType,
 end
 
 
-function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
+function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
@@ -480,7 +480,7 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,
 end
 
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
+function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, ts=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
