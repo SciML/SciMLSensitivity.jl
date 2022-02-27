@@ -173,6 +173,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
       dg_val[2] .*= false
     else
       dg_val .*= false
+    end
   end
 
   # loop over all adjoint states
