@@ -433,7 +433,7 @@ end
       fill!(out, -one(eltype(p)))
     end
 
-    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, (dgu,dgp))
     resfw = shadow_forward(lss_problem)
 
     @info resfw

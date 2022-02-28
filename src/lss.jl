@@ -148,7 +148,6 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing
 
   # assert that all ts are hit if concrete solve interface/discrete costs are used
   if t !== nothing
-    @show t sol.t
     @assert sol.t == t
   end
 

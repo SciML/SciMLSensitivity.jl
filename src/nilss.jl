@@ -341,7 +341,7 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
       accumulate_cost!(_dgdu, dg, u, p, nothing, sensealg, diffcache, j)
     end
   end
-  cur_time[] -= one(jevery) # interface between segments gets two bumps 
+  (jevery !== nothing) && cur_time[] -= one(jevery) # interface between segments gets two bumps 
   return nothing
 end
 
