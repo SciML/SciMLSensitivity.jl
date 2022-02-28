@@ -146,13 +146,9 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing
   # compute their values
   discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
 
-  # assert that dtsave is chosen such that all ts are hit if concrete solve interface/discrete costs are used
+  # assert that all ts are hit if concrete solve interface/discrete costs are used
   if t !== nothing
-    #  handle discrete cost functions
-    cur_time = Ref(1)
-  else
-    jevery = nothing
-    cur_time = nothing
+    @assert sol.t == t
   end
 
   S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.alpha)
@@ -479,6 +475,10 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, ts=nothing, dg = nothin
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
+  # assert that all ts are hit if concrete solve interface/discrete costs are used
+  if t !== nothing
+    @assert sol.t == t
+  end
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
                                      f.jac_prototype,f.sparsity,f.paramjac,

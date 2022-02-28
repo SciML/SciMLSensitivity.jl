@@ -427,6 +427,11 @@ function (f::ReverseLossCallback)(integrator)
 end
 
 function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated=false)
+  if sensefun isa NILSASSensitivityFunction
+    @unpack sensealg = sensefun.S
+  else 
+    @unpack sensealg = sensefun
+  end
 
   if !sensefun.discrete
     cur_time = Ref(1)
@@ -434,7 +439,7 @@ function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated
     cur_time = Ref(length(t))
   end
 
-  reverse_cbs = setup_reverse_callbacks(callback,sensefun.sensealg,g,cur_time,terminated)
+  reverse_cbs = setup_reverse_callbacks(callback,sensealg,g,cur_time,terminated)
   sensefun.discrete || return reverse_cbs, nothing
 
   # callbacks can lead to non-unique time points

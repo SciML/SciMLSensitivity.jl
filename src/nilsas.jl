@@ -165,15 +165,8 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
   copyto!(vec(y), _y)
 
   #  compute gradient of objective wrt. state
-  if discrete 
+  if !discrete 
     accumulate_cost!(dg, y, p, t, nilss)
-  else
-    if dg_val isa Tuple
-      dg_val[1] .*= false
-      dg_val[2] .*= false
-    else
-      dg_val .*= false
-    end
   end
 
   # loop over all adjoint states
@@ -184,10 +177,12 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
 
     if j==1
       # j = 1 is the inhomogenous adjoint solution
-      if dg_val isa Tuple
-        dλ .-= vec(dg_val[1])
-      else
-        dλ .-= vec(dg_val)
+      if !discrete 
+        if dg_val isa Tuple
+          dλ .-= vec(dg_val[1])
+        else
+          dλ .-= vec(dg_val)
+        end
       end
     end
   end
@@ -209,7 +204,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     dC[j,j] = -dot(λ,λ)
   end
 
-  if dg_val isa Tuple
+  if dg_val isa Tuple && !discrete 
     ddJs = -vec(dg_val[2])
   end
 
@@ -217,8 +212,8 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
 end
 
 
-function accumulate_cost!(dg, y, p, t, sensealg::NILSAS)
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = sensealg 
+function accumulate_cost!(dg, y, p, t, nilss::NILSSSensitivityFunction)
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = nilss 
 
   if dg===nothing
     if dg_val isa Tuple
