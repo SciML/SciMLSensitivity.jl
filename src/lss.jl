@@ -148,6 +148,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing
 
   # assert that all ts are hit if concrete solve interface/discrete costs are used
   if t !== nothing
+    @show t sol.t
     @assert sol.t == t
   end
 
@@ -466,7 +467,7 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,
 end
 
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, ts=nothing, dg = nothing;
+function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
