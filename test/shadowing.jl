@@ -29,9 +29,9 @@ using Zygote
       out[end] = -one(eltype(u))
     end
     lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(), g)
-    lss_problem1a = ForwardLSSProblem(sol_attractor, ForwardLSS(), nothing, dg)
+    lss_problem1a = ForwardLSSProblem(sol_attractor, ForwardLSS(), nothing, nothing, dg)
     lss_problem2 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), g)
-    lss_problem2a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, dg)
+    lss_problem2a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, nothing, dg)
     lss_problem3 = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
     lss_problem3a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, dg) #ForwardLSS with time dilation requires knowledge of g
 
@@ -61,9 +61,9 @@ using Zygote
     # fixed saveat to compare with concrete solve
     sol_attractor2 = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14, saveat=0.01)
     lss_problem1 = ForwardLSSProblem(sol_attractor2, ForwardLSS(), g)
-    lss_problem1a = ForwardLSSProblem(sol_attractor2, ForwardLSS(), nothing, dg)
+    lss_problem1a = ForwardLSSProblem(sol_attractor2, ForwardLSS(), nothing, nothing, dg)
     lss_problem2 = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), g)
-    lss_problem2a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, dg)
+    lss_problem2a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=DiffEqSensitivity.Cos2Windowing()), nothing, nothing, dg)
     lss_problem3 = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g)
     lss_problem3a = ForwardLSSProblem(sol_attractor2, ForwardLSS(alpha=10), g, nothing, dg) #ForwardLSS with time dilation requires knowledge of g
 
@@ -138,9 +138,9 @@ using Zygote
     end
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
-    lss_problem_a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    lss_problem_a = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, (dgu,dgp))
     adjointlss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g)
-    adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
+    adjointlss_problem_a = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, nothing, (dgu,dgp))
 
     resfw = shadow_forward(lss_problem)
     resfw_a = shadow_forward(lss_problem_a)
@@ -222,7 +222,7 @@ using Zygote
 
     ## ForwardLSS with dgdu and dgdp
 
-    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, (dgu,dgp))
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g, nothing, (dgu,dgp))
     res2 = shadow_forward(lss_problem)
     @test res ≈ res2 atol=1e-10
     res2 = shadow_forward(lss_problem; t0skip=10.0, t1skip=5.0)
@@ -244,7 +244,7 @@ using Zygote
 
     ## AdjointLSS with dgdu and dgd
 
-    lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, (dgu,dgp))
+    lss_problem = AdjointLSSProblem(sol_attractor, AdjointLSS(alpha=10.0), g, nothing, (dgu,dgp))
     res2 = shadow_adjoint(lss_problem)
     @test res ≈ res2 atol=1e-10
     res2 = shadow_adjoint(lss_problem; t0skip=10.0, t1skip=5.0)
