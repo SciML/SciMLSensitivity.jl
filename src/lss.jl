@@ -119,7 +119,7 @@ struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,Ftype,bType,
 end
 
 
-function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
+function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
@@ -127,7 +127,6 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
-
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
                                      f.jac_prototype,f.sparsity,f.paramjac,
@@ -146,6 +145,11 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, dg = nothing;
   dudt = Matrix{eltype(u0)}(undef,numindvar,Ndt)
   # compute their values
   discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
+
+  # assert that all ts are hit if concrete solve interface/discrete costs are used
+  if t !== nothing
+    @assert sol.t == t
+  end
 
   S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.alpha)
 
@@ -299,8 +303,7 @@ end
 function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, dg, umid = prob
   @unpack wBinv, wEinv, B, E = S
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
-
+  @unpack dg_val, numparams, numindvar, uf = diffcache
 
   n0 = searchsortedfirst(sol.t, sol.t[1]+t0skip)
   n1 = searchsortedfirst(sol.t, sol.t[end]-t1skip)
@@ -323,30 +326,18 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Numb
 
     ηres = @view η[n0:n1-1]
 
-    for (j,u) in enumerate(ures)
+    for (j, u) in enumerate(ures)
       vtmp = @view v[(n0+j-2)*numindvar+1:(n0+j-1)*numindvar]
       #  final gradient result for ith parameter
-      if dg===nothing
-        if dg_val isa Tuple
-          DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-          DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg,pgpp_config)
-          res[i] += dot(dg_val[1],vtmp)
-          res[i] += dg_val[2][i]
-        else
-          DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-          res[i] += dot(dg_val,vtmp)
-        end
+      accumulate_cost!(dg, u, uf.p, uf.t, sensealg, diffcache, n0+j-1)
+    
+      if dg_val isa Tuple
+        res[i] += dot(dg_val[1], vtmp)
+        res[i] += dg_val[2][i]
       else
-        if dg_val isa Tuple
-          dg[1](dg_val[1],u,uf.p,nothing,n0+j-1)
-          dg[2](dg_val[2],u,uf.p,nothing,n0+j-1)
-          res[i] -= dot(dg_val[1],vtmp)
-          res[i] -= dg_val[2][i]
-        else
-          dg(dg_val,u,uf.p,nothing,n0+j-1)
-          res[i] -= dot(dg_val,vtmp)
-        end
+        res[i] += dot(dg_val, vtmp)
       end
+    
     end
     # mean value
     res[i] = res[i]/(n1-n0+1)
@@ -366,7 +357,7 @@ end
 function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing,t0skip,t1skip)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
   @unpack wBinv, B = S
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
+  @unpack dg_val, numparams, numindvar, uf = diffcache
 
   b!(b,prob)
 
@@ -384,26 +375,12 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosW
     for (j,u) in enumerate(sol.u)
       vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
       #  final gradient result for ith parameter
-      if dg===nothing
-        if dg_val isa Tuple
-          DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-          DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg,pgpp_config)
-          res[i] += dot(dg_val[1],vtmp)*window[j]
-          res[i] += dg_val[2][i]*window[j]
-        else
-          DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-          res[i] += dot(dg_val,vtmp)*window[j]
-        end
+      accumulate_cost!(dg, u, uf.p, uf.t, sensealg, diffcache, j)
+      if dg_val isa Tuple
+        res[i] += dot(dg_val[1], vtmp) * window[j]
+        res[i] += dg_val[2][i] * window[j]
       else
-        if dg_val isa Tuple
-          dg[1](dg_val[1],u,uf.p,nothing,j)
-          dg[2](dg_val[2],u,uf.p,nothing,j)
-          res[i] -= dot(dg_val[1],vtmp)*window[j]
-          res[i] -= dg_val[2][i]*window[j]
-        else
-          dg(dg_val,u,uf.p,nothing,j)
-          res[i] -= dot(dg_val,vtmp)*window[j]
-        end
+        res[i] += dot(dg_val, vtmp) * window[j]
       end
     end
   end
@@ -413,7 +390,7 @@ end
 function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowing,t0skip,t1skip)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
     @unpack wBinv, B = S
-    @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, uf = diffcache
+    @unpack dg_val, numparams, numindvar, uf = diffcache
 
     b!(b,prob)
 
@@ -428,36 +405,45 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2
       bpar = @view b[:,i]
       w .= F\bpar
       v .= Diagonal(wBinv)*(B'*w)
-      for (j,u) in enumerate(sol.u)
+      for (j, u) in enumerate(sol.u)
         vtmp = @view v[(j-1)*numindvar+1:j*numindvar]
         #  final gradient result for ith parameter
-        if dg===nothing
-          if dg_val isa Tuple
-            DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg,pgpu_config)
-            DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg,pgpp_config)
-            res[i] += dot(dg_val[1],vtmp)*window[j]
-            res[i] += dg_val[2][i]*window[j]
-          else
-            DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg,pgpu_config)
-            res[i] += dot(dg_val,vtmp)*window[j]
-          end
+        accumulate_cost!(dg, u, uf.p, uf.t, sensealg, diffcache, j)
+        if dg_val isa Tuple
+          res[i] += dot(dg_val[1], vtmp) * window[j]
+          res[i] += dg_val[2][i] * window[j]
         else
-          if dg_val isa Tuple
-            dg[1](dg_val[1],u,uf.p,nothing,j)
-            dg[2](dg_val[2],u,uf.p,nothing,j)
-            res[i] -= dot(dg_val[1],vtmp)*window[j]
-            res[i] -= dg_val[2][i]*window[j]
-          else
-            dg(dg_val,u,uf.p,nothing,j)
-            res[i] -= dot(dg_val,vtmp)*window[j]
-          end
+          res[i] += dot(dg_val, vtmp) * window[j]
         end
       end
     end
     return res
 end
 
+function accumulate_cost!(dg, u, p, t, sensealg::ForwardLSS, diffcache, indx)
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, uf = diffcache
 
+  if dg === nothing
+    if dg_val isa Tuple
+      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+      DiffEqSensitivity.gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
+    else
+      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+    end
+  else
+    if dg_val isa Tuple
+      dg[1](dg_val[1], u, p, nothing, indx) # indx = n0 + j - 1 for alpha and j for windowing
+      dg[2](dg_val[2], u, p, nothing, indx)
+      dg_val[1] .*= -1 # flipped concrete_solve sign 
+      dg_val[2] .*= -1
+    else
+      dg(dg_val, u, p, nothing, indx)
+      dg_val .*= -1
+    end
+  end
+
+  return nothing
+end
 struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,bType,wType,
     ΔtType,G0,G,DG,resType}
   sensealg::A
@@ -480,7 +466,7 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,
 end
 
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
+function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
@@ -489,6 +475,10 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, dg = nothing;
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
+  # assert that all ts are hit if concrete solve interface/discrete costs are used
+  if t !== nothing
+    @assert sol.t == t
+  end
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
                                      f.jac_prototype,f.sparsity,f.paramjac,
