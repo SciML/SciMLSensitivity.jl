@@ -309,34 +309,34 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
   indx, pos_neg = get_indx(cb, t)
   tprev = get_tprev(cb,indx,pos_neg)
 
-  function wp(dp,p,u,t,tprev)
-    fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-    _affect! = get_affect!(cb.affect!.affect!)
+  function wp(dp,p,u,t,tprev,pos_neg)
+    _affect! = get_affect!(cb.affect!,pos_neg)
+    fakeinteg = FakeIntegrator([x for x in _u],[x for x in p],t,tprev)
     _affect!(fakeinteg)
     dp .= fakeinteg.p
   end
 
   _p = similar(integrand.p, size(integrand.p))
-  wp(_p,integrand.p,integrand.y,t,tprev)
+  wp(_p,integrand.p,integrand.y,t,tprev,pos_neg)
 
   if _p != integrand.p
-    fakeSp = CallbackSensitivityFunction((du,u,p,t)->wp(du,u,p,t,tprev),sensealg,adj_prob.f.f.diffcache,sol.prob)
+    fakeSp = CallbackSensitivityFunction((du,u,p,t)->wp(du,u,p,t,tprev,pos_neg),sensealg,adj_prob.f.f.diffcache,sol.prob)
     #vjp with Jacobin given by dw/dp before event and vector given by grad
     vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
                         dgrad=nothing, dy=nothing)
     integrand = update_p_integrand(integrand,_p)
   end
 
-  function w(du,u,p,t,tprev)
-    fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-    _affect! = get_affect!(cb.affect!.affect!)
+  function w(du,u,p,t,tprev,pos_neg)
+    _affect! = get_affect!(cb.affect!,pos_neg)
+    fakeinteg = FakeIntegrator([x for x in _u],[x for x in p],t,tprev)
     _affect!(fakeinteg)
-    du .= fakeinteg.u
+    du .= vec(fakeinteg.u)
   end
 
   # Create a fake sensitivity function to do the vjps needs to be done
   # to account for parameter dependence of affect function
-  fakeS = CallbackSensitivityFunction((du,u,p,t)->w(du,u,p,t,tprev),sensealg,adj_prob.f.f.diffcache,sol.prob)
+  fakeS = CallbackSensitivityFunction((du,u,p,t)->w(du,u,p,t,tprev,pos_neg),sensealg,adj_prob.f.f.diffcache,sol.prob)
   if dgdu === nothing
     g(dλ,integrand.y,integrand.p,t,cur_time)
   else

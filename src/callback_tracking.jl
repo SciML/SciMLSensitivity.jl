@@ -172,9 +172,9 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         indx, pos_neg = get_indx(cb, integrator.t)
         tprev = get_tprev(cb,indx,pos_neg)
 
-        function w(du,u,p,t,tprev)
+        function w(du,u,p,t,tprev,pos_neg)
+          _affect! = get_affect!(cb.affect!,pos_neg)
           fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-          _affect! = get_affect!(cb.affect!.affect!)
           _affect!(fakeinteg)
           du .= fakeinteg.u
         end
@@ -182,17 +182,18 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
-        fakeS = CallbackSensitivityFunction((du,u,p,t)->w(du,u,p,t,tprev),sensealg,
+        fakeS = CallbackSensitivityFunction((du,u,p,t)->w(du,u,p,t,tprev,pos_neg),sensealg,
                         S.diffcache,integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
         λ,grad,y,dλ,dgrad,dy = split_states(du,integrator.u,integrator.t,S)
+
         # if save_positions[2] = false, then the right limit is not saved. Thus, for 
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
         if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) # || (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
           # lifting for InterpolatingAdjoint is not needed anymore. Callback is already applied. 
-          w(y,y,integrator.p,integrator.t,tprev)
+          w(y,y,integrator.p,integrator.t,tprev,pos_neg)
         end 
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
@@ -214,6 +215,12 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         end
 
         update_p = copy_to_integrator!(cb,y,integrator.p,integrator.t,indx,pos_neg)
+        # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+        if sensealg isa BacksolveAdjoint
+          _size = pos_neg ? size(cb.affect!.uleft[indx]) : size(cb.affect_neg!.uleft[indx])
+          y = reshape(y, _size)
+          dy = reshape(dy, _size)
+        end
 
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # compute the correction of the right limit (with left state limit inserted into dgdt)
@@ -230,14 +237,14 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
           # changes in parameters
           if !(sensealg isa QuadratureAdjoint)
             
-            function wp(dp,p,u,t,tprev)
+            function wp(dp,p,u,t,tprev,pos_neg)
+              _affect! = get_affect!(cb.affect!,pos_neg)
               fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-              _affect! = get_affect!(cb.affect!.affect!)
               _affect!(fakeinteg)
               dp .= fakeinteg.p
             end
 
-            fakeSp = CallbackSensitivityFunction((du,u,p,t)->wp(du,u,p,t,tprev),sensealg,S.diffcache,integrator.sol.prob)
+            fakeSp = CallbackSensitivityFunction((du,u,p,t)->wp(du,u,p,t,tprev,pos_neg),sensealg,S.diffcache,integrator.sol.prob)
             #vjp with Jacobin given by dw/dp before event and vector given by grad
             vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
                                   dgrad=nothing, dy=nothing)
@@ -283,7 +290,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
                        save_positions = (false,false))
 end
 
-get_indx(cb::DiscreteCallback,t) = (searchsortedfirst(cb.affect!.event_times,t), nothing)
+get_indx(cb::DiscreteCallback,t) = (searchsortedfirst(cb.affect!.event_times,t), true)
 function get_indx(cb::Union{ContinuousCallback,VectorContinuousCallback}, t)
   if !isempty(cb.affect!.event_times)
     indx = searchsortedfirst(cb.affect!.event_times,t)
@@ -424,5 +431,7 @@ end
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
 
 # get the affect function of the callback. For example, allows us to get the `f` in PeriodicCallback without the integrator.tstops handling.  
+get_affect!(affect!,pos_neg::Bool) = pos_neg ? get_affect!(affect!.affect!) : get_affect!(affect!.affect_neg!)
 get_affect!(affect!) = affect!
-get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect) = affect!.affect!
+get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect,pos_neg) = affect!.affect!
+
