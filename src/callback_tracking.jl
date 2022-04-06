@@ -173,7 +173,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         tprev = get_tprev(cb,indx,pos_neg)
 
         function w(du,u,p,t,tprev,pos_neg)
-          _affect! = get_affect!(cb.affect!,pos_neg)
+          _affect! = get_affect!(cb,pos_neg)
           fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
           _affect!(fakeinteg)
           du .= fakeinteg.u
@@ -238,7 +238,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
           if !(sensealg isa QuadratureAdjoint)
             
             function wp(dp,p,u,t,tprev,pos_neg)
-              _affect! = get_affect!(cb.affect!,pos_neg)
+              _affect! = get_affect!(cb,pos_neg)
               fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
               _affect!(fakeinteg)
               dp .= fakeinteg.p
@@ -431,7 +431,8 @@ end
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
 
 # get the affect function of the callback. For example, allows us to get the `f` in PeriodicCallback without the integrator.tstops handling.  
-get_affect!(affect!,pos_neg::Bool) = pos_neg ? get_affect!(affect!.affect!) : get_affect!(affect!.affect_neg!)
-get_affect!(affect!) = affect!
-get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect,pos_neg) = affect!.affect!
+get_affect!(cb::DiscreteCallback,bool) = get_affect!(cb.affect!)
+get_affect!(cb::ContinuousCallback,bool) = bool ? get_affect!(cb.affect!) : get_affect!(cb.affect_neg!)
+get_affect!(affect!::TrackedAffect) = affect!.affect!
+get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect) = affect!.affect!
 
