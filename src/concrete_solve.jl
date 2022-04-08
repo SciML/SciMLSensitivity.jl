@@ -270,12 +270,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
    _,du = extract_local_sensitivities(sol, sensealg, Val(true))
-
-   if save_idxs === nothing
-     out = DiffEqBase.sensitivity_solution(sol, sol.u, sol.t)
-   else
-     out = DiffEqBase.sensitivity_solution(sol, [sol[i][save_idxs] for i in 1:length(sol)], sol.t)
-   end
+   out = DiffEqBase.sensitivity_solution(sol, sol.u, sol.t)
 
    function forward_sensitivity_backpass(Δ)
      adj = sum(eachindex(du)) do i
