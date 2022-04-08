@@ -9,8 +9,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    fail-fast: true
     strategy:
+      fail-fast: true
       matrix:
         group:
           - Core1
