@@ -277,8 +277,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
        J = du[i]
        if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
          v = Δ[i]
-       else
+       elseif Δ isa AbstractMatrix
          v = @view Δ[:, i]
+       else
+         v = @view Δ[.., i]
        end
        J'vec(v)
      end
