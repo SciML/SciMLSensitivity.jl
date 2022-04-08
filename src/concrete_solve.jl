@@ -260,9 +260,8 @@ end
 
 # Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;save_idxs = nothing,
+                                 u0,p,args...;
                                  kwargs...)
-   _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
 
    if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual && !(eltype(u0) <: ForwardDiff.Dual)
      # Handle double differentiation case
@@ -271,16 +270,22 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSe
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,alg,args...;kwargs...)
    _,du = extract_local_sensitivities(sol, sensealg, Val(true))
-   out = DiffEqBase.sensitivity_solution(sol,[sol[i][_save_idxs] for i in 1:length(sol)],sol.t)
+
+   if save_idxs === nothing
+     out = DiffEqBase.sensitivity_solution(sol, sol.u, sol.t)
+   else
+     out = DiffEqBase.sensitivity_solution(sol, [sol[i][save_idxs] for i in 1:length(sol)], sol.t)
+   end
+
    function forward_sensitivity_backpass(Δ)
      adj = sum(eachindex(du)) do i
        J = du[i]
-       if Δ isa AbstractVector
+       if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
          v = Δ[i]
        else
          v = @view Δ[:, i]
        end
-       J'v
+       J'vec(v)
      end
      du0 = @not_implemented(
          "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
@@ -310,9 +315,7 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity{CS,CTS},
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
-                                 save_idxs = nothing,
                                  kwargs...) where {CS,CTS}
-  _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
 
   if saveat isa Number
     _saveat = prob.tspan[1]:saveat:prob.tspan[2]
@@ -320,7 +323,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     _saveat = saveat
   end
 
-  sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat,save_idxs = _save_idxs, kwargs...)
+  sol = solve(remake(prob,p=p,u0=u0),alg,args...;saveat=_saveat, kwargs...)
 
   # saveat values
   # seems overcomplicated, but see the PR
@@ -408,18 +411,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _dp = sum(eachindex(du)) do i
               J = du[i]
-              if Δ isa AbstractVector || Δ isa DESolution
+              if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
                 v = Δ[i]
               else
                 v = @view Δ[:, i]
               end
               if !(Δ isa NoTangent)
-                ForwardDiff.value.(J'v)
+                ForwardDiff.value.(J'vec(v))
               else
                 zero(p)
               end
@@ -495,18 +498,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
               _saveat = saveat
             end
 
-            _sol = solve(_prob,alg,args...;saveat=ts,save_idxs = _save_idxs, kwargs...)
+            _sol = solve(_prob,alg,args...;saveat=ts, kwargs...)
             _,du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
             _du0 = sum(eachindex(du)) do i
               J = du[i]
-              if Δ isa AbstractVector || Δ isa DESolution
+              if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
                 v = Δ[i]
               else
                 v = @view Δ[:, i]
               end
               if !(Δ isa NoTangent)
-                ForwardDiff.value.(J'v)
+                ForwardDiff.value.(J'vec(v))
               else
                 zero(u0)
               end
@@ -515,7 +518,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         end
         ArrayInterface.restructure(u0,reduce(vcat,du0parts))
     end
-
     (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
   sol,forward_sensitivity_backpass
