@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         group:
           - Core1

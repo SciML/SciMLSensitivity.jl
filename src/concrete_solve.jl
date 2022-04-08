@@ -259,37 +259,45 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
 end
 
 # Prefer this route since it works better with callback AD
-function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;
-                                 kwargs...)
+function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForwardSensitivityAlgorithm,
+                                            u0, p, args...;
+                                            save_idxs=nothing,
+                                            kwargs...)
 
-   if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual && !(eltype(u0) <: ForwardDiff.Dual)
-     # Handle double differentiation case
-     u0 = eltype(p).(u0)
-   end
-   _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
-   sol = solve(_prob,alg,args...;kwargs...)
-   _,du = extract_local_sensitivities(sol, sensealg, Val(true))
-   out = DiffEqBase.sensitivity_solution(sol, sol.u, sol.t)
+  if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual && !(eltype(u0) <: ForwardDiff.Dual)
+    # Handle double differentiation case
+    u0 = eltype(p).(u0)
+  end
+  _prob = ODEForwardSensitivityProblem(prob.f, u0, prob.tspan, p, sensealg)
+  sol = solve(_prob, alg, args...; kwargs...)
+  _, du = extract_local_sensitivities(sol, sensealg, Val(true))
 
-   function forward_sensitivity_backpass(Δ)
-     adj = sum(eachindex(du)) do i
-       J = du[i]
-       if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
-         v = Δ[i]
-       elseif Δ isa AbstractMatrix
-         v = @view Δ[:, i]
-       else
-         v = @view Δ[.., i]
-       end
-       J'vec(v)
-     end
-     du0 = @not_implemented(
-         "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
-     )
-     (NoTangent(),NoTangent(),NoTangent(),du0,adj,NoTangent(),ntuple(_->NoTangent(), length(args))...)
-   end
-   out,forward_sensitivity_backpass
+  u = if save_idxs === nothing
+    [reshape(sol[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
+  else
+    [sol[i][_save_idxs] for i in 1:length(sol)]
+  end
+  out = DiffEqBase.sensitivity_solution(sol, u, sol.t)
+
+  function forward_sensitivity_backpass(Δ)
+    adj = sum(eachindex(du)) do i
+      J = du[i]
+      if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
+        v = Δ[i]
+      elseif Δ isa AbstractMatrix
+        v = @view Δ[:, i]
+      else
+        v = @view Δ[.., i]
+      end
+      J'vec(v)
+    end
+
+    du0 = @not_implemented(
+      "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
+    )
+    (NoTangent(), NoTangent(), NoTangent(), du0, adj, NoTangent(), ntuple(_ -> NoTangent(), length(args))...)
+  end
+  out, forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_forward(prob,alg,
