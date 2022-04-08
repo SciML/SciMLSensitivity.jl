@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    fail-fast: true
     strategy:
       matrix:
         group:
