@@ -9,6 +9,7 @@ using Parameters: @unpack
 using Requires
 using StochasticDiffEq
 using SharedArrays
+using EllipsisNotation
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
