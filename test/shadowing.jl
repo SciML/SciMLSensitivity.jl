@@ -1,12 +1,12 @@
 using Random; Random.seed!(1238)
 using OrdinaryDiffEq
 using Statistics
-using ForwardDiff, Calculus
 using DiffEqSensitivity
 using Test
 using Zygote
 
 @testset "LSS" begin
+  @info "LSS"
   @testset "Lorentz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
@@ -253,6 +253,7 @@ using Zygote
 end
 
 @testset "NILSS" begin
+  @info "NILSS"
   @testset "Lorentz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
@@ -304,6 +305,7 @@ end
 end
 
 @testset "NILSAS" begin
+  @info "NILSAS"
   @testset "nilsas_min function" begin
     u0 = rand(3)
     M = 2
