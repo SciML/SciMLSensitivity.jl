@@ -14,6 +14,23 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
+  - label: "Shadowing"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+      - JuliaCI/julia-test#v1:
+          coverage: false
+          julia_args: "--threads=auto"
+    agents:
+      os: "linux"
+      queue: "juliaecosystem"
+      exclusive: true
+    env:
+      GROUP: 'Shadowing'
+    timeout_in_minutes: 120
+    # Don't run Buildkite if the commit message includes the text [skip tests]
+    if: build.message !~ /\[skip tests\]/
+
   - label: "Julia 1"
     plugins:
       - JuliaCI/julia#v1:

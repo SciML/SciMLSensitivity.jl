@@ -42,11 +42,7 @@ if GROUP == "All" || GROUP == "Core2"
     @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin include("second_order_odes.jl") end
 end
 
-if GROUP == "All" || GROUP == "Core3"
-    @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
-end
-
-if GROUP == "All" || GROUP == "Core4" || GROUP == "Downstream"
+if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
     @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
 end
 
@@ -79,6 +75,9 @@ if GROUP == "Callbacks"
     @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
 end
 
+if GROUP == "Shadowing"
+    @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
+end
 
 
 if GROUP == "GPU"
