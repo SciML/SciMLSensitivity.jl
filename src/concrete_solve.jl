@@ -690,6 +690,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
+                                 g = nothing,
                                  t0skip=zero(eltype(prob.tspan)), t1skip=zero(eltype(prob.tspan)),
                                  kwargs...)
 
@@ -697,12 +698,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
   else
     _prob = remake(prob,u0=u0,p=p)
-  end
-
-  if haskey(kwargs, :g)
-    g = kwargs[:g]
-  else
-    g = nothing
   end
 
   # some shadowing sensealgs require knowledge of g
