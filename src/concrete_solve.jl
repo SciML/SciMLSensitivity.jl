@@ -690,8 +690,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  u0,p,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
-                                 g = nothing,
-                                 t0skip=zero(eltype(prob.tspan)), t1skip=zero(eltype(prob.tspan)),
                                  kwargs...)
 
   if haskey(kwargs, :callback)
@@ -699,9 +697,6 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
   else
     _prob = remake(prob,u0=u0,p=p)
   end
-
-  # some shadowing sensealgs require knowledge of g
-  check_for_g(sensealg,g)
 
   sol = solve(_prob,alg,args...;save_start=save_start,save_end=save_end,saveat=saveat,kwargs...)
 
@@ -768,16 +763,16 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
 
     if sensealg isa ForwardLSS
-      lss_problem = ForwardLSSProblem(sol, sensealg, g, ts, df)
-      dp = shadow_forward(lss_problem; t0skip=t0skip, t1skip=t1skip)
+      lss_problem = ForwardLSSProblem(sol, sensealg, ts, df)
+      dp = shadow_forward(lss_problem)
     elseif sensealg isa AdjointLSS
-      adjointlss_problem = AdjointLSSProblem(sol, sensealg, g, ts, df)
-      dp = shadow_adjoint(adjointlss_problem; t0skip=t0skip, t1skip=t1skip)
+      adjointlss_problem = AdjointLSSProblem(sol, sensealg, ts, df)
+      dp = shadow_adjoint(adjointlss_problem)
     elseif sensealg isa NILSS
-      nilss_prob = NILSSProblem(_prob, sensealg, g, ts, df)
+      nilss_prob = NILSSProblem(_prob, sensealg, ts, df)
       dp = shadow_forward(nilss_prob,alg)
     elseif sensealg isa NILSAS
-      nilsas_prob = NILSASProblem(_prob, sensealg, g, ts, df)
+      nilsas_prob = NILSASProblem(_prob, sensealg, ts, df)
       dp = shadow_adjoint(nilsas_prob,alg)
     else
       error("No concrete_solve implementation found for sensealg `$sensealg`. Did you spell the sensitivity algorithm correctly? Please report this error.")

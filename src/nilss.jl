@@ -87,14 +87,17 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
 end
 
 
-function NILSSProblem(prob, sensealg::NILSS, g, t=nothing, dg = nothing; nus = nothing,
+function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = nothing,
                             kwargs...)
 
   @unpack f, p, u0, tspan = prob
-  @unpack nseg, nstep, rng = sensealg  #number of segments on time interval, number of steps saved on each segment
+  @unpack nseg, nstep, rng, g = sensealg  #number of segments on time interval, number of steps saved on each segment
 
   numindvar = length(u0)
   numparams = length(p)
+
+  # some shadowing sensealgs require knowledge of g
+  check_for_g(sensealg,g) 
 
   # integer dimension of the unstable subspace
   if nus === nothing
@@ -510,8 +513,8 @@ function accumulate_cost!(_dgdu, dg, u, p, t, sensealg::NILSS, diffcache::NILSSS
   return nothing
 end
 
-function shadow_forward(prob::NILSSProblem,alg)
-  shadow_forward(prob,prob.sensealg,alg)
+function shadow_forward(prob::NILSSProblem,alg; sensealg=prob.sensealg)
+  shadow_forward(prob,sensealg,alg)
 end
 
 function shadow_forward(prob::NILSSProblem,sensealg::NILSS,alg)
@@ -556,4 +559,4 @@ function shadow_forward(prob::NILSSProblem,sensealg::NILSS,alg)
   return res
 end
 
-check_for_g(sensealg::NILSS,g) = (g===nothing && error("To use NILSS, g must be passed as a kwarg."))
+check_for_g(sensealg::NILSS,g) = (g===nothing && error("To use NILSS, g must be passed as a kwarg to `NILSS(g=g)`."))
