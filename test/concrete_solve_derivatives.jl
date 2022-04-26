@@ -74,7 +74,7 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 @test_broken du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardSensitivity())),u0,p)
 du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du06 isa ChainRulesCore.NotImplemented
+@test du06 isa Nothing
 @test ū0 ≈ du07 rtol=1e-12
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
