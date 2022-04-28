@@ -6,6 +6,9 @@ using DiffEqSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
 
+using Random
+Random.seed!(238248735)
+
 @testset "Neural SDE" begin
     function sys!(du, u, p, t)
         r, e, μ, h, ph, z, i = p
