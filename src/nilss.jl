@@ -452,8 +452,8 @@ function compute_v!(v,v_perp,vstar,vstar_perp,w,w_perp,a,nseg,nus,indxp)
   _w = @view w[indxp,:,:,:,:]
   _w_perp = @view w_perp[indxp,:,:,:,:]
 
-  copyto!(v, vstar)
-  copyto!(v_perp, vstar_perp)
+  copyto!(v, _vstar)
+  copyto!(v_perp, _vstar_perp)
 
   for iseg=1:nseg
     vi = @view v[:,:,iseg]
