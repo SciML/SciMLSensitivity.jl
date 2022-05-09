@@ -131,19 +131,19 @@ Random.seed!(238248735)
         end
         false
     end
-
+    println("Test mutating form")
     res1 = DiffEqFlux.sciml_train(
         loss,
         α,
-        ADAM(0.1),
+        ADAM(0.001),
         cb = callback,
         maxiters = 200,
     )
-
+    println("Test non-mutating form")
     res2 = DiffEqFlux.sciml_train(
         loss_op,
         α,
-        ADAM(0.1),
+        ADAM(0.001),
         cb = callback,
         maxiters = 200,
     )
