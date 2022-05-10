@@ -124,28 +124,39 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing
 Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
 chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
 """
-struct ForwardLSS{CS,AD,FDT,aType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+struct ForwardLSS{CS,AD,FDT,aType,tType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   alpha::aType # alpha: weight of the time dilation term in LSS.
+  t0skip::tType
+  t1skip::tType
+  g::gType
 end
 Base.@pure function ForwardLSS(;
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                alpha=CosWindowing())
-  ForwardLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
+                                alpha=CosWindowing(),
+                                t0skip=0.0,t1skip=0.0,
+                                g=nothing)
+                           
+  ForwardLSS{chunk_size,autodiff,diff_type,typeof(alpha),typeof(t0skip),typeof(g)}(alpha,t0skip,t1skip,g)
 end
 
 """
 Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis of
 chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
 """
-struct AdjointLSS{CS,AD,FDT,aType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+struct AdjointLSS{CS,AD,FDT,aType,tType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   alpha::aType # alpha: weight of the time dilation term in LSS.
+  t0skip::tType
+  t1skip::tType
+  g::gType
 end
 Base.@pure function AdjointLSS(;
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                alpha=10.0)
-  AdjointLSS{chunk_size,autodiff,diff_type,typeof(alpha)}(alpha)
+                                alpha=10.0,
+                                t0skip=0.0,t1skip=0.0,
+                                g=nothing)
+  AdjointLSS{chunk_size,autodiff,diff_type,typeof(alpha),typeof(t0skip),typeof(g)}(alpha,t0skip,t1skip,g)
 end
 
 abstract type WindowingChoice end
@@ -156,18 +167,20 @@ struct Cos2Windowing <: WindowingChoice end
 Ni, A., and Wang, Q. Sensitivity analysis on chaotic dynamical systems by Non-Intrusive
 Least Squares Shadowing (NILSS). Journal of Computational Physics 347, 56-77 (2017).
 """
-struct NILSS{CS,AD,FDT,RNG} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+struct NILSS{CS,AD,FDT,RNG,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   rng::RNG
   nseg::Int
   nstep::Int
   autojacvec::Bool
+  g::gType
 end
 Base.@pure function NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                autojacvec = autodiff
+                                autojacvec=autodiff,
+                                g=nothing
                                 )
-  NILSS{chunk_size,autodiff,diff_type,typeof(rng)}(rng, nseg, nstep, autojacvec)
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(g)}(rng, nseg, nstep, autojacvec,g)
 end
 
 """
@@ -175,25 +188,27 @@ Ni, A., and Talnikar, C., Adjoint sensitivity analysis on chaotic dynamical syst
 by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computational 
 Physics 395, 690-709 (2019).
 """
-struct NILSAS{CS,AD,FDT,RNG,SENSE} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+struct NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
   rng::RNG
   adjoint_sensealg::SENSE
   M::Int
   nseg::Int
   nstep::Int
   autojacvec::Bool
+  g::gType
 end
 Base.@pure function NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
                                 adjoint_sensealg = BacksolveAdjoint(),
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                autojacvec = autodiff
+                                autojacvec=autodiff,
+                                g=nothing
                                 )
   # integer dimension of the unstable subspace
   M === nothing && error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
 
-  NILSAS{chunk_size,autodiff,diff_type,typeof(rng),typeof(adjoint_sensealg)}(rng, adjoint_sensealg, M, 
-    nseg, nstep, autojacvec)
+  NILSAS{chunk_size,autodiff,diff_type,typeof(rng),typeof(adjoint_sensealg),typeof(g)}(rng, adjoint_sensealg, M, 
+    nseg, nstep, autojacvec, g)
 end
 
 """

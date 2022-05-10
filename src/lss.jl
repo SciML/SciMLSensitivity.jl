@@ -119,11 +119,16 @@ struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,Ftype,bType,
 end
 
 
-function ForwardLSSProblem(sol, sensealg::ForwardLSS, g, t=nothing, dg = nothing;
+function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
+  @unpack g = sensealg
+
   isinplace = DiffEqBase.isinplace(f)
+
+  # some shadowing sensealgs require knowledge of g
+  check_for_g(sensealg,g)   
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -296,8 +301,8 @@ function b!(b, prob::ForwardLSSProblem)
   return nothing
 end
 
-function shadow_forward(prob::ForwardLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
-  shadow_forward(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem; sensealg=prob.sensealg)
+  shadow_forward(prob,sensealg,sensealg.alpha,sensealg.t0skip,sensealg.t1skip)
 end
 
 function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
@@ -466,11 +471,16 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,
 end
 
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS, g, t=nothing, dg = nothing;
+function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
+  @unpack g = sensealg
+
   isinplace = DiffEqBase.isinplace(f)
+
+  # some shadowing sensealgs require knowledge of g
+  check_for_g(sensealg,g) 
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -570,8 +580,8 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
   return nothing
 end
 
-function shadow_adjoint(prob::AdjointLSSProblem; t0skip=zero(prob.Δt), t1skip=zero(prob.Δt))
-  shadow_adjoint(prob,prob.sensealg,prob.sensealg.alpha,t0skip,t1skip)
+function shadow_adjoint(prob::AdjointLSSProblem; sensealg=prob.sensealg)
+  shadow_adjoint(prob,sensealg,sensealg.alpha,sensealg.t0skip,sensealg.t1skip)
 end
 
 function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
@@ -619,4 +629,4 @@ function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Numb
   return res
 end
 
-check_for_g(sensealg::Union{ForwardLSS,AdjointLSS},g)=((sensealg.alpha isa Number && g===nothing) && error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg or use ForwardLSS/AdjointLSS with windowing."))
+check_for_g(sensealg::Union{ForwardLSS,AdjointLSS},g)=((sensealg.alpha isa Number && g===nothing) && error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing."))

@@ -28,8 +28,7 @@ sumsol = sum(sol)
 ###
 
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,reltol=1e-14)
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),u0,p)
 du02,dp2 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),u0,p)
 du03,dp3 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
@@ -75,7 +74,7 @@ du07,dp7 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 @test_broken du08,dp8 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardSensitivity())),u0,p)
 du09,dp9 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,save_idxs = 1:1,sensealg=ForwardDiffSensitivity())),u0,p)
 
-@test du06 isa ChainRulesCore.NotImplemented
+@test du06 isa Nothing
 @test ū0 ≈ du07 rtol=1e-12
 @test adj ≈ dp6' rtol=1e-12
 @test adj ≈ dp7' rtol=1e-12
@@ -124,8 +123,7 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 ###
 
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,
-                                  reltol=1e-14,iabstol=1e-14,ireltol=1e-12)
+ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= -1),0.0:0.1:10,abstol=1e-14,reltol=1e-14)
 
 ###
 ### adjoint
