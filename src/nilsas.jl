@@ -45,13 +45,16 @@ struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,G,DG,T}
 end
 
 
-function NILSASProblem(sol, sensealg::NILSAS, g, t=nothing, dg = nothing; kwargs...)
+function NILSASProblem(sol, sensealg::NILSAS, t=nothing, dg = nothing; kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
-  @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
+  @unpack nseg, nstep, rng, adjoint_sensealg, M, g = sensealg  #number of segments on time interval, number of steps saved on each segment
 
   numindvar = length(u0)
   numparams = length(p)
+
+  # some shadowing sensealgs require knowledge of g
+  check_for_g(sensealg,g) 
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -398,8 +401,8 @@ function nilsas_min(cache::QuadratureCache)
   return reshape(-Cinv*(B'*λ + d), M, K)
 end
 
-function shadow_adjoint(prob::NILSASProblem,alg; kwargs...)
-  shadow_adjoint(prob,prob.sensealg,alg; kwargs...)
+function shadow_adjoint(prob::NILSASProblem,alg; sensealg=prob.sensealg, kwargs...)
+  shadow_adjoint(prob,sensealg,alg; kwargs...)
 end
 
 function shadow_adjoint(prob::NILSASProblem,sensealg::NILSAS,alg; kwargs...)
@@ -427,4 +430,4 @@ function shadow_adjoint(prob::NILSASProblem,sensealg::NILSAS,alg; kwargs...)
   return res/(nseg*prob.T_seg)
 end
 
-check_for_g(sensealg::NILSAS,g) = (g===nothing && error("To use NILSAS, g must be passed as a kwarg."))
+check_for_g(sensealg::NILSAS,g) = (g===nothing && error("To use NILSAS, g must be passed as a kwarg to `NILSAS(g=g)`."))

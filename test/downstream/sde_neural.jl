@@ -6,6 +6,9 @@ using DiffEqSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
 
+using Random
+Random.seed!(238248735)
+
 @testset "Neural SDE" begin
     function sys!(du, u, p, t)
         r, e, μ, h, ph, z, i = p
@@ -128,19 +131,19 @@ using Zygote
         end
         false
     end
-
+    println("Test mutating form")
     res1 = DiffEqFlux.sciml_train(
         loss,
         α,
-        ADAM(0.1),
+        ADAM(0.001),
         cb = callback,
         maxiters = 200,
     )
-
+    println("Test non-mutating form")
     res2 = DiffEqFlux.sciml_train(
         loss_op,
         α,
-        ADAM(0.1),
+        ADAM(0.001),
         cb = callback,
         maxiters = 200,
     )

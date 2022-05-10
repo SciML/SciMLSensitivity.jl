@@ -10,13 +10,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         group:
           - Core1
           - Core2
           - Core3
-          - Core4
           - SDE1
           - SDE2
           - SDE3
