@@ -10,8 +10,8 @@ function test_hybridNODE(sensealg)
     target = 3.0*(1:datalength)./datalength  # some dummy data to fit to
     cbinput = rand(1, datalength) #some external ODE contribution
     pmodel = Chain(
-        Dense(2, 10, initW=zeros),
-        Dense(10, 2, initW=zeros))
+        Dense(2, 10, init=zeros),
+        Dense(10, 2, init=zeros))
     p, re = Flux.destructure(pmodel)
     dudt(u,p,t) = re(p)(u)
 
