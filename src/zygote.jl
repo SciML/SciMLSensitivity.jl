@@ -1,6 +1,6 @@
 # Piracy that used to be requires, allowing Zyogote.jl to be specialized for SciML
 
-function SciMLBase.∇tmap(cx, f, args...)
+function ∇tmap(cx, f, args...)
     ys_and_backs = SciMLBase.tmap((args...) -> Zygote._pullback(cx, f, args...), args...)
     if isempty(ys_and_backs)
         ys_and_backs, _ -> (NoTangent(), NoTangent())
@@ -16,7 +16,7 @@ function SciMLBase.∇tmap(cx, f, args...)
     end
 end
 
-function SciMLBase.∇responsible_map(cx, f, args...)
+function ∇responsible_map(cx, f, args...)
     ys_and_backs = SciMLBase.responsible_map((args...) -> Zygote._pullback(cx, f, args...), args...)
     if isempty(ys_and_backs)
         ys_and_backs, _ -> (NoTangent(), NoTangent())
@@ -30,4 +30,12 @@ function SciMLBase.∇responsible_map(cx, f, args...)
             (Δf, Δf_and_args[2:end]...)
         end
     end
+end
+
+ZygoteRules.@adjoint function SciMLBase.tmap(f, args::Union{AbstractArray,Tuple}...)
+    ∇tmap(__context__, f, args...)
+end
+
+ZygoteRules.@adjoint function SciMLBase.responsible_map(f, args::Union{AbstractArray,Tuple}...)
+    ∇responsible_map(__context__, f, args...)
 end
