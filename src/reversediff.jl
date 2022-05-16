@@ -46,7 +46,12 @@ function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqB
     ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-ReverseDiff.@grad function DiffEqBase.solve_up(prob, sensealg, u0, p, args...; kwargs...)
-    out = _solve_adjoint(prob, sensealg, ReverseDiff.value(u0), ReverseDiff.value(p), args...; kwargs...)
-    Array(out[1]), out[2]
+@inline function DiffEqNoiseProcess.wiener_randn(rng::Random.AbstractRNG, proto::ReverseDiff.TrackedArray)
+    ReverseDiff.track(convert.(eltype(proto.value), randn(rng, size(proto))))
+end
+@inline function DiffEqNoiseProcess.wiener_randn!(rng::AbstractRNG, rand_vec::Array{<:ReverseDiff.TrackedReal})
+    rand_vec .= ReverseDiff.track.(randn.((rng,), typeof.(DiffEqBase.value.(rand_vec))))
+end
+@inline function DiffEqNoiseProcess.wiener_randn!(rng::AbstractRNG, rand_vec::AbstractArray{<:ReverseDiff.TrackedReal})
+    rand_vec .= ReverseDiff.track.(randn.((rng,), typeof.(DiffEqBase.value.(rand_vec))))
 end
