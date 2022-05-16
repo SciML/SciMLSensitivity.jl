@@ -45,6 +45,10 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 
+# AD Extensions
+include("reversediff.jl")
+include("tracker.jl")
+include("zygote.jl")
 
 
 export extract_local_sensitivities
