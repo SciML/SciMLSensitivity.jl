@@ -46,19 +46,19 @@ end
 end
 @inline DiffEqBase.ODE_DEFAULT_NORM(u::Tracker.TrackedReal, t::Tracker.TrackedReal) = abs(u)
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0::Tracker.TrackedArray, p::Tracker.TrackedArray, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::Tracker.TrackedArray, p::Tracker.TrackedArray, args...; kwargs...)
     Tracker.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0::Tracker.TrackedArray, p, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::Tracker.TrackedArray, p, args...; kwargs...)
     Tracker.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0, p::Tracker.TrackedArray, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0, p::Tracker.TrackedArray, args...; kwargs...)
     Tracker.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-Tracker.@grad function DiffEqBase.solve_up(prob, sensealg::Union{Nothing,AbstractSensitivityAlgorithm},
+Tracker.@grad function DiffEqBase.solve_up(prob, sensealg::Union{Nothing,DiffEqBase.AbstractSensitivityAlgorithm},
     u0, p, args...;
     kwargs...)
     _solve_adjoint(prob, sensealg, Tracker.data(u0), Tracker.data(p), args...; kwargs...)

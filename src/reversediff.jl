@@ -34,15 +34,15 @@ end
 end
 @inline DiffEqBase.ODE_DEFAULT_NORM(u::ReverseDiff.TrackedReal, t::ReverseDiff.TrackedReal) = abs(u)
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p::ReverseDiff.TrackedArray, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p::ReverseDiff.TrackedArray, args...; kwargs...)
     ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0, p::ReverseDiff.TrackedArray, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0, p::ReverseDiff.TrackedArray, args...; kwargs...)
     ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
-function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p, args...; kwargs...)
+function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p, args...; kwargs...)
     ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
