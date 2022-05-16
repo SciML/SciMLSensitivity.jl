@@ -1,6 +1,6 @@
 # Piracy that used to be requires, allowing Zyogote.jl to be specialized for SciML
 
-function DiffEqBase.∇tmap(cx, f, args...)
+function SciMLBase.∇tmap(cx, f, args...)
     ys_and_backs = SciMLBase.tmap((args...) -> Zygote._pullback(cx, f, args...), args...)
     if isempty(ys_and_backs)
         ys_and_backs, _ -> (NoTangent(), NoTangent())
@@ -16,7 +16,7 @@ function DiffEqBase.∇tmap(cx, f, args...)
     end
 end
 
-function DiffEqBase.∇responsible_map(cx, f, args...)
+function SciMLBase.∇responsible_map(cx, f, args...)
     ys_and_backs = SciMLBase.responsible_map((args...) -> Zygote._pullback(cx, f, args...), args...)
     if isempty(ys_and_backs)
         ys_and_backs, _ -> (NoTangent(), NoTangent())
