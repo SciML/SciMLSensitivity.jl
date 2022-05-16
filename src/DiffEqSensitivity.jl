@@ -6,7 +6,6 @@ using DiffEqOperators
 using Adapt
 using LinearSolve
 using Parameters: @unpack
-using Requires
 using StochasticDiffEq
 using SharedArrays
 using EllipsisNotation
@@ -16,6 +15,7 @@ using Random
 import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
+import GPUArrays
 
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
@@ -26,7 +26,6 @@ import ChainRulesCore: @thunk, NoTangent, @not_implemented
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
-include("require.jl")
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
