@@ -23,7 +23,7 @@ p = initial_params(dudt2) |> gpu
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
-  CuArray(prob_neuralode(u0,p))
+  gpu(prob_neuralode(u0,p))
 end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
