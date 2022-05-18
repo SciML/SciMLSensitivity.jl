@@ -9,4 +9,3 @@
 DiffEqSensitivity.jl is a component package in the [SciML Scientific Machine Learning ecosystem](https://sciml.ai/). It holds the
 sensitivity analysis utilities. Users interested in using this
 functionality should check out [DifferentialEquations.jl](https://github.com/JuliaDiffEq/DifferentialEquations.jl).
-

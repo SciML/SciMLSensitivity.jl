@@ -42,7 +42,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                         !(eltype(p) <: Complex) &&
                         length(u0) + length(p) <= 100
       ForwardDiffSensitivity()
-  elseif isgpu(u0) || !DiffEqBase.isinplace(prob)
+  elseif u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
     if p === nothing || p === DiffEqBase.NullParameters()
@@ -66,7 +66,7 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
                                             sensealg::Nothing,u0,p,args...;kwargs...)
 
-  default_sensealg = if isgpu(u0) || !DiffEqBase.isinplace(prob)
+  default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # autodiff = false because forwarddiff fails on many GPU kernels
     # this only effects the Jacobian calculation and is same computation order
     SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
