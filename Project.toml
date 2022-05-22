@@ -5,7 +5,7 @@ version = "6.74.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+ArrayInterfaceCore = "30b0a656-2188-435a-8636-2ec0e6a096e2"
 ArrayInterfaceTracker = "a2b0951a-f94f-4742-8780-617792921f9b"
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
