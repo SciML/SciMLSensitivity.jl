@@ -13,7 +13,7 @@ import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
 import ZygoteRules, Zygote, ReverseDiff
-import ArrayInterface
+import ArrayInterfaceCore, ArrayInterfaceTracker
 import Enzyme
 import GPUArrays
 
