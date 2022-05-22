@@ -385,7 +385,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                 vcat(p[1:j*chunk_size],pdualpart,p[((j+1)*chunk_size)+1 : end])
             end
 
-            pdual = ArrayInterface.restructure(p,pdualvec)
+            pdual = ArrayInterfaceCore.restructure(p,pdualvec)
             u0dual = convert.(eltype(pdualvec),u0)
 
             if (convert_tspan(sensealg) === nothing && (
@@ -436,7 +436,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             push!(pparts,vec(_dp))
         end
-        ArrayInterface.restructure(p,reduce(vcat,pparts))
+        ArrayInterfaceCore.restructure(p,reduce(vcat,pparts))
     end
 
     du0 = @thunk begin
@@ -474,7 +474,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                 vcat(u0[1:j*chunk_size],u0dualpart,u0[((j+1)*chunk_size)+1 : end])
             end
 
-            u0dual = ArrayInterface.restructure(u0,u0dualvec)
+            u0dual = ArrayInterfaceCore.restructure(u0,u0dualvec)
             pdual = convert.(eltype(u0dual),p)
 
             if (convert_tspan(sensealg) === nothing && (
@@ -525,7 +525,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
             end
             push!(du0parts,vec(_du0))
         end
-        ArrayInterface.restructure(u0,reduce(vcat,du0parts))
+        ArrayInterfaceCore.restructure(u0,reduce(vcat,du0parts))
     end
     (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
   end
