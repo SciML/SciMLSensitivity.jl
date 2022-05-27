@@ -21,12 +21,16 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
 
   λ,grad,_y,dλ,dgrad,dy = split_states(du,u,t,S)
 
-  copyto!(vec(y), _y)
+  if eltype(_y) <: ForwardDiff.Dual # handle implicit solvers
+    copyto!(vec(y), ForwardDiff.value.(_y))
+  else
+    copyto!(vec(y), _y)
+  end
 
   if S.noiseterm
     if length(u) == length(du)
-      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad,dy=dy)
-    elseif length(u) != length(du) &&  StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
+      vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
+    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) && !isnoisemixing(S.sensealg)
       vecjacobian!(dλ, y, λ, p, t, S, dy=dy)
       jacNoise!(λ, y, p, t, S, dgrad=dgrad)
     else

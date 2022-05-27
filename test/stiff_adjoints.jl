@@ -20,7 +20,7 @@ tspan = (0.0,10.0);
 p0 = [1.5,1.0,3.0,1.0];
 prob0 = ODEProblem(lotka_volterra,u0,tspan,p0);
 # Solve the ODE and collect solutions at fixed intervals
-target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
+target_data = solve(prob0,RadauIIA5(), saveat = 0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0;u0=convert.(eltype(p),prob0.u0),p=p)
@@ -84,7 +84,7 @@ rdgrad = Zygote.gradient(loss_function,p)[1]
 
 prob0_oop = ODEProblem{false}(lotka_volterra,u0,tspan,p0);
 # Solve the ODE and collect solutions at fixed intervals
-target_data = solve(prob0,RadauIIA5(), saveat =  0:0.5:10.0);
+target_data = solve(prob0,RadauIIA5(), saveat = 0:0.5:10.0);
 
 loss_function = function(p)
     prob = remake(prob0_oop;u0=convert.(eltype(p),prob0.u0),p=p)
@@ -178,18 +178,28 @@ end
 for solver in solvers
     function loss(p)
         prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
-        sol = solve(prob, solver, dt=0.01)
+        sol = solve(prob, solver, dt=0.01, saveat=0.1, abstol=1e-5, reltol=1e-5)
         sum(abs2, Array(sol))
     end
 
     println(DiffEqBase.parameterless_type(solver))
     loss(p)
-    Zygote.gradient(loss, p)
+    dp = Zygote.gradient(loss, p)[1]
 
-    function loss(p)
+    function loss(p, sensealg)
         prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
-        sol = solve(prob, solver, dt=0.01, sensealg=InterpolatingAdjoint())
+        sol = solve(prob, solver, dt=0.01, saveat=0.1, sensealg=sensealg, abstol=1e-5, reltol=1e-5)
         sum(abs2, Array(sol))
     end
-    Zygote.gradient(loss, p)
+
+    dp1 = Zygote.gradient(p -> loss(p, InterpolatingAdjoint()), p)[1]
+    @test dp ≈ dp1 rtol = 1e-2
+    dp1 = Zygote.gradient(p -> loss(p, BacksolveAdjoint()), p)[1]
+    @test dp ≈ dp1 rtol = 1e-2
+    dp1 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
+    @test dp ≈ dp1 rtol = 1e-2
+    dp1 = Zygote.gradient(p -> loss(p, ForwardDiffSensitivity()), p)[1]
+    @test dp ≈ dp1 rtol = 1e-2
+    dp1 = @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
+    @test_broken dp ≈ dp1 rtol = 1e-2
 end
