@@ -1,6 +1,6 @@
 ## Direct calls
 
-"""
+@doc doc"""
 adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                             abstol=1e-6,reltol=1e-3,
                             checkpoints=sol.t,

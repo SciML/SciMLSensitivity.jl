@@ -135,7 +135,7 @@ function ODEForwardSensitivityProblem(prob::ODEProblem,alg;kwargs...)
   ODEForwardSensitivityProblem(prob.f,prob.u0,prob.tspan,prob.p,alg;kwargs...)
 end
 
-"""
+@doc doc"""
 function ODEForwardSensitivityProblem(f::Union{Function,DiffEqBase.AbstractODEFunction},
                                       u0,tspan,p=nothing,
                                       alg::AbstractForwardSensitivityAlgorithm = ForwardSensitivity();
