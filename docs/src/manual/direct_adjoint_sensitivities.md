@@ -1,4 +1,4 @@
-# Direct Adjoint Sensitivities of Differential Equations
+# [Direct Adjoint Sensitivities of Differential Equations](@id adjoint_sense)
 
 ## First Order Adjoint Sensitivities
 

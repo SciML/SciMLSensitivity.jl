@@ -14,6 +14,8 @@ makedocs(
         "DiffEqSensitivity.jl: Automatic Differentiation and Adjoints for (Differential) Equation Solvers" => "index.md",
         "Differentiating Ordinary Differential Equations (ODE) Tutorials" => Any[
             "ad_examples/differentiating_ode.md",
+            "ad_examples/direct_sensitivity.md",
+            "ad_examples/adjoint_continuous_functionals.md",
             "ad_examples/chaotic_ode.md",
         ],
         "Fitting Ordinary Differential Equation (ODE) Tutorials" => Any[
