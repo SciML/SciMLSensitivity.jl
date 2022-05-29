@@ -67,8 +67,10 @@ makedocs(
             "optimal_control/SDE_control.md",
         ],
         "Manual and APIs" => Any[
-            "differential_equation_sensitivities.md",
-            "nonlinear_solve_sensitivities.md",
+            "manual/differential_equation_sensitivities.md",
+            "manual/nonlinear_solve_sensitivities.md",
+            "manual/direct_forward_sensitivity.md",
+            "manual/direct_adjoint_sensitivities.md",
         ],
         "Benchmarks" => "Benchmark.md",
         "Sensitivity Math Details" => "sensitivity_math.md",
