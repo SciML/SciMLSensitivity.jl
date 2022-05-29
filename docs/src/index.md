@@ -17,6 +17,14 @@ Thus, what DiffEqSensitivity.jl provides is:
   with parameter estimation (data fitting / model calibration), neural network 
   libraries and GPUs.
 
+!!! note
+
+    This documentation assumes familiarity with the solver packages for the respective problem
+    types. If one is not familiar with the solver packages, please consult the documentation
+    for pieces like [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/), 
+    [NonlinearSolve.jl](https://nonlinearsolve.sciml.ai/dev/), 
+    [LinearSolve.jl](http://linearsolve.sciml.ai/dev/), etc. first.
+
 ## High Level Interface: `sensealg`
 
 The highest level interface is provided by the function `solve`:
@@ -152,30 +160,6 @@ With this package, you can explore various ways to integrate the two methodologi
 - Neural networks can be defined where some layers are ODE solves
 - ODEs can be defined where some terms are neural networks
 - Cost functions on ODEs can define neural networks
-
-## Basics
-
-The basics are all provided by the
-[DifferentialEquations.jl](https://diffeq.sciml.ai/latest/) package. Specifically,
-[the `solve` function is automatically compatible with AD systems like Zygote.jl](https://diffeq.sciml.ai/latest/analysis/sensitivity/)
-and thus there is no machinery that is necessary to use DifferentialEquations.jl
-package. For example, the following computes the solution to an ODE and computes
-the gradient of a loss function (the sum of the ODE's output at each timepoint
-with dt=0.1) via the adjoint method:
-
-```julia
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote
-
-function fiip(du,u,p,t)
-  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
-end
-p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
-prob = ODEProblem(fiip,u0,(0.0,10.0),p)
-sol = solve(prob,Tsit5())
-loss(u0,p) = sum(solve(prob,Tsit5(),u0=u0,p=p,saveat=0.1))
-du01,dp1 = Zygote.gradient(loss,u0,p)
-```
 
 ## Note on Modularity and Composability with Solvers
 

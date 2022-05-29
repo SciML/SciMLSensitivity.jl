@@ -297,12 +297,85 @@ function _adjoint_sensitivities(sol,sensealg::SteadyStateAdjoint,alg;
   SteadyStateAdjointProblem(sol,sensealg,g,dg;kwargs...)
 end
 
+@doc doc"""
+H = second_order_sensitivities(loss,prob,alg,args...;
+                               sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
+                               kwargs...)
+
+Second order sensitivity analysis is used for the fast calculation of Hessian
+matrices. 
+
+### Example second order sensitivity analysis calculation
+
+```julia
+using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff
+using Test
+
+function lotka!(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+end
+
+p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
+prob = ODEProblem(lotka!,u0,(0.0,10.0),p)
+loss(sol) = sum(sol)
+v = ones(4)
+
+H  = second_order_sensitivities(loss,prob,Vern9(),saveat=0.1,abstol=1e-12,reltol=1e-12)
+```
+
+## Arguments
+
+The arguments for this function match `adjoint_sensitivities`. The only notable difference
+is `sensealg` which requires a second order sensitivity algorithm, of which currently the
+only choice is `ForwardDiffOverAdjoint` which uses forward-over-reverse to mix a forward-mode
+sensitivity analysis with an adjoint sensitivity analysis for a faster computation than either
+double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument just accepts
+a first order sensitivity algorithm.
+"""
 function second_order_sensitivities(loss,prob,alg,args...;
                                     sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                     kwargs...)
   _second_order_sensitivities(loss,prob,alg,sensealg,args...;kwargs...)
 end
 
+@doc doc"""
+Hv = second_order_sensitivity_product(loss,v,prob,alg,args...;
+                               sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
+                               kwargs...)
+
+Second order sensitivity analysis product is used for the fast calculation of 
+Hessian-vector products ``Hv`` without requiring the construction of the Hessian
+matrix.
+
+### Example second order sensitivity analysis calculation
+
+```julia
+using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff
+using Test
+
+function lotka!(du,u,p,t)
+  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+end
+
+p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
+prob = ODEProblem(lotka!,u0,(0.0,10.0),p)
+loss(sol) = sum(sol)
+v = ones(4)
+
+Hv = second_order_sensitivity_product(loss,v,prob,Vern9(),saveat=0.1,abstol=1e-12,reltol=1e-12)
+```
+
+## Arguments
+
+The arguments for this function match `adjoint_sensitivities`. The only notable difference
+is `sensealg` which requires a second order sensitivity algorithm, of which currently the
+only choice is `ForwardDiffOverAdjoint` which uses forward-over-reverse to mix a forward-mode
+sensitivity analysis with an adjoint sensitivity analysis for a faster computation than either
+double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument just accepts
+a first order sensitivity algorithm.
+"""
 function second_order_sensitivity_product(loss,v,prob,alg,args...;
                                           sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                           kwargs...)

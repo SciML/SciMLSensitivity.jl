@@ -381,3 +381,32 @@ The full listing of differentiation methods is described in the
 [DifferentialEquations.jl documentation](https://diffeq.sciml.ai/latest/analysis/sensitivity/#Sensitivity-Algorithms-1).
 That page also has guidelines on how to make the right choice.
 
+
+### Applicability of Backsolve and Caution
+
+When `BacksolveAdjoint` is applicable it is a fast method and requires the least memory.
+However, one must be cautious because not all ODEs are stable under backwards integration
+by the majority of ODE solvers. An example of such an equation is the Lorenz equation.
+Notice that if one solves the Lorenz equation forward and then in reverse with any
+adaptive time step and non-reversible integrator, then the backwards solution diverges
+from the forward solution. As a quick demonstration:
+
+```julia
+using Sundials
+function lorenz(du,u,p,t)
+ du[1] = 10.0*(u[2]-u[1])
+ du[2] = u[1]*(28.0-u[3]) - u[2]
+ du[3] = u[1]*u[2] - (8/3)*u[3]
+end
+u0 = [1.0;0.0;0.0]
+tspan = (0.0,100.0)
+prob = ODEProblem(lorenz,u0,tspan)
+sol = solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12)
+prob2 = ODEProblem(lorenz,sol[end],(100.0,0.0))
+sol = solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12)
+@show sol[end]-u0 #[-3.22091, -1.49394, 21.3435]
+```
+
+Thus one should check the stability of the backsolve on their type of problem before
+enabling this method. Additionally, using checkpointing with backsolve can be a
+low memory way to stabilize it.
