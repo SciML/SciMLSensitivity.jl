@@ -3,10 +3,13 @@
 Let us define the instantaneous objective ``g(u,p)`` which depends on the state `u`
 and the parameter `p` of the differential equation. Then, if the objective is a
 long-time average quantity
+
 ```math
 \langle g \rangle_∞ = \lim_{T \rightarrow ∞} \langle g \rangle_T,
 ```
+
 where
+
 ```math
 \langle g \rangle_T = \frac{1}{T} \int_0^T g(u,p) \text{d}t,
 ```

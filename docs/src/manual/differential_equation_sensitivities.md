@@ -1,4 +1,4 @@
-# [Sensitivity Analysis of Differential Equations](@id sesntivity_diffeq)
+# [Sensitivity Analysis of Differential Equations](@id sensitivity_diffeq)
 
 DiffEqFlux is capable of training neural networks embedded inside of
 differential equations with many different techniques. For all of the
