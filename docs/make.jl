@@ -66,9 +66,6 @@ makedocs(
             "optimal_control/feedback_control.md",
             "optimal_control/SDE_control.md",
         ],
-        "Universal Differential Equations and Physical Layer Tutorials" => Any[
-            "examples/universal_diffeq.md",
-        ],
         "Manual and APIs" => Any[
             "differential_equation_sensitivities.md",
             "nonlinear_solve_sensitivities.md",
