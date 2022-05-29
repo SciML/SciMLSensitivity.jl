@@ -20,6 +20,8 @@ import GPUArrays
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
 
+using Markdown
+
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
 @reexport using GlobalSensitivity
