@@ -160,7 +160,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = noth
     end
   end
   vstar0 = zeros(eltype(u0), numindvar*numparams)
-  w0 = vec(w[:,:,1,1,:])
+  w0 = vec(w[1,:,1,1,:])
 
   R = Array{eltype(u0)}(undef, numparams, nseg-1, nus, nus)
   b = Array{eltype(u0)}(undef, numparams, (nseg-1)*nus)
@@ -227,8 +227,8 @@ function (NS::NILSSForwardSensitivityFunction)(du,u,p,t)
   # Compute the parameter derivatives
   for j=1:nus+1
     for i in eachindex(p)
-      indx1 = (j-1)*S.numindvar*S.numparams + i*S.numindvar+1
-      indx2 = (j-1)*S.numindvar*S.numparams + (i+1)*S.numindvar
+      indx1 = (j-1)*S.numindvar*1 + i*S.numindvar+1
+      indx2 = (j-1)*S.numindvar*1 + (i+1)*S.numindvar
       Sj = @view u[indx1:indx2]
       dp = @view du[indx1:indx2]
       if !S.isautojacvec
@@ -261,7 +261,7 @@ function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
   for iseg=1:nseg
     # compute y, w, vstar
     # _sol is a numindvar*(1+nus+1) x nstep matrix
-    _sol = Array(solve(_prob, alg, saveat=dtsave, dt=dtsave)(_prob.tspan[1]:dtsave:_prob.tspan[2]))
+    _sol = Array(solve(_prob, alg, saveat=dtsave, dt=dtsave)(_prob.tspan[1]:dtsave:_prob.tspan[2]))   
     store_y_w_vstar!(y, w, vstar, _sol, nus, numindvar, numparams, iseg)
 
     # store dudt, objective g (gsave), and its derivative wrt. to u (dgdu)
@@ -277,7 +277,7 @@ function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
       t1 = forward_prob.tspan[1]+iseg*T_seg
       t2 = forward_prob.tspan[1]+(iseg+1)*T_seg
       _prob = ODEForwardSensitivityProblem(S.f,y[:,1,iseg+1],(t1,t2),p,sensealg; nus=nus,
-                                 w0=vec(w[:,:,1,iseg+1,:]),v0=vec(vstar[:,:,1,iseg+1]))
+                                 w0=vec(w[1,:,1,iseg+1,:]),v0=vec(vstar[:,:,1,iseg+1]))
     end
 
   end
@@ -289,20 +289,27 @@ function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
   copyto!(_y, (@view sol[1:numindvar,:]))
 
   # fill w
+  # only calculate w one time, w can be reused for each parameter
   for j=1:nus
-    for i=1:numparams
-      indx1 = (j-1)*numindvar*numparams + i*numindvar+1
-      indx2 = (j-1)*numindvar*numparams + (i+1)*numindvar
+    for i=1
+      indx1 = (j-1)*numindvar*1 + i*numindvar+1
+      indx2 = (j-1)*numindvar*1 + (i+1)*numindvar
 
       _w = @view w[i,:,:,iseg, j]
       copyto!(_w, (@view sol[indx1:indx2,:]))
     end
   end
 
+  # copying w for all parameters to use same w
+  for i=2:numparams
+    _w = @view w[i,:,:,iseg,:]
+    copyto!(_w, w[1,:,:,iseg,:])
+  end
+
   # fill vstar
   for i=1:numparams
-    indx1 = nus*numindvar*numparams + i*numindvar+1
-    indx2 = nus*numindvar*numparams + (i+1)*numindvar
+    indx1 = nus*numindvar*1 + i*numindvar+1
+    indx2 = nus*numindvar*1 + (i+1)*numindvar
     _vstar = @view vstar[i,:,:,iseg]
     copyto!(_vstar, (@view sol[indx1:indx2,:]))
   end
