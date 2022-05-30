@@ -7,7 +7,7 @@ using Zygote
 
 @testset "LSS" begin
   @info "LSS"
-  @testset "Lorentz single parameter" begin
+  @testset "Lorenz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
       du[2] = u[1]*(p[1]-u[3]) - u[2]
@@ -111,7 +111,7 @@ using Zygote
     @show res1[1] res2[1] res3[1]
   end
 
-  @testset "Lorentz" begin
+  @testset "Lorenz" begin
     function lorenz!(du,u,p,t)
       du[1] = p[1]*(u[2]-u[1])
       du[2] = u[1]*(p[2]-u[3]) - u[2]
@@ -254,7 +254,7 @@ end
 
 @testset "NILSS" begin
   @info "NILSS"
-  @testset "Lorentz single parameter" begin
+  @testset "Lorenz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
       du[2] = u[1]*(p[1]-u[3]) - u[2]
@@ -301,6 +301,57 @@ end
     Random.seed!(1234)
     dp1 = Zygote.gradient((p)->G(p),p)
     @test res1 ≈ dp1[1] atol=1e-10
+  end
+
+  @testset "Lorenz" begin
+    # Here we test LSS output to NILSS output w/ multiple params 
+    function lorenz!(du,u,p,t)
+      du[1] = p[1]*(u[2]-u[1])
+      du[2] = u[1]*(p[2]-u[3]) - u[2]
+      du[3] = u[1]*u[2] - p[3]*u[3]
+    end
+    
+    p = [10.0, 28.0, 8/3]
+    u0 = rand(3)
+
+    # Relatively short tspan_attractor since increasing more infeasible w/
+    # computational cost of LSS
+    tspan_init = (0.0,100.0)
+    tspan_attractor = (100.0,120.0)
+
+    prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
+    sol_init = solve(prob_init,Tsit5())
+
+    prob_attractor = ODEProblem(lorenz!,sol_init[end],tspan_attractor,p)
+    sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14)
+    
+    g(u,p,t) = u[end]
+    
+    lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10,g=g))
+    
+    resfw = shadow_forward(lss_problem)
+    
+    # NILSS can handle w/ longer timespan and get lower noise in sensitivity estimate
+    tspan_init = (0.0,100.0)
+    tspan_attractor = (100.0,150.0)
+    
+    prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
+    sol_init = solve(prob_init,Tsit5())
+    
+    prob_attractor = ODEProblem(lorenz!,sol_init[end],tspan_attractor,p)
+    sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14)
+    
+    nseg = 50 # number of segments on time interval
+    nstep = 2001 # number of steps on each segment
+    
+    nilss_prob = NILSSProblem(prob_attractor, NILSS(nseg, nstep; g));
+    res = shadow_forward(nilss_prob, Tsit5())
+    
+    # There is larger noise in LSS estimate of parameter 3 due to shorter timespan considered,
+    # so test tolerance for parameter 3 is larger.
+    @test resfw[1] ≈ res[1] atol=5e-2
+    @test resfw[2] ≈ res[2] atol=5e-2
+    @test resfw[3] ≈ res[3] atol=5e-1
   end
 end
 
