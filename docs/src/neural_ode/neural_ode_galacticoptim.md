@@ -19,7 +19,7 @@ Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots, GalacticOptim
+using DiffEqFlux, DifferentialEquations, Plots, GalacticOptim, GalacticFlux, GalacticOptimJL
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -63,8 +63,7 @@ end
 # use GalacticOptim.jl to solve the problem
 adtype = GalacticOptim.AutoZygote()
 
-optf = GalacticOptim.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-optfunc = GalacticOptim.instantiate_function(optf, prob_neuralode.p, adtype, nothing)
+optf = GalacticOptim.OptimizationFunction(loss_neuralode, adtype)
 optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
 
 result_neuralode = GalacticOptim.solve(optprob,
@@ -172,12 +171,12 @@ set up custom optimization problems. For more information on the usage of
 The `x` and `p` variables in the optimization function are different than
 `x` and `p` above. The optimization function runs over the space of parameters of
 the original problem, so `x_optimization` == `p_original`.
+
 ```julia
 # Train using the ADAM optimizer
 adtype = GalacticOptim.AutoZygote()
 
-optf = GalacticOptim.OptimizationFunction((x_optimization, p_optimization) -> loss_neuralode(x_optimization), adtype)
-optfunc = GalacticOptim.instantiate_function(optf, prob_neuralode.p, adtype, nothing)
+optf = GalacticOptim.OptimizationFunction(loss_neuralode, adtype)
 optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
 
 result_neuralode = GalacticOptim.solve(optprob,
