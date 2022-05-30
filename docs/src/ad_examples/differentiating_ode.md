@@ -1,4 +1,4 @@
-# Differentiating an ODE Solution with Automatic Differentiation
+# [Differentiating an ODE Solution with Automatic Differentiation](@id auto_diff)
 
 !!! note
 
