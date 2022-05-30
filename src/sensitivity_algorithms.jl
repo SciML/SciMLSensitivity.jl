@@ -103,7 +103,7 @@ end
 """
 BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 
-An implementation of  adjoint sensitivity analysis using a backwards solution of the ODE. 
+An implementation of adjoint sensitivity analysis using a backwards solution of the ODE. 
 By default this algorithm will use the values from the forward pass to perturb the 
 backwards solution to the correct spot, allowing reduced memory (O(1) memory). Checkpointing
 stabilization is included for additional numerical stability over the naive implementation.
@@ -139,15 +139,33 @@ BacksolveAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`:
-* `noisemixing`:
+* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term 
+  of an SDE via automatic differentiation with special seeding. The default is `true`. 
+  The total set of choices are:
+    - `false`: the Jacobian is constructed via FiniteDiff.jl
+    - `true`: the Jacobian is constructed via ForwardDiff.jl
+    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
+    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for 
+      the vjp. `compile` is a boolean for whether to precompile the tape, which 
+      should only be done if there are no branches (`if` or `while` statements) in 
+      the `f` function.
+* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`. 
+  For example, to compute the sensitivities of an SDE with diagonal diffusion
+  ```julia
+  function g_mixing!(du,u,p,t)
+    du[1] = p[3]*u[1] + p[4]*u[2]
+    du[2] = p[3]*u[1] + p[4]*u[2]
+    nothing
+  end
+  ```
+  correctly, `noisemixing=true` must be enabled. The default is `false`.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
 
 ## Applicability of Backsolve and Caution
 
-When `BacksolveAdjoint` is applicable it is a fast method and requires the least memory.
+When `BacksolveAdjoint` is applicable, it is a fast method and requires the least memory.
 However, one must be cautious because not all ODEs are stable under backwards integration
 by the majority of ODE solvers. An example of such an equation is the Lorenz equation.
 Notice that if one solves the Lorenz equation forward and then in reverse with any
@@ -186,8 +204,8 @@ trajectory and reduces the numerical caused by drift.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s and `SDEProblem`s. This `sensealg` supports callback
-functions (events).
+This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` supports 
+callback functions (events).
 
 ## References
 
@@ -280,8 +298,26 @@ function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`:
-* `noisemixing`:
+* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term 
+  of an SDE via automatic differentiation with special seeding. The default is `true`. 
+  The total set of choices are:
+    - `false`: the Jacobian is constructed via FiniteDiff.jl
+    - `true`: the Jacobian is constructed via ForwardDiff.jl
+    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
+    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for 
+      the vjp. `compile` is a boolean for whether to precompile the tape, which 
+      should only be done if there are no branches (`if` or `while` statements) in 
+      the `f` function.
+* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`. 
+  For example, to compute the sensitivities of an SDE with diagonal diffusion
+  ```julia
+  function g_mixing!(du,u,p,t)
+    du[1] = p[3]*u[1] + p[4]*u[2]
+    du[2] = p[3]*u[1] + p[4]*u[2]
+    nothing
+  end
+  ```
+  correctly, `noisemixing=true` must be enabled. The default is `false`.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -298,8 +334,8 @@ The total compute cost is no more than double the original forward compute cost.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s and `SDEProblem`s. This `sensealg` supports
-callbacks (events).
+This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` 
+supports callbacks (events).
 
 ## References
 
@@ -377,8 +413,6 @@ function QuadratureAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `abstol`: absolute tolerance for the quadrature calculation
 * `reltol`: relative tolerance for the quadrature calculation
-* `noise`:
-* `noisemixing`:
 * `compile`: whether to compile the vjp calculation for the integrand calculation.
   See `ReverseDiffVJP` for more details.
 
@@ -818,7 +852,7 @@ abstract type NoiseChoice end
 """
 ZygoteNoise <: NoiseChoice
 
-Uses Zygote.jl to compute vector-Jacobian products for the noise term (for SDE and RODE adjoints only). 
+Uses Zygote.jl to compute vector-Jacobian products for the noise term (for SDE adjoints only). 
 Tends to be the fastest VJP method if the ODE/DAE/SDE/DDE is written with mostly vectorized 
 functions (like neural networks and other layers from Flux.jl) and the `f` functions is given 
 out-of-place. If the `f` function is in-place, then `Zygote.Buffer` arrays are used 
@@ -836,7 +870,7 @@ struct ZygoteNoise <: NoiseChoice end
 ReverseDiffNoise{compile} <: NoiseChoice
 
 Uses ReverseDiff.jl to compute the vector-Jacobian products for the noise
-term differentiation (for SDE and RODE adjoints only). If `f` is in-place,
+term differentiation (for SDE adjoints only). If `f` is in-place,
 then it uses a array of structs formulation to do scalarized reverse mode, 
 while if `f` is out-of-place then it uses an array-based reverse mode.
 
