@@ -62,8 +62,8 @@ res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = cb)
 
 ## Using Flux `Chain` neural networks with GalacticOptim
 
-Flux neural networks can be used with GalacitcOptim.jl by using 
-the `Flux.destructure` function. In this case, if `dudt` is a Flux 
+Flux neural networks can be used with GalacitcOptim.jl by using
+the `Flux.destructure` function. In this case, if `dudt` is a Flux
 chain, then:
 
 ```julia
@@ -73,11 +73,11 @@ p,re = Flux.destructure(chain)
 returns `p` which is the vector of parameters for the chain and `re` which is
 a function `re(p)` that reconstructs the neural network with new parameters
 `p`. Using this function we can thus build our neural differential equations in
-an explicit parameter style. 
+an explicit parameter style.
 
-Let's use this to build and train a neural ODE from scratch. In this example we will 
-optimize both the neural network parameters `p` and the input initial condition `u0`. 
-Notice that GalacticOptim.jl works on a vector input, so we have to concatenate `u0` 
+Let's use this to build and train a neural ODE from scratch. In this example we will
+optimize both the neural network parameters `p` and the input initial condition `u0`.
+Notice that GalacticOptim.jl works on a vector input, so we have to concatenate `u0`
 and `p` and then in the loss function split to the pieces.
 
 ```julia
@@ -131,8 +131,7 @@ cb(θ,loss_n_ode(θ)...)
 # use GalacticOptim.jl to solve the problem
 adtype = GalacticOptim.AutoZygote()
 
-optf = GalacticOptim.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-optfunc = GalacticOptim.instantiate_function(optf, prob_neuralode.p, adtype, nothing)
+optf = GalacticOptim.OptimizationFunction(loss_neuralode, adtype)
 optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
 
 result_neuralode = GalacticOptim.solve(optprob,
