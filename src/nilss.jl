@@ -292,8 +292,8 @@ function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
   # fill w
   # only calculate w one time, w can be reused for each parameter
   for j=1:nus
-   indx1 = (j-1)*numindvar*1 + 1*numindvar+1
-   indx2 = (j-1)*numindvar*1 + (1+1)*numindvar
+   indx1 = (j-1)*numindvar*1 + numindvar+1
+   indx2 = (j-1)*numindvar*1 + 2*numindvar
 
    _w = @view w[:,:,iseg, j]
    copyto!(_w, (@view sol[indx1:indx2,:]))
