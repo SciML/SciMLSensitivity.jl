@@ -1,4 +1,4 @@
-# Adjoint Sensitivity Analysis of Continuous Functionals
+# [Adjoint Sensitivity Analysis of Continuous Functionals](@id continuous_loss)
 
 [The automatic differentiation tutorial](@ref auto_diff) demonstrated
 how to use AD packages like ForwardDiff.jl and Zygote.jl to compute derivatives

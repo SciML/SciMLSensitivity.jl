@@ -224,7 +224,7 @@ plot(sol.t,da',lw=3)
 
 transposing so that the rows (the timeseries) is plotted.
 
-![Local Sensitivity Solution](../assets/sensitivityplot.png)
+![Local Sensitivity Solution](https://user-images.githubusercontent.com/1814174/170916167-11d1b5c6-3c3c-439a-92af-d3899e24d2ad.png)
 
 Here we see that there is a periodicity to the sensitivity which matches
 the periodicity of the Lotka-Volterra solutions. However, as time goes on the
