@@ -7,7 +7,7 @@ using Zygote
 
 @testset "LSS" begin
   @info "LSS"
-  @testset "Lorentz single parameter" begin
+  @testset "Lorenz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
       du[2] = u[1]*(p[1]-u[3]) - u[2]
@@ -111,7 +111,7 @@ using Zygote
     @show res1[1] res2[1] res3[1]
   end
 
-  @testset "Lorentz" begin
+  @testset "Lorenz" begin
     function lorenz!(du,u,p,t)
       du[1] = p[1]*(u[2]-u[1])
       du[2] = u[1]*(p[2]-u[3]) - u[2]
@@ -254,7 +254,7 @@ end
 
 @testset "NILSS" begin
   @info "NILSS"
-  @testset "Lorentz single parameter" begin
+  @testset "Lorenz single parameter" begin
     function lorenz!(du,u,p,t)
       du[1] = 10*(u[2]-u[1])
       du[2] = u[1]*(p[1]-u[3]) - u[2]
@@ -303,7 +303,7 @@ end
     @test res1 ≈ dp1[1] atol=1e-10
   end
 
-  @testset "Lorentz" begin
+  @testset "Lorenz" begin
     # Here we test LSS output to NILSS output w/ multiple params 
     function lorenz!(du,u,p,t)
       du[1] = p[1]*(u[2]-u[1])
