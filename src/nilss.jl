@@ -51,7 +51,7 @@ end
 
 struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
     TType,dtType,gType,yType,vstarType,
-    wType,wperpType,RType,bType,weightType,CType,dType,BType,aType,vType,xiType,
+    wType,RType,bType,weightType,CType,dType,BType,aType,vType,xiType,
     G,DG,resType}
   sensealg::A
   diffcache::CacheType
@@ -70,7 +70,7 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
   vstar::vstarType
   vstar_perp::vstarType
   w::wType
-  w_perp::wperpType
+  w_perp::wType
   R::RType
   b::bType
   weight::weightType
@@ -146,7 +146,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = noth
   vstar = Array{eltype(u0)}(undef, numparams, numindvar, nstep, nseg) # generalization for several parameters numindvar*numparams
   vstar_perp = similar(vstar)
   w = Array{eltype(u0)}(undef, numindvar, nstep, nseg, nus)
-  w_perp = Array{eltype(u0)}(undef, numparams, numindvar, nstep, nseg, nus)
+  w_perp = similar(w)
 
   # assign initial values to y, v*, w
   y[:,1,1] .= u0
@@ -159,6 +159,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = noth
     rand!(rng,_w)
     normalize!(_w)
   end
+          
   vstar0 = zeros(eltype(u0), numindvar*numparams)
   w0 = vec(w[:,1,1,:])
 
@@ -190,7 +191,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = noth
 
   NILSSProblem{typeof(sensealg),typeof(sense),typeof(forward_prob),typeof(prob),
     typeof(u0), typeof(vstar0), typeof(w0),
-    typeof(T_seg),typeof(dtsave),typeof(gsave),typeof(y),typeof(vstar),typeof(w),typeof(w_perp),typeof(R),
+    typeof(T_seg),typeof(dtsave),typeof(gsave),typeof(y),typeof(vstar),typeof(w),typeof(R),
     typeof(b),typeof(weight),typeof(Cinv),typeof(d),typeof(B),typeof(a),typeof(v),typeof(ξ),
     typeof(g),typeof(dg),typeof(res)}(sensealg,sense,forward_prob,prob,u0,vstar0,w0,
     nus,T_seg,dtsave,gsave,y,dudt,dgdu,vstar,vstar_perp,w,w_perp,R,b,weight,Cinv,d,
@@ -291,13 +292,11 @@ function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
   # fill w
   # only calculate w one time, w can be reused for each parameter
   for j=1:nus
-   for i=1
-     indx1 = (j-1)*numindvar*1 + i*numindvar+1
-     indx2 = (j-1)*numindvar*1 + (i+1)*numindvar
+   indx1 = (j-1)*numindvar*1 + 1*numindvar+1
+   indx2 = (j-1)*numindvar*1 + (1+1)*numindvar
 
-     _w = @view w[:,:,iseg, j]
-     copyto!(_w, (@view sol[indx1:indx2,:]))
-   end
+   _w = @view w[:,:,iseg, j]
+   copyto!(_w, (@view sol[indx1:indx2,:]))
   end
 
   # fill vstar
@@ -352,12 +351,12 @@ end
 function perp!(w_perp, vstar_perp, w, vstar, dudt, iseg, numparams, nsteps, nus)
   for indx_steps=1:nsteps
     _dudt = @view dudt[:,indx_steps,iseg]
+    for indx_nus=1:nus
+      _w_perp = @view w_perp[:,indx_steps,iseg,indx_nus]
+      _w = @view w[:,indx_steps,iseg,indx_nus]
+      perp!(_w_perp, _w, _dudt)
+    end
     for indx_params=1:numparams
-      for indx_nus=1:nus
-        _w_perp = @view w_perp[indx_params,:,indx_steps,iseg,indx_nus]
-        _w = @view w[:,indx_steps,iseg,indx_nus]
-        perp!(_w_perp, _w, _dudt)
-      end
       _vstar_perp = @view vstar_perp[indx_params,:,indx_steps,iseg]
       _vstar = @view vstar[indx_params,:,indx_steps,iseg]
       perp!(_vstar_perp, _vstar, _dudt)
@@ -375,7 +374,7 @@ function renormalize!(R,b,w_perp,vstar_perp,y,vstar,w,iseg,numparams,nus)
   for i=1:numparams
     _b = @view b[i,(iseg-1)*nus+1:iseg*nus]
     _R = @view R[i,iseg,:,:]
-    _w_perp = @view w_perp[i,:,end,iseg,:]
+    _w_perp = @view w_perp[:,end,iseg,:]
     _vstar_perp = @view vstar_perp[i,:,end,iseg]
     _w = @view w[:,1,iseg+1,:]
     _vstar = @view vstar[i,:,1,iseg+1]
@@ -403,9 +402,9 @@ function compute_Cinv!(Cinv,w_perp,weight,nseg,nus,indxp)
   for iseg=1:nseg
     _C = @view Cinv[(iseg-1)*nus+1:iseg*nus, (iseg-1)*nus+1:iseg*nus]
     for i=1:nus
-      wi = @view w_perp[indxp,:,:,iseg,i]
+      wi = @view w_perp[:,:,iseg,i]
       for j =1:nus
-        wj = @view w_perp[indxp,:,:,iseg,j]
+        wj = @view w_perp[:,:,iseg,j]
         _C[i,j] = sum(wi .* wj * _weight)
       end
     end
@@ -422,7 +421,7 @@ function compute_d!(d,w_perp,vstar_perp,weight,nseg,nus,indxp)
     _d = @view d[(iseg-1)*nus+1:iseg*nus]
     vi = @view vstar_perp[indxp,:,:,iseg]
     for i=1:nus
-      wi = @view w_perp[indxp,:,:,iseg,i]
+      wi = @view w_perp[:,:,iseg,i]
       _d[i] = sum(wi .* vi * _weight)
     end
   end
@@ -453,8 +452,6 @@ end
 function compute_v!(v,v_perp,vstar,vstar_perp,w,w_perp,a,nseg,nus,indxp)
   _vstar = @view vstar[indxp,:,:,:]
   _vstar_perp = @view vstar_perp[indxp,:,:,:]
-  _w = @view w[:,:,:,:]
-  _w_perp = @view w_perp[indxp,:,:,:,:]
 
   copyto!(v, _vstar)
   copyto!(v_perp, _vstar_perp)
@@ -463,8 +460,8 @@ function compute_v!(v,v_perp,vstar,vstar_perp,w,w_perp,a,nseg,nus,indxp)
     vi = @view v[:,:,iseg]
     vpi = @view v_perp[:,:,iseg]
     for i=1:nus
-      wi = @view _w[:,:,iseg,i]
-      wpi = @view _w_perp[:,:,iseg,i]
+      wi = @view w[:,:,iseg,i]
+      wpi = @view w_perp[:,:,iseg,i]
 
       vi .+= a[(iseg-1)*nus+i]*wi
       vpi .+= a[(iseg-1)*nus+i]*wpi
