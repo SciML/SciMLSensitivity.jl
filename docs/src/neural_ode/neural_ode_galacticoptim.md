@@ -19,7 +19,7 @@ Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots, GalacticOptim
+using DiffEqFlux, DifferentialEquations, Plots, GalacticOptim, GalacticFlux, GalacticOptimJL
 
 u0 = Float32[2.0; 0.0]
 datasize = 30

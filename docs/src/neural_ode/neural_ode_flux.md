@@ -81,7 +81,7 @@ Notice that GalacticOptim.jl works on a vector input, so we have to concatenate 
 and `p` and then in the loss function split to the pieces.
 
 ```julia
-using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots
+using DiffEqFlux, OrdinaryDiffEq, GalacticOptim, GalacticFlux, GalacticOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
