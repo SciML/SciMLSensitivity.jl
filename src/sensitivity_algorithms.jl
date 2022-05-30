@@ -670,8 +670,53 @@ Base.@pure function NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128P
 end
 
 """
- Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
- http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
+SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+
+An implementation of the adjoint differentiation of a nonlinear solve. Uses the
+implicit function theorem to directly compute the derivative of the solution to
+``f(u,p) = 0`` with respect to `p`.
+
+## Constructor
+
+```julia
+SteadyStateAdjoint(;chunk_size = 0, autodiff = true, 
+                    diff_type = Val{:central},
+                    autojacvec = autodiff, linsolve = nothing)
+```
+
+## Keyword Arguments
+
+## Keyword Arguments
+
+* `autodiff`: Use automatic differentiation for constructing the Jacobian
+  if the Jacobian needs to be constructed.  Defaults to `true`.
+* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+  choice of chunk size.
+* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+  if the full Jacobian is required with `autodiff=false`.
+* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+  differentiation with special seeding. The default is `true`. The total set 
+  of choices are:
+    - `false`: the Jacobian is constructed via FiniteDiff.jl
+    - `true`: the Jacobian is constructed via ForwardDiff.jl
+    - `TrackerVJP`: Uses Tracker.jl for the vjp.
+    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
+    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+      is a boolean for whether to precompile the tape, which should only be done
+      if there are no branches (`if` or `while` statements) in the `f` function.
+* `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
+  which uses a polyalgorithm to attempt to automatically choose an efficient 
+  algorithm.
+
+For more details on the vjp choices, please consult the sensitivity algorithms
+documentation page or the docstrings of the vjp types.
+
+## References
+
+Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
+http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
 struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
@@ -769,7 +814,51 @@ struct ReverseDiffVJP{compile} <: VJPChoice
 end
 
 abstract type NoiseChoice end
+
+"""
+ZygoteNoise <: NoiseChoice
+
+Uses Zygote.jl to compute vector-Jacobian products for the noise term (for SDE and RODE adjoints only). 
+Tends to be the fastest VJP method if the ODE/DAE/SDE/DDE is written with mostly vectorized 
+functions (like neural networks and other layers from Flux.jl) and the `f` functions is given 
+out-of-place. If the `f` function is in-place, then `Zygote.Buffer` arrays are used 
+internally which can greatly reduce the performance of the VJP method. 
+
+## Constructor
+
+```julia
+ZygoteNoise()
+```
+"""
 struct ZygoteNoise <: NoiseChoice end
+
+"""
+ReverseDiffNoise{compile} <: NoiseChoice
+
+Uses ReverseDiff.jl to compute the vector-Jacobian products for the noise
+term differentiation (for SDE and RODE adjoints only). If `f` is in-place,
+then it uses a array of structs formulation to do scalarized reverse mode, 
+while if `f` is out-of-place then it uses an array-based reverse mode.
+
+Usually the fastest when scalarized operations exist in the f function 
+(like in scientific machine learning applications like Universal Differential Equations) 
+and the boolean compilation is enabled (i.e. ReverseDiffVJP(true)), if EnzymeVJP fails on
+a given choice of `f`.
+
+Does not support GPUs (CuArrays).
+
+## Constructor
+
+```julia
+ReverseDiffNoise(compile=false)
+```
+
+## Keyword Arguments
+
+* `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
+  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE 
+  has no branching. 
+"""
 struct ReverseDiffNoise{compile} <: NoiseChoice
   ReverseDiffNoise(compile=false) = new{compile}()
 end

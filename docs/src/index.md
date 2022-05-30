@@ -142,7 +142,7 @@ Many different training techniques are supported by this package, including:
     [DifferentialEquations.jl ODE solvers](https://diffeq.sciml.ai/latest/solvers/ode_solve/)
 - Hybrid approaches (adaptive time stepping + AD for adaptive discretize-then-optimize)
 - O(1) memory backprop of ODEs via BacksolveAdjoint, and Virtual Brownian Trees for O(1) backprop of SDEs
-- [Continuous adjoints for integral loss functions](https://diffeq.sciml.ai/stable/analysis/sensitivity/#Example-continuous-adjoints-on-an-energy-functional)
+- [Continuous adjoints for integral loss functions](@ref continuous_loss)
 - Probabilistic programming and variational inference on ODEs/SDEs/DAEs/DDEs/hybrid
   equations etc. is provided by integration with [Turing.jl](https://turing.ml/dev/)
   and [Gen.jl](https://github.com/probcomp/Gen.jl). Reproduce
@@ -151,7 +151,7 @@ Many different training techniques are supported by this package, including:
 
 all while mixing forward mode and reverse mode approaches as appropriate for the
 most speed. For more details on the adjoint sensitivity analysis methods for
-computing fast gradients, see the [Adjoints page](@ref adjoints).
+computing fast gradients, see the [adjoints details page](@ref sensitivity_diffeq).
 
 With this package, you can explore various ways to integrate the two methodologies:
 
