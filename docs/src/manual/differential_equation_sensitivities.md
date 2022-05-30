@@ -97,7 +97,7 @@ is:
   `TrackerAdjoint` with an out-of-place definition may be the current best
   option.
 
-!!!! note
+!!! note
 
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
     `ReverseDiffAdjoint`, etc.) can be queried using the 
