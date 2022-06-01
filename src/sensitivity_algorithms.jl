@@ -770,14 +770,14 @@ An implementation of the adjoint-mode, continuous
 `NILSAS` allows for computing sensitivities of long-time averaged quantities with respect 
 to the parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSAS` employs SciMLSensitivity.jl's continuous adjoint sensitivity methods on each segment 
-to compute (homogenous and inhomogenous) tangent solutions. To avoid an exponential blow-up 
-of the tangent solutions, the trajectory should be divided into sufficiently small segments, 
-where the tangent solutions are rescaled on the interfaces. The computational and memory cost 
+to compute (homogenous and inhomogenous) adjoint solutions. To avoid an exponential blow-up 
+of the adjoint solutions, the trajectory should be divided into sufficiently small segments, 
+where the adjoint solutions are rescaled on the interfaces. The computational and memory cost 
 of NILSAS scale with the number of unstable, adjoint Lyapunov exponents (instead of the number 
 of states as in the LSS method). `NILSAS` avoids the explicit construction of the Jacobian at 
 each time step and thus should generally be preferred (for large system sizes) over `AdjointLSS`. 
 `NILSAS` is favourable over `NILSS` for many parameters because NILSAS computes the gradient 
-with respect to multiple parameters with negligible additional cost.
+with respect to multiple parameters with negligible additional cost. 
 
 ## Constructor
 
