@@ -653,8 +653,9 @@ Base.@pure function AdjointLSS(;
 end
 
 abstract type AbstractLSSregularizer end
-struct CosWindowing <: AbstractLSSregularizer end
-struct Cos2Windowing <: AbstractLSSregularizer end
+abstract type AbstractCosWindowing <: AbstractLSSregularizer end
+struct CosWindowing <: AbstractCosWindowing end
+struct Cos2Windowing <: AbstractCosWindowing end
 
 """
 TimeDilation{T1<:Number} <: AbstractLSSregularizer

@@ -198,7 +198,7 @@ function LSSSchur(dt,u0,numindvar,Nt,Ndt,LSSregularizer::TimeDilation)
   LSSSchur(wBinv,wEinv,B,E)
 end
 
-function LSSSchur(dt,u0,numindvar,Nt,Ndt,LSSregularizer::Union{CosWindowing,Cos2Windowing})
+function LSSSchur(dt,u0,numindvar,Nt,Ndt,LSSregularizer::AbstractCosWindowing)
   wBinv = similar(dt,numindvar*Nt)
   wEinv = nothing
   E = nothing
@@ -238,7 +238,7 @@ function wB!(S::LSSSchur,Δt,Nt,numindvar,dt)
   return nothing
 end
 
-wE!(S::LSSSchur,Δt,dt,LSSregularizer::Union{CosWindowing,Cos2Windowing}) = nothing
+wE!(S::LSSSchur,Δt,dt,LSSregularizer::AbstractCosWindowing) = nothing
 
 function wE!(S::LSSSchur,Δt,dt,LSSregularizer::TimeDilation)
   @unpack wEinv = S
@@ -267,7 +267,7 @@ function B!(S::LSSSchur,dt,umid,sense,sensealg)
   return nothing
 end
 
-E!(S::LSSSchur,dudt,LSSregularizer::Union{CosWindowing,Cos2Windowing}) = nothing
+E!(S::LSSSchur,dudt,LSSregularizer::AbstractCosWindowing) = nothing
 
 function E!(S::LSSSchur,dudt,LSSregularizer::TimeDilation)
   @unpack E = S
