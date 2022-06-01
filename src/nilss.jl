@@ -87,11 +87,11 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
 end
 
 
-function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; nus = nothing,
+function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; 
                             kwargs...)
 
   @unpack f, p, u0, tspan = prob
-  @unpack nseg, nstep, rng, g = sensealg  #number of segments on time interval, number of steps saved on each segment
+  @unpack nseg, nstep, nus, rng, g = sensealg  #number of segments on time interval, number of steps saved on each segment
 
   numindvar = length(u0)
   numparams = length(p)
