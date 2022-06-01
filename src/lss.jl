@@ -156,9 +156,9 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
     @assert sol.t == t
   end
 
-  S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.alpha)
+  S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.LSSregularizer)
 
-  if sensealg.alpha isa Number
+  if sensealg.LSSregularizer isa TimeDilation
     η = similar(dt,Ndt)
     window = nothing
     g0 = g(u0,p,tspan[1])
@@ -174,10 +174,10 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
 
   Δt = tspan[2] - tspan[1]
   wB!(S,Δt,Nt,numindvar,dt)
-  wE!(S,Δt,dt,sensealg.alpha)
-
+  wE!(S,Δt,dt,sensealg.LSSregularizer)
   B!(S,dt,umid,sense,sensealg)
-  E!(S,dudt,sensealg.alpha)
+  E!(S,dudt,sensealg.LSSregularizer)
+
   F = SchurLU(S)
 
   res = similar(u0, numparams)
@@ -189,20 +189,23 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
     window,Δt,Nt,g0,g,dg,res)
 end
 
-function LSSSchur(dt,u0,numindvar,Nt,Ndt,alpha)
+function LSSSchur(dt,u0,numindvar,Nt,Ndt,LSSregularizer::TimeDilation)
   wBinv = similar(dt,numindvar*Nt)
-  if alpha isa Number
-    wEinv = similar(dt,Ndt)
-    E = Matrix{eltype(u0)}(undef,numindvar*Ndt,Ndt)
-  else
-    wEinv = nothing
-    E = nothing
-  end
+  wEinv = similar(dt,Ndt)
+  E = Matrix{eltype(u0)}(undef,numindvar*Ndt,Ndt)
   B = Matrix{eltype(u0)}(undef,numindvar*Ndt,numindvar*Nt)
 
   LSSSchur(wBinv,wEinv,B,E)
 end
 
+function LSSSchur(dt,u0,numindvar,Nt,Ndt,LSSregularizer::AbstractCosWindowing)
+  wBinv = similar(dt,numindvar*Nt)
+  wEinv = nothing
+  E = nothing
+  B = Matrix{eltype(u0)}(undef,numindvar*Ndt,numindvar*Nt)
+
+  LSSSchur(wBinv,wEinv,B,E)
+end
 
 # compute discretized reference trajectory
 function discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
@@ -235,10 +238,11 @@ function wB!(S::LSSSchur,Δt,Nt,numindvar,dt)
   return nothing
 end
 
-wE!(S::LSSSchur,Δt,dt,alpha::Union{CosWindowing,Cos2Windowing}) = nothing
+wE!(S::LSSSchur,Δt,dt,LSSregularizer::AbstractCosWindowing) = nothing
 
-function wE!(S::LSSSchur,Δt,dt,alpha)
+function wE!(S::LSSSchur,Δt,dt,LSSregularizer::TimeDilation)
   @unpack wEinv = S
+  @unpack alpha = LSSregularizer
   @. wEinv = Δt/(alpha^2*dt)
   return nothing
 end
@@ -263,9 +267,9 @@ function B!(S::LSSSchur,dt,umid,sense,sensealg)
   return nothing
 end
 
-E!(S::LSSSchur,dudt,alpha::Union{CosWindowing,Cos2Windowing}) = nothing
+E!(S::LSSSchur,dudt,LSSregularizer::AbstractCosWindowing) = nothing
 
-function E!(S::LSSSchur,dudt,alpha)
+function E!(S::LSSSchur,dudt,LSSregularizer::TimeDilation)
   @unpack E = S
   numindvar, Ndt = size(dudt)
   for i=1:Ndt
@@ -302,13 +306,14 @@ function b!(b, prob::ForwardLSSProblem)
 end
 
 function shadow_forward(prob::ForwardLSSProblem; sensealg=prob.sensealg)
-  shadow_forward(prob,sensealg,sensealg.alpha,sensealg.t0skip,sensealg.t1skip)
+  shadow_forward(prob,sensealg,sensealg.LSSregularizer)
 end
 
-function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Number,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,LSSregularizer::TimeDilation)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, dg, umid = prob
   @unpack wBinv, wEinv, B, E = S
   @unpack dg_val, numparams, numindvar, uf = diffcache
+  @unpack t0skip, t1skip = LSSregularizer
 
   n0 = searchsortedfirst(sol.t, sol.t[1]+t0skip)
   n1 = searchsortedfirst(sol.t, sol.t[end]-t1skip)
@@ -359,7 +364,7 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Numb
   return res
 end
 
-function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosWindowing,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,LSSregularizer::CosWindowing)
   @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
   @unpack wBinv, B = S
   @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -392,7 +397,7 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::CosW
   return res
 end
 
-function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,alpha::Cos2Windowing,t0skip,t1skip)
+function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,LSSregularizer::Cos2Windowing)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, dg, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -437,7 +442,7 @@ function accumulate_cost!(dg, u, p, t, sensealg::ForwardLSS, diffcache, indx)
     end
   else
     if dg_val isa Tuple
-      dg[1](dg_val[1], u, p, nothing, indx) # indx = n0 + j - 1 for alpha and j for windowing
+      dg[1](dg_val[1], u, p, nothing, indx) # indx = n0 + j - 1 for LSSregularizer and j for windowing
       dg[2](dg_val[2], u, p, nothing, indx)
       dg_val[1] .*= -1 # flipped concrete_solve sign 
       dg_val[2] .*= -1
@@ -508,9 +513,9 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
   # compute their values
   discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
 
-  S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.alpha)
+  S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.LSSregularizer)
 
-  if sensealg.alpha isa Number
+  if sensealg.LSSregularizer isa TimeDilation
     g0 = g(u0,p,tspan[1])
   else
     g0 = nothing
@@ -522,10 +527,10 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
 
   Δt = tspan[2] - tspan[1]
   wB!(S,Δt,Nt,numindvar,dt)
-  wE!(S,Δt,dt,sensealg.alpha)
+  wE!(S,Δt,dt,sensealg.LSSregularizer)
 
   B!(S,dt,umid,sense,sensealg)
-  E!(S,dudt,sensealg.alpha)
+  E!(S,dudt,sensealg.LSSregularizer)
   F = SchurLU(S)
   wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
 
@@ -581,13 +586,14 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
 end
 
 function shadow_adjoint(prob::AdjointLSSProblem; sensealg=prob.sensealg)
-  shadow_adjoint(prob,sensealg,sensealg.alpha,sensealg.t0skip,sensealg.t1skip)
+  shadow_adjoint(prob,sensealg,sensealg.LSSregularizer)
 end
 
-function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Number,t0skip,t1skip)
+function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,LSSregularizer::TimeDilation)
   @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, dg, umid = prob
   @unpack wBinv, B, E = S
   @unpack dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache
+  @unpack t0skip, t1skip = LSSregularizer
 
   b .= E*h + B*wBinv
   wa .= F\b
@@ -629,4 +635,4 @@ function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,alpha::Numb
   return res
 end
 
-check_for_g(sensealg::Union{ForwardLSS,AdjointLSS},g)=((sensealg.alpha isa Number && g===nothing) && error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing."))
+check_for_g(sensealg::Union{ForwardLSS,AdjointLSS},g)=((sensealg.LSSregularizer isa TimeDilation && g===nothing) && error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing."))
