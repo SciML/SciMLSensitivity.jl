@@ -7,7 +7,7 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```julia
-using DiffEqFlux, DifferentialEquations
+using Flux, DiffEqFlux, Optimizaton, OptimizationJL, DifferentialEquations
 
 function fitz(du,u,p,t)
   v,w = u
@@ -27,11 +27,11 @@ X = Array(sol)
 Xₙ = X + Float32(1e-3)*randn(eltype(X), size(X))  #noisy data
 
 # For xz term
-NN_1 = FastChain(FastDense(2, 16, tanh), FastDense(16, 1))
+NN_1 = Chain(Dense(2, 16, tanh), Dense(16, 1))
 p1 = initial_params(NN_1)
 
 # for xy term
-NN_2 = FastChain(FastDense(3, 16, tanh), FastDense(16, 1))
+NN_2 = Chain(Dense(3, 16, tanh), Dense(16, 1))
 p2 = initial_params(NN_2)
 scaling_factor = 1f0
 
@@ -65,12 +65,17 @@ callback(θ,l,pred) = begin
     end
     false
 end
-
-res1_uode = DiffEqFlux.sciml_train(loss, p, ADAM(0.01), cb=callback, maxiters = 500)
-res2_uode = DiffEqFlux.sciml_train(loss, res1_uode.u, BFGS(initial_stepnorm=0.01), cb=callback, maxiters = 10000)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p) -> loss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p)
+res1_uode = Optimization.solve(optprob, ADAM(0.01), cb=callback, maxiters = 500)
+optfunc2 = Optimization.instantiate_function(optf, res1_uode.u, adtype, nothing)
+optprob2 = Optimization.OptimizationProblem(optfunc2, res1_uode.u)
+res2_uode = Optimization.solve(optprob2, BFGS(initial_stepnorm=0.01), cb=callback, maxiters = 10000)
 ```
 
-The key is that `sciml_train` acts on a single parameter vector `p`.
+The key is that `Optimization.solve` acts on a single parameter vector `p`.
 Thus what we do here is concatenate all of the parameters into a single
 vector `p = [p1;p2;scaling_factor]` and then train on this parameter
 vector. Whenever we need to evaluate the neural networks, we cut the

@@ -17,7 +17,7 @@ In both of these examples, we may make use of measurements we have of the evolut
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots, Statistics, DataInterpolations
+using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations
 
 tspan = (0.1f0, Float32(20.0))
 tsteps = range(tspan[1], tspan[2], length = 1000)
@@ -118,13 +118,24 @@ Once gain we look at the loss as a function of the parameter, and this time it l
 For completeness, we also perform estimation using both losses. We choose an initial guess we know will be hard for the simulation-error minimization just to drive home the point:
 ```julia
 L0 = [0.7] # Initial guess of pendulum length
-ressim = DiffEqFlux.sciml_train(simloss,L0,maxiters=5000)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->simloss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, L0, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, L0)
+
+ressim = Optimization.solve(optprob, PolyOpt(),
+                                    maxiters = 5000)
 ysim = simulate(ressim.u)
 
 plot(tsteps, [y ysim], label=["Data" "Simulation model"])
 
 p0 = [0.7, 1.0] # Initial guess of length and observer gain K
-respred = DiffEqFlux.sciml_train(predloss,p0,maxiters=5000)
+optf2 = Optimization.OptimizationFunction((p)->predloss(p), adtype)
+optfunc2 = Optimization.instantiate_function(optf2, p0, adtype, nothing)
+optprob2 = Optimization.OptimizationProblem(optfunc2, p0)
+
+respred = Optimization.solve(optprob2, PolyOpt(),
+                                    maxiters = 5000)
 ypred = simulate(respred.u)
 
 plot!(tsteps, ypred, label="Prediction model")
@@ -147,7 +158,13 @@ As a last step, we perform the estimation also with some measurement noise to ve
 yn = y .+ 0.1f0 .* randn.(Float32)
 y_int = LinearInterpolation(yn,tsteps) # redefine the interpolator to contain noisy measurements
 
-resprednoise = DiffEqFlux.sciml_train(predloss,p0,maxiters=5000)
+optf = Optimization.OptimizationFunction((p)->predloss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, p0, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p0)
+
+resprednoise = Optimization.solve(optprob, PolyOpt(),
+                                    maxiters = 5000)
+
 yprednoise = prediction(resprednoise.u)
 plot!(tsteps, yprednoise, label="Prediction model with noisy measurements")
 ```

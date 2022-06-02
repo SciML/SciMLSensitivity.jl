@@ -9,7 +9,7 @@ zeros, then we have a constraint defined by the right hand side. Using
 terms must add to one. An example of this is as follows:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots
+using Flux, DiffEqFlux, Optimization, OptimizationJL, DifferentialEquations, Plots
 
 function f!(du, u, p, t)
     y₁, y₂, y₃ = u
@@ -32,8 +32,8 @@ stiff_func = ODEFunction(f!, mass_matrix = M)
 prob_stiff = ODEProblem(stiff_func, u₀, tspan, p)
 sol_stiff = solve(prob_stiff, Rodas5(), saveat = 0.1)
 
-nn_dudt2 = FastChain(FastDense(3, 64, tanh),
-                     FastDense(64, 2))
+nn_dudt2 = Chain(Dense(3, 64, tanh),
+                 Dense(64, 2))
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
                                tspan, M, Rodas5(autodiff=false), saveat = 0.1)
@@ -55,9 +55,12 @@ callback = function (p, l, pred) #callback function to observe training
 end
 
 l1 = first(loss_stiff_ndae(model_stiff_ndae.p))
-result_stiff = DiffEqFlux.sciml_train(loss_stiff_ndae, model_stiff_ndae.p,
-                                      BFGS(initial_stepnorm = 0.001),
-                                      cb = callback, maxiters = 100)
+
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
+optfunc = Optimization.instantiate_function(optf, model_stiff_ndae.p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, model_stiff_ndae.p)
+result_stiff = Optimization.solve(optprob, BFGS(initial_stepnorm=0.001), cb = callback, maxiters=100)
 ```
 
 
@@ -66,7 +69,7 @@ result_stiff = DiffEqFlux.sciml_train(loss_stiff_ndae, model_stiff_ndae.p,
 ### Load Packages
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots
+using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots
 ```
 
 ### Differential Equation
@@ -127,8 +130,8 @@ reduces the overhead making it faster for smaller NNs of <200 layers (similarly 
 `FastDense`). The input to our network will be the initial conditions fed in as `u₀`.
 
 ```Julia
-nn_dudt2 = FastChain(FastDense(3, 64, tanh),
-                     FastDense(64, 2))
+nn_dudt2 = Chain(Dense(3, 64, tanh),
+                     Dense(64, 2))
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
                                tspan, M, Rodas5(autodiff = false), saveat = 0.1)
@@ -190,13 +193,15 @@ end
 
 ### Train
 
-Finally, training with `sciml_train` by passing: *loss function*, *model parameters*,
+Finally, training with `Optimization.solve` by passing: *loss function*, *model parameters*,
 *optimizer*, *callback* and *maximum iteration*.
 
 ```Julia
-result_stiff = DiffEqFlux.sciml_train(loss_stiff_ndae, model_stiff_ndae.p,
-                                      BFGS(initial_stepnorm = 0.001),
-                                      cb = callback, maxiters = 100)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
+optfunc = Optimization.instantiate_function(optf, model_stiff_ndae.p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, model_stiff_ndae.p)
+result_stiff = Optimization.solve(optprob, BFGS(initial_stepnorm=0.001), cb = callback, maxiters=100)
 ```
 
 ### Expected Output

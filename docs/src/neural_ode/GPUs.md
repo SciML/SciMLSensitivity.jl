@@ -32,9 +32,9 @@ If one is using `FastChain`, then the computation takes place on the GPU with
 `f(x,p)` if `x` and `p` are on the GPU. This commonly looks like:
 
 ```julia
-dudt2 = FastChain((x,p) -> x.^3,
-            FastDense(2,50,tanh),
-            FastDense(50,2))
+dudt2 = Chain((x,p) -> x.^3,
+            Dense(2,50,tanh),
+            Dense(50,2))
 
 u0 = Float32[2.; 0.] |> gpu
 p = initial_params(dudt2) |> gpu
@@ -64,7 +64,7 @@ Here is the full neural ODE example. Note that we use the `gpu` function so that
 same code works on CPUs and GPUs, dependent on `using CUDA`.
 
 ```julia
-using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots, CUDA, DiffEqSensitivity
+using DiffEqFlux, Optimization, OptimizationOptimJL, OrdinaryDiffEq, Flux, Optim, Plots, CUDA, DiffEqSensitivity
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data
@@ -81,9 +81,9 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = gpu(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 
-dudt2 = FastChain((x, p) -> x.^3,
-                  FastDense(2, 50, tanh),
-                  FastDense(50, 2))
+dudt2 = Chain((x, p) -> x.^3,
+                  Dense(2, 50, tanh),
+                  Dense(50, 2))
 u0 = Float32[2.0; 0.0] |> gpu
 p = initial_params(dudt2) |> gpu
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
@@ -115,7 +115,8 @@ callback = function (p, l, pred; doplot = false)
   end
   return false
 end
-result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, p,
-                                          ADAM(0.05), cb = callback,
-                                          maxiters = 300)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), adtype)
+optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, ADAM(0.05), cb = callback, maxiters = 300)
 ```

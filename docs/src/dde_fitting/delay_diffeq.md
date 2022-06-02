@@ -5,7 +5,7 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```julia
-using DifferentialEquations, DiffEqFlux
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationPolyalgorithms
 
 
 # Define the same LV equation, but including a delay parameter
@@ -47,7 +47,11 @@ end
 
 cb(p,loss_dde(p))
 
-result_dde = DiffEqFlux.sciml_train(loss_dde, p, cb = cb)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
+optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p)
+result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
 ```
 
 Notice that we chose `sensealg = ReverseDiffAdjoint()` to utilize the ReverseDiff.jl
@@ -66,8 +70,12 @@ end
 cb(p,loss_dde(p))
 ```
 
-We use `sciml_train` to optimize the parameters for our loss function:
+We use `Optimization.solve` to optimize the parameters for our loss function:
 
 ```julia
-result_dde = DiffEqFlux.sciml_train(loss_dde, p, cb = cb)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
+optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p)
+result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
 ```

@@ -40,7 +40,7 @@ In the following example, a discrete exogenous input signal `ex` is defined and
 used as an input into the neural network of a neural ODE system.
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, Flux, DiffEqFlux, Optimization, OptimizationPolyalgorithms, OptimizationFlux, Plots
 
 tspan = (0.1f0, Float32(10.0))
 tsteps = range(tspan[1], tspan[2], length = 100)
@@ -59,7 +59,7 @@ end
 y = Float32.(hammerstein_system(ex))
 plot(collect(tsteps), y, ticks=:native)
 
-nn_model = FastChain(FastDense(2,8, tanh), FastDense(8, 1))
+nn_model = Chain(Dense(2,8, tanh), Dense(8, 1))
 p_model = initial_params(nn_model)
 
 u0 = Float32.([0.0])
@@ -82,7 +82,12 @@ function loss(p)
     return sum(abs2.(y[1:N] .- sol'))/N
 end
 
-res0 = DiffEqFlux.sciml_train(loss,p_model,maxiters=100)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, p_model, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p_model)
+
+res0 = Optimization.solve(optprob, PolyOpt(),maxiters=100)
 
 sol = predict_neuralode(res0.u)
 plot(tsteps,sol')

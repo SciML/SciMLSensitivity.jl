@@ -21,14 +21,14 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```julia
-using DifferentialEquations, DiffEqFlux, RecursiveArrayTools
+using DifferentialEquations, Flux, Optimization, OptimizationFlux, RecursiveArrayTools
 
 u0 = Float32[0.; 2.]
 du0 = Float32[0.; 0.]
 tspan = (0.0f0, 1.0f0)
 t = range(tspan[1], tspan[2], length=20)
 
-model = FastChain(FastDense(2, 50, tanh), FastDense(50, 2))
+model = Chain(Dense(2, 50, tanh), Dense(50, 2))
 p = initial_params(model)
 ff(du,u,p,t) = model(u,p)
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, p)
@@ -53,6 +53,10 @@ cb = function (p,l,pred)
     println(l)
     l < 0.01
 end
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss_n_ode(p), adtype)
+optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, p)
 
-res = DiffEqFlux.sciml_train(loss_n_ode, p, opt, cb=cb, maxiters = 1000)
+res = Optimization.solve(optprob, opt; cb = cb, maxiters=1000)
 ```

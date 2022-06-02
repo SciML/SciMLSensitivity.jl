@@ -33,7 +33,7 @@ First let's build training data from the same example as the neural ODE:
 
 ```julia
 using Plots, Statistics
-using DiffEqFlux, StochasticDiffEq, DiffEqBase.EnsembleAnalysis
+using Flux, Optimization, OptimizationFlux, DiffEqFlux, StochasticDiffEq, DiffEqBase.EnsembleAnalysis
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -72,10 +72,10 @@ Now we build a neural SDE. For simplicity we will use the `NeuralDSDE`
 neural SDE with diagonal noise layer function:
 
 ```julia
-drift_dudt = FastChain((x, p) -> x.^3,
-                       FastDense(2, 50, tanh),
-                       FastDense(50, 2))
-diffusion_dudt = FastChain(FastDense(2, 2))
+drift_dudt = Chain((x, p) -> x.^3,
+                       Dense(2, 50, tanh),
+                       Dense(50, 2))
+diffusion_dudt = Chain(Dense(2, 2))
 
 neuralsde = NeuralDSDE(drift_dudt, diffusion_dudt, tspan, SOSRI(),
                        saveat = tsteps, reltol = 1e-1, abstol = 1e-1)
@@ -161,8 +161,11 @@ the right mean behavior:
 opt = ADAM(0.025)
 
 # First round of training with n = 10
-result1 = DiffEqFlux.sciml_train((p) -> loss_neuralsde(p, n = 10),  
-                                 neuralsde.p, opt,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p) -> loss_neuralsde(p, n=10), adtype)
+optfunc = Optimization.instantiate_function(optf, neuralsde.p, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, neuralsde.p)
+result1 = Optimization.solve(optprob, opt,
                                  cb = callback, maxiters = 100)
 ```
 
@@ -170,8 +173,10 @@ We resume the training with a larger `n`. (WARNING - this step is a couple of
 orders of magnitude longer than the previous one).
 
 ```julia
-result2 = DiffEqFlux.sciml_train((p) -> loss_neuralsde(p, n = 100),
-                                 result1.u, opt,
+optf2 = Optimization.OptimizationFunction((p) -> loss_neuralsde(p, n=100), adtype)
+optfunc2 = Optimization.instantiate_function(optf2, result1.u, adtype, nothing)
+optprob2 = Optimization.OptimizationProblem(optfunc2, result1.u)
+result2 = Optimization.solve(optprob2, opt,
                                  cb = callback, maxiters = 100)
 ```
 

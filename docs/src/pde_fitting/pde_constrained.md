@@ -5,7 +5,7 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 
 ```julia
 using DelimitedFiles,Plots
-using DifferentialEquations, DiffEqFlux
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationJL
 
 # Problem setup parameters:
 Lx = 10.0
@@ -87,7 +87,11 @@ cb(ps,loss(ps)...) # Testing callback function
 scatter(sol[:,end], label="Truth", size=(800,500))
 plot!(PRED[end][:,end], lw=2, label="Prediction")
 
-res = DiffEqFlux.sciml_train(loss, ps, cb = cb)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, ps, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, ps)
+res = Optimization.solve(optprob, PolyOpt(), cb = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 
@@ -265,12 +269,16 @@ plot!(PRED[end][:,end], lw=2, label="Prediction")
 
 ### Train
 
-The parameters are trained using `sciml_train` and adjoint sensitivities.
+The parameters are trained using `Optimization.solve` and adjoint sensitivities.
 The resulting best parameters are stored in `res` and `res.u` returns the
 parameters that minimizes the cost function.
 
 ```julia
-res = DiffEqFlux.sciml_train(loss, ps, cb = cb)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, ps, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, ps)
+res = Optimization.solve(optprob, PolyOpt(), cb = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 

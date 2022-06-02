@@ -10,15 +10,15 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots
+using Flux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots
 
 u0 = 1.1f0
 tspan = (0.0f0, 25.0f0)
 tsteps = 0.0f0:1.0:25.0f0
 
-model_univ = FastChain(FastDense(2, 16, tanh),
-                       FastDense(16, 16, tanh),
-                       FastDense(16, 1))
+model_univ = Chain(Dense(2, 16, tanh),
+                       Dense(16, 16, tanh),
+                       Dense(16, 1))
 
 # The model weights are destructured into a vector of parameters
 p_model = initial_params(model_univ)
@@ -83,6 +83,10 @@ end
 ```
 
 ```julia
-result_univ = DiffEqFlux.sciml_train(loss_univ, θ,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss_univ(p), adtype)
+optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, θ)
+result_univ = Optimization.solve(optprob, PolyOpt(),
                                      cb = callback)
 ```

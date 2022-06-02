@@ -36,9 +36,9 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots, Statistics
+using Flux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics
 tspan = (0.0f0,8.0f0)
-ann = FastChain(FastDense(1,32,tanh), FastDense(32,32,tanh), FastDense(32,1))
+ann = Chain(Dense(1,32,tanh), Dense(32,32,tanh), Dense(32,1))
 θ = initial_params(ann)
 function dxdt_(dx,x,p,t)
     x1, x2 = x
@@ -67,8 +67,15 @@ end
 # Display the ODE with the current parameter values.
 cb(θ,l)
 loss1 = loss_adjoint(θ)
-res1 = DiffEqFlux.sciml_train(loss_adjoint, θ, ADAM(0.005), cb = cb,maxiters=100)
-res2 = DiffEqFlux.sciml_train(loss_adjoint, res1.u,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
+
+optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, θ)
+res1 = Optimization.solve(optprob, ADAM(0.005), cb = cb,maxiters=100)
+optfunc2 = Optimization.instantiate_function(optf, res1.u, adtype, nothing)
+optprob2 = Optimization.OptimizationProblem(optfunc2, res1.u)
+res2 = Optimization.solve(optprob2,
                               BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
                               allow_f_increases = false)
 ```
@@ -81,8 +88,10 @@ function loss_adjoint(θ)
   x = predict_adjoint(θ)
   mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])
 end
-
-res3 = DiffEqFlux.sciml_train(loss_adjoint, res2.u,
+optf3 = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
+optfunc3 = Optimization.instantiate_function(optf3, res2.u, adtype, nothing)
+optprob3 = Optimization.OptimizationProblem(optfunc3, res2.u)
+res3 = Optimization.solve(optprob3,
                               BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
                               allow_f_increases = false)
 

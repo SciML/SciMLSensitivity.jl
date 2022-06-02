@@ -14,7 +14,7 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots
+using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -29,9 +29,9 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = FastChain((x, p) -> x.^3,
-                  FastDense(2, 50, tanh),
-                  FastDense(50, 2))
+dudt2 = Chain((x, p) -> x.^3,
+                  Dense(2, 50, tanh),
+                  Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 p = prob_neuralode.p
 
@@ -69,9 +69,16 @@ cb = function (p, l, pred; doplot = false)
   return l < 0.01
 end
 
-pstart = DiffEqFlux.sciml_train(loss_neuralode, p, ADAM(0.01), cb=cb, maxiters = 100).u
-pmin = DiffEqFlux.sciml_train(loss_neuralode, pstart, NewtonTrustRegion(), cb=cb, maxiters = 200)
-pmin = DiffEqFlux.sciml_train(loss_neuralode, pstart, Optim.KrylovTrustRegion(), cb=cb, maxiters = 200)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p)->loss_neuralode(p), adtype)
+
+optfunc1 = Optimization.instantiate_function(optf, p, adtype, nothing)
+optprob1 = Optimization.OptimizationProblem(optfunc1, p)
+pstart = Optimization.solve(optprob1, ADAM(0.01), cb=cb, maxiters = 100).u
+optfunc2 = Optimization.instantiate_function(optf, pstart, adtype, nothing)
+optprob2 = Optimization.OptimizationProblem(optfunc2, pstart)
+pmin = Optimization.solve(optprob2, NewtonTrustRegion(), cb=cb, maxiters = 200)
+pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), cb=cb, maxiters = 200)
 ```
 
 Note that we do not demonstrate `Newton()` because we have not found a single

@@ -28,7 +28,7 @@ end
 A full example making use of this trick is:
 
 ```julia
-using DifferentialEquations, Plots
+using DifferentialEquations, Optimization, OptimizationJL, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u
@@ -63,18 +63,21 @@ function loss(p)
   end
 end
 
-using DiffEqFlux
 
 pinit = [1.2,0.8,2.5,0.8]
-res = DiffEqFlux.sciml_train(loss,pinit,ADAM(), maxiters = 1000)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((p) -> loss(p), adtype)
+optfunc = Optimization.instantiate_function(optf, pinit, adtype, nothing)
+optprob = Optimization.OptimizationProblem(optfunc, pinit)
+res = Optimization.solve(optprob,ADAM(), maxiters = 1000)
 
-# res = DiffEqFlux.sciml_train(loss,pinit,BFGS(), maxiters = 1000) ### errors!
+# res = Optimization.solve(optprob,BFGS(), maxiters = 1000) ### errors!
 
 #try Newton method of optimization
-res = DiffEqFlux.sciml_train(loss,pinit,Newton(), GalacticOptim.AutoForwardDiff())
+res = Optimization.solve(optprob,Newton(), Optimization.AutoForwardDiff())
 ```
 
-You might notice that `AutoZygote` (default) fails for the above `sciml_train` call with Optim's optimizers which happens because
+You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call with Optim's optimizers which happens because
 of Zygote's behaviour for zero gradients in which case it returns `nothing`. To avoid such issue you can just use a different version of the same check which compares the size of the obtained 
 solution and the data we have, shown below, which is easier to AD.
 
