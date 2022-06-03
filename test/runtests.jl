@@ -5,8 +5,8 @@ const GROUP = get(ENV, "GROUP", "All")
 const is_APPVEYOR = Sys.iswindows() && haskey(ENV,"APPVEYOR")
 const is_TRAVIS = haskey(ENV,"TRAVIS")
 
-function activate_downstream_env()
-    Pkg.activate("downstream")
+function activate_gpu_env()
+    Pkg.activate("gpu")
     Pkg.develop(PackageSpec(path=dirname(@__DIR__)))
     Pkg.instantiate()
 end
@@ -52,12 +52,20 @@ if GROUP == "All" || GROUP == "Core4"
     @time @safetestset "Layers Tests" begin include("layers.jl") end
     @time @safetestset "Layers SDE" begin include("layers_sde.jl") end
     @time @safetestset "Layers DDE" begin include("layers_dde.jl") end
-    @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
-    @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
-    @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
-    
+    @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
+
     # No `@safetestset` since it requires running in Main
     @time @testset "Distributed" begin include("distributed.jl") end
+end
+
+if GROUP == "All" || GROUP == "Core5"
+    @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
+    @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
+    @time @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
+    @time @safetestset "Callback - ReverseDiff" begin include("downstream/callback_reversediff.jl") end
+    @time @safetestset "HybridNODE" begin include("downstream/HybridNODE.jl") end
+    @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
+    @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
 end
 
 if GROUP == "All" || GROUP == "SDE1"
@@ -76,15 +84,6 @@ if GROUP == "All" || GROUP == "SDE3"
     @time @safetestset "SDE Ito Scalar Noise" begin include("sde_scalar_ito.jl") end
 end
 
-if GROUP == "DiffEqFlux"
-    activate_downstream_env()
-    @time @safetestset "Callback - ReverseDiff" begin include("downstream/callback_reversediff.jl") end
-    @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
-    @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
-    @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
-    @time @safetestset "HybridNODE" begin include("downstream/HybridNODE.jl") end
-end
-
 if GROUP == "Callbacks"
     @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
 end
@@ -93,9 +92,8 @@ if GROUP == "Shadowing"
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
 end
 
-
 if GROUP == "GPU"
-    activate_downstream_env()
+    activate_gpu_env()
     @time @safetestset "Standard DiffEqFlux GPU" begin include("gpu/diffeqflux_standard_gpu.jl") end
     @time @safetestset "Mixed GPU/CPU" begin include("gpu/mixed_gpu_cpu_adjoint.jl") end
 end

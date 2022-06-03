@@ -15,4 +15,6 @@ function loss(p)
   return norm(sol)
 end
 
-result_ode = DiffEqFlux.sciml_train(loss, initial, ADAM(0.1), maxiters = 100)
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
+optprob = Optimization.OptimizationProblem(optfunc, initial)
+res = Optimization.solve(optprob, ADAM(0.1), maxiters = 100)

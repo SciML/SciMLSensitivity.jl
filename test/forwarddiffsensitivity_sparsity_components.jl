@@ -1,5 +1,5 @@
-using OrdinaryDiffEq, DiffEqSensitivity, DiffEqFlux, Flux
-using ComponentArrays, LinearAlgebra, GalacticOptim, Test
+using OrdinaryDiffEq, DiffEqSensitivity, Flux
+using ComponentArrays, LinearAlgebra, Optiomization, Test
 
 const nknots = 10
 const h = 1.0/(nknots+1)
@@ -27,5 +27,9 @@ function loss(prob0, p)
 end
 
 p0 = ComponentArray(k=1.0)
-res = DiffEqFlux.sciml_train(p -> loss(prob,p), p0, ADAM(0.01), GalacticOptim.AutoZygote(), maxiters=100)
+
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
+optprob = Optimization.OptimizationProblem(optfunc, p0)
+res = Optimization.solve(optprob, ADAM(0.01), maxiters = 100)
+
 @test res.u.k ≈ 0.42461977305259074 rtol=1e-1
