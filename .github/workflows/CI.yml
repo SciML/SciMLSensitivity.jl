@@ -10,7 +10,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         group:
           - Core1
@@ -21,7 +21,6 @@ jobs:
           - SDE1
           - SDE2
           - SDE3
-          - DiffEqFlux
         version:
           - '1.6'
           - '1'

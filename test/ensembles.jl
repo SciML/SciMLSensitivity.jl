@@ -1,4 +1,4 @@
-using DiffEqFlux, OrdinaryDiffEq, Test
+using Flux, OrdinaryDiffEq, Test
 
 pa = [1.0]
 u0 = [3.0]
