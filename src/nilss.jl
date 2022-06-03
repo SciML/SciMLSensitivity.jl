@@ -263,7 +263,7 @@ function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
     # compute y, w, vstar
     # _sol is a numindvar*(1+nus+1) x nstep matrix
                
-    dt = (t2 - t1) / floor(nstep-1)
+    dt = (t2 - t1) / (nstep-1)
     _sol = Array(solve(_prob, alg, saveat=t1:dt:t2))
                     
     store_y_w_vstar!(y, w, vstar, _sol, nus, numindvar, numparams, iseg)
