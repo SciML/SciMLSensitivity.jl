@@ -46,6 +46,20 @@ if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
     @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
 end
 
+if GROUP == "All" || GROUP == "Core4"
+    @time @safetestset "Ensemble Tests" begin include("ensembles.jl") end
+    @time @safetestset "GDP Regression Tests" begin include("gdp_regression_test.jl") end
+    @time @safetestset "Layers Tests" begin include("layers.jl") end
+    @time @safetestset "Layers SDE" begin include("layers_sde.jl") end
+    @time @safetestset "Layers DDE" begin include("layers_dde.jl") end
+    @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
+    @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
+    @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
+    
+    # No `@safetestset` since it requires running in Main
+    @time @testset "Distributed" begin include("distributed.jl") end
+end
+
 if GROUP == "All" || GROUP == "SDE1"
     @time @safetestset "SDE Adjoint" begin include("sde_stratonovich.jl") end
     @time @safetestset "SDE Scalar Noise" begin include("sde_scalar_stratonovich.jl") end
