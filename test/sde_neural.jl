@@ -208,19 +208,19 @@ end
         false
     end
 
-    optf = Optimization.OptimizationFunction((p) -> loss(p,probscalar, LambaEM()), Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,probscalar, LambaEM()), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
-    optf = Optimization.OptimizationFunction((p) -> loss(p,probscalar, SOSRI()), Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,probscalar, SOSRI()), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
-    optf = Optimization.OptimizationFunction((p) -> loss(p,prob, LambaEM()), Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,prob, LambaEM()), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
-    optf = Optimization.OptimizationFunction((p) -> loss(p,prob, SOSRI()), Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,prob, SOSRI()), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 end

@@ -1,9 +1,9 @@
 using OrdinaryDiffEq, DiffEqSensitivity, LinearAlgebra, Optimization, OptimizationFlux
-nn = FastChain(FastDense(1,16),FastDense(16,16,tanh),FastDense(16,2))
-initial = initial_params(nn)
+nn = Chain(Dense(1,16),Dense(16,16,tanh),Dense(16,2))
+initial,re = destructure(nn)
 
 function ode2!(u, p, t)
-    f1, f2 = nn([t],p)
+    f1, f2 = re(p)([t])
     [-f1^2; f2]
 end
 
@@ -16,5 +16,5 @@ function loss(p)
 end
 
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
-optprob = Optimization.OptimizationProblem(optfunc, initial)
+optprob = Optimization.OptimizationProblem(optf, initial)
 res = Optimization.solve(optprob, ADAM(0.1), maxiters = 100)
