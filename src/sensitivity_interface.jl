@@ -278,7 +278,7 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    callback = nothing,
                                    kwargs...)
 
-  if !(typeof(sol.prob.p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+  if !(typeof(sol.prob.p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(sol.prob.p))
     throw(AdjointSensitivityParameterCompatibilityError())
   end
 
