@@ -1,4 +1,4 @@
-using DiffEqFlux, DiffEqCallbacks, OrdinaryDiffEq, Test # , Plots
+using DiffEqSensitivity, DiffEqCallbacks, OrdinaryDiffEq, Test # , Plots
 
 u0 = Float32[2.; 0.]
 datasize = 100
