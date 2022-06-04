@@ -1,4 +1,4 @@
-using DiffEqFlux, OrdinaryDiffEq, Flux, CUDA, DiffEqSensitivity
+using DiffEqSensitivity, OrdinaryDiffEq, Flux, CUDA, DiffEqSensitivity
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data
@@ -34,6 +34,6 @@ end
 list_plots = []
 iter = 0
 
-result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, p,
+result_neuralode = DiffEqSensitivity.sciml_train(loss_neuralode, p,
                                           ADAM(0.05),
                                           maxiters = 300)

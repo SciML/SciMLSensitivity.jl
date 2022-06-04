@@ -2,7 +2,7 @@ using Distributed
 
 addprocs(2)
 @everywhere begin
-  using DiffEqFlux, OrdinaryDiffEq, Test
+  using DiffEqSensitivity, OrdinaryDiffEq, Test
 
   pa = [1.0]
   u0 = [3.0]

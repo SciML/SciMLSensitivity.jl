@@ -1,4 +1,4 @@
-using DiffEqFlux, OrdinaryDiffEq, Test # , Plots
+using DiffEqSensitivity, OrdinaryDiffEq, Test # , Plots
 
 p = [1.5 1.0;3.0 1.0]
 function lotka_volterra(du,u,p,t)

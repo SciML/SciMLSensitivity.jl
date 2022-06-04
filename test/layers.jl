@@ -1,4 +1,4 @@
-using DiffEqFlux, OrdinaryDiffEq, Test # , Plots
+using Flux, OrdinaryDiffEq, Test # , Plots
 
 function lotka_volterra(du,u,p,t)
   x, y = u

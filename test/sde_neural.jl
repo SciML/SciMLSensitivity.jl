@@ -1,4 +1,4 @@
-using DiffEqFlux, Flux, LinearAlgebra
+using DiffEqSensitivity, Flux, LinearAlgebra
 using DiffEqNoiseProcess
 using StochasticDiffEq
 using Statistics

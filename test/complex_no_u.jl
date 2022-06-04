@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, DiffEqFlux, LinearAlgebra, Flux
+using OrdinaryDiffEq, DiffEqSensitivity, LinearAlgebra, Optimization, OptimizationFlux
 nn = FastChain(FastDense(1,16),FastDense(16,16,tanh),FastDense(16,2))
 initial = initial_params(nn)
 
