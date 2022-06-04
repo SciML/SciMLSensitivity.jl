@@ -15,11 +15,14 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = gpu(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 
-dudt2 = FastChain((x, p) -> x.^3,
-                  FastDense(2, 50, tanh),
-                  FastDense(50, 2))
+dudt2 = Chain(x -> x.^3,
+              Dense(2, 50, tanh),
+              Dense(50, 2)) |> gpu
 u0 = Float32[2.0; 0.0] |> gpu
-p = initial_params(dudt2) |> gpu
+
+_p,re = Flux.destructure(dudt2)
+p = gpu(_p)
+
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
