@@ -5,6 +5,7 @@ using Statistics
 using DiffEqSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
+using Optimization, OptimizationFlux
 
 using Random
 Random.seed!(238248735)
@@ -50,7 +51,7 @@ Random.seed!(238248735)
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
     ann = Chain(Dense(4, 32, tanh), Dense(32, 32, tanh), Dense(32, 2))
-    p,re = destructure(ann)
+    p,re = Flux.destructure(ann)
     α = Float64.(initial_params(ann))
 
     function dudt_(du, u, p, t)

@@ -29,7 +29,7 @@ end
 p0 = ComponentArray(k=1.0)
 
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
-optprob = Optimization.OptimizationProblem(optfunc, p0)
+optprob = Optimization.OptimizationProblem(optf, p0)
 res = Optimization.solve(optprob, ADAM(0.01), maxiters = 100)
 
 @test res.u.k ≈ 0.42461977305259074 rtol=1e-1
