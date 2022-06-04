@@ -1,4 +1,4 @@
-using DiffEqFlux, Optimization, OrdinaryDiffEq, Test # , Plots
+using Flux, Optimization, OptimizationFlux, OptimizationOptimJL, OrdinaryDiffEq, Test
 
 
 x = Float32[0.8; 0.8]
