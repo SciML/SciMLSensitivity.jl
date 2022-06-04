@@ -52,7 +52,7 @@ if GROUP == "All" || GROUP == "Core4"
     @time @safetestset "Layers Tests" begin include("layers.jl") end
     @time @safetestset "Layers SDE" begin include("layers_sde.jl") end
     @time @safetestset "Layers DDE" begin include("layers_dde.jl") end
-    @time @safetestset "SDE - Neural" begin include("downstream/sde_neural.jl") end
+    @time @safetestset "SDE - Neural" begin include("sde_neural.jl") end
 
     # No `@safetestset` since it requires running in Main
     @time @testset "Distributed" begin include("distributed.jl") end
@@ -62,10 +62,10 @@ if GROUP == "All" || GROUP == "Core5"
     @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
     @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
     @time @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
-    @time @safetestset "Callback - ReverseDiff" begin include("downstream/callback_reversediff.jl") end
-    @time @safetestset "HybridNODE" begin include("downstream/HybridNODE.jl") end
-    @time @safetestset "ForwardDiff Sparsity Components" begin include("downstream/forwarddiffsensitivity_sparsity_components.jl") end
-    @time @safetestset "Complex No u" begin include("downstream/complex_no_u.jl") end
+    @time @safetestset "Callback - ReverseDiff" begin include("callback_reversediff.jl") end
+    @time @safetestset "HybridNODE" begin include("HybridNODE.jl") end
+    @time @safetestset "ForwardDiff Sparsity Components" begin include("forwarddiffsensitivity_sparsity_components.jl") end
+    @time @safetestset "Complex No u" begin include("complex_no_u.jl") end
 end
 
 if GROUP == "All" || GROUP == "SDE1"
