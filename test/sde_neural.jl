@@ -51,8 +51,8 @@ Random.seed!(238248735)
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
     ann = Chain(Dense(4, 32, tanh), Dense(32, 32, tanh), Dense(32, 2))
-    p,re = Flux.destructure(ann)
-    α = Float64.(initial_params(ann))
+    α,re = Flux.destructure(ann)
+    α = Float64.(α)
 
     function dudt_(du, u, p, t)
         r, e, μ, h, ph, z, i = p_
@@ -209,18 +209,18 @@ end
     end
 
     optf = Optimization.OptimizationFunction((p) -> loss(p,probscalar, LambaEM()), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, p_nn)
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p) -> loss(p,probscalar, SOSRI()), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, p_nn)
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
     res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p) -> loss(p,prob, LambaEM()), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, p_nn)
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p) -> loss(p,prob, SOSRI()), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, p_nn)
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
     res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 end
