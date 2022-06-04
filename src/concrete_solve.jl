@@ -95,6 +95,10 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
+ 
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+    throw(AdjointSensitivityParameterCompatibilityError())
+  end
 
   # Remove saveat, etc. from kwargs since it's handled separately
   # and letting it jump back in there can break the adjoint
@@ -263,6 +267,10 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForward
                                             u0, p, args...;
                                             save_idxs=nothing,
                                             kwargs...)
+  
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+    throw(ForwardSensitivityParameterCompatibilityError())
+  end
 
   if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual && !(eltype(u0) <: ForwardDiff.Dual)
     # Handle double differentiation case
@@ -316,11 +324,34 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
    out,_concrete_solve_pushforward
 end
 
+const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = 
+"""
+ForwardDiffSensitivity assumes the `AbstractArray` interface for `p`. Thus while
+DifferentialEquations.jl can support any parameter struct type, usage
+with ForwardDiffSensitivity requires that `p` could be a valid
+type for being the initial condition `u0` of an array. This means that
+many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+parameters in normal contexts but will fail during ForwardDiffSensitivity
+construction. To work around this issue for complicated cases like nested structs, 
+look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+or ComponentArrays.jl.
+"""
+
+struct ForwardDiffSensitivityParameterCompatibilityError <: Exception end
+
+function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityError)
+  print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+end
+
 # Generic Fallback for ForwardDiff
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity{CS,CTS},
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
                                  kwargs...) where {CS,CTS}
+  
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+    throw(ForwardDiffSensitivityParameterCompatibilityError())
+  end
 
   if saveat isa Number
     _saveat = prob.tspan[1]:saveat:prob.tspan[2]
@@ -620,9 +651,26 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   DiffEqBase.sensitivity_solution(sol,u,Tracker.data.(sol.t)),tracker_adjoint_backpass
 end
 
+const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE = 
+"""
+ReverseDiffAdjoint is not compatible GPU-based array types. Use a different
+sensitivity analysis method, like InterpolatingAdjoint or TrackerAdjoint,
+in order to combine with GPUs.
+"""
+
+struct ReverseDiffGPUStateCompatibilityError <: Exception end
+
+function Base.showerror(io::IO, e::ReverseDiffGPUStateCompatibilityError)
+  print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoint,
                                             u0,p,args...;kwargs...)
 
+  if typeof(u0) isa GPUArrays.AbstractGPUArray
+    throw(ReverseDiffGPUStateCompatibilityError())
+  end
+  
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
 
