@@ -1,5 +1,25 @@
 ## Direct calls
 
+const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE = 
+"""
+Adjoint sensitivity analysis functionality requires being able to solve
+a differential equation defined by the parameter struct `p`. Thus while
+DifferentialEquations.jl can support any parameter struct type, usage
+with adjoint sensitivity analysis requires that `p` could be a valid
+type for being the initial condition `u0` of an array. This means that
+many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+parameters in normal contexts but will fail during adjoint differentiation.
+To work around this issue for complicated cases like nested structs, look
+into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
+"""
+
+struct AdjointSensitivityParameterCompatibilityError <: Exception end
+
+function Base.showerror(io::IO, e::AdjointSensitivityParameterCompatibilityError)
+  print(io, ADJOINT_PARAMETER_COMPATABILITY_MESSAGE)
+end
+
 @doc doc"""
 adjoint_sensitivities(sol,alg,g,t=nothing,dg=nothing;
                             abstol=1e-6,reltol=1e-3,
@@ -22,6 +42,19 @@ of the full concretized solution. It can also allow you to be more efficient
 by directly controlling the forward solve that is then reversed over. Lastly,
 it allows one to define a continuous cost function on the continuous solution,
 instead of just at discrete data points.
+
+!!! warning
+
+      Adjoint sensitivity analysis functionality requires being able to solve
+      a differential equation defined by the parameter struct `p`. Thus while
+      DifferentialEquations.jl can support any parameter struct type, usage
+      with adjoint sensitivity analysis requires that `p` could be a valid
+      type for being the initial condition `u0` of an array. This means that
+      many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+      parameters in normal contexts but will fail during adjoint differentiation.
+      To work around this issue for complicated cases like nested structs, look
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 !!! warning
 
@@ -245,6 +278,10 @@ function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
                                    callback = nothing,
                                    kwargs...)
 
+  if !(typeof(sol.prob.p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
+    throw(AdjointSensitivityParameterCompatibilityError())
+  end
+
   if sol.prob isa ODEProblem
     adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dg; checkpoints=checkpoints,
                                  callback = callback,
@@ -303,7 +340,20 @@ H = second_order_sensitivities(loss,prob,alg,args...;
                                kwargs...)
 
 Second order sensitivity analysis is used for the fast calculation of Hessian
-matrices. 
+matrices.
+
+!!! warning
+
+      Adjoint sensitivity analysis functionality requires being able to solve
+      a differential equation defined by the parameter struct `p`. Thus while
+      DifferentialEquations.jl can support any parameter struct type, usage
+      with adjoint sensitivity analysis requires that `p` could be a valid
+      type for being the initial condition `u0` of an array. This means that
+      many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+      parameters in normal contexts but will fail during adjoint differentiation.
+      To work around this issue for complicated cases like nested structs, look
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 ### Example second order sensitivity analysis calculation
 
@@ -347,6 +397,19 @@ Hv = second_order_sensitivity_product(loss,v,prob,alg,args...;
 Second order sensitivity analysis product is used for the fast calculation of 
 Hessian-vector products ``Hv`` without requiring the construction of the Hessian
 matrix.
+
+!!! warning
+
+      Adjoint sensitivity analysis functionality requires being able to solve
+      a differential equation defined by the parameter struct `p`. Thus while
+      DifferentialEquations.jl can support any parameter struct type, usage
+      with adjoint sensitivity analysis requires that `p` could be a valid
+      type for being the initial condition `u0` of an array. This means that
+      many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+      parameters in normal contexts but will fail during adjoint differentiation.
+      To work around this issue for complicated cases like nested structs, look
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 ### Example second order sensitivity analysis calculation
 

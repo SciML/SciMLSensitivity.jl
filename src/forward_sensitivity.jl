@@ -135,6 +135,26 @@ function ODEForwardSensitivityProblem(prob::ODEProblem,alg;kwargs...)
   ODEForwardSensitivityProblem(prob.f,prob.u0,prob.tspan,prob.p,alg;kwargs...)
 end
 
+const FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = 
+"""
+ODEForwardSensitivityProblem requires being able to solve
+a differential equation defined by the parameter struct `p`. Thus while
+DifferentialEquations.jl can support any parameter struct type, usage
+with ODEForwardSensitivityProblem requires that `p` could be a valid
+type for being the initial condition `u0` of an array. This means that
+many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+parameters in normal contexts but will fail during ODEForwardSensitivityProblem
+construction. To work around this issue for complicated cases like nested structs, 
+look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+or ComponentArrays.jl.
+"""
+
+struct ForwardSensitivityParameterCompatibilityError <: Exception end
+
+function Base.showerror(io::IO, e::ForwardSensitivityParameterCompatibilityError)
+  print(io, FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+end
+
 @doc doc"""
 function ODEForwardSensitivityProblem(f::Union{Function,DiffEqBase.AbstractODEFunction},
                                       u0,tspan,p=nothing,
@@ -145,6 +165,19 @@ Local forward sensitivity analysis gives a solution along with a timeseries of
 the sensitivities. Thus if one wishes to have a derivative at every possible
 time point, directly using the `ODEForwardSensitivityProblem` can be the most
 efficient method.
+
+!!! warning
+
+      ODEForwardSensitivityProblem requires being able to solve
+      a differential equation defined by the parameter struct `p`. Thus while
+      DifferentialEquations.jl can support any parameter struct type, usage
+      with ODEForwardSensitivityProblem requires that `p` could be a valid
+      type for being the initial condition `u0` of an array. This means that
+      many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+      parameters in normal contexts but will fail during ODEForwardSensitivityProblem
+      construction. To work around this issue for complicated cases like nested structs, 
+      look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      or ComponentArrays.jl.
 
 ### ODEForwardSensitivityProblem Syntax
 
@@ -291,6 +324,11 @@ function ODEForwardSensitivityProblem(f::F,u0,
   isautojacmat = get_jacmat(alg)
   isautojacvec = get_jacvec(alg)
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
+
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    throw(ForwardSensitivityParameterCompatibilityError())
+  end
+
   uf = DiffEqBase.UJacobianWrapper(f,tspan[1],p)
   pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],copy(u0))
   if isautojacmat
