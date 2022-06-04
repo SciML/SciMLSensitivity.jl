@@ -96,7 +96,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  save_idxs = nothing,
                                  kwargs...)
  
-  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(AdjointSensitivityParameterCompatibilityError())
   end
 
@@ -268,7 +268,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForward
                                             save_idxs=nothing,
                                             kwargs...)
   
-  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardSensitivityParameterCompatibilityError())
   end
 
@@ -349,7 +349,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
                                  kwargs...) where {CS,CTS}
   
-  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || !Base.isconcretetype(eltype(p))
+  if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardDiffSensitivityParameterCompatibilityError())
   end
 
