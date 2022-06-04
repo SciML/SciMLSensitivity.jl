@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Flux, CUDA, DiffEqSensitivity
+using DiffEqSensitivity, OrdinaryDiffEq, Flux, CUDA
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data

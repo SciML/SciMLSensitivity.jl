@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, DiffEqSensitivity
+using DiffEqSensitivity, OrdinaryDiffEq
 using CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
