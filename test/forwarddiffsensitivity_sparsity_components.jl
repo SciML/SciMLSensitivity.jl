@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, DiffEqSensitivity, Flux
-using ComponentArrays, LinearAlgebra, Optiomization, Test
+using ComponentArrays, LinearAlgebra, Optimization, Test
 
 const nknots = 10
 const h = 1.0/(nknots+1)
