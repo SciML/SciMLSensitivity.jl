@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, DiffEqFlux, Flux
+using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, Flux
 using Random, Test
 using Zygote
 

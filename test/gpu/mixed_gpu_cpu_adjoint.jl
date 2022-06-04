@@ -1,4 +1,4 @@
-using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
+using DiffEqSensitivity, OrdinaryDiffEq
 using CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
@@ -36,7 +36,7 @@ grad = Zygote.gradient(cost,p)[1]
 @test iszero(grad[6:end])
 
 ###
-# https://github.com/SciML/DiffEqFlux.jl/issues/632
+# https://github.com/SciML/DiffEqSensitivity.jl/issues/632
 ###
 
 rng = MersenneTwister(1234)
