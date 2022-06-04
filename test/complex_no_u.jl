@@ -1,6 +1,6 @@
-using OrdinaryDiffEq, DiffEqSensitivity, LinearAlgebra, Optimization, OptimizationFlux
+using OrdinaryDiffEq, DiffEqSensitivity, LinearAlgebra, Optimization, OptimizationFlux, Flux
 nn = Chain(Dense(1,16),Dense(16,16,tanh),Dense(16,2))
-initial,re = destructure(nn)
+initial,re = Flux.destructure(nn)
 
 function ode2!(u, p, t)
     f1, f2 = re(p)([t])

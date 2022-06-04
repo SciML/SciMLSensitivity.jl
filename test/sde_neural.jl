@@ -136,13 +136,13 @@ Random.seed!(238248735)
     println("Test mutating form")
 
     optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, α)
+    optprob = Optimization.OptimizationProblem(optf, α)
     res1 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
     
     println("Test non-mutating form")
 
     optf = Optimization.OptimizationFunction((x,p) -> loss_op(x), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optfunc, α)
+    optprob = Optimization.OptimizationProblem(optf, α)
     res2 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
 end
 
@@ -219,8 +219,4 @@ end
     optf = Optimization.OptimizationFunction((p,_) -> loss(p,prob, LambaEM()), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
-
-    optf = Optimization.OptimizationFunction((p,_) -> loss(p,prob, SOSRI()), Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optf, p_nn)
-    res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 end
