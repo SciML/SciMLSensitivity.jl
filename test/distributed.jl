@@ -1,4 +1,4 @@
-using Distributed
+using Distributed, Flux
 
 addprocs(2)
 @everywhere begin
@@ -30,7 +30,7 @@ end
 
 pa = [1.0]
 u0 = [3.0]
-opt = ADAM(0.1)
+opt = Flux.ADAM(0.1)
 println("Starting to train")
 l1 = loss()
 Flux.@epochs 10 Flux.train!(loss, Flux.params([pa,u0]), data, opt; cb = cb)
