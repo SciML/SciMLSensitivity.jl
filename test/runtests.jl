@@ -79,7 +79,6 @@ if GROUP == "Shadowing"
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
 end
 
-
 if GROUP == "GPU"
     activate_downstream_env()
     @time @safetestset "Standard DiffEqFlux GPU" begin include("gpu/diffeqflux_standard_gpu.jl") end
