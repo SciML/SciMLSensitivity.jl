@@ -1,5 +1,5 @@
 using DiffEqSensitivity, OrdinaryDiffEq
-using CUDA, Test, Zygote, Random, LinearAlgebra
+using Flux, CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
 
