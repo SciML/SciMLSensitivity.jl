@@ -31,7 +31,7 @@ end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
     loss = sum(abs2, ode_data .- pred)
-    return loss, pred
+    return loss
 end
 # Callback function to observe training
 list_plots = []
