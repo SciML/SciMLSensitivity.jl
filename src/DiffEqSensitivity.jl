@@ -2,13 +2,10 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DiffEqOperators
 using Adapt
 using LinearSolve
 using Parameters: @unpack
 using StochasticDiffEq
-using SharedArrays
-using EllipsisNotation
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
@@ -24,7 +21,6 @@ using Markdown
 
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
-@reexport using GlobalSensitivity
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
@@ -51,9 +47,7 @@ include("reversediff.jl")
 include("tracker.jl")
 include("zygote.jl")
 
-
 export extract_local_sensitivities
-
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
@@ -76,8 +70,4 @@ export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
 
-function gsa(f, method::GlobalSensitivity.GSAMethod, args...; kwargs...)
-    @warn "Global Sensitivity Analysis has been moved to separate package GlobalSensitivity.jl (https://github.com/SciML/GlobalSensitivity.jl)"
-    GlobalSensitivity.gsa(f, method, args...; kwargs...)
-end
 end # module

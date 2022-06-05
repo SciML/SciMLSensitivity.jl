@@ -2,8 +2,6 @@ using DiffEqSensitivity, SafeTestsets
 using Test, Pkg
 
 const GROUP = get(ENV, "GROUP", "All")
-const is_APPVEYOR = Sys.iswindows() && haskey(ENV,"APPVEYOR")
-const is_TRAVIS = haskey(ENV,"TRAVIS")
 
 function activate_gpu_env()
     Pkg.activate("gpu")
@@ -27,7 +25,6 @@ if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
     @time @safetestset "Prob Kwargs" begin include("prob_kwargs.jl") end
     @time @safetestset "DiscreteProblem Adjoints" begin include("discrete.jl") end
     @time @safetestset "Time Type Mixing Adjoints" begin include("time_type_mixing.jl") end
-    @time @safetestset "GSA tests" begin include("gsa.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core2"
