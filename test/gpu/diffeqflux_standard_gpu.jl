@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Flux, CUDA
+using DiffEqSensitivity, OrdinaryDiffEq, Flux, DiffEqFlux, CUDA, Zygote
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data
@@ -37,6 +37,4 @@ end
 list_plots = []
 iter = 0
 
-result_neuralode = DiffEqSensitivity.sciml_train(loss_neuralode, p,
-                                          ADAM(0.05),
-                                          maxiters = 300)
+Zygote.gradient(loss_neuralode, p)
