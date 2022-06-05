@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Flux, CUDA
+using DiffEqSensitivity, OrdinaryDiffEq, Flux, DiffEqFlux, CUDA, Zygote
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data
@@ -15,11 +15,14 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = gpu(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 
-dudt2 = FastChain((x, p) -> x.^3,
-                  FastDense(2, 50, tanh),
-                  FastDense(50, 2))
+dudt2 = Chain(x -> x.^3,
+              Dense(2, 50, tanh),
+              Dense(50, 2)) |> gpu
 u0 = Float32[2.0; 0.0] |> gpu
-p = initial_params(dudt2) |> gpu
+
+_p,re = Flux.destructure(dudt2)
+p = gpu(_p)
+
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
@@ -28,12 +31,10 @@ end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
     loss = sum(abs2, ode_data .- pred)
-    return loss, pred
+    return loss
 end
 # Callback function to observe training
 list_plots = []
 iter = 0
 
-result_neuralode = DiffEqSensitivity.sciml_train(loss_neuralode, p,
-                                          ADAM(0.05),
-                                          maxiters = 300)
+Zygote.gradient(loss_neuralode, p)

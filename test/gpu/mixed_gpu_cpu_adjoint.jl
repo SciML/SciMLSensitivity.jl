@@ -1,14 +1,14 @@
 using DiffEqSensitivity, OrdinaryDiffEq
-using CUDA, Test, Zygote, Random, LinearAlgebra
+using Flux, CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
 
 H = CuArray(rand(Float32, 2, 2))
-ann = FastChain(FastDense(1, 4, tanh))
-p = initial_params(ann)
+ann = Chain(Dense(1, 4, tanh))
+p,re = Flux.destructure(ann)
 
 function func(x, p, t)
-    (ann([t],p)[1]*H)*x
+    (re(p)([t])[1]*H)*x
 end
 
 x0 = CuArray(rand(Float32, 2))

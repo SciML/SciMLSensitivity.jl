@@ -95,7 +95,7 @@ end
 
 if GROUP == "GPU"
     activate_gpu_env()
-    @time @safetestset "Standard DiffEqSensitivity GPU" begin include("gpu/diffeqflux_standard_gpu.jl") end
+    @time @safetestset "Standard DiffEqFlux GPU" begin include("gpu/diffeqflux_standard_gpu.jl") end
     @time @safetestset "Mixed GPU/CPU" begin include("gpu/mixed_gpu_cpu_adjoint.jl") end
 end
 end
