@@ -16,6 +16,7 @@ import GPUArrays
 
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
+using EllipsisNotation
 
 using Markdown
 
