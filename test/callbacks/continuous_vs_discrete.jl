@@ -1,4 +1,4 @@
-using StochasticDiffEq, OrdinaryDiffEq, Zygote
+using OrdinaryDiffEq, Zygote
 using DiffEqSensitivity, Test, ForwardDiff
 
 abstol = 1e-12
