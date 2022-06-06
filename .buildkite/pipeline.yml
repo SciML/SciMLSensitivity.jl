@@ -1,5 +1,20 @@
 steps:
-  - label: "Callbacks"
+  - label: "Callbacks1"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+      - JuliaCI/julia-test#v1:
+          coverage: false
+    agents:
+      os: "linux"
+      queue: "juliaecosystem"
+    env:
+      GROUP: 'Callbacks'
+    timeout_in_minutes: 120
+    # Don't run Buildkite if the commit message includes the text [skip tests]
+    if: build.message !~ /\[skip tests\]/
+
+  - label: "Callbacks2"
     plugins:
       - JuliaCI/julia#v1:
           version: "1"

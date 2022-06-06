@@ -57,10 +57,10 @@ if GROUP == "All" || GROUP == "Core4"
 end
 
 if GROUP == "All" || GROUP == "Core5"
-    @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
     @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
     @time @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
     @time @safetestset "Callback - ReverseDiff" begin include("callback_reversediff.jl") end
+    @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
     @time @safetestset "HybridNODE" begin include("HybridNODE.jl") end
     @time @safetestset "ForwardDiff Sparsity Components" begin include("forwarddiffsensitivity_sparsity_components.jl") end
     @time @safetestset "Complex No u" begin include("complex_no_u.jl") end
@@ -82,9 +82,16 @@ if GROUP == "All" || GROUP == "SDE3"
     @time @safetestset "SDE Ito Scalar Noise" begin include("sde_scalar_ito.jl") end
 end
 
-if GROUP == "Callbacks"
-    @time @safetestset "Callbacks with Adjoints" begin include("callbacks.jl") end
+if GROUP == "Callbacks1"
+    @time @safetestset "Discrete Callbacks with Adjoints" begin include("callbacks/discrete_callbacks.jl") end
+    @time @safetestset "SDE Callbacks" begin include("callbacks/SDE_callbacks.jl") end
 end
+
+if GROUP == "Callbacks2"
+    @time @safetestset "Continuous vs. discrete Callbacks" begin include("callbacks/SDE_callbacks.jl") end
+    @time @safetestset "Continuous Callbacks with Adjoints" begin include("callbacks/continuous_callbacks.jl") end
+end
+
 
 if GROUP == "Shadowing"
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
