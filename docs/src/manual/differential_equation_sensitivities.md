@@ -204,8 +204,8 @@ ReverseDiffVJP
 ## Noise VJP Choices
 
 ```@docs
-ZygoteNoise
-ReverseDiffNoise
+DiffEqSensitivity.ZygoteNoise
+DiffEqSensitivity.ReverseDiffNoise
 ```
 
 ## More Details on Sensitivity Algorithm Choices

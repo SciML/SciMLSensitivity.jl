@@ -1,5 +1,5 @@
-using OrdinaryDiffEq, DiffEqSensitivity, DiffEqFlux, Flux
-using ComponentArrays, LinearAlgebra, GalacticOptim, Test
+using OrdinaryDiffEq, DiffEqSensitivity, Flux
+using ComponentArrays, LinearAlgebra, Optimization, Test
 
 const nknots = 10
 const h = 1.0/(nknots+1)
@@ -20,12 +20,16 @@ jac_proto = Tridiagonal(similar(u0,nknots-1), similar(u0), similar(u0, nknots-1)
 prob = ODEProblem(ODEFunction(f,jac_prototype=jac_proto), u0, (0.0,1.0), p_true)
 @time sol_true = solve(prob, Rodas4P(), saveat=0.1)
 
-function loss(prob0, p)
-  prob = remake(prob0, p=p)
-  sol = solve(prob, Rodas4P(autodiff=false), saveat=0.1, sensealg=ForwardDiffSensitivity())
+function loss(p)
+  _prob = remake(prob, p=p)
+  sol = solve(_prob, Rodas4P(autodiff=false), saveat=0.1, sensealg=ForwardDiffSensitivity())
   sum((sol .- sol_true).^2)
 end
 
 p0 = ComponentArray(k=1.0)
-res = DiffEqFlux.sciml_train(p -> loss(prob,p), p0, ADAM(0.01), GalacticOptim.AutoZygote(), maxiters=100)
+
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
+optprob = Optimization.OptimizationProblem(optf, p0)
+res = Optimization.solve(optprob, ADAM(0.01), maxiters = 100)
+
 @test res.u.k ≈ 0.42461977305259074 rtol=1e-1

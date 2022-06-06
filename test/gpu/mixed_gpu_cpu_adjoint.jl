@@ -1,14 +1,14 @@
-using DiffEqFlux, OrdinaryDiffEq, DiffEqSensitivity
-using CUDA, Test, Zygote, Random, LinearAlgebra
+using DiffEqSensitivity, OrdinaryDiffEq
+using Flux, CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
 
 H = CuArray(rand(Float32, 2, 2))
-ann = FastChain(FastDense(1, 4, tanh))
-p = initial_params(ann)
+ann = Chain(Dense(1, 4, tanh))
+p,re = Flux.destructure(ann)
 
 function func(x, p, t)
-    (ann([t],p)[1]*H)*x
+    (re(p)([t])[1]*H)*x
 end
 
 x0 = CuArray(rand(Float32, 2))
@@ -36,7 +36,7 @@ grad = Zygote.gradient(cost,p)[1]
 @test iszero(grad[6:end])
 
 ###
-# https://github.com/SciML/DiffEqFlux.jl/issues/632
+# https://github.com/SciML/DiffEqSensitivity.jl/issues/632
 ###
 
 rng = MersenneTwister(1234)

@@ -1,10 +1,11 @@
-using DiffEqFlux, Flux, LinearAlgebra
+using DiffEqSensitivity, Flux, LinearAlgebra
 using DiffEqNoiseProcess
 using StochasticDiffEq
 using Statistics
 using DiffEqSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
+using Optimization, OptimizationFlux
 
 using Random
 Random.seed!(238248735)
@@ -49,13 +50,14 @@ Random.seed!(238248735)
 
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
-    ann = FastChain(FastDense(4, 32, tanh), FastDense(32, 32, tanh), FastDense(32, 2))
-    α = Float64.(initial_params(ann))
+    ann = Chain(Dense(4, 32, tanh), Dense(32, 32, tanh), Dense(32, 2))
+    α,re = Flux.destructure(ann)
+    α = Float64.(α)
 
     function dudt_(du, u, p, t)
         r, e, μ, h, ph, z, i = p_
 
-        MM = ann(u, p)
+        MM = re(p)(u)
 
         du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
         du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
@@ -67,7 +69,7 @@ Random.seed!(238248735)
     function dudt_op(u, p, t)
         r, e, μ, h, ph, z, i = p_
 
-        MM = ann(u, p)
+        MM = re(p)(u)
 
         [e * 0.5 * (5μ - u[1]), # nutrient input time series
          e * 0.05 * (10μ - u[2]), # grazer density time series
@@ -132,21 +134,16 @@ Random.seed!(238248735)
         false
     end
     println("Test mutating form")
-    res1 = DiffEqFlux.sciml_train(
-        loss,
-        α,
-        ADAM(0.001),
-        cb = callback,
-        maxiters = 200,
-    )
+
+    optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
+    optprob = Optimization.OptimizationProblem(optf, α)
+    res1 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
+    
     println("Test non-mutating form")
-    res2 = DiffEqFlux.sciml_train(
-        loss_op,
-        α,
-        ADAM(0.001),
-        cb = callback,
-        maxiters = 200,
-    )
+
+    optf = Optimization.OptimizationFunction((x,p) -> loss_op(x), Optimization.AutoZygote())
+    optprob = Optimization.OptimizationProblem(optf, α)
+    res2 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
 end
 
 @testset "Adaptive neural SDE" begin
@@ -210,9 +207,16 @@ end
         end
         false
     end
-    res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,probscalar, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
-    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,probscalar, SOSRI()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
 
-    res1 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, LambaEM()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
-    res2 = @time DiffEqFlux.sciml_train((p) -> loss(p,prob, SOSRA()), p_nn, ADAM(0.1), cb = callback, maxiters=5)
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,probscalar, LambaEM()), Optimization.AutoZygote())
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
+    res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
+
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,probscalar, SOSRI()), Optimization.AutoZygote())
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
+    res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
+
+    optf = Optimization.OptimizationFunction((p,_) -> loss(p,prob, LambaEM()), Optimization.AutoZygote())
+    optprob = Optimization.OptimizationProblem(optf, p_nn)
+    res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 end
