@@ -92,7 +92,6 @@ if GROUP == "Callbacks2"
     @time @safetestset "Continuous Callbacks with Adjoints" begin include("callbacks/continuous_callbacks.jl") end
 end
 
-
 if GROUP == "Shadowing"
     @time @safetestset "Shadowing Tests" begin include("shadowing.jl") end
 end

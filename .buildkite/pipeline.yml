@@ -9,7 +9,7 @@ steps:
       os: "linux"
       queue: "juliaecosystem"
     env:
-      GROUP: 'Callbacks'
+      GROUP: 'Callbacks1'
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
@@ -24,7 +24,7 @@ steps:
       os: "linux"
       queue: "juliaecosystem"
     env:
-      GROUP: 'Callbacks'
+      GROUP: 'Callbacks2'
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
