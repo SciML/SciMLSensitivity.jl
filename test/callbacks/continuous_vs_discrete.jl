@@ -156,6 +156,6 @@ function test_continuous_wrt_discrete_callback()
   @test dp1 ≈ dp2
 end
 
-@testset "Compare with continuous with discrete callbacks" begin
+@testset "Compare continuous with discrete callbacks" begin
   test_continuous_wrt_discrete_callback()
 end

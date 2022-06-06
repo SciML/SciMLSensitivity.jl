@@ -88,7 +88,7 @@ if GROUP == "Callbacks1"
 end
 
 if GROUP == "Callbacks2"
-    @time @safetestset "Continuous vs. discrete Callbacks" begin include("callbacks/SDE_callbacks.jl") end
+    @time @safetestset "Continuous vs. discrete Callbacks" begin include("callbacks/continuous_vs_discrete.jl") end
     @time @safetestset "Continuous Callbacks with Adjoints" begin include("callbacks/continuous_callbacks.jl") end
 end
 
