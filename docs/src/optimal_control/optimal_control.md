@@ -36,14 +36,15 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```julia
-using Flux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics
+using Lux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics, Random
+rng = Random.default_rng()
 tspan = (0.0f0,8.0f0)
-ann = Chain(Dense(1,32,tanh), Dense(32,32,tanh), Dense(32,1))
-θ = initial_params(ann)
+ann = Lux.Chain(Lux.Dense(1,32,tanh), Lux.Dense(32,32,tanh), Lux.Dense(32,1))
+θ, st = Lux.setup(rng, ann)
 function dxdt_(dx,x,p,t)
     x1, x2 = x
     dx[1] = x[2]
-    dx[2] = ann([t],p)[1]^3
+    dx[2] = (ann([t],p,st)[1])[1]^3
 end
 x0 = [-4f0,0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))
@@ -68,15 +69,14 @@ end
 cb(θ,l)
 loss1 = loss_adjoint(θ)
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
-optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, θ)
+optprob = Optimization.OptimizationProblem(optf, θ)
 res1 = Optimization.solve(optprob, ADAM(0.005), cb = cb,maxiters=100)
-optfunc2 = Optimization.instantiate_function(optf, res1.u, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, res1.u)
+
+optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2,
-                              BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
+                              BFGS(), maxiters=100,
                               allow_f_increases = false)
 ```
 
@@ -88,11 +88,11 @@ function loss_adjoint(θ)
   x = predict_adjoint(θ)
   mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])
 end
-optf3 = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
-optfunc3 = Optimization.instantiate_function(optf3, res2.u, adtype, nothing)
-optprob3 = Optimization.OptimizationProblem(optfunc3, res2.u)
+optf3 = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
+
+optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
 res3 = Optimization.solve(optprob3,
-                              BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
+                              BFGS(),maxiters=100,
                               allow_f_increases = false)
 
 l = loss_adjoint(res3.u)

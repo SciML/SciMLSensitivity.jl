@@ -5,7 +5,7 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 
 ```julia
 using DelimitedFiles,Plots
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationJL
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL
 
 # Problem setup parameters:
 Lx = 10.0
@@ -88,9 +88,9 @@ scatter(sol[:,end], label="Truth", size=(800,500))
 plot!(PRED[end][:,end], lw=2, label="Prediction")
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, ps, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, ps)
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, ps)
 res = Optimization.solve(optprob, PolyOpt(), cb = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
@@ -275,9 +275,9 @@ parameters that minimizes the cost function.
 
 ```julia
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, ps, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, ps)
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, ps)
 res = Optimization.solve(optprob, PolyOpt(), cb = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```

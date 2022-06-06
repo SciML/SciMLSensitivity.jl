@@ -10,18 +10,20 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```julia
-using Flux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots
+using Lux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots, Random
 
+rng = Random.default_rng()
 u0 = 1.1f0
 tspan = (0.0f0, 25.0f0)
 tsteps = 0.0f0:1.0:25.0f0
 
-model_univ = Chain(Dense(2, 16, tanh),
-                       Dense(16, 16, tanh),
-                       Dense(16, 1))
+model_univ = Lux.Chain(Lux.Dense(2, 16, tanh),
+                       Lux.Dense(16, 16, tanh),
+                       Lux.Dense(16, 1))
 
 # The model weights are destructured into a vector of parameters
-p_model = initial_params(model_univ)
+p_model, st = Lux.setup(rng, model_univ)
+p_model = Lux.ComponentArray(p_model)
 n_weights = length(p_model)
 
 # Parameters of the second equation (linear dynamics)
@@ -41,7 +43,7 @@ function dudt_univ!(du, u, p, t)
     model_control, system_output = u
 
     # Dynamics of the control and system
-    dmodel_control = model_univ(u, model_weights)[1]
+    dmodel_control = (model_univ(u, model_weights, st)[1])[1]
     dsystem_output = α*system_output + β*model_control
 
     # Update in place
@@ -84,9 +86,8 @@ end
 
 ```julia
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss_univ(p), adtype)
-optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, θ)
+optf = Optimization.OptimizationFunction((x,p)->loss_univ(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
                                      cb = callback)
 ```

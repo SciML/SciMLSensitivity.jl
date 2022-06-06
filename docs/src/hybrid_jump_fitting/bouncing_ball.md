@@ -8,7 +8,7 @@ data. Assume we have data for the ball's height after 15 seconds. Let's
 first start by implementing the ODE:
 
 ```julia
-using DiffEqFlux, Optimization, OptimizationPolyalgorithms, DifferentialEquations
+using Optimization, OptimizationPolyalgorithms, DifferentialEquations
 
 function f(du,u,p,t)
   du[1] = u[2]
@@ -46,8 +46,7 @@ end
 loss([0.8])
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
-optfunc = Optimization.instantiate_function(optf, [0.8], adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, [0.8])
+optprob = Optimization.OptimizationProblem(optf, [0.8])
 @time res = Optimization.solve(optprob, PolyOpt(), [0.8])
 @show res.u # [0.866554105436901]
 ```

@@ -119,9 +119,8 @@ For completeness, we also perform estimation using both losses. We choose an ini
 ```julia
 L0 = [0.7] # Initial guess of pendulum length
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->simloss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, L0, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, L0)
+optf = Optimization.OptimizationFunction((x,p)->simloss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, L0)
 
 ressim = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)
@@ -158,9 +157,8 @@ As a last step, we perform the estimation also with some measurement noise to ve
 yn = y .+ 0.1f0 .* randn.(Float32)
 y_int = LinearInterpolation(yn,tsteps) # redefine the interpolator to contain noisy measurements
 
-optf = Optimization.OptimizationFunction((p)->predloss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, p0, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p0)
+optf = Optimization.OptimizationFunction((x,p)->predloss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p0)
 
 resprednoise = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)

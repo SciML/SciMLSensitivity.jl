@@ -30,8 +30,9 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```julia
-using Flux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationJL, Plots
+using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationOptimJL, Plots, Random
 
+rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
 datasize = 30
 tspan = (0.0f0, 5.0f0)
@@ -45,13 +46,15 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Chain((x, p) -> x.^3,
-                  Dense(2, 16, tanh),
-                  Dense(16, 2))
+dudt2 = Lux.Chain(ActivationFunction(x -> x.^3),
+                  Lux.Dense(2, 16, tanh),
+                  Lux.Dense(16, 2))
+
+pinit, st = Lux.setup(rng, dudt2)
 prob_neuralode = NeuralODE(dudt2, tspan, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p))
+  Array(prob_neuralode(u0, p, st)[1])
 end
 
 function loss_neuralode(p)
@@ -77,9 +80,9 @@ callback = function (p, l, pred; doplot = true)
 end
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p) -> loss_neuralode(p), adtype)
-optfunc = Optimization.instantiate_function(optf, prob_neuralode.p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, prob_neuralode.p)
+optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
 result_neuralode = Optimization.solve(optprob,
                                       ADAM(0.05), cb = callback,
                                       maxiters = 300)
@@ -103,9 +106,9 @@ Let's start by reducing the timespan to `(0,1.5)`:
 prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p) -> loss_neuralode(p), adtype)
-optfunc = Optimization.instantiate_function(optf, prob_neuralode.p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, prob_neuralode.p)
+optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
 result_neuralode2 = Optimization.solve(optprob,
                                       ADAM(0.05), cb = callback,
                                       maxiters = 300)
@@ -122,8 +125,7 @@ from our `(0,1.5)` fit as the initial condition to our next fit:
 ```julia
 prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
-optfunc = Optimization.instantiate_function(optf, result_neuralode2.u, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, result_neuralode.u)
+optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
 result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
                                         cb = callback)
@@ -138,8 +140,7 @@ to the full fit:
 
 ```julia
 prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
-optfunc = Optimization.instantiate_function(optf, result_neuralode3.u, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, result_neuralode3.u)
+optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
                                       cb = callback)
@@ -161,7 +162,7 @@ one could use a mix of (4) and (5), or breaking up the trajectory into chunks an
 
 ```julia
 
-using DiffEqFlux, Plots, DifferentialEquations
+using Flux, Plots, DifferentialEquations
 
 
 #Starting example with tspan (0, 5)

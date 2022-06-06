@@ -28,7 +28,7 @@ end
 A full example making use of this trick is:
 
 ```julia
-using DifferentialEquations, Optimization, OptimizationJL, Plots
+using DifferentialEquations, Optimization, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u
@@ -66,9 +66,9 @@ end
 
 pinit = [1.2,0.8,2.5,0.8]
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p) -> loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, pinit, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, pinit)
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, pinit)
 res = Optimization.solve(optprob,ADAM(), maxiters = 1000)
 
 # res = Optimization.solve(optprob,BFGS(), maxiters = 1000) ### errors!

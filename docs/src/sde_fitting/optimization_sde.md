@@ -86,9 +86,8 @@ We can then use `Optimization.solve` to fit the SDE:
 using Optimization, OptimizationOptimJL
 pinit = [1.2,0.8,2.5,0.8,0.1,0.1]
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p) -> loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, pinit, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, pinit)
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, pinit)
 @time res = Optimization.solve(optprob,ADAM(0.05),cb=cb2,maxiters = 100)
 ```
 
@@ -173,10 +172,10 @@ Let's optimize
 
 ```julia
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p) -> loss_sde(p), adtype)
-optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p)
-result_sde = Optimization.solve(loss_sde, p, ADAM(0.1),
+optf = Optimization.OptimizationFunction((x,p) -> loss_sde(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, p)
+result_sde = Optimization.solve(optprob, ADAM(0.1),
                                     cb = callback, maxiters = 100)
 ```
 

@@ -14,8 +14,9 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```julia
-using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots
+using Lux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots, Random
 
+rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
 datasize = 30
 tspan = (0.0f0, 1.5f0)
@@ -29,14 +30,14 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Chain((x, p) -> x.^3,
-                  Dense(2, 50, tanh),
-                  Dense(50, 2))
+dudt2 = Lux.Chain(ActivationFunction(x -> x.^3),
+                  Lux.Dense(2, 50, tanh),
+                  Lux.Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
-p = prob_neuralode.p
+p,st = Lux.setup(rng, dudt2)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p))
+  Array(prob_neuralode(u0, p, st)[1])
 end
 
 function loss_neuralode(p)
@@ -70,13 +71,12 @@ cb = function (p, l, pred; doplot = false)
 end
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss_neuralode(p), adtype)
+optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), adtype)
 
-optfunc1 = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob1 = Optimization.OptimizationProblem(optfunc1, p)
+optprob1 = Optimization.OptimizationProblem(optf, Lux.ComponentArray(p))
 pstart = Optimization.solve(optprob1, ADAM(0.01), cb=cb, maxiters = 100).u
-optfunc2 = Optimization.instantiate_function(optf, pstart, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, pstart)
+
+optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), cb=cb, maxiters = 200)
 pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), cb=cb, maxiters = 200)
 ```

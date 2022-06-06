@@ -5,7 +5,7 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizationPolyalgorithms
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms
 
 
 # Define the same LV equation, but including a delay parameter
@@ -49,8 +49,7 @@ cb(p,loss_dde(p))
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
-optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p)
+optprob = Optimization.OptimizationProblem(optf, p)
 result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
 ```
 
@@ -75,7 +74,6 @@ We use `Optimization.solve` to optimize the parameters for our loss function:
 ```julia
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
-optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p)
+optprob = Optimization.OptimizationProblem(optf, p)
 result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
 ```

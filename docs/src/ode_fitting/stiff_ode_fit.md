@@ -55,13 +55,13 @@ initp = ones(3)
 cb(initp,loss_adjoint(initp)...)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x,p), adtype)
+optprob = Optimization.OptimizationProblem(optf, initp)
 
-optfunc = Optimization.instantiate_function(optf, initp, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, initp)
 res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
-optfunc2 = Optimization.instantiate_function(optf, res.u, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, res.u)
+
+optprob2 = Optimization.OptimizationProblem(optf, res.u)
+
 res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
 println("Ground truth: $(p)\nFinal parameters: $(round.(exp.(res2.u), sigdigits=5))\nError: $(round(norm(exp.(res2.u) - p) ./ norm(p) .* 100, sigdigits=3))%")
 ```
@@ -144,13 +144,12 @@ initp = ones(3)
 cb(initp,loss_adjoint(initp)...)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss_adjoint(p), adtype)
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
-optfunc = Optimization.instantiate_function(optf, initp, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, initp)
+optprob = Optimization.OptimizationProblem(optf, initp)
 res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
-optfunc2 = Optimization.instantiate_function(optf, res.u, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, res.u)
+
+optprob2 = Optimization.OptimizationProblem(optf, res.u)
 res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
 ```
 

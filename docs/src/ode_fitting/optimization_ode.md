@@ -50,9 +50,8 @@ callback = function (p, l, pred)
 end
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p)
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
                                     cb = callback,
@@ -142,9 +141,8 @@ Let's optimize the model.
 
 ```julia
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((p)->loss(p), adtype)
-optfunc = Optimization.instantiate_function(optf, p, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, p)
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
                                     cb = callback,

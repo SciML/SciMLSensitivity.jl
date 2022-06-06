@@ -16,11 +16,12 @@ matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
 
 ```julia
-using Flux, DiffEqFlux, DifferentialEquations
+using Lux, DiffEqFlux, DifferentialEquations, Random
+rng = Random.default_rng()
 
-dudt = Chain(Dense(2,50,tanh),Dense(50,2))
-p = initial_params(dudt)
-f(u,p,t) = dudt(u,p)
+dudt = Lux.Chain(Lux.Dense(2,50,tanh),Lux.Dense(50,2))
+p,st = Lux.setup(rng, dudt)
+f(u,p,t) = dudt(u,p,st)[1]
 ```
 
 and we can solve this ODE where the initial condition is a vector:
@@ -81,7 +82,7 @@ The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL, OptimizationFlux
+using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux
 pa = [1.0]
 u0 = [3.0]
 θ = [u0;pa]
@@ -110,15 +111,13 @@ opt = ADAM(0.1)
 l1 = loss_serial(θ)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((θ)->loss_serial(θ), adtype)
-optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, θ)
+optf = Optimization.OptimizationFunction((x,p)->loss_serial(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
 
 res_serial = Optimization.solve(optprob, opt; cb = cb, maxiters=100)
 
-optf2 = Optimization.OptimizationFunction((θ)->loss_threaded(θ), adtype)
-optfunc2 = Optimization.instantiate_function(optf2, θ, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, θ)
+optf2 = Optimization.OptimizationFunction((x,p)->loss_threaded(x), adtype)
+optprob2 = Optimization.OptimizationProblem(optf2, θ)
 
 res_threads = Optimization.solve(optprob2, opt; cb = cb, maxiters=100)
 ```
@@ -198,7 +197,7 @@ using Distributed
 addprocs(4)
 
 @everywhere begin
-  using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL
+  using DifferentialEquations, Optimization, OptimizationOptimJL
   function f(u,p,t)
     1.01u .* p
   end
@@ -229,9 +228,8 @@ loss_distributed(θ) = sum(abs2,1.0.-Array(model1(θ,EnsembleDistributed())))
 l1 = loss_distributed(θ)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((θ)->loss_distributed(θ), adtype)
-optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, θ)
+optf = Optimization.OptimizationFunction((x,p)->loss_distributed(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
 
 res_distributed = Optimization.solve(optprob, opt; cb = cb, maxiters = 100)
 ```
@@ -252,7 +250,7 @@ The following is an example of minibatch ensemble parallelism across
 a GPU:
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizatonOptimJL
+using DifferentialEquations, Optimization, OptimizationOptimJL
 function f(du,u,p,t)
   @inbounds begin
     du[1] = 1.01 * u[1] * p[1] * p[2]
@@ -284,9 +282,8 @@ loss_gpu(θ) = sum(abs2,1.0.-Array(model1(θ,EnsembleGPUArray())))
 l1 = loss_gpu(θ)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((θ)->loss_gpu(θ), adtype)
-optfunc = Optimization.instantiate_function(optf, θ, adtype, nothing)
-optprob = Optimization.OptimizationProblem(optfunc, θ)
+optf = Optimization.OptimizationFunction((x,p)->loss_gpu(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
 
 res_gpu = Optimization.solve(optprob, opt; cb = cb, maxiters = 100)
 ```
