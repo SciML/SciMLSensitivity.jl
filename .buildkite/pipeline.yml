@@ -8,6 +8,7 @@ steps:
     agents:
       os: "linux"
       queue: "juliaecosystem"
+      arch: "x86_64"
     env:
       GROUP: 'Callbacks1'
     timeout_in_minutes: 120
@@ -23,6 +24,7 @@ steps:
     agents:
       os: "linux"
       queue: "juliaecosystem"
+      arch: "x86_64"
     env:
       GROUP: 'Callbacks2'
     timeout_in_minutes: 120
@@ -39,6 +41,7 @@ steps:
     agents:
       os: "linux"
       queue: "juliaecosystem"
+      arch: "x86_64"
       exclusive: true
     env:
       GROUP: 'Shadowing'
@@ -54,6 +57,7 @@ steps:
            coverage: false # 1000x slowdown
     agents:
       queue: "juliagpu"
+      arch: "x86_64"
       cuda: "*"
     env:
       GROUP: 'GPU'
