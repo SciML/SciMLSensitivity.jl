@@ -1,5 +1,5 @@
 steps:
-  - label: "Callbacks"
+  - label: "Callbacks1"
     plugins:
       - JuliaCI/julia#v1:
           version: "1"
@@ -8,8 +8,25 @@ steps:
     agents:
       os: "linux"
       queue: "juliaecosystem"
+      arch: "x86_64"
     env:
-      GROUP: 'Callbacks'
+      GROUP: 'Callbacks1'
+    timeout_in_minutes: 120
+    # Don't run Buildkite if the commit message includes the text [skip tests]
+    if: build.message !~ /\[skip tests\]/
+
+  - label: "Callbacks2"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+      - JuliaCI/julia-test#v1:
+          coverage: false
+    agents:
+      os: "linux"
+      queue: "juliaecosystem"
+      arch: "x86_64"
+    env:
+      GROUP: 'Callbacks2'
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
@@ -24,6 +41,7 @@ steps:
     agents:
       os: "linux"
       queue: "juliaecosystem"
+      arch: "x86_64"
       exclusive: true
     env:
       GROUP: 'Shadowing'
@@ -39,6 +57,7 @@ steps:
            coverage: false # 1000x slowdown
     agents:
       queue: "juliagpu"
+      arch: "x86_64"
       cuda: "*"
     env:
       GROUP: 'GPU'
