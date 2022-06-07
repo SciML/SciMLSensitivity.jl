@@ -90,6 +90,7 @@ end
 if GROUP == "Callbacks2"
     @time @safetestset "Continuous vs. discrete Callbacks" begin include("callbacks/continuous_vs_discrete.jl") end
     @time @safetestset "Continuous Callbacks with Adjoints" begin include("callbacks/continuous_callbacks.jl") end
+    @time @safetestset "VectorContinuousCallbacks with Adjoints" begin include("callbacks/vector_continuous_callbacks.jl") end
 end
 
 if GROUP == "Shadowing"

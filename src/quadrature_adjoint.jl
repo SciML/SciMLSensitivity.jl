@@ -309,34 +309,38 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
   indx, pos_neg = get_indx(cb, t)
   tprev = get_tprev(cb,indx,pos_neg)
 
-  function wp(dp,p,u,t,tprev,pos_neg)
-    _affect! = get_affect!(cb,pos_neg)
-    fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-    _affect!(fakeinteg)
-    dp .= fakeinteg.p
+  wp = let tprev=tprev, pos_neg=pos_neg
+    function (dp,p,u,t)
+      _affect! = get_affect!(cb,pos_neg)
+      fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
+      _affect!(fakeinteg)
+      dp .= fakeinteg.p
+    end
   end
 
   _p = similar(integrand.p, size(integrand.p))
-  wp(_p,integrand.p,integrand.y,t,tprev,pos_neg)
+  wp(_p,integrand.p,integrand.y,t)
 
   if _p != integrand.p
-    fakeSp = CallbackSensitivityFunction((du,u,p,t)->wp(du,u,p,t,tprev,pos_neg),sensealg,adj_prob.f.f.diffcache,sol.prob)
+    fakeSp = CallbackSensitivityFunction(wp,sensealg,adj_prob.f.f.diffcache,sol.prob)
     #vjp with Jacobin given by dw/dp before event and vector given by grad
     vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
                         dgrad=nothing, dy=nothing)
     integrand = update_p_integrand(integrand,_p)
   end
 
-  function w(du,u,p,t,tprev,pos_neg)
-    _affect! = get_affect!(cb,pos_neg)
-    fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
-    _affect!(fakeinteg)
-    du .= vec(fakeinteg.u)
+  w = let tprev=tprev, pos_neg=pos_neg
+    function (du,u,p,t)
+      _affect! = get_affect!(cb,pos_neg)
+      fakeinteg = FakeIntegrator([x for x in u],[x for x in p],t,tprev)
+      _affect!(fakeinteg)
+      du .= vec(fakeinteg.u)
+    end
   end
 
   # Create a fake sensitivity function to do the vjps needs to be done
   # to account for parameter dependence of affect function
-  fakeS = CallbackSensitivityFunction((du,u,p,t)->w(du,u,p,t,tprev,pos_neg),sensealg,adj_prob.f.f.diffcache,sol.prob)
+  fakeS = CallbackSensitivityFunction(w,sensealg,adj_prob.f.f.diffcache,sol.prob)
   if dgdu === nothing
     g(dλ,integrand.y,integrand.p,t,cur_time)
   else
