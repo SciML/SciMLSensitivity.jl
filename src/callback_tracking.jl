@@ -433,6 +433,7 @@ DiffEqBase.terminate!(i::FakeIntegrator) = nothing
 # get the affect function of the callback. For example, allows us to get the `f` in PeriodicCallback without the integrator.tstops handling.  
 get_affect!(cb::DiscreteCallback,bool) = get_affect!(cb.affect!)
 get_affect!(cb::ContinuousCallback,bool) = bool ? get_affect!(cb.affect!) : get_affect!(cb.affect_neg!)
-get_affect!(affect!::TrackedAffect) = affect!.affect!
+get_affect!(affect!::TrackedAffect) = get_affect!(affect!.affect!)
+get_affect!(affect!) = affect!
 get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect) = affect!.affect!
 
