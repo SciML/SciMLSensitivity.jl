@@ -18,7 +18,7 @@ have monotonic convergence and so this can stop early exits which can result
 in local minima. This looks like:
 
 ```julia
-pmin = DiffEqFlux.sciml_train(loss_neuralode, pstart, NewtonTrustRegion(), cb=cb,
+pmin = Optimization.solve(optprob, NewtonTrustRegion(), cb=cb,
                               maxiters = 200, allow_f_increases = true)
 ```
 
@@ -30,8 +30,9 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots
+using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationOptimJL, Plots, Random
 
+rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
 datasize = 30
 tspan = (0.0f0, 5.0f0)
@@ -45,13 +46,15 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = FastChain((x, p) -> x.^3,
-                  FastDense(2, 16, tanh),
-                  FastDense(16, 2))
+dudt2 = Lux.Chain(ActivationFunction(x -> x.^3),
+                  Lux.Dense(2, 16, tanh),
+                  Lux.Dense(16, 2))
+
+pinit, st = Lux.setup(rng, dudt2)
 prob_neuralode = NeuralODE(dudt2, tspan, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p))
+  Array(prob_neuralode(u0, p, st)[1])
 end
 
 function loss_neuralode(p)
@@ -76,9 +79,13 @@ callback = function (p, l, pred; doplot = true)
   return false
 end
 
-result_neuralode = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
-                                          ADAM(0.05), cb = callback,
-                                          maxiters = 300)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
+result_neuralode = Optimization.solve(optprob,
+                                      ADAM(0.05), cb = callback,
+                                      maxiters = 300)
 
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
 savefig("local_minima.png")
@@ -98,9 +105,13 @@ Let's start by reducing the timespan to `(0,1.5)`:
 ```julia
 prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
-result_neuralode2 = DiffEqFlux.sciml_train(loss_neuralode, prob_neuralode.p,
-                                           ADAM(0.05), cb = callback,
-                                           maxiters = 300)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
+result_neuralode2 = Optimization.solve(optprob,
+                                      ADAM(0.05), cb = callback,
+                                      maxiters = 300)
 
 callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
 savefig("shortplot1.png")
@@ -114,10 +125,10 @@ from our `(0,1.5)` fit as the initial condition to our next fit:
 ```julia
 prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
-result_neuralode3 = DiffEqFlux.sciml_train(loss_neuralode,
-                                           result_neuralode2.u,
-                                           ADAM(0.05), maxiters = 300,
-                                           cb = callback)
+optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
+result_neuralode3 = Optimization.solve(optprob,
+                                        ADAM(0.05), maxiters = 300,
+                                        cb = callback)
 callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
 savefig("shortplot2.png")
 ```
@@ -129,11 +140,10 @@ to the full fit:
 
 ```julia
 prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
-
-result_neuralode4 = DiffEqFlux.sciml_train(loss_neuralode,
-                                           result_neuralode3.u,
-                                           ADAM(0.01), maxiters = 300,
-                                           cb = callback)
+optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
+result_neuralode4 = Optimization.solve(optprob,
+                                      ADAM(0.01), maxiters = 300,
+                                      cb = callback)
 callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
 savefig("fullplot.png")
 ```
@@ -152,7 +162,7 @@ one could use a mix of (4) and (5), or breaking up the trajectory into chunks an
 
 ```julia
 
-using DiffEqFlux, Plots, DifferentialEquations
+using Flux, Plots, DifferentialEquations
 
 
 #Starting example with tspan (0, 5)
@@ -169,7 +179,7 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-#Using flux here to easily demonstrate the idea, but this can be done with sciml_train!
+#Using flux here to easily demonstrate the idea, but this can be done with Optimization.solve!
 dudt2 = Chain(Dense(2,16, tanh),
              Dense(16,2))
 

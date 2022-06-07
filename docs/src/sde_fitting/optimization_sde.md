@@ -80,11 +80,15 @@ function cb2(p,l,arrsol)
 end
 ```
 
-We can then use `sciml_train` to fit the SDE:
+We can then use `Optimization.solve` to fit the SDE:
 
 ```julia
+using Optimization, OptimizationOptimJL
 pinit = [1.2,0.8,2.5,0.8,0.1,0.1]
-@time res = DiffEqFlux.sciml_train(loss,pinit,ADAM(0.05),cb=cb2,maxiters = 100)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, pinit)
+@time res = Optimization.solve(optprob,ADAM(0.05),cb=cb2,maxiters = 100)
 ```
 
 The final print out was:
@@ -120,7 +124,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationJL, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -149,7 +153,7 @@ loss_sde(p) = sum(abs2, x-1 for x in predict_sde(p))
 ```
 
 For this training process, because the loss function is stochastic, we will use
-the `ADAM` optimizer from Flux.jl. The `sciml_train` function is the same as
+the `ADAM` optimizer from Flux.jl. The `Optimization.solve` function is the same as
 before. However, to speed up the training process, we will use a global counter
 so that way we only plot the current results every 10 iterations. This looks
 like:
@@ -167,7 +171,11 @@ end
 Let's optimize
 
 ```julia
-result_sde = DiffEqFlux.sciml_train(loss_sde, p, ADAM(0.1),
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_sde(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, p)
+result_sde = Optimization.solve(optprob, ADAM(0.1),
                                     cb = callback, maxiters = 100)
 ```
 

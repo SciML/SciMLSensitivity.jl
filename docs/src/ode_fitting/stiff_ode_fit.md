@@ -8,7 +8,7 @@ Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
 ```julia
-using DifferentialEquations, DiffEqFlux, LinearAlgebra
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL, LinearAlgebra
 using ForwardDiff
 using DiffEqBase: UJacobianWrapper
 using Plots
@@ -54,8 +54,15 @@ initp = ones(3)
 # Display the ODE with the initial parameter values.
 cb(initp,loss_adjoint(initp)...)
 
-res = DiffEqFlux.sciml_train(loss_adjoint, initp, ADAM(0.01), cb = cb, maxiters = 300)
-res2 = DiffEqFlux.sciml_train(loss_adjoint, res.u, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x,p), adtype)
+optprob = Optimization.OptimizationProblem(optf, initp)
+
+res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
+
+optprob2 = Optimization.OptimizationProblem(optf, res.u)
+
+res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
 println("Ground truth: $(p)\nFinal parameters: $(round.(exp.(res2.u), sigdigits=5))\nError: $(round(norm(exp.(res2.u) - p) ./ norm(p) .* 100, sigdigits=3))%")
 ```
 
@@ -71,7 +78,7 @@ Error: 1.69%
 First, let's get a time series array from the Robertson's equation as data.
 
 ```julia
-using DifferentialEquations, DiffEqFlux, LinearAlgebra
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL, LinearAlgebra
 using ForwardDiff
 using DiffEqBase: UJacobianWrapper
 using Plots
@@ -136,8 +143,14 @@ initp = ones(3)
 # Display the ODE with the initial parameter values.
 cb(initp,loss_adjoint(initp)...)
 
-res = DiffEqFlux.sciml_train(loss_adjoint, initp, ADAM(0.01), cb = cb, maxiters = 300)
-res2 = DiffEqFlux.sciml_train(loss_adjoint, res.u, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, initp)
+res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
+
+optprob2 = Optimization.OptimizationProblem(optf, res.u)
+res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
 ```
 
 Finally, we can analyze the difference between the fitted parameters and the

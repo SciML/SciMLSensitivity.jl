@@ -33,8 +33,9 @@ First let's build training data from the same example as the neural ODE:
 
 ```julia
 using Plots, Statistics
-using DiffEqFlux, StochasticDiffEq, DiffEqBase.EnsembleAnalysis
+using Lux, Optimization, OptimizationFlux, DiffEqFlux, StochasticDiffEq, DiffEqBase.EnsembleAnalysis, Random
 
+rng = Random.default_rng()
 u0 = Float32[2.; 0.]
 datasize = 30
 tspan = (0.0f0, 1.0f0)
@@ -72,10 +73,19 @@ Now we build a neural SDE. For simplicity we will use the `NeuralDSDE`
 neural SDE with diagonal noise layer function:
 
 ```julia
-drift_dudt = FastChain((x, p) -> x.^3,
-                       FastDense(2, 50, tanh),
-                       FastDense(50, 2))
-diffusion_dudt = FastChain(FastDense(2, 2))
+drift_dudt = Lux.Chain(ActivationFunction(x -> x.^3),
+                       Lux.Dense(2, 50, tanh),
+                       Lux.Dense(50, 2))
+p1, st1 = Lux.setup(rng, drift_dudt)
+
+diffusion_dudt = Lux.Chain(Lux.Dense(2, 2))
+p2, st2 = Lux.setup(rng, diffusion_dudt)
+
+p1 = Lux.ComponentArray(p1)
+p2 = Lux.ComponentArray(p2)
+#Component Arrays doesn't provide a name to the first ComponentVector, only subsequent ones get a name for dereferencing
+p = Lux.ComponentArray(p1;p1)
+p = Lux.ComponentArray(p;p2)
 
 neuralsde = NeuralDSDE(drift_dudt, diffusion_dudt, tspan, SOSRI(),
                        saveat = tsteps, reltol = 1e-1, abstol = 1e-1)
@@ -85,12 +95,12 @@ Let's see what that looks like:
 
 ```julia
 # Get the prediction using the correct initial condition
-prediction0 = neuralsde(u0)
+prediction0, st1, st2 = neuralsde(u0,p.p1,p.p2,st1,st2)
 
-drift_(u, p, t) = drift_dudt(u, p[1:neuralsde.len])
-diffusion_(u, p, t) = diffusion_dudt(u, p[(neuralsde.len+1):end])
+drift_(u, p, t) = drift_dudt(u, p.p1, st1)[1]
+diffusion_(u, p, t) = diffusion_dudt(u, p.p2, st2)[1]
 
-prob_neuralsde = SDEProblem(drift_, diffusion_, u0,(0.0f0, 1.2f0), neuralsde.p)
+prob_neuralsde = SDEProblem(drift_, diffusion_, u0,(0.0f0, 1.2f0), p)
 
 ensemble_nprob = EnsembleProblem(prob_neuralsde)
 ensemble_nsol = solve(ensemble_nprob, SOSRI(), trajectories = 100,
@@ -110,7 +120,7 @@ the data values:
 
 ```julia
 function predict_neuralsde(p, u = u0)
-  return Array(neuralsde(u, p))
+  return Array(neuralsde(u, p.p1, p.p2, st1, st2)[1])
 end
 
 function loss_neuralsde(p; n = 100)
@@ -161,8 +171,10 @@ the right mean behavior:
 opt = ADAM(0.025)
 
 # First round of training with n = 10
-result1 = DiffEqFlux.sciml_train((p) -> loss_neuralsde(p, n = 10),  
-                                 neuralsde.p, opt,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss_neuralsde(x, n=10), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
+result1 = Optimization.solve(optprob, opt,
                                  cb = callback, maxiters = 100)
 ```
 
@@ -170,8 +182,9 @@ We resume the training with a larger `n`. (WARNING - this step is a couple of
 orders of magnitude longer than the previous one).
 
 ```julia
-result2 = DiffEqFlux.sciml_train((p) -> loss_neuralsde(p, n = 100),
-                                 result1.u, opt,
+optf2 = Optimization.OptimizationFunction((x,p) -> loss_neuralsde(x, n=100), adtype)
+optprob2 = Optimization.OptimizationProblem(optf2, result1.u)
+result2 = Optimization.solve(optprob2, opt,
                                  cb = callback, maxiters = 100)
 ```
 

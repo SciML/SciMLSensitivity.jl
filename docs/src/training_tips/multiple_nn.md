@@ -7,8 +7,9 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```julia
-using DiffEqFlux, DifferentialEquations
+using Lux, DiffEqFlux, Optimizaton, OptimizationOptimJL, DifferentialEquations, Random
 
+rng = Random.default_rng()
 function fitz(du,u,p,t)
   v,w = u
   a,b,τinv,l = p
@@ -27,20 +28,25 @@ X = Array(sol)
 Xₙ = X + Float32(1e-3)*randn(eltype(X), size(X))  #noisy data
 
 # For xz term
-NN_1 = FastChain(FastDense(2, 16, tanh), FastDense(16, 1))
-p1 = initial_params(NN_1)
+NN_1 = Lux.Chain(Lux.Dense(2, 16, tanh), Lux.Dense(16, 1))
+p1,st1 = Lux.setup(rng, NN_1)
 
 # for xy term
-NN_2 = FastChain(FastDense(3, 16, tanh), FastDense(16, 1))
-p2 = initial_params(NN_2)
+NN_2 = Lux.Chain(Lux.Dense(3, 16, tanh), Lux.Dense(16, 1))
+p2 = Lux.setup(rng, NN_2)
 scaling_factor = 1f0
 
-p = [p1;p2;scaling_factor]
+p1 = Lux.ComponentArray(p1)
+p2 = Lux.ComponentArray(p2)
+
+p = Lux.ComponentArray(p1;p1)
+p = Lux.ComponentArray(p;p2)
+
 function dudt_(u,p,t)
     v,w = u
-    z1 = NN_1([v,w], p[1:length(p1)])
-    z2 = NN_2([v,w,t], p[(length(p1)+1):end-1])
-    [z1[1],p[end]*z2[1]]
+    z1 = NN_1([v,w], p.p1, st1)[1]
+    z2 = NN_2([v,w,t], p.p2, st2)[1]
+    [z1[1],scaling_factor*z2[1]]
 end
 prob_nn = ODEProblem(dudt_,u0, tspan, p)
 sol_nn = solve(prob_nn, Tsit5(),saveat = sol.t)
@@ -65,12 +71,17 @@ callback(θ,l,pred) = begin
     end
     false
 end
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
 
-res1_uode = DiffEqFlux.sciml_train(loss, p, ADAM(0.01), cb=callback, maxiters = 500)
-res2_uode = DiffEqFlux.sciml_train(loss, res1_uode.u, BFGS(initial_stepnorm=0.01), cb=callback, maxiters = 10000)
+optprob = Optimization.OptimizationProblem(optf, p)
+res1_uode = Optimization.solve(optprob, ADAM(0.01), cb=callback, maxiters = 500)
+
+optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
+res2_uode = Optimization.solve(optprob2, BFGS(), maxiters = 10000)
 ```
 
-The key is that `sciml_train` acts on a single parameter vector `p`.
+The key is that `Optimization.solve` acts on a single parameter vector `p`.
 Thus what we do here is concatenate all of the parameters into a single
 vector `p = [p1;p2;scaling_factor]` and then train on this parameter
 vector. Whenever we need to evaluate the neural networks, we cut the

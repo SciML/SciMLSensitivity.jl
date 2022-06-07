@@ -6,7 +6,7 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -44,15 +44,19 @@ callback = function (p, l, pred)
   display(l)
   plt = plot(pred, ylim = (0, 6))
   display(plt)
-  # Tell sciml_train to not halt the optimization. If return true, then
+  # Tell Optimization.solve to not halt the optimization. If return true, then
   # optimization stops.
   return false
 end
 
-result_ode = DiffEqFlux.sciml_train(loss, p,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
+
+result_ode = Optimization.solve(optprob, PolyOpt(),
                                     cb = callback,
                                     maxiters = 100)
-# result_ode = DiffEqFlux.sciml_train(loss, p, ADAM(0.1), cb = callback)
+# result_ode = Optimization.solve(optprob, ADAM(0.1), cb = callback)
 ```
 
 ## Explanation
@@ -68,7 +72,7 @@ more details, [see the DifferentialEquations.jl documentation](http://docs.julia
 ```
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -105,9 +109,7 @@ function](https://docs.juliadiffeq.org/latest/analysis/sensitivity/) function
 that takes the parameters and an initial condition and returns the solution of
 the differential equation. Next we choose a loss function. Our goal will be to
 find parameters that make the Lotka-Volterra solution constant `x(t)=1`, so we
-define our loss as the squared distance from 1. Note that when using
-`sciml_train`, the first return is the loss value, and the other returns are
-sent to the callback for monitoring convergence.
+define our loss as the squared distance from 1.
 
 ```julia
 function loss(p)
@@ -117,8 +119,8 @@ function loss(p)
 end
 ```
 
-Lastly, we use the `sciml_train` function to train the parameters using `ADAM` to
-arrive at parameters which optimize for our goal. `sciml_train` allows defining
+Lastly, we use the `Optimization.solve` function to train the parameters using `ADAM` to
+arrive at parameters which optimize for our goal. `Optimization.solve` allows defining
 a callback that will be called at each step of our training loop. It takes in
 the current parameter vector and the returns of the last call to the loss
 function. We will display the current loss and make a plot of the current
@@ -129,7 +131,7 @@ callback = function (p, l, pred)
   display(l)
   plt = plot(pred, ylim = (0, 6))
   display(plt)
-  # Tell sciml_train to not halt the optimization. If return true, then
+  # Tell Optimization.solve to not halt the optimization. If return true, then
   # optimization stops.
   return false
 end
@@ -138,7 +140,13 @@ end
 Let's optimize the model.
 
 ```julia
-result_ode = DiffEqFlux.sciml_train(loss, p, cb = callback)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
+
+result_ode = Optimization.solve(optprob, PolyOpt(),
+                                    cb = callback,
+                                    maxiters = 100)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can
@@ -160,8 +168,7 @@ optimization method, like `ADAM(0.1)`, and tweak settings like set `maxiters=100
 to force at most 100 iterations of the optimization. This looks like:
 
 ```julia
-result_ode = DiffEqFlux.sciml_train(loss, p, ADAM(0.1), cb = callback, maxiters=100)
+result_ode = Optimization.solve(optprob, ADAM(0.1),
+                                    cb = callback,
+                                    maxiters = 100)
 ```
-
-For more information on tweaking this functionality, see the
-[sciml_train](@ref sciml_train) documentation

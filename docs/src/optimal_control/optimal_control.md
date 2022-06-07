@@ -36,14 +36,15 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```julia
-using DiffEqFlux, DifferentialEquations, Plots, Statistics
+using Lux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics, Random
+rng = Random.default_rng()
 tspan = (0.0f0,8.0f0)
-ann = FastChain(FastDense(1,32,tanh), FastDense(32,32,tanh), FastDense(32,1))
-θ = initial_params(ann)
+ann = Lux.Chain(Lux.Dense(1,32,tanh), Lux.Dense(32,32,tanh), Lux.Dense(32,1))
+θ, st = Lux.setup(rng, ann)
 function dxdt_(dx,x,p,t)
     x1, x2 = x
     dx[1] = x[2]
-    dx[2] = ann([t],p)[1]^3
+    dx[2] = (ann([t],p,st)[1])[1]^3
 end
 x0 = [-4f0,0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))
@@ -67,9 +68,15 @@ end
 # Display the ODE with the current parameter values.
 cb(θ,l)
 loss1 = loss_adjoint(θ)
-res1 = DiffEqFlux.sciml_train(loss_adjoint, θ, ADAM(0.005), cb = cb,maxiters=100)
-res2 = DiffEqFlux.sciml_train(loss_adjoint, res1.u,
-                              BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, θ)
+res1 = Optimization.solve(optprob, ADAM(0.005), cb = cb,maxiters=100)
+
+optprob2 = Optimization.OptimizationProblem(optf, res1.u)
+res2 = Optimization.solve(optprob2,
+                              BFGS(), maxiters=100,
                               allow_f_increases = false)
 ```
 
@@ -81,9 +88,11 @@ function loss_adjoint(θ)
   x = predict_adjoint(θ)
   mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])
 end
+optf3 = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
-res3 = DiffEqFlux.sciml_train(loss_adjoint, res2.u,
-                              BFGS(initial_stepnorm=0.01), cb = cb,maxiters=100,
+optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
+res3 = Optimization.solve(optprob3,
+                              BFGS(),maxiters=100,
                               allow_f_increases = false)
 
 l = loss_adjoint(res3.u)
