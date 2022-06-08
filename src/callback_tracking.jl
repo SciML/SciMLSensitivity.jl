@@ -318,15 +318,13 @@ function get_indx(cb::Union{ContinuousCallback,VectorContinuousCallback}, t)
     indx = searchsortedfirst(cb.affect!.event_times,t)
     indx_neg = searchsortedfirst(cb.affect_neg!.event_times,t)
     if cb.affect!.event_times[min(indx,length(cb.affect!.event_times))]==t
-      bool = true
+      return indx, true
     elseif cb.affect_neg!.event_times[min(indx_neg,length(cb.affect_neg!.event_times))]==t
-      indx = indx_neg
-      bool = false
+      return indx_neg, false
     else
       error("Event was triggered but no corresponding event in ContinuousCallback was found. Please report this error.")
     end
   end
-  return indx, bool
 end
 
 get_tprev(cb::DiscreteCallback,indx,bool) = cb.affect!.tprev[indx]
@@ -396,6 +394,12 @@ function dgdt(dy,correction,sensealg,y,integrator,tprev,event_idx)
   if gt isa VectorConditionTimeWrapper
     gt.event_idx = event_idx
     gu.event_idx = event_idx
+
+    # safety check: evaluate condition to check if several conditions were true.
+    # This is currently not supported
+    condition(gt.out_cache,y,t,integrator)
+    gt.out_cache .= abs.(gt.out_cache) .< 1000*eps(eltype(gt.out_cache))
+    (sum(gt.out_cache)!=1 || gt.out_cache[event_idx]!=1) && error("Either several events were triggered or `event_idx` was falsely identified. Output of conditions $(gt.out_cache)")
   end
 
   derivative!(gt_val, gt, t, sensealg, gt_conf)
@@ -457,8 +461,9 @@ function build_condition_wrappers(cb::ContinuousCallback,condition,u,t,fakeinteg
   return gt, gu
 end
 function build_condition_wrappers(cb::VectorContinuousCallback,condition,u,t,fakeinteg)
-  gt = VectorConditionTimeWrapper(condition,u,fakeinteg,1)
-  gu = VectorConditionUWrapper(condition,t,fakeinteg,1)
+  out = similar(u, cb.len) # create a cache for condition function (out,u,t,integrator)
+  gt = VectorConditionTimeWrapper(condition,u,fakeinteg,1,out)
+  gu = VectorConditionUWrapper(condition,t,fakeinteg,1,out)
   return gt, gu
 end
 mutable struct ConditionTimeWrapper{F,uType,Integrator} <: Function
@@ -473,27 +478,29 @@ mutable struct ConditionUWrapper{F,tType,Integrator} <: Function
   integrator::Integrator
 end
 (ff::ConditionUWrapper)(u) = ff.f(u,ff.t,ff.integrator)
-mutable struct VectorConditionTimeWrapper{F,uType,Integrator} <: Function
+mutable struct VectorConditionTimeWrapper{F,uType,Integrator,outType} <: Function
   f::F
   u::uType
   integrator::Integrator
   event_idx::Int
+  out_cache::outType
 end
-(ff::VectorConditionTimeWrapper)(t) = [ff.f(ff.u,t,ff.integrator)]
+(ff::VectorConditionTimeWrapper)(t) = (ff.f(ff.out_cache,ff.u,t,ff.integrator); [ff.out_cache[ff.event_idx]])
 
-mutable struct VectorConditionUWrapper{F,tType,Integrator} <: Function
+mutable struct VectorConditionUWrapper{F,tType,Integrator,outType} <: Function
   f::F
   t::tType
   integrator::Integrator
   event_idx::Int
+  out_cache::outType
 end
-(ff::VectorConditionUWrapper)(u) = ff.f(u,ff.t,ff.integrator)
+(ff::VectorConditionUWrapper)(u) = (out = similar(u,length(ff.out_cache)); ff.f(out,u,ff.t,ff.integrator); out[ff.event_idx])
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
 
 # get the affect function of the callback. For example, allows us to get the `f` in PeriodicCallback without the integrator.tstops handling.
 get_affect!(cb::DiscreteCallback,bool) = get_affect!(cb.affect!)
-get_affect!(cb::ContinuousCallback,bool) = bool ? get_affect!(cb.affect!) : get_affect!(cb.affect_neg!)
+get_affect!(cb::Union{ContinuousCallback,VectorContinuousCallback},bool) = bool ? get_affect!(cb.affect!) : get_affect!(cb.affect_neg!)
 get_affect!(affect!::TrackedAffect) = get_affect!(affect!.affect!)
 get_affect!(affect!) = affect!
 get_affect!(affect!::DiffEqCallbacks.PeriodicCallbackAffect) = affect!.affect!
