@@ -314,16 +314,18 @@ end
 
 get_indx(cb::DiscreteCallback,t) = (searchsortedfirst(cb.affect!.event_times,t), true)
 function get_indx(cb::Union{ContinuousCallback,VectorContinuousCallback}, t)
-  if !isempty(cb.affect!.event_times)
+  if !isempty(cb.affect!.event_times) || !isempty(cb.affect_neg!.event_times)
     indx = searchsortedfirst(cb.affect!.event_times,t)
     indx_neg = searchsortedfirst(cb.affect_neg!.event_times,t)
-    if cb.affect!.event_times[min(indx,length(cb.affect!.event_times))]==t
+    if !isempty(cb.affect!.event_times) && cb.affect!.event_times[min(indx,length(cb.affect!.event_times))]==t
       return indx, true
-    elseif cb.affect_neg!.event_times[min(indx_neg,length(cb.affect_neg!.event_times))]==t
+    elseif !isempty(cb.affect_neg!.event_times) && cb.affect_neg!.event_times[min(indx_neg,length(cb.affect_neg!.event_times))]==t
       return indx_neg, false
     else
       error("Event was triggered but no corresponding event in ContinuousCallback was found. Please report this error.")
     end
+  else
+    error("No event was recorded. Please report this error.")
   end
 end
 
