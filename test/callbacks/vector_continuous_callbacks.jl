@@ -49,7 +49,7 @@ end
         end
       end
       cb = VectorContinuousCallback(condition, affect!, 2)
-      test_continuous_callback(cb, g, dg!)
+      test_vector_continuous_callback(cb, g, dg!)
     end
   end
 end
