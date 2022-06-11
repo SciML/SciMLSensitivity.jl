@@ -83,6 +83,7 @@ if GROUP == "All" || GROUP == "SDE3"
 end
 
 if GROUP == "Callbacks1"
+    @time @safetestset "Discrete Callbacks with ForwardDiffSensitivity" begin include("callbacks/forward_sensitivity_callback.jl") end
     @time @safetestset "Discrete Callbacks with Adjoints" begin include("callbacks/discrete_callbacks.jl") end
     @time @safetestset "SDE Callbacks" begin include("callbacks/SDE_callbacks.jl") end
 end
