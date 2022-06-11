@@ -2,7 +2,6 @@ module DiffEqSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
-using DiffEqOperators
 using Adapt
 using LinearSolve
 using Parameters: @unpack
@@ -23,6 +22,7 @@ using Markdown
 
 using Reexport
 import ChainRulesCore: @thunk, NoTangent, @not_implemented
+import SparseDifftools
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 

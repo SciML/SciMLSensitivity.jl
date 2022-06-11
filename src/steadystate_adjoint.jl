@@ -138,7 +138,7 @@ end
 
     if !needs_jac
         # NOTE: Zygote doesn't support inplace
-        linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff = !DiffEqBase.isinplace(sol.prob)),
+        linear_problem = LinearProblem(SparseDifftools.VecJacOperator(f, y, p; autodiff = !DiffEqBase.isinplace(sol.prob)),
                                        vec(diffcache.dg_val),
                                        u0 = vec(λ))
     else
