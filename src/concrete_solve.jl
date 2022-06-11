@@ -590,8 +590,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       _prob = remake(prob,u0=map(identity,_u0),p=_p,tspan=_tspan)
     else
       # use TrackedArray for efficiency of the tape
-      function _f(args...)
-        out = prob.f(args...)
+      function _f(u,p,t)
+        out = prob.f(u,p,t)
         if out isa TrackedArray
           return out
         else
@@ -599,17 +599,17 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
         end
       end
       if prob isa SDEProblem
-        function _g(args...)
-          out = prob.g(args...)
+        function _g(u,p,t)
+          out = prob.g(u,p,t)
           if out isa TrackedArray
             return out
           else
             Tracker.collect(out)
           end
         end
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){isinplace(prob),true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){isinplace(prob),true}(_f),u0=_u0,p=_p,tspan=_tspan)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f),u0=_u0,p=_p,tspan=_tspan)
       end
     end
     sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
