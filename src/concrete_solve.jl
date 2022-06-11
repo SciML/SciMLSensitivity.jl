@@ -599,6 +599,21 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
             Tracker.collect(out)
           end
         end
+
+        # Only define `g` for the stochastic ones
+        if typeof(prob) <: SciMLBase.AbstractSDEProblem
+          function _g(u,p,t)
+            out = prob.g(u,p,t)
+            if out isa TrackedArray
+              return out
+            else
+              Tracker.collect(out)
+            end
+          end
+          _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
+        else
+          _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f),u0=_u0,p=_p,tspan=_tspan)
+        end
       elseif typeof(prob) <: Union{SciMLBase.AbstractODEProblem,SciMLBase.AbstractSDEProblem}
         function _f(u,p,t)
           out = prob.f(u,p,t)
@@ -608,31 +623,21 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
             Tracker.collect(out)
           end
         end
-      end
-
-      # Only define `g` for the stochastic ones
-      if typeof(prob) <: SciMLBase.AbstractSDEProblem
-        function _g(u,p,t)
-          out = prob.g(u,p,t)
-          if out isa TrackedArray
-            return out
-          else
-            Tracker.collect(out)
+        if typeof(prob) <: SciMLBase.AbstractSDDEProblem
+          function _g(u,p,h,t)
+            out = prob.g(u,p,h,t)
+            if out isa TrackedArray
+              return out
+            else
+              Tracker.collect(out)
+            end
           end
+          _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
+        else
+          _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f),u0=_u0,p=_p,tspan=_tspan)
         end
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
-      elseif typeof(prob) <: SciMLBase.AbstractSDDEProblem
-        function _g(u,p,h,t)
-          out = prob.g(u,p,h,t)
-          if out isa TrackedArray
-            return out
-          else
-            Tracker.collect(out)
-          end
-        end
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f),u0=_u0,p=_p,tspan=_tspan)
+        error("TrackerAdjont does not currently support the specified problem type. Please open an issue.")
       end
     end
     sol = solve(_prob,alg,args...;sensealg=DiffEqBase.SensitivityADPassThrough(),kwargs...)
