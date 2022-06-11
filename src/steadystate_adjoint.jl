@@ -71,9 +71,10 @@ end
     @unpack f, p, u0 = sol.prob
 
     discrete = false
+
     # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
     #       cases where the length(u0) > 50 and if yes till what threshold
-    needs_jac = length(u0) <= 50
+    needs_jac = (sensealg.linsolve === nothing && length(u0) <= 50) || LinearSolve.needs_concrete_A(sensealg.linsolve)
 
     p === DiffEqBase.NullParameters() && error(
         "Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!",
@@ -138,11 +139,13 @@ end
     if !needs_jac
         # NOTE: Zygote doesn't support inplace
         linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff = !DiffEqBase.isinplace(sol.prob)),
-                                       vec(diffcache.dg_val))
-        copyto!(vec(λ), solve(linear_problem, linsolve).u)
+                                       vec(diffcache.dg_val),
+                                       u0 = vec(λ))
     else
-        copyto!(vec(λ), diffcache.J' \ vec(diffcache.dg_val'))
+        linear_problem = LinearProblem(diffcache.J',vec(diffcache.dg_val'),u0 = vec(λ))
     end
+
+    solve(linear_problem, linsolve) # u is vec(λ)
 
     vecjacobian!(
         vec(diffcache.dg_val),
