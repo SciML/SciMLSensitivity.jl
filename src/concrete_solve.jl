@@ -590,17 +590,37 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
       _prob = remake(prob,u0=map(identity,_u0),p=_p,tspan=_tspan)
     else
       # use TrackedArray for efficiency of the tape
-      function _f(u,p,t)
-        out = prob.f(u,p,t)
-        if out isa TrackedArray
-          return out
-        else
-          Tracker.collect(out)
+      if typeof(prob) <: Union{AbstractDDEProblem,AbstractDAEProblem}
+        function _f(u,p,h,t) # For DDE, but also works for (du,u,p,t) DAE
+          out = prob.f(u,p,h,t)
+          if out isa TrackedArray
+            return out
+          else
+            Tracker.collect(out)
+          end
         end
-      end
-      if prob isa SDEProblem
+      elseif typeof(prob) <: AbstractODEProblem
+        function _f(u,p,t)
+          out = prob.f(u,p,t)
+          if out isa TrackedArray
+            return out
+          else
+            Tracker.collect(out)
+          end
+        end
+      if typeof(prob) <: AbstractSDEProblem
         function _g(u,p,t)
           out = prob.g(u,p,t)
+          if out isa TrackedArray
+            return out
+          else
+            Tracker.collect(out)
+          end
+        end
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
+      elseif typeof(prob) <: AbstractSDDEProblem
+        function _g(u,p,h,t)
+          out = prob.g(u,p,h,t)
           if out isa TrackedArray
             return out
           else
