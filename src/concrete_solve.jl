@@ -591,7 +591,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     else
       # use TrackedArray for efficiency of the tape
       if typeof(prob) <: Union{SciMLBase.AbstractDDEProblem,SciMLBase.AbstractDAEProblem,SciMLBase.AbstractSDDEProblem}
-        function _f(u,p,h,t) # For DDE, but also works for (du,u,p,t) DAE
+        _f = function (u,p,h,t) # For DDE, but also works for (du,u,p,t) DAE
           out = prob.f(u,p,h,t)
           if out isa TrackedArray
             return out
@@ -602,8 +602,8 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
 
         # Only define `g` for the stochastic ones
         if typeof(prob) <: SciMLBase.AbstractSDEProblem
-          function _g(u,p,t)
-            out = prob.g(u,p,t)
+          _g = function (u,p,h,t)
+            out = prob.g(u,p,h,t)
             if out isa TrackedArray
               return out
             else
@@ -615,7 +615,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
           _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){false,true}(_f),u0=_u0,p=_p,tspan=_tspan)
         end
       elseif typeof(prob) <: Union{SciMLBase.AbstractODEProblem,SciMLBase.AbstractSDEProblem}
-        function _f(u,p,t)
+        _f = function (u,p,t)
           out = prob.f(u,p,t)
           if out isa TrackedArray
             return out
@@ -624,7 +624,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
           end
         end
         if typeof(prob) <: SciMLBase.AbstractSDDEProblem
-          function _g(u,p,h,t)
+          _g = function (u,p,h,t)
             out = prob.g(u,p,h,t)
             if out isa TrackedArray
               return out
