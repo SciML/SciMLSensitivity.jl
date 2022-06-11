@@ -623,9 +623,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
             Tracker.collect(out)
           end
         end
-        if typeof(prob) <: SciMLBase.AbstractSDDEProblem
-          _g = function (u,p,h,t)
-            out = prob.g(u,p,h,t)
+        if typeof(prob) <: SciMLBase.AbstractSDEProblem
+          _g = function (u,p,t)
+            out = prob.g(u,p,t)
             if out isa TrackedArray
               return out
             else
