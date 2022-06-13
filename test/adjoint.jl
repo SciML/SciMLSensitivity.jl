@@ -389,9 +389,9 @@ function dg(out,u,p,t)
   out[2]= u[1] + u[2]
 end
 
-adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14),g,nothing,dg)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()),g,nothing,dg)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-10)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 
 println("Test the `adjoint_sensitivities` utility function")
