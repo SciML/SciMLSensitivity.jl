@@ -3,7 +3,7 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 
-function inplace_vjp(prob,u0,p,verbose)
+function inplace_vjp(prob,u0,p,has_cb,verbose)
   du = copy(u0)
   ez = try
     Enzyme.autodiff(Enzyme.Duplicated(du, du),
@@ -15,24 +15,28 @@ function inplace_vjp(prob,u0,p,verbose)
   catch
     false
   end
-  if ez
+  if ez && !has_cb
     return EnzymeVJP()
   end
 
   # Determine if we can compile ReverseDiff
-  compile = try
-      if DiffEqBase.isinplace(prob)
-        !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
-      else
-        !hasbranching(prob.f,u0,p,prob.tspan[1])
-      end
-  catch
+  compile = if has_cb
       false
-  end
+    else
+      try
+        if DiffEqBase.isinplace(prob)
+          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+        else
+          !hasbranching(prob.f,u0,p,prob.tspan[1])
+        end
+      catch
+        false
+      end
+    end
   vjp = try
-    ReverseDiff.GradientTape((_y, _p, [t])) do u,p,t
+    ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u,p,t
       du1 = similar(u, size(u))
-      f(du1,u,p,first(t))
+      prob.f(du1,u,p,first(t))
       return vec(du1)
     end
     ReverseDiffVJP(compile)
@@ -106,7 +110,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
- 
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(AdjointSensitivityParameterCompatibilityError())
   end
@@ -278,7 +282,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForward
                                             u0, p, args...;
                                             save_idxs=nothing,
                                             kwargs...)
-  
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardSensitivityParameterCompatibilityError())
   end
@@ -335,7 +339,7 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
    out,_concrete_solve_pushforward
 end
 
-const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = 
+const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE =
 """
 ForwardDiffSensitivity assumes the `AbstractArray` interface for `p`. Thus while
 DifferentialEquations.jl can support any parameter struct type, usage
@@ -343,8 +347,8 @@ with ForwardDiffSensitivity requires that `p` could be a valid
 type for being the initial condition `u0` of an array. This means that
 many simple types, such as `Tuple`s and `NamedTuple`s, will work as
 parameters in normal contexts but will fail during ForwardDiffSensitivity
-construction. To work around this issue for complicated cases like nested structs, 
-look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+construction. To work around this issue for complicated cases like nested structs,
+look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
 or ComponentArrays.jl.
 """
 
@@ -359,7 +363,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity{CS,CTS},
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
                                  kwargs...) where {CS,CTS}
-  
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardDiffSensitivityParameterCompatibilityError())
   end
@@ -690,7 +694,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   DiffEqBase.sensitivity_solution(sol,u,Tracker.data.(sol.t)),tracker_adjoint_backpass
 end
 
-const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE = 
+const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE =
 """
 ReverseDiffAdjoint is not compatible GPU-based array types. Use a different
 sensitivity analysis method, like InterpolatingAdjoint or TrackerAdjoint,
@@ -709,7 +713,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   if typeof(u0) isa GPUArrays.AbstractGPUArray
     throw(ReverseDiffGPUStateCompatibilityError())
   end
-  
+
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
 
