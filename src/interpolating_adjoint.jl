@@ -174,7 +174,7 @@ function split_states(du,u,t,S::TS;update=true) where TS<:ODEInterpolatingAdjoin
           end
           prob′ = remake(prob, tspan=intervals[cursor′], u0=y, noise=forwardnoise)
           dt = choose_dt(abs(cpsol_t[1]-cpsol_t[2]), cpsol_t, interval)
-          cpsol′ = solve(prob′, sol.alg, noise=forwardnoise, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
+          cpsol′ = solve(prob′, sol.alg, save_noise=false; dt=dt, tstops=_sol.t[idx1:idx2], checkpoint_sol.tols...)
         else
           if checkpoint_sol.tstops===nothing
             prob′ = remake(prob, tspan=intervals[cursor′], u0=y)
