@@ -67,7 +67,12 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    vjp = inplace_vjp(prob,u0,p,verbose)
+    if haskey(kwargs,:callback)
+      has_cb = kwargs[:callback]!==nothing
+    else
+      has_cb = false
+    end
+    vjp = inplace_vjp(prob,u0,p,has_cb,verbose)
     if p === nothing || p === DiffEqBase.NullParameters()
       QuadratureAdjoint(autojacvec=vjp)
     else
@@ -86,7 +91,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
     # this only effects the Jacobian calculation and is same computation order
     SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
   else
-    vjp = inplace_vjp(prob,u0,p,verbose)
+    vjp = inplace_vjp(prob,u0,p,false,verbose)
     SteadyStateAdjoint(autojacvec = vjp)
   end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
