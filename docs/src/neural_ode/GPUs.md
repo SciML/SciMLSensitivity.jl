@@ -126,6 +126,6 @@ optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(p))
 
 result_neuralode = Optimization.solve(optfunc,
                                        ADAM(0.05), 
-                                       cb = callback, 
+                                       callback = callback, 
                                        maxiters = 300)
 ```

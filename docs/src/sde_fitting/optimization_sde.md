@@ -176,7 +176,7 @@ optf = Optimization.OptimizationFunction((x,p) -> loss_sde(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
 result_sde = Optimization.solve(optprob, ADAM(0.1),
-                                    cb = callback, maxiters = 100)
+                                    callback = callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

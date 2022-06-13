@@ -136,14 +136,14 @@ optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
 
 result_neuralode = GalacticOptim.solve(optprob,
                                        ADAM(0.05),
-                                       cb = callback,
+                                       callback = callback,
                                        maxiters = 300)
 
 optprob2 = remake(optprob,u0 = result_neuralode.u)
 
 result_neuralode2 = GalacticOptim.solve(optprob2,
                                         LBFGS(),
-                                        cb = callback,
+                                        callback = callback,
                                         allow_f_increases = false)
 ```
 

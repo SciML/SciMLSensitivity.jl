@@ -54,9 +54,8 @@ optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                    cb = callback,
-                                    maxiters = 100)
-# result_ode = Optimization.solve(optprob, ADAM(0.1), cb = callback)
+                                callback = callback,
+                                maxiters = 100)
 ```
 
 ## Explanation
@@ -145,8 +144,8 @@ optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                    cb = callback,
-                                    maxiters = 100)
+                                callback = callback,
+                                maxiters = 100)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can
@@ -169,6 +168,6 @@ to force at most 100 iterations of the optimization. This looks like:
 
 ```@example optode
 result_ode = Optimization.solve(optprob, ADAM(0.1),
-                                    cb = callback,
+                                    callback = callback,
                                     maxiters = 100)
 ```
