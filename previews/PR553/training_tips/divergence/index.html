@@ -7,7 +7,7 @@
   else
     return Inf
   end
-end</code></pre><p>A full example making use of this trick is:</p><pre><code class="language-julia hljs">using DifferentialEquations, Plots
+end</code></pre><p>A full example making use of this trick is:</p><pre><code class="language-julia hljs">using DifferentialEquations, Optimization, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u
@@ -42,15 +42,18 @@ function loss(p)
   end
 end
 
-using DiffEqFlux
 
 pinit = [1.2,0.8,2.5,0.8]
-res = DiffEqFlux.sciml_train(loss,pinit,ADAM(), maxiters = 1000)
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p) -&gt; loss(x), adtype)
 
-# res = DiffEqFlux.sciml_train(loss,pinit,BFGS(), maxiters = 1000) ### errors!
+optprob = Optimization.OptimizationProblem(optf, pinit)
+res = Optimization.solve(optprob,ADAM(), maxiters = 1000)
+
+# res = Optimization.solve(optprob,BFGS(), maxiters = 1000) ### errors!
 
 #try Newton method of optimization
-res = DiffEqFlux.sciml_train(loss,pinit,Newton(), GalacticOptim.AutoForwardDiff())</code></pre><p>You might notice that <code>AutoZygote</code> (default) fails for the above <code>sciml_train</code> call with Optim&#39;s optimizers which happens because of Zygote&#39;s behaviour for zero gradients in which case it returns <code>nothing</code>. To avoid such issue you can just use a different version of the same check which compares the size of the obtained  solution and the data we have, shown below, which is easier to AD.</p><pre><code class="language-julia hljs">function loss(p)
+res = Optimization.solve(optprob,Newton(), Optimization.AutoForwardDiff())</code></pre><p>You might notice that <code>AutoZygote</code> (default) fails for the above <code>Optimization.solve</code> call with Optim&#39;s optimizers which happens because of Zygote&#39;s behaviour for zero gradients in which case it returns <code>nothing</code>. To avoid such issue you can just use a different version of the same check which compares the size of the obtained  solution and the data we have, shown below, which is easier to AD.</p><pre><code class="language-julia hljs">function loss(p)
   tmp_prob = remake(prob, p=p)
   tmp_sol = solve(tmp_prob,Tsit5(),saveat=0.1)
   if size(tmp_sol) == size(dataset)
@@ -58,4 +61,4 @@ res = DiffEqFlux.sciml_train(loss,pinit,Newton(), GalacticOptim.AutoForwardDiff(
   else
     return Inf
   end
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../local_minima/">« Strategies to Avoid Local Minima</a><a class="docs-footer-nextpage" href="../multiple_nn/">Simultaneous Fitting of Multiple Neural Networks »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.18 on <span class="colophon-date" title="Sunday 5 June 2022 08:53">Sunday 5 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../local_minima/">« Strategies to Avoid Local Minima</a><a class="docs-footer-nextpage" href="../multiple_nn/">Simultaneous Fitting of Multiple Neural Networks »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Monday 13 June 2022 14:09">Monday 13 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
