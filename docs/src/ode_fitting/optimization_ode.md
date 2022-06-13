@@ -5,7 +5,7 @@
 If you want to just get things running, try the following! Explanation will
 follow.
 
-```julia
+```@example optode
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -71,7 +71,7 @@ more details, [see the DifferentialEquations.jl documentation](http://docs.julia
 \end{aligned}
 ```
 
-```julia
+```@example optode
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -111,7 +111,7 @@ the differential equation. Next we choose a loss function. Our goal will be to
 find parameters that make the Lotka-Volterra solution constant `x(t)=1`, so we
 define our loss as the squared distance from 1.
 
-```julia
+```@example optode
 function loss(p)
   sol = solve(prob, Tsit5(), p=p, saveat = tsteps)
   loss = sum(abs2, sol.-1)
@@ -126,7 +126,7 @@ the current parameter vector and the returns of the last call to the loss
 function. We will display the current loss and make a plot of the current
 situation:
 
-```julia
+```@example optode
 callback = function (p, l, pred)
   display(l)
   plt = plot(pred, ylim = (0, 6))
@@ -139,7 +139,7 @@ end
 
 Let's optimize the model.
 
-```julia
+```@example optode
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
@@ -155,7 +155,7 @@ with `result_ode.u`. For example, we can plot the final outcome and show
 that we solved the control problem and successfully found parameters to make the
 ODE solution constant:
 
-```julia
+```@example optode
 remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),      
                         saveat = tsteps)
 plot(remade_solution, ylim = (0, 6))
@@ -167,7 +167,7 @@ Note that this was done with the default optimizer. One can also pass an
 optimization method, like `ADAM(0.1)`, and tweak settings like set `maxiters=100`
 to force at most 100 iterations of the optimization. This looks like:
 
-```julia
+```@example optode
 result_ode = Optimization.solve(optprob, ADAM(0.1),
                                     cb = callback,
                                     maxiters = 100)

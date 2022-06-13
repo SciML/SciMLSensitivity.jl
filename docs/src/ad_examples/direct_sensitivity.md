@@ -12,7 +12,9 @@ ODE. To define this augmented ODE, use the `ODEForwardSensitivityProblem` type
 instead of an ODE type. For example, we generate an ODE with the sensitivity
 equations attached for the Lotka-Volterra equations by:
 
-```julia
+```@example directsense
+using OrdinaryDiffEq, DiffEqSensitivity
+
 function f(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
   du[2] = dy = -p[3]*u[2] + u[1]*u[2]
@@ -24,14 +26,14 @@ prob = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
 
 This generates a problem which the ODE solvers can solve:
 
-```julia
+```@example directsense
 sol = solve(prob,DP8())
 ```
 
 Note that the solution is the standard ODE system and the sensitivity system combined.
 We can use the following helper functions to extract the sensitivity information:
 
-```julia
+```@example directsense
 x,dp = extract_local_sensitivities(sol)
 x,dp = extract_local_sensitivities(sol,i)
 x,dp = extract_local_sensitivities(sol,t)
@@ -43,7 +45,7 @@ sensitivities of all components of the ODE with respect to `i`th parameter.
 The second returns the `i`th time step, while the third
 interpolates to calculate the sensitivities at time `t`. For example, if we do:
 
-```julia
+```@example directsense
 x,dp = extract_local_sensitivities(sol)
 da = dp[1]
 ```
@@ -51,7 +53,7 @@ da = dp[1]
 then `da` is the timeseries for ``\frac{\partial u(t)}{\partial p}``. We can
 plot this
 
-```julia
+```@example directsense
 plot(sol.t,da',lw=3)
 ```
 
@@ -68,7 +70,7 @@ In this example we will show solving for the adjoint sensitivities of a discrete
 cost functional. First let's solve the ODE and get a high quality continuous
 solution:
 
-```julia
+```@example directsense
 function f(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
   du[2] = dy = -p[3]*u[2] + u[1]*u[2]
@@ -82,7 +84,7 @@ sol = solve(prob,Vern9(),abstol=1e-10,reltol=1e-10)
 Now let's calculate the sensitivity of the ``\ell_2`` error against 1 at evenly spaced
 points in time, that is:
 
-```math
+```@example directsense
 L(u,p,t)=\sum_{i=1}^{n}\frac{\Vert1-u(t_{i},p)\Vert^{2}}{2}
 ```
 
@@ -99,7 +101,7 @@ dg_{2}&=1-u_{2} \\
 
 and thus:
 
-```julia
+```@example directsense
 dg(out,u,p,t,i) = (out.=1.0.-u)
 ```
 
@@ -107,7 +109,7 @@ Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`.
 If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
 sensitivities, call:
 
-```julia
+```@example directsense
 ts = 0:0.5:10
 res = adjoint_sensitivities(sol,Vern9(),dg,ts,abstol=1e-14,
                             reltol=1e-14)
@@ -117,7 +119,7 @@ This is super high accuracy. As always, there's a tradeoff between accuracy
 and computation time. We can check this almost exactly matches the
 autodifferentiation and numerical differentiation results:
 
-```julia
+```@example directsense
 using ForwardDiff,Calculus,Tracker
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)

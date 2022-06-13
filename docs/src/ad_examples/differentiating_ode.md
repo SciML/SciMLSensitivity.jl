@@ -18,7 +18,7 @@ do most things.
 Let's first define a differential equation we wish to solve. We will choose the
 Lotka-Volterra equation. This is done via DifferentialEquations.jl using:
 
-```julia
+```@example diffode
 using DifferentialEquations
 
 function lotka_volterra!(du,u,p,t)
@@ -43,7 +43,7 @@ some function `f` which uses a differential equation `solve` inside of it. For e
 let's say we want the derivative of the first component of ODE solution with respect to 
 these quantities at evenly spaced time points of `dt = 1`. We can compute this via:
 
-```julia
+```@example diffode
 using ForwardDiff
 
 function f(x)
@@ -77,7 +77,7 @@ a function that is differentiated by Zygote. For example, the following computes
 to an ODE and computes the gradient of a loss function (the sum of the ODE's output at each 
 timepoint with dt=0.1) via the adjoint method:
 
-```julia
+```@example diffode
 function sum_of_solution(u0,p)
   _prob = remake(prob,u0=u0,p=p)
   sum(solve(_prob,Tsit5(),reltol=1e-6,abstol=1e-6,saveat=0.1))
@@ -94,7 +94,7 @@ or `sensealg`s for short. These are choosen by passing the `sensealg` keyword ar
 Let's demonstrate this by choosing the `QuadratureAdjoint` `sensealg` for the differentiation of
 this system:
 
-```julia
+```@example diffode
 function sum_of_solution(u0,p)
   _prob = remake(prob,u0=u0,p=p)
   sum(solve(_prob,Tsit5(),reltol=1e-6,abstol=1e-6,saveat=0.1,sensealg=QuadratureAdjoint()))
