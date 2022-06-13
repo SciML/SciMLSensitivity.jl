@@ -33,7 +33,7 @@ sol = solve(prob,DP8())
 Note that the solution is the standard ODE system and the sensitivity system combined.
 We can use the following helper functions to extract the sensitivity information:
 
-```@example directsense
+```julia
 x,dp = extract_local_sensitivities(sol)
 x,dp = extract_local_sensitivities(sol,i)
 x,dp = extract_local_sensitivities(sol,t)
@@ -54,6 +54,7 @@ then `da` is the timeseries for ``\frac{\partial u(t)}{\partial p}``. We can
 plot this
 
 ```@example directsense
+using Plots
 plot(sol.t,da',lw=3)
 ```
 
@@ -84,7 +85,7 @@ sol = solve(prob,Vern9(),abstol=1e-10,reltol=1e-10)
 Now let's calculate the sensitivity of the ``\ell_2`` error against 1 at evenly spaced
 points in time, that is:
 
-```@example directsense
+```math
 L(u,p,t)=\sum_{i=1}^{n}\frac{\Vert1-u(t_{i},p)\Vert^{2}}{2}
 ```
 

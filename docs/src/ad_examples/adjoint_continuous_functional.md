@@ -81,7 +81,7 @@ end
 
 To get the adjoint sensitivities, we call:
 
-```@example continuousadjoint
+```julia
 res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-8,
                                  reltol=1e-8,iabstol=1e-8,ireltol=1e-8)
 ```
