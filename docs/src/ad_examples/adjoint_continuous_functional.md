@@ -36,7 +36,9 @@ Evaluating continuous cost functionals with forward sensitivity analysis is rath
 straightforward since one can simply use the fact that the solution from
 `ODEForwardSensitivityProblem` is continuous when `dense=true`. For example,
 
-```julia
+```@example continuousadjoint
+using OrdinaryDiffEq, DiffEqSensitivity
+
 function f(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
   du[2] = dy = -p[3]*u[2] + u[1]*u[2]
@@ -49,7 +51,7 @@ sol = solve(prob,DP8())
 
 gives a continuous solution `sol(t)` with the derivative at each time point. This
 can then be used to define a continuous cost function via 
-[Quadrature.jl](https://github.com/SciML/Quadrature.jl), though the derivative would
+[Integrals.jl](https://github.com/SciML/Integrals.jl), though the derivative would
 need to be defined by hand using the extra sensitivity terms.
 
 ## Example: Continuous Adjoints on an Energy Functional
@@ -64,13 +66,13 @@ G(u,p)=\int_{0}^{T}\frac{\sum_{i=1}^{n}u_{i}^{2}(t)}{2}dt
 
 which is:
 
-```julia
+```@example continuousadjoint
 g(u,p,t) = (sum(u).^2) ./ 2
 ```
 
 Notice that the gradient of this function with respect to the state `u` is:
 
-```julia
+```@example continuousadjoint
 function dg(out,u,p,t)
   out[1]= u[1] + u[2]
   out[2]= u[1] + u[2]
@@ -87,8 +89,8 @@ res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-8,
 Notice that we can check this against autodifferentiation and numerical
 differentiation as follows:
 
-```julia
-using QuadGK
+```@example continuousadjoint
+using QuadGK, ForwardDiff, Calculus
 function G(p)
   tmp_prob = remake(prob,p=p)
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14)
