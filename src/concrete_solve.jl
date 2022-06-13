@@ -723,9 +723,9 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
       _f(args...) = reduce(vcat,prob.f(args...))
       if prob isa SDEProblem
         _g(args...) = reduce(vcat,prob.g(args...))
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f,_g),u0=_u0,p=_p,tspan=_tspan)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){SciMLBase.isinplace(prob),true}(_f,_g),u0=_u0,p=_p,tspan=_tspan)
       else
-        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f)(_f),u0=_u0,p=_p,tspan=_tspan)
+        _prob = remake(prob,f=DiffEqBase.parameterless_type(prob.f){SciMLBase.isinplace(prob),true}(_f),u0=_u0,p=_p,tspan=_tspan)
       end
     end
 
