@@ -269,15 +269,15 @@ function adjoint_sensitivities(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
                                   verbose=true,kwargs...)
   if hasfield(typeof(sensealg),:autojacvec) && sensealg.autojacvec === nothing
+    if haskey(kwargs, :callback)
+      has_cb = kwargs[:callback] !== nothing
+    else
+      has_cb = false
+    end
     _sensealg = if isinplace(sol.prob)
-      if haskey(kwargs,:callback)
-        has_cb = kwargs[:callback]!==nothing
-      else
-        has_cb = false
-      end
       setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,has_cb,verbose))
     else
-      setvjp(sensealg,ZygoteVJP())
+      has_cb ? setvjp(sensealg,ReverseDiffVJP()) : setvjp(sensealg,ZygoteVJP())
     end
 
     return try
