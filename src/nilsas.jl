@@ -54,7 +54,10 @@ function NILSASProblem(sol, sensealg::NILSAS, t=nothing, dg = nothing; kwargs...
   numparams = length(p)
 
   # some shadowing sensealgs require knowledge of g
-  check_for_g(sensealg,g) 
+  check_for_g(sensealg,g)
+
+  # sensealg choice
+  adjoint_sensealg === nothing && (adjoint_sensealg = automatic_sensealg_choice(sol.prob,u0,p,false,false))
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -168,7 +171,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
   copyto!(vec(y), _y)
 
   #  compute gradient of objective wrt. state
-  if !discrete 
+  if !discrete
     accumulate_cost!(dg, y, p, t, nilss)
   end
 
@@ -180,7 +183,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
 
     if j==1
       # j = 1 is the inhomogenous adjoint solution
-      if !discrete 
+      if !discrete
         if dg_val isa Tuple
           dλ .-= vec(dg_val[1])
         else
@@ -207,7 +210,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     dC[j,j] = -dot(λ,λ)
   end
 
-  if dg_val isa Tuple && !discrete 
+  if dg_val isa Tuple && !discrete
     ddJs = -vec(dg_val[2])
   end
 
@@ -216,7 +219,7 @@ end
 
 
 function accumulate_cost!(dg, y, p, t, nilss::NILSSSensitivityFunction)
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = nilss 
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = nilss
 
   if dg===nothing
     if dg_val isa Tuple
@@ -236,7 +239,7 @@ function accumulate_cost!(dg, y, p, t, nilss::NILSSSensitivityFunction)
       dg(dg_val,y,p,t)
     end
   end
-  
+
   return nothing
 end
 
@@ -249,7 +252,7 @@ function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
   copyto!(z0,u0)
 
   @assert haskey(adjoint_prob.kwargs, :callback)
-  # get loss callback 
+  # get loss callback
   cb = adjoint_prob.kwargs[:callback]
 
   # adjoint sensitivities on segments

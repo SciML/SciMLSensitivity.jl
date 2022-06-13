@@ -46,16 +46,15 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
   return vjp
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
-                                            alg,sensealg::Nothing,u0,p,args...;
-                                            verbose=true,kwargs...)
+function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,has_cb,verbose)
+
   default_sensealg = if p !== DiffEqBase.NullParameters() &&
-                        !(eltype(u0) <: ForwardDiff.Dual) &&
-                        !(eltype(p) <: ForwardDiff.Dual) &&
-                        !(eltype(u0) <: Complex) &&
-                        !(eltype(p) <: Complex) &&
-                        length(u0) + length(p) <= 100
-      ForwardDiffSensitivity()
+                          !(eltype(u0) <: ForwardDiff.Dual) &&
+                          !(eltype(p) <: ForwardDiff.Dual) &&
+                          !(eltype(u0) <: Complex) &&
+                          !(eltype(p) <: Complex) &&
+                          length(u0) + length(p) <= 100
+    ForwardDiffSensitivity()
   elseif u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
@@ -67,11 +66,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    if haskey(kwargs,:callback)
-      has_cb = kwargs[:callback]!==nothing
-    else
-      has_cb = false
-    end
     vjp = inplace_vjp(prob,u0,p,has_cb,verbose)
     if p === nothing || p === DiffEqBase.NullParameters()
       QuadratureAdjoint(autojacvec=vjp)
@@ -79,6 +73,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=vjp)
     end
   end
+  return default_sensealg
+end
+
+function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
+                                            alg,sensealg::Nothing,u0,p,args...;
+                                            verbose=true,kwargs...)
+
+  if haskey(kwargs,:callback)
+    has_cb = kwargs[:callback]!==nothing
+  else
+    has_cb = false
+  end
+  default_sensealg = automatic_sensealg_choice(prob,u0,p,has_cb,verbose)
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
 end
 
