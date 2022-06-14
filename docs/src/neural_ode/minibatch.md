@@ -55,7 +55,7 @@ end
 
 numEpochs = 300
 losses=[]
-cb() = begin
+callback() = begin
     l=loss_adjoint(ode_data, t)
     push!(losses, l)
     @show l
@@ -67,7 +67,7 @@ cb() = begin
 end 
 
 opt=ADAM(0.05)
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, cb=Flux.throttle(cb, 10))
+Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, callback=Flux.throttle(callback, 10))
 
 #Now lets see how well it generalizes to new initial conditions 
 
@@ -92,7 +92,7 @@ using MLDataUtils
 train_loader, _, _ = kfolds((ode_data, t))
 
 @info "Now training using the MLDataUtils format"
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, cb=Flux.throttle(cb, 10))
+Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, callback=Flux.throttle(callback, 10))
 ```
 
 When training a neural network we need to find the gradient with respect to our data set. There are three main ways to partition our data when using a training algorithm like gradient descent: stochastic, batching and mini-batching. Stochastic gradient descent trains on a single random data point each epoch. This allows for the neural network to better converge to the global minimum even on noisy data but is computationally inefficient. Batch gradient descent trains on the whole data set each epoch and while computationally efficient is prone to converging to local minima. Mini-batching combines both of these advantages and by training on a small random "mini-batch" of the data each epoch can converge to the global minimum while remaining more computationally efficient than stochastic descent. Typically we do this by randomly selecting subsets of the data each epoch and use this subset to train on. We can also pre-batch the data by creating an iterator holding these randomly selected batches before beginning to train. The proper size for the batch can be determined experimentally. Let us see how to do this with Julia. 
@@ -174,7 +174,7 @@ Now we train the neural network with a user defined call back function to displa
 ```julia
 numEpochs = 300
 losses=[]
-cb() = begin
+callback() = begin
     l=loss_adjoint(ode_data, t)
     push!(losses, l)
     @show l
@@ -186,7 +186,7 @@ cb() = begin
 end 
 
 opt=ADAM(0.05)
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, cb=Flux.throttle(cb, 10))
+Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, callback=Flux.throttle(callback, 10))
 ```
 
 Finally we can see how well our trained network will generalize to new initial conditions. 
@@ -215,5 +215,5 @@ using MLDataUtils
 train_loader, _, _ = kfolds((ode_data, t))
 
 @info "Now training using the MLDataUtils format"
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, cb=Flux.throttle(cb, 10))
+Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, callback=Flux.throttle(callback, 10))
 ```

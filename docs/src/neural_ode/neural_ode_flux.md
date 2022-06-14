@@ -43,7 +43,7 @@ end
 
 loss_n_ode() # n_ode.p stores the initial parameters of the neural ODE
 
-cb = function (;doplot=false) #callback function to observe training
+callback = function (;doplot=false) #callback function to observe training
   pred = predict_n_ode()
   display(sum(abs2,ode_data .- pred))
   # plot current prediction against data
@@ -54,10 +54,10 @@ cb = function (;doplot=false) #callback function to observe training
 end
 
 # Display the ODE with the initial parameter values.
-cb()
+callback()
 
 data = Iterators.repeated((), 1000)
-res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = cb)
+res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), callback = callback)
 ```
 
 ## Using Flux `Chain` neural networks with GalacticOptim
@@ -116,7 +116,7 @@ end
 
 loss_n_ode(θ)
 
-cb = function (θ,l,pred;doplot=false) #callback function to observe training
+callback = function (θ,l,pred;doplot=false) #callback function to observe training
   display(l)
   # plot current prediction against data
   pl = scatter(t,ode_data[1,:],label="data")
@@ -126,7 +126,7 @@ cb = function (θ,l,pred;doplot=false) #callback function to observe training
 end
 
 # Display the ODE with the initial parameter values.
-cb(θ,loss_n_ode(θ)...)
+callback(θ,loss_n_ode(θ)...)
 
 # use GalacticOptim.jl to solve the problem
 adtype = GalacticOptim.AutoZygote()

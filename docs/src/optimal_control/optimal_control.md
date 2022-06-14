@@ -58,7 +58,7 @@ function loss_adjoint(θ)
   mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])/10
 end
 l = loss_adjoint(θ)
-cb = function (θ,l)
+callback = function (θ,l)
   println(l)
   p = plot(solve(remake(prob,p=θ),Tsit5(),saveat=0.01),ylim=(-6,6),lw=3)
   plot!(p,ts,[first(ann([t],θ)) for t in ts],label="u(t)",lw=3)
@@ -66,13 +66,13 @@ cb = function (θ,l)
   return false
 end
 # Display the ODE with the current parameter values.
-cb(θ,l)
+callback(θ,l)
 loss1 = loss_adjoint(θ)
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, θ)
-res1 = Optimization.solve(optprob, ADAM(0.005), cb = cb,maxiters=100)
+res1 = Optimization.solve(optprob, ADAM(0.005), callback = callback,maxiters=100)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2,
@@ -96,7 +96,7 @@ res3 = Optimization.solve(optprob3,
                               allow_f_increases = false)
 
 l = loss_adjoint(res3.u)
-cb(res3.u,l)
+callback(res3.u,l)
 p = plot(solve(remake(prob,p=res3.u),Tsit5(),saveat=0.01),ylim=(-6,6),lw=3)
 plot!(p,ts,[first(ann([t],res3.u)) for t in ts],label="u(t)",lw=3)
 savefig("optimal_control.png")

@@ -69,7 +69,7 @@ evalcb() = @show(accuracy(train_X, train_y))
 
 ## Training Loop
 for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, cb=throttle(evalcb, 10))
+    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
 end
 ```
 
@@ -192,7 +192,7 @@ Finally, with the configuration ready and all the utilities defined we can use t
 
 ```julia
 for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, cb=throttle(evalcb, 10))
+    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
 end
 ```
 

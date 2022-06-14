@@ -23,12 +23,12 @@ function affect!(integrator)
   integrator.u[2] = -integrator.p[2]*integrator.u[2]
 end
 
-cb = ContinuousCallback(condition,affect!)
+callback = ContinuousCallback(condition,affect!)
 u0 = [50.0,0.0]
 tspan = (0.0,15.0)
 p = [9.8, 0.8]
 prob = ODEProblem(f,u0,tspan,p)
-sol = solve(prob,Tsit5(),callback=cb)
+sol = solve(prob,Tsit5(),callback=callback)
 ```
 
 Here we have a friction coefficient of `0.8`. We want to refine this
@@ -38,7 +38,7 @@ the value 20:
 
 ```julia
 function loss(θ)
-  sol = solve(prob,Tsit5(),p=[9.8,θ[1]],callback=cb)
+  sol = solve(prob,Tsit5(),p=[9.8,θ[1]],callback=callback)
   target = 20.0
   abs2(sol[end][1] - target)
 end

@@ -42,7 +42,7 @@ function loss_adjoint(p)
     loss, prediction
 end
 
-cb = function (p,l,pred) #callback function to observe training
+callback = function (p,l,pred) #callback function to observe training
     println("Loss: $l")
     println("Parameters: $(exp.(p))")
     # using `remake` to re-create our `prob` with current parameters `p`
@@ -52,17 +52,17 @@ end
 
 initp = ones(3)
 # Display the ODE with the initial parameter values.
-cb(initp,loss_adjoint(initp)...)
+callback(initp,loss_adjoint(initp)...)
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x,p), adtype)
 optprob = Optimization.OptimizationProblem(optf, initp)
 
-res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
+res = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 300)
 
 optprob2 = Optimization.OptimizationProblem(optf, res.u)
 
-res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
+res2 = Optimization.solve(optprob2, BFGS(), callback = callback, maxiters = 30, allow_f_increases=true)
 println("Ground truth: $(p)\nFinal parameters: $(round.(exp.(res2.u), sigdigits=5))\nError: $(round(norm(exp.(res2.u) - p) ./ norm(p) .* 100, sigdigits=3))%")
 ```
 
@@ -126,7 +126,7 @@ Jacobian to do a relative scaling of the loss.
 
 We define a callback function.
 ```julia
-cb = function (p,l,pred) #callback function to observe training
+callback = function (p,l,pred) #callback function to observe training
     println("Loss: $l")
     println("Parameters: $(exp.(p))")
     # using `remake` to re-create our `prob` with current parameters `p`
@@ -141,16 +141,16 @@ be `[1, 1, 1.0]`.
 ```julia
 initp = ones(3)
 # Display the ODE with the initial parameter values.
-cb(initp,loss_adjoint(initp)...)
+callback(initp,loss_adjoint(initp)...)
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, initp)
-res = Optimization.solve(optprob, ADAM(0.01), cb = cb, maxiters = 300)
+res = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 300)
 
 optprob2 = Optimization.OptimizationProblem(optf, res.u)
-res2 = Optimization.solve(optprob2, BFGS(), cb = cb, maxiters = 30, allow_f_increases=true)
+res2 = Optimization.solve(optprob2, BFGS(), callback = callback, maxiters = 30, allow_f_increases=true)
 ```
 
 Finally, we can analyze the difference between the fitted parameters and the

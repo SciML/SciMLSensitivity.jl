@@ -49,7 +49,7 @@ end
 # Callback function to observe training
 list_plots = []
 iter = 0
-cb = function (p, l, pred; doplot = false)
+callback = function (p, l, pred; doplot = false)
   global list_plots, iter
 
   if iter == 0
@@ -74,11 +74,11 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), adtype)
 
 optprob1 = Optimization.OptimizationProblem(optf, Lux.ComponentArray(p))
-pstart = Optimization.solve(optprob1, ADAM(0.01), cb=cb, maxiters = 100).u
+pstart = Optimization.solve(optprob1, ADAM(0.01), callback=callback, maxiters = 100).u
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
-pmin = Optimization.solve(optprob2, NewtonTrustRegion(), cb=cb, maxiters = 200)
-pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), cb=cb, maxiters = 200)
+pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback=callback, maxiters = 200)
+pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback=callback, maxiters = 200)
 ```
 
 Note that we do not demonstrate `Newton()` because we have not found a single

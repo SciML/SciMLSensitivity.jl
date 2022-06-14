@@ -39,18 +39,18 @@ end
 loss_dde(p) = sum(abs2, x-1 for x in predict_dde(p))
 
 #using Plots
-cb = function (p,l...)
+callback = function (p,l...)
   display(loss_dde(p))
   #display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
   return false
 end
 
-cb(p,loss_dde(p))
+callback(p,loss_dde(p))
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
+result_dde = Optimization.solve(optprob, PolyOpt(), p, callback=callback)
 ```
 
 Notice that we chose `sensealg = ReverseDiffAdjoint()` to utilize the ReverseDiff.jl
@@ -60,13 +60,13 @@ We define a callback to display the solution at the current parameters for each 
 
 ```julia
 #using Plots
-cb = function (p,l...)
+callback = function (p,l...)
   display(loss_dde(p))
   #display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
   return false
 end
 
-cb(p,loss_dde(p))
+callback(p,loss_dde(p))
 ```
 
 We use `Optimization.solve` to optimize the parameters for our loss function:
@@ -75,5 +75,5 @@ We use `Optimization.solve` to optimize the parameters for our loss function:
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), p, cb=cb)
+result_dde = Optimization.solve(optprob, PolyOpt(), p, callback=callback)
 ```

@@ -50,7 +50,7 @@ opt = ADAM(0.01)
 
 l1 = loss_n_ode(p)
 
-cb = function (p,l,pred)
+callback = function (p,l,pred)
     println(l)
     l < 0.01
 end
@@ -58,5 +58,5 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_n_ode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
-res = Optimization.solve(optprob, opt; cb = cb, maxiters=1000)
+res = Optimization.solve(optprob, opt; callback = callback, maxiters=1000)
 ```

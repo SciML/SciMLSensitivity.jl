@@ -100,7 +100,7 @@ loss(img, lab)
 opt = ADAM(0.05)
 iter = 0
 
-cb() = begin
+callback() = begin
     global iter += 1
     # Monitor that the weights do infact update
     # Every 10 training iterations show accuracy
@@ -114,7 +114,7 @@ cb() = begin
 end
 
 # Train the NN-ODE and monitor the loss and weights.
-Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, cb = cb)
+Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, callback = callback)
 ```
 
 
@@ -341,7 +341,7 @@ This callback function is used to print both the training and testing accuracy a
 10 training iterations:
 
 ```julia
-cb() = begin
+callback() = begin
     global iter += 1
     # Monitor that the weights update
     # Every 10 training iterations show accuracy
@@ -363,7 +363,7 @@ for Neural ODE is given by `nn_ode.p`:
 
 ```julia
 # Train the NN-ODE and monitor the loss and weights.
-Flux.train!(loss, Flux.params( down, nn_ode.p, fc), zip( x_train, y_train ), opt, cb = cb)
+Flux.train!(loss, Flux.params( down, nn_ode.p, fc), zip( x_train, y_train ), opt, callback = callback)
 ```
 
 ### Expected Output
