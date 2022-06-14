@@ -54,7 +54,7 @@ optf = Optimization.OptimizationFunction((x,p) -&gt; loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
 result_neuralode = Optimization.solve(optprob,
-                                      ADAM(0.05), cb = callback,
+                                      ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
@@ -65,7 +65,7 @@ optf = Optimization.OptimizationFunction((x,p) -&gt; loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
 result_neuralode2 = Optimization.solve(optprob,
-                                      ADAM(0.05), cb = callback,
+                                      ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
 callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
@@ -74,13 +74,13 @@ savefig(&quot;shortplot1.png&quot;)</code></pre><p><img src="https://user-images
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
 result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
-                                        cb = callback)
+                                        callback = callback)
 callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
 savefig(&quot;shortplot2.png&quot;)</code></pre><p><img src="https://user-images.githubusercontent.com/1814174/81901706-f7963d80-958c-11ea-856a-7f85af8695b8.png" alt/></p><p>Once again a great fit. Now we utilize these parameters as the initial condition to the full fit:</p><pre><code class="language-julia hljs">prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
-                                      cb = callback)
+                                      callback = callback)
 callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
 savefig(&quot;fullplot.png&quot;)</code></pre><p><img src="https://user-images.githubusercontent.com/1814174/81901711-f82ed400-958c-11ea-9ba2-2b1f213b865a.png" alt/></p><h2 id="Training-both-the-initial-conditions-and-the-parameters-to-start"><a class="docs-heading-anchor" href="#Training-both-the-initial-conditions-and-the-parameters-to-start">Training both the initial conditions and the parameters to start</a><a id="Training-both-the-initial-conditions-and-the-parameters-to-start-1"></a><a class="docs-heading-anchor-permalink" href="#Training-both-the-initial-conditions-and-the-parameters-to-start" title="Permalink"></a></h2><p>In this example we will show how to use strategy (5) in order to accomplish the same goal, except rather than growing the trajectory iteratively, we can train on the whole trajectory. We do this by allowing the neural ODE to learn both the initial conditions and parameters to start, and then reset the initial conditions back and train only the parameters. Note: this strategy is demonstrated for the (0, 5) time span and (0, 10), any longer and more iterations will be required. Alternatively, one could use a mix of (4) and (5), or breaking up the trajectory into chunks and just (5).</p><pre><code class="language-julia hljs">
 using Flux, Plots, DifferentialEquations
@@ -177,4 +177,4 @@ Flux.train!(loss_n_ode, Flux.params(p), data,
             Flux.Optimise.ADAM(0.05), cb = cb)
 
 cb(;doplot=true)
-</code></pre><p>And there we go, a set of robust strategies for fitting an equation that would otherwise get stuck in a local optima.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode_fitting/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../divergence/">Handling Divergent and Unstable Trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Tuesday 14 June 2022 02:26">Tuesday 14 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+</code></pre><p>And there we go, a set of robust strategies for fitting an equation that would otherwise get stuck in a local optima.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode_fitting/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../divergence/">Handling Divergent and Unstable Trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Tuesday 14 June 2022 21:51">Tuesday 14 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
