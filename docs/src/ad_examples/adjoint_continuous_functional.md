@@ -81,7 +81,7 @@ end
 
 To get the adjoint sensitivities, we call:
 
-```julia
+```@example continuousadjoint
 prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,DP8())
 res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-8,reltol=1e-8)
