@@ -61,7 +61,7 @@ y = Float32.(hammerstein_system(ex))
 plot(collect(tsteps), y, ticks=:native)
 
 nn_model = Lux.Chain(Lux.Dense(2,8, tanh), Lux.Dense(8, 1))
-p_model,st = Lux.setup(nn_model)
+p_model,st = Lux.setup(rng, nn_model)
 
 u0 = Float32.([0.0])
 

@@ -36,7 +36,8 @@ function simulator(du,u,p,t) # Pendulum dynamics
 end
 ```
 We assume that the true length of the pendulum is $L = 1$, and generate some data from this system.
-```julia
+
+```@example pem
 prob = ODEProblem(simulator,u0,tspan,1.0) # Simulate with L = 1
 sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)
 y = sol[1,:] # This is the data we have available for parameter estimation

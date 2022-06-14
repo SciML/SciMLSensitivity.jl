@@ -13,7 +13,7 @@ optimization, while `KrylovTrustRegion` will utilize a Krylov-based method
 with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
-```julia
+```@example secondorderadjoints
 using Lux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
