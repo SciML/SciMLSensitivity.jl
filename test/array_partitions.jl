@@ -28,7 +28,7 @@ sol = solve(
 solve(
     ODEAdjointProblem(
         sol,
-        InterpolatingAdjoint(),
+        InterpolatingAdjoint(autojacvec=ZygoteVJP()),
         (out, x, p, t, i) -> (out .= 0),
         [sol.t[end]],
     ),OrdinaryDiffEq.Tsit5()
