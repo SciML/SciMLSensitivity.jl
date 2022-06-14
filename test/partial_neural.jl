@@ -38,7 +38,7 @@ optfunc = Optimization.OptimizationFunction((x, p) -> loss_rd(x), Optimization.A
 optprob = Optimization.OptimizationProblem(optfunc, θ)
 res = Optimization.solve(optprob, BFGS(initial_stepnorm = 0.01), callback = cb)
 loss2 = res.minimum
-@test 3loss2 < loss1
+@test 2loss2 < loss1
 
 ## Partial Neural Adjoint
 
@@ -83,4 +83,4 @@ res1 = Optimization.solve(optprob, ADAM(0.01), callback = cb, maxiters = 100)
 optprob = Optimization.OptimizationProblem(optfunc, res1.minimizer)
 res = Optimization.solve(optprob, BFGS(initial_stepnorm = 0.01), callback = cb)
 loss2 = res.minimum
-@test 3loss2 < loss1
+@test 2loss2 < loss1
