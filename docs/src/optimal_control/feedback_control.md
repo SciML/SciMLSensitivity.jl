@@ -89,5 +89,5 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
-                                     cb = callback)
+                                     callback = callback)
 ```

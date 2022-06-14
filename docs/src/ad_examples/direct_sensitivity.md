@@ -121,7 +121,7 @@ and computation time. We can check this almost exactly matches the
 autodifferentiation and numerical differentiation results:
 
 ```@example directsense
-using ForwardDiff,Calculus,Tracker
+using ForwardDiff,Calculus,ReverseDiff,Tracker
 function G(p)
   tmp_prob = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)
   sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=ts,

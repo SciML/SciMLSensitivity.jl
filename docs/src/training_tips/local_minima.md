@@ -84,7 +84,7 @@ optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
 result_neuralode = Optimization.solve(optprob,
-                                      ADAM(0.05), cb = callback,
+                                      ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
@@ -110,7 +110,7 @@ optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
 result_neuralode2 = Optimization.solve(optprob,
-                                      ADAM(0.05), cb = callback,
+                                      ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
 callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
@@ -128,7 +128,7 @@ prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<=
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
 result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
-                                        cb = callback)
+                                        callback = callback)
 callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
 savefig("shortplot2.png")
 ```
@@ -143,7 +143,7 @@ prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
-                                      cb = callback)
+                                      callback = callback)
 callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
 savefig("fullplot.png")
 ```

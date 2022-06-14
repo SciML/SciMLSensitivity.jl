@@ -175,7 +175,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_neuralsde(x, n=10), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 result1 = Optimization.solve(optprob, opt,
-                                 cb = callback, maxiters = 100)
+                                 callback = callback, maxiters = 100)
 ```
 
 We resume the training with a larger `n`. (WARNING - this step is a couple of
@@ -185,7 +185,7 @@ orders of magnitude longer than the previous one).
 optf2 = Optimization.OptimizationFunction((x,p) -> loss_neuralsde(x, n=100), adtype)
 optprob2 = Optimization.OptimizationProblem(optf2, result1.u)
 result2 = Optimization.solve(optprob2, opt,
-                                 cb = callback, maxiters = 100)
+                                 callback = callback, maxiters = 100)
 ```
 
 And now we plot the solution to an ensemble of the trained neural SDE:

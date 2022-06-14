@@ -5,7 +5,7 @@
 If you want to just get things running, try the following! Explanation will
 follow.
 
-```@example optode
+```@example optode_cp
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -54,9 +54,8 @@ optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                    cb = callback,
-                                    maxiters = 100)
-# result_ode = Optimization.solve(optprob, ADAM(0.1), cb = callback)
+                                callback = callback,
+                                maxiters = 100)
 ```
 
 ## Explanation
@@ -145,8 +144,8 @@ optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                    cb = callback,
-                                    maxiters = 100)
+                                callback = callback,
+                                maxiters = 100)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can
@@ -162,13 +161,3 @@ plot(remade_solution, ylim = (0, 6))
 ```
 
 ![Final plot](https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif)
-
-Note that this was done with the default optimizer. One can also pass an
-optimization method, like `ADAM(0.1)`, and tweak settings like set `maxiters=100`
-to force at most 100 iterations of the optimization. This looks like:
-
-```@example optode
-result_ode = Optimization.solve(optprob, ADAM(0.1),
-                                    cb = callback,
-                                    maxiters = 100)
-```
