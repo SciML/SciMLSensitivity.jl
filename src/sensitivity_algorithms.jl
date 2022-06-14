@@ -767,16 +767,14 @@ struct NILSS{CS,AD,FDT,RNG,nType,gType} <: AbstractShadowingSensitivityAlgorithm
   nseg::Int
   nstep::Int
   nus::nType
-  autojacvec::Bool
   g::gType
 end
 Base.@pure function NILSS(nseg, nstep; nus=nothing, rng=Xorshifts.Xoroshiro128Plus(rand(UInt64)),
   chunk_size=0, autodiff=true,
   diff_type=Val{:central},
-  autojacvec=autodiff,
   g=nothing
 )
-  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng, nseg, nstep, nus, autojacvec, g)
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng, nseg, nstep, nus, g)
 end
 
 """
@@ -821,14 +819,7 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
   conditions of the homogenous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
 * `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogenous
   and inhomogenous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+  * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
   differentiation with special seeding. The default is `true`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
@@ -839,6 +830,13 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
     - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
       is a boolean for whether to precompile the tape, which should only be done
       if there are no branches (`if` or `while` statements) in the `f` function.
+* `autodiff`: Use automatic differentiation for constructing the Jacobian
+  if the Jacobian needs to be constructed.  Defaults to `true`.
+* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+  choice of chunk size.
+* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+  if the full Jacobian is required with `autodiff=false`.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
@@ -861,14 +859,12 @@ struct NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorith
   M::Int
   nseg::Int
   nstep::Int
-  autojacvec::Bool
   g::gType
 end
 Base.@pure function NILSAS(nseg, nstep, M=nothing; rng=Xorshifts.Xoroshiro128Plus(rand(UInt64)),
   adjoint_sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
   chunk_size=0, autodiff=true,
   diff_type=Val{:central},
-  autojacvec=autodiff,
   g=nothing
 )
 
@@ -876,7 +872,7 @@ Base.@pure function NILSAS(nseg, nstep, M=nothing; rng=Xorshifts.Xoroshiro128Plu
   M === nothing && error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
 
   NILSAS{chunk_size,autodiff,diff_type,typeof(rng),typeof(adjoint_sensealg),typeof(g)}(rng, adjoint_sensealg, M,
-    nseg, nstep, autojacvec, g)
+    nseg, nstep, g)
 end
 
 """
@@ -896,8 +892,6 @@ SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
 
 ## Keyword Arguments
 
-## Keyword Arguments
-
 * `autodiff`: Use automatic differentiation for constructing the Jacobian
   if the Jacobian needs to be constructed.  Defaults to `true`.
 * `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
@@ -906,7 +900,7 @@ SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
 * `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
   if the full Jacobian is required with `autodiff=false`.
 * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set
+  differentiation with special seeding. The default is `nothing`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -934,9 +928,11 @@ struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorit
 end
 
 Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_type = Val{:central},
-                                        autojacvec = autodiff, linsolve = nothing)
+                                        autojacvec = nothing, linsolve = nothing)
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
+setvjp(sensealg::SteadyStateAdjoint{CS,AD,FDT,LS}, vjp) where {CS,AD,FDT,LS} =
+        SteadyStateAdjoint{CS,AD,FDT,typeof(vjp),LS}(vjp, sensealg.linsolve)
 
 abstract type VJPChoice end
 

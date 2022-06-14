@@ -67,6 +67,7 @@ end
     g,
     dg;
     save_idxs = nothing,
+    kwargs...
 )
     @unpack f, p, u0 = sol.prob
 
@@ -159,7 +160,7 @@ end
             dy = nothing
         )
     catch e
-        if sense.originalvjp === nothing
+        if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
             vecjacobian!(vec(diffcache.dg_val),y,λ,p,nothing,false,dgrad = vjp,dy = nothing)
         else

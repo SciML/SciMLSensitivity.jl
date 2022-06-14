@@ -76,6 +76,19 @@ function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,has_c
   return default_sensealg
 end
 
+function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProblem}, u0, p, has_cb, verbose)
+
+  default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
+    # autodiff = false because forwarddiff fails on many GPU kernels
+    # this only effects the Jacobian calculation and is same computation order
+    SteadyStateAdjoint(autodiff=false, autojacvec=ZygoteVJP())
+  else
+    vjp = inplace_vjp(prob,u0,p,false,verbose)
+    SteadyStateAdjoint(autojacvec=vjp)
+  end
+  return default_sensealg
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
                                             alg,sensealg::Nothing,u0,p,args...;
                                             verbose=true,kwargs...)
@@ -93,14 +106,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
                                             sensealg::Nothing,u0,p,args...;
                                             verbose=true,kwargs...)
 
-  default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
-    # autodiff = false because forwarddiff fails on many GPU kernels
-    # this only effects the Jacobian calculation and is same computation order
-    SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
-  else
-    vjp = inplace_vjp(prob,u0,p,false,verbose)
-    SteadyStateAdjoint(autojacvec = vjp)
-  end
+  default_sensealg = automatic_sensealg_choice(prob, u0, p, false, verbose)
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
 end
 
