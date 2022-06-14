@@ -1,5 +1,9 @@
 using Documenter, DiffEqSensitivity
 
+# Make sure that plots don't throw a bunch of warnings / errors!
+ENV["GKSwstype"] = "100"
+using Plots
+
 include("pages.jl")
 
 makedocs(
