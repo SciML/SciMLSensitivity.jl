@@ -15,7 +15,7 @@ networks, columns are treated independently (by the properties of
 matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
 
-```julia
+```@example dataparallel
 using Lux, DiffEqFlux, DifferentialEquations, Random
 rng = Random.default_rng()
 
@@ -26,7 +26,7 @@ f(u,p,t) = dudt(u,p,st)[1]
 
 and we can solve this ODE where the initial condition is a vector:
 
-```julia
+```@example dataparallel
 u0 = Float32[2.; 0.]
 prob = ODEProblem(f,u0,(0f0,1f0),p)
 solve(prob,Tsit5())
@@ -35,7 +35,7 @@ solve(prob,Tsit5())
 or we can solve this ODE where the initial condition is a matrix, where
 each column is an independent system:
 
-```julia
+```@example dataparallel
 u0 = Float32.([0 1 2
                0 0 0])
 prob = ODEProblem(f,u0,(0f0,1f0),p)
@@ -81,7 +81,7 @@ interface.
 The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
-```julia
+```@example dataparallel2
 using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux
 pa = [1.0]
 u0 = [3.0]

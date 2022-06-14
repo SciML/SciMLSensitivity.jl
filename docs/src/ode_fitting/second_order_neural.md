@@ -20,7 +20,7 @@ neural network by the mass!)
 
 An example of training a neural network on a second order ODE is as follows:
 
-```julia
+```@example secondorderneural
 using DifferentialEquations, Lux, Optimization, OptimizationFlux, RecursiveArrayTools, Random
 
 rng = Random.default_rng()

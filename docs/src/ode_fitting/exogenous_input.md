@@ -39,7 +39,7 @@ from data.
 In the following example, a discrete exogenous input signal `ex` is defined and
 used as an input into the neural network of a neural ODE system.
 
-```julia
+```@example exogenous
 using DifferentialEquations, Lux, DiffEqFlux, Optimization, OptimizationPolyalgorithms, OptimizationFlux, Plots, Random
 
 rng = Random.default_rng()
