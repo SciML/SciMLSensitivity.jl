@@ -767,14 +767,16 @@ struct NILSS{CS,AD,FDT,RNG,nType,gType} <: AbstractShadowingSensitivityAlgorithm
   nseg::Int
   nstep::Int
   nus::nType
+  autojacvec::Bool
   g::gType
 end
 Base.@pure function NILSS(nseg, nstep; nus=nothing, rng=Xorshifts.Xoroshiro128Plus(rand(UInt64)),
   chunk_size=0, autodiff=true,
   diff_type=Val{:central},
+  autojacvec=autodiff,
   g=nothing
 )
-  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng, nseg, nstep, nus, g)
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng,nseg,nstep,nus,autojacvec,g)
 end
 
 """
