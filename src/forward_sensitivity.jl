@@ -333,7 +333,7 @@ function ODEForwardSensitivityProblem(f::F,u0,
                                     w0=nothing,
                                     v0=nothing,
                                     kwargs...) where F<:DiffEqBase.AbstractODEFunction
-  isinplace = DiffEqBase.isinplace(f)
+  isinplace = SciMLBase.isinplace(f)
   # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
   isautojacmat = get_jacmat(alg)
   isautojacvec = get_jacvec(alg)
@@ -396,7 +396,7 @@ function ODEForwardSensitivityProblem(f::F,u0,
                                         p,similar(u0),mm,
                                         isautojacvec,isautojacmat,f.colorvec,nus)
 
-  if !isinplace(sense)
+  if !SciMLBase.isinplace(sense)
     throw(ForwardSensitivityOutOfPlaceError())
   end
 
