@@ -133,7 +133,7 @@ callback(θ,loss_n_ode(θ)...)
 # use Optimization.jl to solve the problem
 adtype = Optimization.AutoZygote()
 
-optf = Optimization.OptimizationFunction(loss_neuralode, adtype)
+optf = Optimization.OptimizationFunction(loss_n_ode, adtype)
 optprob = Optimization.OptimizationProblem(optfunc, prob_neuralode.p)
 
 result_neuralode = Optimization.solve(optprob,
