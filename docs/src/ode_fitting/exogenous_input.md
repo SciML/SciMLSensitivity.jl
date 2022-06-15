@@ -66,6 +66,7 @@ p_model,st = Lux.setup(rng, nn_model)
 u0 = Float32.([0.0])
 
 function dudt(u, p, t)
+    global st
     #input_val = u_vals[Int(round(t*10)+1)]
     out,st = nn_model(vcat(u[1], ex[Int(round(10*0.1))]), p, st)
     return out
