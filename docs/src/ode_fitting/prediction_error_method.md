@@ -95,8 +95,8 @@ end
 predprob = ODEProblem(predictor,u0,tspan,nothing)
 
 function prediction(p)
-    p_full = [p..., y_int]
-    _prob = remake(predprob,p=p_full)
+    p_full = (p..., y_int)
+    _prob = remake(predprob,u0=eltype(p_full).(u0),p=p_full)
     solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
 end
 
