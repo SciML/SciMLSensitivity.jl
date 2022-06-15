@@ -1,4 +1,4 @@
-# Prediction error method (PEM)
+# [Prediction error method (PEM)](@id pemethod)
 
 When identifying linear systems from noisy data, the prediction-error method [^Ljung] is close to a gold standard when it comes to the quality of the models it produces, but is also one of the computationally more expensive methods due to its reliance on iterative, gradient-based estimation. When we are identifying nonlinear models, we typically do not have the luxury of closed-form, non-iterative solutions, while PEM is easier to adopt to the nonlinear setting.[^Larsson]
 
