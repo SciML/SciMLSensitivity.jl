@@ -110,7 +110,7 @@ function predict_n_ode(θ)
   Array(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:end],saveat=t))
 end
 
-function loss_n_ode(θ)
+function loss_n_ode(θ,_)
     pred = predict_n_ode(θ)
     loss = sum(abs2,ode_data .- pred)
     loss,pred
