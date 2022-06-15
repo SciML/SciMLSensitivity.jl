@@ -218,4 +218,4 @@ end
 
 u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0, 1.0]
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra, u0, (0.0, 10.0), p)
+@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra_oop, u0, (0.0, 10.0), p)
