@@ -86,7 +86,7 @@ end
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, Lux.setup(rng, p_model))
+optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(p_model))
 
 res0 = Optimization.solve(optprob, PolyOpt(),maxiters=100)
 
