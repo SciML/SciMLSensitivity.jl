@@ -17,7 +17,7 @@ In both of these examples, we may make use of measurements we have of the evolut
 
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
-```@example pem
+```julia
 using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
 
 tspan = (0.1f0, Float32(20.0))
@@ -37,7 +37,7 @@ end
 ```
 We assume that the true length of the pendulum is $L = 1$, and generate some data from this system.
 
-```@example pem
+```julia
 prob = ODEProblem(simulator,u0,tspan,1.0) # Simulate with L = 1
 sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)
 y = sol[1,:] # This is the data we have available for parameter estimation
@@ -48,7 +48,7 @@ plot(y, title="Pendulum simulation", label="angle")
 
 We also define functions that simulate the system and calculate the loss, given a parameter `p` corresponding to the length.
 
-```@example pem
+```julia
 function simulate(p)
     _prob = remake(prob,p=p)
     solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
@@ -63,7 +63,7 @@ end
 ```
 We now look at the loss landscape as a function of the pendulum length:
 
-```@example pem
+```julia
 Ls = 0.01:0.01:2
 simlosses = simloss.(Ls)
 fig_loss = plot(Ls, simlosses, title = "Loss landscape", xlabel="Pendulum length", ylabel = "MSE loss", lab="Simulation loss")
@@ -77,7 +77,7 @@ We will now move on to defining a *predictor* model. Our predictor will be very 
 
 To feed the sampled data into the continuous-time simulation, we make use of an interpolator. We also define new functions, `predictor` that contains the pendulum dynamics with the observer correction, a `prediction` function that performs the rollout (we're not using the word simulation to not confuse with the setting above) and a loss function.
 
-```@example pem
+```julia
 y_int = LinearInterpolation(y,tsteps)
 
 function predictor(du,u,p,t)
@@ -121,7 +121,7 @@ Once gain we look at the loss as a function of the parameter, and this time it l
 
 For completeness, we also perform estimation using both losses. We choose an initial guess we know will be hard for the simulation-error minimization just to drive home the point:
 
-```@example pem
+```julia
 L0 = [0.7] # Initial guess of pendulum length
 adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x,p)->simloss(x), adtype)
@@ -149,7 +149,7 @@ plot!(tsteps, ypred, label="Prediction model")
 
 The estimated parameters $(L, K)$ are
 
-```@example pem
+```julia
 respred.u
 ```
 
@@ -161,7 +161,7 @@ We thus let the optimization *learn* the best value of the observer gain in orde
 
 As a last step, we perform the estimation also with some measurement noise to verify that it does something reasonable:
 
-```@example pem
+```julia
 yn = y .+ 0.1f0 .* randn.(Float32)
 y_int = LinearInterpolation(yn,tsteps) # redefine the interpolator to contain noisy measurements
 
@@ -177,7 +177,7 @@ plot!(tsteps, yprednoise, label="Prediction model with noisy measurements")
 
 ![img5](https://user-images.githubusercontent.com/3797491/156998391-a3c4780b-8771-450e-a2f7-25784b157d79.png)
 
-```@example pem
+```julia
 resprednoise.u
 ```
 
