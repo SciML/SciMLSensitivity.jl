@@ -110,7 +110,7 @@ function predict_n_ode(θ)
   Array(solve(prob,Tsit5(),u0=θ[1:2],p=θ[3:end],saveat=t))
 end
 
-function loss_n_ode(θ,_)
+function loss_n_ode(θ)
     pred = predict_n_ode(θ)
     loss = sum(abs2,ode_data .- pred)
     loss,pred
@@ -133,7 +133,7 @@ callback(θ,loss_n_ode(θ)...)
 # use Optimization.jl to solve the problem
 adtype = Optimization.AutoZygote()
 
-optf = Optimization.OptimizationFunction(loss_n_ode, adtype)
+optf = Optimization.OptimizationFunction((p,_)->loss_n_ode(p), adtype)
 optprob = Optimization.OptimizationProblem(optf, prob.p)
 
 result_neuralode = Optimization.solve(optprob,
