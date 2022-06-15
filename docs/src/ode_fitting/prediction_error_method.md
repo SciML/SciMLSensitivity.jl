@@ -18,7 +18,7 @@ In both of these examples, we may make use of measurements we have of the evolut
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
 ```@example pem
-using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations
+using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
 
 tspan = (0.1f0, Float32(20.0))
 tsteps = range(tspan[1], tspan[2], length = 1000)
@@ -123,7 +123,7 @@ For completeness, we also perform estimation using both losses. We choose an ini
 
 ```@example pem
 L0 = [0.7] # Initial guess of pendulum length
-adtype = Optimization.AutoZygote()
+adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x,p)->simloss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, L0)
 

@@ -21,17 +21,17 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
-using DifferentialEquations, Lux, Optimization, OptimizationFlux, RecursiveArrayTools, Random
+using DifferentialEquations, Flux, Optimization, OptimizationFlux, RecursiveArrayTools, Random
 
-rng = Random.default_rng()
 u0 = Float32[0.; 2.]
 du0 = Float32[0.; 0.]
 tspan = (0.0f0, 1.0f0)
 t = range(tspan[1], tspan[2], length=20)
 
-model = Lux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
-p,st = Lux.setup(rng, model)
-ff(du,u,p,t) = model(u,p,st)[1]
+model = Flux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
+p,re = Flux.destructure(model)
+
+ff(du,u,p,t) = re(p)(u)
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, p)
 
 function predict(p)
