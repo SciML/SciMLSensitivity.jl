@@ -73,21 +73,21 @@ end
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
 
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -133,28 +133,28 @@ end
 
   # ReverseDiff
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Zygote
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -196,28 +196,28 @@ end
 
   # ReverseDiff
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Zygote
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.TrackerVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -289,7 +289,7 @@ end
 
   # ReverseDiff
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -298,21 +298,21 @@ end
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Zygote
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+    ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -358,28 +358,28 @@ end
 
   # ReverseDiff
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Zygote
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
@@ -421,35 +421,28 @@ end
 
   # ReverseDiff
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ReverseDiffVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # ReverseDiff with compiled tape
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ReverseDiffVJP(true)))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ReverseDiffVJP(true)))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Zygote
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.ZygoteVJP()))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=ZygoteVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2
 
   # Tracker
   du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=DiffEqSensitivity.TrackerVJP()))
-
-  @test du0ReverseDiff ≈ du0 rtol=1e-2
-  @test dpReverseDiff ≈ dp' rtol=1e-2
-
-  # isautojacvec = true
-  du0, dp = adjoint_sensitivities(sol2,RandomEM(),dg!,Array(t)
-    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=true))
+    ,dt=dt,adaptive=false,sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=TrackerVJP()))
 
   @test du0ReverseDiff ≈ du0 rtol=1e-2
   @test dpReverseDiff ≈ dp' rtol=1e-2

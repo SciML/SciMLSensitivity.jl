@@ -586,7 +586,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
       bwd_sol = solve(
           ODEAdjointProblem(
               sol,
-              BacksolveAdjoint(checkpointing = checkpointing),
+              BacksolveAdjoint(autojacvec=EnzymeVJP(),checkpointing = checkpointing),
               (x, lqr_params, t) -> cost(x,lqr_params),
           ),
           Tsit5(),
