@@ -39,11 +39,11 @@ const bs = 128
 const train_split = 0.9
 train_dataloader, test_dataloader = loadmnist(bs, train_split)
 
-down = Chain(Flux.flatten, Dense(784, 20, tanh)) |> gpu
+down = Flux.Chain(Flux.flatten, Flux.Dense(784, 20, tanh)) |> gpu
 
-nn = Chain(Dense(20, 10, tanh),
-           Dense(10, 10, tanh),
-           Dense(10, 20, tanh)) |> gpu
+nn = Flux.Chain(Flux.Dense(20, 10, tanh),
+           Flux.Dense(10, 10, tanh),
+           Flux.Dense(10, 20, tanh)) |> gpu
 
 
 nn_ode = NeuralODE(nn, (0.f0, 1.f0), Tsit5(),
@@ -51,7 +51,7 @@ nn_ode = NeuralODE(nn, (0.f0, 1.f0), Tsit5(),
                    reltol = 1e-3, abstol = 1e-3,
                    save_start = false) |> gpu
 
-fc  = Chain(Dense(20, 10)) |> gpu
+fc  = Flux.Chain(Flux.Dense(20, 10)) |> gpu
 
 function DiffEqArray_to_Array(x)
     xarr = gpu(x)
@@ -59,7 +59,7 @@ function DiffEqArray_to_Array(x)
 end
 
 # Build our overall model topology
-model = Chain(down,
+model = Flux.Chain(down,
               nn_ode,
               DiffEqArray_to_Array,
               fc) |> gpu;
@@ -196,11 +196,11 @@ to the next. Four different sets of layers are used here:
 
 
 ```julia
-down = Chain(Flux.flatten, Dense(784, 20, tanh)) |> gpu
+down = Flux.Chain(Flux.flatten, Flux.Dense(784, 20, tanh)) |> gpu
 
-nn = Chain(Dense(20, 10, tanh),
-           Dense(10, 10, tanh),
-           Dense(10, 20, tanh)) |> gpu
+nn = Flux.Chain(Flux.Dense(20, 10, tanh),
+           Flux.Dense(10, 10, tanh),
+           Flux.Dense(10, 20, tanh)) |> gpu
 
 
 nn_ode = NeuralODE(nn, (0.f0, 1.f0), Tsit5(),
@@ -208,7 +208,7 @@ nn_ode = NeuralODE(nn, (0.f0, 1.f0), Tsit5(),
                    reltol = 1e-3, abstol = 1e-3,
                    save_start = false) |> gpu
 
-fc  = Chain(Dense(20, 10)) |> gpu
+fc  = Flux.Chain(Flux.Dense(20, 10)) |> gpu
 ```
 
 `down`: This layer downsamples our images into a 20 dimensional feature vector.
@@ -247,7 +247,7 @@ Next we connect all layers together in a single chain:
 
 ```julia
 # Build our overall model topology
-model = Chain(down,
+model = Flux.Chain(down,
               nn_ode,
               DiffEqArray_to_Array,
               fc) |> gpu;
@@ -270,7 +270,7 @@ This can also be built without the NN-ODE by replacing `nn-ode` with a simple `n
 
 ```julia
 # We can also build the model topology without a NN-ODE
-m_no_ode = Chain(down,
+m_no_ode = Flux.Chain(down,
                  nn,
                  fc) |> gpu
 

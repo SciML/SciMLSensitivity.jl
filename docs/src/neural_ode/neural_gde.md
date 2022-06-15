@@ -44,8 +44,8 @@ node = NeuralODE(
     reltol = 1e-3, abstol = 1e-3, save_start = false
 )
 
-model = Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Dropout(0.5),
+model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
+              Flux.Dropout(0.5),
               node,
               diffeqarray_to_array,
               GCNConv(adj_mat, hidden=>target_catg))
@@ -136,8 +136,8 @@ node = NeuralODE(
     reltol = 1e-3, abstol = 1e-3, save_start = false
 )
 
-model = Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Dropout(0.5),
+model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
+              Flux.Dropout(0.5),
               node,
               diffeqarray_to_array,
               GCNConv(adj_mat, hidden=>target_catg))

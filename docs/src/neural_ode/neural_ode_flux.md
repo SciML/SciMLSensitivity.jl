@@ -24,9 +24,9 @@ t = range(tspan[1],tspan[2],length=datasize)
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),saveat=t))
 
-dudt2 = Chain(x -> x.^3,
-             Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(x -> x.^3,
+             Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u,p,t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt,u0,tspan)
@@ -64,7 +64,7 @@ callback()
 
 ## Using Flux `Chain` neural networks with GalacticOptim
 
-Flux neural networks can be used with GalacitcOptim.jl by using
+Flux neural networks can be used with Optimization.jl by using
 the `Flux.destructure` function. In this case, if `dudt` is a Flux
 chain, then:
 
@@ -83,7 +83,7 @@ Notice that GalacticOptim.jl works on a vector input, so we have to concatenate 
 and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
-using OrdinaryDiffEq, DiffEqSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
+using Flux, OrdinaryDiffEq, DiffEqSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -97,9 +97,9 @@ t = range(tspan[1],tspan[2],length=datasize)
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),saveat=t))
 
-dudt2 = Chain(x -> x.^3,
-             Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(x -> x.^3,
+             Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u,p,t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt,u0,tspan)
