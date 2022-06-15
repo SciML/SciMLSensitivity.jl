@@ -233,8 +233,8 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
   f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
 
   if noiseterm
-    if (sensealg.noise isa ReverseDiffNoise ||
-      (sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)))
+    @assert sensealg.noise !== nothing
+    if sensealg.noise isa ReverseDiffNoise
 
       jac_noise_config = nothing
       paramjac_noise_config = []
@@ -260,17 +260,6 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
           tapei = noisetape(i)
           if compile_tape(sensealg.noise)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
-          elseif tapei !== nothing && sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)
-              compile = try
-                  !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
-              catch
-                  false
-              end
-              if compile
-                  push!(paramjac_noise_config, ReverseDiff.compile(tapei))
-              else
-                  push!(paramjac_noise_config, tapei)
-              end
           else
             push!(paramjac_noise_config, tapei)
           end
@@ -296,7 +285,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
           end
         end
       end
-    elseif (sensealg.noise isa Bool && !sensealg.noise)
+    elseif !sensealg.noise
       if DiffEqBase.isinplace(prob)
         if StochasticDiffEq.is_diagonal_noise(prob)
           pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
@@ -418,7 +407,7 @@ end
 function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated=false)
   if sensefun isa NILSASSensitivityFunction
     @unpack sensealg = sensefun.S
-  else 
+  else
     @unpack sensealg = sensefun
   end
 

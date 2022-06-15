@@ -13,10 +13,10 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
     end
     true
   catch
-    false
+    false, nothing
   end
   if ez && !has_cb
-    return EnzymeVJP()
+    return EnzymeVJP(), nothing
   end
 
   # Determine if we can compile ReverseDiff
@@ -42,6 +42,49 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
     ReverseDiffVJP(compile)
   catch
     false
+  end
+  return vjp, nothing
+end
+
+function inplace_vjp(prob::SDEProblem,u0,p,has_cb,verbose)
+  du = copy(u0)
+  ez = try
+    Enzyme.autodiff(Enzyme.Duplicated(du, du),
+                    u0,copy(p),prob.tspan[1]) do out,u,_p,t
+      prob.f(out, u, _p, t)
+      nothing
+    end
+    true
+  catch
+    false
+  end
+  if ez && !has_cb
+    return EnzymeVJP(),ReverseDiffNoise() #EnzymeNoise()
+  end
+
+  # Determine if we can compile ReverseDiff
+  compile = if has_cb
+      false
+    else
+      try
+        if DiffEqBase.isinplace(prob)
+          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+        else
+          !hasbranching(prob.f,u0,p,prob.tspan[1])
+        end
+      catch
+        false
+      end
+    end
+  vjp = try
+    ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u,p,t
+      du1 = similar(u, size(u))
+      prob.f(du1,u,p,first(t))
+      return vec(du1)
+    end
+    ReverseDiffVJP(compile),ReverseDiffNoise(compile)
+  catch
+    false, false
   end
   return vjp
 end

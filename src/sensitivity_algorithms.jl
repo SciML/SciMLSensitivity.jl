@@ -113,8 +113,8 @@ stabilization is included for additional numerical stability over the naive impl
 ```julia
 BacksolveAdjoint(;chunk_size=0,autodiff=true,
                   diff_type=Val{:central},
-                  autojacvec=autodiff,
-                  checkpointing=true, noise=true, noisemixing=false)
+                  autojacvec=nothing,
+                  checkpointing=true, noise=nothing, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -254,12 +254,12 @@ end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
                                       autojacvec=nothing,
-                                      checkpointing=true, noise=true,noisemixing=false)
+                                      checkpointing=true, noise=nothing,noisemixing=false)
   BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
-setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing,NOISE},vjp) where {CS,AD,FDT,NOISE} =
-        BacksolveAdjoint{CS,AD,FDT,typeof(vjp),NOISE}(vjp,sensealg.checkpointing,
-        sensealg.noise,sensealg.noisemixing)
+setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing},vjp,noise) where {CS,AD,FDT} =
+        BacksolveAdjoint{CS,AD,FDT,typeof(vjp),typeof(noise)}(vjp,sensealg.checkpointing,
+        noise,sensealg.noisemixing)
 
 """
 InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -275,8 +275,8 @@ enabled it will only require the memory to interpolate between checkpoints.
 ```julia
 function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                diff_type=Val{:central},
-                               autojacvec=autodiff,
-                               checkpointing=false, noise=true, noisemixing=false)
+                               autojacvec=nothing,
+                               checkpointing=false, noise=nothing, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -365,12 +365,12 @@ end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=nothing,
-                                         checkpointing=false, noise=true,noisemixing=false)
+                                         checkpointing=false,noise=nothing,noisemixing=false)
   InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
-setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing,NOISE},vjp) where {CS,AD,FDT,NOISE} =
-        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp),NOISE}(vjp,sensealg.checkpointing,
-        sensealg.noise,sensealg.noisemixing)
+setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing,Nothing},vjp,noise) where {CS,AD,FDT} =
+        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp),typeof(noise)}(vjp,sensealg.checkpointing,
+        noise,sensealg.noisemixing)
 
 """
 QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -393,7 +393,7 @@ pass and is thus memory intensive.
 ```julia
 function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                             diff_type=Val{:central},
-                            autojacvec=autodiff,abstol=1e-6,
+                            autojacvec=nothing,abstol=1e-6,
                             reltol=1e-3,compile=false)
 ```
 
@@ -459,7 +459,7 @@ Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          reltol=1e-3)
   QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol)
 end
-setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
+setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp,noise) where {CS,AD,FDT} =
         QuadratureAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.abstol,
         sensealg.reltol)
 
@@ -803,7 +803,6 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
                                 adjoint_sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                autojacvec=autodiff,
                                 g=nothing
                                 )
 ```
@@ -933,8 +932,8 @@ Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_ty
                                         autojacvec = nothing, linsolve = nothing)
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
-setvjp(sensealg::SteadyStateAdjoint{CS,AD,FDT,LS}, vjp) where {CS,AD,FDT,LS} =
-        SteadyStateAdjoint{CS,AD,FDT,typeof(vjp),LS}(vjp, sensealg.linsolve)
+setvjp(sensealg::SteadyStateAdjoint{CS,AD,FDT,LS},vjp) where {CS,AD,FDT,LS} =
+        SteadyStateAdjoint{CS,AD,FDT,typeof(vjp),LS}(vjp,sensealg.linsolve)
 
 abstract type VJPChoice end
 
