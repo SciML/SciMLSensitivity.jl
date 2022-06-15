@@ -134,7 +134,7 @@ callback(θ,loss_n_ode(θ)...)
 adtype = Optimization.AutoZygote()
 
 optf = Optimization.OptimizationFunction(loss_n_ode, adtype)
-optprob = Optimization.OptimizationProblem(optfunc, prob_neuralode.p)
+optprob = Optimization.OptimizationProblem(optfunc, prob.p)
 
 result_neuralode = Optimization.solve(optprob,
                                        OptimizationOptimisers.Adam(0.05),
