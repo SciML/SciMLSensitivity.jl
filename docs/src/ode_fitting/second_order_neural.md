@@ -28,7 +28,7 @@ du0 = Float32[0.; 0.]
 tspan = (0.0f0, 1.0f0)
 t = range(tspan[1], tspan[2], length=20)
 
-model = Flux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
+model = Flux.Chain(Flux.Dense(2, 50, tanh), Flux.Dense(50, 2))
 p,re = Flux.destructure(model)
 
 ff(du,u,p,t) = re(p)(u)

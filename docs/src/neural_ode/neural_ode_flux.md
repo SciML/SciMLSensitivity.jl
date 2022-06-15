@@ -83,7 +83,7 @@ Notice that GalacticOptim.jl works on a vector input, so we have to concatenate 
 and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
-using OrdinaryDiffEq, DiffEqSensitivity, GalacticOptim, GalacticFlux, GalacticOptimJL, Plots
+using OrdinaryDiffEq, DiffEqSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -130,20 +130,20 @@ end
 # Display the ODE with the initial parameter values.
 callback(θ,loss_n_ode(θ)...)
 
-# use GalacticOptim.jl to solve the problem
-adtype = GalacticOptim.AutoZygote()
+# use Optimization.jl to solve the problem
+adtype = Optimization.AutoZygote()
 
-optf = GalacticOptim.OptimizationFunction(loss_neuralode, adtype)
-optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
+optf = Optimization.OptimizationFunction(loss_neuralode, adtype)
+optprob = Optimization.OptimizationProblem(optfunc, prob_neuralode.p)
 
-result_neuralode = GalacticOptim.solve(optprob,
-                                       ADAM(0.05),
+result_neuralode = Optimization.solve(optprob,
+                                       OptimizationOptimisers.Adam(0.05),
                                        callback = callback,
                                        maxiters = 300)
 
 optprob2 = remake(optprob,u0 = result_neuralode.u)
 
-result_neuralode2 = GalacticOptim.solve(optprob2,
+result_neuralode2 = Optimization.solve(optprob2,
                                         LBFGS(),
                                         callback = callback,
                                         allow_f_increases = false)

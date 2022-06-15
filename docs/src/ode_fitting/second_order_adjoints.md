@@ -35,7 +35,7 @@ dudt2 = Flux.Chain(x -> x.^3,
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p, st)[1])
+  Array(prob_neuralode(u0, p)[1])
 end
 
 function loss_neuralode(p)
