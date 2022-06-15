@@ -92,7 +92,7 @@ end
     @info res_sde_p
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
+        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -100,7 +100,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
+        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -108,7 +108,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
+        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -116,7 +116,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise()))
+        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -124,7 +124,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
+        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -140,7 +140,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
+        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -148,7 +148,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(noise=false))
+        ,dt=dtnd,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -164,7 +164,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ZygoteNoise()))
+        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -172,7 +172,7 @@ end
     @info res_sde_pa
 
     res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,Array(t)
-        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(noise=false))
+        ,dt=dtnd,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false))
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
     @test isapprox(res_sde_pa, res_sde_p, rtol=1e-4)
@@ -263,7 +263,7 @@ end
   @info res_sde_p
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP(), noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -271,7 +271,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=false,noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false,noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -279,7 +279,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,Array(t)
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(), noisemixing=true))
+      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(), noisemixing=true))
 
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
@@ -296,7 +296,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, autojacvec=ZygoteVJP()))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -304,7 +304,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false, noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -314,7 +314,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(soloop,EulerHeun(),dg!,tarray
-    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(),noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -330,7 +330,7 @@ end
   @info res_sde_p
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ZygoteNoise(), noisemixing=true))
+      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP(), noisemixing=true))
 
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
@@ -339,7 +339,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=false,noisemixing=true))
+      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=false,noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-6)
@@ -347,7 +347,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(), noisemixing=true))
+      ,dt=dtmix,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(), noisemixing=true))
 
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-6)
@@ -364,7 +364,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, noise=DiffEqSensitivity.ZygoteNoise()))
+      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noisemixing=true, autojacvec=ZygoteVJP()))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -372,7 +372,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=false, noisemixing=true))
+    ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=false, noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -380,7 +380,7 @@ end
   @info res_sde_pa
 
   res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol,EulerHeun(),dg!,tarray
-      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(noise=DiffEqSensitivity.ReverseDiffNoise(),noisemixing=true))
+      ,dt=dtmix,adaptive=false,sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(),noisemixing=true))
 
   @test isapprox(res_sde_u0a, res_sde_u0, rtol=1e-5)
   @test isapprox(res_sde_pa, res_sde_p, rtol=1e-5)
@@ -528,14 +528,14 @@ end
 end
 
 @testset "mutating non-diagonal noise" begin
-  a!(du,u,_p,t) = (du .= -u) 
-  a(u,_p,t) = -u 
+  a!(du,u,_p,t) = (du .= -u)
+  a(u,_p,t) = -u
 
   function b!(du,u,_p,t)
     KR, KI = _p[1:2]
 
     du[1,1] = KR
-    du[2,1] = KI  
+    du[2,1] = KI
   end
 
   function b(u,_p,t)
@@ -564,7 +564,7 @@ end
   # test mutating against non-mutating
 
   # non-mutating
-  
+
   dp1 = compute_dp(p, prob, ForwardDiffSensitivity())
   dp2 = compute_dp(p, prob, BacksolveAdjoint())
   dp3 = compute_dp(p, prob, InterpolatingAdjoint())
@@ -577,7 +577,7 @@ end
   _dp3 = compute_dp(p, prob, InterpolatingAdjoint(autojacvec=ReverseDiffVJP()))
   @test dp3 ≈ _dp3 rtol=1e-8
 
-  # mutating 
+  # mutating
   _dp1 = compute_dp(p, prob!, ForwardDiffSensitivity())
   _dp2 = compute_dp(p, prob!, BacksolveAdjoint())
   _dp3 = compute_dp(p, prob!, InterpolatingAdjoint())

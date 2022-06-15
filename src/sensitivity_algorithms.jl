@@ -101,7 +101,7 @@ Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
 end
 
 """
-BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 
 An implementation of adjoint sensitivity analysis using a backwards solution of the ODE.
 By default this algorithm will use the values from the forward pass to perturb the
@@ -114,7 +114,7 @@ stabilization is included for additional numerical stability over the naive impl
 BacksolveAdjoint(;chunk_size=0,autodiff=true,
                   diff_type=Val{:central},
                   autojacvec=nothing,
-                  checkpointing=true, noise=nothing, noisemixing=false)
+                  checkpointing=true, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -139,16 +139,6 @@ BacksolveAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term
-  of an SDE via automatic differentiation with special seeding. The default is `true`.
-  The total set of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
-    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for
-      the vjp. `compile` is a boolean for whether to precompile the tape, which
-      should only be done if there are no branches (`if` or `while` statements) in
-      the `f` function.
 * `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
   For example, to compute the sensitivities of an SDE with diagonal diffusion
   ```julia
@@ -245,24 +235,23 @@ SDE:
  Scalable Gradients for Stochastic Differential Equations,
  PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
 """
-struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
-  noise::NOISE
   noisemixing::Bool
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
                                       autojacvec=nothing,
-                                      checkpointing=true, noise=nothing,noisemixing=false)
-  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
+                                      checkpointing=true, noisemixing=false)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing,noisemixing)
 end
-setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing,Nothing}, vjp, noise) where {CS,AD,FDT} =
-        BacksolveAdjoint{CS,AD,FDT,typeof(vjp),typeof(noise)}(vjp,sensealg.checkpointing,
-        noise,sensealg.noisemixing)
+setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing}, vjp) where {CS,AD,FDT} =
+        BacksolveAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.checkpointing,
+                                                sensealg.noisemixing)
 
 """
-InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 
 An implementation of adjoint sensitivity analysis which uses the interpolation of
 the forward solution for the reverse solve vector-Jacobian products. By
@@ -276,7 +265,7 @@ enabled it will only require the memory to interpolate between checkpoints.
 function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                diff_type=Val{:central},
                                autojacvec=nothing,
-                               checkpointing=false, noise=nothing, noisemixing=false)
+                               checkpointing=false, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -301,16 +290,6 @@ function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term
-  of an SDE via automatic differentiation with special seeding. The default is `true`.
-  The total set of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
-    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for
-      the vjp. `compile` is a boolean for whether to precompile the tape, which
-      should only be done if there are no branches (`if` or `while` statements) in
-      the `f` function.
 * `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
   For example, to compute the sensitivities of an SDE with diagonal diffusion
   ```julia
@@ -356,21 +335,20 @@ supports callbacks (events).
  continuous sensitivity analysis for derivatives of differential equation solutions,
  arXiv:1812.01892
 """
-struct InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
-  noise::NOISE
   noisemixing::Bool
 end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
                                          autojacvec=nothing,
-                                         checkpointing=false,noise=nothing,noisemixing=false)
-  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
+                                         checkpointing=false,noisemixing=false)
+  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing,noisemixing)
 end
-setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing,Nothing},vjp,noise) where {CS,AD,FDT} =
-        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp),typeof(noise)}(vjp,sensealg.checkpointing,
-        noise,sensealg.noisemixing)
+setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
+        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.checkpointing,
+                                                    sensealg.noisemixing)
 
 """
 QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -459,7 +437,7 @@ Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          reltol=1e-3)
   QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol)
 end
-setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp,noise) where {CS,AD,FDT} =
+setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
         QuadratureAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.abstol,
         sensealg.reltol)
 
@@ -1020,56 +998,6 @@ struct ReverseDiffVJP{compile} <: VJPChoice
   ReverseDiffVJP(compile=false) = new{compile}()
 end
 
-abstract type NoiseChoice end
-
-"""
-ZygoteNoise <: NoiseChoice
-
-Uses Zygote.jl to compute vector-Jacobian products for the noise term (for SDE adjoints only).
-Tends to be the fastest VJP method if the ODE/DAE/SDE/DDE is written with mostly vectorized
-functions (like neural networks and other layers from Flux.jl) and the `f` functions is given
-out-of-place. If the `f` function is in-place, then `Zygote.Buffer` arrays are used
-internally which can greatly reduce the performance of the VJP method.
-
-## Constructor
-
-```julia
-ZygoteNoise()
-```
-"""
-struct ZygoteNoise <: NoiseChoice end
-
-"""
-ReverseDiffNoise{compile} <: NoiseChoice
-
-Uses ReverseDiff.jl to compute the vector-Jacobian products for the noise
-term differentiation (for SDE adjoints only). If `f` is in-place,
-then it uses a array of structs formulation to do scalarized reverse mode,
-while if `f` is out-of-place then it uses an array-based reverse mode.
-
-Usually the fastest when scalarized operations exist in the f function
-(like in scientific machine learning applications like Universal Differential Equations)
-and the boolean compilation is enabled (i.e. ReverseDiffVJP(true)), if EnzymeVJP fails on
-a given choice of `f`.
-
-Does not support GPUs (CuArrays).
-
-## Constructor
-
-```julia
-ReverseDiffNoise(compile=false)
-```
-
-## Keyword Arguments
-
-* `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
-  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE
-  has no branching.
-"""
-struct ReverseDiffNoise{compile} <: NoiseChoice
-  ReverseDiffNoise(compile=false) = new{compile}()
-end
-
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
 @inline convert_tspan(::Any) = nothing
 @inline alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS,AD,FDT}) where {CS,AD,FDT} = AD
@@ -1086,16 +1014,11 @@ end
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol=nothing) = alg.checkpointing
 
-@inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
-@inline isnoise(alg::InterpolatingAdjoint) = alg.noise
-@inline isnoise(alg::BacksolveAdjoint) = alg.noise
-
 @inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
 @inline isnoisemixing(alg::InterpolatingAdjoint) = alg.noisemixing
 @inline isnoisemixing(alg::BacksolveAdjoint) = alg.noisemixing
 
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
-@inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false
 
 """
