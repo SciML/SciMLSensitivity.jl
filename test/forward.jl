@@ -207,3 +207,15 @@ end
 p = [1.5f0,1.0f0,3.0f0]
 prob = ODEForwardSensitivityProblem(f32,[1.0f0;1.0f0],(0.0f0,10.0f0),p)
 sol = solve(prob,Tsit5())
+
+# Out Of Place Error
+function lotka_volterra_oop(u, p, t)
+  du = zeros(2)
+  du[1] = p[1]*u[1] - p[2]*u[1]*u[2]
+  du[2] = -p[3]*u[2] + p[4]*u[1]*u[2]
+  return du
+end
+
+u0 = [1.0, 1.0]
+p = [1.5, 1.0, 3.0, 1.0]
+@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra, u0, (0.0, 10.0), p)

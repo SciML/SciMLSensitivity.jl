@@ -155,6 +155,20 @@ function Base.showerror(io::IO, e::ForwardSensitivityParameterCompatibilityError
   print(io, FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
 end
 
+const FORWARD_SENSITIVITY_OUT_OF_PLACE_MESSAGE = 
+"""
+ODEForwardSensitivityProblem is not compatible with out of place ODE definitions,
+i.e. `du=f(u,p,t)` definitions. It requires an in-place mutating function
+`f(du,u,p,t)`. For more information on in-place vs out-of-place ODE definitions,
+see the ODEProblem or ODEFunction documentation.
+"""
+
+struct ForwardSensitivityOutOfPlaceError <: Exception end
+
+function Base.showerror(io::IO, e::ForwardSensitivityOutOfPlaceError)
+  print(io, FORWARD_SENSITIVITY_OUT_OF_PLACE_MESSAGE)
+end
+
 @doc doc"""
 function ODEForwardSensitivityProblem(f::Union{Function,DiffEqBase.AbstractODEFunction},
                                       u0,tspan,p=nothing,
@@ -381,6 +395,11 @@ function ODEForwardSensitivityProblem(f::F,u0,
                                         paramjac_config,alg,
                                         p,similar(u0),mm,
                                         isautojacvec,isautojacmat,f.colorvec,nus)
+
+  if !isinplace(sense)
+    throw(ForwardSensitivityOutOfPlaceError())
+  end
+
   if nus===nothing
     sense_u0 = [u0;zeros(eltype(u0),sense.numindvar*sense.numparams)]
   else
