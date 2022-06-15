@@ -22,7 +22,6 @@ pages = [
                 "training_tips/multiple_nn.md",
             ],
             "Neural Ordinary Differential Equation (Neural ODE) Tutorials" => Any[
-                "neural_ode/neural_ode_galacticoptim.md",
                 "neural_ode/neural_ode_flux.md",
                 "neural_ode/mnist_neural_ode.md",
                 "neural_ode/mnist_conv_neural_ode.md",

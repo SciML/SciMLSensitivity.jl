@@ -1,4 +1,4 @@
-# Neural Ordinary Differential Equations with Flux.train!
+# Neural Ordinary Differential Equations with Flux
 
 All of the tools of DiffEqSensitivity.jl can be used with Flux.jl. A lot of the examples
 have been written to use `FastChain` and `sciml_train`, but in all cases this
@@ -9,8 +9,8 @@ can be changed to the `Chain` and `Flux.train!` workflow.
 This should work almost automatically by using `solve`. Here is an
 example of optimizing `u0` and `p`.
 
-```julia
-using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots
+```@example neuralode1
+using OrdinaryDiffEq, DiffEqSensitivity, Flux, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -57,7 +57,9 @@ end
 callback()
 
 data = Iterators.repeated((), 1000)
-res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), callback = callback)
+res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = callback)
+
+callback()
 ```
 
 ## Using Flux `Chain` neural networks with GalacticOptim
@@ -80,8 +82,8 @@ optimize both the neural network parameters `p` and the input initial condition 
 Notice that GalacticOptim.jl works on a vector input, so we have to concatenate `u0`
 and `p` and then in the loss function split to the pieces.
 
-```julia
-using DiffEqFlux, OrdinaryDiffEq, GalacticOptim, GalacticFlux, GalacticOptimJL, Plots
+```@example neuralode2
+using OrdinaryDiffEq, DiffEqSensitivity, GalacticOptim, GalacticFlux, GalacticOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
