@@ -257,7 +257,7 @@ Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       checkpointing=true, noise=nothing,noisemixing=false)
   BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
 end
-setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing},vjp,noise) where {CS,AD,FDT} =
+setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing,Nothing}, vjp, noise) where {CS,AD,FDT} =
         BacksolveAdjoint{CS,AD,FDT,typeof(vjp),typeof(noise)}(vjp,sensealg.checkpointing,
         noise,sensealg.noisemixing)
 

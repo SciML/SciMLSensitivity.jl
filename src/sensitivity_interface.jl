@@ -280,7 +280,7 @@ function adjoint_sensitivities(sol,args...;
       if has_cb
         sol.prob isa SDEProblem ? setvjp(sensealg,ReverseDiffVJP(),ReverseDiffNoise()) : setvjp(sensealg,ReverseDiffVJP(),nothing)
       else
-        sol.prob isa SDEProblem : setvjp(sensealg,ZygoteVJP(),ZygoteNoise()) : setvjp(sensealg,ZygoteVJP(),nothing)
+        sol.prob isa SDEProblem ? setvjp(sensealg,ZygoteVJP(),ZygoteNoise()) : setvjp(sensealg,ZygoteVJP(),nothing)
       end
     end
 
