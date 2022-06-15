@@ -55,7 +55,7 @@ initp = ones(3)
 callback(initp,loss_adjoint(initp)...)
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x,p), adtype)
+optf = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, initp)
 
 res = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 300)

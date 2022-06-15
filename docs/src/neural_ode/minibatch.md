@@ -1,9 +1,10 @@
 # Training a Neural Ordinary Differential Equation with Mini-Batching
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, DiffEqFlux, Lux, Random, Plots
 using IterTools: ncycle 
 
+rng = Random.default_rng()
 
 function newtons_cooling(du, u, p, t)
     temp = u[1]
@@ -17,11 +18,11 @@ function true_sol(du, u, p, t)
 end
 
 
-ann = FastChain(FastDense(1,8,tanh), FastDense(8,1,tanh))
-θ = initial_params(ann)
+ann = Lux.Chain(Lux.Dense(1,8,tanh), Lux.Dense(8,1,tanh))
+θ, st = Lux.setup(rng, ann)
 
 function dudt_(u,p,t)           
-    ann(u, p).* u
+    ann(u, p, st)[1].* u
 end
 
 function predict_adjoint(time_batch)
@@ -100,10 +101,10 @@ When training a neural network we need to find the gradient with respect to our 
 For this example we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so. 
 
 ```julia
-using DifferentialEquations, DiffEqFlux, Plots
+using DifferentialEquations, DiffEqFlux, Lux, Random, Plots
 using IterTools: ncycle 
 
-
+rng = Random.default_rng()
 function newtons_cooling(du, u, p, t)
     temp = u[1]
     k, temp_m = p
@@ -119,11 +120,11 @@ end
 Now we define a neural-network using a linear approximation with 1 hidden layer of 8 neurons.  
 
 ```julia
-ann = FastChain(FastDense(1,8,tanh), FastDense(8,1,tanh))
-θ = initial_params(ann)
+ann = Lux.Chain(Lux.Dense(1,8,tanh), Lux.Dense(8,1,tanh))
+θ, st = Lux.setup(rng, ann)
 
 function dudt_(u,p,t)           
-    ann(u, p).* u
+    ann(u, p, st)[1].* u
 end
 ```
 

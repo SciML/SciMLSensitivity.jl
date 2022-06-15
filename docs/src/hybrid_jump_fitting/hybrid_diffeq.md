@@ -24,8 +24,8 @@ t = range(tspan[1],tspan[2],length=datasize)
 
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),callback=cb_,saveat=t))
-dudt2 = Chain(Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 
 function dudt(du,u,p,t)
