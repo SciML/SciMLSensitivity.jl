@@ -324,18 +324,9 @@ end
   _sol = deepcopy(sol)
   backwardnoise = reverse(_sol.W)
 
-  if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
-    # scalar noise case
-    noise_matrix = nothing
-  else
-    noise_matrix = similar(z0,length(z0),numstates)
-    noise_matrix .= false
-  end
-
   return RODEProblem(rodefun,z0,tspan,p,
     callback=cb,
-    noise=backwardnoise,
-    noise_rate_prototype = noise_matrix
+    noise=backwardnoise
     )
 end
 
