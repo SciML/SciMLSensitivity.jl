@@ -429,7 +429,7 @@ end
   @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
 
-  @test res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
+  res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
   @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
