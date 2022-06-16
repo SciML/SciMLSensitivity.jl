@@ -7,7 +7,7 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
   du = copy(u0)
   ez = try
     Enzyme.autodiff(Enzyme.Duplicated(du, du),
-                    u0,copy(p),prob.tspan[1]) do out,u,_p,t
+                    copy(u0),copy(p),prob.tspan[1]) do out,u,_p,t
       prob.f(out, u, _p, t)
       nothing
     end
