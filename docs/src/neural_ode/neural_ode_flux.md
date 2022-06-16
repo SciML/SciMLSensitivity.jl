@@ -79,7 +79,7 @@ an explicit parameter style.
 
 Let's use this to build and train a neural ODE from scratch. In this example we will
 optimize both the neural network parameters `p` and the input initial condition `u0`.
-Notice that GalacticOptim.jl works on a vector input, so we have to concatenate `u0`
+Notice that Optimization.jl works on a vector input, so we have to concatenate `u0`
 and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
@@ -134,7 +134,7 @@ callback(θ,loss_n_ode(θ)...)
 adtype = Optimization.AutoZygote()
 
 optf = Optimization.OptimizationFunction((p,_)->loss_n_ode(p), adtype)
-optprob = Optimization.OptimizationProblem(optf, prob.p)
+optprob = Optimization.OptimizationProblem(optf, θ)
 
 result_neuralode = Optimization.solve(optprob,
                                        OptimizationOptimisers.Adam(0.05),
