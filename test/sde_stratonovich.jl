@@ -390,11 +390,11 @@ end
   prob_sde = SDEProblem(f!,σ!,[u₀;u₀;u₀],trange,p2)
   sol_sde = solve(prob_sde,EulerHeun(),dt=dt1,adaptive=false,save_noise=true)
 
-  @test_broken res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
+  res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=BacksolveAdjoint())
 
-  @test_broken isapprox(res_sde_p, res_oop_p, rtol = 1e-6)
-  @test_broken isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-6)
+  isapprox(res_sde_p, res_oop_p, rtol = 1e-6)
+  isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-6)
 
   @info res_sde_p
 
@@ -429,7 +429,7 @@ end
   @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
   @test isapprox(res_sde_u0 ,res_oop_u0, rtol = 1e-4)
 
-  @test_broken res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
+  @test res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde,EulerHeun(),dg!,tarray
       ,dt=dt1,adaptive=false,sensealg=InterpolatingAdjoint())
 
   @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
