@@ -10,7 +10,7 @@ using DifferentialEquations, Lux, Optim, DiffEqFlux, DiffEqSensitivity
 using Random
 rng = Random.default_rng()
 
-model_gpu = Lux.Chain(lux.Dense(2, 50, tanh), Lux.Dense(50, 2)) |> gpu
+model_gpu = Lux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2)) |> gpu
 p, st = Lux.setup(rng, model_gpu)
 dudt!(u, p, t) = model_gpu(u, p, st)[1]
 

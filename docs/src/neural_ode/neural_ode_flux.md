@@ -1,4 +1,4 @@
-# Neural Ordinary Differential Equations with Flux.train!
+# Neural Ordinary Differential Equations with Flux
 
 All of the tools of DiffEqSensitivity.jl can be used with Flux.jl. A lot of the examples
 have been written to use `FastChain` and `sciml_train`, but in all cases this
@@ -9,8 +9,8 @@ can be changed to the `Chain` and `Flux.train!` workflow.
 This should work almost automatically by using `solve`. Here is an
 example of optimizing `u0` and `p`.
 
-```julia
-using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots
+```@example neuralode1
+using OrdinaryDiffEq, DiffEqSensitivity, Flux, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -24,9 +24,9 @@ t = range(tspan[1],tspan[2],length=datasize)
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),saveat=t))
 
-dudt2 = Chain(x -> x.^3,
-             Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(x -> x.^3,
+             Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u,p,t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt,u0,tspan)
@@ -43,7 +43,7 @@ end
 
 loss_n_ode() # n_ode.p stores the initial parameters of the neural ODE
 
-cb = function (;doplot=false) #callback function to observe training
+callback = function (;doplot=false) #callback function to observe training
   pred = predict_n_ode()
   display(sum(abs2,ode_data .- pred))
   # plot current prediction against data
@@ -54,15 +54,17 @@ cb = function (;doplot=false) #callback function to observe training
 end
 
 # Display the ODE with the initial parameter values.
-cb()
+callback()
 
 data = Iterators.repeated((), 1000)
-res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = cb)
+res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = callback)
+
+callback()
 ```
 
 ## Using Flux `Chain` neural networks with GalacticOptim
 
-Flux neural networks can be used with GalacitcOptim.jl by using
+Flux neural networks can be used with Optimization.jl by using
 the `Flux.destructure` function. In this case, if `dudt` is a Flux
 chain, then:
 
@@ -77,11 +79,11 @@ an explicit parameter style.
 
 Let's use this to build and train a neural ODE from scratch. In this example we will
 optimize both the neural network parameters `p` and the input initial condition `u0`.
-Notice that GalacticOptim.jl works on a vector input, so we have to concatenate `u0`
+Notice that Optimization.jl works on a vector input, so we have to concatenate `u0`
 and `p` and then in the loss function split to the pieces.
 
-```julia
-using DiffEqFlux, OrdinaryDiffEq, GalacticOptim, GalacticFlux, GalacticOptimJL, Plots
+```@example neuralode2
+using Flux, OrdinaryDiffEq, DiffEqSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -95,9 +97,9 @@ t = range(tspan[1],tspan[2],length=datasize)
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),saveat=t))
 
-dudt2 = Chain(x -> x.^3,
-             Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(x -> x.^3,
+             Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u,p,t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt,u0,tspan)
@@ -116,7 +118,7 @@ end
 
 loss_n_ode(θ)
 
-cb = function (θ,l,pred;doplot=false) #callback function to observe training
+callback = function (θ,l,pred;doplot=false) #callback function to observe training
   display(l)
   # plot current prediction against data
   pl = scatter(t,ode_data[1,:],label="data")
@@ -126,22 +128,22 @@ cb = function (θ,l,pred;doplot=false) #callback function to observe training
 end
 
 # Display the ODE with the initial parameter values.
-cb(θ,loss_n_ode(θ)...)
+callback(θ,loss_n_ode(θ)...)
 
-# use GalacticOptim.jl to solve the problem
-adtype = GalacticOptim.AutoZygote()
+# use Optimization.jl to solve the problem
+adtype = Optimization.AutoZygote()
 
-optf = GalacticOptim.OptimizationFunction(loss_neuralode, adtype)
-optprob = GalacticOptim.OptimizationProblem(optfunc, prob_neuralode.p)
+optf = Optimization.OptimizationFunction((p,_)->loss_n_ode(p), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
 
-result_neuralode = GalacticOptim.solve(optprob,
-                                       ADAM(0.05),
+result_neuralode = Optimization.solve(optprob,
+                                       OptimizationOptimisers.Adam(0.05),
                                        callback = callback,
                                        maxiters = 300)
 
 optprob2 = remake(optprob,u0 = result_neuralode.u)
 
-result_neuralode2 = GalacticOptim.solve(optprob2,
+result_neuralode2 = Optimization.solve(optprob2,
                                         LBFGS(),
                                         callback = callback,
                                         allow_f_increases = false)

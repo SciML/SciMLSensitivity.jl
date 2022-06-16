@@ -88,7 +88,7 @@ pinit = [1.2,0.8,2.5,0.8,0.1,0.1]
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
-@time res = Optimization.solve(optprob,ADAM(0.05),cb=cb2,maxiters = 100)
+@time res = Optimization.solve(optprob,ADAM(0.05),callback=cb2,maxiters = 100)
 ```
 
 The final print out was:

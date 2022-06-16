@@ -141,7 +141,7 @@ condition(u,t,integrator) = true
 function affect!(integrator)
   integrator.u=integrator.u/norm(integrator.u)
 end
-cb = DiscreteCallback(condition,affect!,save_positions=(false,false))
+callback = DiscreteCallback(condition,affect!,save_positions=(false,false))
 
 CreateGrid(t,W1) = NoiseGrid(t,W1)
 Zygote.@nograd CreateGrid #avoid taking grads of this function
@@ -155,7 +155,7 @@ NG = CreateGrid(myparameters.ts,W1)
 p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:,1]), myparameters.tspan, p_all,
-   callback=cb, noise=NG
+   callback=callback, noise=NG
    )
 
 #########################################
@@ -184,7 +184,7 @@ function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
     remake(prob,
       p = pars,
       u0 = u0tmp,
-      callback = cb,
+      callback = callback,
       noise=NG)
   end
 
@@ -223,7 +223,7 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
     remake(prob,
       p = pars,
       u0 = u0tmp,
-      callback = cb,
+      callback = callback,
       noise=NG)
   end
 
@@ -480,7 +480,7 @@ condition(u,t,integrator) = true
 function affect!(integrator)
   integrator.u=integrator.u/norm(integrator.u)
 end
-cb = DiscreteCallback(condition,affect!,save_positions=(false,false))
+callback = DiscreteCallback(condition,affect!,save_positions=(false,false))
 
 CreateGrid(t,W1) = NoiseGrid(t,W1)
 Zygote.@nograd CreateGrid #avoid taking grads of this function
@@ -494,7 +494,7 @@ NG = CreateGrid(myparameters.ts,W1)
 p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:,1]), myparameters.tspan, p_all,
-   callback=cb, noise=NG
+   callback=callback, noise=NG
    )
 ```
 
@@ -536,7 +536,7 @@ function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
     remake(prob,
       p = pars,
       u0 = u0tmp,
-      callback = cb,
+      callback = callback,
       noise=NG)
   end
 
@@ -581,7 +581,7 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
     remake(prob,
       p = pars,
       u0 = u0tmp,
-      callback = cb,
+      callback = callback,
       noise=NG)
   end
 

@@ -75,7 +75,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
-res1_uode = Optimization.solve(optprob, ADAM(0.01), cb=callback, maxiters = 500)
+res1_uode = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 500)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
 res2_uode = Optimization.solve(optprob2, BFGS(), maxiters = 10000)

@@ -40,15 +40,15 @@ const bs = 128
 const train_split = 0.9
 train_dataloader, test_dataloader = loadmnist(bs, train_split);
 
-down = Chain(Conv((3, 3), 1=>64, relu, stride = 1), GroupNorm(64, 64),
-             Conv((4, 4), 64=>64, relu, stride = 2, pad=1), GroupNorm(64, 64),
-             Conv((4, 4), 64=>64, stride = 2, pad = 1)) |>gpu
+down = Flux.Chain(Flux.Conv((3, 3), 1=>64, relu, stride = 1), Flux.GroupNorm(64, 64),
+             Flux.Conv((4, 4), 64=>64, relu, stride = 2, pad=1), Flux.GroupNorm(64, 64),
+             Flux.Conv((4, 4), 64=>64, stride = 2, pad = 1)) |>gpu
 
-dudt = Chain(Conv((3, 3), 64=>64, tanh, stride=1, pad=1),
-             Conv((3, 3), 64=>64, tanh, stride=1, pad=1)) |>gpu
+dudt = Flux.Chain(Flux.Conv((3, 3), 64=>64, tanh, stride=1, pad=1),
+             Flux.Conv((3, 3), 64=>64, tanh, stride=1, pad=1)) |>gpu
 
-fc = Chain(GroupNorm(64, 64), x -> relu.(x), MeanPool((6, 6)),
-           x -> reshape(x, (64, :)), Dense(64,10)) |> gpu
+fc = Flux.Chain(Flux.GroupNorm(64, 64), x -> relu.(x), Flux.MeanPool((6, 6)),
+           x -> reshape(x, (64, :)), Flux.Dense(64,10)) |> gpu
           
 nn_ode = NeuralODE(dudt, (0.f0, 1.f0), Tsit5(),
                    save_everystep = false,
@@ -61,7 +61,7 @@ function DiffEqArray_to_Array(x)
 end
 
 # Build our over-all model topology
-model = Chain(down,                 # (28, 28, 1, BS) -> (6, 6, 64, BS)
+model = Flux.Chain(down,                 # (28, 28, 1, BS) -> (6, 6, 64, BS)
               nn_ode,               # (6, 6, 64, BS) -> (6, 6, 64, BS, 1)
               DiffEqArray_to_Array, # (6, 6, 64, BS, 1) -> (6, 6, 64, BS)
               fc)                   # (6, 6, 64, BS) -> (10, BS)
@@ -102,7 +102,7 @@ loss(img, lab)
 opt = ADAM(0.05)
 iter = 0
 
-cb() = begin
+callback() = begin
     global iter += 1
     # Monitor that the weights do infact update
     # Every 10 training iterations show accuracy
@@ -115,7 +115,7 @@ cb() = begin
     end
 end
 
-Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, cb = cb)
+Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, callback = callback)
 ```
 
 
@@ -198,15 +198,15 @@ to the next. Four different sets of layers are used here:
 
 
 ```julia
-down = Chain(Conv((3, 3), 1=>64, relu, stride = 1), GroupNorm(64, 64),
-             Conv((4, 4), 64=>64, relu, stride = 2, pad=1), GroupNorm(64, 64),
-             Conv((4, 4), 64=>64, stride = 2, pad = 1)) |>gpu
+down = Flux.Chain(Flux.Conv((3, 3), 1=>64, relu, stride = 1), Flux.GroupNorm(64, 64),
+             Flux.Conv((4, 4), 64=>64, relu, stride = 2, pad=1), Flux.GroupNorm(64, 64),
+             Flux.Conv((4, 4), 64=>64, stride = 2, pad = 1)) |>gpu
 
-dudt = Chain(Conv((3, 3), 64=>64, tanh, stride=1, pad=1),
-             Conv((3, 3), 64=>64, tanh, stride=1, pad=1)) |>gpu
+dudt = Flux.Chain(Flux.Conv((3, 3), 64=>64, tanh, stride=1, pad=1),
+             Flux.Conv((3, 3), 64=>64, tanh, stride=1, pad=1)) |>gpu
 
-fc = Chain(GroupNorm(64, 64), x -> relu.(x), MeanPool((6, 6)),
-           x -> reshape(x, (64, :)), Dense(64,10)) |> gpu
+fc = Flux.Chain(Flux.GroupNorm(64, 64), x -> relu.(x), Flux.MeanPool((6, 6)),
+           x -> reshape(x, (64, :)), Flux.Dense(64,10)) |> gpu
           
 nn_ode = NeuralODE(dudt, (0.f0, 1.f0), Tsit5(),
                    save_everystep = false,
@@ -250,7 +250,7 @@ Next we connect all layers together in a single chain:
 
 ```julia
 # Build our over-all model topology
-model = Chain(down,                 # (28, 28, 1, BS) -> (6, 6, 64, BS)
+model = Flux.Chain(down,                 # (28, 28, 1, BS) -> (6, 6, 64, BS)
               nn_ode,               # (6, 6, 64, BS) -> (6, 6, 64, BS, 1)
               DiffEqArray_to_Array, # (6, 6, 64, BS, 1) -> (6, 6, 64, BS)
               fc)                   # (6, 6, 64, BS) -> (10, BS)
@@ -273,7 +273,7 @@ This can also be built without the NN-ODE by replacing `nn-ode` with a simple `n
 
 ```julia
 # We can also build the model topology without a NN-ODE
-m_no_ode = Chain(down, nn, fc) |> gpu
+m_no_ode = Flux.Chain(down, nn, fc) |> gpu
 
 x_m = m_no_ode(img)
 ```
@@ -342,7 +342,7 @@ This callback function is used to print both the training and testing accuracy a
 10 training iterations:
 
 ```julia
-cb() = begin
+callback() = begin
     global iter += 1
     # Monitor that the weights update
     # Every 10 training iterations show accuracy
@@ -364,7 +364,7 @@ for Neural ODE is given by `nn_ode.p`:
 
 ```julia
 # Train the NN-ODE and monitor the loss and weights.
-Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, cb = cb)
+Flux.train!(loss, Flux.params(down, nn_ode.p, fc), train_dataloader, opt, callback = callback)
 ```
 
 ### Expected Output

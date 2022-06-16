@@ -24,8 +24,8 @@ t = range(tspan[1],tspan[2],length=datasize)
 
 prob = ODEProblem(trueODEfunc,u0,tspan)
 ode_data = Array(solve(prob,Tsit5(),callback=cb_,saveat=t))
-dudt2 = Chain(Dense(2,50,tanh),
-             Dense(50,2))
+dudt2 = Flux.Chain(Flux.Dense(2,50,tanh),
+             Flux.Dense(50,2))
 p,re = Flux.destructure(dudt2) # use this p as the initial condition!
 
 function dudt(du,u,p,t)
@@ -36,11 +36,11 @@ z0 = Float32[u0;u0]
 prob = ODEProblem(dudt,z0,tspan)
 
 affect!(integrator) = integrator.u[1:2] .= integrator.u[3:end]
-cb = PresetTimeCallback(dosetimes,affect!,save_positions=(false,false))
+callback = PresetTimeCallback(dosetimes,affect!,save_positions=(false,false))
 
 function predict_n_ode()
     _prob = remake(prob,p=p)
-    Array(solve(_prob,Tsit5(),u0=z0,p=p,callback=cb,saveat=t,sensealg=ReverseDiffAdjoint()))[1:2,:]
+    Array(solve(_prob,Tsit5(),u0=z0,p=p,callback=callback,saveat=t,sensealg=ReverseDiffAdjoint()))[1:2,:]
     #Array(solve(prob,Tsit5(),u0=z0,p=p,saveat=t))[1:2,:]
 end
 
@@ -64,7 +64,7 @@ cba()
 
 ps = Flux.params(p)
 data = Iterators.repeated((), 200)
-Flux.train!(loss_n_ode, ps, data, ADAM(0.05), cb = cba)
+Flux.train!(loss_n_ode, ps, data, ADAM(0.05), callback = cba)
 ```
 
 ![Hybrid Universal Differential Equation](https://user-images.githubusercontent.com/1814174/91687561-08fc5900-eb2e-11ea-9f26-6b794e1e1248.gif)

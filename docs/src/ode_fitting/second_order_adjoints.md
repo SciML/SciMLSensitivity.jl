@@ -13,10 +13,9 @@ optimization, while `KrylovTrustRegion` will utilize a Krylov-based method
 with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
-```julia
-using Lux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots, Random
+```@example secondorderadjoints
+using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots, Random
 
-rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
 datasize = 30
 tspan = (0.0f0, 1.5f0)
@@ -30,14 +29,13 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Lux.Chain(ActivationFunction(x -> x.^3),
-                  Lux.Dense(2, 50, tanh),
-                  Lux.Dense(50, 2))
+dudt2 = Flux.Chain(x -> x.^3,
+                   Flux.Dense(2, 50, tanh),
+                   Flux.Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
-p,st = Lux.setup(rng, dudt2)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p, st)[1])
+  Array(prob_neuralode(u0, p)[1])
 end
 
 function loss_neuralode(p)
@@ -49,7 +47,7 @@ end
 # Callback function to observe training
 list_plots = []
 iter = 0
-cb = function (p, l, pred; doplot = false)
+callback = function (p, l, pred; doplot = false)
   global list_plots, iter
 
   if iter == 0
@@ -73,12 +71,12 @@ end
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), adtype)
 
-optprob1 = Optimization.OptimizationProblem(optf, Lux.ComponentArray(p))
-pstart = Optimization.solve(optprob1, ADAM(0.01), cb=cb, maxiters = 100).u
+optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.p)
+pstart = Optimization.solve(optprob1, ADAM(0.01), callback=callback, maxiters = 100).u
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
-pmin = Optimization.solve(optprob2, NewtonTrustRegion(), cb=cb, maxiters = 200)
-pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), cb=cb, maxiters = 200)
+pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback=callback, maxiters = 200)
+pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback=callback, maxiters = 200)
 ```
 
 Note that we do not demonstrate `Newton()` because we have not found a single

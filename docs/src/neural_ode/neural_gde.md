@@ -44,8 +44,8 @@ node = NeuralODE(
     reltol = 1e-3, abstol = 1e-3, save_start = false
 )
 
-model = Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Dropout(0.5),
+model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
+              Flux.Dropout(0.5),
               node,
               diffeqarray_to_array,
               GCNConv(adj_mat, hidden=>target_catg))
@@ -69,7 +69,7 @@ evalcb() = @show(accuracy(train_X, train_y))
 
 ## Training Loop
 for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, cb=throttle(evalcb, 10))
+    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
 end
 ```
 
@@ -136,8 +136,8 @@ node = NeuralODE(
     reltol = 1e-3, abstol = 1e-3, save_start = false
 )
 
-model = Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Dropout(0.5),
+model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
+              Flux.Dropout(0.5),
               node,
               diffeqarray_to_array,
               GCNConv(adj_mat, hidden=>target_catg))
@@ -192,7 +192,7 @@ Finally, with the configuration ready and all the utilities defined we can use t
 
 ```julia
 for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, cb=throttle(evalcb, 10))
+    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
 end
 ```
 

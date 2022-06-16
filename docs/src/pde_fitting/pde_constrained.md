@@ -73,7 +73,7 @@ LOSS  = []                              # Loss accumulator
 PRED  = []                              # prediction accumulator
 PARS  = []                              # parameters accumulator
 
-cb = function (θ,l,pred) #callback function to observe training
+callback = function (θ,l,pred) #callback function to observe training
   display(l)
   append!(PRED, [pred])
   append!(LOSS, l)
@@ -81,7 +81,7 @@ cb = function (θ,l,pred) #callback function to observe training
   false
 end
 
-cb(ps,loss(ps)...) # Testing callback function
+callback(ps,loss(ps)...) # Testing callback function
 
 # Let see prediction vs. Truth
 scatter(sol[:,end], label="Truth", size=(800,500))
@@ -91,7 +91,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), cb = cb)
+res = Optimization.solve(optprob, PolyOpt(), callback = callback)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 
@@ -244,7 +244,7 @@ LOSS  = []                              # Loss accumulator
 PRED  = []                              # prediction accumulator
 PARS  = []                              # parameters accumulator
 
-cb = function (θ,l,pred) #callback function to observe training
+callback = function (θ,l,pred) #callback function to observe training
   display(l)
   append!(PRED, [pred])
   append!(LOSS, l)
@@ -252,7 +252,7 @@ cb = function (θ,l,pred) #callback function to observe training
   false
 end
 
-cb(ps,loss(ps)...) # Testing callback function
+callback(ps,loss(ps)...) # Testing callback function
 ```
 
 ### Plotting Prediction vs Ground Truth
@@ -278,7 +278,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), cb = cb)
+res = Optimization.solve(optprob, PolyOpt(), callback = callback)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 

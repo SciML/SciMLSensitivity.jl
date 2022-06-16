@@ -84,8 +84,7 @@ p2, st2 = Lux.setup(rng, diffusion_dudt)
 p1 = Lux.ComponentArray(p1)
 p2 = Lux.ComponentArray(p2)
 #Component Arrays doesn't provide a name to the first ComponentVector, only subsequent ones get a name for dereferencing
-p = Lux.ComponentArray(p1;p1)
-p = Lux.ComponentArray(p;p2)
+p = [p1, p2]
 
 neuralsde = NeuralDSDE(drift_dudt, diffusion_dudt, tspan, SOSRI(),
                        saveat = tsteps, reltol = 1e-1, abstol = 1e-1)
@@ -95,10 +94,10 @@ Let's see what that looks like:
 
 ```julia
 # Get the prediction using the correct initial condition
-prediction0, st1, st2 = neuralsde(u0,p.p1,p.p2,st1,st2)
+prediction0, st1, st2 = neuralsde(u0,p,st1,st2)
 
-drift_(u, p, t) = drift_dudt(u, p.p1, st1)[1]
-diffusion_(u, p, t) = diffusion_dudt(u, p.p2, st2)[1]
+drift_(u, p, t) = drift_dudt(u, p[1], st1)[1]
+diffusion_(u, p, t) = diffusion_dudt(u, p[2], st2)[1]
 
 prob_neuralsde = SDEProblem(drift_, diffusion_, u0,(0.0f0, 1.2f0), p)
 
@@ -120,7 +119,7 @@ the data values:
 
 ```julia
 function predict_neuralsde(p, u = u0)
-  return Array(neuralsde(u, p.p1, p.p2, st1, st2)[1])
+  return Array(neuralsde(u, p, st1, st2)[1])
 end
 
 function loss_neuralsde(p; n = 100)

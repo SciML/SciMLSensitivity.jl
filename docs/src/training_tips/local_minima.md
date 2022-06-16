@@ -18,7 +18,7 @@ have monotonic convergence and so this can stop early exits which can result
 in local minima. This looks like:
 
 ```julia
-pmin = Optimization.solve(optprob, NewtonTrustRegion(), cb=cb,
+pmin = Optimization.solve(optprob, NewtonTrustRegion(), callback=callback,
                               maxiters = 200, allow_f_increases = true)
 ```
 
@@ -199,7 +199,7 @@ function loss_n_ode()
       loss
 end
 
-function cb(;doplot=false) #callback function to observe training
+function callback(;doplot=false) #callback function to observe training
     pred = predict_n_ode()
     display(sum(abs2,ode_data .- pred))
     if doplot
@@ -212,20 +212,20 @@ function cb(;doplot=false) #callback function to observe training
 end
 predict_n_ode()
 loss_n_ode()
-cb(;doplot=true)
+callback(;doplot=true)
 
 data = Iterators.repeated((), 1000)
 
 #Specify to flux to include both the initial conditions (IC) and parameters of the NODE to train
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-                    Flux.Optimise.ADAM(0.05), cb = cb)
+                    Flux.Optimise.ADAM(0.05), callback = callback)
 
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), cb = cb)
+            Flux.Optimise.ADAM(0.05), callback = callback)
 
-cb(;doplot=true)
+callback(;doplot=true)
 
 #Now use the same technique for a longer tspan (0, 10)
 datasize = 30
@@ -247,15 +247,15 @@ prob = ODEProblem(dudt,u0,tspan)
 data = Iterators.repeated((), 1500)
 
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-                    Flux.Optimise.ADAM(0.05), cb = cb)
+                    Flux.Optimise.ADAM(0.05), callback = callback)
 
 
 
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), cb = cb)
+            Flux.Optimise.ADAM(0.05), callback = callback)
 
-cb(;doplot=true)
+callback(;doplot=true)
 
 ```
 
