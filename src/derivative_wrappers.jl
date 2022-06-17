@@ -229,82 +229,76 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
   @unpack sensealg, f = S
   prob = getprob(S)
 
-  if isautojacvec isa Bool && !isautojacvec
-    @unpack J, uf, f_cache, jac_config = S.diffcache
-    if !(prob isa DiffEqBase.SteadyStateProblem)
-      if W===nothing
-        if DiffEqBase.has_jac(f)
-          f.jac(J,y,p,t) # Calculate the Jacobian into J
-        else
-          uf.t = t
-          uf.p = p
-          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-        end
+  @unpack J, uf, f_cache, jac_config = S.diffcache
+  if !(prob isa DiffEqBase.SteadyStateProblem)
+    if W===nothing
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t) # Calculate the Jacobian into J
       else
-        if DiffEqBase.has_jac(f)
-          f.jac(J,y,p,t,W) # Calculate the Jacobian into J
-        else
-          uf.t = t
-          uf.p = p
-          uf.W = W
-          jacobian!(J, uf, y, f_cache, sensealg, jac_config)
-        end
+        uf.t = t
+        uf.p = p
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
       end
-      mul!(dλ',λ',J)
-    end
-    if dgrad !== nothing
-      @unpack pJ, pf, paramjac_config = S.diffcache
-      if W===nothing
-        if DiffEqBase.has_paramjac(f)
-          # Calculate the parameter Jacobian into pJ
-          f.paramjac(pJ,y,p,t)
-        else
-          pf.t = t
-          pf.u = y
-          if inplace_sensitivity(S)
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
-          else
-            temp = jacobian(pf, p, sensealg)
-            pJ .= temp
-          end
-        end
+    else
+      if DiffEqBase.has_jac(f)
+        f.jac(J,y,p,t,W) # Calculate the Jacobian into J
       else
-        if DiffEqBase.has_paramjac(f)
-          # Calculate the parameter Jacobian into pJ
-          f.paramjac(pJ,y,p,t,W)
-        else
-          pf.t = t
-          pf.u = y
-          pf.W = W
-          if inplace_sensitivity(S)
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
-          else
-            temp = jacobian(pf, p, sensealg)
-            pJ .= temp
-          end
-        end
+        uf.t = t
+        uf.p = p
+        uf.W = W
+        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
       end
-      mul!(dgrad',λ',pJ)
     end
-    if dy !== nothing
-      if W===nothing
+    mul!(dλ',λ',J)
+  end
+  if dgrad !== nothing
+    @unpack pJ, pf, paramjac_config = S.diffcache
+    if W===nothing
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,p,t)
+      else
+        pf.t = t
+        pf.u = y
         if inplace_sensitivity(S)
-          f(dy, y, p, t)
+          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         else
-          dy[:] .= vec(f(y, p, t))
+          temp = jacobian(pf, p, sensealg)
+          pJ .= temp
         end
+      end
+    else
+      if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ,y,p,t,W)
       else
+        pf.t = t
+        pf.u = y
+        pf.W = W
         if inplace_sensitivity(S)
-          f(dy, y, p, t, W)
+          jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         else
-          dy[:] .= vec(f(y, p, t, W))
+          temp = jacobian(pf, p, sensealg)
+          pJ .= temp
         end
       end
     end
-  elseif inplace_sensitivity(S)
-    _vecjacobian!(dλ, y, λ, p, t, S, ReverseDiffVJP(), dgrad, dy, W)
-  else
-    _vecjacobian!(dλ, y, λ, p, t, S, ZygoteVJP(), dgrad, dy, W)
+    mul!(dgrad',λ',pJ)
+  end
+  if dy !== nothing
+    if W===nothing
+      if inplace_sensitivity(S)
+        f(dy, y, p, t)
+      else
+        dy[:] .= vec(f(y, p, t))
+      end
+    else
+      if inplace_sensitivity(S)
+        f(dy, y, p, t, W)
+      else
+        dy[:] .= vec(f(y, p, t, W))
+      end
+    end
   end
   return
 end
@@ -539,7 +533,7 @@ end
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
                       dgrad=nothing, dλ=nothing, dy=nothing)
-  _jacNoise!(λ, y, p, t, S, S.sensealg.noise, dgrad, dλ, dy)
+  _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)
   return
 end
 
@@ -547,91 +541,85 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<
   @unpack sensealg, f = S
   prob = getprob(S)
 
-  if !isnoise
-    if dgrad !== nothing
-      @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
-      if DiffEqBase.has_paramjac(f)
-        # Calculate the parameter Jacobian into pJ
-        f.paramjac(pJ,y,p,t)
+  if dgrad !== nothing
+    @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
+    if DiffEqBase.has_paramjac(f)
+      # Calculate the parameter Jacobian into pJ
+      f.paramjac(pJ,y,p,t)
+    else
+      pf.t = t
+      pf.u = y
+      if inplace_sensitivity(S)
+        jacobian!(pJ, pf, p, nothing, sensealg, nothing)
+        #jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_noise_config)
       else
-        pf.t = t
-        pf.u = y
-        if inplace_sensitivity(S)
-          jacobian!(pJ, pf, p, nothing, sensealg, nothing)
-          #jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_noise_config)
-        else
-          temp = jacobian(pf, p, sensealg)
-          pJ .= temp
-        end
-      end
-
-      if StochasticDiffEq.is_diagonal_noise(prob)
-        pJt = transpose(λ).*transpose(pJ)
-        dgrad[:] .= vec(pJt)
-      else
-        m = size(prob.noise_rate_prototype)[2]
-        for i in 1:m
-          tmp = λ'*pJ[(i-1)*m+1:i*m,:]
-          dgrad[:,i] .= vec(tmp)
-        end
+        temp = jacobian(pf, p, sensealg)
+        pJ .= temp
       end
     end
 
-    if dλ !== nothing && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
-      @unpack J, uf, f_cache, jac_noise_config = S.diffcache
-      if dy!== nothing
-        if inplace_sensitivity(S)
-          f(dy, y, p, t)
-        else
-          dy .= f(y, p, t)
-        end
+    if StochasticDiffEq.is_diagonal_noise(prob)
+      pJt = transpose(λ).*transpose(pJ)
+      dgrad[:] .= vec(pJt)
+    else
+      m = size(prob.noise_rate_prototype)[2]
+      for i in 1:m
+        tmp = λ'*pJ[(i-1)*m+1:i*m,:]
+        dgrad[:,i] .= vec(tmp)
       end
+    end
+  end
 
-      if DiffEqBase.has_jac(f)
-        f.jac(J,y,p,t) # Calculate the Jacobian into J
+  if dλ !== nothing && (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
+    @unpack J, uf, f_cache, jac_noise_config = S.diffcache
+    if dy!== nothing
+      if inplace_sensitivity(S)
+        f(dy, y, p, t)
       else
-        if inplace_sensitivity(S)
-          if dy !== nothing
-            ForwardDiff.jacobian!(J,uf,dy,y)
+        dy .= f(y, p, t)
+      end
+    end
+
+    if DiffEqBase.has_jac(f)
+      f.jac(J,y,p,t) # Calculate the Jacobian into J
+    else
+      if inplace_sensitivity(S)
+        if dy !== nothing
+          ForwardDiff.jacobian!(J,uf,dy,y)
+        else
+          if StochasticDiffEq.is_diagonal_noise(prob)
+            dy = similar(y)
           else
-            if StochasticDiffEq.is_diagonal_noise(prob)
-              dy = similar(y)
-            else
-              dy = similar(prob.noise_rate_prototype)
-              f(dy, y, p, t)
-              ForwardDiff.jacobian!(J,uf,dy,y)
-            end
+            dy = similar(prob.noise_rate_prototype)
             f(dy, y, p, t)
             ForwardDiff.jacobian!(J,uf,dy,y)
           end
-        else
-          tmp = ForwardDiff.jacobian(uf,y)
-          J .= tmp
+          f(dy, y, p, t)
+          ForwardDiff.jacobian!(J,uf,dy,y)
         end
-      #  uf.t = t
-      #  uf.p = p
-      #  jacobian!(J, uf, y, nothing, sensealg, nothing)
-      end
-
-      if StochasticDiffEq.is_diagonal_noise(prob)
-        Jt = transpose(λ).*transpose(J)
-        dλ[:] .= vec(Jt)
       else
-        for i in 1:m
-          tmp = λ'*J[(i-1)*m+1:i*m,:]
-          dλ[:,i] .= vec(tmp)
-        end
+        tmp = ForwardDiff.jacobian(uf,y)
+        J .= tmp
+      end
+    #  uf.t = t
+    #  uf.p = p
+    #  jacobian!(J, uf, y, nothing, sensealg, nothing)
+    end
+
+    if StochasticDiffEq.is_diagonal_noise(prob)
+      Jt = transpose(λ).*transpose(J)
+      dλ[:] .= vec(Jt)
+    else
+      for i in 1:m
+        tmp = λ'*J[(i-1)*m+1:i*m,:]
+        dλ[:,i] .= vec(tmp)
       end
     end
-  elseif inplace_sensitivity(S)
-    _jacNoise!(λ, y, p, t, S, ReverseDiffNoise(), dgrad, dλ, dy)
-  else
-    _jacNoise!(λ, y, p, t, S, ZygoteNoise(), dgrad, dλ, dy)
   end
   return
 end
 
-function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffNoise, dgrad, dλ, dy) where TS<:SensitivityFunction
+function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ, dy) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 
@@ -669,7 +657,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffNoise, dgrad, dλ, d
 end
 
 
-function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteNoise, dgrad, dλ, dy) where TS<:SensitivityFunction
+function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ, dy) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
 

@@ -138,7 +138,7 @@ Random.seed!(238248735)
     optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, α)
     res1 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
-    
+
     println("Test non-mutating form")
 
     optf = Optimization.OptimizationFunction((x,p) -> loss_op(x), Optimization.AutoZygote())

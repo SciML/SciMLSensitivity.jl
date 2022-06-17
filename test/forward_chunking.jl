@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote, Test
+using DiffEqSensitivity, OrdinaryDiffEq, Zygote, Test, ForwardDiff
 
 function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*p[51]*p[75]*u[1]*u[2]
@@ -24,8 +24,13 @@ loss = (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat
 loss = (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity(chunk_size=104)))
 @time du03,dp3 = Zygote.gradient(loss,u0,p)
 
+dp = ForwardDiff.gradient(p->loss(u0,p),p)
+du0 = ForwardDiff.gradient(u0->loss(u0,p),u0)
+
+@test du01 ≈ du0 rtol=1e-12
 @test du01 ≈ du02 rtol=1e-12
 @test du01 ≈ du03 rtol=1e-12
+@test dp1 ≈ dp rtol=1e-12
 @test dp1 ≈ dp2 rtol=1e-12
 @test dp1 ≈ dp3 rtol=1e-12
 
@@ -38,8 +43,13 @@ loss = (u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,sav
 loss = (u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity(chunk_size=104)))
 @time du03,dp3 = Zygote.gradient(loss,u0,p)
 
+dp = ForwardDiff.gradient(p->loss(u0,p),p)
+du0 = ForwardDiff.gradient(u0->loss(u0,p),u0)
+
+@test du01 ≈ du0 rtol=1e-12
 @test du01 ≈ du02 rtol=1e-12
 @test du01 ≈ du03 rtol=1e-12
+@test dp1 ≈ dp rtol=1e-12
 @test dp1 ≈ dp2 rtol=1e-12
 @test dp1 ≈ dp3 rtol=1e-12
 
@@ -68,8 +78,13 @@ loss = (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat
 loss = (u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity(chunk_size=102)))
 @time du03,dp3 = Zygote.gradient(loss,u0,p)
 
+dp = ForwardDiff.gradient(p->loss(u0,p),p)
+du0 = ForwardDiff.gradient(u0->loss(u0,p),u0)
+
+@test du01 ≈ du0 rtol=1e-12
 @test du01 ≈ du02 rtol=1e-12
 @test du01 ≈ du03 rtol=1e-12
+@test dp1 ≈ dp rtol=1e-12
 @test dp1 ≈ dp2 rtol=1e-12
 @test dp1 ≈ dp3 rtol=1e-12
 
@@ -82,7 +97,12 @@ loss = (u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,sav
 loss = (u0,p)->sum(solve(proboop,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=ForwardDiffSensitivity(chunk_size=102)))
 @time du03,dp3 = Zygote.gradient(loss,u0,p)
 
+dp = ForwardDiff.gradient(p->loss(u0,p),p)
+du0 = ForwardDiff.gradient(u0->loss(u0,p),u0)
+
+@test du01 ≈ du0 rtol=1e-12
 @test du01 ≈ du02 rtol=1e-12
 @test du01 ≈ du03 rtol=1e-12
+@test dp1 ≈ dp rtol=1e-12
 @test dp1 ≈ dp2 rtol=1e-12
 @test dp1 ≈ dp3 rtol=1e-12

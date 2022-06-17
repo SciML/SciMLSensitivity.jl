@@ -88,10 +88,10 @@ function test_continuous_callback(cb, g, dg!; only_backsolve=false)
     @test_broken dp2 ≈ dstuff[3:4]
   end
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint())
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
   sol_track = solve(prob, Tsit5(), u0=u0, p=p, callback=cb2, abstol=abstol, reltol=reltol, saveat=savingtimes)
 
-  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(), dg!, sol_track.t, nothing,
+  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), dg!, sol_track.t, nothing,
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)

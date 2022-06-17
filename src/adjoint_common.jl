@@ -126,9 +126,9 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
       _p = prob.p
   end
 
-  if sensealg.autojacvec isa ReverseDiffVJP ||
-    (sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob))
+  @assert sensealg.autojacvec !== nothing
 
+  if sensealg.autojacvec isa ReverseDiffVJP
     if prob isa DiffEqBase.SteadyStateProblem
        if DiffEqBase.isinplace(prob)
         tape = ReverseDiff.GradientTape((y, _p)) do u,p
@@ -173,17 +173,6 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
 
     if compile_tape(sensealg.autojacvec)
       paramjac_config = ReverseDiff.compile(tape)
-    elseif tape !== nothing && sensealg.autojacvec isa Bool && sensealg.autojacvec && DiffEqBase.isinplace(prob)
-      compile = try
-          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
-      catch
-          false
-      end
-      if compile
-          paramjac_config = ReverseDiff.compile(tape)
-      else
-          paramjac_config = tape
-      end
     else
       paramjac_config = tape
     end
@@ -218,7 +207,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             end
         end
     end
-  elseif (DiffEqBase.has_paramjac(f) || isautojacvec || quad)
+  elseif DiffEqBase.has_paramjac(f) || isautojacvec || quad || sensealg.autojacvec isa EnzymeVJP
     paramjac_config = nothing
     pf = nothing
   else
@@ -244,8 +233,7 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
   f_cache = DiffEqBase.isinplace(prob) ? deepcopy(u0) : nothing
 
   if noiseterm
-    if (sensealg.noise isa ReverseDiffNoise ||
-      (sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)))
+    if sensealg.autojacvec isa ReverseDiffVJP
 
       jac_noise_config = nothing
       paramjac_noise_config = []
@@ -269,19 +257,8 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             end
           end
           tapei = noisetape(i)
-          if compile_tape(sensealg.noise)
+          if compile_tape(sensealg.autojacvec)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
-          elseif tapei !== nothing && sensealg.noise isa Bool && sensealg.noise && DiffEqBase.isinplace(prob)
-              compile = try
-                  !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[2])
-              catch
-                  false
-              end
-              if compile
-                  push!(paramjac_noise_config, ReverseDiff.compile(tapei))
-              else
-                  push!(paramjac_noise_config, tapei)
-              end
           else
             push!(paramjac_noise_config, tapei)
           end
@@ -300,14 +277,14 @@ function adjointdiffcache(g::G,sensealg,discrete,sol,dg::DG,f;quad=false,noisete
             end
           end
           tapei = noisetapeoop(i)
-          if compile_tape(sensealg.noise)
+          if compile_tape(sensealg.autojacvec)
             push!(paramjac_noise_config, ReverseDiff.compile(tapei))
           else
             push!(paramjac_noise_config, tapei)
           end
         end
       end
-    elseif (sensealg.noise isa Bool && !sensealg.noise)
+    elseif sensealg.autojacvec isa Bool
       if DiffEqBase.isinplace(prob)
         if StochasticDiffEq.is_diagonal_noise(prob)
           pf = DiffEqBase.ParamJacobianWrapper(f,tspan[1],y)
@@ -429,7 +406,7 @@ end
 function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated=false)
   if sensefun isa NILSASSensitivityFunction
     @unpack sensealg = sensefun.S
-  else 
+  else
     @unpack sensealg = sensefun
   end
 

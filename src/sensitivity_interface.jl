@@ -1,6 +1,6 @@
 ## Direct calls
 
-const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE = 
+const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE =
 """
 Adjoint sensitivity analysis functionality requires being able to solve
 a differential equation defined by the parameter struct `p`. Thus while
@@ -10,7 +10,7 @@ type for being the initial condition `u0` of an array. This means that
 many simple types, such as `Tuple`s and `NamedTuple`s, will work as
 parameters in normal contexts but will fail during adjoint differentiation.
 To work around this issue for complicated cases like nested structs, look
-into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
 or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 """
 
@@ -53,7 +53,7 @@ instead of just at discrete data points.
       many simple types, such as `Tuple`s and `NamedTuple`s, will work as
       parameters in normal contexts but will fail during adjoint differentiation.
       To work around this issue for complicated cases like nested structs, look
-      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
       or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 !!! warning
@@ -267,8 +267,32 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 """
 function adjoint_sensitivities(sol,args...;
                                   sensealg=InterpolatingAdjoint(),
-                                  kwargs...)
-  _adjoint_sensitivities(sol,sensealg,args...;kwargs...)
+                                  verbose=true,kwargs...)
+  if hasfield(typeof(sensealg),:autojacvec) && sensealg.autojacvec === nothing
+    if haskey(kwargs, :callback)
+      has_cb = kwargs[:callback] !== nothing
+    else
+      has_cb = false
+    end
+    if !has_cb
+      _sensealg = if isinplace(sol.prob)
+        setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,verbose))
+      else
+        setvjp(sensealg,ZygoteVJP())
+      end
+    else
+      _sensealg = setvjp(sensealg, ReverseDiffVJP())
+    end
+
+    return try
+      _adjoint_sensitivities(sol,_sensealg,args...;verbose,kwargs...)
+    catch e
+      verbose && @warn "Automatic AD choice of autojacvec failed in ODE adjoint, failing back to ODE adjoint + numerical vjp"
+      _adjoint_sensitivities(sol,setvjp(sensealg,false),args...;verbose,kwargs...)
+    end
+  else
+    return _adjoint_sensitivities(sol,sensealg,args...;verbose,kwargs...)
+  end
 end
 
 function _adjoint_sensitivities(sol,sensealg,alg,g,t=nothing,dg=nothing;
@@ -352,7 +376,7 @@ matrices.
       many simple types, such as `Tuple`s and `NamedTuple`s, will work as
       parameters in normal contexts but will fail during adjoint differentiation.
       To work around this issue for complicated cases like nested structs, look
-      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
       or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 ### Example second order sensitivity analysis calculation
@@ -394,7 +418,7 @@ Hv = second_order_sensitivity_product(loss,v,prob,alg,args...;
                                sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                kwargs...)
 
-Second order sensitivity analysis product is used for the fast calculation of 
+Second order sensitivity analysis product is used for the fast calculation of
 Hessian-vector products ``Hv`` without requiring the construction of the Hessian
 matrix.
 
@@ -408,7 +432,7 @@ matrix.
       many simple types, such as `Tuple`s and `NamedTuple`s, will work as
       parameters in normal contexts but will fail during adjoint differentiation.
       To work around this issue for complicated cases like nested structs, look
-      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
       or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
 ### Example second order sensitivity analysis calculation

@@ -71,7 +71,7 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
 
   # tests wrt discrete sensitivities
   if tprev
-    # tprev depends on stepping behaviour of integrator. Thus sensitivities are necessarily (slightly) different. 
+    # tprev depends on stepping behaviour of integrator. Thus sensitivities are necessarily (slightly) different.
     @test du02 ≈ dstuff[1:2] rtol = 1e-3
     @test dp2 ≈ dstuff[3:6] rtol = 1e-3
     @test du01 ≈ dstuff[1:2] rtol = 1e-3
@@ -100,11 +100,11 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
   @test dp1 ≈ dp3c
   @test dp1 ≈ dp4 rtol = 1e-7
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint())
+  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
   sol_track = solve(prob, Tsit5(), u0=u0, p=p, callback=cb2, tstops=tstops, abstol=abstol, reltol=reltol, saveat=savingtimes)
   #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
-  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(), dg!, sol_track.t, nothing,
+  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), dg!, sol_track.t, nothing,
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)

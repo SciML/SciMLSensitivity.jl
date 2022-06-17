@@ -8,7 +8,7 @@ abstract type AbstractShadowingSensitivityAlgorithm{CS,AD,FDT} <: DiffEqBase.Abs
 """
 ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
 
-An implementation of continuous forward sensitivity analysis for propagating 
+An implementation of continuous forward sensitivity analysis for propagating
 derivatives by solving the extended ODE. When used within adjoint differentiation
 (i.e. via Zygote), this will cause forward differentiation of the `solve` call
 within the reverse-mode automatic differentiation environment.
@@ -39,7 +39,7 @@ Further details:
 
 - If `autodiff=true` and `autojacvec=true`, then the one chunk `J*v` forward-mode
   directional derivative calculation trick is used to compute the product without
-  constructing the Jacobian (via ForwardDiff.jl). 
+  constructing the Jacobian (via ForwardDiff.jl).
 - If `autodiff=false` and `autojacvec=true`, then the numerical direction derivative
   trick `(f(x+epsilon*v)-f(x))/epsilon` is used to compute `J*v` without constructing
   the Jacobian.
@@ -70,11 +70,11 @@ end
 ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
 
 An implementation of discrete forward sensitivity analysis through ForwardDiff.jl.
-When used within adjoint differentiation (i.e. via Zygote), this will cause forward 
-differentiation of the `solve` call within the reverse-mode automatic differentiation 
+When used within adjoint differentiation (i.e. via Zygote), this will cause forward
+differentiation of the `solve` call within the reverse-mode automatic differentiation
 environment.
 
-## Constructor 
+## Constructor
 
 ```julia
 ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
@@ -91,7 +91,7 @@ ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
 ## SciMLProblem Support
 
 This `sensealg` supports any `SciMLProblem`s, provided that the solver algorithms is
-`SciMLBase.isautodifferentiable`. Note that `ForwardDiffSensitivity` can 
+`SciMLBase.isautodifferentiable`. Note that `ForwardDiffSensitivity` can
 accurately differentiate code with callbacks only when `convert_tspan=true`.
 """
 struct ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
@@ -101,10 +101,10 @@ Base.@pure function ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
 end
 
 """
-BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 
-An implementation of adjoint sensitivity analysis using a backwards solution of the ODE. 
-By default this algorithm will use the values from the forward pass to perturb the 
+An implementation of adjoint sensitivity analysis using a backwards solution of the ODE.
+By default this algorithm will use the values from the forward pass to perturb the
 backwards solution to the correct spot, allowing reduced memory (O(1) memory). Checkpointing
 stabilization is included for additional numerical stability over the naive implementation.
 
@@ -113,8 +113,8 @@ stabilization is included for additional numerical stability over the naive impl
 ```julia
 BacksolveAdjoint(;chunk_size=0,autodiff=true,
                   diff_type=Val{:central},
-                  autojacvec=autodiff,
-                  checkpointing=true, noise=true, noisemixing=false)
+                  autojacvec=nothing,
+                  checkpointing=true, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -127,7 +127,7 @@ BacksolveAdjoint(;chunk_size=0,autodiff=true,
 * `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
   if the full Jacobian is required with `autodiff=false`.
 * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set 
+  differentiation with special seeding. The default is `true`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -139,17 +139,7 @@ BacksolveAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term 
-  of an SDE via automatic differentiation with special seeding. The default is `true`. 
-  The total set of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
-    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for 
-      the vjp. `compile` is a boolean for whether to precompile the tape, which 
-      should only be done if there are no branches (`if` or `while` statements) in 
-      the `f` function.
-* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`. 
+* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
   For example, to compute the sensitivities of an SDE with diagonal diffusion
   ```julia
   function g_mixing!(du,u,p,t)
@@ -192,7 +182,7 @@ Thus one should check the stability of the backsolve on their type of problem be
 enabling this method. Additionally, using checkpointing with backsolve can be a
 low memory way to stabilize it.
 
-For more details on this topic, see 
+For more details on this topic, see
 [Stiff Neural Ordinary Differential Equations](https://aip.scitation.org/doi/10.1063/5.0060697).
 
 ## Checkpointing
@@ -204,7 +194,7 @@ trajectory and reduces the numerical caused by drift.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` supports 
+This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` supports
 callback functions (events).
 
 ## References
@@ -245,21 +235,23 @@ SDE:
  Scalable Gradients for Stochastic Differential Equations,
  PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
 """
-struct BacksolveAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
-  noise::NOISE
   noisemixing::Bool
 end
 Base.@pure function BacksolveAdjoint(;chunk_size=0,autodiff=true,
                                       diff_type=Val{:central},
-                                      autojacvec=autodiff,
-                                      checkpointing=true, noise=true,noisemixing=false)
-  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
+                                      autojacvec=nothing,
+                                      checkpointing=true, noisemixing=false)
+  BacksolveAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing,noisemixing)
 end
+setvjp(sensealg::BacksolveAdjoint{CS,AD,FDT,Nothing}, vjp) where {CS,AD,FDT} =
+        BacksolveAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.checkpointing,
+                                                sensealg.noisemixing)
 
 """
-InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 
 An implementation of adjoint sensitivity analysis which uses the interpolation of
 the forward solution for the reverse solve vector-Jacobian products. By
@@ -272,8 +264,8 @@ enabled it will only require the memory to interpolate between checkpoints.
 ```julia
 function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                diff_type=Val{:central},
-                               autojacvec=autodiff,
-                               checkpointing=false, noise=true, noisemixing=false)
+                               autojacvec=nothing,
+                               checkpointing=false, noisemixing=false)
 ```
 
 ## Keyword Arguments
@@ -286,7 +278,7 @@ function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
 * `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
   if the full Jacobian is required with `autodiff=false`.
 * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set 
+  differentiation with special seeding. The default is `true`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -298,17 +290,7 @@ function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
   to `true`.
-* `noise`: Calculate the vector-Jacobian product (`J'*v`) of the diffusion term 
-  of an SDE via automatic differentiation with special seeding. The default is `true`. 
-  The total set of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `DiffEqSensitivity.ZygoteNoise()`: Uses Zygote.jl for the vjp.
-    - `DiffEqSensitivity.ReverseDiffNoise(compile=false)`: Uses ReverseDiff.jl for 
-      the vjp. `compile` is a boolean for whether to precompile the tape, which 
-      should only be done if there are no branches (`if` or `while` statements) in 
-      the `f` function.
-* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`. 
+* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
   For example, to compute the sensitivities of an SDE with diagonal diffusion
   ```julia
   function g_mixing!(du,u,p,t)
@@ -334,7 +316,7 @@ The total compute cost is no more than double the original forward compute cost.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` 
+This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg`
 supports callbacks (events).
 
 ## References
@@ -353,18 +335,20 @@ supports callbacks (events).
  continuous sensitivity analysis for derivatives of differential equation solutions,
  arXiv:1812.01892
 """
-struct InterpolatingAdjoint{CS,AD,FDT,VJP,NOISE} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+struct InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   checkpointing::Bool
-  noise::NOISE
   noisemixing::Bool
 end
 Base.@pure function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
-                                         autojacvec=autodiff,
-                                         checkpointing=false, noise=true,noisemixing=false)
-  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(noise)}(autojacvec,checkpointing,noise,noisemixing)
+                                         autojacvec=nothing,
+                                         checkpointing=false,noisemixing=false)
+  InterpolatingAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,checkpointing,noisemixing)
 end
+setvjp(sensealg::InterpolatingAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
+        InterpolatingAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.checkpointing,
+                                                    sensealg.noisemixing)
 
 """
 QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
@@ -387,7 +371,7 @@ pass and is thus memory intensive.
 ```julia
 function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                             diff_type=Val{:central},
-                            autojacvec=autodiff,abstol=1e-6,
+                            autojacvec=nothing,abstol=1e-6,
                             reltol=1e-3,compile=false)
 ```
 
@@ -401,7 +385,7 @@ function QuadratureAdjoint(;chunk_size=0,autodiff=true,
 * `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
   if the full Jacobian is required with `autodiff=false`.
 * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set 
+  differentiation with special seeding. The default is `true`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -438,22 +422,24 @@ This `sensealg` only supports `ODEProblem`s. This `sensealg` supports events (ca
  and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
  continuous sensitivity analysis for derivatives of differential equation solutions,
  arXiv:1812.01892
- 
- Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary 
+
+ Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
  differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
 struct QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
   autojacvec::VJP
   abstol::Float64
   reltol::Float64
-  compile::Bool
 end
 Base.@pure function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                                          diff_type=Val{:central},
-                                         autojacvec=autodiff,abstol=1e-6,
-                                         reltol=1e-3,compile=false)
-  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol,compile)
+                                         autojacvec=nothing,abstol=1e-6,
+                                         reltol=1e-3)
+  QuadratureAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec)}(autojacvec,abstol,reltol)
 end
+setvjp(sensealg::QuadratureAdjoint{CS,AD,FDT,Nothing},vjp) where {CS,AD,FDT} =
+        QuadratureAdjoint{CS,AD,FDT,typeof(vjp)}(vjp,sensealg.abstol,
+        sensealg.reltol)
 
 """
 TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
@@ -488,8 +474,8 @@ struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothin
 """
 ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
 
-An implementation of discrete adjoint sensitivity analysis using the ReverseDiff.jl 
-tracing-based AD. Supports in-place functions through an Array of Structs formulation, 
+An implementation of discrete adjoint sensitivity analysis using the ReverseDiff.jl
+tracing-based AD. Supports in-place functions through an Array of Structs formulation,
 and supports out of place through struct of arrays.
 
 ## Constructor
@@ -510,7 +496,7 @@ ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
 
 An implementation of discrete adjoint sensitivity analysis
 using the Zygote.jl source-to-source AD directly on the differential equation
-solver. 
+solver.
 
 ## Constructor
 
@@ -529,12 +515,12 @@ ForwardLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD
 
 An implementation of the discrete, forward-mode
 [least squares shadowing](https://arxiv.org/abs/1204.0159) (LSS) method. LSS replaces
-the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a 
-well-conditioned least-squares problem. This allows for computing sensitivities of 
-long-time averaged quantities with respect to the parameters of the `ODEProblem`. The 
+the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a
+well-conditioned least-squares problem. This allows for computing sensitivities of
+long-time averaged quantities with respect to the parameters of the `ODEProblem`. The
 computational cost of LSS scales as (number of states x number of time steps). Converges
 to the correct sensitivity at a rate of `T^(-1/2)`, where `T` is the time of the trajectory.
-See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation. 
+See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ## Constructor
 
@@ -558,18 +544,18 @@ ForwardLSS(;
 * `LSSregularizer`: Using `LSSregularizer`, one can choose between three different
   regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
     - `CosWindowing()`: cos windowing of the time grid, i.e. the time grid (saved
-      time steps) is transformed using a cosine. 
+      time steps) is transformed using a cosine.
     - `Cos2Windowing()`: cos^2 windowing of the time grid.
-    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to 
-      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate 
-      the times truncated at the beginnning and end of the trajectory, respectively. 
+    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
+      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
+      the times truncated at the beginnning and end of the trajectory, respectively.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support 
+This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support
 events (callbacks). This `sensealg` assumes that the objective is a long-time averaged
-quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the 
+quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the
 same over infinite time independent of the specified initial conditions, such that only
 the sensitivity with respect to the parameters is of interest.
 
@@ -581,7 +567,7 @@ chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224
 Wang, Q., Convergence of the Least Squares Shadowing Method for Computing Derivative of Ergodic
 Averages, SIAM Journal on Numerical Analysis, 52, 156–170 (2014).
 
-Blonigan, P., Gomez, S., Wang, Q., Least Squares Shadowing for sensitivity analysis of turbulent 
+Blonigan, P., Gomez, S., Wang, Q., Least Squares Shadowing for sensitivity analysis of turbulent
 fluid flows, in: 52nd Aerospace Sciences Meeting, 1–24 (2014).
 """
 struct ForwardLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
@@ -602,12 +588,12 @@ AdjointLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD
 
 An implementation of the discrete, adjoint-mode
 [least square shadowing](https://arxiv.org/abs/1204.0159) method. LSS replaces
-the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a 
-well-conditioned least-squares problem. This allows for computing sensitivities of 
-long-time averaged quantities with respect to the parameters of the `ODEProblem`. The 
+the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a
+well-conditioned least-squares problem. This allows for computing sensitivities of
+long-time averaged quantities with respect to the parameters of the `ODEProblem`. The
 computational cost of LSS scales as (number of states x number of time steps). Converges
 to the correct sensitivity at a rate of `T^(-1/2)`, where `T` is the time of the trajectory.
-See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation. 
+See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ## Constructor
 
@@ -630,17 +616,17 @@ AdjointLSS(;
   if the full Jacobian is required with `autodiff=false`.
 * `LSSregularizer`: Using `LSSregularizer`, one can choose between different
   regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
-    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to 
-      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate 
+    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
+      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
       the times truncated at the beginnning and end of the trajectory, respectively.
-      The default value for `t0skip` and `t1skip` is `zero(alpha)`. 
+      The default value for `t0skip` and `t1skip` is `zero(alpha)`.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support 
+This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support
 events (callbacks). This `sensealg` assumes that the objective is a long-time averaged
-quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the 
+quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the
 same over infinite time independent of the specified initial conditions, such that only
 the sensitivity with respect to the parameters is of interest.
 
@@ -669,7 +655,7 @@ struct Cos2Windowing <: AbstractCosWindowing end
 """
 TimeDilation{T1<:Number} <: AbstractLSSregularizer
 
-A regularization method for `LSS`. See `?LSS` for 
+A regularization method for `LSS`. See `?LSS` for
 additional information and other methods.
 
 ## Constructor
@@ -692,21 +678,21 @@ end
 struct NILSS{CS,AD,FDT,RNG,nType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
 
 An implementation of the forward-mode, continuous
-[non-intrusive least squares shadowing](https://arxiv.org/abs/1611.00880) method. `NILSS` 
-allows for computing sensitivities of long-time averaged quantities with respect to the 
+[non-intrusive least squares shadowing](https://arxiv.org/abs/1611.00880) method. `NILSS`
+allows for computing sensitivities of long-time averaged quantities with respect to the
 parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSS` employs the continuous-time `ForwardSensitivity` method as tangent solver. To
-avoid an exponential blow-up of the (homogenous and inhomogenous) tangent solutions, 
-the trajectory should be divided into sufficiently small segments, where the tangent solutions 
-are rescaled on the interfaces. The computational and memory cost of NILSS scale with 
-the number of unstable (positive) Lyapunov exponents (instead of the number of states as 
-in the LSS method). `NILSS` avoids the explicit construction of the Jacobian at each time 
-step and thus should generally be preferred (for large system sizes) over `ForwardLSS`. 
+avoid an exponential blow-up of the (homogenous and inhomogenous) tangent solutions,
+the trajectory should be divided into sufficiently small segments, where the tangent solutions
+are rescaled on the interfaces. The computational and memory cost of NILSS scale with
+the number of unstable (positive) Lyapunov exponents (instead of the number of states as
+in the LSS method). `NILSS` avoids the explicit construction of the Jacobian at each time
+step and thus should generally be preferred (for large system sizes) over `ForwardLSS`.
 
 ## Constructor
 
 ```julia
-NILSS(nseg, nstep; nus = nothing, 
+NILSS(nseg, nstep; nus = nothing,
                    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
                    chunk_size=0,autodiff=true,
                    diff_type=Val{:central},
@@ -722,9 +708,9 @@ NILSS(nseg, nstep; nus = nothing,
 ## Keyword Arguments
 
 * `nus`: Dimension of the unstable subspace. Default is `nothing`. `nus` must be
-  smaller or equal to the state dimension (`length(u0)`). With the default choice, 
-  `nus = length(u0) - 1` will be set at compile time. 
-* `rng`: (Pseudo) random number generator. Used for initializing the homogenous 
+  smaller or equal to the state dimension (`length(u0)`). With the default choice,
+  `nus = length(u0) - 1` will be set at compile time.
+* `rng`: (Pseudo) random number generator. Used for initializing the homogenous
   tangent states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
 * `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
   computations. Default is `true`.
@@ -739,16 +725,16 @@ NILSS(nseg, nstep; nus = nothing,
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support 
+This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support
 events (callbacks). This `sensealg` assumes that the objective is a long-time averaged
-quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the 
+quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the
 same over infinite time independent of the specified initial conditions, such that only
 the sensitivity with respect to the parameters is of interest.
 
 ## References
 Ni, A., Blonigan, P. J., Chater, M., Wang, Q., Zhang, Z., Sensitivity analy-
 sis on chaotic dynamical system by Non-Intrusive Least Square Shadowing
-(NI-LSS), in: 46th AIAA Fluid Dynamics Conference, AIAA AVIATION Forum (AIAA 2016-4399), 
+(NI-LSS), in: 46th AIAA Fluid Dynamics Conference, AIAA AVIATION Forum (AIAA 2016-4399),
 American Institute of Aeronautics and Astronautics, 1–16 (2016).
 
 Ni, A., and Wang, Q. Sensitivity analysis on chaotic dynamical systems by Non-Intrusive
@@ -768,34 +754,33 @@ Base.@pure function NILSS(nseg, nstep; nus=nothing, rng=Xorshifts.Xoroshiro128Pl
   autojacvec=autodiff,
   g=nothing
 )
-  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng, nseg, nstep, nus, autojacvec, g)
+  NILSS{chunk_size,autodiff,diff_type,typeof(rng),typeof(nus),typeof(g)}(rng,nseg,nstep,nus,autojacvec,g)
 end
 
 """
 NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
 
 An implementation of the adjoint-mode, continuous
-[non-intrusive adjoint least squares shadowing](https://arxiv.org/abs/1801.08674) method. 
-`NILSAS` allows for computing sensitivities of long-time averaged quantities with respect 
+[non-intrusive adjoint least squares shadowing](https://arxiv.org/abs/1801.08674) method.
+`NILSAS` allows for computing sensitivities of long-time averaged quantities with respect
 to the parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
-`NILSAS` employs SciMLSensitivity.jl's continuous adjoint sensitivity methods on each segment 
-to compute (homogenous and inhomogenous) adjoint solutions. To avoid an exponential blow-up 
-of the adjoint solutions, the trajectory should be divided into sufficiently small segments, 
-where the adjoint solutions are rescaled on the interfaces. The computational and memory cost 
-of NILSAS scale with the number of unstable, adjoint Lyapunov exponents (instead of the number 
-of states as in the LSS method). `NILSAS` avoids the explicit construction of the Jacobian at 
-each time step and thus should generally be preferred (for large system sizes) over `AdjointLSS`. 
-`NILSAS` is favourable over `NILSS` for many parameters because NILSAS computes the gradient 
-with respect to multiple parameters with negligible additional cost. 
+`NILSAS` employs SciMLSensitivity.jl's continuous adjoint sensitivity methods on each segment
+to compute (homogenous and inhomogenous) adjoint solutions. To avoid an exponential blow-up
+of the adjoint solutions, the trajectory should be divided into sufficiently small segments,
+where the adjoint solutions are rescaled on the interfaces. The computational and memory cost
+of NILSAS scale with the number of unstable, adjoint Lyapunov exponents (instead of the number
+of states as in the LSS method). `NILSAS` avoids the explicit construction of the Jacobian at
+each time step and thus should generally be preferred (for large system sizes) over `AdjointLSS`.
+`NILSAS` is favourable over `NILSS` for many parameters because NILSAS computes the gradient
+with respect to multiple parameters with negligible additional cost.
 
 ## Constructor
 
 ```julia
 NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-                                adjoint_sensealg = BacksolveAdjoint(),
+                                adjoint_sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
                                 chunk_size=0,autodiff=true,
                                 diff_type=Val{:central},
-                                autojacvec=autodiff,
                                 g=nothing
                                 )
 ```
@@ -804,24 +789,17 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
 
 * `nseg`: Number of segments on full time interval on the attractor.
 * `nstep`: number of steps on each segment.
-* `M`: number of homogenous adjoint solutions. This number must be bigger or equal 
-  than the number of (positive, adjoint) Lyapunov exponents. Default is `nothing`. 
+* `M`: number of homogenous adjoint solutions. This number must be bigger or equal
+  than the number of (positive, adjoint) Lyapunov exponents. Default is `nothing`.
 
 ## Keyword Arguments
 
-* `rng`: (Pseudo) random number generator. Used for initializing the terminate 
+* `rng`: (Pseudo) random number generator. Used for initializing the terminate
   conditions of the homogenous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
 * `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogenous
-  and inhomogenous adjoint solutions on each segment. Default is `BacksolveAdjoint()`.  
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set 
+  and inhomogenous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
+  * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+  differentiation with special seeding. The default is `true`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -831,20 +809,27 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
     - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
       is a boolean for whether to precompile the tape, which should only be done
       if there are no branches (`if` or `while` statements) in the `f` function.
+* `autodiff`: Use automatic differentiation for constructing the Jacobian
+  if the Jacobian needs to be constructed.  Defaults to `true`.
+* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+  choice of chunk size.
+* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+  if the full Jacobian is required with `autodiff=false`.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
-This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support 
+This `sensealg` only supports `ODEProblem`s. This `sensealg` does not support
 events (callbacks). This `sensealg` assumes that the objective is a long-time averaged
-quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the 
+quantity and ergodic, i.e. the time evolution of the system behaves qualitatively the
 same over infinite time independent of the specified initial conditions, such that only
 the sensitivity with respect to the parameters is of interest.
 
 ## References
 
-Ni, A., and Talnikar, C., Adjoint sensitivity analysis on chaotic dynamical systems 
-by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computational 
+Ni, A., and Talnikar, C., Adjoint sensitivity analysis on chaotic dynamical systems
+by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computational
 Physics 395, 690-709 (2019).
 """
 struct NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
@@ -853,21 +838,20 @@ struct NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorith
   M::Int
   nseg::Int
   nstep::Int
-  autojacvec::Bool
   g::gType
 end
 Base.@pure function NILSAS(nseg, nstep, M=nothing; rng=Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-  adjoint_sensealg=BacksolveAdjoint(),
+  adjoint_sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
   chunk_size=0, autodiff=true,
   diff_type=Val{:central},
-  autojacvec=autodiff,
   g=nothing
 )
+
   # integer dimension of the unstable subspace
   M === nothing && error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
 
   NILSAS{chunk_size,autodiff,diff_type,typeof(rng),typeof(adjoint_sensealg),typeof(g)}(rng, adjoint_sensealg, M,
-    nseg, nstep, autojacvec, g)
+    nseg, nstep, g)
 end
 
 """
@@ -880,12 +864,10 @@ implicit function theorem to directly compute the derivative of the solution to
 ## Constructor
 
 ```julia
-SteadyStateAdjoint(;chunk_size = 0, autodiff = true, 
+SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
                     diff_type = Val{:central},
                     autojacvec = autodiff, linsolve = nothing)
 ```
-
-## Keyword Arguments
 
 ## Keyword Arguments
 
@@ -897,7 +879,7 @@ SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
 * `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
   if the full Jacobian is required with `autodiff=false`.
 * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set 
+  differentiation with special seeding. The default is `nothing`. The total set
   of choices are:
     - `false`: the Jacobian is constructed via FiniteDiff.jl
     - `true`: the Jacobian is constructed via ForwardDiff.jl
@@ -908,7 +890,7 @@ SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
       is a boolean for whether to precompile the tape, which should only be done
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
-  which uses a polyalgorithm to attempt to automatically choose an efficient 
+  which uses a polyalgorithm to attempt to automatically choose an efficient
   algorithm.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
@@ -925,20 +907,22 @@ struct SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorit
 end
 
 Base.@pure function SteadyStateAdjoint(;chunk_size = 0, autodiff = true, diff_type = Val{:central},
-                                        autojacvec = autodiff, linsolve = nothing)
+                                        autojacvec = nothing, linsolve = nothing)
   SteadyStateAdjoint{chunk_size,autodiff,diff_type,typeof(autojacvec),typeof(linsolve)}(autojacvec,linsolve)
 end
+setvjp(sensealg::SteadyStateAdjoint{CS,AD,FDT,LS},vjp) where {CS,AD,FDT,LS} =
+        SteadyStateAdjoint{CS,AD,FDT,typeof(vjp),LS}(vjp,sensealg.linsolve)
 
 abstract type VJPChoice end
 
 """
 ZygoteVJP <: VJPChoice
 
-Uses Zygote.jl to compute vector-Jacobian products. Tends to be the fastest VJP method if the 
-ODE/DAE/SDE/DDE is written with mostly vectorized  functions (like neural networks and other 
-layers from Flux.jl) and the `f` functions is given out-of-place. If the `f` function is 
-in-place, then `Zygote.Buffer` arrays are used internally which can greatly reduce the 
-performance of the VJP method. 
+Uses Zygote.jl to compute vector-Jacobian products. Tends to be the fastest VJP method if the
+ODE/DAE/SDE/DDE is written with mostly vectorized  functions (like neural networks and other
+layers from Flux.jl) and the `f` functions is given out-of-place. If the `f` function is
+in-place, then `Zygote.Buffer` arrays are used internally which can greatly reduce the
+performance of the VJP method.
 
 ## Constructor
 
@@ -954,7 +938,7 @@ EnzymeVJP <: VJPChoice
 Uses Enzyme.jl to compute vector-Jacobian products. Is the fastest VJP whenever applicable,
 though Enzyme.jl currently has low coverage over the Julia programming language, for example
 restricting the user's defined `f` function to not do things like require garbage collection
-or calls to BLAS/LAPACK. However, mutation is supported, meaning that in-place `f` with 
+or calls to BLAS/LAPACK. However, mutation is supported, meaning that in-place `f` with
 fully mutating non-allocating code will work with Enzyme (provided no high level calls to C
 like BLAS/LAPACK are used) and this will be the most efficient adjoint implementation.
 
@@ -970,7 +954,7 @@ struct EnzymeVJP <: VJPChoice end
 TrackerVJP <: VJPChoice
 
 Uses Tracker.jl to compute the vector-Jacobian products. If `f` is in-place,
-then it uses a array of structs formulation to do scalarized reverse mode, 
+then it uses a array of structs formulation to do scalarized reverse mode,
 while if `f` is out-of-place then it uses an array-based reverse mode.
 
 Not as efficient as `ReverseDiffVJP`, but supports GPUs when doing array-based
@@ -988,11 +972,11 @@ struct TrackerVJP <: VJPChoice end
 ReverseDiffVJP{compile} <: VJPChoice
 
 Uses ReverseDiff.jl to compute the vector-Jacobian products. If `f` is in-place,
-then it uses a array of structs formulation to do scalarized reverse mode, 
+then it uses a array of structs formulation to do scalarized reverse mode,
 while if `f` is out-of-place then it uses an array-based reverse mode.
 
-Usually the fastest when scalarized operations exist in the f function 
-(like in scientific machine learning applications like Universal Differential Equations) 
+Usually the fastest when scalarized operations exist in the f function
+(like in scientific machine learning applications like Universal Differential Equations)
 and the boolean compilation is enabled (i.e. ReverseDiffVJP(true)), if EnzymeVJP fails on
 a given choice of `f`.
 
@@ -1007,61 +991,11 @@ ReverseDiffVJP(compile=false)
 ## Keyword Arguments
 
 * `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
-  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE 
-  has no branching. 
+  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE
+  has no branching.
 """
 struct ReverseDiffVJP{compile} <: VJPChoice
   ReverseDiffVJP(compile=false) = new{compile}()
-end
-
-abstract type NoiseChoice end
-
-"""
-ZygoteNoise <: NoiseChoice
-
-Uses Zygote.jl to compute vector-Jacobian products for the noise term (for SDE adjoints only). 
-Tends to be the fastest VJP method if the ODE/DAE/SDE/DDE is written with mostly vectorized 
-functions (like neural networks and other layers from Flux.jl) and the `f` functions is given 
-out-of-place. If the `f` function is in-place, then `Zygote.Buffer` arrays are used 
-internally which can greatly reduce the performance of the VJP method. 
-
-## Constructor
-
-```julia
-ZygoteNoise()
-```
-"""
-struct ZygoteNoise <: NoiseChoice end
-
-"""
-ReverseDiffNoise{compile} <: NoiseChoice
-
-Uses ReverseDiff.jl to compute the vector-Jacobian products for the noise
-term differentiation (for SDE adjoints only). If `f` is in-place,
-then it uses a array of structs formulation to do scalarized reverse mode, 
-while if `f` is out-of-place then it uses an array-based reverse mode.
-
-Usually the fastest when scalarized operations exist in the f function 
-(like in scientific machine learning applications like Universal Differential Equations) 
-and the boolean compilation is enabled (i.e. ReverseDiffVJP(true)), if EnzymeVJP fails on
-a given choice of `f`.
-
-Does not support GPUs (CuArrays).
-
-## Constructor
-
-```julia
-ReverseDiffNoise(compile=false)
-```
-
-## Keyword Arguments
-
-* `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
-  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE 
-  has no branching. 
-"""
-struct ReverseDiffNoise{compile} <: NoiseChoice
-  ReverseDiffNoise(compile=false) = new{compile}()
 end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS,CTS}) where {CS,CTS} = CTS
@@ -1080,18 +1014,12 @@ end
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol=nothing) = alg.checkpointing
 
-@inline isnoise(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
-@inline isnoise(alg::InterpolatingAdjoint) = alg.noise
-@inline isnoise(alg::BacksolveAdjoint) = alg.noise
-
 @inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
 @inline isnoisemixing(alg::InterpolatingAdjoint) = alg.noisemixing
 @inline isnoisemixing(alg::BacksolveAdjoint) = alg.noisemixing
 
 @inline compile_tape(vjp::ReverseDiffVJP{compile}) where compile = compile
-@inline compile_tape(noise::ReverseDiffNoise{compile}) where compile = compile
 @inline compile_tape(autojacvec::Bool) = false
-@inline compile_tape(sensealg::QuadratureAdjoint) = sensealg.compile
 
 """
 ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}

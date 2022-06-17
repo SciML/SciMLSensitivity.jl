@@ -240,7 +240,7 @@ end
     if checkpoints[1] != tspan[2]
       pushfirst!(checkpoints, tspan[2])
     end
-  
+
     if haskey(kwargs, :tstops)
      (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
     end
@@ -456,17 +456,8 @@ end
   # make sure noise grid starts at correct time values, e.g., if sol.W.t is longer than sol.t
   tspan[1]!=backwardnoise.t[1] && reinit!(backwardnoise,backwardnoise.t[2]-backwardnoise.t[1],t0=tspan[1])
 
-  if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end])<:Number
-    # scalar noise case
-    noise_matrix = nothing
-  else
-    noise_matrix = similar(z0,length(z0),numstates)
-    noise_matrix .= false
-  end
-
   return RODEProblem(rodefun,z0,tspan,p,callback=cb,
-                    noise=backwardnoise,
-                    noise_rate_prototype = noise_matrix)
+                    noise=backwardnoise)
 end
 
 

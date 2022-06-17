@@ -3,11 +3,11 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 
-function inplace_vjp(prob,u0,p)
+function inplace_vjp(prob,u0,p,verbose)
   du = copy(u0)
   ez = try
     Enzyme.autodiff(Enzyme.Duplicated(du, du),
-                    u0,p,prob.tspan[1]) do out,u,_p,t
+                    copy(u0),copy(p),prob.tspan[1]) do out,u,_p,t
       prob.f(out, u, _p, t)
       nothing
     end
@@ -26,22 +26,32 @@ function inplace_vjp(prob,u0,p)
       else
         !hasbranching(prob.f,u0,p,prob.tspan[1])
       end
-  catch
+    catch
       false
   end
-  return ReverseDiffVJP(compile)
+
+  vjp = try
+    ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u,p,t
+      du1 = similar(u, size(u))
+      prob.f(du1,u,p,first(t))
+      return vec(du1)
+    end
+    ReverseDiffVJP(compile)
+  catch
+    false
+  end
+  return vjp
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
-                                            alg,sensealg::Nothing,u0,p,args...;
-                                            kwargs...)
+function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,verbose)
+
   default_sensealg = if p !== DiffEqBase.NullParameters() &&
-                        !(eltype(u0) <: ForwardDiff.Dual) &&
-                        !(eltype(p) <: ForwardDiff.Dual) &&
-                        !(eltype(u0) <: Complex) &&
-                        !(eltype(p) <: Complex) &&
-                        length(u0) + length(p) <= 100
-      ForwardDiffSensitivity()
+                          !(eltype(u0) <: ForwardDiff.Dual) &&
+                          !(eltype(p) <: ForwardDiff.Dual) &&
+                          !(eltype(u0) <: Complex) &&
+                          !(eltype(p) <: Complex) &&
+                          length(u0) + length(p) <= 100
+    ForwardDiffSensitivity()
   elseif u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
@@ -53,28 +63,51 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    vjp = inplace_vjp(prob,u0,p)
+    vjp = inplace_vjp(prob,u0,p,verbose)
     if p === nothing || p === DiffEqBase.NullParameters()
       QuadratureAdjoint(autojacvec=vjp)
     else
       InterpolatingAdjoint(autojacvec=vjp)
     end
   end
-  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+  return default_sensealg
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
-                                            sensealg::Nothing,u0,p,args...;kwargs...)
+function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProblem}, u0, p, verbose)
 
   default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # autodiff = false because forwarddiff fails on many GPU kernels
     # this only effects the Jacobian calculation and is same computation order
-    SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
+    SteadyStateAdjoint(autodiff=false, autojacvec=ZygoteVJP())
   else
-    vjp = inplace_vjp(prob,u0,p)
-    SteadyStateAdjoint(autojacvec = vjp)
+    vjp = inplace_vjp(prob,u0,p,verbose)
+    SteadyStateAdjoint(autojacvec=vjp)
   end
-  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+  return default_sensealg
+end
+
+function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
+                                            alg,sensealg::Nothing,u0,p,args...;
+                                            verbose=true,kwargs...)
+
+  if haskey(kwargs,:callback)
+    has_cb = kwargs[:callback]!==nothing
+  else
+    has_cb = false
+  end
+  default_sensealg = automatic_sensealg_choice(prob,u0,p,verbose)
+  if has_cb
+    default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
+  end
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
+end
+
+function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
+                                            sensealg::Nothing,u0,p,args...;
+                                            verbose=true,kwargs...)
+
+  default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem,DDEProblem,
@@ -95,7 +128,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
- 
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(AdjointSensitivityParameterCompatibilityError())
   end
@@ -267,7 +300,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForward
                                             u0, p, args...;
                                             save_idxs=nothing,
                                             kwargs...)
-  
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardSensitivityParameterCompatibilityError())
   end
@@ -324,7 +357,7 @@ function DiffEqBase._concrete_solve_forward(prob,alg,
    out,_concrete_solve_pushforward
 end
 
-const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = 
+const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE =
 """
 ForwardDiffSensitivity assumes the `AbstractArray` interface for `p`. Thus while
 DifferentialEquations.jl can support any parameter struct type, usage
@@ -332,8 +365,8 @@ with ForwardDiffSensitivity requires that `p` could be a valid
 type for being the initial condition `u0` of an array. This means that
 many simple types, such as `Tuple`s and `NamedTuple`s, will work as
 parameters in normal contexts but will fail during ForwardDiffSensitivity
-construction. To work around this issue for complicated cases like nested structs, 
-look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+construction. To work around this issue for complicated cases like nested structs,
+look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
 or ComponentArrays.jl.
 """
 
@@ -348,7 +381,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity{CS,CTS},
                                  u0,p,args...;saveat=eltype(prob.tspan)[],
                                  kwargs...) where {CS,CTS}
-  
+
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     throw(ForwardDiffSensitivityParameterCompatibilityError())
   end
@@ -679,7 +712,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
   DiffEqBase.sensitivity_solution(sol,u,Tracker.data.(sol.t)),tracker_adjoint_backpass
 end
 
-const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE = 
+const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE =
 """
 ReverseDiffAdjoint is not compatible GPU-based array types. Use a different
 sensitivity analysis method, like InterpolatingAdjoint or TrackerAdjoint,
@@ -698,7 +731,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
   if typeof(u0) isa GPUArrays.AbstractGPUArray
     throw(ReverseDiffGPUStateCompatibilityError())
   end
-  
+
   t = eltype(prob.tspan)[]
   u = typeof(u0)[]
 
