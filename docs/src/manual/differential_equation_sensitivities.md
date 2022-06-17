@@ -201,13 +201,6 @@ TrackerVJP
 ReverseDiffVJP
 ```
 
-## Noise VJP Choices
-
-```@docs
-DiffEqSensitivity.ZygoteNoise
-DiffEqSensitivity.ReverseDiffNoise
-```
-
 ## More Details on Sensitivity Algorithm Choices
 
 The following section describes a bit more details to consider when choosing
