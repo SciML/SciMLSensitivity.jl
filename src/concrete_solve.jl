@@ -106,7 +106,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
                                             sensealg::Nothing,u0,p,args...;
                                             verbose=true,kwargs...)
 
-  default_sensealg = automatic_sensealg_choice(prob, u0, p, false, verbose)
+  default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
 end
 
