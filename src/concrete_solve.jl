@@ -3,7 +3,7 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 
-function inplace_vjp(prob,u0,p,has_cb,verbose)
+function inplace_vjp(prob,u0,p,verbose)
   du = copy(u0)
   ez = try
     Enzyme.autodiff(Enzyme.Duplicated(du, du),
@@ -15,24 +15,21 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
   catch
     false
   end
-  if ez && !has_cb
+  if ez
     return EnzymeVJP()
   end
 
   # Determine if we can compile ReverseDiff
-  compile = if has_cb
-      false
-    else
-      try
-        if DiffEqBase.isinplace(prob)
-          !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
-        else
-          !hasbranching(prob.f,u0,p,prob.tspan[1])
-        end
-      catch
-        false
+  compile = try
+      if DiffEqBase.isinplace(prob)
+        !hasbranching(prob.f,copy(u0),u0,p,prob.tspan[1])
+      else
+        !hasbranching(prob.f,u0,p,prob.tspan[1])
       end
-    end
+    catch
+      false
+  end
+
   vjp = try
     ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u,p,t
       du1 = similar(u, size(u))
@@ -46,7 +43,7 @@ function inplace_vjp(prob,u0,p,has_cb,verbose)
   return vjp
 end
 
-function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,has_cb,verbose)
+function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,verbose)
 
   default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
@@ -66,7 +63,7 @@ function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,has_c
       InterpolatingAdjoint(autojacvec=ZygoteVJP())
     end
   else
-    vjp = inplace_vjp(prob,u0,p,has_cb,verbose)
+    vjp = inplace_vjp(prob,u0,p,verbose)
     if p === nothing || p === DiffEqBase.NullParameters()
       QuadratureAdjoint(autojacvec=vjp)
     else
@@ -76,14 +73,14 @@ function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,has_c
   return default_sensealg
 end
 
-function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProblem}, u0, p, has_cb, verbose)
+function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProblem}, u0, p, verbose)
 
   default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # autodiff = false because forwarddiff fails on many GPU kernels
     # this only effects the Jacobian calculation and is same computation order
     SteadyStateAdjoint(autodiff=false, autojacvec=ZygoteVJP())
   else
-    vjp = inplace_vjp(prob,u0,p,false,verbose)
+    vjp = inplace_vjp(prob,u0,p,verbose)
     SteadyStateAdjoint(autojacvec=vjp)
   end
   return default_sensealg
@@ -98,7 +95,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
   else
     has_cb = false
   end
-  default_sensealg = automatic_sensealg_choice(prob,u0,p,has_cb,verbose)
+  default_sensealg = automatic_sensealg_choice(prob,u0,p,verbose)
+  if has_cb
+    default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
+  end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
 end
 

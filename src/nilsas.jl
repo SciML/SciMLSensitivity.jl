@@ -57,7 +57,7 @@ function NILSASProblem(sol, sensealg::NILSAS, t=nothing, dg = nothing; kwargs...
   check_for_g(sensealg,g)
 
   # sensealg choice
-  adjoint_sensealg === nothing && (adjoint_sensealg = automatic_sensealg_choice(sol.prob,u0,p,false,false))
+  adjoint_sensealg === nothing && (adjoint_sensealg = automatic_sensealg_choice(sol.prob,u0,p,false))
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(u0 isa AbstractVector) && error("`u` has to be an AbstractVector.")

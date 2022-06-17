@@ -274,10 +274,14 @@ function adjoint_sensitivities(sol,args...;
     else
       has_cb = false
     end
-    _sensealg = if isinplace(sol.prob)
-      setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,has_cb,verbose))
+    if !has_cb
+      _sensealg = if isinplace(sol.prob)
+        setvjp(sensealg,inplace_vjp(sol.prob,sol.prob.u0,sol.prob.p,verbose))
+      else
+        setvjp(sensealg,ZygoteVJP())
+      end
     else
-      has_cb ? setvjp(sensealg,ReverseDiffVJP()) : setvjp(sensealg,ZygoteVJP())
+      _sensealg = setvjp(sensealg, ReverseDiffVJP())
     end
 
     return try
