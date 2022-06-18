@@ -62,23 +62,23 @@ pstart = Optimization.solve(optprob1, ADAM(0.01), callback=callback, maxiters = 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback=callback, maxiters = 200)
 pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback=callback, maxiters = 200)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element Vector{Float32}:
-  0.25273702
-  0.33339387
-  0.0923205
- -0.28596237
-  0.24080418
- -0.28248316
- -0.15541855
-  0.18004613
-  0.09936971
-  0.24333681
+ -0.0035903458
+ -0.13695194
+ -0.22774342
+  0.2668326
+ -0.018901745
+ -0.27451807
+  0.26901266
+ -0.27945602
+ -0.25931618
+ -0.15390462
   ⋮
- -0.29711667
- -0.05884551
-  0.035921276
-  0.12318966
-  0.1508658
- -0.21855061
-  0.23837422
+ -0.28743538
+ -0.12692651
+ -0.019209454
+  0.32884154
+ -0.03484994
+  0.22459456
+  0.05215722
   0.0
-  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Friday 17 June 2022 18:37">Friday 17 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Saturday 18 June 2022 11:41">Saturday 18 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
