@@ -26,6 +26,9 @@ import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
+const ALLOW_ZYGOTEVJP_NOTHING = Ref{Bool}(false)
+allow_zygotevjp_nothing(b::Bool) = (ALLOW_ZYGOTEVJP_NOTHING[] = b)
+
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")

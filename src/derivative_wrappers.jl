@@ -425,6 +425,37 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
   return
 end
 
+const ZYGOTEVJP_NOTHING_MESSAGE = 
+"""
+`nothing` returned from a Zygote vector-Jacobian product (vjp) calculation.
+This indicates that your function `f` is not a function of `p`, i.e. that
+the derivative is constant zero. In many cases this is due to an error in
+the model definition, for example accidentally using a global parameter
+instead of the one in the model (`f(u,p,t)= _p .* u`).
+
+One common cause of this is using Flux neural networks with implicit parameters,
+for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
+derivative. The answer is to use `Flux.destructure` in this case, for example:
+
+```julia
+p,re = Flux.destructure(NN)
+f(u,p,t) = re(p)(u)
+prob = ODEProblem(f,u0,tspan,p)
+```
+
+Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
+also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
+
+If this zero gradient with respect to `u` or `p` is intended, then one can set
+`DiffEqSensitivity.allow_zygotevjp_nothing(true)` to override this error message.
+"""
+
+struct ZygoteVJPNothingError <: Exception end
+
+function Base.showerror(io::IO, e::ZygoteVJPNothingError)
+  print(io, ZYGOTEVJP_NOTHING_MESSAGE)
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   prob = getprob(S)
@@ -450,7 +481,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
 
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
+    if dgrad !== nothing 
+      if tmp2 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[]
+        throw(ZygoteVJPNothingError())
+      else
+        (dgrad[:] .= vec(tmp2))
+      end
+    end
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
@@ -466,8 +503,19 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     dy !== nothing && (dy[:] .= vec(_dy))
 
     tmp1, tmp2 = back(λ)
-    tmp1 !== nothing && (dλ[:] .= vec(tmp1))
-    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
+    if tmp1 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[]
+      throw(ZygoteVJPNothingError())
+    else
+      (dλ[:] .= vec(tmp1))
+    end
+
+    if dgrad !== nothing 
+      if tmp2 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[] 
+        throw(ZygoteVJPNothingError())
+      else 
+        (dgrad[:] .= vec(tmp2))
+      end
+    end
   end
   return
 end
