@@ -35,15 +35,15 @@ end
 @inline DiffEqBase.ODE_DEFAULT_NORM(u::ReverseDiff.TrackedReal, t::ReverseDiff.TrackedReal) = abs(u)
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p::ReverseDiff.TrackedArray, args...; kwargs...)
-    ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
+    ReverseDiff.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0, p::ReverseDiff.TrackedArray, args...; kwargs...)
-    ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
+    ReverseDiff.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem, sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,Nothing}, u0::ReverseDiff.TrackedArray, p, args...; kwargs...)
-    ReverseDiff.track(solve_up, prob, sensealg, u0, p, args...; kwargs...)
+    ReverseDiff.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
 @inline function DiffEqNoiseProcess.wiener_randn(rng::Random.AbstractRNG, proto::ReverseDiff.TrackedArray)
@@ -54,4 +54,12 @@ end
 end
 @inline function DiffEqNoiseProcess.wiener_randn!(rng::AbstractRNG, rand_vec::AbstractArray{<:ReverseDiff.TrackedReal})
     rand_vec .= ReverseDiff.track.(randn.((rng,), typeof.(DiffEqBase.value.(rand_vec))))
+end
+
+# Required becase ReverseDiff.@grad function DiffEqBase.solve_up is not supported!
+import DiffEqBase: solve_up
+ReverseDiff.@grad function solve_up(prob,sensealg,u0,p,args...;kwargs...)
+    out = DiffEqBase._solve_adjoint(prob,sensealg,ReverseDiff.value(u0),ReverseDiff.value(p),
+                                    SciMLBase.ReverseDiffOriginator(),args...;kwargs...)
+    Array(out[1]),out[2]
 end

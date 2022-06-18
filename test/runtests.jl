@@ -60,6 +60,7 @@ if GROUP == "All" || GROUP == "Core5"
     @time @safetestset "Partial Neural Tests" begin include("partial_neural.jl") end
     @time @safetestset "Size Handling in Adjoint Tests" begin include("size_handling_adjoint.jl") end
     @time @safetestset "Callback - ReverseDiff" begin include("callback_reversediff.jl") end
+    @time @safetestset "Alternative AD Frontend" begin include("alternative_ad_frontend.jl") end
     @time @safetestset "Hybrid DE" begin include("hybrid_de.jl") end
     @time @safetestset "HybridNODE" begin include("HybridNODE.jl") end
     @time @safetestset "ForwardDiff Sparsity Components" begin include("forwarddiffsensitivity_sparsity_components.jl") end

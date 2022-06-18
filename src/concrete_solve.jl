@@ -87,7 +87,7 @@ function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProbl
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
-                                            alg,sensealg::Nothing,u0,p,args...;
+                                            alg,sensealg::Nothing,u0,p,originator::SciMLBase.ADOriginator,args...;
                                             verbose=true,kwargs...)
 
   if haskey(kwargs,:callback)
@@ -99,32 +99,32 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
   if has_cb
     default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
   end
-  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,originator::SciMLBase.ADOriginator,args...;verbose,kwargs...)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},alg,
-                                            sensealg::Nothing,u0,p,args...;
+                                            sensealg::Nothing,u0,p,originator::SciMLBase.ADOriginator,args...;
                                             verbose=true,kwargs...)
 
   default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
-  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;verbose,kwargs...)
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,originator::SciMLBase.ADOriginator,args...;verbose,kwargs...)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem,DDEProblem,
                                                         SDDEProblem,DAEProblem},
                                                         alg,sensealg::Nothing,
-                                                        u0,p,args...;kwargs...)
+                                                        u0,p,originator::SciMLBase.ADOriginator,args...;kwargs...)
   if length(u0) + length(p) > 100
       default_sensealg = ReverseDiffAdjoint()
   else
       default_sensealg = ForwardDiffSensitivity()
   end
-  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,args...;kwargs...)
+  DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,originator::SciMLBase.ADOriginator,args...;kwargs...)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractAdjointSensitivityAlgorithm,
-                                 u0,p,args...;save_start=true,save_end=true,
+                                 u0,p,originator::SciMLBase.ADOriginator,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
@@ -290,14 +290,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     du0 = reshape(du0,size(u0))
     dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing : reshape(dp',size(p))
 
-    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    else
+      (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    end
   end
   out, adjoint_sensitivity_backpass
 end
 
 # Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForwardSensitivityAlgorithm,
-                                            u0, p, args...;
+                                            u0, p, originator::SciMLBase.ADOriginator, args...;
                                             save_idxs=nothing,
                                             kwargs...)
 
@@ -336,14 +340,19 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForward
     du0 = @not_implemented(
       "ForwardSensitivity does not differentiate with respect to u0. Change your sensealg."
     )
-    (NoTangent(), NoTangent(), NoTangent(), du0, adj, NoTangent(), ntuple(_ -> NoTangent(), length(args))...)
+
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(), NoTangent(), du0, adj, NoTangent(), ntuple(_ -> NoTangent(), length(args))...)
+    else
+      (NoTangent(), NoTangent(), NoTangent(), du0, adj, NoTangent(), ntuple(_ -> NoTangent(), length(args))...)
+    end
   end
   out, forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_forward(prob,alg,
                                  sensealg::AbstractForwardSensitivityAlgorithm,
-                                 u0,p,args...;save_idxs = nothing,
+                                 u0,p,originator::SciMLBase.ADOriginator,args...;save_idxs = nothing,
                                  kwargs...)
    _prob = ODEForwardSensitivityProblem(prob.f,u0,prob.tspan,p,sensealg)
    sol = solve(_prob,args...;kwargs...)
@@ -379,7 +388,7 @@ end
 # Generic Fallback for ForwardDiff
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::ForwardDiffSensitivity{CS,CTS},
-                                 u0,p,args...;saveat=eltype(prob.tspan)[],
+                                 u0,p,originator::SciMLBase.ADOriginator,args...;saveat=eltype(prob.tspan)[],
                                  kwargs...) where {CS,CTS}
 
   if !(typeof(p) <: Union{Nothing,SciMLBase.NullParameters,AbstractArray}) || (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
@@ -591,19 +600,24 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         end
         ArrayInterfaceCore.restructure(u0,reduce(vcat,du0parts))
     end
-    (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(),NoTangent(),unthunk(du0),unthunk(dp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    else
+      (NoTangent(),NoTangent(),NoTangent(),du0,dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    end
   end
   sol,forward_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ZygoteAdjoint,
-                                 u0,p,args...;kwargs...)
+                                 u0,p,originator::SciMLBase.ADOriginator,args...;kwargs...)
     Zygote.pullback((u0,p)->solve(prob,alg,args...;u0=u0,p=p,
                     sensealg = SensitivityADPassThrough(),kwargs...),u0,p)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
-                                            u0,p,args...;
+                                            u0,p,originator::SciMLBase.ADOriginator,args...;
                                             kwargs...)
 
   local sol
@@ -705,7 +719,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::TrackerAdjoint,
     end
     u0bar, pbar = pullback(tmp)
     _u0bar = u0bar isa Tracker.TrackedArray ? Tracker.data(u0bar) : Tracker.data.(u0bar)
-    (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    else
+      (NoTangent(),NoTangent(),NoTangent(),_u0bar,Tracker.data(pbar),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    end
   end
 
   u = u0 isa Tracker.TrackedArray ? Tracker.data.(sol.u) : Tracker.data.(Tracker.data.(sol.u))
@@ -726,7 +745,7 @@ function Base.showerror(io::IO, e::ReverseDiffGPUStateCompatibilityError)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoint,
-                                            u0,p,args...;kwargs...)
+                                            u0,p,originator::SciMLBase.ADOriginator,args...;kwargs...)
 
   if typeof(u0) isa GPUArrays.AbstractGPUArray
     throw(ReverseDiffGPUStateCompatibilityError())
@@ -788,7 +807,12 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoin
       end
     ReverseDiff.increment_deriv!(output, _ybar)
     ReverseDiff.reverse_pass!(tape)
-    (NoTangent(),NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    else
+      (NoTangent(),NoTangent(),NoTangent(),ReverseDiff.deriv(tu),ReverseDiff.deriv(tp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    end
   end
   Array(VectorOfArray(u)),reversediff_adjoint_backpass
 end
@@ -796,7 +820,7 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(prob,alg,
                                  sensealg::AbstractShadowingSensitivityAlgorithm,
-                                 u0,p,args...;save_start=true,save_end=true,
+                                 u0,p,originator::SciMLBase.ADOriginator,args...;save_start=true,save_end=true,
                                  saveat = eltype(prob.tspan)[],
                                  save_idxs = nothing,
                                  kwargs...)
@@ -887,14 +911,18 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       error("No concrete_solve implementation found for sensealg `$sensealg`. Did you spell the sensitivity algorithm correctly? Please report this error.")
     end
 
-    (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+      (NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    else
+      (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+    end
   end
   out, adjoint_sensitivity_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyStateProblem},
                                             alg,sensealg::SteadyStateAdjoint,
-                                            u0,p,args...;save_idxs = nothing, kwargs...)
+                                            u0,p,originator::SciMLBase.ADOriginator,args...;save_idxs = nothing, kwargs...)
 
     _prob = remake(prob,u0=u0,p=p)
     sol = solve(_prob,alg,args...;kwargs...)
@@ -910,7 +938,12 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem,SteadyS
       # Δ = dg/dx or diffcache.dg_val
       # del g/del p = 0
       dp = adjoint_sensitivities(sol,alg;sensealg=sensealg,g=nothing,dg=Δ,save_idxs=save_idxs)
-      (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+
+      if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
+        (NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+      else
+        (NoTangent(),NoTangent(),NoTangent(),NoTangent(),dp,NoTangent(),ntuple(_->NoTangent(), length(args))...)
+      end
     end
     out, steadystatebackpass
 end
