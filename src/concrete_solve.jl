@@ -301,7 +301,7 @@ end
 
 # Prefer this route since it works better with callback AD
 function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::AbstractForwardSensitivityAlgorithm,
-                                            u0, p, args...;
+                                            u0, p, originator::SciMLBase.ADOriginator, args...;
                                             save_idxs=nothing,
                                             kwargs...)
 
