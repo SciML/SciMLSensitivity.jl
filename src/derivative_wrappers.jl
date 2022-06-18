@@ -303,6 +303,37 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
   return
 end
 
+const TRACKERVJP_NOTHING_MESSAGE = 
+"""
+`nothing` returned from a Tracker vector-Jacobian product (vjp) calculation.
+This indicates that your function `f` is not a function of `p`, i.e. that
+the derivative is constant zero. In many cases this is due to an error in
+the model definition, for example accidentally using a global parameter
+instead of the one in the model (`f(u,p,t)= _p .* u`).
+
+One common cause of this is using Flux neural networks with implicit parameters,
+for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
+derivative. The answer is to use `Flux.destructure` in this case, for example:
+
+```julia
+p,re = Flux.destructure(NN)
+f(u,p,t) = re(p)(u)
+prob = ODEProblem(f,u0,tspan,p)
+```
+
+Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
+also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
+
+If this zero gradient with respect to `u` or `p` is intended, then one can set
+`DiffEqSensitivity.allow_trackervjp_nothing(true)` to override this error message.
+"""
+
+struct TrackerVJPNothingError <: Exception end
+
+function Base.showerror(io::IO, e::TrackerVJPNothingError)
+  print(io, TRACKERVJP_NOTHING_MESSAGE)
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy, W) where TS<:SensitivityFunction
   @unpack sensealg, f = S
   isautojacvec = get_jacvec(sensealg)
@@ -321,6 +352,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
       end
     end
 
+    if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) && 
+                                          !ALLOW_TRACKERVJP_NOTHING[]
+      throw(TrackerVJPNothingError())
+    end
+
+
     # Grab values from `_dy` before `back` in case mutated
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
 
@@ -336,6 +373,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
       _dy, back = Tracker.forward(y, p) do u, p
         Tracker.collect(f(u, p, t, W))
       end
+    end
+
+    if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) && 
+                                          !ALLOW_TRACKERVJP_NOTHING[]
+      throw(TrackerVJPNothingError())
     end
 
     # Grab values from `_dy` before `back` in case mutated

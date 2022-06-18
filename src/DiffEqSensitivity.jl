@@ -29,6 +29,9 @@ abstract type TransformedFunction end
 const ALLOW_ZYGOTEVJP_NOTHING = Ref{Bool}(false)
 allow_zygotevjp_nothing(b::Bool) = (ALLOW_ZYGOTEVJP_NOTHING[] = b)
 
+const ALLOW_TRACKERVJP_NOTHING = Ref{Bool}(false)
+allow_trackervjp_nothing(b::Bool) = (ALLOW_TRACKERVJP_NOTHING[] = b)
+
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
