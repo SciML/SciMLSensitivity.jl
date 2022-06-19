@@ -188,7 +188,7 @@ Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ### Training Data
 
 GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion. 
-```julia
+```@example graphneuralode
 (; train_mask, val_mask, test_mask) = g.ndata
 ytrain = y[:,train_mask]
 ```
