@@ -117,6 +117,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t)
   end
 
   dλ .*= -one(eltype(λ))
+  dgrad .*= -one(eltype(dgrad))
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
   return nothing
@@ -130,6 +131,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du,u,p,t,W)
   vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, W=W)
 
   dλ .*= -one(eltype(λ))
+  dgrad .*= -one(eltype(dgrad))
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
   return nothing
