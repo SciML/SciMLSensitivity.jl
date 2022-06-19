@@ -144,48 +144,54 @@ end
 
 ```julia
 # Load the packages
-using GeometricFlux, JLD2, SparseArrays, DiffEqFlux, DifferentialEquations
-using Flux: onehotbatch, onecold, throttle
-using Flux.Losses: crossentropy
+using GraphNeuralNetworks, DifferentialEquations
+using DiffEqFlux: NeuralODE
+using GraphNeuralNetworks.GNNGraphs: normalized_adjacency
+using Lux, NNlib, Optimisers, Zygote, Random, ComponentArrays
+using Lux: AbstractExplicitLayer, glorot_normal, zeros32
+import Lux: initialparameters, initialstates
+using DiffEqSensitivity
 using Statistics: mean
-using LightGraphs: adjacency_matrix
+using MLDatasets: Cora
+using CUDA
+CUDA.allowscalar(false)
+device = CUDA.functional() ? gpu : cpu
 ```
 
 ## Load the Dataset
 
-The dataset is available in the desired format in the GeometricFlux repository. We shall download the dataset from there, and use the JLD2 package to load the data.
+The dataset is available in the desired format in the GraphNeuralNetworks repository. We shall download the dataset from there.
 
 ```julia
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_features.jld2", "cora_features.jld2")
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_graph.jld2", "cora_graph.jld2")
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_labels.jld2", "cora_labels.jld2")
-
-@load "./cora_features.jld2" features
-@load "./cora_labels.jld2" labels
-@load "./cora_graph.jld2" g
-```
-
-## Model and Data Configuration
-
-The `num_nodes`, `target_catg` and `num_features` are defined by the data itself. We shall use a shallow GNN with only 16 hidden state dimension.
-
-```julia
-num_nodes = 2708
-num_features = 1433
-hidden = 16
-target_catg = 7
-epochs = 40
+dataset = Cora()
 ```
 
 ## Preprocessing the Data
 
-Convert the data to float32 and use `LightGraphs` to get the adjacency matrix from the graph `g`.
+Convert the data to `GNNGraph` and get the adjacency matrix from the graph `g`.
 
 ```julia
-train_X = Float32.(features)  # dim: num_features * num_nodes
-train_y = Float32.(labels)  # dim: target_catg * num_nodes
+classes = dataset.metadata["classes"]
+g = mldataset2gnngraph(dataset) |> device
+onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
+onecold(y) =  map(argmax,eachcol(y))
+X = g.ndata.features
+y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
+(; train_mask, val_mask, test_mask) = g.ndata
+ytrain = y[:,train_mask]
 
-adj_mat = Matrix{Float32}(adjacency_matrix(g))
+Ã = normalized_adjacency(g, add_self_loops=true) |> device
+```
+
+## Model and Data Configuration
+
+We shall use only 16 hidden state dimensions.
+
+```julia
+nin = size(X, 1)
+nhidden = 16
+nout = length(classes)
+epochs = 20
 ```
 
 ## Neural Graph Ordinary Differential Equations
