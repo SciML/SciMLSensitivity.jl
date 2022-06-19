@@ -9,7 +9,7 @@ In this tutorial we will use Graph Differential Equations (GDEs) to perform clas
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
 using GraphNeuralNetworks.GNNGraphs: normalized_adjacency
-using Lux, Optimisers, Zygote, Random, ComponentArrays
+using Lux, NNlib, Optimisers, Zygote, Random, ComponentArrays
 using Lux: AbstractExplicitLayer, glorot_normal, zeros32
 import Lux: initialparameters, initialstates
 using DiffEqSensitivity
