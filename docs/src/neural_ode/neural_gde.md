@@ -175,7 +175,7 @@ dataset = Cora()
 
 Convert the data to `GNNGraph` and get the adjacency matrix from the graph `g`.
 
-```julia
+```@example graphneuralode
 classes = dataset.metadata["classes"]
 g = mldataset2gnngraph(dataset) |> device
 onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
