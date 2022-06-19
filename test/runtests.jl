@@ -42,6 +42,7 @@ end
 
 if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
     @time @safetestset "Adjoint Sensitivity" begin include("adjoint.jl") end
+    @time @safetestset "Continuous and discrete costs" begin include("mixed_costs.jl") end
 end
 
 if GROUP == "All" || GROUP == "Core4"

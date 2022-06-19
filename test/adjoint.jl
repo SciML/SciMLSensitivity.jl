@@ -39,7 +39,7 @@ println("Calculate discrete adjoint sensitivities")
 t = 0.0:0.5:10.0
 # g(t,u,i) = (1-u)^2/2, L2 away from 1
 function dg(out,u,p,t,i)
-  (out.=2.0.-u)
+  (out.=-2.0.+u)
 end
 
 _,easy_res = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
@@ -279,7 +279,7 @@ res4 = ForwardDiff.gradient(p->G(p,t4),[1.5,1.0,3.0,1.0])
 println("Adjoints of u0")
 
 function dg(out,u,p,t,i)
-  out .= 1 .- u
+  out .= -1 .+ u
 end
 
 ū0,adj = adjoint_sensitivities(sol,Tsit5(),dg,t,abstol=1e-14,
@@ -519,7 +519,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   prob_lorenz = ODEProblem(lorenz, [1.0, 0.0, 0.0], (0, tf), [10, 28, 8/3])
   sol_lorenz = solve(prob_lorenz,Tsit5(),reltol=1e-6,abstol=1e-9)
   function dg(out,u,p,t,i)
-    (out.=2.0.-u)
+    (out.=-2.0.+u)
   end
   t = 0:0.1:tf
   _,easy_res1 = adjoint_sensitivities(sol_lorenz,Tsit5(),dg,t,abstol=1e-6,

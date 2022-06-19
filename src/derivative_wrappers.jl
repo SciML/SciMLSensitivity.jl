@@ -283,7 +283,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
         end
       end
     end
-    mul!(dgrad',λ',pJ)
+    mul!(dgrad',λ',-pJ)
   end
   if dy !== nothing
     if W===nothing
@@ -322,7 +322,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     end
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && (dgrad[:] .= -vec(tmp2))
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   else
     if W===nothing
@@ -336,7 +336,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     end
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && (dgrad[:] .= -vec(tmp2))
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   end
   return
@@ -413,7 +413,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
   ReverseDiff.increment_deriv!(output, λ)
   ReverseDiff.reverse_pass!(tape)
   copyto!(vec(dλ), ReverseDiff.deriv(tu))
-  dgrad !== nothing && copyto!(vec(dgrad), ReverseDiff.deriv(tp))
+  dgrad !== nothing && copyto!(vec(dgrad), -ReverseDiff.deriv(tp))
   ReverseDiff.pull_value!(output)
   dy !== nothing && copyto!(vec(dy), ReverseDiff.value(output))
   return
@@ -440,7 +440,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     end
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
-    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= -vec(tmp2))
     dy !== nothing && (dy[:] .= vec(_dy))
   else
     if W===nothing
@@ -455,7 +455,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     tmp1, tmp2 = back(λ)
     tmp1 !== nothing && (dλ[:] .= vec(tmp1))
     dy !== nothing && (dy[:] .= vec(_dy))
-    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= -vec(tmp2))
   end
   return
 end
@@ -504,7 +504,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     end
 
     dλ .= tmp1
-    dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && (dgrad[:] .= -vec(tmp2))
     dy !== nothing && (dy .= tmp3)
   else
     if W===nothing
@@ -525,7 +525,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy[:] .= vec(out_)
     end
     dλ .= tmp1
-    dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) && (dgrad[:] .= vec(tmp2))
+    dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) && (dgrad[:] .= -vec(tmp2))
     dy !== nothing && (dy .= tmp3)
   end
   return
@@ -560,12 +560,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ, dy) where TS<
 
     if StochasticDiffEq.is_diagonal_noise(prob)
       pJt = transpose(λ).*transpose(pJ)
-      dgrad[:] .= vec(pJt)
+      dgrad[:] .= -vec(pJt)
     else
       m = size(prob.noise_rate_prototype)[2]
       for i in 1:m
         tmp = λ'*pJ[(i-1)*m+1:i*m,:]
-        dgrad[:,i] .= vec(tmp)
+        dgrad[:,i] .= -vec(tmp)
       end
     end
   end
@@ -642,7 +642,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ, dy)
     ReverseDiff.reverse_pass!(tapei)
 
     deriv = ReverseDiff.deriv(tp)
-    dgrad[:,i] .= vec(deriv)
+    dgrad[:,i] .= -vec(deriv)
     ReverseDiff.pull_value!(output)
 
     if StochasticDiffEq.is_diagonal_noise(prob)
@@ -670,7 +670,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ, dy) wher
           copy(out_[i])
         end
         tmp1,tmp2 = back(λi) #issue: tmp2 = zeros(p)
-        dgrad[:,i] .= vec(tmp2)
+        dgrad[:,i] .= -vec(tmp2)
         dλ !== nothing && (dλ[:,i] .= vec(tmp1))
         dy !== nothing && (dy[i] = _dy)
       end
@@ -680,7 +680,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ, dy) wher
           f(u, p, t)[i]
         end
         tmp1,tmp2 = back(λi)
-        dgrad[:,i] .= vec(tmp2)
+        dgrad[:,i] .= -vec(tmp2)
         dλ !== nothing && (dλ[:,i] .= vec(tmp1))
         dy !== nothing && (dy[i] = _dy)
       end
@@ -694,7 +694,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ, dy) wher
           copy(out_[:,i])
         end
         tmp1,tmp2 = back(λ)#issue with Zygote.Buffer
-        dgrad[:,i] .= vec(tmp2)
+        dgrad[:,i] .= -vec(tmp2)
         dλ !== nothing && (dλ[:,i] .= vec(tmp1))
         dy !== nothing && (dy[:,i] .= vec(_dy))
       end
@@ -704,7 +704,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ, dy) wher
           f(u, p, t)[:,i]
         end
         tmp1,tmp2 = back(λ)
-        dgrad[:,i] .= vec(tmp2)
+        dgrad[:,i] .= -vec(tmp2)
         if tmp1 === nothing
           # if a column of the noise matrix is zero, Zygote returns nothing.
           dλ !== nothing && (dλ[:,i] .= false)
@@ -727,7 +727,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:Sensitiv
       dλ .-= vec(dg_val)
     else
       dg[1](dg_val[1],y,p,t)
-      dλ .+= vec(dg_val[1])
+      dλ .-= vec(dg_val[1])
       if dgrad !== nothing
         dg[2](dg_val[2],y,p,t)
         dgrad .-= vec(dg_val[2])
@@ -736,7 +736,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:Sensitiv
   else
     g.t = t
     gradient!(dg_val, g, y, S.sensealg, g_grad_config)
-    dλ .+= vec(dg_val)
+    dλ .-= vec(dg_val)
   end
   return nothing
 end

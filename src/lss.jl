@@ -128,7 +128,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
   isinplace = DiffEqBase.isinplace(f)
 
   # some shadowing sensealgs require knowledge of g
-  check_for_g(sensealg,g)   
+  check_for_g(sensealg,g)
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -340,14 +340,14 @@ function shadow_forward(prob::ForwardLSSProblem,sensealg::ForwardLSS,LSSregulari
       vtmp = @view v[(n0+j-2)*numindvar+1:(n0+j-1)*numindvar]
       #  final gradient result for ith parameter
       accumulate_cost!(dg, u, uf.p, uf.t, sensealg, diffcache, n0+j-1)
-    
+
       if dg_val isa Tuple
         res[i] += dot(dg_val[1], vtmp)
         res[i] += dg_val[2][i]
       else
         res[i] += dot(dg_val, vtmp)
       end
-    
+
     end
     # mean value
     res[i] = res[i]/(n1-n0+1)
@@ -444,11 +444,8 @@ function accumulate_cost!(dg, u, p, t, sensealg::ForwardLSS, diffcache, indx)
     if dg_val isa Tuple
       dg[1](dg_val[1], u, p, nothing, indx) # indx = n0 + j - 1 for LSSregularizer and j for windowing
       dg[2](dg_val[2], u, p, nothing, indx)
-      dg_val[1] .*= -1 # flipped concrete_solve sign 
-      dg_val[2] .*= -1
     else
       dg(dg_val, u, p, nothing, indx)
-      dg_val .*= -1
     end
   end
 
@@ -485,7 +482,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
   isinplace = DiffEqBase.isinplace(f)
 
   # some shadowing sensealgs require knowledge of g
-  check_for_g(sensealg,g) 
+  check_for_g(sensealg,g)
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
@@ -575,10 +572,10 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
     else
       if dg_val isa Tuple
         dg[1](dg_val[1],u,uf.p,nothing,i)
-        @. _wBinv = -_wBinv*dg_val[1]/Nt
+        @. _wBinv = _wBinv*dg_val[1]/Nt
       else
         dg(dg_val,u,uf.p,nothing,i)
-        @. _wBinv = -_wBinv*dg_val/Nt
+        @. _wBinv = _wBinv*dg_val/Nt
       end
     end
   end
@@ -614,7 +611,7 @@ function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,LSSregulari
         @. res += dg_val[2]
       else
         dg[2](dg_val[2],u,uf.p,nothing,n0+j-1)
-        @. res -= dg_val[2]
+        @. res += dg_val[2]
       end
     end
     res ./= (size(umidres)[2])
