@@ -190,10 +190,10 @@ using Zygote
     g(u,p,t) = u[end]^2/2 + sum(p)
     function dgu(out,u,p,t,i)
       fill!(out, zero(eltype(u)))
-      out[end] = -u[end]
+      out[end] = u[end]
     end
     function dgp(out,u,p,t,i)
-      fill!(out, -one(eltype(p)))
+      fill!(out, one(eltype(p)))
     end
 
     function G(p; sensealg=ForwardLSS(g=g), dt=0.01)

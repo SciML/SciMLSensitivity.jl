@@ -185,9 +185,9 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
       # j = 1 is the inhomogenous adjoint solution
       if !discrete
         if dg_val isa Tuple
-          dλ .+= vec(dg_val[1])
+          dλ .-= vec(dg_val[1])
         else
-          dλ .+= vec(dg_val)
+          dλ .-= vec(dg_val)
         end
       end
     end
@@ -211,7 +211,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
   end
 
   if dg_val isa Tuple && !discrete
-    ddJs .= vec(dg_val[2])
+    ddJs .= -vec(dg_val[2])
   end
 
   return nothing
