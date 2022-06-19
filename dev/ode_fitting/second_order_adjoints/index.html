@@ -62,23 +62,23 @@ pstart = Optimization.solve(optprob1, ADAM(0.01), callback=callback, maxiters = 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback=callback, maxiters = 200)
 pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback=callback, maxiters = 200)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element Vector{Float32}:
-  0.21531591
-  0.12930354
-  0.21943785
- -0.044446994
-  0.062060926
-  0.2063101
-  0.19512753
- -0.30684218
- -0.112811446
-  0.01482811
+ -0.24786061
+  0.1417407
+ -0.31428438
+  0.22149006
+ -0.29899126
+ -0.3350975
+  0.048747715
+ -0.25146034
+ -0.0039960085
+  0.020211827
   ⋮
- -0.20621441
- -0.24838665
-  0.16674629
- -0.33830026
- -0.2364477
-  0.29022053
- -0.048224337
+  0.0063322335
+  0.15755308
+ -0.25324497
+ -0.11799006
+ -0.07406017
+ -0.24082278
+  0.10723579
   0.0
-  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Saturday 18 June 2022 11:44">Saturday 18 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.19 on <span class="colophon-date" title="Sunday 19 June 2022 13:49">Sunday 19 June 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
