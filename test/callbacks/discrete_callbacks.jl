@@ -108,7 +108,7 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)
-  @test du01 ≈ -adj_sol[1:2, end]
+  @test du01 ≈ adj_sol[1:2, end]
   @test dp1 ≈ adj_sol[3:6, end]
 
 
@@ -127,7 +127,7 @@ end
     @testset "simple loss function" begin
       g(sol) = sum(sol)
       function dg!(out, u, p, t, i)
-        (out .= -1)
+        (out .= 1)
       end
       @testset "callbacks with no effect" begin
         condition(u, t, integrator) = t == 5
@@ -191,7 +191,7 @@ end
     end
     @testset "MSE loss function" begin
       g(u) = sum((1.0 .- u) .^ 2) ./ 2
-      dg!(out, u, p, t, i) = (out .= 1.0 .- u)
+      dg!(out, u, p, t, i) = (out .= -1.0 .+ u)
       @testset "callbacks with no effect" begin
         condition(u, t, integrator) = t == 5
         affect!(integrator) = integrator.u[1] += 0.0
