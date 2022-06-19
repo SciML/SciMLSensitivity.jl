@@ -197,7 +197,7 @@ ytrain = y[:,train_mask]
 
 We shall use only 16 hidden state dimensions.
 
-```julia
+```@example graphneuralode
 nin = size(X, 1)
 nhidden = 16
 nout = length(classes)
