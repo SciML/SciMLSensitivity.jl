@@ -320,7 +320,7 @@ st_opt = Optimisers.setup(opt,ps)
 
 Finally, we use the package `Optimisers` to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
 
-```julia
+```@example graphneuralode
 for _ in 1:epochs
     (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
     gs = back((one(l), nothing))[1]
