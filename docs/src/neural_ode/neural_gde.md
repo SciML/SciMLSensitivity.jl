@@ -182,7 +182,6 @@ onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
 onecold(y) =  map(argmax,eachcol(y))
 X = g.ndata.features
 y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
-(; train_mask, val_mask, test_mask) = g.ndata
 
 Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ```
@@ -203,6 +202,42 @@ nin = size(X, 1)
 nhidden = 16
 nout = length(classes)
 epochs = 20
+```
+## Define the Graph Neural Network
+
+
+
+```julia
+struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
+    Ã::AbstractMatrix  # nomalized_adjacency matrix
+    in_chs::Int
+    out_chs::Int
+    activation::F1
+    init_weight::F2
+    init_bias::F3
+end
+
+function Base.show(io::IO, l::ExplicitGCNConv)
+    print(io, "ExplicitGCNConv($(l.in_chs) => $(l.out_chs)")
+    (l.activation == identity) || print(io, ", ", l.activation)
+    print(io, ")")
+end
+
+function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
+        return (weight=d.init_weight(rng, d.out_chs, d.in_chs),
+                bias=d.init_bias(rng, d.out_chs, 1))
+end
+
+function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
+                         init_weight=glorot_normal, init_bias=zeros32) 
+    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation, 
+                                                                                       init_weight, init_bias)
+end
+
+function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
+    z = ps.weight * x * l.Ã
+    return l.activation.(z .+ ps.bias), st
+end
 ```
 
 ## Neural Graph Ordinary Differential Equations
@@ -282,7 +317,7 @@ st_opt = Optimisers.setup(opt,ps)
 
 ## Training Loop
 
-Finally, with the configuration ready and all the utilities defined we can use the `Flux.train!` function to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
+Finally, we use the package `Optimisers` to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
 
 ```julia
 for _ in 1:epochs
