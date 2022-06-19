@@ -1,75 +1,140 @@
 # Neural Graph Differential Equations
 
-This tutorial has been adapted from [here](https://github.com/yuehhua/GeometricFlux.jl/blob/master/examples/gcn.jl).
+This tutorial has been adapted from [here](https://github.com/CarloLucibello/GraphNeuralNetworks.jl/blob/master/examples/neural_ode_cora.jl).
 
-In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GeometricFlux](https://github.com/yuehhua/GeometricFlux.jl).
+In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
 
 ```julia
 # Load the packages
-using GeometricFlux, JLD2, SparseArrays, DiffEqFlux, DifferentialEquations
-using Flux: onehotbatch, onecold, throttle
-using Flux.Losses: logitcrossentropy
+using GraphNeuralNetworks, DifferentialEquations
+using DiffEqFlux: NeuralODE
+using GraphNeuralNetworks.GNNGraphs: normalized_adjacency
+using Lux, NNlib, Optimisers, Zygote, Random, ComponentArrays
+using Lux: AbstractExplicitLayer, glorot_normal, zeros32
+import Lux: initialparameters, initialstates
+using DiffEqSensitivity
 using Statistics: mean
-using LightGraphs: adjacency_matrix
+using MLDatasets: Cora
+using CUDA
+CUDA.allowscalar(false)
+device = CUDA.functional() ? gpu : cpu
 
 # Download the dataset
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_features.jld2", "cora_features.jld2")
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_graph.jld2", "cora_graph.jld2")
-download("https://rawcdn.githack.com/yuehhua/GeometricFlux.jl/a94ca7ce2ad01a12b23d68eb6cd991ee08569303/data/cora_labels.jld2", "cora_labels.jld2")
-
-# Load the dataset
-@load "./cora_features.jld2" features
-@load "./cora_labels.jld2" labels
-@load "./cora_graph.jld2" g
-
-# Model and Data Configuration
-num_nodes = 2708
-num_features = 1433
-hidden = 16
-target_catg = 7
-epochs = 40
+dataset = Cora()
 
 # Preprocess the data and compute adjacency matrix
-train_X = Float32.(features)  # dim: num_features * num_nodes
-train_y = Float32.(labels)  # dim: target_catg * num_nodes
+classes = dataset.metadata["classes"]
+g = mldataset2gnngraph(dataset) |> device
+onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
+onecold(y) =  map(argmax,eachcol(y))
+X = g.ndata.features
+y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
+(; train_mask, val_mask, test_mask) = g.ndata
+ytrain = y[:,train_mask]
 
-adj_mat = FeaturedGraph(Matrix{Float32}(adjacency_matrix(g)))
+Ã = normalized_adjacency(g, add_self_loops=true) |> device
+
+# Model and Data Configuration
+nin = size(X, 1)
+nhidden = 16
+nout = length(classes)
+epochs = 20
+
+# Define the graph neural network
+struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
+    Ã::AbstractMatrix  # nomalized_adjacency matrix
+    in_chs::Int
+    out_chs::Int
+    activation::F1
+    init_weight::F2
+    init_bias::F3
+end
+
+function Base.show(io::IO, l::ExplicitGCNConv)
+    print(io, "ExplicitGCNConv($(l.in_chs) => $(l.out_chs)")
+    (l.activation == identity) || print(io, ", ", l.activation)
+    print(io, ")")
+end
+
+function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
+        return (weight=d.init_weight(rng, d.out_chs, d.in_chs),
+                bias=d.init_bias(rng, d.out_chs, 1))
+end
+
+function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
+                         init_weight=glorot_normal, init_bias=zeros32) 
+    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation, 
+                                                                                       init_weight, init_bias)
+end
+
+function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
+    z = ps.weight * x * l.Ã
+    return l.activation.(z .+ ps.bias), st
+end
 
 # Define the Neural GDE
-diffeqarray_to_array(x) = reshape(cpu(x), size(x)[1:2])
+function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
+    return dropdims(gpu(x); dims=3)
+end
+diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
 
-node = NeuralODE(
-    GCNConv(adj_mat, hidden=>hidden),
-    (0.f0, 1.f0), Tsit5(), save_everystep = false,
-    reltol = 1e-3, abstol = 1e-3, save_start = false
-)
+# make NeuralODE work with Lux.Chain
+# remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
+initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
+function initialstates(rng::AbstractRNG, node::NeuralODE)
+    if  :layers ∈ propertynames(node.model)
+        layers = node.model.layers
+        return NamedTuple{keys(layers)}(initialstates.(rng, values(layers)))
+    else
+        return initialstates(node.model, rng)
+    end
+end
 
-model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Flux.Dropout(0.5),
+gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
+            ExplicitGCNConv(Ã, nhidden => nhidden, relu))
+
+node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+
+model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,
-              diffeqarray_to_array,
-              GCNConv(adj_mat, hidden=>target_catg))
+              diffeqsol_to_array,
+              Dense(nhidden, nout))
 
 # Loss
-loss(x, y) = logitcrossentropy(model(x), y)
-accuracy(x, y) = mean(onecold(model(x)) .== onecold(y))
+logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
+
+function loss(x, y, mask, model, ps, st)
+    ŷ, st = model(x, ps, st)
+    return logitcrossentropy(ŷ[:,mask], y), st
+end
+
+function eval_loss_accuracy(X, y, mask, model, ps, st)
+    ŷ, _ = model(X, ps, st)
+    l = logitcrossentropy(ŷ[:,mask], y[:,mask])
+    acc = mean(onecold(ŷ[:,mask]) .== onecold(y[:,mask]))
+    return (loss = round(l, digits=4), acc = round(acc*100, digits=2))
+end
 
 # Training
-## Model Parameters
-ps = Flux.params(model, node.p);
+## Setup model 
+rng = Random.default_rng()
+Random.seed!(rng, 0)
 
-## Training Data
-train_data = [(train_X, train_y)]
+ps, st = Lux.setup(rng, model)
+ps = ComponentArray(ps) |> gpu
+st = st |> gpu
 
 ## Optimizer
-opt = ADAM(0.01)
-
-## Callback Function for printing accuracies
-evalcb() = @show(accuracy(train_X, train_y))
+opt = Optimisers.ADAM(0.01f0)
+st_opt = Optimisers.setup(opt,ps)
 
 ## Training Loop
-for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
+for _ in 1:epochs
+    (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
+    gs = back((one(l), nothing))[1]
+    st_opt, ps = Optimisers.update(st_opt, ps, gs)
+    @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
 end
 ```
 
