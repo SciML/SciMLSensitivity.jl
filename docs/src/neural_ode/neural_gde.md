@@ -208,7 +208,7 @@ epochs = 20
 Here we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more informations on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
 
 
-```julia
+```@example graphneuralode
 struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
     Ã::AbstractMatrix  # nomalized_adjacency matrix
     in_chs::Int
