@@ -10,20 +10,19 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```@example udeneuralcontrol
-using Lux, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, DifferentialEquations, Plots, Random
+using Flux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
 u0 = 1.1f0
 tspan = (0.0f0, 25.0f0)
 tsteps = 0.0f0:1.0:25.0f0
 
-model_univ = Lux.Chain(Lux.Dense(2, 16, tanh),
-                       Lux.Dense(16, 16, tanh),
-                       Lux.Dense(16, 1))
+model_univ = Flux.Chain(Flux.Dense(2, 16, tanh),
+                       Flux.Dense(16, 16, tanh),
+                       Flux.Dense(16, 1))
 
 # The model weights are destructured into a vector of parameters
-p_model, st = Lux.setup(rng, model_univ)
-p_model = Lux.ComponentArray(p_model)
+p_model,re = Flux.destructure(model_univ)
 n_weights = length(p_model)
 
 # Parameters of the second equation (linear dynamics)
@@ -43,7 +42,7 @@ function dudt_univ!(du, u, p, t)
     model_control, system_output = u
 
     # Dynamics of the control and system
-    dmodel_control = (model_univ(u, model_weights, st)[1])[1]
+    dmodel_control = re(model_weights)(u)[1]
     dsystem_output = α*system_output + β*model_control
 
     # Update in place

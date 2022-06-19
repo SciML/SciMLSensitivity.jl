@@ -36,17 +36,15 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
-using Lux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, 
-      DiffEqSensitivity, Plots, Statistics, Random
-      
+using Flux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics, Random
 rng = Random.default_rng()
 tspan = (0.0f0,8.0f0)
-ann = Lux.Chain(Lux.Dense(1,32,tanh), Lux.Dense(32,32,tanh), Lux.Dense(32,1))
-θ, st = Lux.setup(rng, ann)
+ann = Flux.Chain(Flux.Dense(1,32,tanh), Flux.Dense(32,32,tanh), Flux.Dense(32,1))
+θ, re = Flux.destructure(ann)
 function dxdt_(dx,x,p,t)
     x1, x2 = x
     dx[1] = x[2]
-    dx[2] = (ann([t],p,st)[1])[1]^3
+    dx[2] = re(p)(t)[1]^3
 end
 x0 = [-4f0,0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))
