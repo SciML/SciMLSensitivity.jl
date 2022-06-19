@@ -320,10 +320,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         Tracker.collect(out_)
       end
     end
+
+    # Grab values from `_dy` before `back` in case mutated
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+    
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && (dgrad[:] .= -vec(tmp2))
-    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   else
     if W===nothing
       _dy, back = Tracker.forward(y, p) do u, p
@@ -334,10 +337,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         Tracker.collect(f(u, p, t, W))
       end
     end
+
+    # Grab values from `_dy` before `back` in case mutated
+    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && (dgrad[:] .= -vec(tmp2))
-    dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
   end
   return
 end
@@ -438,10 +444,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         vec(copy(out_))
       end
     end
+
+    # Grab values from `_dy` before `back` in case mutated
+    dy !== nothing && (dy[:] .= vec(_dy))
+
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= -vec(tmp2))
-    dy !== nothing && (dy[:] .= vec(_dy))
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
@@ -452,9 +461,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         vec(f(u, p, t, W))
       end
     end
+
+    # Grab values from `_dy` before `back` in case mutated
+    dy !== nothing && (dy[:] .= vec(_dy))
+
     tmp1, tmp2 = back(λ)
     tmp1 !== nothing && (dλ[:] .= vec(tmp1))
-    dy !== nothing && (dy[:] .= vec(_dy))
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= -vec(tmp2))
   end
   return
