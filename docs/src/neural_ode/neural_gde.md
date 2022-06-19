@@ -147,7 +147,7 @@ train()
 
 ## Load the Required Packages
 
-```julia
+```@example graphneuralode
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
