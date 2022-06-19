@@ -281,7 +281,7 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
 
 We shall be using the standard categorical crossentropy loss function which is used for multiclass classification tasks.
 
-```julia
+```@example graphneuralode
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
 
 function loss(x, y, mask, model, ps, st)
