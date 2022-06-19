@@ -82,14 +82,7 @@ diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
 # make NeuralODE work with Lux.Chain
 # remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
 initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
-function initialstates(rng::AbstractRNG, node::NeuralODE)
-    if  :layers ∈ propertynames(node.model)
-        layers = node.model.layers
-        return NamedTuple{keys(layers)}(initialstates.(rng, values(layers)))
-    else
-        return initialstates(node.model, rng)
-    end
-end
+initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
@@ -250,18 +243,6 @@ function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) w
     return dropdims(gpu(x); dims=3)
 end
 diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
-
-# make NeuralODE work with Lux.Chain
-# remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
-initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
-function initialstates(rng::AbstractRNG, node::NeuralODE)
-    if  :layers ∈ propertynames(node.model)
-        layers = node.model.layers
-        return NamedTuple{keys(layers)}(initialstates.(rng, values(layers)))
-    else
-        return initialstates(node.model, rng)
-    end
-end
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
