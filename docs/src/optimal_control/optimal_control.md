@@ -35,7 +35,7 @@ form for ``u`` and optimize the equation with respect to this loss. Note that we
 will first reduce control cost (the last term) by 10x in order to bump the network out
 of a local minimum. This looks like:
 
-```julia
+```@example neuraloptimalcontrol
 using Lux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots, Statistics, Random
 rng = Random.default_rng()
 tspan = (0.0f0,8.0f0)
@@ -83,7 +83,7 @@ res2 = Optimization.solve(optprob2,
 Now that the system is in a better behaved part of parameter space, we return to
 the original loss function to finish the optimization:
 
-```julia
+```@example neuraloptimalcontrol
 function loss_adjoint(θ)
   x = predict_adjoint(θ)
   mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])

@@ -9,7 +9,7 @@ We will assume that we know the dynamics of the second equation
 on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
-```julia
+```@example udeneuralcontrol
 using Lux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
@@ -64,7 +64,7 @@ loss_univ(θ) = sum(abs2, predict_univ(θ)[2,:] .- 1)
 l = loss_univ(θ)
 ```
 
-```julia
+```@example udeneuralcontrol
 list_plots = []
 iter = 0
 callback = function (θ, l)
@@ -84,7 +84,7 @@ callback = function (θ, l)
 end
 ```
 
-```julia
+```@example udeneuralcontrol
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
