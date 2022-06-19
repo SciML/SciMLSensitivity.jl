@@ -4,7 +4,7 @@ This tutorial has been adapted from [here](https://github.com/CarloLucibello/Gra
 
 In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
 
-```julia
+```@example graphneuralode_cp
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
