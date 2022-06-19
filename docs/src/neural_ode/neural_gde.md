@@ -167,7 +167,7 @@ device = CUDA.functional() ? gpu : cpu
 
 The dataset is available in the desired format in the `MLDatasets` repository. We shall download the dataset from there.
 
-```julia
+```@example graphneuralode
 dataset = Cora()
 ```
 
