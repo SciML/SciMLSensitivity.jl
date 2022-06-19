@@ -245,7 +245,7 @@ end
 
 Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and the a `Dense` layer to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
 
-```julia
+```@example graphneuralode
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
     return dropdims(gpu(x); dims=3)
 end
