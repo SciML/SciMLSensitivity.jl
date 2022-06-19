@@ -619,7 +619,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 
   int_u0, int_p = adjoint_sensitivities(fwd_sol,Tsit5(),(x, params, t)->cost(x,params), nothing, sensealg=InterpolatingAdjoint())
 
-  @test isapprox(-backsolve_checkpointing_results[1:length(x0)], int_u0, rtol=1e-10)
+  @test isapprox(backsolve_checkpointing_results[1:length(x0)], int_u0, rtol=1e-10)
   @test isapprox(backsolve_checkpointing_results[(1:length(params)) .+ length(x0)], int_p', rtol=1e-10)
 end
 
@@ -648,7 +648,7 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
     sol_mm = solve(prob_mm, Rodas5(), reltol=1e-14, abstol=1e-14)
 
     ts = 0:0.01:1
-    dg(out,u,p,t,i) = out .= -1
+    dg(out,u,p,t,i) = out .= 1
     _, res = adjoint_sensitivities(sol_mm,alg,dg,ts,abstol=1e-14,reltol=1e-14,sensealg=QuadratureAdjoint())
     reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
     @test res' ≈ reference_sol rtol=1e-11
@@ -706,7 +706,7 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
       prob_singular_mm = ODEProblem(f,[1.0,0.0,0.0],(0.0,100),p)
       sol_singular_mm = solve(prob_singular_mm,Rodas5(autodiff=false),reltol=1e-12,abstol=1e-12)
       ts = [50, sol_singular_mm.t[end]]
-      dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = -1)
+      dg_singular(out,u,p,t,i) = (fill!(out, 0); out[end] = 1)
       _, res = adjoint_sensitivities(sol_singular_mm,alg,dg_singular,ts,abstol=1e-8,reltol=1e-8,sensealg=QuadratureAdjoint(),maxiters=Int(1e6))
       reference_sol = ForwardDiff.gradient(p->G(p, prob_singular_mm, ts, sol->sum(last, sol.u)), vec(p))
       @test res' ≈ reference_sol rtol = 1e-5
