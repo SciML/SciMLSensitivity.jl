@@ -299,7 +299,7 @@ end
 
 ### Setup Model
 We need to manually set up our mode with `Lux`, and convert the paramters to `ComponentArray` so that they can work well with sensitivity algorithms.
-```
+```@example graphneuralode
 rng = Random.default_rng()
 Random.seed!(rng, 0)
 
