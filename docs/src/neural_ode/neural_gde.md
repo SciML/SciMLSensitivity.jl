@@ -117,8 +117,8 @@ function train()
     Random.seed!(rng, 0)
 
     ps, st = Lux.setup(rng, model)
-    ps = ComponentArray(ps) |> gpu
-    st = st |> gpu
+    ps = ComponentArray(ps) |> device
+    st = st |> device
 
     ## Optimizer
     opt = Optimisers.ADAM(0.01f0)
@@ -285,8 +285,8 @@ rng = Random.default_rng()
 Random.seed!(rng, 0)
 
 ps, st = Lux.setup(rng, model)
-ps = ComponentArray(ps) |> gpu
-st = st |> gpu
+ps = ComponentArray(ps) |> device
+st = st |> device
 ```
 ### Optimizer
 
