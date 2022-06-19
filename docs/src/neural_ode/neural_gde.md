@@ -29,10 +29,11 @@ onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
 onecold(y) =  map(argmax,eachcol(y))
 X = g.ndata.features
 y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
-(; train_mask, val_mask, test_mask) = g.ndata
-ytrain = y[:,train_mask]
 
 Ã = normalized_adjacency(g, add_self_loops=true) |> device
+
+(; train_mask, val_mask, test_mask) = g.ndata
+ytrain = y[:,train_mask]
 
 # Model and Data Configuration
 nin = size(X, 1)
@@ -117,25 +118,29 @@ function eval_loss_accuracy(X, y, mask, model, ps, st)
 end
 
 # Training
-## Setup model 
-rng = Random.default_rng()
-Random.seed!(rng, 0)
+function train()
+    ## Setup model 
+    rng = Random.default_rng()
+    Random.seed!(rng, 0)
 
-ps, st = Lux.setup(rng, model)
-ps = ComponentArray(ps) |> gpu
-st = st |> gpu
+    ps, st = Lux.setup(rng, model)
+    ps = ComponentArray(ps) |> gpu
+    st = st |> gpu
 
-## Optimizer
-opt = Optimisers.ADAM(0.01f0)
-st_opt = Optimisers.setup(opt,ps)
+    ## Optimizer
+    opt = Optimisers.ADAM(0.01f0)
+    st_opt = Optimisers.setup(opt,ps)
 
-## Training Loop
-for _ in 1:epochs
-    (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
-    gs = back((one(l), nothing))[1]
-    st_opt, ps = Optimisers.update(st_opt, ps, gs)
-    @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
+    ## Training Loop
+    for _ in 1:epochs
+        (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
+        gs = back((one(l), nothing))[1]
+        st_opt, ps = Optimisers.update(st_opt, ps, gs)
+        @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
+    end
 end
+
+train()
 ```
 
 # Step by Step Explanation
@@ -160,7 +165,7 @@ device = CUDA.functional() ? gpu : cpu
 
 ## Load the Dataset
 
-The dataset is available in the desired format in the GraphNeuralNetworks repository. We shall download the dataset from there.
+The dataset is available in the desired format in the `MLDatasets` repository. We shall download the dataset from there.
 
 ```julia
 dataset = Cora()
@@ -178,9 +183,15 @@ onecold(y) =  map(argmax,eachcol(y))
 X = g.ndata.features
 y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
 (; train_mask, val_mask, test_mask) = g.ndata
-ytrain = y[:,train_mask]
 
 Ã = normalized_adjacency(g, add_self_loops=true) |> device
+```
+### Training Data
+
+GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion. 
+```julia
+(; train_mask, val_mask, test_mask) = g.ndata
+ytrain = y[:,train_mask]
 ```
 
 ## Model and Data Configuration
@@ -196,22 +207,36 @@ epochs = 20
 
 ## Neural Graph Ordinary Differential Equations
 
-Let us now define the final model. We will use a single layer GNN for approximating the gradients for the neural ODE. We use two additional `GCNConv` layers, one to project the data to a latent space and the other to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
+Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and the a `Dense` layer to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
 
 ```julia
-diffeqarray_to_array(x) = reshape(cpu(x), size(x)[1:2])
+function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
+    return dropdims(gpu(x); dims=3)
+end
+diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
 
-node = NeuralODE(
-    GCNConv(adj_mat, hidden=>hidden),
-    (0.f0, 1.f0), Tsit5(), save_everystep = false,
-    reltol = 1e-3, abstol = 1e-3, save_start = false
-)
+# make NeuralODE work with Lux.Chain
+# remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
+initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
+function initialstates(rng::AbstractRNG, node::NeuralODE)
+    if  :layers ∈ propertynames(node.model)
+        layers = node.model.layers
+        return NamedTuple{keys(layers)}(initialstates.(rng, values(layers)))
+    else
+        return initialstates(node.model, rng)
+    end
+end
 
-model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
-              Flux.Dropout(0.5),
+gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
+            ExplicitGCNConv(Ã, nhidden => nhidden, relu))
+
+node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+
+model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,
-              diffeqarray_to_array,
-              GCNConv(adj_mat, hidden=>target_catg))
+              diffeqsol_to_array,
+              Dense(nhidden, nout))
 ```
 
 ## Training Configuration
@@ -221,40 +246,38 @@ model = Flux.Chain(GCNConv(adj_mat, num_features=>hidden, relu),
 We shall be using the standard categorical crossentropy loss function which is used for multiclass classification tasks.
 
 ```julia
-loss(x, y) = logitcrossentropy(model(x), y)
-accuracy(x, y) = mean(onecold(model(x)) .== onecold(y))
+logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
+
+function loss(x, y, mask, model, ps, st)
+    ŷ, st = model(x, ps, st)
+    return logitcrossentropy(ŷ[:,mask], y), st
+end
+
+function eval_loss_accuracy(X, y, mask, model, ps, st)
+    ŷ, _ = model(X, ps, st)
+    l = logitcrossentropy(ŷ[:,mask], y[:,mask])
+    acc = mean(onecold(ŷ[:,mask]) .== onecold(y[:,mask]))
+    return (loss = round(l, digits=4), acc = round(acc*100, digits=2))
+end
 ```
 
-### Model Parameters
-
-Now we extract the model parameters which we want to learn.
-
-```julia
-ps = Flux.params(model, node.p);
+### Setup Model
+We need to manually set up our mode with `Lux`, and convert the paramters to `ComponentArray` so that they can work well with sensitivity algorithms.
 ```
+rng = Random.default_rng()
+Random.seed!(rng, 0)
 
-### Training Data
-
-GNNs operate on an entire graph, so we can't do any sort of minibatching here. We need to pass the entire data in a single pass. So our dataset is an array with a single tuple.
-
-```julia
-train_data = [(train_X, train_y)]
+ps, st = Lux.setup(rng, model)
+ps = ComponentArray(ps) |> gpu
+st = st |> gpu
 ```
-
 ### Optimizer
 
 For this task we will be using the `ADAM` optimizer with a learning rate of `0.01`.
 
 ```julia
-opt = ADAM(0.01)
-```
-
-### Callback Function
-
-We also define a utility function for printing the accuracy of the model over time.
-
-```julia
-evalcb() = @show(accuracy(train_X, train_y))
+opt = Optimisers.ADAM(0.01f0)
+st_opt = Optimisers.setup(opt,ps)
 ```
 
 ## Training Loop
@@ -262,52 +285,35 @@ evalcb() = @show(accuracy(train_X, train_y))
 Finally, with the configuration ready and all the utilities defined we can use the `Flux.train!` function to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
 
 ```julia
-for i = 1:epochs
-    Flux.train!(loss, ps, train_data, opt, callback=throttle(evalcb, 10))
+for _ in 1:epochs
+    (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
+    gs = back((one(l), nothing))[1]
+    st_opt, ps = Optimisers.update(st_opt, ps, gs)
+    @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
 end
 ```
 
 ## Expected Output
 
 ```julia
-accuracy(train_X, train_y) = 0.12370753323485968
-accuracy(train_X, train_y) = 0.11632200886262925
-accuracy(train_X, train_y) = 0.1189069423929099
-accuracy(train_X, train_y) = 0.13404726735598227
-accuracy(train_X, train_y) = 0.15620384047267355
-accuracy(train_X, train_y) = 0.1776218611521418
-accuracy(train_X, train_y) = 0.19793205317577547
-accuracy(train_X, train_y) = 0.21122599704579026
-accuracy(train_X, train_y) = 0.22673559822747416
-accuracy(train_X, train_y) = 0.2429837518463811
-accuracy(train_X, train_y) = 0.25406203840472674
-accuracy(train_X, train_y) = 0.26809453471196454
-accuracy(train_X, train_y) = 0.2869276218611521
-accuracy(train_X, train_y) = 0.2961595273264402
-accuracy(train_X, train_y) = 0.30797636632200887
-accuracy(train_X, train_y) = 0.31831610044313147
-accuracy(train_X, train_y) = 0.3257016248153619
-accuracy(train_X, train_y) = 0.3378877400295421
-accuracy(train_X, train_y) = 0.3500738552437223
-accuracy(train_X, train_y) = 0.3629985228951256
-accuracy(train_X, train_y) = 0.37259970457902514
-accuracy(train_X, train_y) = 0.3777695716395864
-accuracy(train_X, train_y) = 0.3895864106351551
-accuracy(train_X, train_y) = 0.396602658788774
-accuracy(train_X, train_y) = 0.4010339734121123
-accuracy(train_X, train_y) = 0.40472673559822747
-accuracy(train_X, train_y) = 0.41285081240768096
-accuracy(train_X, train_y) = 0.422821270310192
-accuracy(train_X, train_y) = 0.43057607090103395
-accuracy(train_X, train_y) = 0.43833087149187594
-accuracy(train_X, train_y) = 0.44645494830132937
-accuracy(train_X, train_y) = 0.4538404726735598
-accuracy(train_X, train_y) = 0.45901033973412114
-accuracy(train_X, train_y) = 0.4630723781388479
-accuracy(train_X, train_y) = 0.46971935007385524
-accuracy(train_X, train_y) = 0.474519940915805
-accuracy(train_X, train_y) = 0.47858197932053176
-accuracy(train_X, train_y) = 0.4815361890694239
-accuracy(train_X, train_y) = 0.4804283604135894
-accuracy(train_X, train_y) = 0.4848596750369276
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.9064f0, acc = 27.2)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.8548f0, acc = 39.0)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.7838f0, acc = 43.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.7028f0, acc = 46.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.6162f0, acc = 53.8)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.5237f0, acc = 59.0)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.4241f0, acc = 63.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.3253f0, acc = 66.6)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.2339f0, acc = 69.6)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.1489f0, acc = 72.0)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.0682f0, acc = 74.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.995f0, acc = 75.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.9304f0, acc = 76.2)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8787f0, acc = 76.0)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8413f0, acc = 76.4)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8195f0, acc = 76.8)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8076f0, acc = 77.2)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8022f0, acc = 77.0)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8046f0, acc = 77.2)
+eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8182f0, acc = 77.6)
 ```
