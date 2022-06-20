@@ -180,6 +180,7 @@ function (NS::NILSASSensitivityFunction)(du,u,p,t)
     λ,_,_,dλ,dgrad,dy = split_states(du,u,t,NS,j)
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
     dλ .*= -1
+    dgrad .*= -1
 
     if j==1
       # j = 1 is the inhomogenous adjoint solution
