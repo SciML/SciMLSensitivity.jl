@@ -333,9 +333,8 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
 
   # account for implicit events
 
-  dλ .= dλ-integrand.λ
+  @. dλ = -dλ-integrand.λ
   vecjacobian!(dλ, integrand.y, dλ, integrand.p, t, fakeS; dgrad=dgrad)
-  dgrad .*= -one(eltype(dgrad))
   res .-= dgrad
   return integrand
 end
