@@ -46,7 +46,7 @@ callback = function (p,l...;doplot=false)
   return false
 end
 
-callback(p,loss_dde(p))
+callback(p,loss_dde(p)...)
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
@@ -67,7 +67,7 @@ callback = function (p,l...;doplot=false)
   return false
 end
 
-callback(p,loss_dde(p))
+callback(p,loss_dde(p)...)
 ```
 
 We use `Optimization.solve` to optimize the parameters for our loss function:

@@ -47,7 +47,7 @@ loss([0.8])
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, [0.8])
-@time res = Optimization.solve(optprob, PolyOpt(), [0.8])
+@time res = Optimization.solve(optprob, PolyOpt(), maxiters = 300)
 @show res.u # [0.866554105436901]
 ```
 
