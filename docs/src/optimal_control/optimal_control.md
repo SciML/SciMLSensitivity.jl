@@ -99,7 +99,7 @@ the original loss function to finish the optimization:
 ```@example neuraloptimalcontrol
 function loss_adjoint(θ)
   x = predict_adjoint(θ)
-  mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])
+  mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(re(θ)([t])) for t in ts])
 end
 optf3 = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
