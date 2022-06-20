@@ -7,7 +7,7 @@ problem in order to optimize the friction that's required to match
 data. Assume we have data for the ball's height after 15 seconds. Let's
 first start by implementing the ODE:
 
-```julia
+```@example bouncing_ball
 using Optimization, OptimizationPolyalgorithms, DifferentialEquations
 
 function f(du,u,p,t)
@@ -36,7 +36,7 @@ coefficient to find the value so that the predicted height of the ball
 at the endpoint is 20. We do this by minimizing a loss function against
 the value 20:
 
-```julia
+```@example bouncing_ball
 function loss(θ)
   sol = solve(prob,Tsit5(),p=[9.8,θ[1]],callback=callback)
   target = 20.0
