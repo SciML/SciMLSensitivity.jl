@@ -5,7 +5,8 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```@example dde
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms
+using DifferentialEquations, Optimization, DiffEqSensitivity,
+      OptimizationPolyalgorithms
 
 
 # Define the same LV equation, but including a delay parameter
