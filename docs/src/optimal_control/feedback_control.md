@@ -10,7 +10,8 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```@example udeneuralcontrol
-using Flux, Optimization, OptimizationPolyalgorithms, OptimizatonOptimJL, DifferentialEquations, Plots, Random
+using Flux, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
+      DiffEqSensitivity, Zygote, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
 u0 = 1.1f0
