@@ -115,7 +115,7 @@ Now let's see what we received:
 l = loss_adjoint(res3.u)
 callback(res3.u,l)
 p = plot(solve(remake(prob,p=res3.u),Tsit5(),saveat=0.01),ylim=(-6,6),lw=3)
-plot!(p,ts,[first(ann([t],res3.u)) for t in ts],label="u(t)",lw=3)
+plot!(p,ts,[first(re(res3.u)([t])) for t in ts],label="u(t)",lw=3)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81859169-db65b280-9532-11ea-8394-dbb5efcd4036.png)
