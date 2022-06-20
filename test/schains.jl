@@ -54,7 +54,7 @@ l = loss_neuralode(res.minimizer)
 @test l < 4.0
 
 g1 = Zygote.gradient((u, p)->Array(solve(prob_nn,Tsit5();u0=u,p=p,saveat=tsteps,sensealg=QuadratureAdjoint())), u0, p_nn)
-g2 = Zygote.gradient((u, p)->Array(solve(prob_nn,Tsit5();u0=u,p=p,saveat=tsteps,sensealg=InterpolatingAdjoint())), u0, p_nn)
+g2 = Zygote.gradient((u, p)->Array(solve(prob_nn,Tsit5();u0=u,p=p,saveat=tsteps,sensealg=ForwardDiffSensitivity())), u0, p_nn)
 
 @test g1[1] ≈ g[2] rtol=1e-6
 @test g2[1] ≈ g[2] rtol=1e-6
