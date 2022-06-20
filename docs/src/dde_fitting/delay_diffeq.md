@@ -59,7 +59,7 @@ reverse-mode to handle the delay differential equation.
 We define a callback to display the solution at the current parameters for each step of the training:
 
 ```@example dde
-#using Plots
+using Plots
 callback = function (p,l...;doplot=false)
   display(loss_dde(p))
   doplot && display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
