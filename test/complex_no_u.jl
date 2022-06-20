@@ -3,7 +3,7 @@ nn = Chain(Dense(1,16),Dense(16,16,tanh),Dense(16,2))
 initial,re = Flux.destructure(nn)
 
 function ode2!(u, p, t)
-    f1, f2 = re(p)([t])
+    f1, f2 = re(p)([t]) .+ im
     [-f1^2; f2]
 end
 
