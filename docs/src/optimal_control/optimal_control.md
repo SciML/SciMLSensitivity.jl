@@ -67,7 +67,7 @@ callback = function (θ,l; doplot=false)
 
   if doplot
     p = plot(solve(remake(prob,p=θ),Tsit5(),saveat=0.01),ylim=(-6,6),lw=3)
-    plot!(p,ts,[first(ann([t],θ)) for t in ts],label="u(t)",lw=3)
+    plot!(p,ts,[first(re(θ)([t])) for t in ts],label="u(t)",lw=3)
     display(p)
   end
 
