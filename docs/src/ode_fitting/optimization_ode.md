@@ -6,7 +6,8 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
+      DiffEqSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -71,7 +72,8 @@ more details, [see the DifferentialEquations.jl documentation](http://docs.julia
 ```
 
 ```@example optode
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
+      DiffEqSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
