@@ -58,7 +58,7 @@ function predict_adjoint(θ)
 end
 function loss_adjoint(θ)
   x = predict_adjoint(θ)
-  mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(ann([t],θ)) for t in ts])/10
+  mean(abs2,4.0 .- x[1,:]) + 2mean(abs2,x[2,:]) + mean(abs2,[first(re(θ)([t])) for t in ts])/10
 end
 
 l = loss_adjoint(θ)
