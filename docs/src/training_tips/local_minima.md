@@ -29,9 +29,8 @@ robustness of the fit. Let's start with the same neural ODE example we've used
 before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
-```julia
-using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationFlux,
-      OptimizationOptimJL, Plots, Random
+```@example iterativefit
+using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationOptimJL, Plots, Random
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -52,6 +51,7 @@ dudt2 = Lux.Chain(ActivationFunction(x -> x.^3),
                   Lux.Dense(16, 2))
 
 pinit, st = Lux.setup(rng, dudt2)
+pinit = Lux.ComponentArray(pinit)
 prob_neuralode = NeuralODE(dudt2, tspan, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
 
 function predict_neuralode(p)
@@ -83,7 +83,7 @@ end
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
+optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode = Optimization.solve(optprob,
                                       ADAM(0.05), callback = callback,
                                       maxiters = 300)
@@ -102,13 +102,13 @@ stages. Strategy (3) seems to be more robust, so this is what will be demonstrat
 
 Let's start by reducing the timespan to `(0,1.5)`:
 
-```julia
-prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
+```@example iterativefit
+prob_neuralode = NeuralODE(dudt2, (0.0f0,1.5f0), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
+optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode2 = Optimization.solve(optprob,
                                       ADAM(0.05), callback = callback,
                                       maxiters = 300)
@@ -121,8 +121,8 @@ callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
 This fits beautifully. Now let's grow the timespan and utilize the parameters
 from our `(0,1.5)` fit as the initial condition to our next fit:
 
-```julia
-prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
+```@example iterativefit
+prob_neuralode = NeuralODE(dudt2, (0.0f0,3.0f0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
 result_neuralode3 = Optimization.solve(optprob,
@@ -136,8 +136,8 @@ callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
 Once again a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
 
-```julia
-prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
+```@example iterativefit
+prob_neuralode = NeuralODE(dudt2, (0.0f0,5.0f0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
@@ -157,9 +157,9 @@ back and train only the parameters. Note: this strategy is demonstrated for the 
 time span and (0, 10), any longer and more iterations will be required. Alternatively,
 one could use a mix of (4) and (5), or breaking up the trajectory into chunks and just (5).
 
-```julia
+```@example resetic
 
-using Flux, Plots, DifferentialEquations
+using Flux, Plots, DifferentialEquations, DiffEqSensitivity
 
 
 #Starting example with tspan (0, 5)
@@ -196,7 +196,7 @@ function loss_n_ode()
       loss
 end
 
-function callback(;doplot=false) #callback function to observe training
+function callback(;doplot=true) #callback function to observe training
     pred = predict_n_ode()
     display(sum(abs2,ode_data .- pred))
     if doplot
@@ -209,20 +209,20 @@ function callback(;doplot=false) #callback function to observe training
 end
 predict_n_ode()
 loss_n_ode()
-callback(;doplot=true)
+callback()
 
 data = Iterators.repeated((), 1000)
 
 #Specify to flux to include both the initial conditions (IC) and parameters of the NODE to train
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-                    Flux.Optimise.ADAM(0.05), callback = callback)
+                    Flux.Optimise.ADAM(0.05), cb = callback)
 
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), callback = callback)
+            Flux.Optimise.ADAM(0.05), cb = callback)
 
-callback(;doplot=true)
+callback()
 
 #Now use the same technique for a longer tspan (0, 10)
 datasize = 30
@@ -244,15 +244,15 @@ prob = ODEProblem(dudt,u0,tspan)
 data = Iterators.repeated((), 1500)
 
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-                    Flux.Optimise.ADAM(0.05), callback = callback)
+                    Flux.Optimise.ADAM(0.05), cb = callback)
 
 
 
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), callback = callback)
+            Flux.Optimise.ADAM(0.05), cb = callback)
 
-callback(;doplot=true)
+callback()
 
 ```
 

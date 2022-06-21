@@ -6,8 +6,8 @@ this kind of study.
 
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
-```julia
-using Lux, DiffEqFlux, Optimizaton, OptimizationOptimJL, DifferentialEquations, Random
+```@example
+using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Random
 
 rng = Random.default_rng()
 function fitz(du,u,p,t)
@@ -33,7 +33,7 @@ p1,st1 = Lux.setup(rng, NN_1)
 
 # for xy term
 NN_2 = Lux.Chain(Lux.Dense(3, 16, tanh), Lux.Dense(16, 1))
-p2 = Lux.setup(rng, NN_2)
+p2, st2 = Lux.setup(rng, NN_2)
 scaling_factor = 1f0
 
 p1 = Lux.ComponentArray(p1)
@@ -41,12 +41,13 @@ p2 = Lux.ComponentArray(p2)
 
 p = Lux.ComponentArray(p1;p1)
 p = Lux.ComponentArray(p;p2)
+p = Lux.ComponentArray(p;scaling_factor)
 
 function dudt_(u,p,t)
     v,w = u
     z1 = NN_1([v,w], p.p1, st1)[1]
     z2 = NN_2([v,w,t], p.p2, st2)[1]
-    [z1[1],scaling_factor*z2[1]]
+    [z1[1],p.scaling_factor*z2[1]]
 end
 prob_nn = ODEProblem(dudt_,u0, tspan, p)
 sol_nn = solve(prob_nn, Tsit5(),saveat = sol.t)
@@ -78,18 +79,18 @@ optprob = Optimization.OptimizationProblem(optf, p)
 res1_uode = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 500)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
-res2_uode = Optimization.solve(optprob2, BFGS(), maxiters = 10000)
+res2_uode = Optimization.solve(optprob2, BFGS(), maxiters = 10000, callback = callback)
 ```
 
 The key is that `Optimization.solve` acts on a single parameter vector `p`.
 Thus what we do here is concatenate all of the parameters into a single
-vector `p = [p1;p2;scaling_factor]` and then train on this parameter
-vector. Whenever we need to evaluate the neural networks, we cut the
-vector and grab the portion that corresponds to the neural network.
-For example, the `p1` portion is `p[1:length(p1)]`, which is why the
-first neural network's evolution is written like `NN_1([v,w], p[1:length(p1)])`.
+ComponentVector `p` and then train on this parameter
+vector. Whenever we need to evaluate the neural networks, we dereference the
+vector and grab the key that corresponds to the neural network.
+For example, the `p1` portion is `p.p1`, which is why the
+first neural network's evolution is written like `NN_1([v,w], p.p1)`.
 
 This method is flexible to use with many optimizers and in fairly
-optimized ways. The allocations can be reduced by using `@view p[1:length(p1)]`.
+optimized ways.
 We can also see with the `scaling_factor` that we can grab parameters
 directly out of the vector and use them as needed.
