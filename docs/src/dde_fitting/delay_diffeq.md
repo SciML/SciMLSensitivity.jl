@@ -76,5 +76,5 @@ We use `Optimization.solve` to optimize the parameters for our loss function:
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), p, maxiters = 300, callback=callback)
+result_dde = Optimization.solve(optprob, PolyOpt(), callback=callback)
 ```

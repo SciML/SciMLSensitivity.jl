@@ -96,7 +96,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem,SDEProblem},
     has_cb = false
   end
   default_sensealg = automatic_sensealg_choice(prob,u0,p,verbose)
-  if has_cb
+  if has_cb && typeof(default_sensealg) <: AbstractAdjointSensitivityAlgorithm
     default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
   end
   DiffEqBase._concrete_solve_adjoint(prob,alg,default_sensealg,u0,p,originator::SciMLBase.ADOriginator,args...;verbose,kwargs...)
