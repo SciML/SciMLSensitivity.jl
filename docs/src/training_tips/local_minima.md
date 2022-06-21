@@ -104,7 +104,7 @@ stages. Strategy (3) seems to be more robust, so this is what will be demonstrat
 Let's start by reducing the timespan to `(0,1.5)`:
 
 ```@example iterativefit
-prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
+prob_neuralode = NeuralODE(dudt2, (0.0f0,1.5f0), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
@@ -124,7 +124,7 @@ This fits beautifully. Now let's grow the timespan and utilize the parameters
 from our `(0,1.5)` fit as the initial condition to our next fit:
 
 ```@example iterativefit
-prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
+prob_neuralode = NeuralODE(dudt2, (0.0f0,3.0f0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
 result_neuralode3 = Optimization.solve(optprob,
@@ -140,7 +140,7 @@ Once again a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
 
 ```@example iterativefit
-prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
+prob_neuralode = NeuralODE(dudt2, (0.0f0,5.0f0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
