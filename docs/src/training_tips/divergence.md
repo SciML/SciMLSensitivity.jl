@@ -27,8 +27,8 @@ end
 
 A full example making use of this trick is:
 
-```julia
-using DifferentialEquations, Optimization, OptimizationOptimJL, Plots
+```@example divergence
+using DifferentialEquations, DiffEqSensitivity, Optimization, OptimizationFlux, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u
@@ -74,7 +74,9 @@ res = Optimization.solve(optprob,ADAM(), maxiters = 1000)
 # res = Optimization.solve(optprob,BFGS(), maxiters = 1000) ### errors!
 
 #try Newton method of optimization
-res = Optimization.solve(optprob,Newton(), Optimization.AutoForwardDiff())
+optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoForwardDiff())
+optprob = Optimization.OptimizationProblem(optf, pinit)
+res = Optimization.solve(optprob,Newton(), maxiters=1000)
 ```
 
 You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call with Optim's optimizers which happens because
