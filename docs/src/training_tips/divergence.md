@@ -27,8 +27,8 @@ end
 
 A full example making use of this trick is:
 
-```julia
-using DifferentialEquations, Optimization, OptimizationOptimJL, Plots
+```@example divergent
+using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u

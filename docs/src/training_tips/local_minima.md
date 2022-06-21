@@ -29,8 +29,9 @@ robustness of the fit. Let's start with the same neural ODE example we've used
 before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
-```julia
-using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationOptimJL, Plots, Random
+```@example growing
+using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationFlux,
+      OptimizationOptimJL, Plots, Random
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -39,7 +40,7 @@ tspan = (0.0f0, 5.0f0)
 tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODEfunc(du, u, p, t)
-    true_A = [-0.1 2.0; -2.0 -0.1]
+    true_A = Float32[-0.1 2.0; -2.0 -0.1]
     du .= ((u.^3)'true_A)'
 end
 
@@ -64,11 +65,11 @@ function loss_neuralode(p)
 end
 
 iter = 0
-callback = function (p, l, pred; doplot = true)
+callback = function (p, l, pred; doplot = false)
   global iter
   iter += 1
 
-  display(l)
+  println(l)
   if doplot
     # plot current prediction against data
     plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
@@ -88,7 +89,6 @@ result_neuralode = Optimization.solve(optprob,
                                       maxiters = 300)
 
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
-savefig("local_minima.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901710-f82ed400-958c-11ea-993f-118f5513d170.png)
@@ -102,7 +102,7 @@ stages. Strategy (3) seems to be more robust, so this is what will be demonstrat
 
 Let's start by reducing the timespan to `(0,1.5)`:
 
-```julia
+```@example growing2
 prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
 adtype = Optimization.AutoZygote()
@@ -122,7 +122,7 @@ savefig("shortplot1.png")
 This fits beautifully. Now let's grow the timespan and utilize the parameters
 from our `(0,1.5)` fit as the initial condition to our next fit:
 
-```julia
+```@example growing3
 prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
@@ -138,7 +138,7 @@ savefig("shortplot2.png")
 Once again a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
 
-```julia
+```@example growing4
 prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
