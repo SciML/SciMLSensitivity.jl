@@ -19,8 +19,8 @@ In the case of chaotic systems, the trajectories diverge with ``O(1)`` error]. T
 can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia.org/wiki/Lorenz_system) at
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
-```julia
-using OrdinaryDiffEq
+```@example chaosode
+using OrdinaryDiffEq, DiffEqSensitivity, Zygote
 
 function lorenz!(du, u, p, t)
   du[1] = 10 * (u[2] - u[1])
@@ -66,19 +66,19 @@ the long-time average quantities.
 
 The following `sensealg` choices exist
 
-- `ForwardLSS(;alpha=CosWindowing(),ADKwargs...)`: An implementation of the forward
-  [least square shadowing](https://arxiv.org/abs/1204.0159) method. For `alpha`,
-  one can choose between two different windowing options, `CosWindowing` (default)
-  and `Cos2Windowing`, and `alpha::Number` which corresponds to the weight of the
-  time dilation term in `ForwardLSS`.
-- `AdjointLSS(;alpha=10.0,ADKwargs...)`: An implementation of the adjoint-mode
-  [least square shadowing](https://arxiv.org/abs/1204.0159) method. `alpha`
-  controls the weight of the time dilation term in `AdjointLSS`.
-- `NILSS(nseg, nstep; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)), ADKwargs...)`:  
+- `ForwardLSS(;LSSregularizer=TimeDilation(10.0,0.0,0.0),g=nothing,ADKwargs...)`:
+  An implementation of the forward [least square shadowing](https://arxiv.org/abs/1204.0159) method.
+  For `LSSregularizer`, one can choose between two different windowing options,
+  `TimeDilation` (default) with weight `10.0` and `CosWindowing`, and `Cos2Windowing`.
+- `AdjointLSS(;LSSRegularizer=TimeDilation(10.0, 0.0, 0.0),g=nothing,ADKwargs...)`: An
+  implementation of the adjoint-mode [least square shadowing](https://arxiv.org/abs/1204.0159)
+  method. `10.0` controls the weight of the time dilation term in `AdjointLSS`.
+- `NILSS(nseg,nstep;nus=nothing,rng=Xorshifts.Xoroshiro128Plus(rand(UInt64)),g=nothing,ADKwargs...)`:  
   An implementation of the [non-intrusive least squares shadowing (NILSS)](https://arxiv.org/abs/1611.00880)
-  method. `nseg` is the number of segments. `nstep` is the number of steps per
-  segment.
-- `NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)), ADKwargs...)`:  
+  method. Here, `nseg` is the number of segments, `nstep` is the number of steps per
+  segment, and `nus` is the number of unstable Lyapunov exponents.
+- `NILSAS(nseg,nstep,M=nothing;rng =Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+          adjoint_sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()),g=nothing,ADKwargs...)`:  
   An implementation of the [non-intrusive least squares adjoint shadowing (NILSAS)](https://arxiv.org/abs/1801.08674)
   method. `nseg` is the number of segments. `nstep` is the number of steps per
   segment, `M >= nus + 1` has to be provided, where `nus` is the number of unstable
@@ -93,7 +93,7 @@ As an example, for the Lorenz system with `g(u,p,t) = u[3]`, i.e., the ``z`` coo
 as the instantaneous objective, we can use the direct interface by passing `ForwardLSS`
 as the `sensealg`:
 
-```julia
+```@example chaosode
 function lorenz!(du,u,p,t)
   du[1] = p[1]*(u[2]-u[1])
   du[2] = u[1]*(p[2]-u[3]) - u[2]
@@ -113,7 +113,7 @@ g(u,p,t) = u[end]
 
 function G(p)
   _prob = remake(prob_attractor,p=p)
-  _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01,sensealg=ForwardLSS(alpha=10),g=g)
+  _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01,sensealg=ForwardLSS(g=g))
   sum(getindex.(_sol.u,3))
 end
 dp1 = Zygote.gradient(p->G(p),p)
@@ -122,8 +122,8 @@ dp1 = Zygote.gradient(p->G(p),p)
 Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
-```julia
-lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
+```@example chaosode
+sol_attractor = solve(prob_attractor, Vern9(), abstol=1e-14, reltol=1e-14)
+lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(g=g))
 resfw = shadow_forward(lss_problem)
-@test res ≈ dp1[1] atol=1e-10
 ```
