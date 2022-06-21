@@ -547,14 +547,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     tmp1, tmp2 = back(λ)
     if tmp1 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[]
       throw(ZygoteVJPNothingError())
-    else
+    elseif tmp1 !== nothing
       (dλ[:] .= vec(tmp1))
     end
 
     if dgrad !== nothing 
       if tmp2 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[] 
         throw(ZygoteVJPNothingError())
-      else 
+      elseif tmp2 !== nothing
         (dgrad[:] .= vec(tmp2))
       end
     end
