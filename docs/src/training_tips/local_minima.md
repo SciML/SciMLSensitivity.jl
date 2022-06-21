@@ -30,7 +30,7 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example growing
-using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationFlux,
+using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationFlux,
       OptimizationOptimJL, Plots, Random
 
 rng = Random.default_rng()
@@ -102,7 +102,7 @@ stages. Strategy (3) seems to be more robust, so this is what will be demonstrat
 
 Let's start by reducing the timespan to `(0,1.5)`:
 
-```@example growing2
+```@example growing
 prob_neuralode = NeuralODE(dudt2, (0.0,1.5), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
 
 adtype = Optimization.AutoZygote()
@@ -114,7 +114,6 @@ result_neuralode2 = Optimization.solve(optprob,
                                       maxiters = 300)
 
 callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
-savefig("shortplot1.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901707-f82ed400-958c-11ea-9e8e-0efb10d9b05c.png)
@@ -122,7 +121,7 @@ savefig("shortplot1.png")
 This fits beautifully. Now let's grow the timespan and utilize the parameters
 from our `(0,1.5)` fit as the initial condition to our next fit:
 
-```@example growing3
+```@example growing
 prob_neuralode = NeuralODE(dudt2, (0.0,3.0), Tsit5(), saveat = tsteps[tsteps .<= 3.0])
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
@@ -130,7 +129,6 @@ result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
                                         callback = callback)
 callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
-savefig("shortplot2.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901706-f7963d80-958c-11ea-856a-7f85af8695b8.png)
@@ -138,14 +136,13 @@ savefig("shortplot2.png")
 Once again a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
 
-```@example growing4
+```@example growing
 prob_neuralode = NeuralODE(dudt2, (0.0,5.0), Tsit5(), saveat = tsteps)
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
                                       callback = callback)
 callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
-savefig("fullplot.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901711-f82ed400-958c-11ea-9ba2-2b1f213b865a.png)
