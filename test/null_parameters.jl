@@ -2,6 +2,9 @@ import OrdinaryDiffEq: ODEProblem, solve, Tsit5
 import Zygote
 using DiffEqSensitivity, Test
 
+# There are no parameters, so required
+DiffEqSensitivity.allow_zygotevjp_nothing(true)
+
 dynamics = (x, _p, _t) -> x
 
 function loss(params)
@@ -97,3 +100,5 @@ end
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss9, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss10, zeros(123))[1] == zeros(123)
+
+DiffEqSensitivity.allow_zygotevjp_nothing(false)

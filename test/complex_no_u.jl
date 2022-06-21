@@ -2,6 +2,9 @@ using OrdinaryDiffEq, DiffEqSensitivity, LinearAlgebra, Optimization, Optimizati
 nn = Chain(Dense(1,16),Dense(16,16,tanh),Dense(16,2))
 initial,re = Flux.destructure(nn)
 
+# There are no state used in the ODE, so required
+DiffEqSensitivity.allow_zygotevjp_nothing(true)
+
 function ode2!(u, p, t)
     f1, f2 = re(p)([t]) .+ im
     [-f1^2; f2]
@@ -18,3 +21,5 @@ end
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, initial)
 res = Optimization.solve(optprob, ADAM(0.1), maxiters = 100)
+
+DiffEqSensitivity.allow_zygotevjp_nothing(false)

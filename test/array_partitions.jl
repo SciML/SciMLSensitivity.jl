@@ -63,6 +63,9 @@ sol = solve(
     p = zeros()
 )
 
+# There are no parameters, so required
+DiffEqSensitivity.allow_zygotevjp_nothing(true)
+
 g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), zero(x0)))
 bwd_sol = solve(
     ODEAdjointProblem(
@@ -74,3 +77,5 @@ bwd_sol = solve(
         [sol.t[end]],
     ),OrdinaryDiffEq.Tsit5()
 )
+
+DiffEqSensitivity.allow_zygotevjp_nothing(false)

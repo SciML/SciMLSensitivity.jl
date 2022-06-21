@@ -306,7 +306,7 @@ end
 const TRACKERVJP_NOTHING_MESSAGE = 
 """
 `nothing` returned from a Tracker vector-Jacobian product (vjp) calculation.
-This indicates that your function `f` is not a function of `p`, i.e. that
+This indicates that your function `f` is not a function of `p` or `u`, i.e. that
 the derivative is constant zero. In many cases this is due to an error in
 the model definition, for example accidentally using a global parameter
 instead of the one in the model (`f(u,p,t)= _p .* u`).
@@ -470,7 +470,7 @@ end
 const ZYGOTEVJP_NOTHING_MESSAGE = 
 """
 `nothing` returned from a Zygote vector-Jacobian product (vjp) calculation.
-This indicates that your function `f` is not a function of `p`, i.e. that
+This indicates that your function `f` is not a function of `p` or `u`, i.e. that
 the derivative is constant zero. In many cases this is due to an error in
 the model definition, for example accidentally using a global parameter
 instead of the one in the model (`f(u,p,t)= _p .* u`).
