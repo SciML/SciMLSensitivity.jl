@@ -236,22 +236,22 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
           # user did sol[end] on only_end
           if typeof(_save_idxs) <: Number
             x = vec(Δ[1])
-            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
+            _out[_save_idxs] .= adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
-            vec(_out) .= .-adapt(outtype,vec(Δ[1]))
+            vec(_out) .= adapt(outtype,vec(Δ[1]))
           else
-            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,vec(Δ[1])[_save_idxs])
+            vec(@view(_out[_save_idxs])) .= adapt(outtype,vec(Δ[1])[_save_idxs])
         end
         else
           Δ isa NoTangent && return
           if typeof(_save_idxs) <: Number
             x = vec(Δ)
-            _out[_save_idxs] .= .-adapt(outtype,@view(x[_save_idxs]))
+            _out[_save_idxs] .= adapt(outtype,@view(x[_save_idxs]))
           elseif _save_idxs isa Colon
-            vec(_out) .= .-adapt(outtype,vec(Δ))
+            vec(_out) .= adapt(outtype,vec(Δ))
           else
             x = vec(Δ)
-            vec(@view(_out[_save_idxs])) .= .-adapt(outtype,@view(x[_save_idxs]))
+            vec(@view(_out[_save_idxs])) .= adapt(outtype,@view(x[_save_idxs]))
           end
         end
       else
@@ -259,19 +259,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
           x = Δ[i]
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = .-@view(x[_save_idxs])
+            _out[_save_idxs] = @view(x[_save_idxs])
           elseif _save_idxs isa Colon
-            vec(_out) .= .-vec(x)
+            vec(_out) .= vec(x)
           else
-            vec(@view(_out[_save_idxs])) .= .-vec(@view(x[_save_idxs]))
+            vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
           end
         else
           if typeof(_save_idxs) <: Number
-            _out[_save_idxs] = .-adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+            _out[_save_idxs] = adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
           elseif _save_idxs isa Colon
-            vec(_out) .= .-vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+            vec(_out) .= vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           else
-            vec(@view(_out[_save_idxs])) .= .-vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+            vec(@view(_out[_save_idxs])) .= vec(adapt(outtype,reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
           end
         end
       end
@@ -600,7 +600,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
         end
         ArrayInterfaceCore.restructure(u0,reduce(vcat,du0parts))
     end
-    
+
     if originator isa SciMLBase.TrackerOriginator || originator isa SciMLBase.ReverseDiffOriginator
       (NoTangent(),NoTangent(),unthunk(du0),unthunk(dp),NoTangent(),ntuple(_->NoTangent(), length(args))...)
     else
@@ -878,19 +878,19 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     function df(_out, u, p, t, i)
       if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
         if typeof(_save_idxs) <: Number
-          _out[_save_idxs] = -Δ[i][_save_idxs]
+          _out[_save_idxs] = Δ[i][_save_idxs]
         elseif _save_idxs isa Colon
-          vec(_out) .= -vec(Δ[i])
+          vec(_out) .= vec(Δ[i])
         else
-          vec(@view(_out[_save_idxs])) .= -vec(Δ[i][_save_idxs])
+          vec(@view(_out[_save_idxs])) .= vec(Δ[i][_save_idxs])
         end
       else
         if typeof(_save_idxs) <: Number
-          _out[_save_idxs] = -adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
+          _out[_save_idxs] = adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[_save_idxs, i])
         elseif _save_idxs isa Colon
-          vec(_out) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+          vec(_out) .= vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
         else
-          vec(@view(_out[_save_idxs])) .= -vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
+          vec(@view(_out[_save_idxs])) .= vec(adapt(DiffEqBase.parameterless_type(u0),reshape(Δ, prod(size(Δ)[1:end-1]), size(Δ)[end])[:, i]))
         end
       end
     end

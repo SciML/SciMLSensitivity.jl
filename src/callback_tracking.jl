@@ -278,7 +278,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback,DiscreteCallback,
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
                               dgrad=dgrad, dy=dy)
 
-
+        dgrad!==nothing && (dgrad .*= -1)
         if cb isa Union{ContinuousCallback,VectorContinuousCallback}
           # second correction to correct for left limit
           @unpack Lu_left = correction

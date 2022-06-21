@@ -179,6 +179,7 @@ end
         @. dg_dp_val = dg_dp_val - vjp
         return dg_dp_val
     else
-        return -vjp
+        vjp .*= -1
+        return vjp
     end
 end

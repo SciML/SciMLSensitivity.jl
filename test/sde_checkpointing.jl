@@ -20,7 +20,7 @@ function g(u,p,t)
 end
 
 function dg!(out,u,p,t,i)
-  (out.=-u)
+  (out.=u)
 end
 
 p2 = [1.01,0.87]

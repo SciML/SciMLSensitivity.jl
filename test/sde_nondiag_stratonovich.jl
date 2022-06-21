@@ -20,7 +20,7 @@ function g(u,p,t)
 end
 
 function dg!(out,u,p,t,i)
-  (out.=-u)
+  (out.=u)
 end
 
 # non-diagonal noise
@@ -476,7 +476,7 @@ end
 
 
   @test adj_soloop[end][length(p)+length(u₀)+1:end] == soloop.u[1]
-  @test - adj_soloop[end][1:length(u₀)] == res_sde_u0
+  @test adj_soloop[end][1:length(u₀)] == res_sde_u0
   @test adj_soloop[end][length(u₀)+1:end-length(u₀)] == res_sde_p'
 
   adjprob = SDEAdjointProblem(sol,BacksolveAdjoint(autojacvec=ReverseDiffVJP(),noisemixing=true,checkpointing=true),dg!,tarray, nothing)
@@ -509,7 +509,7 @@ end
   adj_soloop = solve(adjproboop,EulerHeun(); dt=dtmix, tstops=soloop.t, adaptive=false)
 
 
-  @test - adj_soloop[end][1:length(u₀)] ≈ res_sde_u0  atol = 1e-14
+  @test adj_soloop[end][1:length(u₀)] ≈ res_sde_u0  atol = 1e-14
   @test adj_soloop[end][length(u₀)+1:end] ≈ res_sde_p' atol = 1e-14
 
   adjprob = SDEAdjointProblem(sol,InterpolatingAdjoint(autojacvec=ReverseDiffVJP(),noisemixing=true,checkpointing=true),dg!,tarray, nothing)
