@@ -113,7 +113,7 @@ g(u,p,t) = u[end]
 
 function G(p)
   _prob = remake(prob_attractor,p=p)
-  _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01,sensealg=ForwardLSS(alpha=10),g=g)
+  _sol = solve(_prob,Vern9(),abstol=1e-14,reltol=1e-14,saveat=0.01,sensealg=ForwardLSS(),g=g)
   sum(getindex.(_sol.u,3))
 end
 dp1 = Zygote.gradient(p->G(p),p)
@@ -123,6 +123,6 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
+lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(), g)
 resfw = shadow_forward(lss_problem)
 ```
