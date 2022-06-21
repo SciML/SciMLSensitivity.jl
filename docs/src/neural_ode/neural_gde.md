@@ -20,7 +20,7 @@ CUDA.allowscalar(false)
 device = CUDA.functional() ? gpu : cpu
 
 # Download the dataset
-dataset = Cora()
+dataset = Cora();
 
 # Preprocess the data and compute adjacency matrix
 classes = dataset.metadata["classes"]
@@ -165,7 +165,7 @@ device = CUDA.functional() ? gpu : cpu
 The dataset is available in the desired format in the `MLDatasets` repository. We shall download the dataset from there.
 
 ```@example graphneuralode
-dataset = Cora()
+dataset = Cora();
 ```
 
 ## Preprocessing the Data
