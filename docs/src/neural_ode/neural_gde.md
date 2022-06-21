@@ -313,28 +313,3 @@ for _ in 1:epochs
     @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
 end
 ```
-
-## Expected Output
-
-```julia
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.9064f0, acc = 27.2)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.8548f0, acc = 39.0)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.7838f0, acc = 43.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.7028f0, acc = 46.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.6162f0, acc = 53.8)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.5237f0, acc = 59.0)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.4241f0, acc = 63.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.3253f0, acc = 66.6)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.2339f0, acc = 69.6)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.1489f0, acc = 72.0)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 1.0682f0, acc = 74.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.995f0, acc = 75.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.9304f0, acc = 76.2)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8787f0, acc = 76.0)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8413f0, acc = 76.4)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8195f0, acc = 76.8)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8076f0, acc = 77.2)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8022f0, acc = 77.0)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8046f0, acc = 77.2)
-eval_loss_accuracy(X, y, val_mask, model, ps, st) = (loss = 0.8182f0, acc = 77.6)
-```
