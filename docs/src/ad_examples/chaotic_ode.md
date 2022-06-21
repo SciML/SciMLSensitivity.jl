@@ -19,8 +19,8 @@ In the case of chaotic systems, the trajectories diverge with ``O(1)`` error]. T
 can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia.org/wiki/Lorenz_system) at
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
-```julia
-using OrdinaryDiffEq
+```@example chaosode
+using OrdinaryDiffEq, DiffEqSensitivity, Zygote
 
 function lorenz!(du, u, p, t)
   du[1] = 10 * (u[2] - u[1])
@@ -93,7 +93,7 @@ As an example, for the Lorenz system with `g(u,p,t) = u[3]`, i.e., the ``z`` coo
 as the instantaneous objective, we can use the direct interface by passing `ForwardLSS`
 as the `sensealg`:
 
-```julia
+```@example chaosode
 function lorenz!(du,u,p,t)
   du[1] = p[1]*(u[2]-u[1])
   du[2] = u[1]*(p[2]-u[3]) - u[2]
@@ -122,8 +122,7 @@ dp1 = Zygote.gradient(p->G(p),p)
 Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
-```julia
+```@example chaosode
 lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(alpha=10), g)
 resfw = shadow_forward(lss_problem)
-@test res ≈ dp1[1] atol=1e-10
 ```
