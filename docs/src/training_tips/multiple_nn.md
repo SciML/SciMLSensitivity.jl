@@ -91,6 +91,6 @@ For example, the `p1` portion is `p.p1`, which is why the
 first neural network's evolution is written like `NN_1([v,w], p.p1)`.
 
 This method is flexible to use with many optimizers and in fairly
-optimized ways. The allocations can be reduced by using `@view p.p1`.
+optimized ways.
 We can also see with the `scaling_factor` that we can grab parameters
 directly out of the vector and use them as needed.
