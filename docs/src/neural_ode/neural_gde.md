@@ -42,13 +42,13 @@ nout = length(classes)
 epochs = 20
 
 # Define the graph neural network
-struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
-    Ã::AbstractMatrix  # nomalized_adjacency matrix
+struct ExplicitGCNConv{F1,F2,F3,F4} <: AbstractExplicitLayer
     in_chs::Int
     out_chs::Int
     activation::F1
-    init_weight::F2
-    init_bias::F3
+    init_Ã::F2  # nomalized_adjacency matrix
+    init_weight::F3
+    init_bias::F4
 end
 
 function Base.show(io::IO, l::ExplicitGCNConv)
@@ -62,14 +62,18 @@ function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
                 bias=d.init_bias(rng, d.out_chs, 1))
 end
 
+initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
+
+
 function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
                          init_weight=glorot_normal, init_bias=zeros32) 
-    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation, 
-                                                                                       init_weight, init_bias)
+    init_Ã = ()->copy(Ã)
+    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation, 
+                                                                                                       init_Ã, init_weight, init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
-    z = ps.weight * x * l.Ã
+    z = ps.weight * x * st.Ã
     return l.activation.(z .+ ps.bias), st
 end
 
