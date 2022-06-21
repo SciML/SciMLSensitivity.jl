@@ -43,13 +43,12 @@ rng = MersenneTwister(1234)
 m = 32
 n = 16
 Z = randn(rng, Float32, (n,m)) |> gpu
-𝒯 = 2.0
-Δτ = 0.1
+𝒯 = 2f0
+Δτ = 1f-1
 ca_init = [zeros(1) ; ones(m)] |> gpu
 
 function f(ca, Z, t)
   a = ca[2:end]
-
   a_unit = a / sum(a)
   w_unit = Z*a_unit
   Ka_unit = Z'*w_unit
@@ -59,7 +58,7 @@ function f(ca, Z, t)
 end
 
 function c(Z)
-  prob = ODEProblem(f, ca_init, (0.,𝒯), Z, saveat=Δτ)
+  prob = ODEProblem(f, ca_init, (0f0,𝒯), Z, saveat=Δτ)
   sol = solve(prob, Tsit5(), sensealg=BacksolveAdjoint(), saveat=Δτ)
   sum(last(sol.u))
 end
