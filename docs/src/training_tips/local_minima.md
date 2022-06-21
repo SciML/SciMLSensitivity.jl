@@ -30,7 +30,8 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```julia
-using Lux, DiffEqFlux, DifferentialEquations, Optimizaton, OptimizationOptimJL, Plots, Random
+using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationFlux,
+      OptimizationOptimJL, Plots, Random
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -39,7 +40,7 @@ tspan = (0.0f0, 5.0f0)
 tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODEfunc(du, u, p, t)
-    true_A = [-0.1 2.0; -2.0 -0.1]
+    true_A = Float32[-0.1 2.0; -2.0 -0.1]
     du .= ((u.^3)'true_A)'
 end
 
@@ -64,11 +65,11 @@ function loss_neuralode(p)
 end
 
 iter = 0
-callback = function (p, l, pred; doplot = true)
+callback = function (p, l, pred; doplot = false)
   global iter
   iter += 1
 
-  display(l)
+  println(l)
   if doplot
     # plot current prediction against data
     plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
@@ -88,7 +89,6 @@ result_neuralode = Optimization.solve(optprob,
                                       maxiters = 300)
 
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
-savefig("local_minima.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901710-f82ed400-958c-11ea-993f-118f5513d170.png)
@@ -114,7 +114,6 @@ result_neuralode2 = Optimization.solve(optprob,
                                       maxiters = 300)
 
 callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
-savefig("shortplot1.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901707-f82ed400-958c-11ea-9e8e-0efb10d9b05c.png)
@@ -130,7 +129,6 @@ result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
                                         callback = callback)
 callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
-savefig("shortplot2.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901706-f7963d80-958c-11ea-856a-7f85af8695b8.png)
@@ -145,7 +143,6 @@ result_neuralode4 = Optimization.solve(optprob,
                                       ADAM(0.01), maxiters = 300,
                                       callback = callback)
 callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
-savefig("fullplot.png")
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81901711-f82ed400-958c-11ea-9ba2-2b1f213b865a.png)
