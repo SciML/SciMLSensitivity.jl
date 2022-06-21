@@ -95,8 +95,6 @@ sol = predict_neuralode(res0.u)
 plot(tsteps,sol')
 N = length(sol)
 scatter!(tsteps,y[1:N])
-
-savefig("trained.png")
 ```
 
 ![](https://aws1.discourse-cdn.com/business5/uploads/julialang/original/3X/f/3/f3c2727af36ac20e114fe3c9798e567cc9d22b9e.png)

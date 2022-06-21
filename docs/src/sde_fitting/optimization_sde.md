@@ -14,8 +14,9 @@ Let's do the most common scenario: fitting data. Let's say our ecological system
 is a stochastic process. Each time we solve this equation we get a different
 solution, so we need a sensible data source.
 
-```julia
-using DiffEqFlux, DifferentialEquations, Plots
+```@example sde
+using DifferentialEquations, DiffEqSensitivity, Plots
+
 function lotka_volterra!(du,u,p,t)
   x,y = u
   α,β,γ,δ = p
@@ -44,7 +45,7 @@ Let's assume that we are observing the seasonal behavior of this system and have
 We can utilize this to get the seasonal means and variances. To simulate that
 scenario, we will generate 10,000 trajectories from the SDE to build our dataset:
 
-```julia
+```@example sde
 using Statistics
 ensembleprob = EnsembleProblem(prob)
 @time sol = solve(ensembleprob,SOSRI(),saveat=0.1,trajectories=10_000)
@@ -57,7 +58,7 @@ Thus our loss function will be to solve the SDE a bunch of times and compute
 moment equations and use these as our loss against the original series. We
 then plot the evolution of the means and variances to verify the fit. For example:
 
-```julia
+```@example sde
 function loss(p)
   tmp_prob = remake(prob,p=p)
   ensembleprob = EnsembleProblem(tmp_prob)
@@ -82,19 +83,13 @@ end
 
 We can then use `Optimization.solve` to fit the SDE:
 
-```julia
-using Optimization, OptimizationOptimJL
+```@example sde
+using Optimization, Zygote, OptimizationFlux
 pinit = [1.2,0.8,2.5,0.8,0.1,0.1]
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
 @time res = Optimization.solve(optprob,ADAM(0.05),callback=cb2,maxiters = 100)
-```
-
-The final print out was:
-
-```julia
-(p, l) = ([1.5242134195974462, 1.019859938499017, 2.9120928257869227, 0.9840408090733335, 0.29427123791721765, 0.3334393815923646], 1.7046719990657184)
 ```
 
 Notice that **both the parameters of the deterministic drift equations and the
@@ -123,8 +118,8 @@ please see [the Turing.jl Bayesian Differential Equations tutorial](https://gith
 In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
-```julia
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizationJL, Plots
+```@example sde
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationFlux, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -158,7 +153,7 @@ before. However, to speed up the training process, we will use a global counter
 so that way we only plot the current results every 10 iterations. This looks
 like:
 
-```julia
+```@example sde
 callback = function (p, l)
   display(l)
   remade_solution = solve(remake(prob_sde, p = p), SOSRI(), saveat = 0.1)
@@ -170,7 +165,7 @@ end
 
 Let's optimize
 
-```julia
+```@example sde
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_sde(x), adtype)
 
