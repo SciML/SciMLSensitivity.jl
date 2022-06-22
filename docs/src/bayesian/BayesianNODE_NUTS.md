@@ -10,7 +10,7 @@ For more details, please refer to [Bayesian Neural Ordinary Differential Equatio
 Before getting to the explanation, here's some code to start with. We will follow
 wil a full explanation of the definition and training process:
 
-```julia
+```@example bayes
 using DiffEqFlux, DifferentialEquations, Plots, AdvancedHMC, MCMCChains
 using JLD, StatsPlots
 
@@ -109,7 +109,7 @@ Contour Plots:
 
 ![](https://user-images.githubusercontent.com/23134958/102398114-defb7380-4004-11eb-835e-84f1519648dc.png)
 
-```julia
+```@example bayes
 ######################## CHAIN DIAGNOSIS PLOTS#########################
 samples = hcat(samples...)
 
@@ -140,7 +140,7 @@ Auto-Correlation Plot:
 
 #### Step 1: Get the data from the Spiral ODE example
 
-```julia
+```@example bayes2
 u0 = [2.0; 0.0]
 datasize = 40
 tspan = (0.0, 1)
@@ -160,7 +160,7 @@ ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 Note that this step potentially offers a lot of flexibility in the number of layers/ number of units in each layer. It may not necessarily be true that a 100 units
 architecture is better at prediction/forecasting than a 50 unit architecture. On the other hand, a complicated architecture can take a huge computational time without increasing performance.
 
-```julia
+```@example bayes2
 dudt2 = FastChain((x, p) -> x.^3,
                   FastDense(2, 50, tanh),
                   FastDense(50, 2))
@@ -170,7 +170,7 @@ prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 #### Step 3: Define the loss function for the Neural ODE.
 
-```julia
+```@example bayes2
 function predict_neuralode(p)
     Array(prob_neuralode(u0, p))
 end
@@ -193,7 +193,7 @@ Gaussian priors.
 
 The user can make several modifications to Step 4. The user can try different acceptance ratios, warmup samples and posterior samples. One can also use the Variational Inference (ADVI) framework, which doesn't work quite as well as NUTS. The SGLD (Stochastic Langevin Gradient Descent) sampler is seen to have a better performance than NUTS. Have a look at https://sebastiancallh.github.io/post/langevin/ for a quick introduction to SGLD.
 
-```julia
+```@example bayes2
 l(θ) = -sum(abs2, ode_data .- predict_neuralode(θ)) - sum(θ .* θ)
 
 
@@ -214,7 +214,7 @@ In addition, we use Nesterov Dual Averaging for the Step Size adaptation.
 
 We sample using 500 warmup samples and 500 posterior samples.
 
-```julia
+```@example bayes2
 
 integrator = Leapfrog(find_good_stepsize(h, Float64.(prob_neuralode.p)))
 
@@ -231,7 +231,7 @@ samples, stats = sample(h, prop, Float64.(prob_neuralode.p), 500, adaptor, 500; 
 
 A: Plot chain object and auto-correlation plot of the first 5 parameters.
 
-```julia
+```@example bayes2
 samples = hcat(samples...)
 
 samples_reduced = samples[1:5, :]
@@ -246,7 +246,7 @@ autocorplot(Chain_Spiral)
 ```
 
 B: Plot retrodicted data.
-```julia
+```@example bayes2
 
 ####################TIME SERIES PLOTS###################
 pl = scatter(tsteps, ode_data[1,:], color = :red, label = "Data: Var1", xlabel = "t", title = "Spiral Neural ODE")
