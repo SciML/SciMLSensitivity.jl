@@ -6,8 +6,8 @@ In the following example, explicit dosing times are given for a pharmacometric
 model and the universal differential equation is trained to uncover the missing
 dynamical equations.
 
-```julia
-using DiffEqFlux, DifferentialEquations, Plots
+```@example
+using DiffEqFlux, Flux, DifferentialEquations, Plots
 u0 = Float32[2.; 0.]
 datasize = 100
 tspan = (0.0f0,10.5f0)
@@ -64,7 +64,7 @@ cba()
 
 ps = Flux.params(p)
 data = Iterators.repeated((), 200)
-Flux.train!(loss_n_ode, ps, data, ADAM(0.05), callback = cba)
+Flux.train!(loss_n_ode, ps, data, ADAM(0.05), cb = cba)
 ```
 
 ![Hybrid Universal Differential Equation](https://user-images.githubusercontent.com/1814174/91687561-08fc5900-eb2e-11ea-9f26-6b794e1e1248.gif)

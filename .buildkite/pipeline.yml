@@ -4,7 +4,7 @@ steps:
       - JuliaCI/julia#v1:
           version: "1"
       - JuliaCI/julia-test#v1:
-          coverage: false
+          coverage: true
     agents:
       os: "linux"
       queue: "juliaecosystem"
@@ -20,7 +20,7 @@ steps:
       - JuliaCI/julia#v1:
           version: "1"
       - JuliaCI/julia-test#v1:
-          coverage: false
+          coverage: true
     agents:
       os: "linux"
       queue: "juliaecosystem"
@@ -36,7 +36,7 @@ steps:
       - JuliaCI/julia#v1:
           version: "1"
       - JuliaCI/julia-test#v1:
-          coverage: false
+          coverage: true
           julia_args: "--threads=auto"
     agents:
       os: "linux"

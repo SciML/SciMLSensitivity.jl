@@ -31,7 +31,6 @@ pages = [
             ],
             "Stochastic Differential Equation (SDE) Tutorials" => Any[
                 "sde_fitting/optimization_sde.md",
-                "sde_fitting/neural_sde.md",
             ],
             "Delay Differential Equation (DDE) Tutorials" => Any[
                 "dde_fitting/delay_diffeq.md",
@@ -49,7 +48,6 @@ pages = [
             "Bayesian Estimation Tutorials" => Any[
                 "bayesian/turing_bayesian.md",
                 "bayesian/BayesianNODE_NUTS.md",
-                "bayesian/BayesianNODE_SGLD.md",
             ],
             "Optimal and Model Predictive Control Tutorials" => Any[
                 "optimal_control/optimal_control.md",

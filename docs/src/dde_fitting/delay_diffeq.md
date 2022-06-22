@@ -4,8 +4,9 @@ Other differential equation problem types from DifferentialEquations.jl are
 supported. For example, we can build a layer with a delay differential equation
 like:
 
-```julia
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms
+```@example dde
+using DifferentialEquations, Optimization, DiffEqSensitivity,
+      OptimizationPolyalgorithms
 
 
 # Define the same LV equation, but including a delay parameter
@@ -38,19 +39,19 @@ end
 
 loss_dde(p) = sum(abs2, x-1 for x in predict_dde(p))
 
-#using Plots
-callback = function (p,l...)
+using Plots
+callback = function (p,l...;doplot=false)
   display(loss_dde(p))
-  #display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
+  doplot && display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
   return false
 end
 
-callback(p,loss_dde(p))
+callback(p,loss_dde(p)...)
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), p, callback=callback)
+result_dde = Optimization.solve(optprob, PolyOpt(), maxiters = 300, callback=callback)
 ```
 
 Notice that we chose `sensealg = ReverseDiffAdjoint()` to utilize the ReverseDiff.jl
@@ -58,22 +59,22 @@ reverse-mode to handle the delay differential equation.
 
 We define a callback to display the solution at the current parameters for each step of the training:
 
-```julia
-#using Plots
-callback = function (p,l...)
+```@example dde
+using Plots
+callback = function (p,l...;doplot=false)
   display(loss_dde(p))
-  #display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
+  doplot && display(plot(solve(remake(prob_dde,p=p),MethodOfSteps(Tsit5()),saveat=0.1),ylim=(0,6)))
   return false
 end
 
-callback(p,loss_dde(p))
+callback(p,loss_dde(p)...)
 ```
 
 We use `Optimization.solve` to optimize the parameters for our loss function:
 
-```julia
+```@example dde
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p)->loss_dde(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), p, callback=callback)
+result_dde = Optimization.solve(optprob, PolyOpt(), callback=callback)
 ```

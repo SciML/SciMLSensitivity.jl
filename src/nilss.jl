@@ -87,7 +87,7 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
 end
 
 
-function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing; 
+function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
                             kwargs...)
 
   @unpack f, p, u0, tspan = prob
@@ -97,7 +97,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
   numparams = length(p)
 
   # some shadowing sensealgs require knowledge of g
-  check_for_g(sensealg,g) 
+  check_for_g(sensealg,g)
 
   # integer dimension of the unstable subspace
   if nus === nothing
@@ -118,7 +118,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
   if t!==nothing
     @assert t isa StepRangeLen
     dt_ts = step(t)
-    @assert dt_ts >= dtsave  
+    @assert dt_ts >= dtsave
     @assert T_seg >= dt_ts
     jevery = Int(dt_ts/dtsave) # will throw an inexact error if dt_ts is not a multiple of dtsave. (could be more sophisticated)
     cur_time = Ref(1)
@@ -159,7 +159,7 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
     rand!(rng,_w)
     normalize!(_w)
   end
-          
+
   vstar0 = zeros(eltype(u0), numindvar*numparams)
   w0 = vec(w[:,1,1,:])
 
@@ -262,10 +262,10 @@ function forward_sense(prob::NILSSProblem,nilss::NILSS,alg)
   for iseg=1:nseg
     # compute y, w, vstar
     # _sol is a numindvar*(1+nus+1) x nstep matrix
-               
+
     dt = (t2 - t1) / (nstep-1)
     _sol = Array(solve(_prob, alg, saveat=t1:dt:t2))
-                    
+
     store_y_w_vstar!(y, w, vstar, _sol, nus, numindvar, numparams, iseg)
 
     # store dudt, objective g (gsave), and its derivative wrt. to u (dgdu)
@@ -347,7 +347,7 @@ function dudt_g_dgdu!(dudt, gsave, dgdu, nilssprob::NILSSProblem, y, p, iseg)
       accumulate_cost!(_dgdu, dg, u, p, nothing, sensealg, diffcache, j)
     end
   end
-  jevery !== nothing && (cur_time[] -= one(jevery)) # interface between segments gets two bumps 
+  jevery !== nothing && (cur_time[] -= one(jevery)) # interface between segments gets two bumps
   return nothing
 end
 
@@ -491,8 +491,8 @@ function compute_xi(ξ,v,dudt,nseg)
 end
 
 function accumulate_cost!(_dgdu, dg, u, p, t, sensealg::NILSS, diffcache::NILSSSensitivityFunction, j)
-  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config = diffcache 
-  
+  @unpack dg_val, pgpu, pgpu_config, pgpp, pgpp_config = diffcache
+
   if dg===nothing
     if dg_val isa Tuple
       DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
@@ -504,13 +504,13 @@ function accumulate_cost!(_dgdu, dg, u, p, t, sensealg::NILSS, diffcache::NILSSS
   else
     if dg_val isa Tuple
       dg[1](dg_val[1],u,p,nothing,j)
-      @. _dgdu = -dg_val[1]
+      @. _dgdu = dg_val[1]
     else
       dg(dg_val,u,p,nothing,j)
-      @. _dgdu = -dg_val
+      @. _dgdu = dg_val
     end
   end
-  
+
   return nothing
 end
 

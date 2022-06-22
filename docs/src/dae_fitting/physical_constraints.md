@@ -8,7 +8,7 @@ zeros, then we have a constraint defined by the right hand side. Using
 `NeuralODEMM`, we can use this to define a neural ODE where the sum of all 3
 terms must add to one. An example of this is as follows:
 
-```julia
+```@example dae
 using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Plots
 
 using Random
@@ -72,7 +72,7 @@ result_stiff = Optimization.solve(optprob, BFGS(), maxiters=100)
 
 ### Load Packages
 
-```julia
+```@example dae2
 using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Plots
 
 using Random
@@ -84,7 +84,7 @@ rng = Random.default_rng()
 First, we define our differential equations as a highly stiff problem which makes the
 fitting difficult.
 
-```Julia
+```@example dae2
 function f!(du, u, p, t)
     y₁, y₂, y₃ = u
     k₁, k₂, k₃ = p
@@ -97,7 +97,7 @@ end
 
 ### Parameters
 
-```Julia
+```@example dae2
 u₀ = [1.0, 0, 0]
 
 M = [1. 0  0
@@ -121,7 +121,7 @@ all zeros)
 We define and solve our ODE problem to generate the "labeled" data which will be used to
 train our Neural Network.
 
-```Julia
+```@example dae2
 stiff_func = ODEFunction(f!, mass_matrix = M)
 prob_stiff = ODEProblem(stiff_func, u₀, tspan, p)
 sol_stiff = solve(prob_stiff, Rodas5(), saveat = 0.1)
@@ -136,7 +136,7 @@ Next, we create our layers using `Lux.Chain`. We use this instead of `Flux.Chain
 is more suited to SciML applications (similarly for
 `Lux.Dense`). The input to our network will be the initial conditions fed in as `u₀`.
 
-```Julia
+```@example dae2
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),
                  Lux.Dense(64, 2))
 
@@ -155,7 +155,7 @@ Because this is a stiff problem, we have manually imposed that sum constraint vi
 For simplicity, we define a wrapper function that only takes in the model's parameters
 to make predictions.
 
-```Julia
+```@example dae2
 function predict_stiff_ndae(p)
     return model_stiff_ndae(u₀, p, st)[1]
 end
@@ -171,7 +171,7 @@ Training our network requires a **loss function**, an **optimizer** and a
 We first make our predictions based on the current parameters, then calculate the loss
 from these predictions. In this case, we use **least squares** as our loss.
 
-```Julia
+```@example dae2
 function loss_stiff_ndae(p)
     pred = predict_stiff_ndae(p)
     loss = sum(abs2, sol_stiff .- pred)
@@ -193,7 +193,7 @@ The optimizer is `BFGS`(see below).
 
 The callback function displays the loss during training.
 
-```Julia
+```@example dae2
 callback = function (p, l, pred) #callback function to observe training
   display(l)
   return false
@@ -205,11 +205,9 @@ end
 Finally, training with `Optimization.solve` by passing: *loss function*, *model parameters*,
 *optimizer*, *callback* and *maximum iteration*.
 
-```Julia
+```@example dae2
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
 result_stiff = Optimization.solve(optprob, BFGS(), maxiters=100)
 ```
-
-### Expected Output

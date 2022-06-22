@@ -21,7 +21,7 @@ function g(u,p,t)
 end
 
 function dg!(out,u,p,t,i)
-  (out.=-u)
+  (out.=u)
 end
 
 dt = tend/1e4

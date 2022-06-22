@@ -26,7 +26,7 @@ using Zygote
     g(u,p,t) = u[end]
     function dg(out,u,p,t,i)
       fill!(out, zero(eltype(u)))
-      out[end] = -one(eltype(u))
+      out[end] = one(eltype(u))
     end
     lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(g=g))
     lss_problem1a = ForwardLSSProblem(sol_attractor, ForwardLSS(g=g), nothing, dg)
@@ -131,10 +131,10 @@ using Zygote
     g(u,p,t) = u[end] + sum(p)
     function dgu(out,u,p,t,i)
       fill!(out, zero(eltype(u)))
-      out[end] = -one(eltype(u))
+      out[end] = one(eltype(u))
     end
     function dgp(out,u,p,t,i)
-      fill!(out, -one(eltype(p)))
+      fill!(out, one(eltype(p)))
     end
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(LSSregularizer=DiffEqSensitivity.TimeDilation(10.0),g=g))
@@ -190,10 +190,10 @@ using Zygote
     g(u,p,t) = u[end]^2/2 + sum(p)
     function dgu(out,u,p,t,i)
       fill!(out, zero(eltype(u)))
-      out[end] = -u[end]
+      out[end] = u[end]
     end
     function dgp(out,u,p,t,i)
-      fill!(out, -one(eltype(p)))
+      fill!(out, one(eltype(p)))
     end
 
     function G(p; sensealg=ForwardLSS(g=g), dt=0.01)
@@ -272,7 +272,7 @@ end
     g(u,p,t) = u[end]
     function dg(out,u,p,t,i)
       fill!(out, zero(eltype(u)))
-      out[end] = -one(eltype(u))
+      out[end] = one(eltype(u))
     end
 
     nseg = 50 # number of segments on time interval
@@ -304,13 +304,13 @@ end
   end
 
   @testset "Lorenz" begin
-    # Here we test LSS output to NILSS output w/ multiple params 
+    # Here we test LSS output to NILSS output w/ multiple params
     function lorenz!(du,u,p,t)
       du[1] = p[1]*(u[2]-u[1])
       du[2] = u[1]*(p[2]-u[3]) - u[2]
       du[3] = u[1]*u[2] - p[3]*u[3]
     end
-    
+
     p = [10.0, 28.0, 8/3]
     u0 = rand(3)
 
@@ -324,29 +324,29 @@ end
 
     prob_attractor = ODEProblem(lorenz!,sol_init[end],tspan_attractor,p)
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14)
-    
+
     g(u,p,t) = u[end]
-    
+
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(LSSregularizer=DiffEqSensitivity.TimeDilation(10.0),g=g))
-    
+
     resfw = shadow_forward(lss_problem)
-    
+
     # NILSS can handle w/ longer timespan and get lower noise in sensitivity estimate
     tspan_init = (0.0,100.0)
     tspan_attractor = (100.0,150.0)
-    
+
     prob_init = ODEProblem(lorenz!,u0,tspan_init,p)
     sol_init = solve(prob_init,Tsit5())
-    
+
     prob_attractor = ODEProblem(lorenz!,sol_init[end],tspan_attractor,p)
     sol_attractor = solve(prob_attractor,Vern9(),abstol=1e-14,reltol=1e-14)
-    
+
     nseg = 50 # number of segments on time interval
     nstep = 2001 # number of steps on each segment
-    
+
     nilss_prob = NILSSProblem(prob_attractor, NILSS(nseg, nstep; g));
     res = shadow_forward(nilss_prob, Tsit5())
-    
+
     # There is larger noise in LSS estimate of parameter 3 due to shorter timespan considered,
     # so test tolerance for parameter 3 is larger.
     @test resfw[1] ≈ res[1] atol=5e-2
@@ -428,7 +428,7 @@ end
     g(u,p,t) = u[end]
     function dg(out,u,p,t,i=nothing)
       fill!(out, zero(eltype(u)))
-      out[end] = -one(eltype(u))
+      out[end] = one(eltype(u))
     end
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(LSSregularizer=DiffEqSensitivity.TimeDilation(10.0), g=g), nothing, dg)
@@ -480,10 +480,10 @@ end
     g(u,p,t) = u[end]^2/2 + sum(p)
     function dgu(out,u,p,t,i=nothing)
       fill!(out, zero(eltype(u)))
-      out[end] = -u[end]
+      out[end] = u[end]
     end
     function dgp(out,u,p,t,i=nothing)
-      fill!(out, -one(eltype(p)))
+      fill!(out, one(eltype(p)))
     end
 
     lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(LSSregularizer=DiffEqSensitivity.TimeDilation(10.0), g=g), nothing, (dgu,dgp))

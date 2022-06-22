@@ -95,7 +95,7 @@ function test_continuous_callback(cb, g, dg!; only_backsolve=false)
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)
-  @test du01 ≈ -adj_sol[1:2, end]
+  @test du01 ≈ adj_sol[1:2, end]
   @test dp1 ≈ adj_sol[3:4, end]
 
 
@@ -113,7 +113,7 @@ println("Continuous Callbacks")
   @testset "simple loss function bouncing ball" begin
     g(sol) = sum(sol)
     function dg!(out, u, p, t, i)
-      (out .= -1)
+      (out .= 1)
     end
 
     @testset "callbacks with no effect" begin
@@ -161,7 +161,7 @@ println("Continuous Callbacks")
   end
   @testset "MSE loss function bouncing-ball like" begin
     g(u) = sum((1.0 .- u) .^ 2) ./ 2
-    dg!(out, u, p, t, i) = (out .= 1.0 .- u)
+    dg!(out, u, p, t, i) = (out .= -1.0 .+ u)
     condition(u, t, integrator) = u[1]
     @testset "callback with non-linear affect" begin
       function affect!(integrator)
@@ -183,7 +183,6 @@ println("Continuous Callbacks")
   end
   @testset "MSE loss function free particle" begin
     g(u) = sum((1.0 .- u) .^ 2) ./ 2
-    dg!(out, u, p, t, i) = (out .= 1.0 .- u)
     function fiip(du, u, p, t)
       du[1] = u[2]
       du[2] = 0

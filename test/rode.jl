@@ -13,7 +13,7 @@ function g(u,p,t)
 end
 
 function dg!(out,u,p,t,i)
-  (out.=-u)
+  (out.=u)
 end
 
 @testset "noise iip tests" begin

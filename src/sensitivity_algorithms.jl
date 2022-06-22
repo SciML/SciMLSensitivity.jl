@@ -601,7 +601,7 @@ See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 AdjointLSS(;
           chunk_size=0,autodiff=true,
           diff_type=Val{:central},
-          LSSRegularizer=CosWindowing(),
+          LSSRegularizer=TimeDilation(10.0,0.0,0.0),
           g=nothing)
 ```
 

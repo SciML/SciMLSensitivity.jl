@@ -323,11 +323,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
 
     # Grab values from `_dy` before `back` in case mutated
     dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
-    
+
     tmp1, tmp2 = Tracker.data.(back(λ))
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && (dgrad[:] .= vec(tmp2))
-    
   else
     if W===nothing
       _dy, back = Tracker.forward(y, p) do u, p
@@ -452,7 +451,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
     dgrad !== nothing && tmp2 !== nothing && (dgrad[:] .= vec(tmp2))
-    
   else
     if W===nothing
       _dy, back = Zygote.pullback(y, p) do u, p
@@ -738,10 +736,10 @@ function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:Sensitiv
   if dg !== nothing
     if !(dg isa Tuple)
       dg(dg_val,y,p,t)
-      dλ .+= vec(dg_val)
+      dλ .-= vec(dg_val)
     else
       dg[1](dg_val[1],y,p,t)
-      dλ .+= vec(dg_val[1])
+      dλ .-= vec(dg_val[1])
       if dgrad !== nothing
         dg[2](dg_val[2],y,p,t)
         dgrad .-= vec(dg_val[2])
@@ -750,7 +748,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS, dgrad=nothing) where TS<:Sensitiv
   else
     g.t = t
     gradient!(dg_val, g, y, S.sensealg, g_grad_config)
-    dλ .+= vec(dg_val)
+    dλ .-= vec(dg_val)
   end
   return nothing
 end

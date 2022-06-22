@@ -40,6 +40,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t)
     vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy)
   end
   dλ .*= -1
+  dgrad .*= -one(eltype(dgrad))
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
   return nothing
@@ -54,6 +55,7 @@ function (S::ODEBacksolveSensitivityFunction)(du,u,p,t,W)
 
   vecjacobian!(dλ, y, λ, p, t, S, dgrad=dgrad, dy=dy,W=W)
   dλ .*= -one(eltype(λ))
+  dgrad .*= -one(eltype(dgrad))
 
   discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
   return nothing
