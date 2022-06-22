@@ -9,6 +9,9 @@ import DiffEqSensitivity:
     ReverseDiffVJP
 import RecursiveArrayTools: ArrayPartition
 
+# There are no parameters, so required
+DiffEqSensitivity.allow_zygotevjp_nothing(true)
+
 sol = solve(
     DynamicalODEProblem(
         (v, x, p, t) -> [0.0, 0.0],
@@ -62,9 +65,6 @@ sol = solve(
     # Without setting parameters, we end up with https://github.com/SciML/DifferentialEquations.jl/issues/679 again.
     p = zeros()
 )
-
-# There are no parameters, so required
-DiffEqSensitivity.allow_zygotevjp_nothing(true)
 
 g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), zero(x0)))
 bwd_sol = solve(
