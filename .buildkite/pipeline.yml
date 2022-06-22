@@ -89,4 +89,3 @@ steps:
 
 env:
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
-  SECRET_DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
