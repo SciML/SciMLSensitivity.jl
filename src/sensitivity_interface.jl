@@ -5,14 +5,14 @@ const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE =
 Adjoint sensitivity analysis functionality requires being able to solve
 a differential equation defined by the parameter struct `p`. Thus while
 DifferentialEquations.jl can support any parameter struct type, usage
-                                                with adjoint sensitivity analysis requires that `p` could be a valid
-                                                type for being the initial condition `u0` of an array. This means that
-                                                many simple types, such as `Tuple`s and `NamedTuple`s, will work as
-                                                parameters in normal contexts but will fail during adjoint differentiation.
-                                                To work around this issue for complicated cases like nested structs, look
-                                                into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
-                                                or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
-                                                """
+with adjoint sensitivity analysis requires that `p` could be a valid
+type for being the initial condition `u0` of an array. This means that
+many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+parameters in normal contexts but will fail during adjoint differentiation.
+To work around this issue for complicated cases like nested structs, look
+into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
+or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
+"""
 
 struct AdjointSensitivityParameterCompatibilityError <: Exception end
 
