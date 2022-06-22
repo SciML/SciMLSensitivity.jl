@@ -44,7 +44,6 @@ y = sol[1,:] # This is the data we have available for parameter estimation
 plot(y, title="Pendulum simulation", label="angle")
 ```
 
-![img1](https://user-images.githubusercontent.com/3797491/156998356-748f8d5e-d10b-4bd0-8b76-bd51f739a710.png)
 
 We also define functions that simulate the system and calculate the loss, given a parameter `p` corresponding to the length.
 
@@ -69,7 +68,6 @@ simlosses = simloss.(Ls)
 fig_loss = plot(Ls, simlosses, title = "Loss landscape", xlabel="Pendulum length", ylabel = "MSE loss", lab="Simulation loss")
 ```
 
-![img2](https://user-images.githubusercontent.com/3797491/156998364-7645b354-dc65-4401-9fe9-71e2f621cbd2.png)
 
 This figure is interesting, the loss is of course 0 for the true value $L=1$, but for values $L < 1$, the overall slope actually points in the wrong direction! Moreover, the loss is oscillatory, indicating that this is a terrible function to optimize, and that we would need a very good initial guess for a local search to converge to the true value. Note, this example is chosen to be one-dimensional in order to allow these kinds of visualizations, and one-dimensional problems are typically not hard to solve, but the reasoning extends to higher-dimensional and harder problems.
 
