@@ -52,7 +52,7 @@ function automatic_sensealg_choice(prob::Union{ODEProblem,SDEProblem},u0,p,verbo
                           !(eltype(p) <: Complex) &&
                           length(u0) + length(p) <= 100
     ForwardDiffSensitivity()
-  elseif u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
+  elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # only Zygote is GPU compatible and fast
     # so if out-of-place, try Zygote
     if p === nothing || p === DiffEqBase.NullParameters()
@@ -75,7 +75,7 @@ end
 
 function automatic_sensealg_choice(prob::Union{NonlinearProblem,SteadyStateProblem}, u0, p, verbose)
 
-  default_sensealg = if u0 isa GPUArrays.AbstractGPUArray || !DiffEqBase.isinplace(prob)
+  default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
     # autodiff = false because forwarddiff fails on many GPU kernels
     # this only effects the Jacobian calculation and is same computation order
     SteadyStateAdjoint(autodiff=false, autojacvec=ZygoteVJP())
@@ -747,7 +747,7 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob,alg,sensealg::ReverseDiffAdjoint,
                                             u0,p,originator::SciMLBase.ADOriginator,args...;kwargs...)
 
-  if typeof(u0) isa GPUArrays.AbstractGPUArray
+  if typeof(u0) isa GPUArraysCore.AbstractGPUArray
     throw(ReverseDiffGPUStateCompatibilityError())
   end
 
