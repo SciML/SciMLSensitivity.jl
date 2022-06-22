@@ -283,7 +283,7 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
       cb2 = cb
     end
 
-    du0, dp = adjoint_sensitivities(sol,alg,args...,df,ts; sensealg=sensealg,
+    du0, dp = adjoint_sensitivities(sol,alg,args...,ts,df; sensealg=sensealg,
                                     callback = cb2,
                                     kwargs_adj...)
 

@@ -403,26 +403,27 @@ function (f::ReverseLossCallback)(integrator)
   return nothing
 end
 
-function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated=false)
+# handle discrete loss contributions
+function generate_callbacks(sensefun, dg, λ, t, t0, callback, init_cb, terminated=false)
   if sensefun isa NILSASSensitivityFunction
     @unpack sensealg = sensefun.S
   else
     @unpack sensealg = sensefun
   end
 
-  if !sensefun.discrete
+  if !init_cb
     cur_time = Ref(1)
   else
     cur_time = Ref(length(t))
   end
 
-  reverse_cbs = setup_reverse_callbacks(callback,sensealg,g,cur_time,terminated)
-  sensefun.discrete || return reverse_cbs, nothing
+  reverse_cbs = setup_reverse_callbacks(callback,sensealg,dg,cur_time,terminated)
+  init_cb || return reverse_cbs, nothing
 
   # callbacks can lead to non-unique time points
   _t, duplicate_iterator_times = separate_nonunique(t)
 
-  rlcb = ReverseLossCallback(sensefun, λ, t, g, cur_time)
+  rlcb = ReverseLossCallback(sensefun, λ, t, dg, cur_time)
 
   if eltype(_t) !== typeof(t0)
     _t = convert.(typeof(t0),_t)
@@ -432,7 +433,7 @@ function generate_callbacks(sensefun, g, λ, t, t0, callback, init_cb,terminated
   # handle duplicates (currently only for double occurances)
   if duplicate_iterator_times!==nothing
     # use same ref for cur_time to cope with concrete_solve
-    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, g, cur_time)
+    cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dg, cur_time)
     cb_dupl = PresetTimeCallback(duplicate_iterator_times[1],cbrev_dupl_affect)
     return CallbackSet(cb,reverse_cbs,cb_dupl), duplicate_iterator_times
   else

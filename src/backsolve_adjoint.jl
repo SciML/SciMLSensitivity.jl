@@ -103,15 +103,19 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      z0=nothing,
                                      M=nothing,
                                      nilss=nothing,
                                      tspan=sol.prob.tspan,
-                                     kwargs...)
+                                     kwargs...) where {DG1,DG2,G}
   # add homogenous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+
   @unpack f, p, u0 = sol.prob
 
   # check if solution was terminated, then use reduced time span
@@ -125,7 +129,7 @@ end
 
   tspan = reverse(tspan)
 
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   numstates = length(u0)
   numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
@@ -139,14 +143,14 @@ end
     λ = nothing
   end
 
-  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f)
+  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,f)
 
   if z0!==nothing
     sense = NILSASSensitivityFunction{isinplace(f),typeof(nilss),typeof(sense),typeof(M)}(nilss,sense,M,discrete)
   end
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb,terminated)
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2], callback, init_cb, terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)
@@ -186,11 +190,16 @@ end
 end
 
 @noinline function SDEAdjointProblem(sol,sensealg::BacksolveAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
-                                     corfunc_analytical=nothing,diffusion_jac=nothing, diffusion_paramjac=nothing,
-                                     kwargs...)
+                                     corfunc_analytical=nothing,diffusion_jac=nothing,diffusion_paramjac=nothing,
+                                     kwargs...) where {DG1,DG2,G}
+
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+
   @unpack f, p, u0, tspan = sol.prob
   # check if solution was terminated, then use reduced time span
   terminated = false
@@ -202,7 +211,7 @@ end
   end
 
   tspan = reverse(tspan)
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
@@ -213,18 +222,18 @@ end
   λ = one(eltype(u0)) .* similar(p, len)
 
   if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
-    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f)
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,sol.prob.f)
   else
     transformed_function = StochasticTransformedFunction(sol,sol.prob.f,sol.prob.g,corfunc_analytical)
     drift_function = ODEFunction(transformed_function)
-    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,drift_function)
+    sense_drift = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,drift_function)
   end
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
-  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function;noiseterm=true)
+  sense_diffusion = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,diffusion_function;noiseterm=true)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, tspan[2], callback, init_cb,terminated)
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, dg_discrete, λ, t, tspan[2], callback, init_cb, terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb, duplicate_iterator_times)
@@ -270,10 +279,15 @@ end
 
 
 @noinline function RODEAdjointProblem(sol,sensealg::BacksolveAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
-                                     kwargs...)
+                                     kwargs...) where {DG1,DG2,G}
+
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+
   @unpack f, p, u0, tspan = sol.prob
   # check if solution was terminated, then use reduced time span
   terminated = false
@@ -284,7 +298,7 @@ end
     end
   end
   tspan = reverse(tspan)
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   p === DiffEqBase.NullParameters() && error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
@@ -294,10 +308,10 @@ end
   len = length(u0)+numparams
   λ = one(eltype(u0)) .* similar(p, len)
 
-  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg,f;noiseterm=false)
+  sense = ODEBacksolveSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,f;noiseterm=false)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb,terminated)
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2], callback, init_cb, terminated)
   checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
   if checkpoints !== nothing
     cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb, duplicate_iterator_times)

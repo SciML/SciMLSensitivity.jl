@@ -46,9 +46,13 @@ function split_states(du,u,t,S::ODEQuadratureAdjointSensitivityFunction;update=t
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol,sensealg::QuadratureAdjoint,g,
-                                     t=nothing,dg=nothing,
-                                     callback=CallbackSet())
+@noinline function ODEAdjointProblem(sol,sensealg::QuadratureAdjoint,
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
+                                     callback=CallbackSet()) where {DG1,DG2,G}
+
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
 
   @unpack f, p, u0, tspan = sol.prob
   terminated = false
@@ -60,16 +64,16 @@ end
   end
   tspan = reverse(tspan)
 
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   len = length(u0)
   λ = similar(u0, len)
   λ .= false
-  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg)
+  sense = ODEQuadratureAdjointSensitivityFunction(g,sensealg,discrete,sol,dg_continuous)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
   z0 = vec(zero(λ))
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb, terminated)
+  cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2], callback, init_cb, terminated)
 
   jac_prototype = sol.prob.f.jac_prototype
   adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing : copy(jac_prototype')
@@ -227,13 +231,14 @@ function (S::AdjointSensitivityIntegrand)(t)
   S(out,t)
 end
 
-function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
-                                t=nothing,dg=nothing;
+function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,t=nothing,
+                                dg_discrete=nothing,dg_continuous=nothing,
+                                g=nothing;
                                 abstol=sensealg.abstol,reltol=sensealg.reltol,
-                                callback = nothing,
+                                callback = CallbackSet(),
                                 kwargs...)
-  dgdu, dgdp = dg isa Tuple ? dg : (dg, nothing)
-  adj_prob = ODEAdjointProblem(sol,sensealg,g,t,dgdu,callback)
+  dgdu, dgdp = dg_continuous isa Tuple ? dg_continuous : (dg_continuous, nothing)
+  adj_prob = ODEAdjointProblem(sol,sensealg,t,dg_discrete,dgdu,g; callback)
   adj_sol = solve(adj_prob,alg;abstol=abstol,reltol=reltol,
                                save_everystep=true,save_start=true,kwargs...)
 
@@ -257,6 +262,12 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
         dgrad .*= false
       end
 
+      # correction for end interval.
+      if t[end] != sol.prob.tspan[2]
+        res .+= quadgk(integrand, t[end], sol.prob.tspan[end],
+          atol=abstol, rtol=reltol)[1]
+      end
+
       for i in length(t)-1:-1:1
         res .+= quadgk(integrand,t[i],t[i+1],
                        atol=abstol,rtol=reltol)[1]
@@ -274,6 +285,7 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,g,
         end
         callback!==nothing && (cur_time -= one(cur_time))
       end
+      # correction for start interval
       if t[1] != sol.prob.tspan[1]
         res .+= quadgk(integrand,sol.prob.tspan[1],t[1],
                        atol=abstol,rtol=reltol)[1]
