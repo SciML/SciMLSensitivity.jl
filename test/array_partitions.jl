@@ -7,11 +7,7 @@ import DiffEqSensitivity:
     InterpolatingAdjoint,
     ZygoteVJP,
     ReverseDiffVJP
-    allow_zygotevjp_nothing
 import RecursiveArrayTools: ArrayPartition
-
-# There are no parameters, so required
-allow_zygotevjp_nothing(true)
 
 sol = solve(
     DynamicalODEProblem(
