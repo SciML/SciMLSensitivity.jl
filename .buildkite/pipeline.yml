@@ -42,6 +42,7 @@ steps:
       os: "linux"
       queue: "juliaecosystem"
       arch: "x86_64"
+      
       exclusive: true
     env:
       GROUP: 'Shadowing'
@@ -64,6 +65,28 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
+  - label: "Documentation"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+    command: |
+      julia --project -e '
+        println("--- :julia: Instantiating project")
+        using Pkg
+        Pkg.instantiate()
+        Pkg.activate("docs")
+        Pkg.instantiate()
+        push!(LOAD_PATH, @__DIR__)
+        println("+++ :julia: Building documentation")
+        include("docs/make.jl")'
+    agents:
+      os: "linux"
+      queue: "juliaecosystem"
+      arch: "x86_64"
+      exclusive: true
+    if: build.message !~ /\[skip docs\]/ && !build.pull_request.draft
+    timeout_in_minutes: 300
+
 env:
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
-  # SECRET_CODECOV_TOKEN: "..."
+  SECRET_DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
