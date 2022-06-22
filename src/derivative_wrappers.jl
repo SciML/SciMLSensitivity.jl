@@ -357,7 +357,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     end
 
     if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) && 
-                                          !sensealg.allow_nothing
+                                          !sensealg.autojacvec.allow_nothing
       throw(TrackerVJPNothingError())
     end
 
@@ -380,7 +380,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     end
 
     if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) && 
-                                          !sensealg.allow_nothing
+                                          !sensealg.autojacvec.allow_nothing
       throw(TrackerVJPNothingError())
     end
 
@@ -532,7 +532,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
     if dgrad !== nothing 
-      if tmp2 === nothing && !sensealg.allow_nothing
+      if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
         throw(ZygoteVJPNothingError())
       else
         (dgrad[:] .= vec(tmp2))
@@ -553,14 +553,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     dy !== nothing && (dy[:] .= vec(_dy))
 
     tmp1, tmp2 = back(λ)
-    if tmp1 === nothing && !sensealg.allow_nothing
+    if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
       throw(ZygoteVJPNothingError())
     elseif tmp1 !== nothing
       (dλ[:] .= vec(tmp1))
     end
 
     if dgrad !== nothing 
-      if tmp2 === nothing && !sensealg.allow_nothing
+      if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
         throw(ZygoteVJPNothingError())
       elseif tmp2 !== nothing
         (dgrad[:] .= vec(tmp2))
