@@ -7,10 +7,11 @@ import DiffEqSensitivity:
     InterpolatingAdjoint,
     ZygoteVJP,
     ReverseDiffVJP
+    allow_zygotevjp_nothing
 import RecursiveArrayTools: ArrayPartition
 
 # There are no parameters, so required
-DiffEqSensitivity.allow_zygotevjp_nothing(true)
+allow_zygotevjp_nothing(true)
 
 sol = solve(
     DynamicalODEProblem(
@@ -31,7 +32,7 @@ sol = solve(
 solve(
     ODEAdjointProblem(
         sol,
-        InterpolatingAdjoint(autojacvec=ZygoteVJP()),
+        InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)),
         (out, x, p, t, i) -> (out .= 0),
         [sol.t[end]],
     ),OrdinaryDiffEq.Tsit5()
@@ -70,12 +71,10 @@ g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), ze
 bwd_sol = solve(
     ODEAdjointProblem(
         sol,
-        InterpolatingAdjoint(autojacvec=ZygoteVJP()),
+        InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)),
         # Also fails, but due to a different bug:
         # InterpolatingAdjoint(autojacvec=ReverseDiffVJP()),
         (out, x, p, t, i) -> (out[:] = g),
         [sol.t[end]],
     ),OrdinaryDiffEq.Tsit5()
 )
-
-DiffEqSensitivity.allow_zygotevjp_nothing(false)

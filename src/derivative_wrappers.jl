@@ -325,7 +325,11 @@ Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` 
 also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
 
 If this zero gradient with respect to `u` or `p` is intended, then one can set
-`DiffEqSensitivity.allow_trackervjp_nothing(true)` to override this error message.
+`TrackerVJP(allow_nothing=true)` to override this error message. For example:
+
+```julia
+solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=TrackerVJP(allow_nothing=true)))
+```
 """
 
 struct TrackerVJPNothingError <: Exception end
@@ -376,7 +380,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     end
 
     if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) && 
-                                          !ALLOW_TRACKERVJP_NOTHING[]
+                                          !sensealg.allow_nothing
       throw(TrackerVJPNothingError())
     end
 
@@ -489,7 +493,11 @@ Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` 
 also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
 
 If this zero gradient with respect to `u` or `p` is intended, then one can set
-`DiffEqSensitivity.allow_zygotevjp_nothing(true)` to override this error message.
+`ZygoteVJP(allow_nothing=true)` to override this error message, for example:
+
+```julia
+solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)))
+```
 """
 
 struct ZygoteVJPNothingError <: Exception end
@@ -524,7 +532,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     tmp1,tmp2 = back(λ)
     dλ[:] .= vec(tmp1)
     if dgrad !== nothing 
-      if tmp2 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[]
+      if tmp2 === nothing && !sensealg.allow_nothing
         throw(ZygoteVJPNothingError())
       else
         (dgrad[:] .= vec(tmp2))
@@ -545,7 +553,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     dy !== nothing && (dy[:] .= vec(_dy))
 
     tmp1, tmp2 = back(λ)
-    if tmp1 === nothing && !ALLOW_ZYGOTEVJP_NOTHING[]
+    if tmp1 === nothing && sensealg.allow_nothing
       throw(ZygoteVJPNothingError())
     elseif tmp1 !== nothing
       (dλ[:] .= vec(tmp1))

@@ -927,10 +927,24 @@ performance of the VJP method.
 ## Constructor
 
 ```julia
-ZygoteVJP(compile=false)
+ZygoteVJP(;allow_nothing=false)
 ```
+
+Keyword arguments:
+
+* `allow_nothing`: whether `nothing`s should be implicitly converted to zeros. In Zygote,
+  the derivative of a function with respect to `p` which does not use `p` in any possible
+  calculation is given a derivative of `nothing` instead of zero. By default, this `nothing`
+  is caught in order to throw an informative error message about a potentially unintentional
+  misdefined function. However, if this was intentional, setting `allow_nothing=true` will
+  remove the error message.
+
 """
-struct ZygoteVJP <: VJPChoice end
+struct ZygoteVJP <: VJPChoice 
+  allow_nothing::Bool
+end
+ZygoteVJP(;allow_nothing=false) = ZygoteVJP(allow_nothing)
+
 
 """
 EnzymeVJP <: VJPChoice
@@ -963,10 +977,22 @@ reverse mode.
 ## Constructor
 
 ```julia
-TrackerVJP(compile=false)
+TrackerVJP(;allow_nothing=false)
 ```
+
+Keyword arguments:
+
+* `allow_nothing`: whether non-tracked values should be implicitly converted to zeros. In Tracker,
+  the derivative of a function with respect to `p` which does not use `p` in any possible
+  calculation is given an untracked return instead of zero. By default, this `nothing` Trackedness
+  is caught in order to throw an informative error message about a potentially unintentional
+  misdefined function. However, if this was intentional, setting `allow_nothing=true` will
+  remove the error message.
 """
-struct TrackerVJP <: VJPChoice end
+struct TrackerVJP <: VJPChoice 
+  allow_nothing::Bool
+end
+TrackerVJP(;allow_nothing=false) = TrackerVJP(allow_nothing)
 
 """
 ReverseDiffVJP{compile} <: VJPChoice
