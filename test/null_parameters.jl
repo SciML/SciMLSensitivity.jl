@@ -96,4 +96,4 @@ end
 @test_broken Zygote.gradient(loss7, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss9, zeros(123))[1] == zeros(123)
-@test_throws ZygoteVJPNothingError Zygote.gradient(loss10, zeros(123))[1] == zeros(123)
+@test_throws DiffEqSensitivity.ZygoteVJPNothingError Zygote.gradient(loss10, zeros(123))[1] == zeros(123)
