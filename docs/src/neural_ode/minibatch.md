@@ -1,6 +1,6 @@
 # Training a Neural Ordinary Differential Equation with Mini-Batching
 
-```julia
+```@example
 using DifferentialEquations, DiffEqFlux, Lux, Random, Plots
 using IterTools: ncycle 
 
@@ -100,7 +100,7 @@ When training a neural network we need to find the gradient with respect to our 
 
 For this example we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so. 
 
-```julia
+```@example minibatch
 using DifferentialEquations, DiffEqFlux, Lux, Random, Plots
 using IterTools: ncycle 
 
@@ -119,7 +119,7 @@ end
 
 Now we define a neural-network using a linear approximation with 1 hidden layer of 8 neurons.  
 
-```julia
+```@example minibatch
 ann = Lux.Chain(Lux.Dense(1,8,tanh), Lux.Dense(8,1,tanh))
 θ, st = Lux.setup(rng, ann)
 
@@ -130,7 +130,7 @@ end
 
 From here we build a loss function around it. 
 
-```julia
+```@example minibatch
 function predict_adjoint(time_batch)
     _prob = remake(prob, u0=u0, p=θ)
     Array(solve(_prob, Tsit5(), saveat = time_batch)) 
@@ -144,7 +144,7 @@ end
 
 To add support for batches of size `k` we use `Flux.Data.DataLoader`. To use this we pass in the `ode_data` and `t` as the 'x' and 'y' data to batch respectively. The parameter `batchsize` controls the size of our batches. We check our implementation by iterating over the batched data. 
 
-```julia
+```@example minibatch
 u0 = Float32[200.0]
 datasize = 30
 tspan = (0.0f0, 3.0f0)
@@ -172,7 +172,7 @@ end
 
 Now we train the neural network with a user defined call back function to display loss and the graphs with a maximum of 300 epochs. 
 
-```julia
+```@example minibatch
 numEpochs = 300
 losses=[]
 callback() = begin
@@ -192,7 +192,7 @@ Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, 
 
 Finally we can see how well our trained network will generalize to new initial conditions. 
 
-```julia
+```@example minibatch
 starting_temp=collect(10:30:250)
 true_prob_func(u0)=ODEProblem(true_sol, [u0], tspan)
 color_cycle=palette(:tab10)
@@ -211,7 +211,7 @@ ylabel!("Temp")
 
 We can also minibatch using tools from `MLDataUtils`. To do this we need to slightly change our implementation and is shown below again with a batch size of k and the same number of epochs.
 
-```julia
+```@example minibatch
 using MLDataUtils
 train_loader, _, _ = kfolds((ode_data, t))
 

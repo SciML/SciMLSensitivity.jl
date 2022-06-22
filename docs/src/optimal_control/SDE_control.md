@@ -17,7 +17,7 @@ to ultimately prepare and stabilize the qubit in the excited state.
 Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
-```julia
+```@example
 # load packages
 using DiffEqFlux
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
@@ -319,7 +319,7 @@ Loss (epoch: 100): 0.11777343
 ## Step-by-step description
 
 ### Load packages
-```julia
+```@example sdecontrol
 using DiffEqFlux
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra, Random
@@ -328,7 +328,7 @@ using Plots
 
 ### Parameters
 We define the parameters of the qubit and hyper-parameters of the training process.
-```julia
+```@example sdecontrol
 lr = 0.01f0
 epochs = 100
 
@@ -392,7 +392,7 @@ In plain terms, the quantities that were defined are:
 We use a neural network to control the parameter Ω(t). Alternatively, one could
 also, e.g., use [tensor layers](https://diffeqflux.sciml.ai/dev/layers/TensorLayer/).
 
-```julia
+```@example sdecontrol
 # state-aware
 nn = FastChain(
   FastDense(4, 32, relu),
@@ -409,7 +409,7 @@ To avoid complex numbers in our simulations, we split the state of the qubit
 ```
 into its real and imaginary part.
 
-```julia
+```@example sdecontrol
 # initial state anywhere on the Bloch sphere
 function prepare_initial(dt, n_par)
   # shape 4 x n_par
@@ -437,7 +437,7 @@ package, as one possibility to simulate a 1D Brownian motion. Note that the NN
 is placed directly into the drift function, thus the control parameter Ω is
 continuously updated.
 
-```julia
+```@example sdecontrol
 # Define SDE
 function qubit_drift!(du,u,p,t)
   # expansion coefficients |Ψ> = ce |e> + cd |d>
@@ -565,7 +565,7 @@ To visualize the performance of the controller, we plot the mean value and
 standard deviation of the fidelity of a bunch of trajectories (`myparameters.numtrajplot`) as
 a function of the time steps at which loss values are computed.
 
-```julia
+```@example sdecontrol
 function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
    alg=EM(),
    )
@@ -633,7 +633,7 @@ of the neural network.
 sensitivity methods. The necessary correction between Ito and Stratonovich integrals
 is computed under the hood in the DiffEqSensitivity package.
 
-```julia
+```@example sdecontrol
 # optimize the parameters for a few epochs with ADAM on time span Nint
 opt = ADAM(myparameters.lr)
 list_plots = []
