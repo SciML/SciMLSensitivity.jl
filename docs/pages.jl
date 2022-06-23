@@ -23,9 +23,6 @@ pages = [
             ],
             "Neural Ordinary Differential Equation (Neural ODE) Tutorials" => Any[
                 "neural_ode/neural_ode_flux.md",
-                "neural_ode/mnist_neural_ode.md",
-                "neural_ode/mnist_conv_neural_ode.md",
-                "neural_ode/GPUs.md",
                 "neural_ode/neural_gde.md",
                 "neural_ode/minibatch.md",
             ],
@@ -47,7 +44,6 @@ pages = [
             ],
             "Bayesian Estimation Tutorials" => Any[
                 "bayesian/turing_bayesian.md",
-                "bayesian/BayesianNODE_NUTS.md",
             ],
             "Optimal and Model Predictive Control Tutorials" => Any[
                 "optimal_control/optimal_control.md",
