@@ -84,13 +84,13 @@ solve with continuous adjoint sensitivity tools
 """
 
 # for Ito sense
-gs_u0, gs_p = adjoint_sensitivities(solIto,EM(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(),corfunc_analytical=corfunc)
+gs_u0, gs_p = adjoint_sensitivities(solIto,EM(),t=Array(t),dg_discrete=dg!,
+  dt=dt,adaptive=false,sensealg=BacksolveAdjoint(),corfunc_analytical=corfunc)
 
 @info gs_u0, gs_p
 
-gs_u0a, gs_pa = adjoint_sensitivities(solIto,EM(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+gs_u0a, gs_pa = adjoint_sensitivities(solIto,EM(),t=Array(t),dg_discrete=dg!,
+  dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
 
 @info gs_u0a, gs_pa
 
@@ -98,8 +98,8 @@ gs_u0a, gs_pa = adjoint_sensitivities(solIto,EM(),dg!,Array(t)
 @test isapprox(gs_p, gs_pa, rtol=1e-8)
 
 # for Strat sense
-res_u0, res_p = adjoint_sensitivities(solStrat,EulerHeun(),dg!,Array(t)
-  ,dt=dt,adaptive=false,sensealg=BacksolveAdjoint())
+res_u0, res_p = adjoint_sensitivities(solStrat,EulerHeun(),t=Array(t),dg_discrete=dg!,
+  dt=dt,adaptive=false,sensealg=BacksolveAdjoint())
 
 @info res_u0, res_p
 

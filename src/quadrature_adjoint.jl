@@ -231,9 +231,9 @@ function (S::AdjointSensitivityIntegrand)(t)
   S(out,t)
 end
 
-function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg,t=nothing,
+function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg;t=nothing,
                                 dg_discrete=nothing,dg_continuous=nothing,
-                                g=nothing;
+                                g=nothing,
                                 abstol=sensealg.abstol,reltol=sensealg.reltol,
                                 callback = CallbackSet(),
                                 kwargs...)

@@ -21,7 +21,7 @@ function Base.showerror(io::IO, e::AdjointSensitivityParameterCompatibilityError
 end
 
 @doc doc"""
-adjoint_sensitivities(sol,alg,t=nothing,dg_discrete=nothing,dg_continuous,g=nothing;
+adjoint_sensitivities(sol,alg;t=nothing,dg_discrete=nothing,dg_continuous,g=nothing,
                             abstol=1e-6,reltol=1e-3,
                             checkpoints=sol.t,
                             corfunc_analytical=nothing,
@@ -70,7 +70,7 @@ instead of just at discrete data points.
 For discrete adjoints, use:
 
 ```julia
-du0,dp = adjoint_sensitivities(sol,alg,ts,dg;sensealg=InterpolatingAdjoint(),
+du0,dp = adjoint_sensitivities(sol,alg;t=ts,dg_discrete=dg,sensealg=InterpolatingAdjoint(),
                                checkpoints=sol.t,kwargs...)
 ```
 
@@ -88,8 +88,8 @@ with `u=u(t)`.
 For continuous functionals, the form is:
 
 ```julia
-du0,dp = adjoint_sensitivities(sol,alg,nothing,nothing,(dgdu,dgdp),g;sensealg=InterpolatingAdjoint(),
-                               checkpoints=sol.t,,kwargs...)
+du0,dp = adjoint_sensitivities(sol,alg;dg_continuous=(dgdu,dgdp),g=g,sensealg=InterpolatingAdjoint(),
+                               checkpoints=sol.t,kwargs...)
 ```
 
 for the cost functional
@@ -108,7 +108,7 @@ dgdp(out,u,p,t)
 If the gradient is omitted, i.e.
 
 ```julia
-du0,dp = adjoint_sensitivities(sol,alg,nothing,nothing,nothing,g;kwargs...)
+du0,dp = adjoint_sensitivities(sol,alg;g=g,kwargs...)
 ```
 
 then we assume `dgdp` is zero and `dgdu` will be computed automatically using ForwardDiff or finite
@@ -162,7 +162,7 @@ sensitivities, call:
 
 ```julia
 ts = 0:0.5:10
-res = adjoint_sensitivities(sol,Vern9(),ts,dg,abstol=1e-14,
+res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrete=dg,abstol=1e-14,
                             reltol=1e-14)
 ```
 
@@ -204,7 +204,7 @@ Creates a non-dense solution with checkpoints at `[0.0,0.2,0.5,0.7]`. Now we
 can do:
 
 ```julia
-res = adjoint_sensitivities(sol,Vern9(),ts,dg,
+res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrete=dg,
                             sensealg=InterpolatingAdjoint(checkpointing=true))
 ```
 
@@ -214,7 +214,7 @@ nearest checkpoint to build local interpolants in a way that conserves memory.
 By default the checkpoints are at `sol.t`, but we can override this:
 
 ```julia
-res = adjoint_sensitivities(sol,Vern9(),ts,dg,
+res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrte=dg,
                             sensealg=InterpolatingAdjoint(checkpointing=true),
                             checkpoints = [0.0,0.5])
 ```
@@ -246,7 +246,7 @@ end
 To get the adjoint sensitivities, we call:
 
 ```julia
-res = adjoint_sensitivities(sol,Vern9(),nothing,nothing,dg,g,abstol=1e-8,
+res = adjoint_sensitivities(sol,Vern9();dg_continuous=dg,g=g,abstol=1e-8,
                                  reltol=1e-8,iabstol=1e-8,ireltol=1e-8)
 ```
 
@@ -295,10 +295,10 @@ function adjoint_sensitivities(sol,args...;
   end
 end
 
-function _adjoint_sensitivities(sol, sensealg, alg,
+function _adjoint_sensitivities(sol, sensealg, alg;
                                 t=nothing,
                                 dg_discrete=nothing, dg_continuous=nothing,
-                                g=nothing;
+                                g=nothing,
                                 abstol=1e-6, reltol=1e-3,
                                 checkpoints=sol.t,
                                 corfunc_analytical=nothing,
