@@ -47,7 +47,6 @@ pages = [
             ],
             "Bayesian Estimation Tutorials" => Any[
                 "bayesian/turing_bayesian.md",
-                "bayesian/BayesianNODE_NUTS.md",
             ],
             "Optimal and Model Predictive Control Tutorials" => Any[
                 "optimal_control/optimal_control.md",
