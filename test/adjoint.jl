@@ -255,11 +255,11 @@ t2 = [0.5, 1.0]
 t3 = [0.0, 0.5, 1.0]
 t4 = [0.5, 1.0, 10.0]
 
-_,easy_res2 = adjoint_sensitivities(sol,Tsit5(),t2,dg,abstol=1e-14,
+_,easy_res2 = adjoint_sensitivities(sol,Tsit5(),t=t2,dg_discrete=dg,abstol=1e-14,
                                   reltol=1e-14)
-_,easy_res3 = adjoint_sensitivities(sol,Tsit5(),t3,dg,abstol=1e-14,
+_,easy_res3 = adjoint_sensitivities(sol,Tsit5(),t=t3,dg_discrete=dg,abstol=1e-14,
                                   reltol=1e-14)
-_,easy_res4 = adjoint_sensitivities(sol,Tsit5(),t4,dg,abstol=1e-14,
+_,easy_res4 = adjoint_sensitivities(sol,Tsit5(),t=t4,dg_discrete=dg,abstol=1e-14,
                                   reltol=1e-14)
 
 function G(p,ts)
