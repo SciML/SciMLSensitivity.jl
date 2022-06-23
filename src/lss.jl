@@ -119,7 +119,8 @@ struct ForwardLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,Ftype,bType,
 end
 
 
-function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
+function ForwardLSSProblem(sol, sensealg::ForwardLSS;
+                            t=nothing, dg_discrete = nothing, dg_continuous = nothing,
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
@@ -132,6 +133,14 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
 
   p === nothing && error("You must have parameters to use parameter sensitivity calculations!")
   !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
+
+  # assert that all ts are hit if concrete solve interface/discrete costs are used
+  if t !== nothing
+    @assert sol.t == t
+    dg = dg_discrete
+  else
+    dg = dg_continuous
+  end
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,
                                      f.jac_prototype,f.sparsity,f.paramjac,
@@ -150,11 +159,6 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS, t=nothing, dg = nothing;
   dudt = Matrix{eltype(u0)}(undef,numindvar,Ndt)
   # compute their values
   discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
-
-  # assert that all ts are hit if concrete solve interface/discrete costs are used
-  if t !== nothing
-    @assert sol.t == t
-  end
 
   S = LSSSchur(dt,u0,numindvar,Nt,Ndt,sensealg.LSSregularizer)
 
@@ -473,7 +477,8 @@ struct AdjointLSSProblem{A,C,solType,dtType,umidType,dudtType,SType,FType,hType,
 end
 
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
+function AdjointLSSProblem(sol, sensealg::AdjointLSS;
+                            t=nothing, dg_discrete = nothing, dg_continuous = nothing,
                             kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
@@ -490,6 +495,9 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS, t=nothing, dg = nothing;
   # assert that all ts are hit if concrete solve interface/discrete costs are used
   if t !== nothing
     @assert sol.t == t
+    dg = dg_discrete
+  else
+    dg = dg_continuous
   end
 
   sense = LSSSensitivityFunction(sensealg,f,f.analytic,f.jac,

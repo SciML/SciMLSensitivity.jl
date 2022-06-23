@@ -896,16 +896,16 @@ function DiffEqBase._concrete_solve_adjoint(prob,alg,
     end
 
     if sensealg isa ForwardLSS
-      lss_problem = ForwardLSSProblem(sol, sensealg, ts, df)
+      lss_problem = ForwardLSSProblem(sol, sensealg, t=ts, dg_discrete=df)
       dp = shadow_forward(lss_problem)
     elseif sensealg isa AdjointLSS
-      adjointlss_problem = AdjointLSSProblem(sol, sensealg, ts, df)
+      adjointlss_problem = AdjointLSSProblem(sol, sensealg, t=ts, dg_discrete=df)
       dp = shadow_adjoint(adjointlss_problem)
     elseif sensealg isa NILSS
-      nilss_prob = NILSSProblem(_prob, sensealg, ts, df)
+      nilss_prob = NILSSProblem(_prob, sensealg, t=ts, dg_discrete=df)
       dp = shadow_forward(nilss_prob,alg)
     elseif sensealg isa NILSAS
-      nilsas_prob = NILSASProblem(_prob, sensealg, ts, df)
+      nilsas_prob = NILSASProblem(_prob, sensealg, t=ts, dg_discrete=df)
       dp = shadow_adjoint(nilsas_prob,alg)
     else
       error("No concrete_solve implementation found for sensealg `$sensealg`. Did you spell the sensitivity algorithm correctly? Please report this error.")
