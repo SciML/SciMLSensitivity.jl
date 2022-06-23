@@ -86,14 +86,6 @@ display(pl)
 title!("Neural ODE for Newton's Law of Cooling: Test Data")
 xlabel!("Time")
 ylabel!("Temp") 
-
-
-# How to use MLDataUtils 
-using MLDataUtils
-train_loader, _, _ = kfolds((ode_data, t))
-
-@info "Now training using the MLDataUtils format"
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, cb=Flux.throttle(callback, 10))
 ```
 
 When training a neural network we need to find the gradient with respect to our data set. There are three main ways to partition our data when using a training algorithm like gradient descent: stochastic, batching and mini-batching. Stochastic gradient descent trains on a single random data point each epoch. This allows for the neural network to better converge to the global minimum even on noisy data but is computationally inefficient. Batch gradient descent trains on the whole data set each epoch and while computationally efficient is prone to converging to local minima. Mini-batching combines both of these advantages and by training on a small random "mini-batch" of the data each epoch can converge to the global minimum while remaining more computationally efficient than stochastic descent. Typically we do this by randomly selecting subsets of the data each epoch and use this subset to train on. We can also pre-batch the data by creating an iterator holding these randomly selected batches before beginning to train. The proper size for the batch can be determined experimentally. Let us see how to do this with Julia. 
@@ -101,7 +93,7 @@ When training a neural network we need to find the gradient with respect to our 
 For this example we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so. 
 
 ```@example minibatch
-using DifferentialEquations, DiffEqFlux, Lux, Random, Plots
+using DifferentialEquations, Flux, Random, Plots
 using IterTools: ncycle 
 
 rng = Random.default_rng()
@@ -201,14 +193,4 @@ display(pl)
 title!("Neural ODE for Newton's Law of Cooling: Test Data")
 xlabel!("Time")
 ylabel!("Temp") 
-```
-
-We can also minibatch using tools from `MLDataUtils`. To do this we need to slightly change our implementation and is shown below again with a batch size of k and the same number of epochs.
-
-```@example minibatch
-using MLDataUtils
-train_loader, _, _ = kfolds((ode_data, t))
-
-@info "Now training using the MLDataUtils format"
-Flux.train!(loss_adjoint, Flux.params(θ), ncycle(eachbatch(train_loader[1], k), numEpochs), opt, cb=Flux.throttle(cb, 10))
 ```
