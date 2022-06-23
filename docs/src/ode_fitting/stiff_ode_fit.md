@@ -7,7 +7,7 @@ This tutorial goes into training a model on stiff chemical reaction system data.
 Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
-```julia
+```@example
 using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL, LinearAlgebra
 using ForwardDiff
 using DiffEqBase: UJacobianWrapper
@@ -77,7 +77,7 @@ Error: 1.69%
 
 First, let's get a time series array from the Robertson's equation as data.
 
-```julia
+```@example stifffit
 using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimJL, LinearAlgebra
 using ForwardDiff
 using DiffEqBase: UJacobianWrapper
@@ -105,7 +105,7 @@ solution. We will use this matrix to scale the loss later.
 We fit the parameters in log space, so we need to compute `exp.(p)` to get back
 the original parameters.
 
-```julia
+```@example stifffit
 function predict_adjoint(p)
     p = exp.(p)
     _prob = remake(prob,p=p)
@@ -125,7 +125,7 @@ The difference between the data and the prediction is weighted by the transforme
 Jacobian to do a relative scaling of the loss.
 
 We define a callback function.
-```julia
+```@example stifffit
 callback = function (p,l,pred) #callback function to observe training
     println("Loss: $l")
     println("Parameters: $(exp.(p))")
@@ -138,7 +138,7 @@ end
 We then use a combination of `ADAM` and `BFGS` to minimize the loss function to
 accelerate the optimization. The initial guess of the parameters are chosen to
 be `[1, 1, 1.0]`.
-```julia
+```@example stifffit
 initp = ones(3)
 # Display the ODE with the initial parameter values.
 callback(initp,loss_adjoint(initp)...)
@@ -155,7 +155,7 @@ res2 = Optimization.solve(optprob2, BFGS(), callback = callback, maxiters = 30, 
 
 Finally, we can analyze the difference between the fitted parameters and the
 ground truth.
-```julia
+```@example stifffit
 println("Ground truth: $(p)\nFinal parameters: $(round.(exp.(res2.u), sigdigits=5))\nError: $(round(norm(exp.(res2.u) - p) ./ norm(p) .* 100, sigdigits=3))%")
 ```
 

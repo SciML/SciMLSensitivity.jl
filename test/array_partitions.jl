@@ -28,7 +28,7 @@ sol = solve(
 solve(
     ODEAdjointProblem(
         sol,
-        InterpolatingAdjoint(autojacvec=ZygoteVJP()),
+        InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)),
         [sol.t[end]],
         (out, x, p, t, i) -> (out .= 0),
        ,
@@ -68,7 +68,7 @@ g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), ze
 bwd_sol = solve(
     ODEAdjointProblem(
         sol,
-        InterpolatingAdjoint(autojacvec=ZygoteVJP()),
+        InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)),
         # Also fails, but due to a different bug:
         # InterpolatingAdjoint(autojacvec=ReverseDiffVJP()),
         [sol.t[end]],
