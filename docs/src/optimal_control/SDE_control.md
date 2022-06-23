@@ -17,9 +17,11 @@ to ultimately prepare and stabilize the qubit in the excited state.
 Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
-```julia
+```@example
 # load packages
 using DiffEqFlux
+using DiffEqSensitivity
+using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra, Random
 using Plots
@@ -139,9 +141,9 @@ end
 # normalization callback
 condition(u,t,integrator) = true
 function affect!(integrator)
-  integrator.u=integrator.u/norm(integrator.u)
+  integrator.u .= integrator.u/norm(integrator.u)
 end
-callback = DiscreteCallback(condition,affect!,save_positions=(false,false))
+callback = DiscreteCallback(condition, affect!, save_positions=(false, false))
 
 CreateGrid(t,W1) = NoiseGrid(t,W1)
 Zygote.@nograd CreateGrid #avoid taking grads of this function
@@ -169,29 +171,29 @@ function g(u,p,t)
 end
 
 
-function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
-	 alg=EM(), sensealg = BacksolveAdjoint()
-	 )
+function loss(p; alg=EM(), sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
+
   pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+  u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
   function prob_func(prob, i, repeat)
     # prepare initial state and applied control pulse
-    u0tmp = deepcopy(vec(u0[:,i]))
-    W = sqrt(myparameters.dt)*randn(typeof(myparameters.dt),size(myparameters.ts)) #for 1 trajectory
+    u0tmp = deepcopy(vec(u0[:, i]))
+    W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
     W1 = cumsum([zero(myparameters.dt); W[1:end-1]], dims=1)
-    NG = CreateGrid(myparameters.ts,W1)
+    NG = CreateGrid(myparameters.ts, W1)
 
     remake(prob,
-      p = pars,
-      u0 = u0tmp,
-      callback = callback,
+      p=pars,
+      u0=u0tmp,
+      callback=callback,
       noise=NG)
   end
 
   ensembleprob = EnsembleProblem(prob,
-   prob_func = prob_func,
-   safetycopy = true
-   )
+    prob_func=prob_func,
+    safetycopy=true
+  )
 
   _sol = solve(ensembleprob, alg, EnsembleThreads(),
     sensealg=sensealg,
@@ -199,38 +201,38 @@ function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
     dt=myparameters.dt,
     adaptive=false,
     trajectories=myparameters.numtraj, batch_size=myparameters.numtraj)
-  A = convert(Array,_sol)
+  A = convert(Array, _sol)
 
-  loss = g(A,[myparameters.C1],nothing)
-
-  return loss
+  l = g(A, [myparameters.C1], nothing)
+  # returns loss value
+  return l
 end
 
 #########################################
 # visualization -- run for new batch
-function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
-   alg=EM(),
-   )
+function visualize(p; alg=EM())
+
+  u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
   pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
 
   function prob_func(prob, i, repeat)
     # prepare initial state and applied control pulse
-    u0tmp = deepcopy(vec(u0[:,i]))
-    W = sqrt(myparameters.dt)*randn(typeof(myparameters.dt),size(myparameters.ts)) #for 1 trajectory
+    u0tmp = deepcopy(vec(u0[:, i]))
+    W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
     W1 = cumsum([zero(myparameters.dt); W[1:end-1]], dims=1)
-    NG = CreateGrid(myparameters.ts,W1)
+    NG = CreateGrid(myparameters.ts, W1)
 
     remake(prob,
-      p = pars,
-      u0 = u0tmp,
-      callback = callback,
+      p=pars,
+      u0=u0tmp,
+      callback=callback,
       noise=NG)
   end
 
   ensembleprob = EnsembleProblem(prob,
-   prob_func = prob_func,
-   safetycopy = true
-   )
+    prob_func=prob_func,
+    safetycopy=true
+  )
 
   u = solve(ensembleprob, alg, EnsembleThreads(),
     saveat=myparameters.tinterval,
@@ -239,13 +241,13 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
     trajectories=myparameters.numtrajplot, batch_size=myparameters.numtrajplot)
 
 
-  ceR = @view u[1,:,:]
-  cdR = @view u[2,:,:]
-  ceI = @view u[3,:,:]
-  cdI = @view u[4,:,:]
+  ceR = @view u[1, :, :]
+  cdR = @view u[2, :, :]
+  ceI = @view u[3, :, :]
+  cdI = @view u[4, :, :]
   infidelity = @. (cdR^2 + cdI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
   meaninfidelity = mean(infidelity)
-  loss = myparameters.C1*meaninfidelity
+  loss = myparameters.C1 * meaninfidelity
 
   @info "Loss: " loss
 
@@ -255,72 +257,55 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
   sf = std(fidelity, dims=2)[:]
 
   pl1 = plot(0:myparameters.Nintervals, mf,
-    ribbon = sf,
-    ylim = (0,1), xlim = (0,myparameters.Nintervals),
-    c=1, lw = 1.5, xlabel = "steps i", ylabel="Fidelity", legend=false)
+    ribbon=sf,
+    ylim=(0, 1), xlim=(0, myparameters.Nintervals),
+    c=1, lw=1.5, xlabel="steps i", ylabel="Fidelity", legend=false)
 
-  pl = plot(pl1, legend = false, size=(400,360))
+  pl = plot(pl1, legend=false, size=(400, 360))
   return pl, loss
 end
+
+# burn-in loss
+l = loss(p_nn)
+# callback to visualize training
+visualization_callback = function (p, l; doplot=false)
+  println(l)
+
+  if doplot
+    pl, _ = visualize(p)
+    display(pl)
+  end
+
+  return false
+end
+
+# Display the ODE with the initial parameter values.
+visualization_callback(p_nn, l; doplot=true)
+
 
 ###################################
 # training loop
 @info "Start Training.."
 
-# optimize the parameters for a few epochs with ADAM on time span Nint
-opt = ADAM(myparameters.lr)
-list_plots = []
-losses = []
-for epoch in 1:myparameters.epochs
-  println("epoch: $epoch / $(myparameters.epochs)")
-  local u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
-  _dy, back = @time Zygote.pullback(p -> loss(p, u0, prob, myparameters,
-    sensealg=BacksolveAdjoint()
-  ), p_nn)
-  @show _dy
-  gs = @time back(one(_dy))[1]
-  # store loss
-  push!(losses, _dy)
-  if (epoch % myparameters.epochs == 0) || (epoch == 1)
-    # plot/store every xth epoch
-    @info "plotting.."
-    local u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pl, test_loss = visualize(p_nn, u0, prob, myparameters)
-    println("Loss (epoch: $epoch): $test_loss")
-    display(pl)
-    push!(list_plots, pl)
-  end
-  Flux.Optimise.update!(opt, p_nn, gs)
-  println("")
-end
+# optimize the parameters for a few epochs with ADAM on time span
+# Setup and run the optimization
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
 
-# plot training loss
-pl = plot(losses, lw = 1.5, xlabel = "some epochs", ylabel="Loss", legend=false)
+optprob = Optimization.OptimizationProblem(optf, p_nn)
+res = Optimization.solve(optprob, ADAM(myparameters.lr), callback=visualization_callback, maxiters=100)
 
-savefig(display(list_plots[end], "fidelity.png")
-```
-
-Output:
-
-```
-[ Info: Start Training..
-epoch: 1 / 100
-38.519219 seconds (85.38 M allocations: 4.316 GiB, 3.37% gc time)
-_dy = 0.63193643f0
- 26.232970 seconds (122.33 M allocations: 5.899 GiB, 7.26% gc time)
- ...
-
-[ Info: plotting..
-┌ Info: Loss:
-└   loss = 0.11777343f0
-Loss (epoch: 100): 0.11777343
+# plot optimized control
+visualization_callback(res.u, loss(res.u); doplot=true)
 ```
 
 ## Step-by-step description
 
 ### Load packages
-```julia
+```@example sdecontrol
 using DiffEqFlux
+using DiffEqSensitivity
+using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra, Random
 using Plots
@@ -328,7 +313,7 @@ using Plots
 
 ### Parameters
 We define the parameters of the qubit and hyper-parameters of the training process.
-```julia
+```@example sdecontrol
 lr = 0.01f0
 epochs = 100
 
@@ -390,9 +375,9 @@ In plain terms, the quantities that were defined are:
 
 ### Controller
 We use a neural network to control the parameter Ω(t). Alternatively, one could
-also, e.g., use [tensor layers](https://diffeqflux.sciml.ai/dev/layers/TensorLayer/).
+also, e.g., use [tensor layers](https://diffeqflux.sciml.ai/dev/layers/TensorLayer/), Flux.jl, or Lux.jl.
 
-```julia
+```@example sdecontrol
 # state-aware
 nn = FastChain(
   FastDense(4, 32, relu),
@@ -409,7 +394,7 @@ To avoid complex numbers in our simulations, we split the state of the qubit
 ```
 into its real and imaginary part.
 
-```julia
+```@example sdecontrol
 # initial state anywhere on the Bloch sphere
 function prepare_initial(dt, n_par)
   # shape 4 x n_par
@@ -437,7 +422,7 @@ package, as one possibility to simulate a 1D Brownian motion. Note that the NN
 is placed directly into the drift function, thus the control parameter Ω is
 continuously updated.
 
-```julia
+```@example sdecontrol
 # Define SDE
 function qubit_drift!(du,u,p,t)
   # expansion coefficients |Ψ> = ce |e> + cd |d>
@@ -478,7 +463,7 @@ end
 # normalization callback
 condition(u,t,integrator) = true
 function affect!(integrator)
-  integrator.u=integrator.u/norm(integrator.u)
+  integrator.u.=integrator.u/norm(integrator.u)
 end
 callback = DiscreteCallback(condition,affect!,save_positions=(false,false))
 
@@ -510,7 +495,7 @@ parallel ensemble simulation docs](https://diffeq.sciml.ai/latest/features/ensem
 for a description of the available ensemble algorithms. To optimize only the parameters
 of the neural network, we use `pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]`
 
-``` julia
+``` @example sdecontrol
 # compute loss
 function g(u,p,t)
   ceR = @view u[1,:,:]
@@ -520,30 +505,29 @@ function g(u,p,t)
   p[1]*mean((cdR.^2 + cdI.^2) ./ (ceR.^2 + cdR.^2 + ceI.^2 + cdI.^2))
 end
 
+function loss(p; alg=EM(), sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
 
-function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
-	 alg=EM(), sensealg = BacksolveAdjoint()
-	 )
   pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+  u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
   function prob_func(prob, i, repeat)
     # prepare initial state and applied control pulse
-    u0tmp = deepcopy(vec(u0[:,i]))
-    W = sqrt(myparameters.dt)*randn(typeof(myparameters.dt),size(myparameters.ts)) #for 1 trajectory
+    u0tmp = deepcopy(vec(u0[:, i]))
+    W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
     W1 = cumsum([zero(myparameters.dt); W[1:end-1]], dims=1)
-    NG = CreateGrid(myparameters.ts,W1)
+    NG = CreateGrid(myparameters.ts, W1)
 
     remake(prob,
-      p = pars,
-      u0 = u0tmp,
-      callback = callback,
+      p=pars,
+      u0=u0tmp,
+      callback=callback,
       noise=NG)
   end
 
   ensembleprob = EnsembleProblem(prob,
-   prob_func = prob_func,
-   safetycopy = true
-   )
+    prob_func=prob_func,
+    safetycopy=true
+  )
 
   _sol = solve(ensembleprob, alg, EnsembleThreads(),
     sensealg=sensealg,
@@ -551,11 +535,11 @@ function loss(p, u0, prob::SDEProblem, myparameters::Parameters;
     dt=myparameters.dt,
     adaptive=false,
     trajectories=myparameters.numtraj, batch_size=myparameters.numtraj)
-  A = convert(Array,_sol)
+  A = convert(Array, _sol)
 
-  loss = g(A,[myparameters.C1],nothing)
-
-  return loss
+  l = g(A, [myparameters.C1], nothing)
+  # returns loss value
+  return l
 end
 ```
 
@@ -565,30 +549,30 @@ To visualize the performance of the controller, we plot the mean value and
 standard deviation of the fidelity of a bunch of trajectories (`myparameters.numtrajplot`) as
 a function of the time steps at which loss values are computed.
 
-```julia
-function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
-   alg=EM(),
-   )
+```@example sdecontrol
+function visualize(p; alg=EM())
+
+  u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
   pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
 
   function prob_func(prob, i, repeat)
     # prepare initial state and applied control pulse
-    u0tmp = deepcopy(vec(u0[:,i]))
-    W = sqrt(myparameters.dt)*randn(typeof(myparameters.dt),size(myparameters.ts)) #for 1 trajectory
+    u0tmp = deepcopy(vec(u0[:, i]))
+    W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
     W1 = cumsum([zero(myparameters.dt); W[1:end-1]], dims=1)
-    NG = CreateGrid(myparameters.ts,W1)
+    NG = CreateGrid(myparameters.ts, W1)
 
     remake(prob,
-      p = pars,
-      u0 = u0tmp,
-      callback = callback,
+      p=pars,
+      u0=u0tmp,
+      callback=callback,
       noise=NG)
   end
 
   ensembleprob = EnsembleProblem(prob,
-   prob_func = prob_func,
-   safetycopy = true
-   )
+    prob_func=prob_func,
+    safetycopy=true
+  )
 
   u = solve(ensembleprob, alg, EnsembleThreads(),
     saveat=myparameters.tinterval,
@@ -597,13 +581,13 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
     trajectories=myparameters.numtrajplot, batch_size=myparameters.numtrajplot)
 
 
-  ceR = @view u[1,:,:]
-  cdR = @view u[2,:,:]
-  ceI = @view u[3,:,:]
-  cdI = @view u[4,:,:]
+  ceR = @view u[1, :, :]
+  cdR = @view u[2, :, :]
+  ceI = @view u[3, :, :]
+  cdI = @view u[4, :, :]
   infidelity = @. (cdR^2 + cdI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
   meaninfidelity = mean(infidelity)
-  loss = myparameters.C1*meaninfidelity
+  loss = myparameters.C1 * meaninfidelity
 
   @info "Loss: " loss
 
@@ -613,12 +597,23 @@ function visualize(p, u0, prob::SDEProblem, myparameters::Parameters;
   sf = std(fidelity, dims=2)[:]
 
   pl1 = plot(0:myparameters.Nintervals, mf,
-    ribbon = sf,
-    ylim = (0,1), xlim = (0,myparameters.Nintervals),
-    c=1, lw = 1.5, xlabel = "steps i", ylabel="Fidelity", legend=false)
+    ribbon=sf,
+    ylim=(0, 1), xlim=(0, myparameters.Nintervals),
+    c=1, lw=1.5, xlabel="steps i", ylabel="Fidelity", legend=false)
 
-  pl = plot(pl1, legend = false, size=(400,360))
+  pl = plot(pl1, legend=false, size=(400, 360))
   return pl, loss
+end
+# callback to visualize training
+visualization_callback = function (p, l; doplot=false)
+  println(l)
+
+  if doplot
+    pl, _ = visualize(p)
+    display(pl)
+  end
+
+  return false
 end
 ```
 
@@ -633,33 +628,17 @@ of the neural network.
 sensitivity methods. The necessary correction between Ito and Stratonovich integrals
 is computed under the hood in the DiffEqSensitivity package.
 
-```julia
-# optimize the parameters for a few epochs with ADAM on time span Nint
-opt = ADAM(myparameters.lr)
-list_plots = []
-losses = []
-for epoch in 1:myparameters.epochs
-  println("epoch: $epoch / $(myparameters.epochs)")
-  local u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
-  _dy, back = @time Zygote.pullback(p -> loss(p, u0, prob, myparameters,
-    sensealg=BacksolveAdjoint()
-  ), p_nn)
-  @show _dy
-  gs = @time back(one(_dy))[1]
-  # store loss
-  push!(losses, _dy)
-  if (epoch % myparameters.epochs == 0) || (epoch == 1)
-    # plot/store every xth epoch
-    @info "plotting.."
-    local u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pl, test_loss = visualize(p_nn, u0, prob, myparameters)
-    println("Loss (epoch: $epoch): $test_loss")
-    display(pl)
-    push!(list_plots, pl)
-  end
-  Flux.Optimise.update!(opt, p_nn, gs)
-  println("")
-end
+```@example sdecontrol
+# optimize the parameters for a few epochs with ADAM on time span
+# Setup and run the optimization
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+
+optprob = Optimization.OptimizationProblem(optf, p_nn)
+res = Optimization.solve(optprob, ADAM(myparameters.lr), callback=visualization_callback, maxiters=100)
+
+# plot optimized control
+visualization_callback(res.u, loss(res.u); doplot=true)
 ```
 
 ![Evolution of the fidelity as a function of time](https://user-images.githubusercontent.com/42201748/107991039-10c59200-6fd6-11eb-8a97-a1c8d18a266b.png)
