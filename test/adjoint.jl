@@ -434,32 +434,32 @@ _,easy_res28 = adjoint_sensitivities(sol,Tsit5(),dg_continuous=dg,g=g,abstol=1e-
                                   checkpoints=sol.t[1:500:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
 println("3")
-_,easy_res3 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res3 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                   reltol=1e-14,
                                   sensealg=InterpolatingAdjoint())
-_,easy_res32 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res32 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=InterpolatingAdjoint(autojacvec=false))
 println("33")
-_,easy_res33 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res33 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=QuadratureAdjoint(abstol=1e-14,reltol=1e-14))
-_,easy_res34 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res34 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=QuadratureAdjoint(autojacvec=false,abstol=1e-14,reltol=1e-14))
 println("35")
-_,easy_res35 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res35 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=BacksolveAdjoint())
-_,easy_res36 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res36 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                    reltol=1e-14,
                                    sensealg=BacksolveAdjoint(autojacvec=false))
 println("37")
-_,easy_res37 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res37 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                   reltol=1e-14,
                                   checkpoints=sol.t[1:500:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true))
-_,easy_res38 = adjoint_sensitivities(sol,Tsit5(),g,nothing,abstol=1e-14,
+_,easy_res38 = adjoint_sensitivities(sol,Tsit5(),g=g,abstol=1e-14,
                                   reltol=1e-14,
                                   checkpoints=sol.t[1:500:end],
                                   sensealg=InterpolatingAdjoint(checkpointing=true,autojacvec=false))
@@ -666,8 +666,8 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
     @info "continuous cost"
     g_cont(u,p,t) = (sum(u).^2) ./ 2
     dg_cont(out,u,p,t) = out .= sum(u)
-    _,easy_res_cont = adjoint_sensitivities(sol_mm,alg,nothing,nothing,
-                                     dg_cont,g_cont,abstol=1e-10,reltol=1e-10,
+    _,easy_res_cont = adjoint_sensitivities(sol_mm,alg,dg_continuous=dg_cont,g=g_cont,
+                                     abstol=1e-10,reltol=1e-10,
                                      sensealg=QuadratureAdjoint())
     function G_cont(p)
       tmp_prob_mm = remake(prob_mm,u0=eltype(p).(prob_mm.u0),p=p,
