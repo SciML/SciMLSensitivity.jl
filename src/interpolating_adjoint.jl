@@ -397,6 +397,7 @@ end
 
 
 @noinline function RODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
+                                     t=nothing,
                                      dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
                                      g::G=nothing;
                                      checkpoints=sol.t,
