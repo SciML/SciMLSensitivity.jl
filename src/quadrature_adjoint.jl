@@ -274,12 +274,12 @@ function _adjoint_sensitivities(sol,sensealg::QuadratureAdjoint,alg;t=nothing,
         if t[i]==t[i+1]
           for cb in callback.discrete_callbacks
             if t[i] ∈ cb.affect!.event_times
-              integrand = update_integrand_and_dgrad(res,sensealg,cb,integrand,adj_prob,sol,dgdu,g,dλ,dgrad,t[i],cur_time)
+              integrand = update_integrand_and_dgrad(res,sensealg,cb,integrand,adj_prob,sol,dg_discrete,dλ,dgrad,t[i],cur_time)
             end
           end
           for cb in callback.continuous_callbacks
             if t[i] ∈ cb.affect!.event_times || t[i] ∈ cb.affect_neg!.event_times
-              integrand = update_integrand_and_dgrad(res,sensealg,cb,integrand,adj_prob,sol,dgdu,g,dλ,dgrad,t[i],cur_time)
+              integrand = update_integrand_and_dgrad(res,sensealg,cb,integrand,adj_prob,sol,dg_discrete,dλ,dgrad,t[i],cur_time)
             end
           end
         end
@@ -300,7 +300,7 @@ function update_p_integrand(integrand::AdjointSensitivityIntegrand,p)
   AdjointSensitivityIntegrand(sol,adj_sol,p,y,λ,pf,f_cache,pJ,paramjac_config,sensealg,dgdp_cache,dgdp)
 end
 
-function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand,adj_prob,sol,dgdu,g,dλ,dgrad,t,cur_time)
+function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand,adj_prob,sol,dg,dλ,dgrad,t,cur_time)
 
   indx, pos_neg = get_indx(cb, t)
   tprev = get_tprev(cb,indx,pos_neg)
@@ -337,10 +337,10 @@ function update_integrand_and_dgrad(res,sensealg::QuadratureAdjoint,cb,integrand
   # Create a fake sensitivity function to do the vjps needs to be done
   # to account for parameter dependence of affect function
   fakeS = CallbackSensitivityFunction(w,sensealg,adj_prob.f.f.diffcache,sol.prob)
-  if dgdu === nothing
-    g(dλ,integrand.y,integrand.p,t,cur_time)
+  if dg !== nothing # discrete cost
+    dg(dλ, integrand.y, integrand.p, t, cur_time)
   else
-    dgdu(dλ,integrand.y,integrand.p,t,cur_time)
+    error("Please provide `dg_discrete` to use adjoint_sensitivities with `QuadratureAdjoint()` and callbacks.")
   end
 
   # account for implicit events
