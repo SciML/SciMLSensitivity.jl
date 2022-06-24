@@ -6,11 +6,11 @@ of differential equation solutions with respect to initial conditions and
 parameters. The subsequent [direct sensitivity analysis tutorial](@ref direct_sensitivity)
 showed how to directly use the SciMLSensitivity.jl internals to define and solve
 the augmented differential equation systems which are used in the automatic
-differentiation process. 
+differentiation process.
 
 While these internal functions give more flexibility, the previous demonstration
 focused on a case which was possible via automatic differentiation: discrete cost functionals.
-What is meant by discrete cost functionals is differentiation of a cost which uses a finite 
+What is meant by discrete cost functionals is differentiation of a cost which uses a finite
 number of time points. In the automatic differentiation case, these finite time points are
 the points returned by `solve`, i.e. those chosen by the `saveat` option in the solve call.
 In the direct adjoint sensitivity tooling, these were the time points chosen by the `ts`
@@ -50,7 +50,7 @@ sol = solve(prob,DP8())
 ```
 
 gives a continuous solution `sol(t)` with the derivative at each time point. This
-can then be used to define a continuous cost function via 
+can then be used to define a continuous cost function via
 [Integrals.jl](https://github.com/SciML/Integrals.jl), though the derivative would
 need to be defined by hand using the extra sensitivity terms.
 
@@ -84,7 +84,7 @@ To get the adjoint sensitivities, we call:
 ```@example continuousadjoint
 prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
 sol = solve(prob,DP8())
-res = adjoint_sensitivities(sol,Vern9(),g,nothing,dg,abstol=1e-8,reltol=1e-8)
+res = adjoint_sensitivities(sol,Vern9(),dg_continuous=dg,g=g,abstol=1e-8,reltol=1e-8)
 ```
 
 Notice that we can check this against autodifferentiation and numerical

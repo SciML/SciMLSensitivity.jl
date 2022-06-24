@@ -587,7 +587,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
           ODEAdjointProblem(
               sol,
               BacksolveAdjoint(autojacvec=EnzymeVJP(),checkpointing = checkpointing),
-              nothing, nothing, (x, lqr_params, t) -> cost(x,lqr_params)
+              nothing, nothing, nothing, (x, lqr_params, t) -> cost(x,lqr_params)
           ),
           Tsit5(),
           dense = false,
