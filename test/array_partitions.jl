@@ -30,8 +30,7 @@ solve(
         sol,
         InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)),
         [sol.t[end]],
-        (out, x, p, t, i) -> (out .= 0),
-       ,
+        (out, x, p, t, i) -> (out .= 0)
     ),OrdinaryDiffEq.Tsit5()
 )
 
@@ -72,6 +71,6 @@ bwd_sol = solve(
         # Also fails, but due to a different bug:
         # InterpolatingAdjoint(autojacvec=ReverseDiffVJP()),
         [sol.t[end]],
-        (out, x, p, t, i) -> (out[:] = g),
+        (out, x, p, t, i) -> (out[:] = g)
     ),OrdinaryDiffEq.Tsit5()
 )
