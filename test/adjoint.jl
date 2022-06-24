@@ -587,7 +587,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
           ODEAdjointProblem(
               sol,
               BacksolveAdjoint(autojacvec=EnzymeVJP(),checkpointing = checkpointing),
-              (x, lqr_params, t) -> cost(x,lqr_params),
+              nothing, nothing, (x, lqr_params, t) -> cost(x,lqr_params),
           ),
           Tsit5(),
           dense = false,
@@ -617,7 +617,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 
   @test backsolve_results != backsolve_checkpointing_results
 
-  int_u0, int_p = adjoint_sensitivities(fwd_sol,Tsit5(),(x, params, t)->cost(x,params), nothing, sensealg=InterpolatingAdjoint())
+  int_u0, int_p = adjoint_sensitivities(fwd_sol,Tsit5(),g=(x, params, t)->cost(x,params), sensealg=InterpolatingAdjoint())
 
   @test isapprox(backsolve_checkpointing_results[1:length(x0)], int_u0, rtol=1e-10)
   @test isapprox(backsolve_checkpointing_results[(1:length(params)) .+ length(x0)], int_p', rtol=1e-10)
@@ -649,18 +649,18 @@ using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 
     ts = 0:0.01:1
     dg(out,u,p,t,i) = out .= 1
-    _, res = adjoint_sensitivities(sol_mm,alg,ts,dg,abstol=1e-14,reltol=1e-14,sensealg=QuadratureAdjoint())
+    _, res = adjoint_sensitivities(sol_mm,alg,t=ts,dg_discrete=dg,abstol=1e-14,reltol=1e-14,sensealg=QuadratureAdjoint())
     reference_sol = ForwardDiff.gradient(p->G(p, prob_mm, ts, sum),vec(p))
     @test res' ≈ reference_sol rtol=1e-11
 
-    _, res_interp = adjoint_sensitivities(sol_mm,alg,ts,dg,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint())
+    _, res_interp = adjoint_sensitivities(sol_mm,alg,t=ts,dg_discrete=dg,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint())
     @test res_interp ≈ res rtol = 1e-11
-    _, res_interp2 = adjoint_sensitivities(sol_mm,alg,ts,dg,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_mm.t[1:10:end])
+    _, res_interp2 = adjoint_sensitivities(sol_mm,alg,t=ts,dg_discrete=dg,abstol=1e-14,reltol=1e-14,sensealg=InterpolatingAdjoint(checkpointing=true),checkpoints=sol_mm.t[1:10:end])
     @test res_interp2 ≈ res rtol = 1e-11
 
-    _, res_bs = adjoint_sensitivities(sol_mm,alg,ts,dg,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint(checkpointing=false))
+    _, res_bs = adjoint_sensitivities(sol_mm,alg,t=ts,dg_discrete=dg,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint(checkpointing=false))
     @test res_bs ≈ res rtol = 1e-11
-    _, res_bs2 = adjoint_sensitivities(sol_mm,alg,ts,dg,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_mm.t)
+    _, res_bs2 = adjoint_sensitivities(sol_mm,alg,t=ts,dg_discrete=dg,abstol=1e-14,reltol=1e-14,sensealg=BacksolveAdjoint(checkpointing=true),checkpoints=sol_mm.t)
     @test res_bs2 ≈ res rtol = 1e-11
 
     @info "continuous cost"
