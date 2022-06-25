@@ -91,7 +91,7 @@ function test_continuous_callback(cb, g, dg!; only_backsolve=false)
   cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
   sol_track = solve(prob, Tsit5(), u0=u0, p=p, callback=cb2, abstol=abstol, reltol=reltol, saveat=savingtimes)
 
-  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), t=sol_track.t, dg_discrete = dg!,
+  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), sol_track.t, dg!,
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)
