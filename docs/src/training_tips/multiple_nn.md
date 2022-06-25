@@ -39,7 +39,8 @@ scaling_factor = 1f0
 p1 = Lux.ComponentArray(p1)
 p2 = Lux.ComponentArray(p2)
 
-p = Lux.ComponentArray(p1;p1)
+p = Lux.ComponentArray{Float32}()
+p = Lux.ComponentArray(p;p1)
 p = Lux.ComponentArray(p;p2)
 p = Lux.ComponentArray(p;scaling_factor)
 
