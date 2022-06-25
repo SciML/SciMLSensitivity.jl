@@ -31,21 +31,24 @@ function QuadratureCache(u0, M, nseg, numparams)
   QuadratureCache{typeof(dwv),typeof(dwfs),typeof(dvf),typeof(dvfs),typeof(C)}(dwv,dwf,dwfs,dvf,dvfs,dJs,C,R,b)
 end
 
-struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,G,DG,T}
+struct NILSASProblem{A,NILSS,Aprob,Qcache,solType,z0Type,tType,DG1,DG2,G,T}
   sensealg::A
   nilss::NILSS # diffcache
   adjoint_prob::Aprob
   quadcache::Qcache
   sol::solType
   z0::z0Type
+  t::tType
+  dg_discrete::DG1
+  dg_continuous::DG2
   g::G
-  dg::DG
   T_seg::T
   dtsave::T
 end
 
 
-function NILSASProblem(sol, sensealg::NILSAS, t=nothing, dg = nothing; kwargs...)
+function NILSASProblem(sol, sensealg::NILSAS,
+                            t=nothing, dg_discrete = nothing, dg_continuous = nothing; kwargs...)
 
   @unpack f, p, u0, tspan = sol.prob
   @unpack nseg, nstep, rng, adjoint_sensealg, M, g = sensealg  #number of segments on time interval, number of steps saved on each segment
@@ -74,18 +77,20 @@ function NILSASProblem(sol, sensealg::NILSAS, t=nothing, dg = nothing; kwargs...
   # assign initial values to y, vstar, w
   y = copy(sol.u[end])
   z0 = terminate_conditions(adjoint_sensealg,rng,f,y,p,tspan[2],numindvar,numparams,M)
-  nilss = NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg)
+  nilss = NILSSSensitivityFunction(sensealg,f,u0,p,tspan,g,dg_continuous)
   tspan = (tspan[2] - T_seg, tspan[2])
   checkpoints = tspan[1]:dtsave:tspan[2]
 
-  adjoint_prob = ODEAdjointProblem(sol,adjoint_sensealg,g,t,dg; checkpoints=checkpoints, z0=z0, M=M, nilss=nilss, tspan=tspan, kwargs...)
+  adjoint_prob = ODEAdjointProblem(sol,adjoint_sensealg,t,dg_discrete,dg_continuous,g;
+                                   checkpoints=checkpoints,
+                                   z0=z0, M=M, nilss=nilss, tspan=tspan, kwargs...)
 
   # pre-allocate variables for integration Eq.(23) in NILSAS paper.
   quadcache = QuadratureCache(u0, M, nseg, numparams)
 
   NILSASProblem{typeof(sensealg),typeof(nilss),typeof(adjoint_prob),typeof(quadcache),
-    typeof(sol),typeof(z0),typeof(g),typeof(dg),typeof(T_seg)}(sensealg,nilss,
-    adjoint_prob,quadcache,sol,deepcopy(z0),g,dg,T_seg,dtsave)
+    typeof(sol),typeof(z0),typeof(t),typeof(dg_discrete),typeof(dg_continuous),typeof(g),typeof(T_seg)}(sensealg, nilss,
+    adjoint_prob, quadcache, sol, deepcopy(z0), t, dg_discrete, dg_continuous, g, T_seg, dtsave)
 end
 
 function terminate_conditions(alg::BacksolveAdjoint,rng,f,y,p,t,numindvar,numparams,M)
@@ -244,7 +249,7 @@ end
 function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
 
   @unpack M, nseg, nstep, adjoint_sensealg = nilsas
-  @unpack sol, nilss, z0, g, dg, T_seg, dtsave, adjoint_prob = prob
+  @unpack sol, nilss, z0, t, dg_discrete, dg_continuous, g, T_seg, dtsave, adjoint_prob = prob
   @unpack u0, tspan = adjoint_prob
 
   copyto!(z0,u0)
@@ -258,8 +263,8 @@ function adjoint_sense(prob::NILSASProblem,nilsas::NILSAS,alg; kwargs...)
     t1 = tspan[1]-(nseg-iseg+1)*T_seg
     t2 = tspan[1]-(nseg-iseg)*T_seg
     checkpoints=t1:dtsave:t2
-    _prob = ODEAdjointProblem(sol,adjoint_sensealg,g,nothing,dg;
-              checkpoints=checkpoints,z0=z0,M=M,nilss=nilss,tspan=(t1,t2),kwargs...)
+    _prob = ODEAdjointProblem(sol, adjoint_sensealg, t, dg_discrete, dg_continuous, g;
+      checkpoints=checkpoints, z0=z0, M=M, nilss=nilss, tspan=(t1, t2), kwargs...)
     _sol = solve(_prob,alg; save_everystep=false,save_start=false,saveat=eltype(sol[1])[],
                   dt = dtsave,
                   tstops=checkpoints,

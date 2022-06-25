@@ -224,14 +224,19 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
-                                     g::G,t=nothing,dg::DG=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
-                                     kwargs...) where {G,DG}
+                                     kwargs...) where {DG1,DG2,G}
+
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg, sol) && (length(unique(checkpoints)) != length(checkpoints))
@@ -259,13 +264,13 @@ end
   λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
   λ .= false
 
-  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f,
+  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,f,
                                                      checkpoints,
                                                      (reltol=reltol,abstol=abstol),
                                                      tstops)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb)
+  init_cb = (discrete || dg_discrete!==nothing)
+  cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)
@@ -298,15 +303,20 @@ end
 
 
 @noinline function SDEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
                                      diffusion_jac=nothing, diffusion_paramjac=nothing,
-                                     kwargs...)
+                                     kwargs...) where {DG1,DG2,G}
+
+  dg_discrete===nothing && dg_continuous===nothing && g===nothing && error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg,sol) && (length(unique(checkpoints)) != length(checkpoints))
@@ -329,15 +339,15 @@ end
   λ = one(eltype(u0)) .* similar(p, len)
   λ .= false
 
-  sense_drift = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,sol.prob.f,
+  sense_drift = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,sol.prob.f,
                                                      checkpoints,(reltol=reltol,abstol=abstol))
 
   diffusion_function = ODEFunction(sol.prob.g, jac=diffusion_jac, paramjac=diffusion_paramjac)
-  sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,diffusion_function,
+  sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,diffusion_function,
                                                      checkpoints,(reltol=reltol,abstol=abstol);noiseterm=true)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense_drift, g, λ, t, tspan[2], callback, init_cb)
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense_drift, dg_discrete, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)
@@ -387,14 +397,16 @@ end
 
 
 @noinline function RODEAdjointProblem(sol,sensealg::InterpolatingAdjoint,
-                                     g,t=nothing,dg=nothing;
+                                     t=nothing,
+                                     dg_discrete::DG1=nothing,dg_continuous::DG2=nothing,
+                                     g::G=nothing;
                                      checkpoints=sol.t,
                                      callback=CallbackSet(),
                                      reltol=nothing, abstol=nothing,
-                                     kwargs...)
+                                     kwargs...)  where {DG1,DG2,G}
   @unpack f, p, u0, tspan = sol.prob
   tspan = reverse(tspan)
-  discrete = t !== nothing
+  discrete = (t !== nothing && dg_continuous === nothing)
 
   # remove duplicates from checkpoints
   if ischeckpointing(sensealg,sol) && (length(unique(checkpoints)) != length(checkpoints))
@@ -417,13 +429,13 @@ end
   λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) : one(eltype(u0)) .* similar(p, len)
   λ .= false
 
-  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg,f,
+  sense = ODEInterpolatingAdjointSensitivityFunction(g,sensealg,discrete,sol,dg_continuous,f,
                                                      checkpoints,
                                                      (reltol=reltol,abstol=abstol),
                                                      tstops)
 
-  init_cb = t !== nothing && tspan[1] == t[end]
-  cb, duplicate_iterator_times = generate_callbacks(sense, g, λ, t, tspan[2], callback, init_cb)
+  init_cb = (discrete || dg_discrete!==nothing) # && tspan[1] == t[end]
+  cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2], callback, init_cb)
   z0 = vec(zero(λ))
   original_mm = sol.prob.f.mass_matrix
   if original_mm === I || original_mm === (I,I)

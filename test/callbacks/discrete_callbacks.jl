@@ -104,21 +104,13 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
   sol_track = solve(prob, Tsit5(), u0=u0, p=p, callback=cb2, tstops=tstops, abstol=abstol, reltol=reltol, saveat=savingtimes)
   #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
-  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), dg!, sol_track.t, nothing,
+  adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), sol_track.t, dg!,
     callback=cb2,
     abstol=abstol, reltol=reltol)
   adj_sol = solve(adj_prob, Tsit5(), abstol=abstol, reltol=reltol)
   @test du01 ≈ adj_sol[1:2, end]
   @test dp1 ≈ adj_sol[3:6, end]
 
-
-  # adj_prob = ODEAdjointProblem(sol_track,InterpolatingAdjoint(),dg!,sol_track.t,nothing,
-  # 						 callback = cb2,
-  # 						 abstol=abstol,reltol=reltol)
-  # adj_sol = solve(adj_prob, Tsit5(), abstol=abstol,reltol=reltol)
-  #
-  # @test du01 ≈ -adj_sol[1:2,end]
-  # @test dp1 ≈ adj_sol[3:6,end]
 end
 
 @testset "Discrete callbacks" begin

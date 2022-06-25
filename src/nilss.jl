@@ -87,7 +87,8 @@ struct NILSSProblem{A,CacheType,FSprob,probType,u0Type,vstar0Type,w0Type,
 end
 
 
-function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
+function NILSSProblem(prob, sensealg::NILSS;
+                            t=nothing, dg_discrete = nothing, dg_continuous = nothing,
                             kwargs...)
 
   @unpack f, p, u0, tspan = prob
@@ -122,9 +123,11 @@ function NILSSProblem(prob, sensealg::NILSS, t=nothing, dg = nothing;
     @assert T_seg >= dt_ts
     jevery = Int(dt_ts/dtsave) # will throw an inexact error if dt_ts is not a multiple of dtsave. (could be more sophisticated)
     cur_time = Ref(1)
+    dg = dg_discrete
   else
     jevery = nothing
     cur_time = nothing
+    dg = dg_continuous
   end
 
   # inhomogenous forward sensitivity problem

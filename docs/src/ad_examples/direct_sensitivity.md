@@ -106,13 +106,13 @@ and thus:
 dg(out,u,p,t,i) = (out.=1.0.-u)
 ```
 
-Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`. 
+Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`.
 If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
 sensitivities, call:
 
 ```@example directsense
 ts = 0:0.5:10
-res = adjoint_sensitivities(sol,Vern9(),dg,ts,abstol=1e-14,
+res = adjoint_sensitivities(sol,Vern9(),t=ts,dg_discrete=dg,abstol=1e-14,
                             reltol=1e-14)
 ```
 

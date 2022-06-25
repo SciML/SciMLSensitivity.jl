@@ -28,7 +28,7 @@ sumsol = sum(sol)
 ###
 
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= 1),0.0:0.1:10,abstol=1e-14,reltol=1e-14)
+ū0, adj = adjoint_sensitivities(_sol, Tsit5(), t=0.0:0.1:10, dg_discrete=((out, u, p, t, i)->out .= 1), abstol=1e-14, reltol=1e-14)
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=QuadratureAdjoint())),u0,p)
 du02,dp2 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=InterpolatingAdjoint())),u0,p)
 du03,dp3 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14,reltol=1e-14,saveat=0.1,sensealg=BacksolveAdjoint())),u0,p)
@@ -123,7 +123,7 @@ du04,dp4 = Zygote.gradient((u0,p)->sum(solve(prob,Tsit5(),u0=u0,p=p,abstol=1e-14
 ###
 
 _sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-ū0,adj = adjoint_sensitivities(_sol,Tsit5(),((out,u,p,t,i) -> out .= 1),0.0:0.1:10,abstol=1e-14,reltol=1e-14)
+ū0,adj = adjoint_sensitivities(_sol,Tsit5(), t=0.0:0.1:10, dg_discrete=((out,u,p,t,i) -> out .= 1),abstol=1e-14,reltol=1e-14)
 
 ###
 ### adjoint
@@ -260,7 +260,7 @@ proboop = SDEProblem(foop,σoop,u0,(0.0,1.0),p)
 ###
 
 _sol = solve(proboop,EulerHeun(),dt=1e-2,adaptive=false,save_noise=true,seed=seed)
-ū0,adj = adjoint_sensitivities(_sol,EulerHeun(),((out,u,p,t,i) -> out .= 1),tarray, sensealg=BacksolveAdjoint())
+ū0,adj = adjoint_sensitivities(_sol,EulerHeun(), t=tarray, dg_discrete=((out,u,p,t,i) -> out .= 1), sensealg=BacksolveAdjoint())
 
 du01,dp1 = Zygote.gradient((u0,p)->sum(solve(proboop,EulerHeun(),
   u0=u0,p=p,dt=1e-2,saveat=0.01,sensealg=BacksolveAdjoint(),seed=seed)),u0,p)
