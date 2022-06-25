@@ -6,7 +6,7 @@ this kind of study.
 
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
-```@example
+```julia
 using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Random
 
 rng = Random.default_rng()
