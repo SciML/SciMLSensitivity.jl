@@ -7,7 +7,7 @@ follow.
 
 ```@example optode_cp
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
-      DiffEqSensitivity, Zygote, Plots
+      SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -73,7 +73,7 @@ more details, [see the DifferentialEquations.jl documentation](http://docs.julia
 
 ```@example optode
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
-      DiffEqSensitivity, Zygote, Plots
+      SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u

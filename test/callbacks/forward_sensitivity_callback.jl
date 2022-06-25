@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, DiffEqCallbacks
-using DiffEqSensitivity, Zygote, Test
+using SciMLSensitivity, Zygote, Test
 import ForwardDiff
 import FiniteDiff
 

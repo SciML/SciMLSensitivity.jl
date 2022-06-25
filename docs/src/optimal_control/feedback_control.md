@@ -11,7 +11,7 @@ equation to stay close to 1.
 
 ```@example udeneuralcontrol
 using Flux, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
-      DiffEqSensitivity, Zygote, DifferentialEquations, Plots, Random
+      SciMLSensitivity, Zygote, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
 u0 = 1.1f0

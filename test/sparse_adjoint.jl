@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, LinearAlgebra, SparseArrays, Zygote, LinearSolve
+using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, SparseArrays, Zygote, LinearSolve
 using AlgebraicMultigrid: AlgebraicMultigrid
 using Test
 

@@ -1,8 +1,8 @@
-using DiffEqSensitivity, Flux, LinearAlgebra
+using SciMLSensitivity, Flux, LinearAlgebra
 using DiffEqNoiseProcess
 using StochasticDiffEq
 using Statistics
-using DiffEqSensitivity
+using SciMLSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
 using Optimization, OptimizationFlux

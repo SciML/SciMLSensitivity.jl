@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, DiffEqBase, ForwardDiff
+using SciMLSensitivity, OrdinaryDiffEq, DiffEqBase, ForwardDiff
 using Test
 
 function fb(du,u,p,t)

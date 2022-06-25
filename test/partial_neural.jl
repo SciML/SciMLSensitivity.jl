@@ -1,4 +1,4 @@
-using DiffEqSensitivity, Flux, Optimization, OptimizationFlux, OptimizationOptimJL, OrdinaryDiffEq, Test
+using SciMLSensitivity, Flux, Optimization, OptimizationFlux, OptimizationOptimJL, OrdinaryDiffEq, Test
 
 
 x = Float32[0.8; 0.8]

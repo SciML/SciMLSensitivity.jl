@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, Zygote, Test
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, Test
 
 function f!(du,u,p,t)
     du[1] = -p[1]'*u
@@ -32,19 +32,19 @@ end
 grad(p) = Zygote.gradient(loss, p)
 
 p2 = [4;5;6]
-@test_throws DiffEqSensitivity.ForwardDiffSensitivityParameterCompatibilityError grad(p2)
+@test_throws SciMLSensitivity.ForwardDiffSensitivityParameterCompatibilityError grad(p2)
 
 function loss(p1)
     sol = solve(prob, Tsit5(), p=[p1, mystruct(-1,-2), control], sensealg = InterpolatingAdjoint())
     return sum(abs2, sol)
 end
 
-@test_throws DiffEqSensitivity.AdjointSensitivityParameterCompatibilityError grad(p2)
+@test_throws SciMLSensitivity.AdjointSensitivityParameterCompatibilityError grad(p2)
 
 function loss(p1)
     sol = solve(prob, Tsit5(), p=[p1, mystruct(-1,-2), control], sensealg = ForwardSensitivity())
     return sum(abs2, sol)
 end
 
-@test_throws DiffEqSensitivity.ForwardSensitivityParameterCompatibilityError grad(p2)
-@test_throws DiffEqSensitivity.ForwardSensitivityParameterCompatibilityError ODEForwardSensitivityProblem(f!,u0, tspan, p)
+@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError grad(p2)
+@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError ODEForwardSensitivityProblem(f!,u0, tspan, p)

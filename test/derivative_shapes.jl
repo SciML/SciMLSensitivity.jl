@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, ForwardDiff, Zygote, Test
+using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, Test
 A = [0. 1.; 1. 0.; 0 0; 0 0];
 B = [1. 0.; 0. 1.; 0 0; 0 0];
 

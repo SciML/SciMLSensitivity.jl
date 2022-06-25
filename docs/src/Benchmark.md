@@ -25,7 +25,7 @@ Quick summary:
 - Using `ZygoteVJP` is faster than other vjp choices with FastDense due to the overloads
 
 ```julia
-using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots, DiffEqSensitivity,
+using DiffEqFlux, OrdinaryDiffEq, Flux, Optim, Plots, SciMLSensitivity,
       Zygote, BenchmarkTools, Random
 
 u0 = Float32[2.0; 0.0]

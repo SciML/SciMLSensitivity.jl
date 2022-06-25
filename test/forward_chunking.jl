@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote, Test, ForwardDiff
+using SciMLSensitivity, OrdinaryDiffEq, Zygote, Test, ForwardDiff
 
 function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*p[51]*p[75]*u[1]*u[2]

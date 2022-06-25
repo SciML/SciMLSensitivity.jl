@@ -159,7 +159,7 @@ one could use a mix of (4) and (5), or breaking up the trajectory into chunks an
 
 ```@example resetic
 
-using Flux, Plots, DifferentialEquations, DiffEqSensitivity
+using Flux, Plots, DifferentialEquations, SciMLSensitivity
 
 
 #Starting example with tspan (0, 5)

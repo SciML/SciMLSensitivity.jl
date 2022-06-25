@@ -1,4 +1,4 @@
-module DiffEqSensitivity
+module SciMLSensitivity
 
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra

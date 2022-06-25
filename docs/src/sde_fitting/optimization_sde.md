@@ -1,7 +1,7 @@
 # Optimization of Stochastic Differential Equations
 
 Here we demonstrate `sensealg = ForwardDiffSensitivity()` (provided by
-DiffEqSensitivity.jl) for forward-mode automatic differentiation of a small
+SciMLSensitivity.jl) for forward-mode automatic differentiation of a small
 stochastic differential equation. For large parameter equations, like neural
 stochastic differential equations, you should use reverse-mode automatic
 differentiation. However, forward-mode can be more efficient for low numbers
@@ -15,7 +15,7 @@ is a stochastic process. Each time we solve this equation we get a different
 solution, so we need a sensible data source.
 
 ```@example sde
-using DifferentialEquations, DiffEqSensitivity, Plots
+using DifferentialEquations, SciMLSensitivity, Plots
 
 function lotka_volterra!(du,u,p,t)
   x,y = u

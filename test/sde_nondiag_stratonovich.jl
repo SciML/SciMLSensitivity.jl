@@ -1,5 +1,5 @@
 using Test, LinearAlgebra
-using DiffEqSensitivity, StochasticDiffEq
+using SciMLSensitivity, StochasticDiffEq
 using ForwardDiff, Zygote
 using Random
 

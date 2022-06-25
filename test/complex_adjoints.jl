@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote, LinearAlgebra, FiniteDiff, Test
+using SciMLSensitivity, OrdinaryDiffEq, Zygote, LinearAlgebra, FiniteDiff, Test
 A  = [1.0*im  2.0; 3.0 4.0]
 u0 = [1.0 0.0*im; 0.0 1.0]
 tspan = (0.0, 1.0)

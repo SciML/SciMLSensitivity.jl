@@ -1,4 +1,4 @@
-using DiffEqSensitivity
+using SciMLSensitivity
 using OrdinaryDiffEq
 
 using FiniteDiff

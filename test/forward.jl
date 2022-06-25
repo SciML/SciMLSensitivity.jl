@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus
+using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus
 using Test
 function fb(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
@@ -218,4 +218,4 @@ end
 
 u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0, 1.0]
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra_oop, u0, (0.0, 10.0), p)
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra_oop, u0, (0.0, 10.0), p)

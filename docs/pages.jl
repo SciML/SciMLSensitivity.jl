@@ -1,5 +1,5 @@
 pages = [
-        "DiffEqSensitivity.jl: Automatic Differentiation and Adjoints for (Differential) Equation Solvers" => "index.md",
+        "SciMLSensitivity.jl: Automatic Differentiation and Adjoints for (Differential) Equation Solvers" => "index.md",
         "Tutorials" => Any[
             "Differentiating Ordinary Differential Equations (ODE) Tutorials" => Any[
                 "ad_examples/differentiating_ode.md",

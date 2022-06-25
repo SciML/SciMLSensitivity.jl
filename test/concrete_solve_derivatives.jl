@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote
+using SciMLSensitivity, OrdinaryDiffEq, Zygote
 using Test, ForwardDiff
 import Tracker, ReverseDiff, ChainRulesCore
 
