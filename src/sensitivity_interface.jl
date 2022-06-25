@@ -21,13 +21,16 @@ function Base.showerror(io::IO, e::AdjointSensitivityParameterCompatibilityError
 end
 
 @doc doc"""
-adjoint_sensitivities(sol,alg;t=nothing,dg_discrete=nothing,dg_continuous,g=nothing,
+```julia
+adjoint_sensitivities(sol,alg;t=nothing,dg_discrete=nothing,
+                            dg_continuous=nothing,g=nothing,
                             abstol=1e-6,reltol=1e-3,
                             checkpoints=sol.t,
                             corfunc_analytical=nothing,
                             callback = nothing,
                             sensealg=InterpolatingAdjoint(),
                             kwargs...)
+```
 
 Adjoint sensitivity analysis is used to find the gradient of the solution
 with respect to some functional of the solution. In many cases this is used
