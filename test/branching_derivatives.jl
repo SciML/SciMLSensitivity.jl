@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote, Test
+using SciMLSensitivity, OrdinaryDiffEq, Zygote, Test
 
 function get_param(breakpoints, values, t)
     for (i, tᵢ) in enumerate(breakpoints)

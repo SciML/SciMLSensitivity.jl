@@ -1,5 +1,5 @@
 using Test, LinearAlgebra
-using DiffEqSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
+using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq
 using ForwardDiff, Calculus
 using Random

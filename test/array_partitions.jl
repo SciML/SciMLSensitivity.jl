@@ -1,6 +1,6 @@
 import OrdinaryDiffEq
 import DiffEqBase: DynamicalODEProblem
-import DiffEqSensitivity:
+import SciMLSensitivity:
     solve,
     ODEProblem,
     ODEAdjointProblem,
@@ -37,7 +37,7 @@ solve(
 dyn_v(v_ap, x_ap, p, t) = ArrayPartition(zeros(), [0.0])
 # Originally, I imagined that this may be a bug in Zygote, and it still may be, but I tried doing a pullback on this
 # function on its own and didn't have any trouble with that. So I'm led to believe that it has something to do with
-# how DiffEqSensitivity is invoking Zygote. At least this was as far as I was able to simplify the reproduction.
+# how SciMLSensitivity is invoking Zygote. At least this was as far as I was able to simplify the reproduction.
 dyn_x(v_ap, x_ap, p, t) = begin
     # ERROR: LoadError: MethodError: no method matching ndims(::Type{NamedTuple{(:x,),Tuple{Tuple{Nothing,Array{Float64,1}}}}})
     v = v_ap.x[2]

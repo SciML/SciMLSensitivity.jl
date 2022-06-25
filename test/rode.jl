@@ -1,5 +1,5 @@
 using StochasticDiffEq
-using DiffEqSensitivity
+using SciMLSensitivity
 using DiffEqNoiseProcess
 using LinearAlgebra, Statistics, Random
 using Zygote, ReverseDiff, ForwardDiff

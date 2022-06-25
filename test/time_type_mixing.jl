@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Zygote, DiffEqSensitivity, Test
+using OrdinaryDiffEq, Zygote, SciMLSensitivity, Test
 
 p_model = [1f0]
 
@@ -21,7 +21,7 @@ p_model_ini = copy(p_model)
 
 @test !iszero(Zygote.gradient(loss,p_model_ini)[1])
 
-## https://github.com/SciML/DiffEqSensitivity.jl/issues/675
+## https://github.com/SciML/SciMLSensitivity.jl/issues/675
 
 u0 = Float32[2.0; 0.0] # Initial condition
 p = [-0.1 2.0; -2.0 -0.1]

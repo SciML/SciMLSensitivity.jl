@@ -498,10 +498,10 @@ function accumulate_cost!(_dgdu, dg, u, p, t, sensealg::NILSS, diffcache::NILSSS
 
   if dg===nothing
     if dg_val isa Tuple
-      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+      SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
       copyto!(_dgdu, dg_val[1])
     else
-      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+      SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
       copyto!(_dgdu, dg_val)
     end
   else

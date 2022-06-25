@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker
+using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker
 using Test
 
 prob = ODEProblem((u,p,t)->u .* p,[2.0],(0.0,1.0),[3.0])
@@ -15,13 +15,13 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()),u0p)[1]
 @test_broken ReverseDiff.gradient(senseloss(ReverseDiffAdjoint()),u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss(TrackerAdjoint()),u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss(ForwardDiffSensitivity()),u0p) ≈ dup
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ReverseDiff.gradient(senseloss(ForwardSensitivity()),u0p) ≈ dup
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ReverseDiff.gradient(senseloss(ForwardSensitivity()),u0p) ≈ dup
 
 @test Tracker.gradient(senseloss(InterpolatingAdjoint()),u0p)[1] ≈ dup
 @test_broken Tracker.gradient(senseloss(ReverseDiffAdjoint()),u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss(TrackerAdjoint()),u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss(ForwardDiffSensitivity()),u0p)[1] ≈ dup
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError Tracker.gradient(senseloss(ForwardSensitivity()),u0p)[1] ≈ dup
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError Tracker.gradient(senseloss(ForwardSensitivity()),u0p)[1] ≈ dup
 
 @test ForwardDiff.gradient(senseloss(InterpolatingAdjoint()),u0p) ≈ dup
 
@@ -84,12 +84,12 @@ dup = Zygote.gradient(senseloss4(InterpolatingAdjoint()),u0p)[1]
 @test_broken ReverseDiff.gradient(senseloss4(ReverseDiffAdjoint()),u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss4(TrackerAdjoint()),u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss4(ForwardDiffSensitivity()),u0p) ≈ dup
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError ReverseDiff.gradient(senseloss4(ForwardSensitivity()),u0p) ≈ dup
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ReverseDiff.gradient(senseloss4(ForwardSensitivity()),u0p) ≈ dup
 
 @test Tracker.gradient(senseloss4(InterpolatingAdjoint()),u0p)[1] ≈ dup
 @test_broken Tracker.gradient(senseloss4(ReverseDiffAdjoint()),u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss4(TrackerAdjoint()),u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss4(ForwardDiffSensitivity()),u0p)[1] ≈ dup
-@test_throws DiffEqSensitivity.ForwardSensitivityOutOfPlaceError Tracker.gradient(senseloss4(ForwardSensitivity()),u0p)[1] ≈ dup
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError Tracker.gradient(senseloss4(ForwardSensitivity()),u0p)[1] ≈ dup
 
 @test ForwardDiff.gradient(senseloss4(InterpolatingAdjoint()),u0p) ≈ dup

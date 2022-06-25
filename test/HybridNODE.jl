@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, DiffEqCallbacks, Flux
+using SciMLSensitivity, OrdinaryDiffEq, DiffEqCallbacks, Flux
 using Random, Test
 using Zygote
 

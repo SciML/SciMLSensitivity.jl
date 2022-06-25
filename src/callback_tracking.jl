@@ -2,7 +2,7 @@
 Appends a tracking process to determine the time of the callback to be used in
 the reverse pass. The rationale is explain in:
 
-https://github.com/SciML/DiffEqSensitivity.jl/issues/4
+https://github.com/SciML/SciMLSensitivity.jl/issues/4
 """
 track_callbacks(cb,t,u,p,sensealg) = track_callbacks(CallbackSet(cb),t,u,p,sensealg)
 track_callbacks(cb::CallbackSet,t,u,p,sensealg) = CallbackSet(
@@ -154,7 +154,7 @@ Sets up callbacks for the adjoint pass. This is a version that has an effect
 at each event of the forward pass and defines the reverse pass values via the
 vjps as described in https://arxiv.org/pdf/1905.10403.pdf Equation 13.
 
-For more information, see https://github.com/SciML/DiffEqSensitivity.jl/issues/4
+For more information, see https://github.com/SciML/SciMLSensitivity.jl/issues/4
 """
 setup_reverse_callbacks(cb,sensealg,g,cur_time,terminated) = setup_reverse_callbacks(CallbackSet(cb),sensealg,g,cur_time,terminated)
 function setup_reverse_callbacks(cb::CallbackSet,sensealg,g,cur_time,terminated)

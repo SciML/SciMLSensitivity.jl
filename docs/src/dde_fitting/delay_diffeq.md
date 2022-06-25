@@ -5,7 +5,7 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```@example dde
-using DifferentialEquations, Optimization, DiffEqSensitivity,
+using DifferentialEquations, Optimization, SciMLSensitivity,
       OptimizationPolyalgorithms
 
 

@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, Zygote
-using DiffEqSensitivity, Test, ForwardDiff
+using SciMLSensitivity, Test, ForwardDiff
 
 abstol = 1e-12
 reltol = 1e-12

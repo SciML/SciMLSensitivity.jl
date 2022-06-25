@@ -1,4 +1,4 @@
-The DiffEqSensitivity.jl package is licensed under the MIT "Expat" License:
+The SciMLSensitivity.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2016-2020: ChrisRackauckas, Julia Computing.
 > 

@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity
+using OrdinaryDiffEq, SciMLSensitivity
 
 function growth(du, u, p, t)
     @. du = p * u * (1 - u)

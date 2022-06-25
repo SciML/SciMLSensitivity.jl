@@ -1,6 +1,6 @@
 using Test
 using OrdinaryDiffEq
-using DiffEqSensitivity
+using SciMLSensitivity
 using DiffEqBase
 using ForwardDiff
 using QuadGK

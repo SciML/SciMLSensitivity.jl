@@ -229,10 +229,10 @@ function accumulate_cost!(dg, y, p, t, nilss::NILSSSensitivityFunction)
 
   if dg===nothing
     if dg_val isa Tuple
-      DiffEqSensitivity.gradient!(dg_val[1],pgpu,y,alg,pgpu_config)
-      DiffEqSensitivity.gradient!(dg_val[2],pgpp,y,alg,pgpp_config)
+      SciMLSensitivity.gradient!(dg_val[1],pgpu,y,alg,pgpu_config)
+      SciMLSensitivity.gradient!(dg_val[2],pgpp,y,alg,pgpp_config)
     else
-      DiffEqSensitivity.gradient!(dg_val,pgpu,y,alg,pgpu_config)
+      SciMLSensitivity.gradient!(dg_val,pgpu,y,alg,pgpu_config)
     end
   else
     if dg_val isa Tuple

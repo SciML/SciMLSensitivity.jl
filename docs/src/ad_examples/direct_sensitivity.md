@@ -13,7 +13,7 @@ instead of an ODE type. For example, we generate an ODE with the sensitivity
 equations attached for the Lotka-Volterra equations by:
 
 ```@example directsense
-using OrdinaryDiffEq, DiffEqSensitivity
+using OrdinaryDiffEq, SciMLSensitivity
 
 function f(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]

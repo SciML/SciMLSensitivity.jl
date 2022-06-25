@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, Zygote, RecursiveArrayTools, Test
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, RecursiveArrayTools, Test
 
 u0 = Float32[1.; 2.]
 du0 = Float32[0.; 2.]

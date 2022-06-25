@@ -1,6 +1,6 @@
 using Test, LinearAlgebra
 using OrdinaryDiffEq
-using DiffEqSensitivity, StochasticDiffEq, DiffEqBase
+using SciMLSensitivity, StochasticDiffEq, DiffEqBase
 using ForwardDiff, ReverseDiff
 using Random
 import Tracker, Zygote

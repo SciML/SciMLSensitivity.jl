@@ -1,6 +1,6 @@
 # Neural Ordinary Differential Equations with Flux
 
-All of the tools of DiffEqSensitivity.jl can be used with Flux.jl. A lot of the examples
+All of the tools of SciMLSensitivity.jl can be used with Flux.jl. A lot of the examples
 have been written to use `FastChain` and `sciml_train`, but in all cases this
 can be changed to the `Chain` and `Flux.train!` workflow.
 
@@ -10,7 +10,7 @@ This should work almost automatically by using `solve`. Here is an
 example of optimizing `u0` and `p`.
 
 ```@example neuralode1
-using OrdinaryDiffEq, DiffEqSensitivity, Flux, Plots
+using OrdinaryDiffEq, SciMLSensitivity, Flux, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -83,7 +83,7 @@ Notice that Optimization.jl works on a vector input, so we have to concatenate `
 and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
-using Flux, OrdinaryDiffEq, DiffEqSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
+using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30

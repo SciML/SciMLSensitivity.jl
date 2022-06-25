@@ -2,7 +2,7 @@ using Distributed, Flux
 
 addprocs(2)
 @everywhere begin
-  using DiffEqSensitivity, OrdinaryDiffEq, Test
+  using SciMLSensitivity, OrdinaryDiffEq, Test
 
   pa = [1.0]
   u0 = [3.0]

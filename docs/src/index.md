@@ -1,6 +1,6 @@
-# DiffEqSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers
+# SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers
 
-DiffEqSensitivity.jl is the automatic differentiation and adjoints system for the SciML
+SciMLSensitivity.jl is the automatic differentiation and adjoints system for the SciML
 ecosystem. Also known as local sensitivity analysis, these methods allow for calculation
 of fast derivatives of SciML problem types which are commonly used to analyze model
 sensitivities, callibrate models to data, train neural ODEs, perform automated model
@@ -9,7 +9,7 @@ a high level interface that pulls together all of the tools with heuristics
 and helper functions to make solving inverse problems and inferring models
 as easy as possible without losing efficiency.
 
-Thus, what DiffEqSensitivity.jl provides is:
+Thus, what SciMLSensitivity.jl provides is:
 
 - Automatic differentiation overloads for improving the performance and flexibility
   of AD calls over `solve`.
@@ -163,8 +163,8 @@ With this package, you can explore various ways to integrate the two methodologi
 
 ## Note on Modularity and Composability with Solvers
 
-Note that DiffEqSensitivity.jl purely built on composable and modular infrastructure. 
-DiffEqSensitivity provides high level helper functions and documentation for the user, but the
+Note that SciMLSensitivity.jl purely built on composable and modular infrastructure. 
+SciMLSensitivity provides high level helper functions and documentation for the user, but the
 code generation stack is modular and composes in many different ways. For example, one can
 use and swap out the ODE solver between any common interface compatible library, like:
 
@@ -176,7 +176,7 @@ use and swap out the ODE solver between any common interface compatible library,
 - [... etc. many other choices!](https://diffeq.sciml.ai/stable/solvers/ode_solve/)
 
 In addition, due to the composability of the system, none of the components are directly
-tied to the Flux.jl machine learning framework. For example, you can [use DiffEqSensitivity.jl
+tied to the Flux.jl machine learning framework. For example, you can [use SciMLSensitivity.jl
 to generate TensorFlow graphs and train the neural network with TensorFlow.jl](https://youtu.be/n2MwJ1guGVQ?t=284),
 [use PyTorch arrays via Torch.jl](https://github.com/FluxML/Torch.jl), and more all with
 single line code changes by utilizing the underlying code generation. The tutorials shown here
@@ -192,7 +192,7 @@ Julia packages.
 
 ## Citation
 
-If you use DiffEqSensitivity.jl or are influenced by its ideas, please cite:
+If you use SciMLSensitivity.jl or are influenced by its ideas, please cite:
 
 ```
 @article{rackauckas2020universal,

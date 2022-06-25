@@ -1,7 +1,7 @@
 # Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis
 
 In many cases it may be more optimal or more stable to fit using second order
-Newton-based optimization techniques. Since DiffEqSensitivity.jl provides
+Newton-based optimization techniques. Since SciMLSensitivity.jl provides
 second order sensitivity analysis for fast Hessians and Hessian-vector
 products (via forward-over-reverse), we can utilize these in our neural/universal
 differential equation training processes.

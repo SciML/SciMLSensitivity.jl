@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Flux, DiffEqSensitivity, DiffEqCallbacks, Test
+using OrdinaryDiffEq, Flux, SciMLSensitivity, DiffEqCallbacks, Test
 using Random
 
 Random.seed!(1234)

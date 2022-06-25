@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, Zygote
-using DiffEqSensitivity, Test, ForwardDiff
+using SciMLSensitivity, Test, ForwardDiff
 
 abstol = 1e-12
 reltol = 1e-12
@@ -100,9 +100,9 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop=nothing, tprev=false)
   @test dp1 ≈ dp3c
   @test dp1 ≈ dp4 rtol = 1e-7
 
-  cb2 = DiffEqSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
+  cb2 = SciMLSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p, BacksolveAdjoint(autojacvec=ReverseDiffVJP()))
   sol_track = solve(prob, Tsit5(), u0=u0, p=p, callback=cb2, tstops=tstops, abstol=abstol, reltol=reltol, saveat=savingtimes)
-  #cb_adj = DiffEqSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
+  #cb_adj = SciMLSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
   adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec=ReverseDiffVJP()), sol_track.t, dg!,
     callback=cb2,

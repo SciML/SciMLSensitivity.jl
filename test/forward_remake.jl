@@ -1,4 +1,4 @@
-using DiffEqSensitivity, ForwardDiff, Distributions, OrdinaryDiffEq,
+using SciMLSensitivity, ForwardDiff, Distributions, OrdinaryDiffEq,
       LinearAlgebra, Test
 
 function fiip(du,u,p,t)

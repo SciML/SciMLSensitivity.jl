@@ -12,7 +12,7 @@ using GraphNeuralNetworks.GNNGraphs: normalized_adjacency
 using Lux, NNlib, Optimisers, Zygote, Random, ComponentArrays
 using Lux: AbstractExplicitLayer, glorot_normal, zeros32
 import Lux: initialparameters, initialstates
-using DiffEqSensitivity
+using SciMLSensitivity
 using Statistics: mean
 using MLDatasets: Cora
 using CUDA
@@ -152,7 +152,7 @@ using GraphNeuralNetworks.GNNGraphs: normalized_adjacency
 using Lux, NNlib, Optimisers, Zygote, Random, ComponentArrays
 using Lux: AbstractExplicitLayer, glorot_normal, zeros32
 import Lux: initialparameters, initialstates
-using DiffEqSensitivity
+using SciMLSensitivity
 using Statistics: mean
 using MLDatasets: Cora
 using CUDA

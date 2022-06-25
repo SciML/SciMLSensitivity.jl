@@ -1,6 +1,6 @@
 # [Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)](@id sensitivity_diffeq)
 
-DiffEqSensitivity.jl's high level interface allows for specifying a 
+SciMLSensitivity.jl's high level interface allows for specifying a 
 sensitivity algorithm (`sensealg`) to control the method by which
 `solve` is differentiated in an automatic differentiation (AD)
 context by a compatible AD library. The underlying algorithms then 
@@ -19,7 +19,7 @@ system are:
 Take for example this simple differential equation solve on Lotka-Volterra:
 
 ```julia
-using DiffEqSensitivity, OrdinaryDiffEq, Zygote
+using SciMLSensitivity, OrdinaryDiffEq, Zygote
 
 function fiip(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
@@ -39,7 +39,7 @@ and `dp` is the derivative of the loss function with respect to the parameters.
 
 Because the gradient is calculated by `Zygote.gradient` and Zygote.jl is one of
 the compatible AD libraries, this derivative calculation will be captured
-by the `sensealg` system, and one of DiffEqSensitivity.jl's adjoint overloads
+by the `sensealg` system, and one of SciMLSensitivity.jl's adjoint overloads
 will be used to compute the derivative. By default, if the `sensealg` keyword
 argument is not defined, then a smart polyalgorithm is used to automatically
 determine the most appropriate method for a given equation.

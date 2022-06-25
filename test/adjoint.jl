@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
+using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
       ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote
 using Test
 
@@ -89,30 +89,30 @@ _,easy_res7 = adjoint_sensitivities(sol_nodense,Tsit5(),t=t,dg_discrete=dg,absto
 
 _,easy_res8 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                     reltol=1e-14,
-                                    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+                                    sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.TrackerVJP()))
 _,easy_res9 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                     reltol=1e-14,
-                                    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+                                    sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ZygoteVJP()))
 _,easy_res10 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                     reltol=1e-14,
-                                    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP())
+                                    sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP())
                                     )
 _,easy_res11 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                      reltol=1e-14,
-                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
+                                     sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP(true))
                                      )
 _,easy_res12 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                      reltol=1e-14,
-                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+                                     sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.EnzymeVJP())
                                      )
 _,easy_res13 = adjoint_sensitivities(solb,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                      reltol=1e-14,
-                                     sensealg=QuadratureAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+                                     sensealg=QuadratureAdjoint(autojacvec=SciMLSensitivity.EnzymeVJP())
                                      )
 
-adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()),t,dg)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=SciMLSensitivity.ReverseDiffVJP()),t,dg)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-14)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=SciMLSensitivity.ReverseDiffVJP()))
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-12)
 
 @test isapprox(res, easy_res, rtol = 1e-10)
@@ -175,25 +175,25 @@ _,easy_res6 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,ab
 
 _,easy_res8 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                    reltol=1e-14,
-                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP()))
+                                   sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.TrackerVJP()))
 _,easy_res9 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                    reltol=1e-14,
-                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ZygoteVJP()))
+                                   sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ZygoteVJP()))
 _,easy_res10 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                    reltol=1e-14,
-                                   sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP())
+                                   sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP())
                                    )
 _,easy_res11 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
                                      reltol=1e-14,
-                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP(true))
+                                     sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP(true))
                                      )
 #@test_broken _,easy_res12 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
 #                                     reltol=1e-14,
-#                                     sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+#                                     sensealg=InterpolatingAdjoint(autojacvec=SciMLSensitivity.EnzymeVJP())
 #                                     ) isa Tuple
 #@test_broken _,easy_res13 = adjoint_sensitivities(soloop_nodense,Tsit5(),t=t,dg_discrete=dg,abstol=1e-14,
 #                                     reltol=1e-14,
-#                                     sensealg=QuadratureAdjoint(autojacvec=DiffEqSensitivity.EnzymeVJP())
+#                                     sensealg=QuadratureAdjoint(autojacvec=SciMLSensitivity.EnzymeVJP())
 #                                     ) isa Tuple
 
 @test isapprox(res, easy_res, rtol = 1e-10)
@@ -389,9 +389,9 @@ function dg(out,u,p,t)
   out[2]= u[1] + u[2]
 end
 
-adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()),nothing,nothing,dg,g)
+adj_prob = ODEAdjointProblem(sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=SciMLSensitivity.ReverseDiffVJP()),nothing,nothing,dg,g)
 adj_sol = solve(adj_prob,Tsit5(),abstol=1e-14,reltol=1e-10)
-integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+integrand = AdjointSensitivityIntegrand(sol,adj_sol,QuadratureAdjoint(abstol=1e-14,reltol=1e-14,autojacvec=SciMLSensitivity.ReverseDiffVJP()))
 res,err = quadgk(integrand,0.0,10.0,atol=1e-14,rtol=1e-10)
 
 println("Test the `adjoint_sensitivities` utility function")
@@ -507,7 +507,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
                                  reltol=1e-14)
 
 @testset "Checkpointed backsolve" begin
-  using DiffEqSensitivity, OrdinaryDiffEq
+  using SciMLSensitivity, OrdinaryDiffEq
   tf = 10.0
   function lorenz(du,u,p,t)
     σ, ρ, β = p
@@ -570,7 +570,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
   @test adj2 ≈ adj4 rtol=1e-4
 
 
-  # LQR Tests from issue https://github.com/SciML/DiffEqSensitivity.jl/issues/300
+  # LQR Tests from issue https://github.com/SciML/SciMLSensitivity.jl/issues/300
   x_dim = 2
   T = 40.0
 
@@ -624,7 +624,7 @@ sol = solve(prob,Tsit5(),abstol=1e-14,reltol=1e-14)
 end
 
 using Test
-using LinearAlgebra, DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
+using LinearAlgebra, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 @testset "Adjoint of differential algebric equations with mass matrix" begin
   function G(p, prob, ts, cost)
     tmp_prob_mm = remake(prob,u0=convert.(eltype(p),prob.u0),p=p)

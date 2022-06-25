@@ -1,4 +1,4 @@
-using DiffEqSensitivity, OrdinaryDiffEq, Flux, DiffEqFlux, CUDA, Zygote
+using SciMLSensitivity, OrdinaryDiffEq, Flux, DiffEqFlux, CUDA, Zygote
 CUDA.allowscalar(false) # Makes sure no slow operations are occuring
 
 # Generate Data

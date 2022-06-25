@@ -388,7 +388,7 @@ matrices.
 ### Example second order sensitivity analysis calculation
 
 ```julia
-using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff
+using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff
 using Test
 
 function lotka!(du,u,p,t)
@@ -444,7 +444,7 @@ matrix.
 ### Example second order sensitivity analysis calculation
 
 ```julia
-using DiffEqSensitivity, OrdinaryDiffEq, ForwardDiff
+using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff
 using Test
 
 function lotka!(du,u,p,t)

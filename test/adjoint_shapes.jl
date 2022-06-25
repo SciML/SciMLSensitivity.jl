@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, Zygote
+using OrdinaryDiffEq, SciMLSensitivity, Zygote
 
 tspan = (0., 1.)
 X = randn(3, 4)

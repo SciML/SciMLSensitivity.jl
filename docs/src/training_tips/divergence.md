@@ -28,7 +28,7 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
-using DifferentialEquations, DiffEqSensitivity, Optimization, OptimizationFlux, OptimizationOptimJL, Plots
+using DifferentialEquations, SciMLSensitivity, Optimization, OptimizationFlux, OptimizationOptimJL, Plots
 
 function lotka_volterra!(du,u,p,t)
     rab, wol = u

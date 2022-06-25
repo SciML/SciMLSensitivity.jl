@@ -439,10 +439,10 @@ function accumulate_cost!(dg, u, p, t, sensealg::ForwardLSS, diffcache, indx)
 
   if dg === nothing
     if dg_val isa Tuple
-      DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
-      DiffEqSensitivity.gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
+      SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+      SciMLSensitivity.gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
     else
-      DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+      SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
     end
   else
     if dg_val isa Tuple
@@ -571,10 +571,10 @@ function wBcorrect!(S,sol,g,Nt,sense,sensealg,dg)
     _wBinv = @view wBinv[(i-1)*numindvar+1:i*numindvar]
     if dg === nothing
       if dg_val isa Tuple
-        DiffEqSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+        SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
         @. _wBinv = _wBinv*dg_val[1]/Nt
       else
-        DiffEqSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+        SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
         @. _wBinv = _wBinv*dg_val/Nt
       end
     else
@@ -615,7 +615,7 @@ function shadow_adjoint(prob::AdjointLSSProblem,sensealg::AdjointLSS,LSSregulari
   if dg_val isa Tuple
     for (j,u) in enumerate(eachcol(umidres))
       if dg === nothing
-        DiffEqSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
+        SciMLSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
         @. res += dg_val[2]
       else
         dg[2](dg_val[2],u,uf.p,nothing,n0+j-1)

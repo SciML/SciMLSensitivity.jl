@@ -20,7 +20,7 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
 ```@example chaosode
-using OrdinaryDiffEq, DiffEqSensitivity, Zygote
+using OrdinaryDiffEq, SciMLSensitivity, Zygote
 
 function lorenz!(du, u, p, t)
   du[1] = 10 * (u[2] - u[1])

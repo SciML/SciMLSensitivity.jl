@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, Flux
+using OrdinaryDiffEq, SciMLSensitivity, Flux
 using ComponentArrays, LinearAlgebra, Optimization, Test
 
 const nknots = 10

@@ -37,7 +37,7 @@ straightforward since one can simply use the fact that the solution from
 `ODEForwardSensitivityProblem` is continuous when `dense=true`. For example,
 
 ```@example continuousadjoint
-using OrdinaryDiffEq, DiffEqSensitivity
+using OrdinaryDiffEq, SciMLSensitivity
 
 function f(du,u,p,t)
   du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]

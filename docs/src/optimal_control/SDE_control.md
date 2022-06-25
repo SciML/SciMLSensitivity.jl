@@ -20,7 +20,7 @@ follow a full explanation of the definition and training process:
 ```julia
 # load packages
 using DiffEqFlux
-using DiffEqSensitivity
+using SciMLSensitivity
 using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra, Random
@@ -304,7 +304,7 @@ visualization_callback(res.u, loss(res.u); doplot=true)
 ### Load packages
 ```julia
 using DiffEqFlux
-using DiffEqSensitivity
+using SciMLSensitivity
 using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra, Random
@@ -626,7 +626,7 @@ of the neural network.
 `sensealg` allows one to switch between the different [sensitivity modes](https://diffeqflux.sciml.ai/dev/ControllingAdjoints/).
 `InterpolatingAdjoint` and `BacksolveAdjoint` are the two possible continuous adjoint
 sensitivity methods. The necessary correction between Ito and Stratonovich integrals
-is computed under the hood in the DiffEqSensitivity package.
+is computed under the hood in the SciMLSensitivity package.
 
 ```julia
 # optimize the parameters for a few epochs with ADAM on time span

@@ -1,4 +1,4 @@
-using DiffEqSensitivity, SafeTestsets
+using SciMLSensitivity, SafeTestsets
 using Test, Pkg
 
 const GROUP = get(ENV, "GROUP", "All")

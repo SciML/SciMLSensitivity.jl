@@ -37,7 +37,7 @@ of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
 using Flux, DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux, 
-      DiffEqSensitivity, Zygote, Plots, Statistics, Random
+      SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
 tspan = (0.0f0,8.0f0)

@@ -1,4 +1,4 @@
-using Documenter, DiffEqSensitivity
+using Documenter, SciMLSensitivity
 
 # Make sure that plots don't throw a bunch of warnings / errors!
 ENV["GKSwstype"] = "100"
@@ -7,11 +7,11 @@ using Plots
 include("pages.jl")
 
 makedocs(
-    sitename = "DiffEqSensitivity.jl",
+    sitename = "SciMLSensitivity.jl",
     authors="Chris Rackauckas et al.",
     clean = true,
     doctest = false,
-    modules = [DiffEqSensitivity],
+    modules = [SciMLSensitivity],
 
     strict = [
              :doctest,
@@ -29,6 +29,6 @@ makedocs(
 )
 
 deploydocs(
-   repo = "github.com/SciML/DiffEqSensitivity.jl.git";
+   repo = "github.com/SciML/SciMLSensitivity.jl.git";
    push_preview = true
 )

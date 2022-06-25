@@ -1,5 +1,5 @@
 using Test, LinearAlgebra
-using DiffEqSensitivity, StochasticDiffEq
+using SciMLSensitivity, StochasticDiffEq
 using Random
 using DiffEqNoiseProcess
 using ForwardDiff
@@ -90,7 +90,7 @@ gs_u0, gs_p = adjoint_sensitivities(solIto,EM(),t=Array(t),dg_discrete=dg!,
 @info gs_u0, gs_p
 
 gs_u0a, gs_pa = adjoint_sensitivities(solIto,EM(),t=Array(t),dg_discrete=dg!,
-  dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=DiffEqSensitivity.ReverseDiffVJP()))
+  dt=dt,adaptive=false,sensealg=BacksolveAdjoint(autojacvec=SciMLSensitivity.ReverseDiffVJP()))
 
 @info gs_u0a, gs_pa
 
