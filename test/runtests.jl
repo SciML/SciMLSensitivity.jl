@@ -52,6 +52,7 @@ if GROUP == "All" || GROUP == "Core4"
     @time @safetestset "Layers SDE" begin include("layers_sde.jl") end
     @time @safetestset "Layers DDE" begin include("layers_dde.jl") end
     @time @safetestset "SDE - Neural" begin include("sde_neural.jl") end
+    @time @safetestset "SimpleChains Integration - NODE" begin include("schains.jl")
 
     # No `@safetestset` since it requires running in Main
     @time @testset "Distributed" begin include("distributed.jl") end
