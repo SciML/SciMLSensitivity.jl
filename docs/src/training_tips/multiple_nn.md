@@ -10,6 +10,8 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Random
 
 rng = Random.default_rng()
+Random.seed!(rng,1)
+
 function fitz(du,u,p,t)
   v,w = u
   a,b,τinv,l = p
@@ -39,7 +41,7 @@ scaling_factor = 1f0
 p1 = Lux.ComponentArray(p1)
 p2 = Lux.ComponentArray(p2)
 
-p = Lux.ComponentArray{Float32}()
+p = Lux.ComponentArray{eltype(p1)}()
 p = Lux.ComponentArray(p;p1)
 p = Lux.ComponentArray(p;p2)
 p = Lux.ComponentArray(p;scaling_factor)
