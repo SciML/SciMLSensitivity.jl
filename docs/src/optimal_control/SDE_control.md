@@ -495,7 +495,7 @@ parallel ensemble simulation docs](https://diffeq.sciml.ai/latest/features/ensem
 for a description of the available ensemble algorithms. To optimize only the parameters
 of the neural network, we use `pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]`
 
-``` julia
+```@example sdecontrol
 # compute loss
 function g(u,p,t)
   ceR = @view u[1,:,:]
