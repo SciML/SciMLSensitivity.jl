@@ -6,14 +6,12 @@ using Plots
 
 include("pages.jl")
 
-makedocs(
-    sitename = "SciMLSensitivity.jl",
-    authors="Chris Rackauckas et al.",
-    clean = true,
-    doctest = false,
-    modules = [SciMLSensitivity],
-
-    strict = [
+makedocs(sitename = "SciMLSensitivity.jl",
+         authors = "Chris Rackauckas et al.",
+         clean = true,
+         doctest = false,
+         modules = [SciMLSensitivity],
+         strict = [
              :doctest,
              :linkcheck,
              :parse_error,
@@ -21,14 +19,9 @@ makedocs(
              # Other available options are
              # :autodocs_block, :cross_references, :docs_block, :eval_block, :example_block, :footnote, :meta_block, :missing_docs, :setup_block
          ],
+         format = Documenter.HTML(assets = ["assets/favicon.ico"],
+                                  canonical = "https://sensitivity.sciml.ai/stable/"),
+         pages = pages)
 
-    format = Documenter.HTML(#analytics = "",
-                             assets = ["assets/favicon.ico"],
-                             canonical="https://sensitivity.sciml.ai/stable/"),
-    pages=pages
-)
-
-deploydocs(
-   repo = "github.com/SciML/SciMLSensitivity.jl.git";
-   push_preview = true
-)
+deploydocs(repo = "github.com/SciML/SciMLSensitivity.jl.git";
+           push_preview = true)

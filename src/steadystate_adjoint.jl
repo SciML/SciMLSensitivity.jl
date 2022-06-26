@@ -1,14 +1,14 @@
 struct SteadyStateAdjointSensitivityFunction{
-    C<:AdjointDiffCache,
-    Alg<:SteadyStateAdjoint,
-    uType,
-    SType,
-    fType<:ODEFunction,
-    CV,
-    λType,
-    VJPType,
-    LS,
-} <: SensitivityFunction
+                                             C <: AdjointDiffCache,
+                                             Alg <: SteadyStateAdjoint,
+                                             uType,
+                                             SType,
+                                             fType <: ODEFunction,
+                                             CV,
+                                             λType,
+                                             VJPType,
+                                             LS
+                                             } <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -21,75 +21,65 @@ struct SteadyStateAdjointSensitivityFunction{
     linsolve::LS
 end
 
-function SteadyStateAdjointSensitivityFunction(
-    g,
-    sensealg,
-    discrete,
-    sol,
-    dg,
-    colorvec,
-    needs_jac,
-)
+function SteadyStateAdjointSensitivityFunction(g,
+                                               sensealg,
+                                               discrete,
+                                               sol,
+                                               dg,
+                                               colorvec,
+                                               needs_jac)
     @unpack f, p, u0 = sol.prob
 
-    diffcache, y = adjointdiffcache(
-        g,
-        sensealg,
-        discrete,
-        sol,
-        dg,
-        f;
-        quad = false,
-        needs_jac = needs_jac,
-    )
+    diffcache, y = adjointdiffcache(g,
+                                    sensealg,
+                                    discrete,
+                                    sol,
+                                    dg,
+                                    f;
+                                    quad = false,
+                                    needs_jac = needs_jac)
 
     λ = zero(y)
     linsolve = needs_jac ? nothing : sensealg.linsolve
     vjp = similar(λ, length(p))
 
-    SteadyStateAdjointSensitivityFunction(
-        diffcache,
-        sensealg,
-        discrete,
-        y,
-        sol,
-        f,
-        colorvec,
-        λ,
-        vjp,
-        linsolve,
-    )
+    SteadyStateAdjointSensitivityFunction(diffcache,
+                                          sensealg,
+                                          discrete,
+                                          y,
+                                          sol,
+                                          f,
+                                          colorvec,
+                                          λ,
+                                          vjp,
+                                          linsolve)
 end
 
-@noinline function SteadyStateAdjointProblem(
-    sol,
-    sensealg::SteadyStateAdjoint,
-    g,
-    dg;
-    save_idxs = nothing,
-    kwargs...
-)
+@noinline function SteadyStateAdjointProblem(sol,
+                                             sensealg::SteadyStateAdjoint,
+                                             g,
+                                             dg;
+                                             save_idxs = nothing,
+                                             kwargs...)
     @unpack f, p, u0 = sol.prob
 
     discrete = false
 
     # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
     #       cases where the length(u0) > 50 and if yes till what threshold
-    needs_jac = (sensealg.linsolve === nothing && length(u0) <= 50) || LinearSolve.needs_concrete_A(sensealg.linsolve)
+    needs_jac = (sensealg.linsolve === nothing && length(u0) <= 50) ||
+                LinearSolve.needs_concrete_A(sensealg.linsolve)
 
-    p === DiffEqBase.NullParameters() && error(
-        "Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!",
-    )
+    p === DiffEqBase.NullParameters() &&
+        error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
-    sense = SteadyStateAdjointSensitivityFunction(
-        g,
-        sensealg,
-        discrete,
-        sol,
-        dg,
-        f.colorvec,
-        needs_jac,
-    )
+    sense = SteadyStateAdjointSensitivityFunction(g,
+                                                  sensealg,
+                                                  discrete,
+                                                  sol,
+                                                  dg,
+                                                  f.colorvec,
+                                                  needs_jac)
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
 
     if needs_jac
@@ -97,14 +87,12 @@ end
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)
-                jacobian!(
-                    diffcache.J,
-                    diffcache.uf,
-                    y,
-                    diffcache.f_cache,
-                    sensealg,
-                    diffcache.jac_config,
-                )
+                jacobian!(diffcache.J,
+                          diffcache.uf,
+                          y,
+                          diffcache.f_cache,
+                          sensealg,
+                          diffcache.jac_config)
             else
                 temp = jacobian(diffcache.uf, y, sensealg)
                 @. diffcache.J = temp
@@ -127,42 +115,40 @@ end
         end
     else
         if g !== nothing
-            gradient!(
-                vec(diffcache.dg_val),
-                diffcache.g,
-                y,
-                sensealg,
-                diffcache.g_grad_config,
-            )
+            gradient!(vec(diffcache.dg_val),
+                      diffcache.g,
+                      y,
+                      sensealg,
+                      diffcache.g_grad_config)
         end
     end
 
     if !needs_jac
         # NOTE: Zygote doesn't support inplace
-        linear_problem = LinearProblem(VecJacOperator(f, y, p; autodiff = !DiffEqBase.isinplace(sol.prob)),
+        linear_problem = LinearProblem(VecJacOperator(f, y, p;
+                                                      autodiff = !DiffEqBase.isinplace(sol.prob)),
                                        vec(diffcache.dg_val),
                                        u0 = vec(λ))
     else
-        linear_problem = LinearProblem(diffcache.J',vec(diffcache.dg_val'),u0 = vec(λ))
+        linear_problem = LinearProblem(diffcache.J', vec(diffcache.dg_val'), u0 = vec(λ))
     end
 
     solve(linear_problem, linsolve) # u is vec(λ)
 
     try
-        vecjacobian!(
-            vec(diffcache.dg_val),
-            y,
-            λ,
-            p,
-            nothing,
-            sense,
-            dgrad = vjp,
-            dy = nothing
-        )
+        vecjacobian!(vec(diffcache.dg_val),
+                     y,
+                     λ,
+                     p,
+                     nothing,
+                     sense,
+                     dgrad = vjp,
+                     dy = nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
-            vecjacobian!(vec(diffcache.dg_val),y,λ,p,nothing,false,dgrad = vjp,dy = nothing)
+            vecjacobian!(vec(diffcache.dg_val), y, λ, p, nothing, false, dgrad = vjp,
+                         dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
             throw(e)

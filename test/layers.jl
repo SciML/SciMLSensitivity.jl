@@ -1,22 +1,23 @@
 using SciMLSensitivity, Flux, Zygote, OrdinaryDiffEq, Test # , Plots
 
-function lotka_volterra(du,u,p,t)
-  x, y = u
-  α, β, δ, γ = p
-  du[1] = dx = (α - β*y)x
-  du[2] = dy = (δ*x - γ)y
+function lotka_volterra(du, u, p, t)
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = (α - β * y)x
+    du[2] = dy = (δ * x - γ)y
 end
 p = [2.2, 1.0, 2.0, 0.4]
-u0 = [1.0,1.0]
-prob = ODEProblem(lotka_volterra,u0,(0.0,10.0),p)
+u0 = [1.0, 1.0]
+prob = ODEProblem(lotka_volterra, u0, (0.0, 10.0), p)
 
 # Reverse-mode
 
 function predict_rd(p)
-  Array(solve(prob,Tsit5(),p=p,saveat=0.1,reltol=1e-4,sensealg=TrackerAdjoint()))
+    Array(solve(prob, Tsit5(), p = p, saveat = 0.1, reltol = 1e-4,
+                sensealg = TrackerAdjoint()))
 end
-loss_rd(p) = sum(abs2,x-1 for x in predict_rd(p))
-loss_rd() = sum(abs2,x-1 for x in predict_rd(p))
+loss_rd(p) = sum(abs2, x - 1 for x in predict_rd(p))
+loss_rd() = sum(abs2, x - 1 for x in predict_rd(p))
 loss_rd()
 
 grads = Zygote.gradient(loss_rd, p)
@@ -24,8 +25,8 @@ grads = Zygote.gradient(loss_rd, p)
 
 opt = ADAM(0.1)
 cb = function ()
-  display(loss_rd())
-  # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
+    display(loss_rd())
+    # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
 end
 
 # Display the ODE with the current parameter values.
@@ -38,9 +39,10 @@ loss2 = loss_rd()
 
 p = [2.2, 1.0, 2.0, 0.4]
 function predict_fd()
-  vec(Array(solve(prob,Tsit5(),p=p,saveat=0.0:0.1:1.0,reltol=1e-4,sensealg=ForwardDiffSensitivity())))
+    vec(Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:1.0, reltol = 1e-4,
+                    sensealg = ForwardDiffSensitivity())))
 end
-loss_fd() = sum(abs2,x-1 for x in predict_fd())
+loss_fd() = sum(abs2, x - 1 for x in predict_fd())
 loss_fd()
 
 ps = Flux.params(p)
@@ -50,8 +52,8 @@ grads = Zygote.gradient(loss_fd, ps)
 data = Iterators.repeated((), 100)
 opt = ADAM(0.1)
 cb = function ()
-  display(loss_fd())
-  # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
+    display(loss_fd())
+    # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
 end
 
 # Display the ODE with the current parameter values.
@@ -64,9 +66,9 @@ loss2 = loss_fd()
 p = [2.2, 1.0, 2.0, 0.4]
 ps = Flux.params(p)
 function predict_adjoint()
-    solve(remake(prob,p=p),Tsit5(),saveat=0.1,reltol=1e-4)
+    solve(remake(prob, p = p), Tsit5(), saveat = 0.1, reltol = 1e-4)
 end
-loss_reduction(sol) = sum(abs2,x-1 for x in vec(sol))
+loss_reduction(sol) = sum(abs2, x - 1 for x in vec(sol))
 loss_adjoint() = loss_reduction(predict_adjoint())
 loss_adjoint()
 
@@ -76,8 +78,8 @@ grads = Zygote.gradient(loss_adjoint, ps)
 data = Iterators.repeated((), 100)
 opt = ADAM(0.1)
 cb = function ()
-  display(loss_adjoint())
-  # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
+    display(loss_adjoint())
+    # display(plot(solve(remake(prob,p=p),Tsit5(),saveat=0.1),ylim=(0,6)))
 end
 
 # Display the ODE with the current parameter values.
