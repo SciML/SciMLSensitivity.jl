@@ -62,7 +62,7 @@ res1 = Flux.train!(loss_n_ode, Flux.params(u0,p), data, ADAM(0.05), cb = callbac
 callback()
 ```
 
-## Using Flux `Chain` neural networks with GalacticOptim
+## Using Flux `Chain` neural networks with Optimization.jl
 
 Flux neural networks can be used with Optimization.jl by using
 the `Flux.destructure` function. In this case, if `dudt` is a Flux
