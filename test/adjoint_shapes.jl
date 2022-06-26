@@ -1,15 +1,15 @@
 using OrdinaryDiffEq, SciMLSensitivity, Zygote
 
-tspan = (0., 1.)
+tspan = (0.0, 1.0)
 X = randn(3, 4)
 p = randn(3, 4)
-f(u,p,t) = u .* p
-f(du,u,p,t) = (du .= u .* p)
+f(u, p, t) = u .* p
+f(du, u, p, t) = (du .= u .* p)
 prob_ube = ODEProblem{false}(f, X, tspan, p)
-Zygote.gradient(p->sum(solve(prob_ube, Midpoint(), u0 = X, p = p)),p)
+Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(), u0 = X, p = p)), p)
 
 prob_ube = ODEProblem{true}(f, X, tspan, p)
-Zygote.gradient(p->sum(solve(prob_ube, Midpoint(), u0 = X, p = p)),p)
+Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(), u0 = X, p = p)), p)
 
 function aug_dynamics!(dz, z, K, t)
     x = @view z[2:end]
@@ -20,20 +20,15 @@ end
 
 policy_params = ones(2, 2)
 z0 = zeros(3)
-fwd_sol = solve(
-    ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
-    Tsit5(),
-    u0 = z0,
-    p = policy_params)
+fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
+                Tsit5(),
+                u0 = z0,
+                p = policy_params)
 
-solve(
-    ODEAdjointProblem(
-        fwd_sol,
-        InterpolatingAdjoint(),
-        (out, x, p, t, i) -> (out .= 1),
-        [1.0],
-    ),Tsit5()
-)
+solve(ODEAdjointProblem(fwd_sol,
+                        InterpolatingAdjoint(),
+                        (out, x, p, t, i) -> (out .= 1),
+                        [1.0]), Tsit5())
 
 A = ones(2, 2)
 B = ones(2, 2)
@@ -49,17 +44,11 @@ end
 
 policy_params = ones(2, 2)
 z0 = zeros(3)
-fwd_sol = solve(
-    ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
-    u0 = z0,
-    p = policy_params,
-)
+fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
+                u0 = z0,
+                p = policy_params)
 
-solve(
-    ODEAdjointProblem(
-        fwd_sol,
-        InterpolatingAdjoint(),
-        (out, x, p, t, i) -> (out .= 1),
-        [1.0],
-    ),
-)
+solve(ODEAdjointProblem(fwd_sol,
+                        InterpolatingAdjoint(),
+                        (out, x, p, t, i) -> (out .= 1),
+                        [1.0]))
