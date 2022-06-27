@@ -301,7 +301,8 @@ end
 
 function _adjoint_sensitivities(sol, sensealg, alg;
                                 t = nothing,
-                                dg_discrete = nothing, dg_continuous = nothing,
+                                dgdu_discrete = nothing, dgdp_discrete = nothing,
+                                dgdu_continuous = nothing, dgdp_continuous = nothing,
                                 g = nothing,
                                 abstol = 1e-6, reltol = 1e-3,
                                 checkpoints = sol.t,
@@ -314,19 +315,22 @@ function _adjoint_sensitivities(sol, sensealg, alg;
     end
 
     if sol.prob isa ODEProblem
-        adj_prob = ODEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = ODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                     dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol, kwargs...)
 
     elseif sol.prob isa SDEProblem
-        adj_prob = SDEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = SDEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                     dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol,
                                      corfunc_analytical = corfunc_analytical)
     elseif sol.prob isa RODEProblem
-        adj_prob = RODEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = RODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                      dgdu_continuous, dgdp_continuous, g;
                                       checkpoints = checkpoints,
                                       callback = callback,
                                       abstol = abstol, reltol = reltol,

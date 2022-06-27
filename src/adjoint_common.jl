@@ -71,10 +71,11 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dg::DG, f; quad = false
     end
 
     if !discrete
-        if dg !== nothing
+        @assert dg isa Tuple && length(dg) == 2
+        if dg[1] !== nothing
             pg = nothing
             pg_config = nothing
-            if dg isa Tuple && length(dg) == 2
+            if dg[2] !== nothing
                 dg_val = (similar(u0, numindvar), similar(u0, numparams))
                 dg_val[1] .= false
                 dg_val[2] .= false
@@ -83,14 +84,15 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dg::DG, f; quad = false
                 dg_val .= false
             end
         else
-            if !(prob isa RODEProblem)
-                pg = UGradientWrapper(g, tspan[2], p)
-            else
-                pg = RODEUGradientWrapper(g, tspan[2], p, last(sol.W))
-            end
-            pg_config = build_grad_config(sensealg, pg, u0, p)
-            dg_val = similar(u0, numindvar) # number of funcs size
-            dg_val .= false
+            pgpu = UGradientWrapper(g, tspan[2], p)
+            pgpu_config = build_grad_config(sensealg, pgpu, u0, p)
+            pgpp = ParamGradientWrapper(g, tspan[2], u0)
+            pgpp_config = build_grad_config(sensealg, pgpp, p, p)
+            pg = (pgpu, pgpp)
+            pg_config = (pgpu_config, pgpp_config)
+            dg_val = (similar(u0, numindvar), similar(u0, numparams))
+            dg_val[1] .= false
+            dg_val[2] .= false
         end
     else
         dg_val = nothing
@@ -375,11 +377,11 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, gT
     idx::Int
     F::FMType
     sensealg::AlgType
-    g::gType
+    dg::gType
     diffcache::cacheType
 end
 
-function ReverseLossCallback(sensefun, λ, t, g, cur_time)
+function ReverseLossCallback(sensefun, λ, t, dg, cur_time)
     @unpack sensealg, y = sensefun
     isq = (sensealg isa QuadratureAdjoint)
 
@@ -388,12 +390,14 @@ function ReverseLossCallback(sensefun, λ, t, g, cur_time)
     idx = length(prob.u0)
 
     return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                               sensealg, g, sensefun.diffcache)
+                               sensealg, dg, sensefun.diffcache)
 end
 
 function (f::ReverseLossCallback)(integrator)
-    @unpack isq, λ, t, y, cur_time, idx, F, sensealg, g = f
+    @unpack isq, λ, t, y, cur_time, idx, F, sensealg, dg = f
     @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
+
+    dgdu_discrete, dgdp_discrete = dg
 
     p, u = integrator.p, integrator.u
 
@@ -403,7 +407,15 @@ function (f::ReverseLossCallback)(integrator)
 
     # Warning: alias here! Be careful with λ
     gᵤ = isq ? λ : @view(λ[1:idx])
-    g(gᵤ, y, p, t[cur_time[]], cur_time[])
+    if dgdu_discrete !== nothing
+        dgdu_discrete(gᵤ, y, p, t[cur_time[]], cur_time[])
+        # add discrete dgdp contribution
+        if dgdp_discrete !== nothing && !isq
+            gp = @view(λ[(idx + 1):end])
+            dgdp_discrete(gp, y, p, t[cur_time[]], cur_time[])
+            u[(idx + 1):length(λ)] .+= gp
+        end
+    end
 
     if issemiexplicitdae
         jacobian!(J, uf, y, f_cache, sensealg, jac_config)
