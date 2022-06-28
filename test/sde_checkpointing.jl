@@ -36,11 +36,11 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 
 @show length(sol_oop)
 
-res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                       dt = dt1, adaptive = false,
                                       sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
-res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                         dt = dt1,
                                         adaptive = false,
                                         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
@@ -49,7 +49,7 @@ res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_dis
 @test isapprox(res_u0, res_u0a, rtol = 1e-5)
 @test isapprox(res_p, res_pa, rtol = 1e-2)
 
-res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                         dt = dt1, adaptive = false,
                                         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
                                         checkpoints = sol_oop.t[1:10:end])
@@ -65,11 +65,11 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 
 @show length(sol_oop)
 
-res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                       dt = dt1, adaptive = false,
                                       sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
-res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                         dt = dt1, adaptive = false,
                                         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
                                         checkpoints = sol_oop.t[1:2:end])
@@ -77,7 +77,7 @@ res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_dis
 @test isapprox(res_u0, res_u0a, rtol = 1e-6)
 @test isapprox(res_p, res_pa, rtol = 1e-3)
 
-res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                         dt = dt1, adaptive = false,
                                         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
                                         checkpoints = sol_oop.t[1:10:end])
@@ -85,7 +85,7 @@ res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_dis
 @test isapprox(res_u0, res_u0a, rtol = 1e-6)
 @test isapprox(res_p, res_pa, rtol = 1e-2)
 
-res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dg_discrete = dg!,
+res_u0a, res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
                                         dt = dt1, adaptive = false,
                                         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
                                         checkpoints = sol_oop.t[1:500:end])

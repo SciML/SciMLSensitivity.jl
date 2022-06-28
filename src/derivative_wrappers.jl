@@ -842,7 +842,6 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
     dgdu_continuous, dgdp_continuous = dg
     if dgdu_continuous !== nothing
         if dgdp_continuous === nothing
-            @info dgdu_continuous, dg_val, y, p, t
             dgdu_continuous(dg_val, y, p, t)
             dλ .-= vec(dg_val)
         else
