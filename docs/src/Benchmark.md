@@ -1,5 +1,16 @@
 # Benchmarks
 
+## Note on benchmarking and getting the best performance out of the SciML stack's adjoints
+
+From our [recent papers](https://arxiv.org/abs/1812.01892) it's clear that `EnzymeVJP` is the fastest,
+especially when the program is setup to be fully non-allocating mutating functions. Thus for all benchmarking,
+especially with PDEs, this should be done. Neural network libraries don't make use of mutation effectively
+[except for SimpleChains.jl](https://julialang.org/blog/2022/04/simple-chains/), so we recommend creating a
+neural ODE / universal ODE with `ZygoteVJP` and Flux first, but then check the correctness by moving the
+implementation over to SimpleChains and if possible `EnzymeVJP`. This can be an order of magnitude improvement
+(or more) in many situations over all of the previous benchmarks using Zygote and Flux, and thus it's
+highly recommended in scenarios that require performance.
+
 ## Vs Torchdiffeq 1 million and less ODEs
 
 A raw ODE solver benchmark showcases [>30x performance advantage for DifferentialEquations.jl](https://gist.github.com/ChrisRackauckas/cc6ac746e2dfd285c28e0584a2bfd320)
