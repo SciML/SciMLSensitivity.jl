@@ -11,9 +11,9 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     noiseterm::Bool
 end
 
-function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dg, f;
+function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f;
                                          noiseterm = false)
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dg, f; quad = false,
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f; quad = false,
                                     noiseterm = noiseterm)
 
     return ODEBacksolveSensitivityFunction(diffcache, sensealg, discrete,
@@ -131,9 +131,6 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
-
     @unpack f, p, u0 = sol.prob
 
     # check if solution was terminated, then use reduced time span
@@ -164,7 +161,8 @@ end
         λ = nothing
     end
 
-    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dg_continuous, f)
+    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
+                                            dgdp_continuous, f)
 
     if z0 !== nothing
         sense = NILSASSensitivityFunction{isinplace(f), typeof(nilss), typeof(sense),
@@ -172,7 +170,8 @@ end
     end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb, terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
@@ -233,9 +232,6 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
-
     @unpack f, p, u0, tspan = sol.prob
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -262,23 +258,27 @@ end
 
     if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
-                                                      dg_continuous, sol.prob.f)
+                                                      dgdu_continuous, dgdp_continuous,
+                                                      sol.prob.f)
     else
         transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
                                                              corfunc_analytical)
         drift_function = ODEFunction(transformed_function)
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
-                                                      dg_continuous, drift_function)
+                                                      dgdu_continuous, dgdp_continuous,
+                                                      drift_function)
     end
 
     diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
                                      paramjac = diffusion_paramjac)
     sense_diffusion = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
-                                                      dg_continuous, diffusion_function;
+                                                      dgdu_continuous, dgdp_continuous,
+                                                      diffusion_function;
                                                       noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dg_discrete, λ, t,
+    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+                                                      dgdp_discrete, λ, t,
                                                       tspan[2], callback, init_cb,
                                                       terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
@@ -336,14 +336,11 @@ end
                                       callback = CallbackSet(),
                                       kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
-        error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+        error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
         error("It looks like you're using the direct `adjoint_sensitivities` interface
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
-
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
 
     @unpack f, p, u0, tspan = sol.prob
     # check if solution was terminated, then use reduced time span
@@ -368,11 +365,13 @@ end
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(p, len)
 
-    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dg_continuous, f;
+    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
+                                            dgdp_continuous, f;
                                             noiseterm = false)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb, terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing

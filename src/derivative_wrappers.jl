@@ -838,17 +838,17 @@ end
 
 function accumulate_cost!(dλ, y, p, t, S::TS,
                           dgrad = nothing) where {TS <: SensitivityFunction}
-    @unpack dg, dg_val, g, g_grad_config = S.diffcache
-    dgdu_continuous, dgdp_continuous = dg
-    if dgdu_continuous !== nothing
-        if dgdp_continuous === nothing
-            dgdu_continuous(dg_val, y, p, t)
+    @unpack dgdu, dgdp, dg_val, g, g_grad_config = S.diffcache
+
+    if dgdu !== nothing
+        if dgdp === nothing
+            dgdp(dg_val, y, p, t)
             dλ .-= vec(dg_val)
         else
-            dgdu_continuous(dg_val[1], y, p, t)
+            dgdu(dg_val[1], y, p, t)
             dλ .-= vec(dg_val[1])
             if dgrad !== nothing
-                dgdp_continuous(dg_val[2], y, p, t)
+                dgdp(dg_val[2], y, p, t)
                 dgrad .-= vec(dg_val[2])
             end
         end

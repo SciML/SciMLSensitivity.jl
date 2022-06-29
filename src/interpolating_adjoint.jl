@@ -23,7 +23,8 @@ mutable struct CheckpointSolution{S, I, T, T2}
     tstops::T2 # for callbacks
 end
 
-function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dg, f,
+function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
+                                                    f,
                                                     checkpoints, tols, tstops = nothing;
                                                     noiseterm = false)
     tspan = reverse(sol.prob.tspan)
@@ -82,7 +83,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
         nothing
     end
 
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dg, f; quad = false,
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f; quad = false,
                                     noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
@@ -273,9 +274,6 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
-
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
     discrete = (t !== nothing &&
@@ -311,13 +309,14 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dg_continuous, f,
+                                                       dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops)
 
     init_cb = (discrete || dgdu_discrete !== nothing)
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
@@ -368,9 +367,6 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
-
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
     discrete = (t !== nothing &&
@@ -400,7 +396,8 @@ end
     λ .= false
 
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                             dg_continuous, sol.prob.f,
+                                                             dgdu_continuous,
+                                                             dgdp_continuous, sol.prob.f,
                                                              checkpoints,
                                                              (reltol = reltol,
                                                               abstol = abstol))
@@ -408,7 +405,8 @@ end
     diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
                                      paramjac = diffusion_paramjac)
     sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                                 dg_continuous,
+                                                                 dgdu_continuous,
+                                                                 dgdp_continuous,
                                                                  diffusion_function,
                                                                  checkpoints,
                                                                  (reltol = reltol,
@@ -416,7 +414,8 @@ end
                                                                  noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dg_discrete, λ, t,
+    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+                                                      dgdp_discrete, λ, t,
                                                       tspan[2], callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
@@ -486,9 +485,6 @@ end
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
 
-    dg_discrete = (dgdu_discrete, dgdp_discrete)
-    dg_continuous = (dgdu_continuous, dgdp_continuous)
-
     discrete = (t !== nothing &&
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
@@ -517,13 +513,14 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dg_continuous, f,
+                                                       dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix

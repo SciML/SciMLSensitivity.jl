@@ -1,4 +1,5 @@
-struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG, DI,
+struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
+                        DG2, DI,
                         AI, FM}
     uf::UF
     pf::PF
@@ -12,7 +13,8 @@ struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateT
     jac_noise_config::JNC
     paramjac_noise_config::PJNC
     f_cache::rateType
-    dg::DG
+    dgdu::DG1
+    dgdp::DG2
     diffvar_idxs::DI
     algevar_idxs::AI
     factorized_mass_matrix::FM
@@ -24,8 +26,9 @@ end
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g::G, sensealg, discrete, sol, dg::DG, f; quad = false,
-                          noiseterm = false, needs_jac = false) where {G, DG}
+function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f;
+                          quad = false,
+                          noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
     if prob isa DiffEqBase.SteadyStateProblem
         @unpack u0, p = prob
@@ -71,11 +74,10 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dg::DG, f; quad = false
     end
 
     if !discrete
-        @assert dg isa Tuple && length(dg) == 2
-        if dg[1] !== nothing
+        if dgdu !== nothing
             pg = nothing
             pg_config = nothing
-            if dg[2] !== nothing
+            if dgdp !== nothing
                 dg_val = (similar(u0, numindvar), similar(u0, numparams))
                 dg_val[1] .= false
                 dg_val[2] .= false
@@ -356,7 +358,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dg::DG, f; quad = false
     adjoint_cache = AdjointDiffCache(uf, pf, pg, J, pJ, dg_val,
                                      jac_config, pg_config, paramjac_config,
                                      jac_noise_config, paramjac_noise_config,
-                                     f_cache, dg, diffvar_idxs, algevar_idxs,
+                                     f_cache, dgdu, dgdp, diffvar_idxs, algevar_idxs,
                                      factorized_mass_matrix, issemiexplicitdae)
 
     return adjoint_cache, y
@@ -367,7 +369,8 @@ function getprob(S::SensitivityFunction)
 end
 inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
-struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, gType,
+struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
+                           dg2Type,
                            cacheType}
     isq::Bool
     λ::λType
@@ -377,11 +380,12 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, gT
     idx::Int
     F::FMType
     sensealg::AlgType
-    dg::gType
+    dgdu::dg1Type
+    dgdp::dg2Type
     diffcache::cacheType
 end
 
-function ReverseLossCallback(sensefun, λ, t, dg, cur_time)
+function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     @unpack sensealg, y = sensefun
     isq = (sensealg isa QuadratureAdjoint)
 
@@ -390,14 +394,12 @@ function ReverseLossCallback(sensefun, λ, t, dg, cur_time)
     idx = length(prob.u0)
 
     return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                               sensealg, dg, sensefun.diffcache)
+                               sensealg, dgdu, dgdp, sensefun.diffcache)
 end
 
 function (f::ReverseLossCallback)(integrator)
-    @unpack isq, λ, t, y, cur_time, idx, F, sensealg, dg = f
+    @unpack isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp = f
     @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
-
-    dgdu_discrete, dgdp_discrete = dg
 
     p, u = integrator.p, integrator.u
 
@@ -407,12 +409,12 @@ function (f::ReverseLossCallback)(integrator)
 
     # Warning: alias here! Be careful with λ
     gᵤ = isq ? λ : @view(λ[1:idx])
-    if dgdu_discrete !== nothing
-        dgdu_discrete(gᵤ, y, p, t[cur_time[]], cur_time[])
+    if dgdu !== nothing
+        dgdu(gᵤ, y, p, t[cur_time[]], cur_time[])
         # add discrete dgdp contribution
-        if dgdp_discrete !== nothing && !isq
+        if dgdp !== nothing && !isq
             gp = @view(λ[(idx + 1):end])
-            dgdp_discrete(gp, y, p, t[cur_time[]], cur_time[])
+            dgdp(gp, y, p, t[cur_time[]], cur_time[])
             u[(idx + 1):length(λ)] .+= gp
         end
     end
@@ -439,7 +441,8 @@ function (f::ReverseLossCallback)(integrator)
 end
 
 # handle discrete loss contributions
-function generate_callbacks(sensefun, dg, λ, t, t0, callback, init_cb, terminated = false)
+function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
+                            terminated = false)
     if sensefun isa NILSASSensitivityFunction
         @unpack sensealg = sensefun.S
     else
@@ -452,13 +455,14 @@ function generate_callbacks(sensefun, dg, λ, t, t0, callback, init_cb, terminat
         cur_time = Ref(length(t))
     end
 
-    reverse_cbs = setup_reverse_callbacks(callback, sensealg, dg, cur_time, terminated)
+    reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
+                                          terminated)
     init_cb || return reverse_cbs, nothing
 
     # callbacks can lead to non-unique time points
     _t, duplicate_iterator_times = separate_nonunique(t)
 
-    rlcb = ReverseLossCallback(sensefun, λ, t, dg, cur_time)
+    rlcb = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
 
     if eltype(_t) !== typeof(t0)
         _t = convert.(typeof(t0), _t)
@@ -468,7 +472,7 @@ function generate_callbacks(sensefun, dg, λ, t, t0, callback, init_cb, terminat
     # handle duplicates (currently only for double occurances)
     if duplicate_iterator_times !== nothing
         # use same ref for cur_time to cope with concrete_solve
-        cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dg, cur_time)
+        cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
         cb_dupl = PresetTimeCallback(duplicate_iterator_times[1], cbrev_dupl_affect)
         return CallbackSet(cb, reverse_cbs, cb_dupl), duplicate_iterator_times
     else
