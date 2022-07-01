@@ -182,7 +182,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
     end
 
-    dgdp === nothing &&
+    dgdp !== nothing &&
         error("We have not yet implemented custom adjoint rules to support parameter-dependent loss functions for hybrid systems.")
 
     # ReverseLossCallback adds gradients before and after the callback if save_positions is (true, true).
