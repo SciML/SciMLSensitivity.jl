@@ -11,7 +11,6 @@ struct SteadyStateAdjointSensitivityFunction{
                                              } <: SensitivityFunction
     diffcache::C
     sensealg::Alg
-    discrete::Bool
     y::uType
     sol::SType
     f::fType
@@ -23,18 +22,19 @@ end
 
 function SteadyStateAdjointSensitivityFunction(g,
                                                sensealg,
-                                               discrete,
                                                sol,
-                                               dg,
+                                               dgdu,
+                                               dgdp,
                                                colorvec,
                                                needs_jac)
     @unpack f, p, u0 = sol.prob
 
     diffcache, y = adjointdiffcache(g,
                                     sensealg,
-                                    discrete,
+                                    false,
                                     sol,
-                                    dg,
+                                    dgdu,
+                                    dgdp,
                                     f;
                                     quad = false,
                                     needs_jac = needs_jac)
@@ -45,7 +45,6 @@ function SteadyStateAdjointSensitivityFunction(g,
 
     SteadyStateAdjointSensitivityFunction(diffcache,
                                           sensealg,
-                                          discrete,
                                           y,
                                           sol,
                                           f,
@@ -57,13 +56,14 @@ end
 
 @noinline function SteadyStateAdjointProblem(sol,
                                              sensealg::SteadyStateAdjoint,
-                                             g,
-                                             dg;
-                                             save_idxs = nothing,
-                                             kwargs...)
+                                             dgdu::DG1 = nothing,
+                                             dgdp::DG2 = nothing,
+                                             g::G = nothing;
+                                             kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
 
-    discrete = false
+    dgdu === nothing && dgdp === nothing && g === nothing &&
+        error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
     # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
     #       cases where the length(u0) > 50 and if yes till what threshold
@@ -75,9 +75,9 @@ end
 
     sense = SteadyStateAdjointSensitivityFunction(g,
                                                   sensealg,
-                                                  discrete,
                                                   sol,
-                                                  dg,
+                                                  dgdu,
+                                                  dgdp,
                                                   f.colorvec,
                                                   needs_jac)
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
@@ -100,26 +100,30 @@ end
         end
     end
 
-    _save_idxs = save_idxs === nothing ? Colon() : save_idxs
-    if dg !== nothing
-        if g !== nothing
-            dg(vec(diffcache.dg_val), y, p, nothing, nothing)
-        else
-            if typeof(_save_idxs) <: Number
-                diffcache.dg_val[_save_idxs] = dg[_save_idxs]
-            elseif typeof(dg) <: Number
-                @. diffcache.dg_val[_save_idxs] = dg
-            else
-                @. diffcache.dg_val[_save_idxs] = dg[_save_idxs]
-            end
-        end
+    if dgdp === nothing && g === nothing
+        dgdu_val = diffcache.dg_val
+        dgdp_val = nothing
+    else
+        dgdu_val, dgdp_val = diffcache.dg_val
+    end
+
+    if dgdu !== nothing
+        dgdu(dgdu_val, y, p, nothing, nothing)
     else
         if g !== nothing
-            gradient!(vec(diffcache.dg_val),
-                      diffcache.g,
-                      y,
-                      sensealg,
-                      diffcache.g_grad_config)
+            if dgdp_val !== nothing
+                gradient!(vec(dgdu_val),
+                          diffcache.g[1],
+                          y,
+                          sensealg,
+                          diffcache.g_grad_config[1])
+            else
+                gradient!(vec(dgdu_val),
+                          diffcache.g,
+                          y,
+                          sensealg,
+                          diffcache.g_grad_config)
+            end
         end
     end
 
@@ -127,16 +131,16 @@ end
         # NOTE: Zygote doesn't support inplace
         linear_problem = LinearProblem(VecJacOperator(f, y, p;
                                                       autodiff = !DiffEqBase.isinplace(sol.prob)),
-                                       vec(diffcache.dg_val),
+                                       vec(dgdu_val),
                                        u0 = vec(λ))
     else
-        linear_problem = LinearProblem(diffcache.J', vec(diffcache.dg_val'), u0 = vec(λ))
+        linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'), u0 = vec(λ))
     end
 
     solve(linear_problem, linsolve) # u is vec(λ)
 
     try
-        vecjacobian!(vec(diffcache.dg_val),
+        vecjacobian!(vec(dgdu_val),
                      y,
                      λ,
                      p,
@@ -147,7 +151,7 @@ end
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
-            vecjacobian!(vec(diffcache.dg_val), y, λ, p, nothing, false, dgrad = vjp,
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
                          dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
@@ -155,15 +159,16 @@ end
         end
     end
 
-    if g !== nothing
+    if g !== nothing || dgdp !== nothing
         # compute del g/del p
-        dg_dp_val = zero(p)
-        dg_dp = ParamGradientWrapper(g, nothing, y)
-        dg_dp_config = build_grad_config(sensealg, dg_dp, p, p)
-        gradient!(dg_dp_val, dg_dp, p, sensealg, dg_dp_config)
-
-        @. dg_dp_val = dg_dp_val - vjp
-        return dg_dp_val
+        if dgdp !== nothing
+            dgdp(dgdp_val, y, p, nothing, nothing)
+        else
+            @unpack g_grad_config = diffcache
+            gradient!(dgdp_val, diffcache.g[2], p, sensealg, g_grad_config[2])
+        end
+        dgdp_val .-= vjp
+        return dgdp_val
     else
         vjp .*= -1
         return vjp

@@ -1043,8 +1043,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, Steady
     function steadystatebackpass(Δ)
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, g = nothing, dg = Δ,
-                                   save_idxs = save_idxs)
+        function df(_out, u, p, t, i)
+            if typeof(_save_idxs) <: Number
+                _out[_save_idxs] = Δ[_save_idxs]
+            elseif typeof(Δ) <: Number
+                @. _out[_save_idxs] = Δ
+            else
+                @. _out[_save_idxs] = Δ[_save_idxs]
+            end
+        end
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
