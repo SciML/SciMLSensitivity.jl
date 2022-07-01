@@ -300,7 +300,7 @@ function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
       is a boolean for whether to precompile the tape, which should only be done
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
-  to `true`.
+  to `false`.
 * `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
   For example, to compute the sensitivities of an SDE with diagonal diffusion
   ```julia
