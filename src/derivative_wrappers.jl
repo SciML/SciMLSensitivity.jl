@@ -842,7 +842,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
 
     if dgdu !== nothing
         if dgdp === nothing
-            dgdp(dg_val, y, p, t)
+            dgdu(dg_val, y, p, t)
             dλ .-= vec(dg_val)
         else
             dgdu(dg_val[1], y, p, t)
