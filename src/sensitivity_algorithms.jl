@@ -12,7 +12,9 @@ abstract type AbstractShadowingSensitivityAlgorithm{CS, AD, FDT} <:
               DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
 
 """
+```julia
 ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of continuous forward sensitivity analysis for propagating
 derivatives by solving the extended ODE. When used within adjoint differentiation
@@ -74,8 +76,10 @@ Base.@pure function ForwardSensitivity(;
 end
 
 """
+```julia
 ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
-
+```
+    
 An implementation of discrete forward sensitivity analysis through ForwardDiff.jl.
 When used within adjoint differentiation (i.e. via Zygote), this will cause forward
 differentiation of the `solve` call within the reverse-mode automatic differentiation
@@ -108,7 +112,9 @@ Base.@pure function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = not
 end
 
 """
+```julia
 BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of adjoint sensitivity analysis using a backwards solution of the ODE.
 By default this algorithm will use the values from the forward pass to perturb the
@@ -262,8 +268,10 @@ function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS
 end
 
 """
+```julia
 InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
-
+```
+                                                                                                        
 An implementation of adjoint sensitivity analysis which uses the interpolation of
 the forward solution for the reverse solve vector-Jacobian products. By
 default it requires a dense solution of the forward pass and will internally
@@ -367,7 +375,9 @@ function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
 end
 
 """
+```julia
 QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of adjoint sensitivity analysis which develops a full
 continuous solution of the reverse solve in order to perform a post-ODE
@@ -461,7 +471,9 @@ function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {C
 end
 
 """
+```julia
 TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+```
 
 An implementation of discrete adjoint sensitivity analysis
 using the Tracker.jl tracing-based AD. Supports in-place functions through
@@ -491,7 +503,9 @@ Compatible with a limited subset of `AbstractArray` types for `u0`, including `C
 struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} end
 
 """
+```julia
 ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+```
 
 An implementation of discrete adjoint sensitivity analysis using the ReverseDiff.jl
 tracing-based AD. Supports in-place functions through an Array of Structs formulation,
@@ -530,7 +544,9 @@ Currently fails on almost every solver.
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} end
 
 """
+```julia
 ForwardLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of the discrete, forward-mode
 [least squares shadowing](https://arxiv.org/abs/1204.0159) (LSS) method. LSS replaces
@@ -604,7 +620,9 @@ Base.@pure function ForwardLSS(;
 end
 
 """
+```julia
 AdjointLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of the discrete, adjoint-mode
 [least square shadowing](https://arxiv.org/abs/1204.0159) method. LSS replaces
@@ -675,7 +693,9 @@ struct CosWindowing <: AbstractCosWindowing end
 struct Cos2Windowing <: AbstractCosWindowing end
 
 """
+```julia
 TimeDilation{T1<:Number} <: AbstractLSSregularizer
+```
 
 A regularization method for `LSS`. See `?LSS` for
 additional information and other methods.
@@ -697,7 +717,9 @@ function TimeDilation(alpha, t0skip = zero(alpha), t1skip = zero(alpha))
     TimeDilation{typeof(alpha)}(alpha, t0skip, t1skip)
 end
 """
+```julia
 struct NILSS{CS,AD,FDT,RNG,nType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of the forward-mode, continuous
 [non-intrusive least squares shadowing](https://arxiv.org/abs/1611.00880) method. `NILSS`
@@ -784,7 +806,9 @@ Base.@pure function NILSS(nseg, nstep; nus = nothing,
 end
 
 """
+```julia
 NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of the adjoint-mode, continuous
 [non-intrusive adjoint least squares shadowing](https://arxiv.org/abs/1801.08674) method.
@@ -884,7 +908,9 @@ Base.@pure function NILSAS(nseg, nstep, M = nothing;
 end
 
 """
+```julia
 SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+```
 
 An implementation of the adjoint differentiation of a nonlinear solve. Uses the
 implicit function theorem to directly compute the derivative of the solution to
@@ -949,7 +975,9 @@ end
 abstract type VJPChoice end
 
 """
+```julia
 ZygoteVJP <: VJPChoice
+```
 
 Uses Zygote.jl to compute vector-Jacobian products. Tends to be the fastest VJP method if the
 ODE/DAE/SDE/DDE is written with mostly vectorized  functions (like neural networks and other
@@ -979,7 +1007,9 @@ end
 ZygoteVJP(; allow_nothing = false) = ZygoteVJP(allow_nothing)
 
 """
+```julia
 EnzymeVJP <: VJPChoice
+```
 
 Uses Enzyme.jl to compute vector-Jacobian products. Is the fastest VJP whenever applicable,
 though Enzyme.jl currently has low coverage over the Julia programming language, for example
@@ -997,7 +1027,9 @@ EnzymeVJP(compile=false)
 struct EnzymeVJP <: VJPChoice end
 
 """
+```julia
 TrackerVJP <: VJPChoice
+```
 
 Uses Tracker.jl to compute the vector-Jacobian products. If `f` is in-place,
 then it uses a array of structs formulation to do scalarized reverse mode,
@@ -1027,7 +1059,9 @@ end
 TrackerVJP(; allow_nothing = false) = TrackerVJP(allow_nothing)
 
 """
+```julia
 ReverseDiffVJP{compile} <: VJPChoice
+```
 
 Uses ReverseDiff.jl to compute the vector-Jacobian products. If `f` is in-place,
 then it uses a array of structs formulation to do scalarized reverse mode,
@@ -1098,7 +1132,9 @@ end
 @inline compile_tape(autojacvec::Bool) = false
 
 """
+```julia
 ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}
+```
 
 ForwardDiff.jl over a choice of `sensealg` method for the adjoint.
 
