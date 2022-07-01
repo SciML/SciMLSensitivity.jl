@@ -25,7 +25,7 @@ using Zygote
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         g(u, p, t) = u[end]
-        function dg(out, u, p, t, i=nothing)
+        function dg(out, u, p, t, i = nothing)
             fill!(out, zero(eltype(u)))
             out[end] = one(eltype(u))
         end
@@ -168,11 +168,11 @@ using Zygote
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         g(u, p, t) = u[end] + sum(p)
-        function dgu(out, u, p, t, i=nothing)
+        function dgu(out, u, p, t, i = nothing)
             fill!(out, zero(eltype(u)))
             out[end] = one(eltype(u))
         end
-        function dgp(out, u, p, t, i=nothing)
+        function dgp(out, u, p, t, i = nothing)
             fill!(out, one(eltype(p)))
         end
 
@@ -247,11 +247,11 @@ using Zygote
                               saveat = 0.01)
 
         g(u, p, t) = u[end]^2 / 2 + sum(p)
-        function dgu(out, u, p, t, i=nothing)
+        function dgu(out, u, p, t, i = nothing)
             fill!(out, zero(eltype(u)))
             out[end] = u[end]
         end
-        function dgp(out, u, p, t, i=nothing)
+        function dgp(out, u, p, t, i = nothing)
             fill!(out, one(eltype(p)))
         end
 
@@ -370,7 +370,7 @@ end
         prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
 
         g(u, p, t) = u[end]
-        function dg(out, u, p, t, i=nothing)
+        function dg(out, u, p, t, i = nothing)
             fill!(out, zero(eltype(u)))
             out[end] = one(eltype(u))
         end

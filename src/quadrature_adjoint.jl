@@ -386,13 +386,13 @@ function update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integr
     # Create a fake sensitivity function to do the vjps needs to be done
     # to account for parameter dependence of affect function
     fakeS = CallbackSensitivityFunction(w, sensealg, adj_prob.f.f.diffcache, sol.prob)
-    if dgdu_discrete !== nothing # discrete cost
-        dgdu_discrete(dλ, integrand.y, integrand.p, t, cur_time)
+    if dgdu !== nothing # discrete cost
+        dgdu(dλ, integrand.y, integrand.p, t, cur_time)
     else
-        error("Please provide `dgdu_discrete` to use adjoint_sensitivities with `QuadratureAdjoint()` and callbacks.")
+        error("Please provide `dgdu` to use adjoint_sensitivities with `QuadratureAdjoint()` and callbacks.")
     end
 
-    @assert dgdp_discrete === nothing
+    @assert dgdp === nothing
 
     # account for implicit events
 
