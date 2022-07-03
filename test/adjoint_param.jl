@@ -66,7 +66,7 @@ du0, dp = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
 function G(p)
     tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))
     sol = solve(tmp_prob, Vern9(), abstol = abstol, reltol = reltol)
-    res, err = quadgk((t) -> g(sol(t), p, t), 0.0, 10.0, atol = 1e-8, rtol = 1e-8)
+    res, err = quadgk((t) -> g(sol(t), p, t), 0.0, 1.0, atol = 1e-8, rtol = 1e-8)
     res
 end
 res2 = ForwardDiff.gradient(G, p)
@@ -90,13 +90,12 @@ function model(p)
                               u0,
                               (0.0, 10.0),
                               p,
-                              jac = true,
                               abstol = abstol,
                               reltol = reltol),
                    Tsit5(),
-                   jac = true,
                    saveat = collect(0:0.1:7),
-                   sensealg = QuadratureAdjoint())
+                   sensealg = QuadratureAdjoint(),
+                   abstol = abstol, reltol = reltol)
     return Array(output[1, :, :]) # only return y, not y′
 end
 
