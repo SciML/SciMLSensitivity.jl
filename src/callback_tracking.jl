@@ -303,7 +303,8 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             if cb.save_positions[1] == true
                 # if the callback saved the first position, we need to implicitly correct this value as well
                 loss_indx = correction.cur_time[]
-                implicit_correction!(Lu_left, dy_left, correction, y, integrator, g,
+                implicit_correction!(Lu_left, dy_left, correction, y, integrator, dgdu,
+                                     dgdp,
                                      loss_indx)
                 dλ .+= Lu_left
             end
