@@ -592,7 +592,8 @@ end
 
         lss_problem = ForwardLSSProblem(sol_attractor,
                                         ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                                                   g = g), dgdu_discrete = dgu,
+                                                   g = g), t = sol_attractor.t,
+                                        dgdu_discrete = dgu,
                                         dgdp_discrete = dgp)
         resfw = shadow_forward(lss_problem)
 

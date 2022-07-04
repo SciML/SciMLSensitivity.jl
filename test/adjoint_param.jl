@@ -72,7 +72,7 @@ end
 res2 = ForwardDiff.gradient(G, p)
 @test dp'≈res2 atol=1e-5
 
-function model(p)
+function model(p, sensealg)
     N_oscillators = 30
     u0 = repeat([0.0; 1.0], 1, N_oscillators) # size(u0) = (2, 30)
 
@@ -84,6 +84,7 @@ function model(p)
         y′ = @view u[2, :]
         @. dy′ = -y * W
         @. dy = y′ * b
+        return nothing
     end
 
     output = solve(ODEProblem(du!,
@@ -94,14 +95,18 @@ function model(p)
                               reltol = reltol),
                    Tsit5(),
                    saveat = collect(0:0.1:7),
-                   sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP()),
+                   sensealg = sensealg,
                    abstol = abstol, reltol = reltol)
     return Array(output[1, :, :]) # only return y, not y′
 end
 
 p = [1.5, 0.1]
 y = model(p)
-loss(p) = sum(model(p))
+function loss(p, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)))
+    sum(model(p, sensealg))
+end
 dp1 = Zygote.gradient(loss, p)[1]
 dp2 = ForwardDiff.gradient(loss, p)
+@test dp1 ≈ dp2
+@test_broken dp2 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
 @test dp1 ≈ dp2
