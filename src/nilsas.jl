@@ -50,7 +50,7 @@ struct NILSASProblem{A, NILSS, Aprob, Qcache, solType, z0Type, tType, G, T, DG1,
     T_seg::T
     dtsave::T
     dgdu_discrete::DG1
-    dgdu_continuous::DG2
+    dgdp_discrete::DG2
 end
 
 function NILSASProblem(sol, sensealg::NILSAS;
@@ -85,9 +85,9 @@ function NILSASProblem(sol, sensealg::NILSAS;
 
     # check that it's either discrete or continuous
     if t !== nothing
-        @assert dgdu_continuous !== nothing && dgdp_continuous !== nothing
+        @assert dgdu_discrete !== nothing || dgdp_discrete !== nothing || g !== nothing
     else
-        @assert dgdu_discrete !== nothing || dgdp_discrete !== nothing
+        @assert dgdu_continuous !== nothing || dgdp_continuous !== nothing || g !== nothing
     end
 
     # homogenous + inhomogenous adjoint sensitivity problem
@@ -111,15 +111,17 @@ function NILSASProblem(sol, sensealg::NILSAS;
     quadcache = QuadratureCache(u0, M, nseg, numparams)
 
     NILSASProblem{typeof(sensealg), typeof(nilss), typeof(adjoint_prob), typeof(quadcache),
-                  typeof(sol), typeof(z0), typeof(t), typeof(g), typeof(T_seg)}(sensealg,
-                                                                                nilss,
-                                                                                adjoint_prob,
-                                                                                quadcache,
-                                                                                sol,
-                                                                                deepcopy(z0),
-                                                                                t,
-                                                                                g, T_seg,
-                                                                                dtsave)
+                  typeof(sol), typeof(z0), typeof(t), typeof(g), typeof(T_seg),
+                  typeof(dgdu_discrete), typeof(dgdp_discrete)}(sensealg,
+                                                                nilss,
+                                                                adjoint_prob,
+                                                                quadcache,
+                                                                sol,
+                                                                deepcopy(z0),
+                                                                t,
+                                                                g, T_seg,
+                                                                dtsave, dgdu_discrete,
+                                                                dgdp_discrete)
 end
 
 function terminate_conditions(alg::BacksolveAdjoint, rng, f, y, p, t, numindvar, numparams,
@@ -254,7 +256,7 @@ end
 function accumulate_cost!(y, p, t, nilss::NILSSSensitivityFunction)
     @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = nilss
 
-    if dg === nothing
+    if dgdu === nothing
         if dg_val isa Tuple
             SciMLSensitivity.gradient!(dg_val[1], pgpu, y, alg, pgpu_config)
             SciMLSensitivity.gradient!(dg_val[2], pgpp, y, alg, pgpp_config)
@@ -263,10 +265,10 @@ function accumulate_cost!(y, p, t, nilss::NILSSSensitivityFunction)
         end
     else
         if dg_val isa Tuple
-            dg[1](dg_val[1], y, p, t)
-            dg[2](dg_val[2], y, p, t)
+            dgdu(dg_val[1], y, p, t)
+            dgdp(dg_val[2], y, p, t)
         else
-            dg(dg_val, y, p, t)
+            dgdu(dg_val, y, p, t)
         end
     end
 
@@ -275,7 +277,7 @@ end
 
 function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
     @unpack M, nseg, nstep, adjoint_sensealg = nilsas
-    @unpack sol, nilss, z0, t, dg_discrete, dg_continuous, g, T_seg, dtsave, adjoint_prob = prob
+    @unpack sol, nilss, z0, t, dgdu_discrete, dgdp_discrete, g, T_seg, dtsave, adjoint_prob = prob
     @unpack u0, tspan = adjoint_prob
     @unpack dgdu, dgdp = nilss
 
