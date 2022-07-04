@@ -94,7 +94,7 @@ function model(p)
                               reltol = reltol),
                    Tsit5(),
                    saveat = collect(0:0.1:7),
-                   sensealg = QuadratureAdjoint(),
+                   sensealg = QuadratureAdjoint(autojacvec=ReverseDiffVJP()),
                    abstol = abstol, reltol = reltol)
     return Array(output[1, :, :]) # only return y, not y′
 end
