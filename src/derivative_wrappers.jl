@@ -231,6 +231,12 @@ function vecjacobian!(dλ, y, λ, p, t, S::TS;
     return
 end
 
+function vecjacobian(y, λ, p, t, S::TS;
+                     dgrad = nothing, dy = nothing,
+                     W = nothing) where {TS <: SensitivityFunction}
+    return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
     @unpack sensealg, f = S
@@ -582,6 +588,44 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     return
 end
 
+function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
+                       W) where {TS <: SensitivityFunction}
+    @unpack sensealg, f = S
+    prob = getprob(S)
+
+    isautojacvec = get_jacvec(sensealg)
+    
+    if W === nothing
+        _dy, back = Zygote.pullback(y, p) do u, p
+                vec(f(u, p, t))
+        end
+    else
+        _dy, back = Zygote.pullback(y, p) do u, p
+            vec(f(u, p, t, W))
+        end
+    end
+
+    # Grab values from `_dy` before `back` in case mutated
+    dy !== nothing && (dy[:] .= vec(_dy))
+
+    tmp1, tmp2 = back(λ)
+    if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
+        throw(ZygoteVJPNothingError())
+    elseif tmp1 !== nothing
+        (dλ = vec(tmp1))
+    end
+
+    if dgrad !== nothing
+        if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
+            throw(ZygoteVJPNothingError())
+        elseif tmp2 !== nothing
+            (dgrad[:] .= vec(tmp2))
+        end
+    end
+    @show typeof(dλ), dλ
+    return dλ
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
@@ -866,6 +910,29 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
         dλ .-= vec(dg_val)
     end
     return nothing
+end
+
+function accumulate_cost(dλ, y, p, t, S::TS,
+                         dgrad = nothing) where {TS <: SensitivityFunction}
+    @unpack dg, dg_val, g, g_grad_config = S.diffcache
+    if dg !== nothing
+        if !(dg isa Tuple)
+            dg(dg_val, y, p, t)
+            dλ -= vec(dg_val)
+        else
+            dg[1](dg_val[1], y, p, t)
+            dλ -= vec(dg_val[1])
+            if dgrad !== nothing
+                dg[2](dg_val[2], y, p, t)
+                dgrad .-= vec(dg_val[2])
+            end
+        end
+    else
+        g.t = t
+        gradient!(dg_val, g, y, S.sensealg, g_grad_config)
+        dλ -= vec(dg_val)
+    end
+    return dλ
 end
 
 function build_jac_config(alg, uf, u)

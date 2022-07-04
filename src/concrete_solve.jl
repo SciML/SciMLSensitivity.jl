@@ -258,7 +258,11 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                         x = vec(Δ[1])
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        vec(_out) .= adapt(outtype, vec(Δ[1]))
+                        if _out isa StaticArrays.SArray
+                            _out = adapt(outtype, vec(Δ[1]))
+                        else
+                            vec(_out) .= adapt(outtype, vec(Δ[1]))
+                        end
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
                                                               vec(Δ[1])[_save_idxs])
@@ -269,7 +273,11 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                         x = vec(Δ)
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        vec(_out) .= adapt(outtype, vec(Δ))
+                        if _out isa StaticArrays.SArray
+                            _out = adapt(outtype, vec(Δ))
+                        else
+                            vec(_out) .= adapt(outtype, vec(Δ))
+                        end
                     else
                         x = vec(Δ)
                         vec(@view(_out[_save_idxs])) .= adapt(outtype, @view(x[_save_idxs]))
@@ -283,7 +291,11 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                     if typeof(_save_idxs) <: Number
                         _out[_save_idxs] = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(x)
+                        if _out isa StaticArrays.SArray
+                            _out = vec(x)
+                        else
+                            vec(_out) .= vec(x)
+                        end
                     else
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
@@ -293,9 +305,15 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                                                  reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                                                          size(Δ)[end])[_save_idxs, i])
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(adapt(outtype,
-                                               reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                                                       size(Δ)[end])[:, i]))
+                        if _out isa StaticArrays.SArray
+                            _out = vec(adapt(outtype,
+                                                   reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                                           size(Δ)[end])[:, i]))
+                        else
+                            vec(_out) .= vec(adapt(outtype,
+                                                   reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                                           size(Δ)[end])[:, i]))
+                        end
                     else
                         vec(@view(_out[_save_idxs])) .= vec(adapt(outtype,
                                                                   reshape(Δ,

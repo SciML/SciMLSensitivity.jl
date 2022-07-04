@@ -419,8 +419,12 @@ function (f::ReverseLossCallback)(integrator)
     if F !== nothing
         F !== I && F !== (I, I) && ldiv!(F, Δλd)
     end
-
-    u[diffvar_idxs] .+= Δλd
+    
+    if u isa StaticArrays.SArray
+        u += Δλd
+    else
+        u[diffvar_idxs] .+= Δλd
+    end
     u_modified!(integrator, true)
     cur_time[] -= 1
     return nothing

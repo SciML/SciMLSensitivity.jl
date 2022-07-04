@@ -31,6 +31,21 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du, u, p, t)
     return nothing
 end
 
+function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
+    @unpack sol, discrete = S
+    f = sol.prob.f
+
+    λ, grad, y, dgrad, dy = split_states(u, t, S)
+
+    dλ = vecjacobian(y, λ, p, t, S) * (-one(eltype(λ)))
+    
+    if !discrete
+        return accumulate_cost(dλ, y, p, t, S)
+    end
+    @show typeof(λ), λ, typeof(dλ), dλ
+    return dλ
+end
+
 function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
     @unpack y, sol = S
 
@@ -46,6 +61,18 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
     dλ = du
 
     λ, nothing, y, dλ, nothing, nothing
+end
+
+function split_states(u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
+    @unpack y, sol = S
+
+    if update
+        y = sol(t, continuity = :right)
+    end
+
+    λ = u
+
+    λ, nothing, y, nothing, nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
@@ -70,9 +97,7 @@ end
 
     discrete = (t !== nothing && dg_continuous === nothing)
 
-    len = length(u0)
-    λ = similar(u0, len)
-    λ .= false
+    λ = zero(u0)
     sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                     dg_continuous)
 
@@ -92,7 +117,7 @@ end
         odefun = ODEFunction(sense, mass_matrix = sol.prob.f.mass_matrix',
                              jac_prototype = adjoint_jac_prototype)
     end
-    return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    return ODEProblem{!(z0 isa StaticArrays.SArray)}(odefun, z0, tspan, p, callback = cb)
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
@@ -119,7 +144,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     λ = zero(adj_sol.prob.u0)
     # we need to alias `y`
     f_cache = zero(y)
-    f_cache .= false
     isautojacvec = get_jacvec(sensealg)
 
     dgdp_cache = dgdp === nothing ? nothing : zero(p)
