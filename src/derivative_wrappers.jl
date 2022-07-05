@@ -622,7 +622,6 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
             (dgrad[:] .= vec(tmp2))
         end
     end
-    @show typeof(dλ), dλ
     return dλ
 end
 

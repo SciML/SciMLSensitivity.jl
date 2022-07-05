@@ -42,7 +42,6 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
     if !discrete
         return accumulate_cost(dλ, y, p, t, S)
     end
-    @show typeof(λ), λ, typeof(dλ), dλ
     return dλ
 end
 
@@ -211,8 +210,13 @@ end
 function (S::AdjointSensitivityIntegrand)(out, t)
     @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
     f = sol.prob.f
-    sol(y, t)
-    adj_sol(λ, t)
+    if eltype(sol.u) <: StaticArrays.SArray
+        y = sol(t)
+        λ = adj_sol(t)
+    else
+        sol(y, t)
+        adj_sol(λ, t)
+    end
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
 

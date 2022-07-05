@@ -401,9 +401,14 @@ function (f::ReverseLossCallback)(integrator)
         copyto!(y, integrator.u[(end - idx + 1):end])
     end
 
-    # Warning: alias here! Be careful with λ
-    gᵤ = isq ? λ : @view(λ[1:idx])
-    g(gᵤ, y, p, t[cur_time[]], cur_time[])
+    if u isa StaticArrays.SArray
+        gᵤ = isq ? λ : @view(λ[1:idx])
+        gᵤ = g(gᵤ, y, p, t[cur_time[]], cur_time[])
+    else
+        # Warning: alias here! Be careful with λ
+        gᵤ = isq ? λ : @view(λ[1:idx])
+        g(gᵤ, y, p, t[cur_time[]], cur_time[])
+    end
 
     if issemiexplicitdae
         jacobian!(J, uf, y, f_cache, sensealg, jac_config)
@@ -421,7 +426,7 @@ function (f::ReverseLossCallback)(integrator)
     end
     
     if u isa StaticArrays.SArray
-        u += Δλd
+        integrator.u += Δλd
     else
         u[diffvar_idxs] .+= Δλd
     end
