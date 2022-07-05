@@ -606,13 +606,12 @@ end
 
         @test resfw≈res rtol=1e-1
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g),
-                                    t = sol_attractor.t, dgdu_discrete = dgu,
-                                    dgdp_discrete = dgp)
-        res = shadow_adjoint(nilsas_prob, Tsit5())
-
-        @info res
-
-        @test resfw≈res rtol=1e-1
+        @test_throws ErrorException nilsas_prob=NILSASProblem(sol_attractor,
+                                                              NILSAS(nseg, nstep, M, g = g),
+                                                              t = sol_attractor.t,
+                                                              dgdu_discrete = dgu,
+                                                              dgdp_discrete = dgp)
+        # res = shadow_adjoint(nilsas_prob, Tsit5())
+        # @test resfw ≈ res rtol = 1e-1
     end
 end

@@ -90,9 +90,7 @@ function model(p, sensealg)
     output = solve(ODEProblem(du!,
                               u0,
                               (0.0, 10.0),
-                              p,
-                              abstol = abstol,
-                              reltol = reltol),
+                              p),
                    Tsit5(),
                    saveat = collect(0:0.1:7),
                    sensealg = sensealg,
@@ -101,7 +99,7 @@ function model(p, sensealg)
 end
 
 p = [1.5, 0.1]
-y = model(p)
+y = model(p, QuadratureAdjoint())
 function loss(p, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)))
     sum(model(p, sensealg))
 end

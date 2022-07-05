@@ -86,6 +86,7 @@ function NILSASProblem(sol, sensealg::NILSAS;
     # check that it's either discrete or continuous
     if t !== nothing
         @assert dgdu_discrete !== nothing || dgdp_discrete !== nothing || g !== nothing
+        error("`NILSAS` can currently not be used with discrete cost functions.")
     else
         @assert dgdu_continuous !== nothing || dgdp_continuous !== nothing || g !== nothing
     end
