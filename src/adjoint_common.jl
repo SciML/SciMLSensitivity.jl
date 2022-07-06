@@ -401,7 +401,6 @@ function (f::ReverseLossCallback)(integrator)
         copyto!(y, integrator.u[(end - idx + 1):end])
     end
 
-    # if u isa StaticArrays.SArray
     if ArrayInterfaceCore.ismutable(u)
         # Warning: alias here! Be careful with λ
         gᵤ = isq ? λ : @view(λ[1:idx])
@@ -427,7 +426,6 @@ function (f::ReverseLossCallback)(integrator)
         F !== I && F !== (I, I) && ldiv!(F, Δλd)
     end
     
-    # if u isa StaticArrays.SArray
     if ArrayInterfaceCore.ismutable(u)
         u[diffvar_idxs] .+= Δλd
     else
