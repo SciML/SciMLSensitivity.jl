@@ -401,13 +401,15 @@ function (f::ReverseLossCallback)(integrator)
         copyto!(y, integrator.u[(end - idx + 1):end])
     end
 
-    if u isa StaticArrays.SArray
-        gᵤ = isq ? λ : @view(λ[1:idx])
-        gᵤ = g(gᵤ, y, p, t[cur_time[]], cur_time[])
-    else
+    # if u isa StaticArrays.SArray
+    if ArrayInterfaceCore.ismutable(u)
         # Warning: alias here! Be careful with λ
         gᵤ = isq ? λ : @view(λ[1:idx])
         g(gᵤ, y, p, t[cur_time[]], cur_time[])
+    else
+        @assert sensealg isa QuadratureAdjoint
+        gᵤ = isq ? λ : @view(λ[1:idx])
+        gᵤ = g(gᵤ, y, p, t[cur_time[]], cur_time[])
     end
 
     if issemiexplicitdae
@@ -425,10 +427,12 @@ function (f::ReverseLossCallback)(integrator)
         F !== I && F !== (I, I) && ldiv!(F, Δλd)
     end
     
-    if u isa StaticArrays.SArray
-        integrator.u += Δλd
-    else
+    # if u isa StaticArrays.SArray
+    if ArrayInterfaceCore.ismutable(u)
         u[diffvar_idxs] .+= Δλd
+    else
+        @assert sensealg isa QuadratureAdjoint
+        integrator.u += Δλd
     end
     u_modified!(integrator, true)
     cur_time[] -= 1

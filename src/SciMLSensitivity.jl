@@ -14,7 +14,6 @@ import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterfaceCore, ArrayInterfaceTracker
 import Enzyme
 import GPUArraysCore
-import StaticArrays
 
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot

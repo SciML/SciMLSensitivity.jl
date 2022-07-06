@@ -116,7 +116,7 @@ end
         odefun = ODEFunction(sense, mass_matrix = sol.prob.f.mass_matrix',
                              jac_prototype = adjoint_jac_prototype)
     end
-    return ODEProblem{!(z0 isa StaticArrays.SArray)}(odefun, z0, tspan, p, callback = cb)
+    return ODEProblem{ArrayInterfaceCore.ismutable(z0)}(odefun, z0, tspan, p, callback = cb)
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
@@ -210,12 +210,13 @@ end
 function (S::AdjointSensitivityIntegrand)(out, t)
     @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
     f = sol.prob.f
-    if eltype(sol.u) <: StaticArrays.SArray
-        y = sol(t)
-        λ = adj_sol(t)
-    else
+    # if eltype(sol.u) <: StaticArrays.SArray
+    if ArrayInterfaceCore.ismutable(eltype(sol.u))
         sol(y, t)
         adj_sol(λ, t)
+    else
+        y = sol(t)
+        λ = adj_sol(t)
     end
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
