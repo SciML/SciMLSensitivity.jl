@@ -112,7 +112,7 @@ sensitivities, call:
 
 ```@example directsense
 ts = 0:0.5:10
-res = adjoint_sensitivities(sol,Vern9(),t=ts,dg_discrete=dg,abstol=1e-14,
+res = adjoint_sensitivities(sol,Vern9(),t=ts,dgdu_discrete=dg,abstol=1e-14,
                             reltol=1e-14)
 ```
 

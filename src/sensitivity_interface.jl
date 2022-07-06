@@ -301,7 +301,8 @@ end
 
 function _adjoint_sensitivities(sol, sensealg, alg;
                                 t = nothing,
-                                dg_discrete = nothing, dg_continuous = nothing,
+                                dgdu_discrete = nothing, dgdp_discrete = nothing,
+                                dgdu_continuous = nothing, dgdp_continuous = nothing,
                                 g = nothing,
                                 abstol = 1e-6, reltol = 1e-3,
                                 checkpoints = sol.t,
@@ -314,19 +315,22 @@ function _adjoint_sensitivities(sol, sensealg, alg;
     end
 
     if sol.prob isa ODEProblem
-        adj_prob = ODEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = ODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                     dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol, kwargs...)
 
     elseif sol.prob isa SDEProblem
-        adj_prob = SDEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = SDEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                     dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol,
                                      corfunc_analytical = corfunc_analytical)
     elseif sol.prob isa RODEProblem
-        adj_prob = RODEAdjointProblem(sol, sensealg, t, dg_discrete, dg_continuous, g;
+        adj_prob = RODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+                                      dgdu_continuous, dgdp_continuous, g;
                                       checkpoints = checkpoints,
                                       callback = callback,
                                       abstol = abstol, reltol = reltol,
@@ -355,17 +359,11 @@ function _adjoint_sensitivities(sol, sensealg, alg;
     du0, dp
 end
 
-function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg, g, dg = nothing;
-                                abstol = 1e-6, reltol = 1e-3,
-                                kwargs...)
-    SteadyStateAdjointProblem(sol, sensealg, g, dg; kwargs...)
-end
-
 function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
-                                g = nothing, dg = nothing,
+                                dgdu = nothing, dgdp = nothing, g = nothing,
                                 abstol = 1e-6, reltol = 1e-3,
                                 kwargs...)
-    SteadyStateAdjointProblem(sol, sensealg, g, dg; kwargs...)
+    SteadyStateAdjointProblem(sol, sensealg, dgdu, dgdp, g; kwargs...)
 end
 
 @doc doc"""

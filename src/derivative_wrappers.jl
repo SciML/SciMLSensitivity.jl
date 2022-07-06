@@ -89,15 +89,6 @@ mutable struct RODEUDerivativeWrapper{F, tType, P, WType} <: Function
 end
 (ff::RODEUDerivativeWrapper)(u) = ff.f(u, ff.p, ff.t, ff.W)
 
-mutable struct RODEUGradientWrapper{fType, tType, P, WType} <: Function
-    f::fType
-    t::tType
-    p::P
-    W::WType
-end
-
-(ff::RODEUGradientWrapper)(uprev) = ff.f(uprev, ff.p, ff.t, ff.W)
-
 mutable struct RODEParamGradientWrapper{fType, tType, uType, WType} <: Function
     f::fType
     t::tType
@@ -847,23 +838,31 @@ end
 
 function accumulate_cost!(dλ, y, p, t, S::TS,
                           dgrad = nothing) where {TS <: SensitivityFunction}
-    @unpack dg, dg_val, g, g_grad_config = S.diffcache
-    if dg !== nothing
-        if !(dg isa Tuple)
-            dg(dg_val, y, p, t)
+    @unpack dgdu, dgdp, dg_val, g, g_grad_config = S.diffcache
+
+    if dgdu !== nothing
+        if dgdp === nothing
+            dgdu(dg_val, y, p, t)
             dλ .-= vec(dg_val)
         else
-            dg[1](dg_val[1], y, p, t)
+            dgdu(dg_val[1], y, p, t)
             dλ .-= vec(dg_val[1])
             if dgrad !== nothing
-                dg[2](dg_val[2], y, p, t)
+                dgdp(dg_val[2], y, p, t)
                 dgrad .-= vec(dg_val[2])
             end
         end
     else
-        g.t = t
-        gradient!(dg_val, g, y, S.sensealg, g_grad_config)
-        dλ .-= vec(dg_val)
+        g[1].t = t
+        g[1].p = p
+        gradient!(dg_val[1], g[1], y, S.sensealg, g_grad_config[1])
+        dλ .-= vec(dg_val[1])
+        if dgrad !== nothing
+            g[2].t = t
+            g[2].u = y
+            gradient!(dg_val[2], g[2], p, S.sensealg, g_grad_config[2])
+            dgrad .-= vec(dg_val[2])
+        end
     end
     return nothing
 end

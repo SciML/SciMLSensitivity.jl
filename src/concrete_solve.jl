@@ -313,7 +313,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             cb2 = cb
         end
 
-        du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dg_discrete = df,
+        du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df,
                                         sensealg = sensealg,
                                         callback = cb2,
                                         kwargs_adj...)
@@ -997,16 +997,17 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
         end
 
         if sensealg isa ForwardLSS
-            lss_problem = ForwardLSSProblem(sol, sensealg, t = ts, dg_discrete = df)
+            lss_problem = ForwardLSSProblem(sol, sensealg, t = ts, dgdu_discrete = df)
             dp = shadow_forward(lss_problem)
         elseif sensealg isa AdjointLSS
-            adjointlss_problem = AdjointLSSProblem(sol, sensealg, t = ts, dg_discrete = df)
+            adjointlss_problem = AdjointLSSProblem(sol, sensealg, t = ts,
+                                                   dgdu_discrete = df)
             dp = shadow_adjoint(adjointlss_problem)
         elseif sensealg isa NILSS
-            nilss_prob = NILSSProblem(_prob, sensealg, t = ts, dg_discrete = df)
+            nilss_prob = NILSSProblem(_prob, sensealg, t = ts, dgdu_discrete = df)
             dp = shadow_forward(nilss_prob, alg)
         elseif sensealg isa NILSAS
-            nilsas_prob = NILSASProblem(_prob, sensealg, t = ts, dg_discrete = df)
+            nilsas_prob = NILSASProblem(_prob, sensealg, t = ts, dgdu_discrete = df)
             dp = shadow_adjoint(nilsas_prob, alg)
         else
             error("No concrete_solve implementation found for sensealg `$sensealg`. Did you spell the sensitivity algorithm correctly? Please report this error.")
@@ -1042,8 +1043,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, Steady
     function steadystatebackpass(Δ)
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, g = nothing, dg = Δ,
-                                   save_idxs = save_idxs)
+        function df(_out, u, p, t, i)
+            if typeof(_save_idxs) <: Number
+                _out[_save_idxs] = Δ[_save_idxs]
+            elseif typeof(Δ) <: Number
+                @. _out[_save_idxs] = Δ
+            else
+                @. _out[_save_idxs] = Δ[_save_idxs]
+            end
+        end
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
