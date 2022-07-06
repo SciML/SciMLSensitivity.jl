@@ -106,5 +106,5 @@ end
 dp1 = Zygote.gradient(loss, p)[1]
 dp2 = ForwardDiff.gradient(loss, p)
 @test dp1 ≈ dp2
-@test_broken dp2 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
-@test dp1 ≈ dp2
+# @test_broken dp2 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
+# @test dp1 ≈ dp2
