@@ -119,7 +119,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
   is not required and is assumed to be zero.
 - `dgdu_continuous`: the partial derivative ``g_u`` evaluated at times
   not corresponding to terms with an associated Dirac delta. If `g` is given,
-  then this term is not required and will be approximated by numerical or autoamatic
+  then this term is not required and will be approximated by numerical or (forward-mode) automatic
   differentiation (via the `autodiff` keyword argument in the `sensealg`)
   if this term is not given by the user.
 - `dgdp_continuous`: the partial derivative ``g_p`` evaluated at times
