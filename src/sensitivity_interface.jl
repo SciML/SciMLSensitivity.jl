@@ -21,8 +21,10 @@ end
 
 @doc doc"""
 ```julia
-adjoint_sensitivities(sol,alg;t=nothing,dg_discrete=nothing,
-                            dg_continuous=nothing,g=nothing,
+adjoint_sensitivities(sol,alg;t=nothing,
+                            dgdu_discrete = nothing, dgdp_discrete = nothing,
+                            dgdu_continuous = nothing, dgdp_continuous = nothing,
+                            g=nothing,
                             abstol=1e-6,reltol=1e-3,
                             checkpoints=sol.t,
                             corfunc_analytical=nothing,
@@ -67,17 +69,95 @@ instead of just at discrete data points.
       saving is required, one should solve dense `solve(prob,alg)`, use the
       solution in the adjoint, and then `sol(ts)` interpolate.
 
-### Syntax
+## Mathematical Definition
 
-For discrete adjoints, use:
+Adjoint sensitivity analysis finds the gradient of a cost function ``G`` defined by the
+infinitesimal cost over the whole time period ``(t_{0}, T)``, given by the equation:
+
+```math
+G(u,p)=G(u(\cdot,p))=\int_{t_{0}}^{T}g(u(t,p),p,t)dt
+```
+
+It does so by solving the adjoint problem:
+
+```math
+\frac{d\lambda^{\star}}{dt}=g_{u}(u(t,p),p)-\lambda^{\star}(t)f_{u}(t,u(t,p),p),\thinspace\thinspace\thinspace\lambda^{\star}(T)=0
+```
+
+and obtaining the sensitivities through the integral:
+
+```math
+\frac{dG}{dp}=\int_{t_{0}}^{T}\lambda^{\star}(t)f_{p}(t)+g_{p}(t)dt+\lambda^{\star}(t_{0})u_{p}(t_{0})
+```
+
+As defined, that cost function only has non-zero values over nontrivial intervals. However, in many
+cases one may want to include in the cost function loss values at discrete points, for example, matching
+the data at time points `t`. In this case, terms of `g` can be represented by Dirac delta functions
+which are then applied in the corresponding ``\lambda^\star`` and ``\frac{dG}{dp}`` equations. 
+
+For more information, see [Sensitivity Math Details](@ref sensitivity_math).
+
+## Positional Arguments
+
+- `sol`: the solution from the forward pass of the ODE. Note that if not using a checkpointing
+  sensitivity algorithm, then it's assumed that the (dense) interpolation of the forward solution is
+  of sufficient accuracy for recreating the solution at any time point.
+- `alg`: the algorithm (i.e., DiffEq solver) to use for the solution of the adjoint problem.
+
+## Keyword Arguments
+
+- `t`: the time points at which the discrete cost function is to be evaluated.
+  This argument is only required if discrete cost functions are declared.
+- `g`: the continuous instantaneous cost ``g(u,p,t)`` at a given time point
+  represented by a Julia function `g(u,p,t)`. This argument is only required
+  if there is a continuous instantaneous cost contribution.
+- `dgdu_discrete`: the partial derivative ``g_u`` evaluated at the discrete
+  (Dirac delta) times. If discrete cost values are given, then `dgdu_discrete`
+  is required.
+- `dgdp_discrete`: the partial derivative ``g_p`` evaluated at the discrete
+  (Dirac delta) times. If discrete cost values are given, then `dgdp_discrete`
+  is not required and is assumed to be zero.
+- `dgdu_continuous`: the partial derivative ``g_u`` evaluated at times
+  not corresponding to terms with an associated Dirac delta. If `g` is given,
+  then this term is not required and will be approximated by numerical or (forward-mode) automatic
+  differentiation (via the `autodiff` keyword argument in the `sensealg`)
+  if this term is not given by the user.
+- `dgdp_continuous`: the partial derivative ``g_p`` evaluated at times
+  not corresponding to terms with an associated Dirac delta. If `g` is given,
+  then this term is not required and will be approximated by numerical or (forward-mode) automatic
+  differentiation (via the `autojacvec` keyword argument in the `sensealg`)
+  if this term is not given by the user.
+- `abstol`: the absolute tolerance of the adjoint solve. Defaults to `1e-3`
+- `reltol`: the relative tolerance of the adjoint solve. Defaults to `1e-3`
+- `checkpoints`: the values to use for the checkpoints of the reverse solve, if the
+  adjoint `sensealg` has `checkpointing = true`. Defaults to `sol.t`, i.e. the
+  saved points in the `sol`.
+- `corfunc_analytical`: the function corresponding to the conversion from an Ito to a Stratanovich definition of an SDE, i.e.
+For sensitivity analysis of an SDE in the Ito sense ``dX = a(X,t)dt + b(X,t)dW_t`` with conversion term ``- 1/2 b_X b``, `corfunc_analytical` denotes `b_X b``.
+Only used if the `sol.prob isa SDEProblem`. If not given, this is
+  computed using automatic differentiation. Note that this inside of the reverse solve SDE then implies automatic
+  differentiation of a function being automatic differentiated, and nested higher order automatic differentiation
+  has more restrictions on the function plus some performance disadvantages.
+- `callback`: callback functions to be used in the adjoint solve. Defaults to
+  `nothing`.
+- `sensealg`: the choice for what adjoint method to use for the reverse solve.
+  Defaults to `InterpolatingAdjoint()`. See the 
+  [sensitivity algorithms](@ref sensitivity_diffeq) page for more details.
+- `kwargs`: any extra keyword arguments passed to the adjoint solve.
+
+## Detailed Description
+
+For discrete adjoints where the cost functions only depend on parameters through
+the ODE solve itself (for example, parameter estimation with L2 loss), use:
 
 ```julia
-du0,dp = adjoint_sensitivities(sol,alg;t=ts,dg_discrete=dg,sensealg=InterpolatingAdjoint(),
+du0,dp = adjoint_sensitivities(sol,alg;t=ts,dgdu_discrete=dg,
+                               sensealg=InterpolatingAdjoint(),
                                checkpoints=sol.t,kwargs...)
 ```
 
-where `alg` is the ODE algorithm to solve the adjoint problem, `dg` is the jump
-function, `sensealg` is the sensitivity algorithm, and `ts` is the time points
+where `alg` is the ODE algorithm to solve the adjoint problem, `dgdu_discrete` is the 
+jump function, `sensealg` is the sensitivity algorithm, and `ts` are the time points
 for data. `dg` is given by:
 
 ```julia
@@ -90,7 +170,9 @@ with `u=u(t)`.
 For continuous functionals, the form is:
 
 ```julia
-du0,dp = adjoint_sensitivities(sol,alg;dg_continuous=(dgdu,dgdp),g=g,sensealg=InterpolatingAdjoint(),
+du0,dp = adjoint_sensitivities(sol,alg;dgdu_continuous=dgdu,g=g,
+                               dgdp_continuous = dgdp,
+                               sensealg=InterpolatingAdjoint(),
                                checkpoints=sol.t,kwargs...)
 ```
 
@@ -117,6 +199,12 @@ then we assume `dgdp` is zero and `dgdu` will be computed automatically using Fo
 differencing, depending on the `autodiff` setting in the `AbstractSensitivityAlgorithm`.
 Note that the keyword arguments are passed to the internal ODE solver for
 solving the adjoint problem.
+
+!!! note
+
+    Mixing discrete and continuous terms in the cost function is allowed
+
+## Examples
 
 ### Example discrete adjoints on a cost function
 
