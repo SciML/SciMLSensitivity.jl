@@ -124,7 +124,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
   if this term is not given by the user.
 - `dgdp_continuous`: the partial derivative ``g_p`` evaluated at times
   not corresponding to terms with an associated Dirac delta. If `g` is given,
-  then this term is not required and will be approximated by numerical or autoamatic
+  then this term is not required and will be approximated by numerical or (forward-mode) automatic
   differentiation (via the `autojacvec` keyword argument in the `sensealg`)
   if this term is not given by the user.
 - `abstol`: the absolute tolerance of the adjoint solve. Defaults to `1e-3`
