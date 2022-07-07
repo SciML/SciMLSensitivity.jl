@@ -152,7 +152,7 @@ du0,dp = adjoint_sensitivities(sol,alg;t=ts,dgdu_discrete=dg,
 ```
 
 where `alg` is the ODE algorithm to solve the adjoint problem, `dgdu_discrete` is the 
-jump function, `sensealg` is the sensitivity algorithm, and `ts` is the time points
+jump function, `sensealg` is the sensitivity algorithm, and `ts` are the time points
 for data. `dg` is given by:
 
 ```julia
