@@ -102,7 +102,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
 - `sol`: the solution from the forward pass of the ODE. Note that if not using a checkpointing
   sensitivity algorithm, then it's assumed that the (dense) interpolation of the forward solution is
   of sufficient accuracy for recreating the solution at any time point.
-- `alg`: the algorithm to use for the solution of the adjoint problem.
+- `alg`: the algorithm (i.e., DiffEq solver) to use for the solution of the adjoint problem.
 
 ## Keyword Arguments
 
