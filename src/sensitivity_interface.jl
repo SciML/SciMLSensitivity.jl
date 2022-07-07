@@ -116,7 +116,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
   is required.
 - `dgdp_discrete`: the partial derivative ``g_p`` evaluated at the discrete
   (Dirac delta) times. If discrete cost values are given, then `dgdp_discrete`
-  is not required ans is assumed to be zero.
+  is not required and is assumed to be zero.
 - `dgdu_continuous`: the partial derivative ``g_u`` evaluated at times
   not corresponding to terms with an associated Dirac delta. If `g` is given,
   then this term is not required and will be approximated by numerical or autoamatic
