@@ -108,7 +108,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
 
 - `t`: the time points at which the discrete cost function is to be evaluated.
   This argument is only required if discrete cost functions are declared.
-- `g`: the continuous instantanious cost ``g(u,p,t)`` at a given time point
+- `g`: the continuous instantaneous cost ``g(u,p,t)`` at a given time point
   represented by a Julia function `g(u,p,t)`. This argument is only required
   if there is a continuous instantaneous cost contribution.
 - `dgdu_discrete`: the partial derivative ``g_u`` evaluated at the discrete
