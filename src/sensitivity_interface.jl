@@ -72,7 +72,7 @@ instead of just at discrete data points.
 ## Mathematical Definition
 
 Adjoint sensitivity analysis finds the gradient of a cost function ``G`` defined by the
-infinitesimal cost over the whole time period, given by the equation:
+infinitesimal cost over the whole time period ``(t_{0}, T)``, given by the equation:
 
 ```math
 G(u,p)=G(u(\cdot,p))=\int_{t_{0}}^{T}g(u(t,p),p,t)dt
