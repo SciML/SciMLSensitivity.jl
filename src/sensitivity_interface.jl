@@ -132,7 +132,7 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
 - `checkpoints`: the values to use for the checkpoints of the reverse solve, if the
   adjoint `sensealg` has `checkpointing = true`. Defaults to `sol.t`, i.e. the
   saved points in the `sol`.
-- `corfunc_analytical`: the function for the conversion from an Ito to a Stratanovich definition of an SDE, i.e.
+- `corfunc_analytical`: the function corresponding to the conversion from an Ito to a Stratanovich definition of an SDE, i.e.
   ``- 1/2 b_u b`` for ``dX = a(X,t)dt + b(X,t)dW_t``. Only used if the `sol.prob isa SDEProblem`. If not given, this is
   computed using automatic differentiation. Note that this inside of the reverse solve SDE then implies automatic
   differentiation of a function being automatic differentiated, and nested higher order automatic differentiation
