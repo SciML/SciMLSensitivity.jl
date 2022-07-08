@@ -30,7 +30,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                           quad = false,
                           noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
-    if prob isa DiffEqBase.SteadyStateProblem
+    if prob isa Union{SteadyStateProblem, NonlinearProblem}
         @unpack u0, p = prob
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
@@ -123,7 +123,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         end
     end
 
-    if prob isa DiffEqBase.SteadyStateProblem
+    if prob isa Union{SteadyStateProblem, NonlinearProblem}
         y = copy(sol.u)
     else
         y = copy(sol.u[end])
@@ -138,7 +138,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     @assert sensealg.autojacvec !== nothing
 
     if sensealg.autojacvec isa ReverseDiffVJP
-        if prob isa DiffEqBase.SteadyStateProblem
+        if prob isa Union{SteadyStateProblem, NonlinearProblem}
             if DiffEqBase.isinplace(prob)
                 tape = ReverseDiff.GradientTape((y, _p)) do u, p
                     du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
