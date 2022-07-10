@@ -25,9 +25,10 @@ function SteadyStateAdjointSensitivityFunction(g,
                                                sol,
                                                dgdu,
                                                dgdp,
+                                               f,
                                                colorvec,
                                                needs_jac)
-    @unpack f, p, u0 = sol.prob
+    @unpack p, u0 = sol.prob
 
     diffcache, y = adjointdiffcache(g,
                                     sensealg,
@@ -62,6 +63,10 @@ end
                                              kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
 
+    if sol.prob isa NonlinearProblem
+        f = convert(ODEFunction, f)
+    end
+
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
@@ -78,6 +83,7 @@ end
                                                   sol,
                                                   dgdu,
                                                   dgdp,
+                                                  f,
                                                   f.colorvec,
                                                   needs_jac)
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
