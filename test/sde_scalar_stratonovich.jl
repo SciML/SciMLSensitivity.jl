@@ -49,14 +49,14 @@ p2 = [1.01, 0.87]
     @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
 
     res_sde_u0, res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                  dg_discrete = dg!,
+                                                  dgdu_discrete = dg!,
                                                   dt = dtscalar, adaptive = false,
                                                   sensealg = BacksolveAdjoint())
 
     @show res_sde_u0, res_sde_p
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = BacksolveAdjoint(autojacvec = false))
 
@@ -64,7 +64,7 @@ p2 = [1.01, 0.87]
     @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
 
@@ -74,7 +74,7 @@ p2 = [1.01, 0.87]
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = tend / 1e2, adaptive = false,
                                                     sensealg = InterpolatingAdjoint())
 
@@ -84,7 +84,7 @@ p2 = [1.01, 0.87]
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = InterpolatingAdjoint(autojacvec = false))
 
@@ -94,7 +94,7 @@ p2 = [1.01, 0.87]
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
 
@@ -152,14 +152,14 @@ end
     @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
 
     res_sde_u0, res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                  dg_discrete = dg!,
+                                                  dgdu_discrete = dg!,
                                                   dt = dtscalar, adaptive = false,
                                                   sensealg = BacksolveAdjoint())
 
     @show res_sde_u0, res_sde_p
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = BacksolveAdjoint(autojacvec = false))
 
@@ -167,7 +167,7 @@ end
     @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
 
@@ -177,7 +177,7 @@ end
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = tend / 1e2, adaptive = false,
                                                     sensealg = InterpolatingAdjoint())
 
@@ -187,7 +187,7 @@ end
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = InterpolatingAdjoint(autojacvec = false))
 
@@ -197,7 +197,7 @@ end
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-                                                    dg_discrete = dg!,
+                                                    dgdu_discrete = dg!,
                                                     dt = dtscalar, adaptive = false,
                                                     sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
 

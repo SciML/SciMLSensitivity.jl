@@ -1,7 +1,9 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq
+using NonlinearSolve
 using ForwardDiff, Calculus
+using Zygote
 using Random
 Random.seed!(12345)
 
@@ -31,8 +33,12 @@ Random.seed!(12345)
         nothing
     end
 
-    function dg!(out, u, p, t, i)
+    function dgdu!(out, u, p, t, i)
         (out .= -2.0 .+ u)
+    end
+
+    function dgdp!(out, u, p, t, i)
+        (out .= p)
     end
 
     function g(u, p, t)
@@ -55,7 +61,7 @@ Random.seed!(12345)
         delg_delp = copy(p)
 
         jac!(J, sol_analytical, p, nothing)
-        dg!(vec(gx), sol_analytical, p, nothing, nothing)
+        dgdu!(vec(gx), sol_analytical, p, nothing, nothing)
         paramjac!(fp, sol_analytical, p, nothing)
 
         lambda = J' \ gx'
@@ -95,28 +101,29 @@ Random.seed!(12345)
                      reltol = 1e-14, abstol = 1e-14)
 
         res1a = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, dg!)
+                                      sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
+                                      dgdp = dgdp!, g = g)
         res1b = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, nothing)
+                                      sensealg = SteadyStateAdjoint(), g = g)
         res1c = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(autodiff = false), g,
-                                      nothing)
+                                      sensealg = SteadyStateAdjoint(autodiff = false),
+                                      g = g)
         res1d = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-                                      g, nothing)
+                                      g = g)
         res1e = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-                                      g, nothing)
+                                      g = g)
         res1f = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                                      g, nothing)
+                                      g = g)
         res1g = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autodiff = false,
-                                                                    autojacvec = false), g,
-                                      nothing)
+                                                                    autojacvec = false),
+                                      g = g)
         res1h = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                                      g, nothing)
+                                      g = g)
 
         # with jac, without param_jac
         f2 = ODEFunction(f!; jac = jac!)
@@ -124,28 +131,29 @@ Random.seed!(12345)
         sol2 = solve(prob2, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
                      reltol = 1e-14, abstol = 1e-14)
         res2a = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, dg!)
+                                      sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
+                                      dgdp = dgdp!, g = g)
         res2b = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, nothing)
+                                      sensealg = SteadyStateAdjoint(), g = g)
         res2c = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(autodiff = false), g,
-                                      nothing)
+                                      sensealg = SteadyStateAdjoint(autodiff = false),
+                                      g = g)
         res2d = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-                                      g, nothing)
+                                      g = g)
         res2e = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-                                      g, nothing)
+                                      g = g)
         res2f = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                                      g, nothing)
+                                      g = g)
         res2g = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autodiff = false,
-                                                                    autojacvec = false), g,
-                                      nothing)
+                                                                    autojacvec = false),
+                                      g = g)
         res2h = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                                      g, nothing)
+                                      g = g)
 
         # without jac, without param_jac
         f3 = ODEFunction(f!)
@@ -153,28 +161,29 @@ Random.seed!(12345)
         sol3 = solve(prob3, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
                      reltol = 1e-14, abstol = 1e-14)
         res3a = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, dg!)
+                                      sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
+                                      dgdp = dgdp!, g = g)
         res3b = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, nothing)
+                                      sensealg = SteadyStateAdjoint(), g = g)
         res3c = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(autodiff = false), g,
-                                      nothing)
+                                      sensealg = SteadyStateAdjoint(autodiff = false),
+                                      g = g)
         res3d = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-                                      g, nothing)
+                                      g = g)
         res3e = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-                                      g, nothing)
+                                      g = g)
         res3f = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                                      g, nothing)
+                                      g = g)
         res3g = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autodiff = false,
-                                                                    autojacvec = false), g,
-                                      nothing)
+                                                                    autojacvec = false),
+                                      g = g)
         res3h = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                                      g, nothing)
+                                      g = g)
 
         @test norm(res_analytical' .- res1a) < 1e-7
         @test norm(res_analytical' .- res1b) < 1e-7
@@ -212,29 +221,30 @@ Random.seed!(12345)
                        reltol = 1e-14, abstol = 1e-14)
 
         res4a = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, dg!)
+                                      sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
+                                      dgdp = dgdp!, g = g)
         res4b = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(), g, nothing)
+                                      sensealg = SteadyStateAdjoint(), g = g)
         res4c = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
-                                      sensealg = SteadyStateAdjoint(autodiff = false), g,
-                                      nothing)
+                                      sensealg = SteadyStateAdjoint(autodiff = false),
+                                      g = g)
         res4d = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-                                      g, nothing)
+                                      g = g)
         res4e = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-                                      g, nothing)
+                                      g = g)
         res4f = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                                      g, nothing)
+                                      g = g)
         res4g = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autodiff = false,
-                                                                    autojacvec = false), g,
-                                      nothing)
+                                                                    autojacvec = false),
+                                      g = g)
         res4h = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
                                       sensealg = SteadyStateAdjoint(autodiff = true,
-                                                                    autojacvec = false), g,
-                                      nothing)
+                                                                    autojacvec = false),
+                                      g = g)
 
         @test norm(res_analytical' .- res4a) < 1e-7
         @test norm(res_analytical' .- res4b) < 1e-7
@@ -264,7 +274,6 @@ Random.seed!(12345)
     end
 end
 
-using Zygote
 @testset "concrete_solve derivatives steady state solver" begin
     function g1(u, p, t)
         sum(u)
@@ -286,9 +295,9 @@ using Zygote
 
         sol = solve(prob, DynamicSS(Rodas5()))
         res1 = adjoint_sensitivities(sol, DynamicSS(Rodas5()),
-                                     sensealg = SteadyStateAdjoint(), g1, nothing)
+                                     sensealg = SteadyStateAdjoint(), g = g1)
         res2 = adjoint_sensitivities(sol, DynamicSS(Rodas5()),
-                                     sensealg = SteadyStateAdjoint(), g2, nothing)
+                                     sensealg = SteadyStateAdjoint(), g = g2)
 
         dp1 = Zygote.gradient(p -> sum(solve(prob, DynamicSS(Rodas5()), u0 = u0, p = p,
                                              sensealg = SteadyStateAdjoint())), p)
@@ -338,9 +347,9 @@ using Zygote
 
         soloop = solve(proboop, DynamicSS(Rodas5()))
         res1oop = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
-                                        sensealg = SteadyStateAdjoint(), g1, nothing)
+                                        sensealg = SteadyStateAdjoint(), g = g1)
         res2oop = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
-                                        sensealg = SteadyStateAdjoint(), g2, nothing)
+                                        sensealg = SteadyStateAdjoint(), g = g2)
 
         dp1oop = Zygote.gradient(p -> sum(solve(proboop, DynamicSS(Rodas5()), u0 = u0,
                                                 p = p, sensealg = SteadyStateAdjoint())), p)
@@ -376,4 +385,44 @@ using Zygote
         @test res1oop[1]≈dp1oop[1] rtol=1e-10
         @test res1oop[1]≈dp2oop[1] rtol=1e-10
     end
+end
+
+@testset "NonlinearProblem" begin
+    u0 = [0.0]
+    p = [2.0, 1.0]
+    prob = NonlinearProblem((du, u, p) -> du[1] = u[1] - p[1] + p[2], u0, p)
+    prob2 = NonlinearProblem{false}((u, p) -> u .- p[1] .+ p[2], u0, p)
+
+    solve1 = solve(remake(prob, p = p), NewtonRaphson())
+    solve2 = solve(prob2, NewtonRaphson())
+    @test solve1.u == solve2.u
+
+    prob3 = SteadyStateProblem((u, p, t) -> -u .+ p[1] .- p[2], [0.0], p)
+    solve3 = solve(prob3, DynamicSS(Rodas5()))
+    @test solve1.u≈solve3.u rtol=1e-6
+
+    prob4 = SteadyStateProblem((du, u, p, t) -> du[1] = -u[1] + p[1] - p[2], [0.0], p)
+    solve4 = solve(prob4, DynamicSS(Rodas5()))
+    @test solve3.u≈solve4.u rtol=1e-10
+
+    function test_loss(p, prob; alg = NewtonRaphson())
+        _prob = remake(prob, p = p)
+        sol = sum(solve(_prob, alg,
+                        sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())))
+        return sol
+    end
+
+    test_loss(p, prob)
+    test_loss(p, prob2)
+    test_loss(p, prob3, alg = DynamicSS(Rodas5()))
+    test_loss(p, prob4, alg = DynamicSS(Rodas5()))
+
+    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
+    dp2 = Zygote.gradient(p -> test_loss(p, prob2), p)[1]
+    dp3 = Zygote.gradient(p -> test_loss(p, prob3, alg = DynamicSS(Rodas5())), p)[1]
+    dp4 = Zygote.gradient(p -> test_loss(p, prob4, alg = DynamicSS(Rodas5())), p)[1]
+
+    @test dp1≈dp2 rtol=1e-10
+    @test dp1≈dp3 rtol=1e-10
+    @test dp1≈dp4 rtol=1e-10
 end

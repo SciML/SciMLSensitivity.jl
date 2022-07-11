@@ -1,7 +1,7 @@
 name = "SciMLSensitivity"
 uuid = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
 authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <mayingbo5@gmail.com>"]
-version = "7.0.2"
+version = "7.1.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -44,7 +44,7 @@ ArrayInterfaceCore = "0.1.1"
 ArrayInterfaceTracker = "0.1"
 Cassette = "0.3.6"
 ChainRulesCore = "0.10.7, 1"
-DiffEqBase = "6.90"
+DiffEqBase = "6.93"
 DiffEqCallbacks = "2.17"
 DiffEqNoiseProcess = "4.1.4, 5.0"
 DiffEqOperators = "4.34"
@@ -63,7 +63,7 @@ RandomNumbers = "1.5.3"
 RecursiveArrayTools = "2.4.2"
 Reexport = "0.2, 1.0"
 ReverseDiff = "1.9"
-SciMLBase = "1.24"
+SciMLBase = "1.42.3"
 StochasticDiffEq = "6.20"
 Tracker = "0.2"
 Zygote = "0.6"
@@ -78,6 +78,7 @@ DelayDiffEq = "bcd4f6db-9728-5f36-b5f7-82caef46ccdb"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
+NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationFlux = "253f991c-a7b2-45f8-8852-8b9a9df78a86"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
@@ -90,4 +91,4 @@ SteadyStateDiffEq = "9672c7b4-1e72-59bd-8a11-6ac3964bc41f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["AlgebraicMultigrid", "ComponentArrays", "Calculus", "Distributed", "DelayDiffEq", "Optimization", "OptimizationFlux", "OptimizationOptimJL", "Flux", "ReverseDiff", "SafeTestsets", "Test", "Random", "Pkg", "SteadyStateDiffEq", "NLsolve", "SparseArrays"]
+test = ["AlgebraicMultigrid", "ComponentArrays", "Calculus", "Distributed", "DelayDiffEq", "Optimization", "OptimizationFlux", "OptimizationOptimJL", "Flux", "ReverseDiff", "SafeTestsets", "Test", "Random", "Pkg", "SteadyStateDiffEq", "NLsolve", "NonlinearSolve", "SparseArrays"]
