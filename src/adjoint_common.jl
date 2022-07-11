@@ -410,7 +410,15 @@ function (f::ReverseLossCallback)(integrator)
     if ArrayInterfaceCore.ismutable(u)
         # Warning: alias here! Be careful with λ
         gᵤ = isq ? λ : @view(λ[1:idx])
-        dgdu(gᵤ, y, p, t[cur_time[]], cur_time[])
+        if dgdu !== nothing
+            dgdu(gᵤ, y, p, t[cur_time[]], cur_time[])
+                # add discrete dgdp contribution
+                if dgdp !== nothing && !isq
+                    gp = @view(λ[(idx + 1):end])
+                    dgdp(gp, y, p, t[cur_time[]], cur_time[])
+                    u[(idx + 1):length(λ)] .+= gp
+                end
+        end
     else
         @assert sensealg isa QuadratureAdjoint
         outtype = DiffEqBase.parameterless_type(λ)
