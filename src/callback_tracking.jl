@@ -164,18 +164,30 @@ function setup_reverse_callbacks(cb, sensealg, dgdu, dgdp, cur_time, terminated)
 end
 function setup_reverse_callbacks(cb::CallbackSet, sensealg, dgdu, dgdp, cur_time,
                                  terminated)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks, (sensealg,),
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,
+                                               (sensealg,),
                                                (dgdu,),
                                                (dgdp,),
                                                (cur_time,), (terminated,))...,
-                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks, (sensealg,),
+                     reverse(_setup_reverse_callbacks.(cb.discrete_callbacks,
+                                                       (sensealg,),
                                                        (dgdu,),
                                                        (dgdp,), (cur_time,), (terminated,)))...)
     return cb
 end
 
 function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
-                                            VectorContinuousCallback}, sensealg, dgdu, dgdp,
+                                            VectorContinuousCallback}, sensealg,
+                                  dgdu,
+                                  dgdp,
+                                  loss_ref, terminated)
+    _setup_reverse_callbacks(cb, cb.affect!, sensealg, dgdu, dgdp, loss_ref, terminated)
+end
+
+function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
+                                            VectorContinuousCallback},
+                                  affect::TrackedAffect, sensealg, dgdu,
+                                  dgdp,
                                   loss_ref, terminated)
     if cb isa Union{ContinuousCallback, VectorContinuousCallback} && cb.affect! !== nothing
         cb.affect!.correction.cur_time = loss_ref # set cur_time
@@ -326,6 +338,15 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
     PresetTimeCallback(times,
                        affect!,
                        save_positions = (false, false))
+end
+
+function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
+                                            VectorContinuousCallback}, affect, sensealg,
+                                  dgdu,
+                                  dgdp,
+                                  loss_ref, terminated)
+    # return cb if affect is not a TrackedAffect
+    cb
 end
 
 get_indx(cb::DiscreteCallback, t) = (searchsortedfirst(cb.affect!.event_times, t), true)
