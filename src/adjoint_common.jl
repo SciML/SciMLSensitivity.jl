@@ -410,11 +410,11 @@ function (f::ReverseLossCallback)(integrator)
     if ArrayInterfaceCore.ismutable(u)
         # Warning: alias here! Be careful with λ
         gᵤ = isq ? λ : @view(λ[1:idx])
-        g(gᵤ, y, p, t[cur_time[]], cur_time[])
+        dgdu(gᵤ, y, p, t[cur_time[]], cur_time[])
     else
         @assert sensealg isa QuadratureAdjoint
         outtype = DiffEqBase.parameterless_type(λ)
-        gᵤ = g(y, p, t[cur_time[]], cur_time[];outtype=outtype)
+        gᵤ = dgdu(y, p, t[cur_time[]], cur_time[];outtype=outtype)
     end
 
     if issemiexplicitdae

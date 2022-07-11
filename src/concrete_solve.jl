@@ -246,7 +246,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
-        function df(_out, u, p, t, i)
+        function df_iip(_out, u, p, t, i)
             outtype = typeof(_out) <: SubArray ?
                       DiffEqBase.parameterless_type(_out.parent) :
                       DiffEqBase.parameterless_type(_out)
@@ -258,11 +258,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                         x = vec(Δ[1])
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        if ArrayInterfaceCore.ismutable(u)
-                            vec(_out) .= adapt(outtype, vec(Δ[1]))
-                        else
-                            _out = adapt(outtype, vec(Δ[1]))
-                        end
+                        vec(_out) .= adapt(outtype, vec(Δ[1]))
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
                                                               vec(Δ[1])[_save_idxs])
@@ -273,11 +269,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                         x = vec(Δ)
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        if ArrayInterfaceCore.ismutable(u)
-                            vec(_out) .= adapt(outtype, vec(Δ))
-                        else
-                            _out = adapt(outtype, vec(Δ))
-                        end
+                        vec(_out) .= adapt(outtype, vec(Δ))
                     else
                         x = vec(Δ)
                         vec(@view(_out[_save_idxs])) .= adapt(outtype, @view(x[_save_idxs]))
@@ -291,11 +283,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                     if typeof(_save_idxs) <: Number
                         _out[_save_idxs] = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
-                        if ArrayInterfaceCore.ismutable(u)
-                            vec(_out) .= vec(x)
-                        else
-                            _out = vec(x)
-                        end
+                        vec(_out) .= vec(x)
                     else
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
@@ -305,15 +293,9 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                                                  reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                                                          size(Δ)[end])[_save_idxs, i])
                     elseif _save_idxs isa Colon
-                        if ArrayInterfaceCore.ismutable(u)
-                            vec(_out) .= vec(adapt(outtype,
-                                                reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                                                size(Δ)[end])[:, i]))
-                        else
-                            _out = vec(adapt(outtype,
-                                                reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                                                size(Δ)[end])[:, i]))
-                        end
+                        vec(_out) .= vec(adapt(outtype,
+                                               reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                                       size(Δ)[end])[:, i]))
                     else
                         vec(@view(_out[_save_idxs])) .= vec(adapt(outtype,
                                                                   reshape(Δ,
@@ -323,12 +305,9 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                     end
                 end
             end
-            if !(ArrayInterfaceCore.ismutable(u0))
-                return _out
-            end
         end
 
-        function df(u, p, t, i;outtype=nothing)
+        function df_oop(u, p, t, i;outtype=nothing)
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
@@ -391,11 +370,17 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
         else
             cb2 = cb
         end
-
-        du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df,
-                                        sensealg = sensealg,
-                                        callback = cb2,
-                                        kwargs_adj...)
+        if ArrayInterfaceCore.ismutable(eltype(sol.u))
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df_iip,
+                                            sensealg = sensealg,
+                                            callback = cb2,
+                                            kwargs_adj...)
+        else
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df_oop,
+                                            sensealg = sensealg,
+                                            callback = cb2,
+                                            kwargs_adj...)
+        end
 
         du0 = reshape(du0, size(u0))
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
