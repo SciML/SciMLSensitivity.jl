@@ -898,7 +898,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg, sensealg::ReverseDiffAdjo
 
     function reversediff_adjoint_forwardpass(_u0, _p)
         if (convert_tspan(sensealg) === nothing &&
-            ((haskey(kwargs, :callback) && has_a_callback(kwargs[:callback])))) ||
+            ((haskey(kwargs, :callback) && has_continuous_callback(kwargs[:callback])))) ||
            (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))
             _tspan = convert.(eltype(_p), prob.tspan)
         else
