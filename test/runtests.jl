@@ -88,6 +88,7 @@ end
         @time @safetestset "Discrete Callbacks with ForwardDiffSensitivity" begin include("callbacks/forward_sensitivity_callback.jl") end
         @time @safetestset "Discrete Callbacks with Adjoints" begin include("callbacks/discrete_callbacks.jl") end
         @time @safetestset "SDE Callbacks" begin include("callbacks/SDE_callbacks.jl") end
+        @time @safetestset "Non-tracked callbacks" begin include("non_tracked_callbacks") end
     end
 
     if GROUP == "Callbacks2"

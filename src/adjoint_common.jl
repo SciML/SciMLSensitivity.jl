@@ -455,8 +455,12 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
         cur_time = Ref(length(t))
     end
 
-    reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
-                                          terminated)
+    if callback !== nothing && callback.affect! isa TrackedAffect
+        reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
+                                              terminated)
+    else
+        reverse_cbs = callback
+    end
     init_cb || return reverse_cbs, nothing
 
     # callbacks can lead to non-unique time points
