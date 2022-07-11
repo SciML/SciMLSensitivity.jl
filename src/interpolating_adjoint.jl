@@ -23,7 +23,8 @@ mutable struct CheckpointSolution{S, I, T, T2}
     tstops::T2 # for callbacks
 end
 
-function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dg, f,
+function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
+                                                    f,
                                                     checkpoints, tols, tstops = nothing;
                                                     noiseterm = false)
     tspan = reverse(sol.prob.tspan)
@@ -82,7 +83,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
         nothing
     end
 
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dg, f; quad = false,
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f; quad = false,
                                     noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
@@ -257,19 +258,27 @@ end
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
                                      t = nothing,
-                                     dg_discrete::DG1 = nothing,
-                                     dg_continuous::DG2 = nothing,
+                                     dgdu_discrete::DG1 = nothing,
+                                     dgdp_discrete::DG2 = nothing,
+                                     dgdu_continuous::DG3 = nothing,
+                                     dgdp_continuous::DG4 = nothing,
                                      g::G = nothing;
                                      checkpoints = sol.t,
                                      callback = CallbackSet(),
                                      reltol = nothing, abstol = nothing,
-                                     kwargs...) where {DG1, DG2, G}
-    dg_discrete === nothing && dg_continuous === nothing && g === nothing &&
-        error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+                                     kwargs...) where {DG1, DG2, DG3, DG4, G}
+    dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
+        error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
+    t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
+        error("It looks like you're using the direct `adjoint_sensitivities` interface
+               with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
+               Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
-    discrete = (t !== nothing && dg_continuous === nothing)
+    discrete = (t !== nothing &&
+                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                 g !== nothing))
 
     # remove duplicates from checkpoints
     if ischeckpointing(sensealg, sol) &&
@@ -300,13 +309,14 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dg_continuous, f,
+                                                       dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops)
 
-    init_cb = (discrete || dg_discrete !== nothing)
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    init_cb = (discrete || dgdu_discrete !== nothing)
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
@@ -340,20 +350,28 @@ end
 
 @noinline function SDEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
                                      t = nothing,
-                                     dg_discrete::DG1 = nothing,
-                                     dg_continuous::DG2 = nothing,
+                                     dgdu_discrete::DG1 = nothing,
+                                     dgdp_discrete::DG2 = nothing,
+                                     dgdu_continuous::DG3 = nothing,
+                                     dgdp_continuous::DG4 = nothing,
                                      g::G = nothing;
                                      checkpoints = sol.t,
                                      callback = CallbackSet(),
                                      reltol = nothing, abstol = nothing,
                                      diffusion_jac = nothing, diffusion_paramjac = nothing,
-                                     kwargs...) where {DG1, DG2, G}
-    dg_discrete === nothing && dg_continuous === nothing && g === nothing &&
-        error("Either `dg_discrete`, `dg_continuous`, or `g` must be specified.")
+                                     kwargs...) where {DG1, DG2, DG3, DG4, G}
+    dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
+        error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
+    t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
+        error("It looks like you're using the direct `adjoint_sensitivities` interface
+               with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
+               Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
-    discrete = (t !== nothing && dg_continuous === nothing)
+    discrete = (t !== nothing &&
+                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                 g !== nothing))
 
     # remove duplicates from checkpoints
     if ischeckpointing(sensealg, sol) &&
@@ -378,7 +396,8 @@ end
     λ .= false
 
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                             dg_continuous, sol.prob.f,
+                                                             dgdu_continuous,
+                                                             dgdp_continuous, sol.prob.f,
                                                              checkpoints,
                                                              (reltol = reltol,
                                                               abstol = abstol))
@@ -386,15 +405,17 @@ end
     diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
                                      paramjac = diffusion_paramjac)
     sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                                 dg_continuous,
+                                                                 dgdu_continuous,
+                                                                 dgdp_continuous,
                                                                  diffusion_function,
                                                                  checkpoints,
                                                                  (reltol = reltol,
                                                                   abstol = abstol);
                                                                  noiseterm = true)
 
-    init_cb = (discrete || dg_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dg_discrete, λ, t,
+    init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
+    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+                                                      dgdp_discrete, λ, t,
                                                       tspan[2], callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
@@ -445,16 +466,28 @@ end
 
 @noinline function RODEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
                                       t = nothing,
-                                      dg_discrete::DG1 = nothing,
-                                      dg_continuous::DG2 = nothing,
+                                      dgdu_discrete::DG1 = nothing,
+                                      dgdp_discrete::DG2 = nothing,
+                                      dgdu_continuous::DG3 = nothing,
+                                      dgdp_continuous::DG4 = nothing,
                                       g::G = nothing;
                                       checkpoints = sol.t,
                                       callback = CallbackSet(),
                                       reltol = nothing, abstol = nothing,
-                                      kwargs...) where {DG1, DG2, G}
+                                      kwargs...) where {DG1, DG2, DG3, DG4, G}
+    dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
+        error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
+    t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
+        error("It looks like you're using the direct `adjoint_sensitivities` interface
+               with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
+               Please use the higher level `solve` interface or specify these two contributions.")
+
     @unpack f, p, u0, tspan = sol.prob
     tspan = reverse(tspan)
-    discrete = (t !== nothing && dg_continuous === nothing)
+
+    discrete = (t !== nothing &&
+                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                 g !== nothing))
 
     # remove duplicates from checkpoints
     if ischeckpointing(sensealg, sol) &&
@@ -480,13 +513,14 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dg_continuous, f,
+                                                       dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops)
 
-    init_cb = (discrete || dg_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dg_discrete, λ, t, tspan[2],
+    init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
+    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                                      λ, t, tspan[2],
                                                       callback, init_cb)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix

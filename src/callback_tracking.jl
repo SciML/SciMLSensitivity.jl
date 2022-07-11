@@ -159,24 +159,31 @@ vjps as described in https://arxiv.org/pdf/1905.10403.pdf Equation 13.
 
 For more information, see https://github.com/SciML/SciMLSensitivity.jl/issues/4
 """
-function setup_reverse_callbacks(cb, sensealg, g, cur_time, terminated)
-    setup_reverse_callbacks(CallbackSet(cb), sensealg, g, cur_time, terminated)
+function setup_reverse_callbacks(cb, sensealg, dgdu, dgdp, cur_time, terminated)
+    setup_reverse_callbacks(CallbackSet(cb), sensealg, dgdu, dgdp, cur_time, terminated)
 end
-function setup_reverse_callbacks(cb::CallbackSet, sensealg, g, cur_time, terminated)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks, (sensealg,), (g,),
+function setup_reverse_callbacks(cb::CallbackSet, sensealg, dgdu, dgdp, cur_time,
+                                 terminated)
+    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks, (sensealg,),
+                                               (dgdu,),
+                                               (dgdp,),
                                                (cur_time,), (terminated,))...,
                      reverse(_setup_reverse_callbacks.(cb.discrete_callbacks, (sensealg,),
-                                                       (g,), (cur_time,), (terminated,)))...)
+                                                       (dgdu,),
+                                                       (dgdp,), (cur_time,), (terminated,)))...)
     return cb
 end
 
 function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
-                                            VectorContinuousCallback}, sensealg, g,
+                                            VectorContinuousCallback}, sensealg, dgdu, dgdp,
                                   loss_ref, terminated)
     if cb isa Union{ContinuousCallback, VectorContinuousCallback} && cb.affect! !== nothing
         cb.affect!.correction.cur_time = loss_ref # set cur_time
         cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
     end
+
+    dgdp !== nothing &&
+        error("We have not yet implemented custom adjoint rules to support parameter-dependent loss functions for hybrid systems.")
 
     # ReverseLossCallback adds gradients before and after the callback if save_positions is (true, true).
     # This, however, means that we must check the save_positions setting within the callback.
@@ -233,7 +240,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             # if callback did not terminate the time evolution, we have to compute one more correction term.
             if cb.save_positions[2] && !correction.terminated
                 loss_indx = correction.cur_time[] + 1
-                loss_correction!(Lu_right, y, integrator, g, loss_indx)
+                loss_correction!(Lu_right, y, integrator, dgdu, dgdp, loss_indx)
             else
                 Lu_right .*= false
             end
@@ -296,7 +303,8 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             if cb.save_positions[1] == true
                 # if the callback saved the first position, we need to implicitly correct this value as well
                 loss_indx = correction.cur_time[]
-                implicit_correction!(Lu_left, dy_left, correction, y, integrator, g,
+                implicit_correction!(Lu_left, dy_left, correction, y, integrator, dgdu,
+                                     dgdp,
                                      loss_indx)
                 dλ .+= Lu_left
             end
@@ -427,10 +435,10 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
     return nothing
 end
 
-function loss_correction!(Lu, y, integrator, g, indx)
+function loss_correction!(Lu, y, integrator, dgdu, dgdp, indx)
     # ∂L∂t correction should be added if L depends explicitly on time.
     p, t = integrator.p, integrator.t
-    g(Lu, y, p, t, indx)
+    dgdu(Lu, y, p, t, indx)
     return nothing
 end
 
@@ -452,7 +460,7 @@ function implicit_correction!(Lu, λ, dy, correction)
     return nothing
 end
 
-function implicit_correction!(Lu, dy, correction, y, integrator, g, indx)
+function implicit_correction!(Lu, dy, correction, y, integrator, dgdu, dgdp, indx)
     @unpack gu_val = correction
 
     p, t = integrator.p, integrator.t
@@ -460,7 +468,7 @@ function implicit_correction!(Lu, dy, correction, y, integrator, g, indx)
     # loss function gradient (not condition!)
     # ∂L∂t correction should be added, also ∂L∂p is missing.
     # correct adjoint
-    g(Lu, y, p, t, indx)
+    dgdu(Lu, y, p, t, indx)
 
     Lu .= dot(Lu, dy) * gu_val
 
