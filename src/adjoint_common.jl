@@ -407,8 +407,8 @@ function (f::ReverseLossCallback)(integrator)
         g(gᵤ, y, p, t[cur_time[]], cur_time[])
     else
         @assert sensealg isa QuadratureAdjoint
-        gᵤ = isq ? λ : @view(λ[1:idx])
-        gᵤ = g(gᵤ, y, p, t[cur_time[]], cur_time[])
+        outtype = DiffEqBase.parameterless_type(λ)
+        gᵤ = g(y, p, t[cur_time[]], cur_time[];outtype=outtype)
     end
 
     if issemiexplicitdae

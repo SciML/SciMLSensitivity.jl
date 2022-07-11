@@ -916,14 +916,14 @@ function accumulate_cost(dλ, y, p, t, S::TS,
     @unpack dg, dg_val, g, g_grad_config = S.diffcache
     if dg !== nothing
         if !(dg isa Tuple)
-            dg(dg_val, y, p, t)
-            dλ -= vec(dg_val)
+            dg_val = dg(y, p, t)
+            dλ -= dg_val
         else
-            dg[1](dg_val[1], y, p, t)
-            dλ -= vec(dg_val[1])
+            dg[1](y, p, t)
+            dλ -= dg_val
             if dgrad !== nothing
-                dg[2](dg_val[2], y, p, t)
-                dgrad .-= vec(dg_val[2])
+                dg[2](y, p, t)
+                dgrad -= dg_val
             end
         end
     else
