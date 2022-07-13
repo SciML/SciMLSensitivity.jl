@@ -468,6 +468,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
 
     reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
                                           terminated)
+
     init_cb || return reverse_cbs, nothing
 
     # callbacks can lead to non-unique time points
