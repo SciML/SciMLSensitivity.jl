@@ -307,7 +307,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             end
         end
 
-        function df_oop(u, p, t, i;outtype=nothing)
+        function df_oop(u, p, t, i; outtype = nothing)
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
@@ -353,12 +353,12 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                     elseif _save_idxs isa Colon
                         _out = vec(adapt(outtype,
                                          reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                                                size(Δ)[end])[:, i]))
+                                                 size(Δ)[end])[:, i]))
                     else
                         _out = vec(adapt(outtype,
-                                   reshape(Δ,
-                                           prod(size(Δ)[1:(end - 1)]),
-                                           size(Δ)[end])[:,i]))
+                                         reshape(Δ,
+                                                 prod(size(Δ)[1:(end - 1)]),
+                                                 size(Δ)[end])[:, i]))
                     end
                 end
             end
@@ -371,12 +371,14 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             cb2 = cb
         end
         if ArrayInterfaceCore.ismutable(eltype(sol.u))
-            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df_iip,
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
+                                            dgdu_discrete = df_iip,
                                             sensealg = sensealg,
                                             callback = cb2,
                                             kwargs_adj...)
         else
-            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df_oop,
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
+                                            dgdu_discrete = df_oop,
                                             sensealg = sensealg,
                                             callback = cb2,
                                             kwargs_adj...)

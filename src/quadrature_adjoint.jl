@@ -38,11 +38,11 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
 
-    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S;dgrad=dgrad, dy=dy)
-    dλ  *= (-one(eltype(λ)))
-    
+    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad = dgrad, dy = dy)
+    dλ *= (-one(eltype(λ)))
+
     if !discrete
-        dλ, dgrad =  accumulate_cost(dλ, y, p, t, S, dgrad)
+        dλ, dgrad = accumulate_cost(dλ, y, p, t, S, dgrad)
     end
     return dλ
 end

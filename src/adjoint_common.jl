@@ -422,7 +422,7 @@ function (f::ReverseLossCallback)(integrator)
     else
         @assert sensealg isa QuadratureAdjoint
         outtype = DiffEqBase.parameterless_type(λ)
-        gᵤ = dgdu(y, p, t[cur_time[]], cur_time[];outtype=outtype)
+        gᵤ = dgdu(y, p, t[cur_time[]], cur_time[]; outtype = outtype)
     end
 
     if issemiexplicitdae
@@ -439,7 +439,7 @@ function (f::ReverseLossCallback)(integrator)
     if F !== nothing
         F !== I && F !== (I, I) && ldiv!(F, Δλd)
     end
-    
+
     if ArrayInterfaceCore.ismutable(u)
         u[diffvar_idxs] .+= Δλd
     else
