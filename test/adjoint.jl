@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, SimpleChains, StaticArrays, Optimization, OptimizationFlux
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote
 using Test
 
 function fb(du, u, p, t)
@@ -866,76 +866,3 @@ using LinearAlgebra, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
         end
     end
 end
-
-####Fully oop Adjoint
-
-u0 = @SArray Float32[2.0, 0.0]
-datasize = 30
-tspan = (0.0f0, 1.5f0)
-tsteps = range(tspan[1], tspan[2], length = datasize)
-
-function trueODE(u, p, t)
-    true_A = @SMatrix Float32[-0.1 2.0; -2.0 -0.1]
-    ((u.^3)'true_A)'
-end
-
-prob = ODEProblem(trueODE, u0, tspan)
-data = Array(solve(prob, Tsit5(), saveat = tsteps))
-
-sc = SimpleChain(
-                static(2),
-                Activation(x -> x.^3),
-                TurboDense{true}(tanh, static(50)),
-                TurboDense{true}(identity, static(2))
-            )
-
-p_nn = SimpleChains.init_params(sc)
-
-df(u,p,t) = sc(u,p)
-
-prob_nn = ODEProblem(df, u0, tspan, p_nn)
-sol = solve(prob_nn, Tsit5();saveat=tsteps)
-dg_disc(u, p, t, i;outtype=nothing) = data[:, i] .- u
-
-res = adjoint_sensitivities(sol,Tsit5();t=tsteps[end],dg_discrete=dg_disc,
-                sensealg=QuadratureAdjoint(autojacvec=ZygoteVJP()))
-
-@test !iszero(res[1])
-@test !iszero(res[2])
-
-G(u,p,t) = sum(abs2, ((data.-u)./2))
-
-function dg(u,p,t)
-    @show u
-    return data[:, end] .- u
-end
-
-res = adjoint_sensitivities(sol,Tsit5();dg_continuous=dg,g=G,
-                            sensealg=QuadratureAdjoint(autojacvec=ZygoteVJP()))
-
-@test !iszero(res[1])
-@test !iszero(res[2])
-
-prob_nn = ODEProblem(f, u0, tspan)
-
-function predict_neuralode(p)
-    Array(solve(prob_nn, Tsit5();p=p,saveat=tsteps,sensealg=QuadratureAdjoint(autojacvec=ZygoteVJP())))
-end
-
-function loss_neuralode(p)
-    pred = predict_neuralode(p)
-    loss = sum(abs2, data .- pred)
-    return loss, pred
-end
-
-callback = function (p, l, pred; doplot = true)
-    display(l)
-    return false
-end
-
-optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), Optimization.AutoZygote())
-optprob = Optimization.OptimizationProblem(optf, p_nn)
-
-res = Optimization.solve(optprob, ADAM(0.05),callback=callback,maxiters=300)
-
-@test loss_neuralode(res.u) < 0.8

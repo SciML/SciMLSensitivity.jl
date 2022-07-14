@@ -613,7 +613,7 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
             (dgrad[:] .= vec(tmp2))
         end
     end
-    return dλ
+    return dy, dλ, dgrad
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
@@ -912,25 +912,15 @@ end
 
 function accumulate_cost(dλ, y, p, t, S::TS,
                          dgrad = nothing) where {TS <: SensitivityFunction}
-    @unpack dg, dg_val, g, g_grad_config = S.diffcache
-    if dg !== nothing
-        if !(dg isa Tuple)
-            dg_val = dg(y, p, t)
-            dλ -= dg_val
-        else
-            dg[1](y, p, t)
-            dλ -= dg_val
-            if dgrad !== nothing
-                dg[2](y, p, t)
-                dgrad -= dg_val
-            end
+    @unpack dgdu, dgdp = S.diffcache
+
+    dλ -= dgdu(y, p, t)
+    if dgdp !== nothing
+        if dgrad !== nothing
+            dgrad -= dgdp(y, p, t)
         end
-    else
-        g.t = t
-        gradient!(dg_val, g, y, S.sensealg, g_grad_config)
-        dλ -= vec(dg_val)
     end
-    return dλ
+    return dλ, dgrad
 end
 
 function build_jac_config(alg, uf, u)
