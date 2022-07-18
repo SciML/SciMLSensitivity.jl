@@ -447,20 +447,29 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
 
     # saveat values
     # seems overcomplicated, but see the PR
-    if length(sol.t) == 1
-        ts = sol.t
-    else
+    if sol.retcode === :Terminated
+        # solver might be terminated by a callback
+        @assert haskey(kwargs, :callback) && length(sol.t) < 3
+        # In this case, we don't want to save the sensitivity solutions at ts=sol.t
+        # but only at the final time (and potentially starting time).
+        # Otherwise, there might be a BoundsError.
         ts = eltype(sol.t)[]
-        if sol.t[2] != sol.t[1]
-            push!(ts, sol.t[1])
-        end
-        for i in 2:(length(sol.t) - 1)
-            if sol.t[i] != sol.t[i + 1] && sol.t[i] != sol.t[i - 1]
-                push!(ts, sol.t[i])
+    else
+        if length(sol.t) == 1
+            ts = sol.t
+        else
+            ts = eltype(sol.t)[]
+            if sol.t[2] != sol.t[1]
+                push!(ts, sol.t[1])
             end
-        end
-        if sol.t[end] != sol.t[end - 1]
-            push!(ts, sol.t[end])
+            for i in 2:(length(sol.t) - 1)
+                if sol.t[i] != sol.t[i + 1] && sol.t[i] != sol.t[i - 1]
+                    push!(ts, sol.t[i])
+                end
+            end
+            if sol.t[end] != sol.t[end - 1]
+                push!(ts, sol.t[end])
+            end
         end
     end
 
