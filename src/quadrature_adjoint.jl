@@ -106,7 +106,13 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    λ = zero(u0)
+    if ArrayInterfaceCore.ismutable(u0)
+        len = length(u0)
+        λ = similar(u0, len)
+        λ .= false
+    else
+        λ = zero(u0)
+    end
     sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                     dgdu_continuous, dgdp_continuous)
 
@@ -334,10 +340,10 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             for i in (length(t) - 1):-1:1
                 if ArrayInterfaceCore.ismutable(res)
                     res .+= quadgk(integrand, t[i], t[i + 1],
-                                atol = abstol, rtol = reltol)[1]
+                                   atol = abstol, rtol = reltol)[1]
                 else
                     res += quadgk(integrand, t[i], t[i + 1],
-                               atol = abstol, rtol = reltol)[1]
+                                  atol = abstol, rtol = reltol)[1]
                 end
                 if t[i] == t[i + 1]
                     for cb in callback.discrete_callbacks

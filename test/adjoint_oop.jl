@@ -11,11 +11,11 @@ datasize = 20
 tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function f(u, p, t)
-    p*u
+    p * u
 end
 
 prob = ODEProblem(f, u0, tspan, p)
-sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-12, reltol = 1e-12)
+sol = solve(prob, Tsit5(), saveat = tsteps, abstol = 1e-12, reltol = 1e-12)
 
 ## Discrete Case
 dg_disc(u, p, t, i; outtype = nothing) = u .- 1
@@ -27,7 +27,7 @@ du0, dp = adjoint_sensitivities(sol, Tsit5(); t = tsteps, dgdu_discrete = dg_dis
 function G_p(p)
     tmp_prob = remake(prob, p = p)
     u = Array(solve(tmp_prob, Tsit5(), saveat = tsteps,
-                    sensealg = SensitivityADPassThrough(), abstol=1e-12, reltol=1e-12))
+                    sensealg = SensitivityADPassThrough(), abstol = 1e-12, reltol = 1e-12))
 
     return sum(((1 .- u) .^ 2) ./ 2)
 end
@@ -35,7 +35,7 @@ end
 function G_u(u0)
     tmp_prob = remake(prob, u0 = u0)
     u = Array(solve(tmp_prob, Tsit5(), saveat = tsteps,
-                    sensealg = SensitivityADPassThrough(), abstol=1e-12, reltol=1e-12))
+                    sensealg = SensitivityADPassThrough(), abstol = 1e-12, reltol = 1e-12))
     return sum(((1 .- u) .^ 2) ./ 2)
 end
 
@@ -44,13 +44,13 @@ G_u(u0)
 n_dp = ForwardDiff.gradient(G_p, p)
 n_du0 = ForwardDiff.gradient(G_u, u0)
 
-@test n_du0 ≈ du0 rtol = 1e-3
-@test_broken n_dp ≈ dp' rtol = 1e-3
+@test n_du0≈du0 rtol=1e-3
+@test_broken n_dp≈dp' rtol=1e-3
 @test sum(n_dp - dp') < 8.0
 
 ## Continuous Case
 
-g(u, p, t) = sum((u.^2)./2)
+g(u, p, t) = sum((u .^ 2) ./ 2)
 
 function dg(u, p, t)
     u
@@ -67,7 +67,7 @@ du0, dp = adjoint_sensitivities(sol, Tsit5(); dgdu_continuous = dg, g = g,
 function G_p(p)
     tmp_prob = remake(prob, p = p)
     sol = solve(tmp_prob, Tsit5(), abstol = 1e-12, reltol = 1e-12)
-    res, err = quadgk((t) -> (sum((sol(t).^2)./2)), 0.0, 5.0, atol = 1e-12,
+    res, err = quadgk((t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0, atol = 1e-12,
                       rtol = 1e-12)
     res
 end
@@ -75,7 +75,7 @@ end
 function G_u(u0)
     tmp_prob = remake(prob, u0 = u0)
     sol = solve(tmp_prob, Tsit5(), abstol = 1e-12, reltol = 1e-12)
-    res, err = quadgk((t) -> (sum((sol(t).^2)./2)), 0.0, 5.0, atol = 1e-12,
+    res, err = quadgk((t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0, atol = 1e-12,
                       rtol = 1e-12)
     res
 end
@@ -83,8 +83,8 @@ end
 n_du0 = ForwardDiff.gradient(G_u, u0)
 n_dp = ForwardDiff.gradient(G_p, p)
 
-@test_broken n_du0 ≈ du0 rtol=1e-3
-@test_broken n_dp ≈ dp' rtol=1e-3
+@test_broken n_du0≈du0 rtol=1e-3
+@test_broken n_dp≈dp' rtol=1e-3
 
 @test sum(n_du0 - du0) < 1.0
 @test sum(n_dp - dp) < 5.0
@@ -99,9 +99,6 @@ du0, dp = Zygote.gradient((u0, p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
 
 @test !iszero(du0)
 @test !iszero(dp)
-
-
-
 
 ##Neural ODE adjoint with SimpleChains
 u0 = @SArray Float32[2.0, 0.0]
@@ -158,8 +155,8 @@ G_u(u0)
 n_dp = ForwardDiff.gradient(G_p, p_nn)
 n_du0 = ForwardDiff.gradient(G_u, u0)
 
-@test n_du0 ≈ du0 rtol = 1e-3
-@test n_dp ≈ dp' rtol = 1e-3
+@test n_du0≈du0 rtol=1e-3
+@test n_dp≈dp' rtol=1e-3
 
 ## Continuous case
 
@@ -179,7 +176,8 @@ du0, dp = adjoint_sensitivities(sol, Tsit5(); dgdu_continuous = dg, g = G,
 function G_p(p)
     tmp_prob = remake(prob_nn, p = p)
     sol = solve(tmp_prob, Tsit5(), abstol = 1e-12, reltol = 1e-12)
-    res, err = quadgk((t) -> (sum(((sol_n(t) .- sol(t)).^2)./2)), 0.0, 1.5, atol = 1e-12,
+    res, err = quadgk((t) -> (sum(((sol_n(t) .- sol(t)) .^ 2) ./ 2)), 0.0, 1.5,
+                      atol = 1e-12,
                       rtol = 1e-12) # sol_n(t):numerical solution/data(above)
     res
 end
@@ -187,7 +185,8 @@ end
 function G_u(u0)
     tmp_prob = remake(prob_nn, u0 = u0)
     sol = solve(tmp_prob, Tsit5(), abstol = 1e-12, reltol = 1e-12)
-    res, err = quadgk((t) -> (sum(((sol_n(t) .- sol(t)).^2)./2)), 0.0, 1.5, atol = 1e-12,
+    res, err = quadgk((t) -> (sum(((sol_n(t) .- sol(t)) .^ 2) ./ 2)), 0.0, 1.5,
+                      atol = 1e-12,
                       rtol = 1e-12) # sol_n(t):numerical solution/data(above)
     res
 end
@@ -195,8 +194,8 @@ end
 n_du0 = ForwardDiff.gradient(G_u, u0)
 n_dp = ForwardDiff.gradient(G_p, p_nn)
 
-@test n_du0 ≈ du0 rtol=1e-3
-@test n_dp ≈ dp' rtol=1e-3
+@test n_du0≈du0 rtol=1e-3
+@test n_dp≈dp' rtol=1e-3
 
 #concrete_solve
 
