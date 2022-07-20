@@ -332,8 +332,13 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
 
             for i in (length(t) - 1):-1:1
-                res .+= quadgk(integrand, t[i], t[i + 1],
+                if ArrayInterfaceCore.ismutable(res)
+                    res .+= quadgk(integrand, t[i], t[i + 1],
+                                atol = abstol, rtol = reltol)[1]
+                else
+                    res += quadgk(integrand, t[i], t[i + 1],
                                atol = abstol, rtol = reltol)[1]
+                end
                 if t[i] == t[i + 1]
                     for cb in callback.discrete_callbacks
                         if t[i] ∈ cb.affect!.event_times
