@@ -93,7 +93,7 @@ and obtaining the sensitivities through the integral:
 As defined, that cost function only has non-zero values over nontrivial intervals. However, in many
 cases one may want to include in the cost function loss values at discrete points, for example, matching
 the data at time points `t`. In this case, terms of `g` can be represented by Dirac delta functions
-which are then applied in the corresponding ``\lambda^\star`` and ``\frac{dG}{dp}`` equations. 
+which are then applied in the corresponding ``\lambda^\star`` and ``\frac{dG}{dp}`` equations.
 
 For more information, see [Sensitivity Math Details](@ref sensitivity_math).
 
@@ -141,7 +141,7 @@ Only used if the `sol.prob isa SDEProblem`. If not given, this is
 - `callback`: callback functions to be used in the adjoint solve. Defaults to
   `nothing`.
 - `sensealg`: the choice for what adjoint method to use for the reverse solve.
-  Defaults to `InterpolatingAdjoint()`. See the 
+  Defaults to `InterpolatingAdjoint()`. See the
   [sensitivity algorithms](@ref sensitivity_diffeq) page for more details.
 - `kwargs`: any extra keyword arguments passed to the adjoint solve.
 
@@ -156,7 +156,7 @@ du0,dp = adjoint_sensitivities(sol,alg;t=ts,dgdu_discrete=dg,
                                checkpoints=sol.t,kwargs...)
 ```
 
-where `alg` is the ODE algorithm to solve the adjoint problem, `dgdu_discrete` is the 
+where `alg` is the ODE algorithm to solve the adjoint problem, `dgdu_discrete` is the
 jump function, `sensealg` is the sensitivity algorithm, and `ts` are the time points
 for data. `dg` is given by:
 

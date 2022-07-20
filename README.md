@@ -11,7 +11,6 @@
 
 [![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
-[![Package Downloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/SciMLSensitivity)](https://pkgs.genieframework.com?packages=SciMLSensitivity)
 
 SciMLSensitivity.jl is a component package in the [SciML Scientific Machine Learning ecosystem](https://sciml.ai/). 
 It holds the sensitivity analysis utilities. Users interested in using this
