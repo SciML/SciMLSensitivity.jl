@@ -167,6 +167,14 @@ du0 = Zygote.gradient(u0 -> loss_oop(u0, sensealg = QuadratureAdjoint(autojacvec
                       u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 
+# ForwardDiffSensitivity
+du0 = Zygote.gradient(u0 -> loss_oop(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
+du0 = Zygote.gradient(u0 -> loss_oop(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
+du0 = Zygote.gradient(u0 -> loss_oop(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
+
 ## iip tests for initial condition
 dynamics! = (dx, x, _p, _t) -> dx .= x
 
@@ -240,3 +248,11 @@ du0 = Zygote.gradient(u0 -> loss_iip(u0,
                                      sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP())),
                       u0)[1]
 @test Fdu0≈du0 rtol=1e-10
+
+# ForwardDiffSensitivity
+du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
+du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
+du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
+@test Fdu0≈du0 rtol=1e-6
