@@ -329,9 +329,9 @@ res2 = ForwardDiff.gradient(p -> G(p, t2), [1.5, 1.0, 3.0, 1.0])
 res3 = ForwardDiff.gradient(p -> G(p, t3), [1.5, 1.0, 3.0, 1.0])
 res4 = ForwardDiff.gradient(p -> G(p, t4), [1.5, 1.0, 3.0, 1.0])
 
-@test easy_res2' ≈ res2
-@test easy_res3' ≈ res3
-@test easy_res4' ≈ res4
+@test easy_res2' ≈ res2 rtol=1e-10
+@test easy_res3' ≈ res3 rtol=1e-10
+@test easy_res4' ≈ res4 rtol=1e-10
 
 println("Adjoints of u0")
 
