@@ -393,9 +393,12 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(prob.u0)
-
-    return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                               sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol)
+    if ArrayInterfaceCore.ismutable(y)
+        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
+                                sensealg, dgdu, dgdp, sensefun.diffcache, nothing)
+    else
+        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
+                                sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol)
 end
 
 function (f::ReverseLossCallback)(integrator)
