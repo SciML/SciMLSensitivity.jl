@@ -249,7 +249,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         end
         mul!(dλ', λ', J)
     end
-    if dgrad !== nothing
+    if dgrad !== nothing && !isempty(dgrad)
         @unpack pJ, pf, paramjac_config = S.diffcache
         if W === nothing
             if DiffEqBase.has_paramjac(f)
@@ -538,7 +538,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
             if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
                 throw(ZygoteVJPNothingError())
             else
-                (dgrad[:] .= vec(tmp2))
+                !isempty(dgrad) && (dgrad[:] .= vec(tmp2))
             end
         end
     else
@@ -566,7 +566,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
             if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
                 throw(ZygoteVJPNothingError())
             elseif tmp2 !== nothing
-                (dgrad[:] .= vec(tmp2))
+                !isempty(dgrad) && (dgrad[:] .= vec(tmp2))
             end
         end
     end
@@ -618,7 +618,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         end
 
         dλ .= tmp1
-        dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+        dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
+            (dgrad[:] .= vec(tmp2))
         dy !== nothing && (dy .= tmp3)
     else
         if W === nothing

@@ -232,7 +232,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = nothing
         pf = nothing
     else
-        if DiffEqBase.isinplace(prob)
+        if DiffEqBase.isinplace(prob) &&
+           !(p === nothing || p === DiffEqBase.NullParameters())
             if !(prob isa RODEProblem)
                 pf = DiffEqBase.ParamJacobianWrapper(f, tspan[1], y)
             else
