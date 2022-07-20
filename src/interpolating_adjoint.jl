@@ -26,8 +26,8 @@ end
 function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
                                                     f,
                                                     checkpoints, tols, tstops = nothing;
-                                                    noiseterm = false)
-    tspan = reverse(sol.prob.tspan)
+                                                    noiseterm = false,
+                                                    tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
@@ -275,7 +275,17 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
+
+    # check if solution was terminated, then use reduced time span
+    terminated = false
+    if hasfield(typeof(sol), :retcode)
+        if sol.retcode == :Terminated
+            tspan = (tspan[1], sol.t[end])
+            terminated = true
+        end
+    end
     tspan = reverse(tspan)
+
     discrete = (t !== nothing &&
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
@@ -312,12 +322,12 @@ end
                                                        dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
-                                                       tstops)
+                                                       tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing)
     cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
                                                       λ, t, tspan[2],
-                                                      callback, init_cb)
+                                                      callback, init_cb, terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
@@ -368,7 +378,16 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
+    # check if solution was terminated, then use reduced time span
+    terminated = false
+    if hasfield(typeof(sol), :retcode)
+        if sol.retcode == :Terminated
+            tspan = (tspan[1], sol.t[end])
+            terminated = true
+        end
+    end
     tspan = reverse(tspan)
+
     discrete = (t !== nothing &&
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
@@ -400,7 +419,8 @@ end
                                                              dgdp_continuous, sol.prob.f,
                                                              checkpoints,
                                                              (reltol = reltol,
-                                                              abstol = abstol))
+                                                              abstol = abstol),
+                                                             tspan = tspan)
 
     diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
                                      paramjac = diffusion_paramjac)
@@ -411,12 +431,14 @@ end
                                                                  checkpoints,
                                                                  (reltol = reltol,
                                                                   abstol = abstol);
+                                                                 tspan = tspan,
                                                                  noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
                                                       dgdp_discrete, λ, t,
-                                                      tspan[2], callback, init_cb)
+                                                      tspan[2], callback, init_cb,
+                                                      terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
@@ -483,6 +505,15 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
+
+    # check if solution was terminated, then use reduced time span
+    terminated = false
+    if hasfield(typeof(sol), :retcode)
+        if sol.retcode == :Terminated
+            tspan = (tspan[1], sol.t[end])
+            terminated = true
+        end
+    end
     tspan = reverse(tspan)
 
     discrete = (t !== nothing &&
@@ -516,12 +547,12 @@ end
                                                        dgdu_continuous, dgdp_continuous, f,
                                                        checkpoints,
                                                        (reltol = reltol, abstol = abstol),
-                                                       tstops)
+                                                       tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
                                                       λ, t, tspan[2],
-                                                      callback, init_cb)
+                                                      callback, init_cb, terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)

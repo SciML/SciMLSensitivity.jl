@@ -326,34 +326,27 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
 
             # correction for end interval.
-            if t[end] != sol.prob.tspan[2]
+            if t[end] != sol.prob.tspan[2] && sol.retcode !== :Terminated
                 res .+= quadgk(integrand, t[end], sol.prob.tspan[end],
                                atol = abstol, rtol = reltol)[1]
+            end
+
+            if sol.retcode === :Terminated
+                integrand = update_integrand_and_dgrad(res, sensealg, callback, integrand,
+                                                       adj_prob, sol, dgdu_discrete,
+                                                       dgdp_discrete, dλ, dgrad, t[end],
+                                                       cur_time)
             end
 
             for i in (length(t) - 1):-1:1
                 res .+= quadgk(integrand, t[i], t[i + 1],
                                atol = abstol, rtol = reltol)[1]
                 if t[i] == t[i + 1]
-                    for cb in callback.discrete_callbacks
-                        if t[i] ∈ cb.affect!.event_times
-                            integrand = update_integrand_and_dgrad(res, sensealg, cb,
-                                                                   integrand, adj_prob, sol,
-                                                                   dgdu_discrete,
-                                                                   dgdp_discrete, dλ, dgrad,
-                                                                   t[i], cur_time)
-                        end
-                    end
-                    for cb in callback.continuous_callbacks
-                        if t[i] ∈ cb.affect!.event_times ||
-                           t[i] ∈ cb.affect_neg!.event_times
-                            integrand = update_integrand_and_dgrad(res, sensealg, cb,
-                                                                   integrand, adj_prob, sol,
-                                                                   dgdu_discrete,
-                                                                   dgdp_discrete, dλ, dgrad,
-                                                                   t[i], cur_time)
-                        end
-                    end
+                    integrand = update_integrand_and_dgrad(res, sensealg, callback,
+                                                           integrand,
+                                                           adj_prob, sol, dgdu_discrete,
+                                                           dgdp_discrete, dλ, dgrad, t[i],
+                                                           cur_time)
                 end
                 if dgdp_discrete !== nothing
                     @unpack y = integrand
@@ -379,8 +372,33 @@ function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
                                 sensealg, dgdp_cache, dgdp)
 end
 
-function update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integrand,
-                                    adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
+function update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, callbacks, integrand,
+                                    adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
+                                    ti, cur_time)
+    for cb in callbacks.discrete_callbacks
+        if ti ∈ cb.affect!.event_times
+            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
+                                                    integrand, adj_prob, sol,
+                                                    dgdu_discrete,
+                                                    dgdp_discrete, dλ, dgrad,
+                                                    ti, cur_time)
+        end
+    end
+    for cb in callbacks.continuous_callbacks
+        if ti ∈ cb.affect!.event_times ||
+           ti ∈ cb.affect_neg!.event_times
+            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
+                                                    integrand, adj_prob, sol,
+                                                    dgdu_discrete,
+                                                    dgdp_discrete, dλ, dgrad,
+                                                    ti, cur_time)
+        end
+    end
+    return integrand
+end
+
+function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integrand,
+                                     adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
