@@ -1,5 +1,6 @@
 import OrdinaryDiffEq: ODEProblem, solve, Tsit5
 import Zygote
+import ForwardDiff
 using SciMLSensitivity, Test
 
 dynamics = (x, _p, _t) -> x
