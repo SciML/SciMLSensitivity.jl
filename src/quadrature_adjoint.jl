@@ -268,7 +268,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
-        return -adj_sol[end], nothing
+        return adj_sol[end], nothing
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
 
