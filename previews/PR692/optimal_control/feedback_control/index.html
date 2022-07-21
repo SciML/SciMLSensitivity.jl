@@ -50,7 +50,7 @@ function predict_univ(θ)
 end
 
 loss_univ(θ) = sum(abs2, predict_univ(θ)[2,:] .- 1)
-l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">9.9704314f11</code></pre><pre><code class="language-julia hljs">list_plots = []
+l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2.1895466f11</code></pre><pre><code class="language-julia hljs">list_plots = []
 iter = 0
 callback = function (θ, l)
   global list_plots, iter
@@ -71,23 +71,23 @@ optf = Optimization.OptimizationFunction((x,p)-&gt;loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
                                      callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 340-element Vector{Float32}:
-  1.0
-  0.16981992
- -0.4869606
- -0.6805371
- -0.13114215
- -0.6482169
- -0.049362596
- -0.7523772
-  0.38932252
- -0.36844373
+  1.010335
+  0.2783307
+ -0.49304867
+  0.2846638
+  0.29002368
+ -0.2655128
+ -0.02882192
+  0.21875362
+  0.006396336
+ -0.3421916
   ⋮
-  0.2885097
- -0.31736824
-  0.33192894
-  0.7375948
- -0.087955505
-  0.39568606
- -0.074168086
-  1.4506114f-8
- -3.489305f-8</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../SDE_control/">Controlling Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.21 on <span class="colophon-date" title="Wednesday 20 July 2022 23:18">Wednesday 20 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -0.53241915
+  0.10634557
+ -0.5129717
+  0.07254612
+ -0.31332493
+ -0.31891263
+ -0.8729802
+ -2.1153843
+ -1.9743754</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../SDE_control/">Controlling Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.21 on <span class="colophon-date" title="Thursday 21 July 2022 00:54">Thursday 21 July 2022</span>. Using Julia version 1.7.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
