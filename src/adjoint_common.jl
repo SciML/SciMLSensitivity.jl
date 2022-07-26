@@ -442,6 +442,11 @@ function (f::ReverseLossCallback)(integrator)
     end
 
     if issemiexplicitdae
+
+        if J isa DiffCache
+            J = get_tmp(J, y)
+        end
+
         jacobian!(J, uf, y, f_cache, sensealg, jac_config)
         dhdd = J[algevar_idxs, diffvar_idxs]
         dhda = J[algevar_idxs, algevar_idxs]
