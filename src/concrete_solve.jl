@@ -56,7 +56,7 @@ function automatic_sensealg_choice(prob::Union{ODEProblem, SDEProblem}, u0, p, v
         # so if out-of-place, try Zygote
 
         vjp = try
-            Zygote.gradient((u, p) -> prob.f(u, p, prob.t), u0, p)
+            Zygote.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
             ZygoteVJP()
         catch
             false
@@ -64,7 +64,7 @@ function automatic_sensealg_choice(prob::Union{ODEProblem, SDEProblem}, u0, p, v
 
         if vjp == false
             vjp = try
-                ReverseDiff.gradient((u, p) -> prob.f(u, p, prob.t), u0, p)
+                ReverseDiff.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
                 ReverseDiffVJP()
             catch
                 false
@@ -73,7 +73,7 @@ function automatic_sensealg_choice(prob::Union{ODEProblem, SDEProblem}, u0, p, v
 
         if vjp == false
             vjp = try
-                Tracker.gradient((u, p) -> prob.f(u, p, prob.t), u0, p)
+                Tracker.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
                 TrackerVJP()
             catch
                 false

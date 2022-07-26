@@ -450,7 +450,6 @@ function (f::ReverseLossCallback)(integrator)
     end
 
     if issemiexplicitdae
-
         if J isa DiffCache
             J = get_tmp(J, y)
         end
