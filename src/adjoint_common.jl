@@ -204,8 +204,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     elseif sensealg.autojacvec isa EnzymeVJP
         if typeof(prob.p) <: DiffEqBase.NullParameters
             if SciMLBase.forwarddiffs_model(alg)
-                chunk = sensealg.autojacvec.chunksize == 0 ? ForwardDiff.pickchunksize(u0) :
-                        sensealg.autojacvec.chunksize
+                chunk = if sensealg.autojacvec.chunksize == 0
+                    ForwardDiff.pickchunksize(length(u0))
+                else
+                    sensealg.autojacvec.chunksize
+                end
+
                 paramjac_config = dualcache(zero(y), chunk), prob.p,
                                   dualcache(zero(y), chunk),
                                   dualcache(zero(y), chunk)
@@ -214,8 +218,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             end
         else
             if SciMLBase.forwarddiffs_model(alg)
-                chunk = sensealg.autojacvec.chunksize == 0 ? ForwardDiff.pickchunksize(u0) :
-                        sensealg.autojacvec.chunksize
+                chunk = if sensealg.autojacvec.chunksize == 0
+                    ForwardDiff.pickchunksize(length(u0))
+                else
+                    sensealg.autojacvec.chunksize
+                end
+
                 paramjac_config = dualcache(zero(y), chunk),
                                   zero(_p),
                                   dualcache(zero(y), chunk),
