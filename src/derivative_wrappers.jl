@@ -580,7 +580,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
 
-    tmp1, tmp2, tmp3, tmp4 = S.diffcache.paramjac_config
+    _tmp1, tmp2, _tmp3, _tmp4 = S.diffcache.paramjac_config
+
+    tmp1 = get_tmp(_tmp1, y)
+    tmp3 = get_tmp(_tmp3, dλ)
+    tmp4 = get_tmp(_tmp4, dλ)
 
     tmp1 .= 0 # should be removed for dλ
 
@@ -591,7 +595,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         tmp2 .= 0
         Enzyme.Duplicated(p, tmp2)
     else
-        p
+        Enzyme.Const(p)
     end
     #end
 
@@ -604,17 +608,18 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     vec(tmp4) .= vec(λ)
 
     isautojacvec = get_jacvec(sensealg)
+
     if inplace_sensitivity(S)
         if W === nothing
             Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup,
-                            t)
+                            Enzyme.Const(t))
         else
             Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup,
-                            t, W)
+                            Enzyme.Const(t), Enzyme.Const(W))
         end
 
         dλ .= tmp1
@@ -625,11 +630,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         if W === nothing
             Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
-                            dup, t)
+                            dup, Enzyme.Const(t))
         else
             Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
-                            dup, t, W)
+                            dup, Enzyme.Const(t), Enzyme.Const(W))
         end
         if dy !== nothing
             out_ = if W === nothing

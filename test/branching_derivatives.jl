@@ -16,8 +16,8 @@ function fiip(du, u, p, t)
 end
 
 p = [1.0, 1.0, 1.0, 1.0];
-u0 = [1.0; 1.0]
-;
+u0 = [1.0; 1.0];
+
 prob = ODEProblem(fiip, u0, (0.0, 4.0), p);
 
 dp1 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,

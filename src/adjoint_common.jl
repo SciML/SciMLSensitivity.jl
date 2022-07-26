@@ -199,9 +199,13 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         pf = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
         if typeof(prob.p) <: DiffEqBase.NullParameters
-            paramjac_config = zero(y), prob.p, zero(y), zero(y)
+            paramjac_config = dualcache(zero(y), sensealg.autojacvec.chunksize), prob.p,
+                              dualcache(zero(y), sensealg.autojacvec.chunksize),
+                              dualcache(zero(y), sensealg.autojacvec.chunksize)
         else
-            paramjac_config = zero(y), zero(_p), zero(y), zero(y)
+            paramjac_config = dualcache(zero(y), sensealg.autojacvec.chunksize), zero(_p),
+                              dualcache(zero(y), sensealg.autojacvec.chunksize),
+                              dualcache(zero(y), sensealg.autojacvec.chunksize)
         end
         pf = let f = f.f
             if DiffEqBase.isinplace(prob) && prob isa RODEProblem
