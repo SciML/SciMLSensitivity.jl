@@ -451,7 +451,7 @@ function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
                                 dgdu = nothing, dgdp = nothing, g = nothing,
                                 abstol = 1e-6, reltol = 1e-3,
                                 kwargs...)
-    SteadyStateAdjointProblem(sol, sensealg, dgdu, dgdp, g; kwargs...)
+    SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
 @doc doc"""
