@@ -1038,7 +1038,7 @@ struct EnzymeVJP <: VJPChoice
     chunksize::Int
 end
 
-EnzymeVJP(; chunksize = 12) = EnzymeVJP(12)
+EnzymeVJP(; chunksize = 12) = EnzymeVJP(chunksize)
 
 """
 ```julia
