@@ -24,7 +24,7 @@ mutable struct CheckpointSolution{S, I, T, T2}
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-                                                    f,alg,
+                                                    f, alg,
                                                     checkpoints, tols, tstops = nothing;
                                                     noiseterm = false,
                                                     tspan = reverse(sol.prob.tspan))
@@ -84,7 +84,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
     end
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-                                    quad = false,noiseterm = noiseterm)
+                                    quad = false, noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
                                                       discrete, y, sol,

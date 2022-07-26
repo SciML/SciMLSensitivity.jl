@@ -120,6 +120,7 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
                       reltol = reltol, saveat = savingtimes)
 
     adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+                                 Tsit5(),
                                  sol_track.t, dg!,
                                  callback = cb2,
                                  abstol = abstol, reltol = reltol)

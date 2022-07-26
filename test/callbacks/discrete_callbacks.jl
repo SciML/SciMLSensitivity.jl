@@ -137,6 +137,7 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     #cb_adj = SciMLSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
     adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+                                 Tsit5(),
                                  sol_track.t, dg!,
                                  callback = cb2,
                                  abstol = abstol, reltol = reltol)

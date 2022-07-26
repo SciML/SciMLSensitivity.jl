@@ -27,6 +27,7 @@ fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
 
 solve(ODEAdjointProblem(fwd_sol,
                         InterpolatingAdjoint(),
+                        Tsit5(),
                         (out, x, p, t, i) -> (out .= 1),
                         [1.0]), Tsit5())
 
@@ -50,5 +51,6 @@ fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
 
 solve(ODEAdjointProblem(fwd_sol,
                         InterpolatingAdjoint(),
+                        Tsit5(),
                         (out, x, p, t, i) -> (out .= 1),
                         [1.0]))

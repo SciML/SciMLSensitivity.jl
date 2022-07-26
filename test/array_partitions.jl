@@ -21,6 +21,7 @@ sol = solve(DynamicalODEProblem((v, x, p, t) -> [0.0, 0.0],
 
 solve(ODEAdjointProblem(sol,
                         InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true)),
+                        OrdinaryDiffEq.Tsit5(),
                         [sol.t[end]],
                         (out, x, p, t, i) -> (out .= 0)), OrdinaryDiffEq.Tsit5())
 
@@ -52,6 +53,7 @@ sol = solve(DynamicalODEProblem(dyn_v,
 g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), zero(x0)))
 bwd_sol = solve(ODEAdjointProblem(sol,
                                   InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true)),
+                                  OrdinaryDiffEq.Tsit5(),
                                   # Also fails, but due to a different bug:
                                   # InterpolatingAdjoint(autojacvec=ReverseDiffVJP()),
                                   [sol.t[end]],
