@@ -1021,7 +1021,7 @@ like BLAS/LAPACK are used) and this will be the most efficient adjoint implement
 ## Constructor
 
 ```julia
-EnzymeVJP(;chunksize=12)
+EnzymeVJP(;chunksize=0)
 ```
 
 ## Keyword Arguments
@@ -1030,15 +1030,15 @@ EnzymeVJP(;chunksize=12)
   hand side definition. This is used for compatibility with ODE solves that default to using
   ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
   should be set to the maximum chunksize that can occur during an integration to preallocate
-  the `DualCaches` for PreallocationTools.jl. It defaults to 12, the maximum default
-  chunksize of ForwardDiff.jl, for safety, but could be decreased if this value is known to
-  be lower to conserve memory. Future optimizations can make this more automatic.
+  the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
+  but could be decreased if this value is known to be lower to conserve memory.
+
 """
 struct EnzymeVJP <: VJPChoice
     chunksize::Int
 end
 
-EnzymeVJP(; chunksize = 12) = EnzymeVJP(chunksize)
+EnzymeVJP(; chunksize = 0) = EnzymeVJP(chunksize)
 
 """
 ```julia

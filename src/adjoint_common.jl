@@ -22,11 +22,11 @@ struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateT
 end
 
 """
-    adjointdiffcache(g,sensealg,discrete,sol,dg;quad=false)
+    adjointdiffcache(g,sensealg,discrete,sol,dg,alg;quad=false)
 
 return (AdjointDiffCache, y)
 """
-function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f;
+function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f, alg;
                           quad = false,
                           noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
@@ -65,12 +65,16 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         algevar_idxs = 1:0
     end
 
-    if !needs_jac
-        J = (issemiexplicitdae || !isautojacvec) ? similar(u0, numindvar, numindvar) :
-            nothing
+    if !needs_jac && !(issemiexplicitdae || !isautojacvec)
+        J = nothing
     else
-        # Force construction of the Jacobian
-        J = similar(u0, numindvar, numindvar)
+        if SciMLBase.forwarddiffs_model_time(alg)
+            # 1 chunk is fine because it's only t
+            J = dualcache(similar(u0, numindvar, numindvar),
+                                                    ForwardDiff.pickchunksize(length(u0)))
+        else
+            J = similar(u0, numindvar, numindvar)
+        end
     end
 
     if !discrete
@@ -199,13 +203,26 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         pf = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
         if typeof(prob.p) <: DiffEqBase.NullParameters
-            paramjac_config = dualcache(zero(y), sensealg.autojacvec.chunksize), prob.p,
-                              dualcache(zero(y), sensealg.autojacvec.chunksize),
-                              dualcache(zero(y), sensealg.autojacvec.chunksize)
+            if SciMLBase.forwarddiffs_model(alg)
+                chunk = sensealg.autojacvec.chunksize == 0 ? ForwardDiff.pickchunksize(u0) :
+                                                            sensealg.autojacvec.chunksize
+                paramjac_config = dualcache(zero(y), chunk), prob.p,
+                                  dualcache(zero(y), chunk),
+                                  dualcache(zero(y), chunk)
+            else
+                paramjac_config = zero(y), prob.p, zero(y), zero(y)
+            end
         else
-            paramjac_config = dualcache(zero(y), sensealg.autojacvec.chunksize), zero(_p),
-                              dualcache(zero(y), sensealg.autojacvec.chunksize),
-                              dualcache(zero(y), sensealg.autojacvec.chunksize)
+            if SciMLBase.forwarddiffs_model(alg)
+                chunk = sensealg.autojacvec.chunksize == 0 ? ForwardDiff.pickchunksize(u0) :
+                                                            sensealg.autojacvec.chunksize
+                paramjac_config = dualcache(zero(y), chunk),
+                                  zero(_p),
+                                  dualcache(zero(y), chunk),
+                                  dualcache(zero(y), chunk)
+            else
+                paramjac_config = zero(y), zero(_p), zero(y), zero(y)
+            end
         end
         pf = let f = f.f
             if DiffEqBase.isinplace(prob) && prob isa RODEProblem
