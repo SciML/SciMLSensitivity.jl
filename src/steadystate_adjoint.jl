@@ -55,8 +55,8 @@ function SteadyStateAdjointSensitivityFunction(g,
                                           linsolve)
 end
 
-@noinline function SteadyStateAdjointProblem(sol, alg,
-                                             sensealg::SteadyStateAdjoint,
+@noinline function SteadyStateAdjointProblem(sol,
+                                             sensealg::SteadyStateAdjoint, alg,
                                              dgdu::DG1 = nothing,
                                              dgdp::DG2 = nothing,
                                              g::G = nothing;
