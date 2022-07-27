@@ -228,14 +228,29 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
     prob = getprob(S)
 
     @unpack J, uf, f_cache, jac_config = S.diffcache
+
+    if J isa DiffCache
+        J = get_tmp(J, dλ)
+    end
+
     if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
         if W === nothing
             if DiffEqBase.has_jac(f)
                 f.jac(J, y, p, t) # Calculate the Jacobian into J
             else
-                uf.t = t
-                uf.p = p
-                jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                if typeof(t) !== typeof(uf.t)
+                    # Handle the case of ForwardDiff.Dual from Rosenbrock
+                    _uf = DiffEqBase.UJacobianWrapper(f, t, p)
+
+                    # This is really slow and allocates, but it's a fallback only for a
+                    # rare case so it can be optimized in the future
+                    _jac_config = build_jac_config(sensealg, uf, t * dλ)
+                    jacobian!(J, _uf, y, f_cache, sensealg, _jac_config)
+                else
+                    uf.t = t
+                    uf.p = p
+                    jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                end
             end
         else
             if DiffEqBase.has_jac(f)
@@ -582,9 +597,15 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     _tmp1, tmp2, _tmp3, _tmp4 = S.diffcache.paramjac_config
 
-    tmp1 = get_tmp(_tmp1, y)
-    tmp3 = get_tmp(_tmp3, dλ)
-    tmp4 = get_tmp(_tmp4, dλ)
+    if _tmp1 isa DiffCache
+        tmp1 = get_tmp(_tmp1, y)
+        tmp3 = get_tmp(_tmp3, dλ)
+        tmp4 = get_tmp(_tmp4, dλ)
+    else
+        tmp1 = _tmp1
+        tmp3 = _tmp3
+        tmp4 = _tmp4
+    end
 
     tmp1 .= 0 # should be removed for dλ
 
@@ -881,8 +902,8 @@ function build_jac_config(alg, uf, u)
                                                                                       alg)}())
     else
         if diff_type(alg) != Val{:complex}
-            jac_config = FiniteDiff.JacobianCache(similar(u), similar(u),
-                                                  similar(u), diff_type(alg))
+            jac_config = FiniteDiff.JacobianCache(zero(u), zero(u),
+                                                  zero(u), diff_type(alg))
         else
             tmp = Complex{eltype(u)}.(u)
             du1 = Complex{eltype(u)}.(du1)

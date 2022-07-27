@@ -135,6 +135,7 @@ _, easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ReverseDiffVJP()),
+                             Tsit5(),
                              t, dg)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
@@ -463,6 +464,7 @@ end
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ReverseDiffVJP()),
+                             Tsit5(),
                              nothing, nothing, nothing, dg, nothing, g)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-10)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
@@ -695,6 +697,7 @@ sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
         bwd_sol = solve(ODEAdjointProblem(sol,
                                           BacksolveAdjoint(autojacvec = EnzymeVJP(),
                                                            checkpointing = checkpointing),
+                                          Tsit5(),
                                           nothing, nothing, nothing, nothing, nothing,
                                           (x, lqr_params, t) -> cost(x, lqr_params)),
                         Tsit5(),

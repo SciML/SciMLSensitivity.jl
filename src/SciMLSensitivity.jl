@@ -15,7 +15,7 @@ import ArrayInterfaceCore, ArrayInterfaceTracker
 import Enzyme
 import GPUArraysCore
 
-import PreallocationTools: dualcache, get_tmp
+import PreallocationTools: dualcache, get_tmp, DiffCache
 
 using Cassette, DiffRules
 using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot

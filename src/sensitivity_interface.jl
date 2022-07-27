@@ -403,21 +403,21 @@ function _adjoint_sensitivities(sol, sensealg, alg;
     end
 
     if sol.prob isa ODEProblem
-        adj_prob = ODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+        adj_prob = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
                                      dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol, kwargs...)
 
     elseif sol.prob isa SDEProblem
-        adj_prob = SDEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+        adj_prob = SDEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
                                      dgdu_continuous, dgdp_continuous, g;
                                      checkpoints = checkpoints,
                                      callback = callback,
                                      abstol = abstol, reltol = reltol,
                                      corfunc_analytical = corfunc_analytical)
     elseif sol.prob isa RODEProblem
-        adj_prob = RODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+        adj_prob = RODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
                                       dgdu_continuous, dgdp_continuous, g;
                                       checkpoints = checkpoints,
                                       callback = callback,
@@ -451,7 +451,7 @@ function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
                                 dgdu = nothing, dgdp = nothing, g = nothing,
                                 abstol = 1e-6, reltol = 1e-3,
                                 kwargs...)
-    SteadyStateAdjointProblem(sol, sensealg, dgdu, dgdp, g; kwargs...)
+    SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
 @doc doc"""

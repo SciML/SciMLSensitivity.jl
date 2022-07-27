@@ -54,19 +54,71 @@ function automatic_sensealg_choice(prob::Union{ODEProblem, SDEProblem}, u0, p, v
     elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
         # only Zygote is GPU compatible and fast
         # so if out-of-place, try Zygote
-        if p === nothing || p === DiffEqBase.NullParameters()
-            # QuadratureAdjoint skips all p calculations until the end
-            # So it's the fastest when there are no parameters
-            QuadratureAdjoint(autojacvec = ZygoteVJP())
+
+        vjp = try
+            Zygote.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+            ZygoteVJP()
+        catch
+            false
+        end
+
+        if vjp == false
+            vjp = try
+                ReverseDiff.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+                ReverseDiffVJP()
+            catch
+                false
+            end
+        end
+
+        if vjp == false
+            vjp = try
+                Tracker.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+                TrackerVJP()
+            catch
+                false
+            end
+        end
+
+        if vjp isa Bool
+            if verbose
+                @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
+            end
+
+            if p === nothing || p === DiffEqBase.NullParameters()
+                # QuadratureAdjoint skips all p calculations until the end
+                # So it's the fastest when there are no parameters
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
+            end
         else
-            InterpolatingAdjoint(autojacvec = ZygoteVJP())
+            if p === nothing || p === DiffEqBase.NullParameters()
+                # QuadratureAdjoint skips all p calculations until the end
+                # So it's the fastest when there are no parameters
+                QuadratureAdjoint(autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autojacvec = vjp)
+            end
         end
     else
         vjp = inplace_vjp(prob, u0, p, verbose)
-        if p === nothing || p === DiffEqBase.NullParameters()
-            QuadratureAdjoint(autojacvec = vjp)
+        if vjp isa Bool
+            if verbose
+                @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
+            end
+            # If reverse-mode isn't working, just fallback to numerical vjps
+            if p === nothing || p === DiffEqBase.NullParameters()
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
+            end
         else
-            InterpolatingAdjoint(autojacvec = vjp)
+            if p === nothing || p === DiffEqBase.NullParameters()
+                QuadratureAdjoint(autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autojacvec = vjp)
+            end
         end
     end
     return default_sensealg

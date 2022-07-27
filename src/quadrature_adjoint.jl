@@ -11,8 +11,9 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
 end
 
-function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp)
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f;
+function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
+                                                 alg)
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
                                     quad = true)
     return ODEQuadratureAdjointSensitivityFunction(diffcache, sensealg, discrete,
                                                    y, sol, sol.prob.f)
@@ -50,7 +51,7 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol, sensealg::QuadratureAdjoint,
+@noinline function ODEAdjointProblem(sol, sensealg::QuadratureAdjoint, alg,
                                      t = nothing,
                                      dgdu_discrete::DG1 = nothing,
                                      dgdp_discrete::DG2 = nothing,
@@ -83,7 +84,7 @@ end
     λ = similar(u0, len)
     λ .= false
     sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                    dgdu_continuous, dgdp_continuous)
+                                                    dgdu_continuous, dgdp_continuous, alg)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
@@ -261,7 +262,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                                 abstol = sensealg.abstol, reltol = sensealg.reltol,
                                 callback = CallbackSet(),
                                 kwargs...)
-    adj_prob = ODEAdjointProblem(sol, sensealg, t, dgdu_discrete, dgdp_discrete,
+    adj_prob = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
                                  dgdu_continuous, dgdp_continuous, g; callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
                     save_everystep = true, save_start = true, kwargs...)
