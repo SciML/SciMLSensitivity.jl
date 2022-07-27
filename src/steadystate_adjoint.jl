@@ -31,12 +31,12 @@ function SteadyStateAdjointSensitivityFunction(g,
     @unpack p, u0 = sol.prob
 
     diffcache, y = adjointdiffcache(g,
-                                    sensealg, alg,
+                                    sensealg,
                                     false,
                                     sol,
                                     dgdu,
                                     dgdp,
-                                    f;
+                                    f, alg;
                                     quad = false,
                                     needs_jac = needs_jac)
 
