@@ -709,7 +709,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
             for i in 1:m
                 tmp = λ' * pJ[((i - 1) * m + 1):(i * m), :]
                 if dgrad !== nothing
-                    if tmp2 !== nothing
+                    if tmp !== nothing
                         !isempty(dgrad) && (dgrad[:, i] .= vec(tmp))
                     end
                 end
