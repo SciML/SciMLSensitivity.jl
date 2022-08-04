@@ -759,7 +759,6 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             (NoTangent(), NoTangent(), unthunk(du0), unthunk(dp), NoTangent(),
              ntuple(_ -> NoTangent(), length(args))...)
         else
-            @show unthunk(du0), unthunk(dp)
             (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
              ntuple(_ -> NoTangent(), length(args))...)
         end

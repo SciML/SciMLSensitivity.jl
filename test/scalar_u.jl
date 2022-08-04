@@ -20,4 +20,4 @@ end
 dp1 = Zygote.gradient(loss_neuralode, p)[1]
 dp2 = ForwardDiff.gradient(loss_neuralode, p)
 
-@test dp1≈dp2 atol=1 - 10
+@test dp1≈dp2 atol=1e-10
