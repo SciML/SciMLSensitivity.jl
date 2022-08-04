@@ -31,6 +31,7 @@ end
         @time @safetestset "Literal Adjoint" begin include("literal_adjoint.jl") end
         @time @safetestset "ForwardDiff Chunking Adjoints" begin include("forward_chunking.jl") end
         @time @safetestset "Stiff Adjoints" begin include("stiff_adjoints.jl") end
+        @time @safetestset "Scalar u0" begin include("scalar_u.jl") end
         @time @safetestset "Autodiff Events" begin include("autodiff_events.jl") end
         @time @safetestset "Null Parameters" begin include("null_parameters.jl") end
         @time @safetestset "Forward Mode Prob Kwargs" begin include("forward_prob_kwargs.jl") end

@@ -614,7 +614,11 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                             v = @view Δ[.., i]
                         end
                         if !(Δ isa NoTangent)
-                            ForwardDiff.value.(J'vec(v))
+                            if u0 isa Number
+                                ForwardDiff.value.(J'v)
+                            else
+                                ForwardDiff.value.(J'vec(v))
+                            end
                         else
                             zero(p)
                         end
@@ -639,10 +643,16 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             num_chunks = length(u0) ÷ chunk_size
             num_chunks * chunk_size != length(u0) && (num_chunks += 1)
 
-            du0parts = typeof(u0[1:1])[]
+            du0parts = u0 isa Number ? typeof(u0)[] : typeof(u0[1:1])[]
+
+            local _du0
+
             for j in 0:(num_chunks - 1)
                 local chunk
-                if ((j + 1) * chunk_size) <= length(u0)
+                if u0 isa Number
+                    u0dualpart = seed_duals(u0, prob.f,
+                                            ForwardDiff.Chunk{chunk_size}())
+                elseif ((j + 1) * chunk_size) <= length(u0)
                     chunk = ((j * chunk_size + 1):((j + 1) * chunk_size))
                     u0chunk = vec(u0)[chunk]
                     u0dualpart = seed_duals(u0chunk, prob.f,
@@ -654,16 +664,21 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                                             ForwardDiff.Chunk{length(chunk)}())
                 end
 
-                u0dualvec = if j == 0
-                    vcat(u0dualpart, u0[((j + 1) * chunk_size + 1):end])
-                elseif j == num_chunks - 1
-                    vcat(u0[1:(j * chunk_size)], u0dualpart)
+                if u0 isa Number
+                    u0dual = u0dualpart
                 else
-                    vcat(u0[1:(j * chunk_size)], u0dualpart,
-                         u0[(((j + 1) * chunk_size) + 1):end])
+                    u0dualvec = if j == 0
+                        vcat(u0dualpart, u0[((j + 1) * chunk_size + 1):end])
+                    elseif j == num_chunks - 1
+                        vcat(u0[1:(j * chunk_size)], u0dualpart)
+                    else
+                        vcat(u0[1:(j * chunk_size)], u0dualpart,
+                             u0[(((j + 1) * chunk_size) + 1):end])
+                    end
+
+                    u0dual = ArrayInterfaceCore.restructure(u0, u0dualvec)
                 end
 
-                u0dual = ArrayInterfaceCore.restructure(u0, u0dualvec)
                 if p === nothing || p === DiffEqBase.NullParameters()
                     pdual = p
                 else
@@ -717,14 +732,26 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
                         v = @view Δ[.., i]
                     end
                     if !(Δ isa NoTangent)
-                        ForwardDiff.value.(J'vec(v))
+                        if u0 isa Number
+                            ForwardDiff.value.(J'v)
+                        else
+                            ForwardDiff.value.(J'vec(v))
+                        end
                     else
                         zero(u0)
                     end
                 end
-                push!(du0parts, vec(_du0))
+
+                if !(u0 isa Number)
+                    push!(du0parts, vec(_du0))
+                end
             end
-            ArrayInterfaceCore.restructure(u0, reduce(vcat, du0parts))
+
+            if u0 isa Number
+                first(_du0)
+            else
+                ArrayInterfaceCore.restructure(u0, reduce(vcat, du0parts))
+            end
         end
 
         if originator isa SciMLBase.TrackerOriginator ||
@@ -732,6 +759,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
             (NoTangent(), NoTangent(), unthunk(du0), unthunk(dp), NoTangent(),
              ntuple(_ -> NoTangent(), length(args))...)
         else
+            @show unthunk(du0), unthunk(dp)
             (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
              ntuple(_ -> NoTangent(), length(args))...)
         end
