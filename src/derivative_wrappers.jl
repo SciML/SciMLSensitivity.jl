@@ -792,7 +792,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
 
         deriv = ReverseDiff.deriv(tp)
         if dgrad !== nothing
-            if tmp2 !== nothing
+            if deriv !== nothing
                 !isempty(dgrad) && (dgrad[:, i] .= vec(deriv))
             end
         end

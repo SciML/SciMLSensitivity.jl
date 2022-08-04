@@ -556,3 +556,31 @@ end
 
     @test isapprox(res_sde_forward, res_sde_trackerp, rtol = 1e-5)
 end
+
+@testset "diffusion functions that do not depend on the parameters" begin
+    seed = 893489389489
+
+    ode(u, p, t) = p[1] .* u .- p[2]
+    ode_noise(u, p, t) = u
+
+    function loss(p, u0, sensealg = InterpolatingAdjoint())
+        prob = SDEProblem(ode, ode_noise, u0, (0.0, 1.0), p)
+        x = solve(prob, EulerHeun(), sensealg = sensealg, dt = 0.0001, saveat = 0:0.1:1)
+        sum(abs2, x)
+    end
+
+    Random.seed!(seed)
+    p = randn(2)
+    u0 = randn(1)
+
+    loss(p, u0)
+    Random.seed!(seed)
+    Fdu0 = ForwardDiff.gradient(u0 -> loss(p, u0), u0)
+    Random.seed!(seed)
+    Fdp = ForwardDiff.gradient(p -> loss(p, u0), p)
+    Random.seed!(seed)
+    Zdp, Zdu0 = Zygote.gradient(loss, p, u0)
+
+    @test Fdu0 ≈ Zdu0
+    @test Fdp≈Zdp rtol=1e-4
+end
