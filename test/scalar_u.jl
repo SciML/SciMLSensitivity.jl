@@ -1,4 +1,4 @@
-using SciMLSensitivity, Zygote, ForwardDiff, Test
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, ForwardDiff, Test
 
 function neural_ode(u, p, t)
     u * p[1]
