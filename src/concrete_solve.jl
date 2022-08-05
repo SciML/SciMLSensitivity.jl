@@ -182,7 +182,41 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem, DDEProb
                                        kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob, alg,
+const ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE = """
+                                             Chosen adjoint method is not compatible with the chosen problem. NonlinearProblem
+                                             and SteadyStateProblem require specific adjoint choices (like SteadyStateAdjoint)
+                                             and will not work with adjoints designed for time series models. For more details,
+                                             see https://sensitivity.sciml.ai/dev/.
+                                             """
+
+struct AdjointSteadyProblemPairingError <: Exception
+    prob
+    sensealg
+end
+
+function Base.showerror(io::IO, e::AdjointNotFoundError)
+    println(io, ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE)
+    print(io, "Problem type: ")
+    println(io, e.prob)
+    print(io, "Sensitivity algorithm type: ")
+    println(io, e.sensealg)
+end
+
+# Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
+function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, SteadyStateProblem
+                                                        }, alg,
+                                            sensealg::Union{
+                                                            AbstractAdjointSensitivityAlgorithm,
+                                                            AbstractForwardSensitivityAlgorithm
+                                                            }
+                                            u0, p, originator::SciMLBase.ADOriginator,
+                                            args...; kwargs...)
+    throw(AdjointSteadyProblemPairingError(prob, sensealg))
+end
+
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
+                                                        SciMLBase.AbstractSDEProblem,
+                                                        SciMLBase.AbstractRODEProblem}, alg,
                                             sensealg::AbstractAdjointSensitivityAlgorithm,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; save_start = true, save_end = true,
@@ -387,7 +421,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
 end
 
 # Prefer this route since it works better with callback AD
-function DiffEqBase._concrete_solve_adjoint(prob, alg,
+function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
                                             sensealg::AbstractForwardSensitivityAlgorithm,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...;
@@ -441,7 +475,7 @@ function DiffEqBase._concrete_solve_adjoint(prob, alg,
     out, forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_forward(prob, alg,
+function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, alg,
                                             sensealg::AbstractForwardSensitivityAlgorithm,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; save_idxs = nothing,
