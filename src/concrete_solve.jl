@@ -43,7 +43,9 @@ function inplace_vjp(prob, u0, p, verbose)
     return vjp
 end
 
-function automatic_sensealg_choice(prob::Union{ODEProblem, SDEProblem}, u0, p, verbose)
+function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
+                                               SciMLBase.AbstractSDEProblem}, u0, p,
+                                   verbose)
     default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
                           !(eltype(p) <: ForwardDiff.Dual) &&
@@ -138,7 +140,9 @@ function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProb
     return default_sensealg
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{ODEProblem, SDEProblem},
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
+                                                        SciMLBase.AbstractSDEProblem,
+                                                        SciMLBase.AbstractRODEProblem},
                                             alg, sensealg::Nothing, u0, p,
                                             originator::SciMLBase.ADOriginator, args...;
                                             verbose = true, kwargs...)
@@ -167,8 +171,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, Steady
                                        kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{DiscreteProblem, DDEProblem,
-                                                        SDDEProblem, DAEProblem},
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
+                                                        SciMLBase.AbstractDDEProblem,
+                                                        SciMLBase.AbstractSDDEProblem,
+                                                        SciMLBase.AbstractDAEProblem},
                                             alg, sensealg::Nothing,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
