@@ -538,14 +538,14 @@ end
 
         @info resfw
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g))
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5())
         res = shadow_adjoint(nilsas_prob, Tsit5())
 
         @info res
 
         @test resfw≈res atol=1e-1
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g),
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5(),
                                     dgdu_continuous = dg)
         res = shadow_adjoint(nilsas_prob, Tsit5())
 
@@ -599,7 +599,7 @@ end
 
         @info resfw
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g))
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5())
         res = shadow_adjoint(nilsas_prob, Tsit5())
 
         @info res
@@ -608,6 +608,7 @@ end
 
         @test_throws ErrorException nilsas_prob=NILSASProblem(sol_attractor,
                                                               NILSAS(nseg, nstep, M, g = g),
+                                                              Tsit5(),
                                                               t = sol_attractor.t,
                                                               dgdu_discrete = dgu,
                                                               dgdp_discrete = dgp)

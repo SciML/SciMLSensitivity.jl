@@ -708,7 +708,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
             m = size(prob.noise_rate_prototype)[2]
             for i in 1:m
                 tmp = λ' * pJ[((i - 1) * m + 1):(i * m), :]
-                dgrad[:, i] .= vec(tmp)
+                if dgrad !== nothing
+                    if tmp !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp))
+                    end
+                end
             end
         end
     end
@@ -787,7 +791,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
         ReverseDiff.reverse_pass!(tapei)
 
         deriv = ReverseDiff.deriv(tp)
-        dgrad[:, i] .= vec(deriv)
+        if dgrad !== nothing
+            if deriv !== nothing
+                !isempty(dgrad) && (dgrad[:, i] .= vec(deriv))
+            end
+        end
         ReverseDiff.pull_value!(output)
 
         if StochasticDiffEq.is_diagonal_noise(prob)
@@ -815,7 +823,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     copy(out_[i])
                 end
                 tmp1, tmp2 = back(λi) #issue: tmp2 = zeros(p)
-                dgrad[:, i] .= vec(tmp2)
+                if dgrad !== nothing
+                    if tmp2 !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                    end
+                end
                 dλ !== nothing && (dλ[:, i] .= vec(tmp1))
                 dy !== nothing && (dy[i] = _dy)
             end
@@ -825,7 +837,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     f(u, p, t)[i]
                 end
                 tmp1, tmp2 = back(λi)
-                dgrad[:, i] .= vec(tmp2)
+                if dgrad !== nothing
+                    if tmp2 !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                    end
+                end
                 dλ !== nothing && (dλ[:, i] .= vec(tmp1))
                 dy !== nothing && (dy[i] = _dy)
             end
@@ -839,7 +855,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     copy(out_[:, i])
                 end
                 tmp1, tmp2 = back(λ)#issue with Zygote.Buffer
-                dgrad[:, i] .= vec(tmp2)
+                if dgrad !== nothing
+                    if tmp2 !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                    end
+                end
                 dλ !== nothing && (dλ[:, i] .= vec(tmp1))
                 dy !== nothing && (dy[:, i] .= vec(_dy))
             end
@@ -849,7 +869,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     f(u, p, t)[:, i]
                 end
                 tmp1, tmp2 = back(λ)
-                dgrad[:, i] .= vec(tmp2)
+                if dgrad !== nothing
+                    if tmp2 !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                    end
+                end
                 if tmp1 === nothing
                     # if a column of the noise matrix is zero, Zygote returns nothing.
                     dλ !== nothing && (dλ[:, i] .= false)
