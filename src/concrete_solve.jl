@@ -208,7 +208,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, Steady
                                             sensealg::Union{
                                                             AbstractAdjointSensitivityAlgorithm,
                                                             AbstractForwardSensitivityAlgorithm,
-                                                            TrackerAdjoint, ReverseDiffAdjoint,
+                                                            TrackerAdjoint,
+                                                            ReverseDiffAdjoint,
                                                             AbstractShadowingSensitivityAlgorithm
                                                             },
                                             u0, p, originator::SciMLBase.ADOriginator,
@@ -811,7 +812,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                                                         SciMLBase.AbstractSDDEProblem,
                                                         SciMLBase.AbstractRODEProblem,
                                                         SciMLBase.AbstractDAEProblem,
-                                                        NonlinearProblem, SteadyStateProblem},
+                                                        NonlinearProblem, SteadyStateProblem
+                                                        },
                                             alg, sensealg::ZygoteAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
@@ -825,7 +827,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                                                         SciMLBase.AbstractSDDEProblem,
                                                         SciMLBase.AbstractRODEProblem,
                                                         SciMLBase.AbstractDAEProblem},
-                                                        alg, sensealg::TrackerAdjoint,
+                                            alg, sensealg::TrackerAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...;
                                             kwargs...)
@@ -974,7 +976,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                                                         SciMLBase.AbstractSDDEProblem,
                                                         SciMLBase.AbstractRODEProblem,
                                                         SciMLBase.AbstractDAEProblem},
-                                                        alg, sensealg::ReverseDiffAdjoint,
+                                            alg, sensealg::ReverseDiffAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
     if typeof(u0) isa GPUArraysCore.AbstractGPUArray
