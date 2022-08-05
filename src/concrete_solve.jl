@@ -190,8 +190,8 @@ const ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE = """
                                              """
 
 struct AdjointSteadyProblemPairingError <: Exception
-    prob
-    sensealg
+    prob::Any
+    sensealg::Any
 end
 
 function Base.showerror(io::IO, e::AdjointNotFoundError)
