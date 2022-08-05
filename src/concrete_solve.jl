@@ -194,7 +194,7 @@ struct AdjointSteadyProblemPairingError <: Exception
     sensealg::Any
 end
 
-function Base.showerror(io::IO, e::AdjointNotFoundError)
+function Base.showerror(io::IO, e::AdjointSteadyProblemPairingError)
     println(io, ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE)
     print(io, "Problem type: ")
     println(io, e.prob)
