@@ -208,7 +208,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{NonlinearProblem, Steady
                                             sensealg::Union{
                                                             AbstractAdjointSensitivityAlgorithm,
                                                             AbstractForwardSensitivityAlgorithm
-                                                            }
+                                                            },
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
