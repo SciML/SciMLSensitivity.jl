@@ -7,7 +7,7 @@ end
 p = [2.0]
 u0 = rand(1)[1]
 tspan = (0.0, 10.0)
-t = Array(range(0, 0.10, 100))
+t = Array(range(0, 0.10, length = 100))
 prob_neuralode = ODEProblem(neural_ode, u0, tspan)
 
 function loss_neuralode(p)
