@@ -526,6 +526,7 @@ end
 # Generic Fallback for ForwardDiff
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
                                                         SciMLBase.AbstractDAEProblem,
+                                                        SciMLBase.AbstractDDEProblem,
                                                         SciMLBase.AbstractSDEProblem,
                                                         SciMLBase.AbstractSDDEProblem,
                                                         SciMLBase.AbstractRODEProblem}, alg,
@@ -815,11 +816,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     sol, forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
+                                                        SciMLBase.AbstractODEProblem,
+                                                        SciMLBase.AbstractDAEProblem,
+                                                        SciMLBase.AbstractDDEProblem,
                                                         SciMLBase.AbstractSDEProblem,
                                                         SciMLBase.AbstractSDDEProblem,
                                                         SciMLBase.AbstractRODEProblem,
-                                                        SciMLBase.AbstractDAEProblem,
                                                         NonlinearProblem, SteadyStateProblem
                                                         },
                                             alg, sensealg::ZygoteAdjoint,
@@ -830,11 +833,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     p)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
+                                                        SciMLBase.AbstractODEProblem,
+                                                        SciMLBase.AbstractDAEProblem,
+                                                        SciMLBase.AbstractDDEProblem,
                                                         SciMLBase.AbstractSDEProblem,
                                                         SciMLBase.AbstractSDDEProblem,
-                                                        SciMLBase.AbstractRODEProblem,
-                                                        SciMLBase.AbstractDAEProblem},
+                                                        SciMLBase.AbstractRODEProblem},
                                             alg, sensealg::TrackerAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...;
@@ -979,11 +984,13 @@ function Base.showerror(io::IO, e::ReverseDiffGPUStateCompatibilityError)
     print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
+function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
+                                                        SciMLBase.AbstractODEProblem,
+                                                        SciMLBase.AbstractDAEProblem,
+                                                        SciMLBase.AbstractDDEProblem,
                                                         SciMLBase.AbstractSDEProblem,
                                                         SciMLBase.AbstractSDDEProblem,
-                                                        SciMLBase.AbstractRODEProblem,
-                                                        SciMLBase.AbstractDAEProblem},
+                                                        SciMLBase.AbstractRODEProblem},
                                             alg, sensealg::ReverseDiffAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
@@ -1069,7 +1076,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     Array(VectorOfArray(u)), reversediff_adjoint_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob, alg,
+function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
                                             sensealg::AbstractShadowingSensitivityAlgorithm,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; save_start = true, save_end = true,
