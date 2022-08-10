@@ -100,5 +100,13 @@ ReverseDiff.@grad function solve_up(prob, sensealg, u0, p, args...; kwargs...)
     out = DiffEqBase._solve_adjoint(prob, sensealg, ReverseDiff.value(u0),
                                     ReverseDiff.value(p),
                                     SciMLBase.ReverseDiffOriginator(), args...; kwargs...)
-    Array(out[1]), out[2]
+    function actual_adjoint(_args...)
+        original_adjoint = out[2](_args...)
+        if isempty(args) # alg is missing
+            tuple(original_adjoint[1:4]...,original_adjoint[6:end]...)
+        else
+            original_adjoint
+        end
+    end
+    Array(out[1]), actual_adjoint
 end
