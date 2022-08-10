@@ -123,17 +123,17 @@ sensealg_test = InterpolatingAdjoint()
 tspan = (0.0, 1.0)
 u0 = rand(4, 8)
 p0 = rand(16)
-f_aug(u, p, t) = reshape(p,4,4)*u
+f_aug(u, p, t) = reshape(p, 4, 4) * u
 
 function loss(p)
-    prob = ODEProblem(f_aug, u0, tspan, p; alg=solvealg_test, sensealg=sensealg_test)
+    prob = ODEProblem(f_aug, u0, tspan, p; alg = solvealg_test, sensealg = sensealg_test)
     sol = solve(prob)
     sum(sol[:, :, end])
 end
 
 function loss2(p)
     prob = ODEProblem(f_aug, u0, tspan, p)
-    sol = solve(prob, solvealg_test; sensealg=sensealg_test)
+    sol = solve(prob, solvealg_test; sensealg = sensealg_test)
     sum(sol[:, :, end])
 end
 
@@ -142,5 +142,5 @@ res2 = ReverseDiff.gradient(loss, p0)
 res3 = loss2(p0)
 res4 = ReverseDiff.gradient(loss2, p0)
 
-@test res1 ≈ res3 atol=1e-14
-@test res2 ≈ res4 atol=1e-14
+@test res1≈res3 atol=1e-14
+@test res2≈res4 atol=1e-14

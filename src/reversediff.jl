@@ -103,7 +103,7 @@ ReverseDiff.@grad function solve_up(prob, sensealg, u0, p, args...; kwargs...)
     function actual_adjoint(_args...)
         original_adjoint = out[2](_args...)
         if isempty(args) # alg is missing
-            tuple(original_adjoint[1:4]...,original_adjoint[6:end]...)
+            tuple(original_adjoint[1:4]..., original_adjoint[6:end]...)
         else
             original_adjoint
         end
