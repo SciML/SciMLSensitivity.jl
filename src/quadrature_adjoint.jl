@@ -228,8 +228,7 @@ end
 function (S::AdjointSensitivityIntegrand)(out, t)
     @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
     f = sol.prob.f
-    # if eltype(sol.u) <: StaticArrays.SArray
-    if ArrayInterfaceCore.ismutable(eltype(sol.u))
+    if ArrayInterfaceCore.ismutable(y)
         sol(y, t)
         adj_sol(λ, t)
     else
