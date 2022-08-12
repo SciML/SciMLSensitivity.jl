@@ -21,7 +21,7 @@ struct SteadyStateAdjointSensitivityFunction{
 end
 
 function SteadyStateAdjointSensitivityFunction(g,
-                                               sensealg,
+                                               sensealg, alg,
                                                sol,
                                                dgdu,
                                                dgdp,
@@ -36,7 +36,7 @@ function SteadyStateAdjointSensitivityFunction(g,
                                     sol,
                                     dgdu,
                                     dgdp,
-                                    f;
+                                    f, alg;
                                     quad = false,
                                     needs_jac = needs_jac)
 
@@ -56,7 +56,7 @@ function SteadyStateAdjointSensitivityFunction(g,
 end
 
 @noinline function SteadyStateAdjointProblem(sol,
-                                             sensealg::SteadyStateAdjoint,
+                                             sensealg::SteadyStateAdjoint, alg,
                                              dgdu::DG1 = nothing,
                                              dgdp::DG2 = nothing,
                                              g::G = nothing;
@@ -79,7 +79,7 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     sense = SteadyStateAdjointSensitivityFunction(g,
-                                                  sensealg,
+                                                  sensealg, alg,
                                                   sol,
                                                   dgdu,
                                                   dgdp,

@@ -135,6 +135,7 @@ _, easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ReverseDiffVJP()),
+                             Tsit5(),
                              t, dg)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
@@ -329,9 +330,9 @@ res2 = ForwardDiff.gradient(p -> G(p, t2), [1.5, 1.0, 3.0, 1.0])
 res3 = ForwardDiff.gradient(p -> G(p, t3), [1.5, 1.0, 3.0, 1.0])
 res4 = ForwardDiff.gradient(p -> G(p, t4), [1.5, 1.0, 3.0, 1.0])
 
-@test easy_res2' ≈ res2
-@test easy_res3' ≈ res3
-@test easy_res4' ≈ res4
+@test easy_res2'≈res2 rtol=1e-10
+@test easy_res3'≈res3 rtol=1e-10
+@test easy_res4'≈res4 rtol=1e-10
 
 println("Adjoints of u0")
 
@@ -463,6 +464,7 @@ end
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ReverseDiffVJP()),
+                             Tsit5(),
                              nothing, nothing, nothing, dg, nothing, g)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-10)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
@@ -695,6 +697,7 @@ sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
         bwd_sol = solve(ODEAdjointProblem(sol,
                                           BacksolveAdjoint(autojacvec = EnzymeVJP(),
                                                            checkpointing = checkpointing),
+                                          Tsit5(),
                                           nothing, nothing, nothing, nothing, nothing,
                                           (x, lqr_params, t) -> cost(x, lqr_params)),
                         Tsit5(),

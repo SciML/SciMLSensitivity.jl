@@ -79,7 +79,7 @@ end
 ```julia
 ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
 ```
-    
+
 An implementation of discrete forward sensitivity analysis through ForwardDiff.jl.
 When used within adjoint differentiation (i.e. via Zygote), this will cause forward
 differentiation of the `solve` call within the reverse-mode automatic differentiation
@@ -271,7 +271,7 @@ end
 ```julia
 InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
 ```
-                                                                                                        
+
 An implementation of adjoint sensitivity analysis which uses the interpolation of
 the forward solution for the reverse solve vector-Jacobian products. By
 default it requires a dense solution of the forward pass and will internally
@@ -1021,10 +1021,24 @@ like BLAS/LAPACK are used) and this will be the most efficient adjoint implement
 ## Constructor
 
 ```julia
-EnzymeVJP(compile=false)
+EnzymeVJP(;chunksize=0)
 ```
+
+## Keyword Arguments
+
+- `chunksize`: the default chunk size for the temporary variables inside of the vjp's right
+  hand side definition. This is used for compatibility with ODE solves that default to using
+  ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
+  should be set to the maximum chunksize that can occur during an integration to preallocate
+  the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
+  but could be decreased if this value is known to be lower to conserve memory.
+
 """
-struct EnzymeVJP <: VJPChoice end
+struct EnzymeVJP <: VJPChoice
+    chunksize::Int
+end
+
+EnzymeVJP(; chunksize = 0) = EnzymeVJP(chunksize)
 
 """
 ```julia

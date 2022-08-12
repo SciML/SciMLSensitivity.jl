@@ -1,9 +1,8 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, Test
-A = [0.0 1.0; 1.0 0.0; 0 0; 0 0]
-;
-B = [1.0 0.0; 0.0 1.0; 0 0; 0 0]
+A = [0.0 1.0; 1.0 0.0; 0 0; 0 0];
 
-;
+B = [1.0 0.0; 0.0 1.0; 0 0; 0 0];
+
 utarget = A;
 const T = 10.0;
 

@@ -24,7 +24,7 @@ mutable struct CheckpointSolution{S, I, T, T2}
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-                                                    f,
+                                                    f, alg,
                                                     checkpoints, tols, tstops = nothing;
                                                     noiseterm = false,
                                                     tspan = reverse(sol.prob.tspan))
@@ -83,8 +83,8 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
         nothing
     end
 
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f; quad = false,
-                                    noiseterm = noiseterm)
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+                                    quad = false, noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
                                                       discrete, y, sol,
@@ -256,7 +256,7 @@ function split_states(du, u, t, S::TS;
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
+@noinline function ODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
                                      t = nothing,
                                      dgdu_discrete::DG1 = nothing,
                                      dgdp_discrete::DG2 = nothing,
@@ -320,7 +320,7 @@ end
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                        dgdu_continuous, dgdp_continuous, f,
-                                                       checkpoints,
+                                                       alg, checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops, tspan = tspan)
 
@@ -358,7 +358,7 @@ end
     return ODEProblem(odefun, z0, tspan, p, callback = cb)
 end
 
-@noinline function SDEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
+@noinline function SDEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
                                      t = nothing,
                                      dgdu_discrete::DG1 = nothing,
                                      dgdp_discrete::DG2 = nothing,
@@ -417,7 +417,7 @@ end
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                              dgdu_continuous,
                                                              dgdp_continuous, sol.prob.f,
-                                                             checkpoints,
+                                                             alg, checkpoints,
                                                              (reltol = reltol,
                                                               abstol = abstol),
                                                              tspan = tspan)
@@ -428,7 +428,7 @@ end
                                                                  dgdu_continuous,
                                                                  dgdp_continuous,
                                                                  diffusion_function,
-                                                                 checkpoints,
+                                                                 alg, checkpoints,
                                                                  (reltol = reltol,
                                                                   abstol = abstol);
                                                                  tspan = tspan,
@@ -486,7 +486,7 @@ end
                       noise_rate_prototype = noise_matrix)
 end
 
-@noinline function RODEAdjointProblem(sol, sensealg::InterpolatingAdjoint,
+@noinline function RODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
                                       t = nothing,
                                       dgdu_discrete::DG1 = nothing,
                                       dgdp_discrete::DG2 = nothing,
@@ -545,7 +545,7 @@ end
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                        dgdu_continuous, dgdp_continuous, f,
-                                                       checkpoints,
+                                                       alg, checkpoints,
                                                        (reltol = reltol, abstol = abstol),
                                                        tstops, tspan = tspan)
 

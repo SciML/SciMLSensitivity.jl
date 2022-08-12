@@ -53,7 +53,7 @@ struct NILSASProblem{A, NILSS, Aprob, Qcache, solType, z0Type, tType, G, T, DG1,
     dgdp_discrete::DG2
 end
 
-function NILSASProblem(sol, sensealg::NILSAS;
+function NILSASProblem(sol, sensealg::NILSAS, alg;
                        t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
                        dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
                        kwargs...)
@@ -101,7 +101,8 @@ function NILSASProblem(sol, sensealg::NILSAS;
     tspan = (tspan[2] - T_seg, tspan[2])
     checkpoints = tspan[1]:dtsave:tspan[2]
 
-    adjoint_prob = ODEAdjointProblem(sol, adjoint_sensealg, t, dgdu_discrete, dgdp_discrete,
+    adjoint_prob = ODEAdjointProblem(sol, adjoint_sensealg, alg, t, dgdu_discrete,
+                                     dgdp_discrete,
                                      dgdu_continuous, dgdp_continuous,
                                      g;
                                      checkpoints = checkpoints,
@@ -293,7 +294,8 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
         t1 = tspan[1] - (nseg - iseg + 1) * T_seg
         t2 = tspan[1] - (nseg - iseg) * T_seg
         checkpoints = t1:dtsave:t2
-        _prob = ODEAdjointProblem(sol, adjoint_sensealg, t, dgdu_discrete, dgdp_discrete,
+        _prob = ODEAdjointProblem(sol, adjoint_sensealg, alg, t, dgdu_discrete,
+                                  dgdp_discrete,
                                   dgdu, dgdp, g;
                                   checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
                                   tspan = (t1, t2), kwargs...)

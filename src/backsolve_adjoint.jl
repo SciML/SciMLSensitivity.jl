@@ -11,10 +11,10 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     noiseterm::Bool
 end
 
-function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f;
+function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
                                          noiseterm = false)
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f; quad = false,
-                                    noiseterm = noiseterm)
+    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+                                    quad = false, noiseterm = noiseterm)
 
     return ODEBacksolveSensitivityFunction(diffcache, sensealg, discrete,
                                            y, sol.prob, f, noiseterm)
@@ -109,7 +109,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol, sensealg::BacksolveAdjoint,
+@noinline function ODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
                                      t = nothing,
                                      dgdu_discrete::DG1 = nothing,
                                      dgdp_discrete::DG2 = nothing,
@@ -162,7 +162,7 @@ end
     end
 
     sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
-                                            dgdp_continuous, f)
+                                            dgdp_continuous, f, alg)
 
     if z0 !== nothing
         sense = NILSASSensitivityFunction{isinplace(f), typeof(nilss), typeof(sense),
@@ -213,7 +213,7 @@ end
     return ODEProblem(odefun, z0, tspan, p, callback = cb)
 end
 
-@noinline function SDEAdjointProblem(sol, sensealg::BacksolveAdjoint,
+@noinline function SDEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
                                      t = nothing,
                                      dgdu_discrete::DG1 = nothing,
                                      dgdp_discrete::DG2 = nothing,
@@ -259,21 +259,21 @@ end
     if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
                                                       dgdu_continuous, dgdp_continuous,
-                                                      sol.prob.f)
+                                                      sol.prob.f, alg)
     else
         transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
                                                              corfunc_analytical)
         drift_function = ODEFunction(transformed_function)
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
                                                       dgdu_continuous, dgdp_continuous,
-                                                      drift_function)
+                                                      drift_function, alg)
     end
 
     diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
                                      paramjac = diffusion_paramjac)
     sense_diffusion = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
                                                       dgdu_continuous, dgdp_continuous,
-                                                      diffusion_function;
+                                                      diffusion_function, alg;
                                                       noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
@@ -325,7 +325,7 @@ end
                       noise_rate_prototype = noise_matrix)
 end
 
-@noinline function RODEAdjointProblem(sol, sensealg::BacksolveAdjoint,
+@noinline function RODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
                                       t = nothing,
                                       dgdu_discrete::DG1 = nothing,
                                       dgdp_discrete::DG2 = nothing,
@@ -366,7 +366,7 @@ end
     λ = one(eltype(u0)) .* similar(p, len)
 
     sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
-                                            dgdp_continuous, f;
+                                            dgdp_continuous, f, alg;
                                             noiseterm = false)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]

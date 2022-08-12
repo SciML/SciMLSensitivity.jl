@@ -547,7 +547,8 @@ end
 
     adjproboop = SDEAdjointProblem(soloop,
                                    BacksolveAdjoint(autojacvec = ZygoteVJP(),
-                                                    noisemixing = true), tarray, dg!)
+                                                    noisemixing = true), EulerHeun(),
+                                   tarray, dg!)
     adj_soloop = solve(adjproboop, EulerHeun(); dt = dtmix, tstops = soloop.t,
                        adaptive = false)
 
@@ -558,7 +559,7 @@ end
     adjprob = SDEAdjointProblem(sol,
                                 BacksolveAdjoint(autojacvec = ReverseDiffVJP(),
                                                  noisemixing = true, checkpointing = true),
-                                tarray, dg!)
+                                EulerHeun(), tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
     @test adj_soloop[end]≈adj_sol[end] rtol=1e-15
@@ -566,7 +567,7 @@ end
     adjprob = SDEAdjointProblem(sol,
                                 BacksolveAdjoint(autojacvec = ReverseDiffVJP(),
                                                  noisemixing = true, checkpointing = false),
-                                tarray, dg!)
+                                EulerHeun(), tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
     @test adj_soloop[end]≈adj_sol[end] rtol=1e-8
@@ -592,7 +593,8 @@ end
 
     adjproboop = SDEAdjointProblem(soloop,
                                    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(),
-                                                        noisemixing = true), tarray, dg!)
+                                                        noisemixing = true), EulerHeun(),
+                                   tarray, dg!)
     adj_soloop = solve(adjproboop, EulerHeun(); dt = dtmix, tstops = soloop.t,
                        adaptive = false)
 
@@ -602,7 +604,8 @@ end
     adjprob = SDEAdjointProblem(sol,
                                 InterpolatingAdjoint(autojacvec = ReverseDiffVJP(),
                                                      noisemixing = true,
-                                                     checkpointing = true), tarray, dg!)
+                                                     checkpointing = true), EulerHeun(),
+                                tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
     @test adj_soloop[end]≈adj_sol[end] rtol=1e-8
@@ -610,7 +613,8 @@ end
     adjprob = SDEAdjointProblem(sol,
                                 InterpolatingAdjoint(autojacvec = ReverseDiffVJP(),
                                                      noisemixing = true,
-                                                     checkpointing = false), tarray, dg!)
+                                                     checkpointing = false), EulerHeun(),
+                                tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
     @test adj_soloop[end]≈adj_sol[end] rtol=1e-8

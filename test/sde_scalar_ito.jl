@@ -162,13 +162,15 @@ resu0 = sum(@. u0 * exp(2 * (p[1] - p[2]^2 / 2) * tarray + 2 * p[2] * Wfix))
 @test isapprox(res_u0, res_forward, rtol = 1e-3) # strat adjoint vs forward
 @test isapprox(resu0, res_forward[1], rtol = 1e-3)  # exact vs forward
 
-adj_probStrat = SDEAdjointProblem(solStrat, BacksolveAdjoint(autojacvec = ZygoteVJP()), t,
+adj_probStrat = SDEAdjointProblem(solStrat, BacksolveAdjoint(autojacvec = ZygoteVJP()),
+                                  EulerHeun(), t,
                                   dg!)
 adj_solStrat = solve(adj_probStrat, EulerHeun(), dt = dt)
 
 #@show adj_solStrat[end]
 
-adj_probIto = SDEAdjointProblem(solIto, BacksolveAdjoint(autojacvec = ZygoteVJP()), t, dg!,
+adj_probIto = SDEAdjointProblem(solIto, BacksolveAdjoint(autojacvec = ZygoteVJP()),
+                                EulerHeun(), t, dg!,
                                 corfunc_analytical = corfunc)
 adj_solIto = solve(adj_probIto, EM(), dt = dt)
 

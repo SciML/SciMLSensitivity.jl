@@ -156,8 +156,8 @@ const FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
                                                             type for being the initial condition `u0` of an array. This means that
                                                             many simple types, such as `Tuple`s and `NamedTuple`s, will work as
                                                             parameters in normal contexts but will fail during ODEForwardSensitivityProblem
-                                                            construction. To work around this issue for complicated cases like nested structs, 
-                                                            look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+                                                            construction. To work around this issue for complicated cases like nested structs,
+                                                            look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
                                                             or ComponentArrays.jl.
                                                             """
 
@@ -200,8 +200,8 @@ efficient method.
       type for being the initial condition `u0` of an array. This means that
       many simple types, such as `Tuple`s and `NamedTuple`s, will work as
       parameters in normal contexts but will fail during ODEForwardSensitivityProblem
-      construction. To work around this issue for complicated cases like nested structs, 
-      look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl 
+      construction. To work around this issue for complicated cases like nested structs,
+      look into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
       or ComponentArrays.jl.
 
 ### ODEForwardSensitivityProblem Syntax
@@ -218,7 +218,7 @@ ODEForwardSensitivityProblem(f::SciMLBase.AbstractODEFunction,u0,
                              kwargs...)
 ```
 
-Once constructed, this problem can be used in `solve` just like any other ODEProblem. 
+Once constructed, this problem can be used in `solve` just like any other ODEProblem.
 The solution can be deconstructed into the ODE solution and sensitivities parts using the
 `extract_local_sensitivities` function, with the following dispatches:
 
@@ -439,6 +439,14 @@ function seed_duals(x::AbstractArray{V}, f,
                                                                                           N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
     duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, eltype(vec(x))))}.(vec(x), seeds)
+end
+
+function seed_duals(x::Number, f,
+                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {V,
+                                                                                          T,
+                                                                                          N}
+    seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, typeof(x)})
+    duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, typeof(x)))}(x, seeds[1])
 end
 
 has_continuous_callback(cb::DiscreteCallback) = false
