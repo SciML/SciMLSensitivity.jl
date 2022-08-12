@@ -602,7 +602,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         tmp3 = get_tmp(_tmp3, dλ)
         tmp4 = get_tmp(_tmp4, dλ)
 
-        tmp1 = typeof(y) !== typeof(tmp1) ? ArrayInterfaceCore.restructure(y,tmp1) : tmp1
+        # workaround https://github.com/SciML/PreallocationTools.jl/pull/32
+        # the return type might not match y
+        # https://github.com/SciML/SciMLSensitivity.jl/issues/707
+        tmp1 = typeof(y) !== typeof(tmp1) ? ArrayInterfaceCore.restructure(y, tmp1) : tmp1
     else
         tmp1 = _tmp1
         tmp3 = _tmp3
