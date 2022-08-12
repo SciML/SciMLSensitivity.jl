@@ -6,17 +6,17 @@ function (project::ProjectTo{<:Tangent{<:Tuple}})(dx::StaticArrays.SArray)
 end
 
 ### Project SArray to SArray
-function ProjectTo(x::StaticArrays.SArray{S,T}) where {S, T}
-    return ProjectTo{StaticArrays.SArray}(; element=_eltype_projectto(T), axes=S)
+function ProjectTo(x::StaticArrays.SArray{S, T}) where {S, T}
+    return ProjectTo{StaticArrays.SArray}(; element = _eltype_projectto(T), axes = S)
 end
 
-function (project::ProjectTo{StaticArrays.SArray})(dx::AbstractArray{S,M}) where {S,M}
+function (project::ProjectTo{StaticArrays.SArray})(dx::AbstractArray{S, M}) where {S, M}
     return StaticArrays.SArray{project.axes}(dx)
 end
 
 ### Adjoint for SArray constructor
 
-function rrule(::Type{T}, x::Tuple) where {T<:StaticArrays.SArray}
+function rrule(::Type{T}, x::Tuple) where {T <: StaticArrays.SArray}
     project_x = ProjectTo(x)
     Array_pullback(ȳ) = (NoTangent(), project_x(ȳ))
     return T(x), Array_pullback
