@@ -68,7 +68,7 @@ du0, dp = adjoint_sensitivities(sol, Tsit5(); t = tsteps, dgdu_discrete = dg_dis
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ZygoteVJP()),
-                             tsteps, dg_disc)
+                             Tsit5(), tsteps, dg_disc)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
                                         QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
@@ -154,7 +154,7 @@ du0, dp = adjoint_sensitivities(sol, Tsit5(); dgdu_continuous = dg, g = g,
 adj_prob = ODEAdjointProblem(sol,
                              QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
                                                autojacvec = SciMLSensitivity.ZygoteVJP()),
-                             nothing, nothing, nothing, dg, nothing, g)
+                             Tsit5(), nothing, nothing, nothing, dg, nothing, g)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
                                         QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
