@@ -343,7 +343,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
-        function df(_out, u, p, t, i)
+        function df_iip(_out, u, p, t, i)
             outtype = typeof(_out) <: SubArray ?
                       DiffEqBase.parameterless_type(_out.parent) :
                       DiffEqBase.parameterless_type(_out)
@@ -404,16 +404,82 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             end
         end
 
+        function df_oop(u, p, t, i; outtype = nothing)
+            if only_end
+                eltype(Δ) <: NoTangent && return
+                if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+                    # user did sol[end] on only_end
+                    if typeof(_save_idxs) <: Number
+                        x = vec(Δ[1])
+                        _out = adapt(outtype, @view(x[_save_idxs]))
+                    elseif _save_idxs isa Colon
+                        _out = adapt(outtype, vec(Δ[1]))
+                    else
+                        _out = adapt(outtype,
+                                     vec(Δ[1])[_save_idxs])
+                    end
+                else
+                    Δ isa NoTangent && return
+                    if typeof(_save_idxs) <: Number
+                        x = vec(Δ)
+                        _out = adapt(outtype, @view(x[_save_idxs]))
+                    elseif _save_idxs isa Colon
+                        _out = adapt(outtype, vec(Δ))
+                    else
+                        x = vec(Δ)
+                        _out = adapt(outtype, @view(x[_save_idxs]))
+                    end
+                end
+            else
+                !Base.isconcretetype(eltype(Δ)) &&
+                    (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
+                if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+                    x = Δ[i]
+                    if typeof(_save_idxs) <: Number
+                        _out = @view(x[_save_idxs])
+                    elseif _save_idxs isa Colon
+                        _out = vec(x)
+                    else
+                        _out = vec(@view(x[_save_idxs]))
+                    end
+                else
+                    if typeof(_save_idxs) <: Number
+                        _out = adapt(outtype,
+                                     reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                             size(Δ)[end])[_save_idxs, i])
+                    elseif _save_idxs isa Colon
+                        _out = vec(adapt(outtype,
+                                         reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                                 size(Δ)[end])[:, i]))
+                    else
+                        _out = vec(adapt(outtype,
+                                         reshape(Δ,
+                                                 prod(size(Δ)[1:(end - 1)]),
+                                                 size(Δ)[end])[:, i]))
+                    end
+                end
+            end
+            return _out
+        end
+
         if haskey(kwargs_adj, :callback_adj)
             cb2 = CallbackSet(cb, kwargs[:callback_adj])
         else
             cb2 = cb
         end
-
-        du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts, dgdu_discrete = df,
-                                        sensealg = sensealg,
-                                        callback = cb2,
-                                        kwargs_adj...)
+        if ArrayInterfaceCore.ismutable(eltype(sol.u))
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
+                                            dgdu_discrete = df_iip,
+                                            sensealg = sensealg,
+                                            callback = cb2,
+                                            kwargs_adj...)
+        else
+            du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
+                                            dgdu_discrete = df_oop,
+                                            sensealg = sensealg,
+                                            callback = cb2,
+                                            kwargs_adj...)
+        end
 
         du0 = reshape(du0, size(u0))
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :

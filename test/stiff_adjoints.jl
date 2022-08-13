@@ -175,7 +175,7 @@ if VERSION >= v"1.7-"
         ROCK4(),
         RKC(),
         # SERK2v2(), not defined?
-        ESERK5()];
+        ESERK5()]
 
     p = rand(3)
 
@@ -214,45 +214,48 @@ if VERSION >= v"1.7-"
         dp1 = @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
         @test_broken dp≈dp1 rtol=1e-2
     end
+
+    # using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Zygote, Test
+
+    function rober(du, u, p, t)
+        y₁, y₂, y₃ = u
+        k₁, k₂, k₃ = p[1], p[2], p[3]
+        du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
+        du[2] = k₁ * y₁ - k₂ * y₂^2 - k₃ * y₂ * y₃
+        du[3] = k₂ * y₂^2 + sum(p)
+        nothing
+    end
+
+    function sum_of_solution_fwd(x)
+        _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
+        sum(solve(_prob, Rodas5(), saveat = 1, reltol = 1e-12, abstol = 1e-12))
+    end
+
+    function sum_of_solution_CASA(x; vjp = EnzymeVJP())
+        sensealg = QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+        _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
+        sum(solve(_prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = 1,
+                  sensealg = sensealg))
+    end
+
+    u0 = [1.0, 0.0, 0.0]
+    p = ones(8)  # change me, the number of parameters
+
+    grad1 = ForwardDiff.gradient(sum_of_solution_fwd, [u0; p])
+    grad2 = Zygote.gradient(sum_of_solution_CASA, [u0; p])[1]
+    grad3 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP()), [u0; p])[1]
+    grad4 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP(true)),
+                            [u0; p])[1]
+    @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = true), [u0; p])[1]
+    grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
+    @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()),
+                                     [u0; p])[1]
+    @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = TrackerVJP()),
+                                     [u0; p])[1]
+
+    @test grad1 ≈ grad2
+    @test grad1 ≈ grad3
+    @test grad1 ≈ grad4
+    #@test grad1 ≈ grad5
+    @test grad1 ≈ grad6
 end
-
-using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Zygote, Test
-
-function rober(du, u, p, t)
-    y₁, y₂, y₃ = u
-    k₁, k₂, k₃ = p[1], p[2], p[3]
-    du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
-    du[2] = k₁ * y₁ - k₂ * y₂^2 - k₃ * y₂ * y₃
-    du[3] = k₂ * y₂^2 + sum(p)
-    nothing
-end
-
-function sum_of_solution_fwd(x)
-    _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
-    sum(solve(_prob, Rodas5(), saveat = 1, reltol = 1e-12, abstol = 1e-12))
-end
-
-function sum_of_solution_CASA(x; vjp = EnzymeVJP())
-    sensealg = QuadratureAdjoint(autodiff = false, autojacvec = vjp)
-    _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
-    sum(solve(_prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = 1,
-              sensealg = sensealg))
-end
-
-u0 = [1.0, 0.0, 0.0]
-p = ones(8)  # change me, the number of parameters
-
-grad1 = ForwardDiff.gradient(sum_of_solution_fwd, [u0; p])
-grad2 = Zygote.gradient(sum_of_solution_CASA, [u0; p])[1]
-grad3 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP()), [u0; p])[1]
-grad4 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP(true)), [u0; p])[1]
-@test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = true), [u0; p])[1]
-grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
-@test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()), [u0; p])[1]
-@test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = TrackerVJP()), [u0; p])[1]
-
-@test grad1 ≈ grad2
-@test grad1 ≈ grad3
-@test grad1 ≈ grad4
-#@test grad1 ≈ grad5
-@test grad1 ≈ grad6

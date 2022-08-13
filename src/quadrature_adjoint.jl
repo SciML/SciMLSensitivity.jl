@@ -33,6 +33,21 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du, u, p, t)
     return nothing
 end
 
+function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
+    @unpack sol, discrete = S
+    f = sol.prob.f
+
+    λ, grad, y, dgrad, dy = split_states(u, t, S)
+
+    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad = dgrad, dy = dy)
+    dλ *= (-one(eltype(λ)))
+
+    if !discrete
+        dλ, dgrad = accumulate_cost(dλ, y, p, t, S, dgrad)
+    end
+    return dλ
+end
+
 function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
     @unpack y, sol = S
 
@@ -48,6 +63,18 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
     dλ = du
 
     λ, nothing, y, dλ, nothing, nothing
+end
+
+function split_states(u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
+    @unpack y, sol = S
+
+    if update
+        y = sol(t, continuity = :right)
+    end
+
+    λ = u
+
+    λ, nothing, y, nothing, nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
@@ -80,9 +107,13 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    len = length(u0)
-    λ = similar(u0, len)
-    λ .= false
+    if ArrayInterfaceCore.ismutable(u0)
+        len = length(u0)
+        λ = similar(u0, len)
+        λ .= false
+    else
+        λ = zero(u0)
+    end
     sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                     dgdu_continuous, dgdp_continuous, alg)
 
@@ -103,7 +134,7 @@ end
         odefun = ODEFunction(sense, mass_matrix = sol.prob.f.mass_matrix',
                              jac_prototype = adjoint_jac_prototype)
     end
-    return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    return ODEProblem{ArrayInterfaceCore.ismutable(z0)}(odefun, z0, tspan, p, callback = cb)
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
@@ -130,7 +161,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     λ = zero(adj_sol.prob.u0)
     # we need to alias `y`
     f_cache = zero(y)
-    f_cache .= false
     isautojacvec = get_jacvec(sensealg)
 
     dgdp_cache = dgdp === nothing ? nothing : zero(p)
@@ -198,8 +228,13 @@ end
 function (S::AdjointSensitivityIntegrand)(out, t)
     @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
     f = sol.prob.f
-    sol(y, t)
-    adj_sol(λ, t)
+    if ArrayInterfaceCore.ismutable(y)
+        sol(y, t)
+        adj_sol(λ, t)
+    else
+        y = sol(t)
+        λ = adj_sol(t)
+    end
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
 
@@ -310,8 +345,13 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
 
             for i in (length(t) - 1):-1:1
-                res .+= quadgk(integrand, t[i], t[i + 1],
-                               atol = abstol, rtol = reltol)[1]
+                if ArrayInterfaceCore.ismutable(res)
+                    res .+= quadgk(integrand, t[i], t[i + 1],
+                                   atol = abstol, rtol = reltol)[1]
+                else
+                    res += quadgk(integrand, t[i], t[i + 1],
+                                  atol = abstol, rtol = reltol)[1]
+                end
                 if t[i] == t[i + 1]
                     integrand = update_integrand_and_dgrad(res, sensealg, callback,
                                                            integrand,
