@@ -175,7 +175,7 @@ if VERSION >= v"1.7-"
         ROCK4(),
         RKC(),
         # SERK2v2(), not defined?
-        ESERK5()];
+        ESERK5()]
 
     p = rand(3)
 
