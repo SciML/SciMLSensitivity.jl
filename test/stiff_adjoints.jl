@@ -152,66 +152,68 @@ end
 rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad≈rdgrad rtol=1e-3
 
-# all implicit solvers
-solvers = [
-    # SDIRK Methods (ok)
-    ImplicitEuler(),
-    TRBDF2(),
-    KenCarp4(),
-    # Fully-Implicit Runge-Kutta Methods (FIRK)
-    RadauIIA5(),
-    # Fully-Implicit Runge-Kutta Methods (FIRK)
-    #PDIRK44(),
-    # Rosenbrock Methods
-    Rodas3(),
-    Rodas4(),
-    Rodas5(),
-    # Rosenbrock-W Methods
-    Rosenbrock23(),
-    ROS34PW3(),
-    # Stabilized Explicit Methods (ok)
-    ROCK2(),
-    ROCK4(),
-    RKC(),
-    # SERK2v2(), not defined?
-    ESERK5()];
+if VERSION >= v"1.7-"
+    # all implicit solvers
+    solvers = [
+        # SDIRK Methods (ok)
+        ImplicitEuler(),
+        TRBDF2(),
+        KenCarp4(),
+        # Fully-Implicit Runge-Kutta Methods (FIRK)
+        RadauIIA5(),
+        # Fully-Implicit Runge-Kutta Methods (FIRK)
+        #PDIRK44(),
+        # Rosenbrock Methods
+        Rodas3(),
+        Rodas4(),
+        Rodas5(),
+        # Rosenbrock-W Methods
+        Rosenbrock23(),
+        ROS34PW3(),
+        # Stabilized Explicit Methods (ok)
+        ROCK2(),
+        ROCK4(),
+        RKC(),
+        # SERK2v2(), not defined?
+        ESERK5()];
 
-p = rand(3)
+    p = rand(3)
 
-function dudt(u, p, t)
-    u .* p
-end
-
-for solver in solvers
-    function loss(p)
-        prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
-        sol = solve(prob, solver, dt = 0.01, saveat = 0.1, abstol = 1e-5, reltol = 1e-5)
-        sum(abs2, Array(sol))
+    function dudt(u, p, t)
+        u .* p
     end
 
-    println(DiffEqBase.parameterless_type(solver))
-    loss(p)
-    dp = Zygote.gradient(loss, p)[1]
+    for solver in solvers
+        function loss(p)
+            prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
+            sol = solve(prob, solver, dt = 0.01, saveat = 0.1, abstol = 1e-5, reltol = 1e-5)
+            sum(abs2, Array(sol))
+        end
 
-    function loss(p, sensealg)
-        prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
-        sol = solve(prob, solver, dt = 0.01, saveat = 0.1, sensealg = sensealg,
-                    abstol = 1e-5, reltol = 1e-5)
-        sum(abs2, Array(sol))
+        println(DiffEqBase.parameterless_type(solver))
+        loss(p)
+        dp = Zygote.gradient(loss, p)[1]
+
+        function loss(p, sensealg)
+            prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
+            sol = solve(prob, solver, dt = 0.01, saveat = 0.1, sensealg = sensealg,
+                        abstol = 1e-5, reltol = 1e-5)
+            sum(abs2, Array(sol))
+        end
+
+        dp1 = Zygote.gradient(p -> loss(p, InterpolatingAdjoint()), p)[1]
+        @test dp≈dp1 rtol=1e-2
+        dp1 = Zygote.gradient(p -> loss(p, BacksolveAdjoint()), p)[1]
+        @test dp≈dp1 rtol=1e-2
+        dp1 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
+        @test dp≈dp1 rtol=1e-2
+        dp1 = Zygote.gradient(p -> loss(p, ForwardDiffSensitivity()), p)[1]
+        @test dp≈dp1 rtol=1e-2
+        dp1 = Zygote.gradient(p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1]
+        @test dp≈dp1 rtol=1e-2
+        dp1 = @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
+        @test_broken dp≈dp1 rtol=1e-2
     end
-
-    dp1 = Zygote.gradient(p -> loss(p, InterpolatingAdjoint()), p)[1]
-    @test dp≈dp1 rtol=1e-2
-    dp1 = Zygote.gradient(p -> loss(p, BacksolveAdjoint()), p)[1]
-    @test dp≈dp1 rtol=1e-2
-    dp1 = Zygote.gradient(p -> loss(p, QuadratureAdjoint()), p)[1]
-    @test dp≈dp1 rtol=1e-2
-    dp1 = Zygote.gradient(p -> loss(p, ForwardDiffSensitivity()), p)[1]
-    @test dp≈dp1 rtol=1e-2
-    dp1 = Zygote.gradient(p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1]
-    @test dp≈dp1 rtol=1e-2
-    dp1 = @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
-    @test_broken dp≈dp1 rtol=1e-2
 end
 
 using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Zygote, Test
