@@ -49,6 +49,28 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
+  - label: "Documentation"
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+    command: |
+      julia --project -e '
+        println("--- :julia: Instantiating project")
+        using Pkg
+        Pkg.instantiate()
+        Pkg.activate("docs")
+        Pkg.instantiate()
+        push!(LOAD_PATH, @__DIR__)
+        println("+++ :julia: Building documentation")
+        include("docs/make.jl")'
+    agents:
+      queue: "juliagpu"
+      cuda: "*"
+    env:
+      DATADEPS_ALWAYS_ACCEPT: true
+    if: build.message !~ /\[skip docs\]/ && !build.pull_request.draft
+    timeout_in_minutes: 1000
+
   - label: "Julia 1"
     plugins:
       - JuliaCI/julia#v1:
@@ -66,4 +88,4 @@ steps:
 
 env:
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
-  # SECRET_CODECOV_TOKEN: "..."
+  SECRET_DOCUMENTER_KEY: "B9R7saQARpCbndRchBC7rJziRQiKEgbi59ob+n+l73+Vsmfw6nKMew83nedo3vsxJsLWfT3fMHfF47JBWNU7FVpulHil/rsiiEP8gSQ8ZyB0RS3G0fMMTEqL7sngRhokxUqiD3/wHtTu1Ep/xIpNk6P0XYXaUBQWriTAYG+c+I17fz0XLMgsOu9Y1zhL0kKzyjf4OVWnqS4igCc/Z2uf3Odpw19M4QbwQ5Bds2fLJ+/tFLpqdIoTbfAut9Z/8yProf2TmEhmIICDixXJ7b1TP//7/mVTEG4xYjjqWASkmgAgarH8uxwfbxIcM7+ypbLckc4b3Yq7c8HtrM8UhhKVnw==;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" # For authentication with SSH deploy key
