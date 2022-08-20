@@ -4,7 +4,7 @@ This tutorial has been adapted from [here](https://github.com/CarloLucibello/Gra
 
 In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
 
-```julia
+```@example
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
@@ -66,9 +66,9 @@ initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 
 function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32) 
+                         init_weight=glorot_normal, init_bias=zeros32)
     init_Ã = ()->copy(Ã)
-    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation, 
+    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation,
                                                                                                        init_Ã, init_weight, init_bias)
 end
 
@@ -85,14 +85,14 @@ diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
 
 # make NeuralODE work with Lux.Chain
 # remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
-initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
+initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model)
 initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,
@@ -116,7 +116,7 @@ end
 
 # Training
 function train()
-    ## Setup model 
+    ## Setup model
     rng = Random.default_rng()
     Random.seed!(rng, 0)
 
@@ -144,7 +144,7 @@ train()
 
 ## Load the Required Packages
 
-```julia
+```@example neuralgde
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
@@ -164,7 +164,7 @@ device = CUDA.functional() ? gpu : cpu
 
 The dataset is available in the desired format in the `MLDatasets` repository. We shall download the dataset from there.
 
-```julia
+```@example neuralgde
 dataset = Cora();
 ```
 
@@ -172,7 +172,7 @@ dataset = Cora();
 
 Convert the data to `GNNGraph` and get the adjacency matrix from the graph `g`.
 
-```julia
+```@example neuralgde
 classes = dataset.metadata["classes"]
 g = mldataset2gnngraph(dataset) |> device
 onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
@@ -184,8 +184,8 @@ Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ```
 ### Training Data
 
-GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion. 
-```julia
+GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion.
+```@example neuralgde
 (; train_mask, val_mask, test_mask) = g.ndata
 ytrain = y[:,train_mask]
 ```
@@ -194,7 +194,7 @@ ytrain = y[:,train_mask]
 
 We shall use only 16 hidden state dimensions.
 
-```julia
+```@example neuralgde
 nin = size(X, 1)
 nhidden = 16
 nout = length(classes)
@@ -205,7 +205,7 @@ epochs = 20
 Here we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more informations on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
 
 
-```julia
+```@example neuralgde
 struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
     Ã::AbstractMatrix  # nomalized_adjacency matrix
     in_chs::Int
@@ -227,8 +227,8 @@ function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32) 
-    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation, 
+                         init_weight=glorot_normal, init_bias=zeros32)
+    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation,
                                                                                        init_weight, init_bias)
 end
 
@@ -242,7 +242,7 @@ end
 
 Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and the a `Dense` layer to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
 
-```julia
+```@example neuralgde
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
     return dropdims(gpu(x); dims=3)
 end
@@ -252,7 +252,7 @@ gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,
@@ -266,7 +266,7 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
 
 We shall be using the standard categorical crossentropy loss function which is used for multiclass classification tasks.
 
-```julia
+```@example neuralgde
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
 
 function loss(x, y, mask, model, ps, st)
@@ -284,7 +284,7 @@ end
 
 ### Setup Model
 We need to manually set up our mode with `Lux`, and convert the paramters to `ComponentArray` so that they can work well with sensitivity algorithms.
-```julia
+```@example neuralgde
 rng = Random.default_rng()
 Random.seed!(rng, 0)
 
@@ -296,7 +296,7 @@ st = st |> device
 
 For this task we will be using the `ADAM` optimizer with a learning rate of `0.01`.
 
-```julia
+```@example neuralgde
 opt = Optimisers.Adam(0.01f0)
 st_opt = Optimisers.setup(opt,ps)
 ```
@@ -305,7 +305,7 @@ st_opt = Optimisers.setup(opt,ps)
 
 Finally, we use the package `Optimisers` to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
 
-```julia
+```@example neuralgde
 for _ in 1:epochs
     (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
     gs = back((one(l), nothing))[1]
