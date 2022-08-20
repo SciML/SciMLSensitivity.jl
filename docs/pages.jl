@@ -5,7 +5,6 @@ pages = [
                                                                                                 "ad_examples/adjoint_continuous_functional.md",
                                                                                                 "ad_examples/chaotic_ode.md"],
                        "Fitting Ordinary Differential Equation (ODE) Tutorials" => Any["ode_fitting/optimization_ode.md",
-                                                                                       "ode_fitting/stiff_ode_fit.md",
                                                                                        "ode_fitting/exogenous_input.md",
                                                                                        "ode_fitting/data_parallel.md",
                                                                                        "ode_fitting/prediction_error_method.md",
