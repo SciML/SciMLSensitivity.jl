@@ -64,14 +64,13 @@ steps:
         println("+++ :julia: Building documentation")
         include("docs/make.jl")'
     agents:
-      os: "linux"
-      queue: "juliaecosystem"
+      queue: "juliagpu"
+      cuda: "*"
       arch: "x86_64"
-      exclusive: true
     env:
       DATADEPS_ALWAYS_ACCEPT: true
     if: build.message !~ /\[skip docs\]/ && !build.pull_request.draft
-    timeout_in_minutes: 600
+    timeout_in_minutes: 1000
 
   - label: "Julia 1"
     plugins:
