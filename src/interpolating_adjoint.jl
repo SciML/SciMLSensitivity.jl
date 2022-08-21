@@ -354,7 +354,8 @@ end
                                  copy(zzz') II]
     end
 
-    odefun = ODEFunction(sense, mass_matrix = mm, jac_prototype = adjoint_jac_prototype)
+    odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
+                                     jac_prototype = adjoint_jac_prototype)
     return ODEProblem(odefun, z0, tspan, p, callback = cb)
 end
 

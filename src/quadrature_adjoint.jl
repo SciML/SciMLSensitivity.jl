@@ -129,12 +129,14 @@ end
 
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
-        odefun = ODEFunction(sense, jac_prototype = adjoint_jac_prototype)
+        odefun = ODEFunction{ArrayInterfaceCore.ismutable(z0), true}(sense,
+                                                                     jac_prototype = adjoint_jac_prototype)
     else
-        odefun = ODEFunction(sense, mass_matrix = sol.prob.f.mass_matrix',
-                             jac_prototype = adjoint_jac_prototype)
+        odefun = ODEFunction{ArrayInterfaceCore.ismutable(z0), true}(sense,
+                                                                     mass_matrix = sol.prob.f.mass_matrix',
+                                                                     jac_prototype = adjoint_jac_prototype)
     end
-    return ODEProblem{ArrayInterfaceCore.ismutable(z0)}(odefun, z0, tspan, p, callback = cb)
+    return ODEProblem(odefun, z0, tspan, p, callback = cb)
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,

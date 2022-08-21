@@ -64,7 +64,7 @@ end
     @unpack f, p, u0 = sol.prob
 
     if sol.prob isa NonlinearProblem
-        f = convert(ODEFunction, f)
+        f = ODEFunction(f)
     end
 
     dgdu === nothing && dgdp === nothing && g === nothing &&
