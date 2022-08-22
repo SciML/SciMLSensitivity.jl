@@ -93,7 +93,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack p, u0, tspa
+    @unpack p, u0, tspan = sol.prob
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction && sol.prob.f.f isa FunctionWrappersWrappers
