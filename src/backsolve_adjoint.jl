@@ -134,7 +134,8 @@ end
     @unpack p, u0 = sol.prob
 
     ## Force recompile mode until vjps are specialized to handle this!!!
-    f = if sol.prob.f isa ODEFunction && sol.prob.f.f isa FunctionWrappersWrappers
+    f = if sol.prob.f isa ODEFunction &&
+           sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
         ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
     else
         sol.prob.f
