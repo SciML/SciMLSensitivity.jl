@@ -516,7 +516,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     end
 
     ## Force recompile mode until jvps are specialized to handle this!!!
-    _f = if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers
+    _f = if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
         ODEFunction{isinplace(prob), true}(unwrapped_f(prob.f))
     else
         prob.f
@@ -946,7 +946,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             # Recurse to all Array{TrackedArray}
 
             ## Force recompile mode because it's required for the tracked type handling
-            if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers
+            if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
                 f = ODEFunction{isinplace(prob), true}(unwrapped_f(prob.f))
                 _prob = remake(prob, f = f, u0 = map(identity, _u0), p = _p, tspan = _tspan)
             else
@@ -1111,7 +1111,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             # Recurse to all Array{TrackedArray}
 
             ## Force recompile mode because it's required for the tracked type handling
-            if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers
+            if prob.f isa ODEFunction && prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
                 f = ODEFunction{isinplace(prob), true}(unwrapped_f(prob.f))
                 _prob = remake(prob, f = f, u0 = reshape([x for x in _u0], size(_u0)),
                                p = _p,
