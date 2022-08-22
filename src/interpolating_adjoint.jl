@@ -274,7 +274,15 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    @unpack p, u0, tspan = sol.prob
+
+    ## Force recompile mode until vjps are specialized to handle this!!!
+    f = if sol.prob.f isa ODEFunction &&
+           sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
+        ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
+    else
+        sol.prob.f
+    end
 
     # check if solution was terminated, then use reduced time span
     terminated = false
