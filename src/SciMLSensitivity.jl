@@ -31,7 +31,7 @@ import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, Pr
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
-@static if isdefined(SciMLBase,:unwrapped_f)
+@static if isdefined(SciMLBase, :unwrapped_f)
     import SciMLBase: unwrapped_f
 else
     unwrapped_f(f) = f
