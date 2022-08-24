@@ -31,17 +31,7 @@ import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, Pr
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
-@static if isdefined(SciMLBase, :unwrapped_f)
-    import SciMLBase: unwrapped_f
-else
-    unwrapped_f(f) = f
-    unwrapped_f(f::DiffEqBase.Void) = unwrapped_f(f.f)
-    unwrapped_f(f::ODEFunction) = unwrapped_f(f.f)
-    unwrapped_f(f::SDEFunction) = unwrapped_f(f.f)
-    function unwrapped_f(f::FunctionWrappersWrappers.FunctionWrappersWrapper)
-        f.fw[1].obj[]
-    end
-end
+import SciMLBase: unwrapped_f
 
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
