@@ -128,7 +128,8 @@ end
 function jacobian(f, x::AbstractArray{<:Number},
                   alg::DiffEqBase.AbstractSensitivityAlgorithm)
     if alg_autodiff(alg)
-        J = ForwardDiff.jacobian(f, x)
+        uf = unwrapped_f(f)
+        J = ForwardDiff.jacobian(uf, x)
     else
         J = FiniteDiff.finite_difference_jacobian(f, x)
     end
@@ -139,10 +140,11 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::Union{Nothing, AbstractArray{<:Number}},
                    alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
     if alg_autodiff(alg)
+        uf = unwrapped_f(f)
         if fx === nothing
-            ForwardDiff.jacobian!(J, f, x)
+            ForwardDiff.jacobian!(J, uf, x)
         else
-            ForwardDiff.jacobian!(J, f, fx, x, jac_config)
+            ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
         end
     else
         FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
@@ -184,7 +186,8 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
         TD = typeof(first(seed))
         T = typeof(first(seed).partials)
         DiffEqBase.@.. seed = TD(x, T(tuple(v)))
-        f(buffer, seed)
+        uf = unwrapped_f(f)
+        uf(buffer, seed)
         Jv .= ForwardDiff.partials.(buffer, 1)
     else
         buffer1, buffer2 = config
@@ -230,8 +233,9 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
+    f = unwrapped_f(S.f)
 
     @unpack J, uf, f_cache, jac_config = S.diffcache
 
@@ -358,8 +362,10 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     isautojacvec = get_jacvec(sensealg)
+    f = unwrapped_f(S.f)
+
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Tracker.forward(y, p) do u, p
@@ -414,9 +420,10 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
     isautojacvec = get_jacvec(sensealg)
+    f = unwrapped_f(S.f)
 
     if typeof(p) <: DiffEqBase.NullParameters
         _p = similar(y, (0,))
@@ -531,10 +538,12 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
 
     isautojacvec = get_jacvec(sensealg)
+    f = unwrapped_f(S.f)
+                                    
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
@@ -596,8 +605,9 @@ end
 
 function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
                       W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
+    f = unwrapped_f(S.f)
 
     isautojacvec = get_jacvec(sensealg)
 
@@ -634,7 +644,7 @@ end
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
-    f = S.f.f
+    f = unwrapped_f(S.f)
 
     prob = getprob(S)
 
@@ -729,8 +739,9 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
                     dy) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
+    f = unwrapped_f(S.f)
 
     if dgrad !== nothing
         @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
@@ -817,8 +828,9 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
                     dy) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg, = S
     prob = getprob(S)
+    f = unwrapped_f(S.f)
 
     for (i, λi) in enumerate(λ)
         tapei = S.diffcache.paramjac_noise_config[i]
