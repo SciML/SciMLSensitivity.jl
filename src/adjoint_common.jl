@@ -469,8 +469,11 @@ function (f::ReverseLossCallback)(integrator)
         if J isa DiffCache
             J = get_tmp(J, y)
         end
-
-        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        if DiffEqBase.has_jac(f)
+            f.jac(J, y, p, t)
+        else 
+            jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        end
         dhdd = J[algevar_idxs, diffvar_idxs]
         dhda = J[algevar_idxs, algevar_idxs]
         # TODO: maybe need a `conj`
