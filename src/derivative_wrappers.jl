@@ -253,8 +253,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
 
                     # This is really slow and allocates, but it's a fallback only for a
                     # rare case so it can be optimized in the future
-                    _jac_config = build_jac_config(sensealg, uf, t * dλ)
-                    jacobian!(J, _uf, y, f_cache, sensealg, _jac_config)
+                    jacobian!(J, _uf, y, nothing, sensealg, nothing)
                 else
                     uf.t = t
                     uf.p = p
