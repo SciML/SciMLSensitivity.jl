@@ -738,9 +738,8 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
                     dy) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    @unpack sensealg, f = S
     prob = getprob(S)
-    f = unwrapped_f(S.f)
 
     if dgrad !== nothing
         @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
@@ -870,8 +869,9 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     dy) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    @unpack sensealg = S
     prob = getprob(S)
+    f = unwrapped_f(S.f)
 
     if StochasticDiffEq.is_diagonal_noise(prob)
         if inplace_sensitivity(S)
