@@ -174,6 +174,8 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     f_cache = zero(y)
     isautojacvec = get_jacvec(sensealg)
 
+    unwrappedf = unwrapped_f(f)
+
     dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
     if sensealg.autojacvec isa ReverseDiffVJP
@@ -181,12 +183,12 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
             ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
                 du1 = similar(p, size(u))
                 du1 .= false
-                f(du1, u, p, first(t))
+                unwrappedf(du1, u, p, first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                vec(f(u, p, first(t)))
+                vec(unwrappedf(u, p, first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -198,7 +200,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
         paramjac_config = zero(y), zero(y)
-        pf = let f = f.f
+        pf = let f = unwrappedf
             if DiffEqBase.isinplace(prob) && prob isa RODEProblem
                 function (out, u, _p, t, W)
                     f(out, u, _p, t, W)
@@ -228,7 +230,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = DiffEqBase.ParamJacobianWrapper(f, tspan[1], y)
+        pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
