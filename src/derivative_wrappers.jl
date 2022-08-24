@@ -233,9 +233,8 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    @unpack sensealg, f = S
     prob = getprob(S)
-    f = unwrapped_f(S.f)
 
     @unpack J, uf, f_cache, jac_config = S.diffcache
 
@@ -543,7 +542,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
 
     isautojacvec = get_jacvec(sensealg)
     f = unwrapped_f(S.f)
-                                    
+
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
