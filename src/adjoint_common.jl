@@ -38,6 +38,10 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         @unpack u0, p, tspan = prob
     end
+
+    # Remove any function wrappers: it breaks autodiff
+    f = unwrapped_f(f)
+
     numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
     numindvar = length(u0)
     isautojacvec = get_jacvec(sensealg)
