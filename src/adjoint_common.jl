@@ -427,13 +427,8 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(prob.u0)
-    if ArrayInterfaceCore.ismutable(y)
-        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, nothing)
-    else
-        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol)
-    end
+    return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
+                                sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol)
 end
 
 function (f::ReverseLossCallback)(integrator)
@@ -469,8 +464,8 @@ function (f::ReverseLossCallback)(integrator)
         if J isa DiffCache
             J = get_tmp(J, y)
         end
-        if DiffEqBase.has_jac(f)
-            f.jac(J, y, p, t)
+        if DiffEqBase.has_jac(sol.prob.f)
+            sol.prob.f.jac(J, y, p, t)
         else 
             jacobian!(J, uf, y, f_cache, sensealg, jac_config)
         end
