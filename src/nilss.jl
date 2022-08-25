@@ -38,8 +38,8 @@ function NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu, dgdp,
             dg_val .= false
         end
     else
-        pgpu = UGradientWrapper(g, tspan[1], p) # ∂g∂u
-        pgpp = ParamGradientWrapper(g, tspan[1], u0) #∂g∂p
+        pgpu = UGradientWrapper(unwrapped_f(g), tspan[1], p) # ∂g∂u
+        pgpp = ParamGradientWrapper(unwrapped_f(g), tspan[1], u0) #∂g∂p
         pgpu_config = build_grad_config(sensealg, pgpu, u0, tspan[1])
         pgpp_config = build_grad_config(sensealg, pgpp, u0, tspan[1])
         dg_val = (similar(u0, numindvar), similar(u0, numparams))

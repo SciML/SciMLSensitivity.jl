@@ -57,9 +57,10 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
                        t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
                        dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
                        kwargs...)
-    @unpack f, p, u0, tspan = sol.prob
+    @unpack p, u0, tspan = sol.prob
     @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
 
+    f = unwrapped_f(sol.prob.f)
     numindvar = length(u0)
     numparams = length(p)
 

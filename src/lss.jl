@@ -40,8 +40,8 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
                                 paramjac, u0,
                                 alg, p, f_cache, mm,
                                 colorvec, tspan, g, dgdu, dgdp)
-    uf = DiffEqBase.UJacobianWrapper(f, tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(f, tspan[1], copy(u0))
+    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
 
     if DiffEqBase.has_jac(f)
         jac_config = nothing
@@ -135,7 +135,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
                            dgdp_continuous = nothing,
                            g = sensealg.g,
                            kwargs...)
-    @unpack f, p, u0, tspan = sol.prob
+    @unpack p, u0, tspan = sol.prob
 
     isinplace = DiffEqBase.isinplace(f)
 

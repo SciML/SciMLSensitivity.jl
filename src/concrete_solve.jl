@@ -1193,7 +1193,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     if haskey(kwargs, :callback)
         error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
     else
-        _prob = remake(prob, u0 = u0, p = p)
+        _prob = remake(prob, f = unwrapped_f(prob.f), u0 = u0, p = p)
     end
 
     sol = solve(_prob, alg, args...; save_start = save_start, save_end = save_end,
