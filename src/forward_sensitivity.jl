@@ -404,7 +404,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
     end
 
     # TODO: Use user tgrad. iW can be safely ignored here.
-    sense = ODEForwardSensitivityFunction(f, f.analytic, nothing, f.jac, nothing,
+    sense = ODEForwardSensitivityFunction(unwrapped_f(f), f.analytic, nothing, f.jac, nothing,
                                           nothing, nothing, f.paramjac,
                                           nothing, nothing,
                                           uf, pf, u0, jac_config,

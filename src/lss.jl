@@ -137,7 +137,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
                            kwargs...)
     @unpack p, u0, tspan = sol.prob
 
-    isinplace = DiffEqBase.isinplace(f)
+    isinplace = DiffEqBase.isinplace(sol.prob.f)
 
     # some shadowing sensealgs require knowledge of g
     check_for_g(sensealg, g)
