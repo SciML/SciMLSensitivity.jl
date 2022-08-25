@@ -159,7 +159,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
         dgdp = dgdp_continuous === nothing ? dgdp_continuous :
                (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
     end
-
+    f = sol.prob.f
     sense = LSSSensitivityFunction(sensealg, f, f.analytic, f.jac,
                                    f.jac_prototype, f.sparsity, f.paramjac,
                                    u0, sensealg,

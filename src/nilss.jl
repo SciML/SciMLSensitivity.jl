@@ -230,7 +230,9 @@ function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
     @unpack S, nus = NS
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]
-    S.f(dy, y, p, t) # Make the first part be the ODE
+
+    f = unwrapped_f(S.f)
+    f(dy, y, p, t) # Make the first part be the ODE
 
     # Now do sensitivities
     # Compute the Jacobian
@@ -354,10 +356,11 @@ function dudt_g_dgdu!(dudt, dgdu_val, gsave, nilssprob::NILSSProblem, y, p, iseg
         _dudt = @view dudt[:, j, iseg]
 
         # compute dudt
+        f = unwrapped_f(prob.f)
         if isinplace(prob)
-            prob.f(_dudt, u, p, nothing)
+            f(_dudt, u, p, nothing)
         else
-            copyto!(_dudt, prob.f(u, p, nothing))
+            copyto!(_dudt, f(u, p, nothing))
         end
 
         # compute objective

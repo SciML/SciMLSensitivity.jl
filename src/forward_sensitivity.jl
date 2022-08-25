@@ -356,8 +356,8 @@ function ODEForwardSensitivityProblem(f::F, u0,
         throw(ForwardSensitivityParameterCompatibilityError())
     end
 
-    uf = DiffEqBase.UJacobianWrapper(f, tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(f, tspan[1], copy(u0))
+    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
     if isautojacmat
         if alg_autodiff(alg)
             jac_config_seed = ForwardDiff.Dual{typeof(uf)
@@ -404,7 +404,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
     end
 
     # TODO: Use user tgrad. iW can be safely ignored here.
-    sense = ODEForwardSensitivityFunction(unwrapped_f(f), f.analytic, nothing, f.jac, nothing,
+    sense = ODEForwardSensitivityFunction(f, f.analytic, nothing, f.jac, nothing,
                                           nothing, nothing, f.paramjac,
                                           nothing, nothing,
                                           uf, pf, u0, jac_config,
