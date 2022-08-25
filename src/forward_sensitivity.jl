@@ -356,8 +356,8 @@ function ODEForwardSensitivityProblem(f::F, u0,
         throw(ForwardSensitivityParameterCompatibilityError())
     end
 
-    uf = DiffEqBase.UJacobianWrapper(f, tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(f, tspan[1], copy(u0))
+    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
     if isautojacmat
         if alg_autodiff(alg)
             jac_config_seed = ForwardDiff.Dual{typeof(uf)

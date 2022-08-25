@@ -272,14 +272,15 @@ end
     else
         transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
                                                              corfunc_analytical)
-        drift_function = ODEFunction(transformed_function)
+        drift_function = ODEFunction{false, true}(transformed_function)
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
                                                       dgdu_continuous, dgdp_continuous,
                                                       drift_function, alg)
     end
 
-    diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
-                                     paramjac = diffusion_paramjac)
+    diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
+                                                                jac = diffusion_jac,
+                                                                paramjac = diffusion_paramjac)
     sense_diffusion = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
                                                       dgdu_continuous, dgdp_continuous,
                                                       diffusion_function, alg;

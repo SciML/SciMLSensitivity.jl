@@ -38,8 +38,8 @@ function NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu, dgdp,
             dg_val .= false
         end
     else
-        pgpu = UGradientWrapper(g, tspan[1], p) # ∂g∂u
-        pgpp = ParamGradientWrapper(g, tspan[1], u0) #∂g∂p
+        pgpu = UGradientWrapper(unwrapped_f(g), tspan[1], p) # ∂g∂u
+        pgpp = ParamGradientWrapper(unwrapped_f(g), tspan[1], u0) #∂g∂p
         pgpu_config = build_grad_config(sensealg, pgpu, u0, tspan[1])
         pgpp_config = build_grad_config(sensealg, pgpp, u0, tspan[1])
         dg_val = (similar(u0, numindvar), similar(u0, numparams))
@@ -230,7 +230,9 @@ function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
     @unpack S, nus = NS
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]
-    S.f(dy, y, p, t) # Make the first part be the ODE
+
+    f = unwrapped_f(S.f)
+    f(dy, y, p, t) # Make the first part be the ODE
 
     # Now do sensitivities
     # Compute the Jacobian
@@ -354,10 +356,11 @@ function dudt_g_dgdu!(dudt, dgdu_val, gsave, nilssprob::NILSSProblem, y, p, iseg
         _dudt = @view dudt[:, j, iseg]
 
         # compute dudt
+        f = unwrapped_f(prob.f)
         if isinplace(prob)
-            prob.f(_dudt, u, p, nothing)
+            f(_dudt, u, p, nothing)
         else
-            copyto!(_dudt, prob.f(u, p, nothing))
+            copyto!(_dudt, f(u, p, nothing))
         end
 
         # compute objective

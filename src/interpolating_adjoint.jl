@@ -431,8 +431,9 @@ end
                                                               abstol = abstol),
                                                              tspan = tspan)
 
-    diffusion_function = ODEFunction(sol.prob.g, jac = diffusion_jac,
-                                     paramjac = diffusion_paramjac)
+    diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
+                                                                jac = diffusion_jac,
+                                                                paramjac = diffusion_paramjac)
     sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
                                                                  dgdu_continuous,
                                                                  dgdp_continuous,

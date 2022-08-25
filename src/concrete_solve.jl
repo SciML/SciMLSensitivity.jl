@@ -6,9 +6,10 @@
 function inplace_vjp(prob, u0, p, verbose)
     du = copy(u0)
     ez = try
+        f = unwrapped_f(prob.f)
         Enzyme.autodiff(Enzyme.Duplicated(du, du),
                         copy(u0), copy(p), prob.tspan[1]) do out, u, _p, t
-            prob.f(out, u, _p, t)
+            f(out, u, _p, t)
             nothing
         end
         true
@@ -1192,7 +1193,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     if haskey(kwargs, :callback)
         error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
     else
-        _prob = remake(prob, u0 = u0, p = p)
+        _prob = remake(prob, f = unwrapped_f(prob.f), u0 = u0, p = p)
     end
 
     sol = solve(_prob, alg, args...; save_start = save_start, save_end = save_end,
