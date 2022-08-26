@@ -50,7 +50,7 @@ GPU:
 ```@example dataparallel
 xs = Float32.([0 1 2
                0 0 0])
-prob = ODEProblem(f,gpu(u0),(0f0,1f0),gpu(p))
+prob = ODEProblem(f,Lux.gpu(u0),(0f0,1f0),Lux.gpu(p))
 solve(prob,Tsit5())
 ```
 
