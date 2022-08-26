@@ -5,6 +5,7 @@
 
 function inplace_vjp(prob, u0, p, verbose)
     du = copy(u0)
+
     ez = try
         f = unwrapped_f(prob.f)
         Enzyme.autodiff(Enzyme.Duplicated(du, du),
@@ -22,25 +23,28 @@ function inplace_vjp(prob, u0, p, verbose)
 
     # Determine if we can compile ReverseDiff
     compile = try
+        f = unwrapped_f(prob.f)
         if DiffEqBase.isinplace(prob)
-            !hasbranching(prob.f, copy(u0), u0, p, prob.tspan[1])
+            !hasbranching(f, copy(u0), u0, p, prob.tspan[1])
         else
-            !hasbranching(prob.f, u0, p, prob.tspan[1])
+            !hasbranching(f, u0, p, prob.tspan[1])
         end
     catch
         false
     end
 
     vjp = try
+        f = unwrapped_f(prob.f)
         ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u, p, t
             du1 = similar(u, size(u))
-            prob.f(du1, u, p, first(t))
+            f(du1, u, p, first(t))
             return vec(du1)
         end
         ReverseDiffVJP(compile)
     catch
         false
     end
+
     return vjp
 end
 
