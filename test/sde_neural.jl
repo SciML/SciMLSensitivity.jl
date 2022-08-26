@@ -187,7 +187,7 @@ end
 
         ensembleprob = EnsembleProblem(prob, prob_func = prob_func)
 
-        _sol = solve(ensembleprob, alg, EnsembleThreads(), sensealg = BacksolveAdjoint(),
+        _sol = solve(ensembleprob, alg, EnsembleThreads(), sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
                      saveat = ts, trajectories = 10,
                      abstol = 1e-1, reltol = 1e-1)
         A = convert(Array, _sol)
