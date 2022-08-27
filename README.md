@@ -5,7 +5,7 @@
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](http://sensitivity.sciml.ai/stable/)
 [![Global Docs](https://img.shields.io/badge/docs-SciML-blue.svg)](https://docs.sciml.ai/dev/modules/SciMLSensitivity/)
 
-[![codecov](https://codecov.io/gh/SciML/SciMLSensitivity.jl/branch/master/graph/badge.svg?token=FwXaKBNW67)](https://codecov.io/gh/SciML/SciMLSensitivity.jl)
+[![codecov](https://codecov.io/gh/SciML/SciMLSensitivity.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/SciMLSensitivity.jl)
 [![Build Status](https://github.com/SciML/SciMLSensitivity.jl/workflows/CI/badge.svg)](https://github.com/SciML/SciMLSensitivity.jl/actions?query=workflow%3ACI)
 [![Build status](https://badge.buildkite.com/e0ee4d9d914eb44a43c291d78c53047eeff95e7edb7881b6f7.svg)](https://buildkite.com/julialang/SciMLSensitivity-dot-jl)
 
