@@ -4,7 +4,7 @@ This tutorial has been adapted from [here](https://github.com/CarloLucibello/Gra
 
 In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
 
-```@example
+```julia
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
@@ -144,7 +144,7 @@ train()
 
 ## Load the Required Packages
 
-```@example neuralgde
+```julia
 # Load the packages
 using GraphNeuralNetworks, DifferentialEquations
 using DiffEqFlux: NeuralODE
@@ -164,7 +164,7 @@ device = CUDA.functional() ? gpu : cpu
 
 The dataset is available in the desired format in the `MLDatasets` repository. We shall download the dataset from there.
 
-```@example neuralgde
+```julia
 dataset = Cora();
 ```
 
@@ -172,7 +172,7 @@ dataset = Cora();
 
 Convert the data to `GNNGraph` and get the adjacency matrix from the graph `g`.
 
-```@example neuralgde
+```julia
 classes = dataset.metadata["classes"]
 g = mldataset2gnngraph(dataset) |> device
 onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
@@ -185,7 +185,7 @@ Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ### Training Data
 
 GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion.
-```@example neuralgde
+```julia
 (; train_mask, val_mask, test_mask) = g.ndata
 ytrain = y[:,train_mask]
 ```
@@ -194,7 +194,7 @@ ytrain = y[:,train_mask]
 
 We shall use only 16 hidden state dimensions.
 
-```@example neuralgde
+```julia
 nin = size(X, 1)
 nhidden = 16
 nout = length(classes)
@@ -205,7 +205,7 @@ epochs = 20
 Here we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more informations on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
 
 
-```@example neuralgde
+```julia
 struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
     Ã::AbstractMatrix  # nomalized_adjacency matrix
     in_chs::Int
@@ -242,7 +242,7 @@ end
 
 Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and the a `Dense` layer to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
 
-```@example neuralgde
+```julia
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
     return dropdims(gpu(x); dims=3)
 end
@@ -266,7 +266,7 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
 
 We shall be using the standard categorical crossentropy loss function which is used for multiclass classification tasks.
 
-```@example neuralgde
+```julia
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
 
 function loss(x, y, mask, model, ps, st)
@@ -284,7 +284,7 @@ end
 
 ### Setup Model
 We need to manually set up our mode with `Lux`, and convert the paramters to `ComponentArray` so that they can work well with sensitivity algorithms.
-```@example neuralgde
+```julia
 rng = Random.default_rng()
 Random.seed!(rng, 0)
 
@@ -296,7 +296,7 @@ st = st |> device
 
 For this task we will be using the `ADAM` optimizer with a learning rate of `0.01`.
 
-```@example neuralgde
+```julia
 opt = Optimisers.Adam(0.01f0)
 st_opt = Optimisers.setup(opt,ps)
 ```
@@ -305,7 +305,7 @@ st_opt = Optimisers.setup(opt,ps)
 
 Finally, we use the package `Optimisers` to learn the parameters `ps`. We run the training loop for `epochs` number of iterations.
 
-```@example neuralgde
+```julia
 for _ in 1:epochs
     (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
     gs = back((one(l), nothing))[1]
