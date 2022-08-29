@@ -405,7 +405,7 @@ inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
                            dg2Type,
-                           cacheType, solType}
+                           cacheType, fType, solType}
     isq::Bool
     λ::λType
     t::timeType
@@ -417,6 +417,7 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg
     dgdu::dg1Type
     dgdp::dg2Type
     diffcache::cacheType
+    f::fType
     sol::solType
 end
 
@@ -427,8 +428,15 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(prob.u0)
-    return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f)
+    if ArrayInterfaceCore.ismutable(y)
+        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f, 
+                                   nothing)
+    else
+        return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f, 
+                                   sensefun.sol)
+    end
 end
 
 function (f::ReverseLossCallback)(integrator)
