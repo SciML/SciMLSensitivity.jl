@@ -473,7 +473,7 @@ function (f::ReverseLossCallback)(integrator)
             J = get_tmp(J, y)
         end
         if DiffEqBase.has_jac(f.f)
-            f.f.jac(J, y, p, t)
+            f.f.jac(J, y, p, t[cur_time[]])
         else 
             jacobian!(J, uf, y, f_cache, sensealg, jac_config)
         end
