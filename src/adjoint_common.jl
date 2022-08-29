@@ -428,7 +428,7 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     prob = getprob(sensefun)
     idx = length(prob.u0)
     return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol)
+                                sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f)
 end
 
 function (f::ReverseLossCallback)(integrator)
