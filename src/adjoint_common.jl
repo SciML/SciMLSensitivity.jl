@@ -464,8 +464,8 @@ function (f::ReverseLossCallback)(integrator)
         if J isa DiffCache
             J = get_tmp(J, y)
         end
-        if DiffEqBase.has_jac(sol.prob.f)
-            sol.prob.f.jac(J, y, p, t)
+        if DiffEqBase.has_jac(f.f)
+            f.f.jac(J, y, p, t)
         else 
             jacobian!(J, uf, y, f_cache, sensealg, jac_config)
         end
