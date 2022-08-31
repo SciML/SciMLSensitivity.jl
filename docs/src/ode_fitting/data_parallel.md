@@ -192,7 +192,7 @@ the message passing required for cluster compute, one needs to ensure
 that all of the required functions are defined on the worker processes.
 The following is a full example of a distributed batching setup:
 
-```@example dataparallel
+```julia
 using Distributed
 addprocs(4)
 
@@ -249,8 +249,8 @@ function, such as requiring it has no boundschecking or allocations.
 The following is an example of minibatch ensemble parallelism across
 a GPU:
 
-```@example dataparallel
-using DifferentialEquations, Optimization, OptimizationOptimJL
+```julia
+using DifferentialEquations, Optimization, OptimizationOptimJL, DiffEqGPU
 function f(du,u,p,t)
   @inbounds begin
     du[1] = 1.01 * u[1] * p[1] * p[2]
