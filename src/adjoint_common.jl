@@ -430,11 +430,11 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     idx = length(prob.u0)
     if ArrayInterfaceCore.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f, 
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
                                    nothing)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f, 
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
                                    sensefun.sol)
     end
 end
@@ -474,7 +474,7 @@ function (f::ReverseLossCallback)(integrator)
         end
         if DiffEqBase.has_jac(f.f)
             f.f.jac(J, y, p, t[cur_time[]])
-        else 
+        else
             jacobian!(J, uf, y, f_cache, sensealg, jac_config)
         end
         dhdd = J[algevar_idxs, diffvar_idxs]
