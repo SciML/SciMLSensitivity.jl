@@ -867,5 +867,87 @@ using LinearAlgebra, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
                                                checkpoints = sol_singular_mm.t)
             @test_broken res_bs2≈res rtol=1e-5
         end
+
+        # u' = x = p * u
+        function simple_linear_dae(du, u, p, t)
+            du[1] = u[2]
+            du[2] = u[2] - p[1] * u[1]
+        end
+        p = [0.5]
+        prob_singular_mm = ODEProblem(ODEFunction(simple_linear_dae,
+                                                  mass_matrix = Diagonal([1, 0])),
+                                      [2.2, 1.1], (0.0, 1.5), p)
+        sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
+                                reltol = 1e-14, abstol = 1e-14)
+        ts = [0.5, 1.5]
+        dg_singular(out, u, p, t, i) = fill!(out, 1)
+        reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
+                                                    sol -> sum(sum, sol.u)), vec(p))
+        for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+            _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+                                           dgdu_discrete = dg_singular, abstol = 1e-14,
+                                           reltol = 1e-14, sensealg = salg,
+                                           maxiters = Int(1e6))
+            @test res'≈reference_sol rtol=1e-7
+        end
+
+        # u' = x = p * u^2
+        function simple_nonlinear_dae(du, u, p, t)
+            du[1] = u[2]
+            du[2] = u[2] - p[1] * u[1]^2
+        end
+        p = [0.5]
+        prob_singular_mm = ODEProblem(ODEFunction(simple_nonlinear_dae,
+                                                  mass_matrix = Diagonal([1, 0])),
+                                      [1.0, 1.0], (0.0, 1), p)
+        sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
+                                reltol = 1e-12, abstol = 1e-12)
+        ts = [0.5, 1.0]
+        _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+                                       dgdu_discrete = dg_singular, abstol = 1e-8,
+                                       reltol = 1e-8, sensealg = QuadratureAdjoint(),
+                                       maxiters = Int(1e6))
+        reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
+                                                    sol -> sum(sum, sol.u)), vec(p))
+        for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+            _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+                                           dgdu_discrete = dg_singular, abstol = 1e-14,
+                                           reltol = 1e-14, sensealg = salg,
+                                           maxiters = Int(1e6))
+            @test res'≈reference_sol rtol=1e-7
+        end
+
+        function pend(du, u, p, t)
+            x, dx, y, dy, T = u
+            g, = p
+            du[1] = dx
+            du[2] = T * x
+            du[3] = dy
+            du[4] = T * y - g
+            du[5] = 2 * (dx^2 + dy^2 + y * (y * T - g) + T * x^2)
+        end
+
+        x0 = [1.0, 0, 0, 0, 0]
+        tspan = (0.0, 10.0)
+        p = [9.8]
+        f_singular_mm = ODEFunction{true}(pend, mass_matrix = Diagonal([1, 1, 1, 1, 0]))
+        prob_singular_mm = ODEProblem{true}(f_singular_mm, x0, tspan, p)
+        sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
+                                reltol = 1e-12, abstol = 1e-12)
+        ts = 0:0.1:10.0
+        dg_singular(out, u, p, t, i) = (fill!(out, 0); out[end] = 1)
+        _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+                                       dgdu_discrete = dg_singular, abstol = 1e-8,
+                                       reltol = 1e-8, sensealg = QuadratureAdjoint(),
+                                       maxiters = Int(1e6))
+        reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
+                                                    sol -> sum(last, sol.u)), vec(p))
+        for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+            _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+                                           dgdu_discrete = dg_singular, abstol = 1e-14,
+                                           reltol = 1e-14, sensealg = salg,
+                                           maxiters = Int(1e6))
+            @test res'≈reference_sol rtol=1e-7
+        end
     end
 end
