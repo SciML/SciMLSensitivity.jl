@@ -405,7 +405,7 @@ inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
                            dg2Type,
-                           cacheType, solType, ΔλasType}
+                           cacheType, fType, solType, ΔλasType}
     isq::Bool
     λ::λType
     t::timeType
@@ -417,6 +417,7 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg
     dgdu::dg1Type
     dgdp::dg2Type
     diffcache::cacheType
+    f::fType
     sol::solType
     Δλas::ΔλasType
 end
@@ -431,11 +432,12 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     Δλas = Tuple{typeof(λ), eltype(t)}[]
     if ArrayInterfaceCore.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, nothing, Δλas)
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
+                                   nothing, Δλas)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol,
-                                   Δλas)
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
+                                   sensefun.sol, Δλas)
     end
 end
 
@@ -472,8 +474,11 @@ function (f::ReverseLossCallback)(integrator)
         if J isa DiffCache
             J = get_tmp(J, y)
         end
-
-        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        if DiffEqBase.has_jac(f.f)
+            f.f.jac(J, y, p, t[cur_time[]])
+        else
+            jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+        end
         dhdd = J[algevar_idxs, diffvar_idxs]
         dhda = J[algevar_idxs, algevar_idxs]
         Δλa = -(dhda' \ gᵤ[algevar_idxs])
