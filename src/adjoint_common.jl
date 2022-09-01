@@ -434,7 +434,8 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
                                    sensealg, dgdu, dgdp, sensefun.diffcache, nothing, Δλas)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol, Δλas)
+                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.sol,
+                                   Δλas)
     end
 end
 

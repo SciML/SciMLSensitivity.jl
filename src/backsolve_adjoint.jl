@@ -115,14 +115,15 @@ end
                                      dgdp_discrete::DG2 = nothing,
                                      dgdu_continuous::DG3 = nothing,
                                      dgdp_continuous::DG4 = nothing,
-                                     g::G = nothing;
+                                     g::G = nothing,
+                                     ::Val{RetCB} = Val(false);
                                      checkpoints = sol.t,
                                      callback = CallbackSet(),
                                      z0 = nothing,
                                      M = nothing,
                                      nilss = nothing,
                                      tspan = sol.prob.tspan,
-                                     kwargs...) where {DG1, DG2, DG3, DG4, G}
+                                     kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
     # add homogenous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
@@ -178,9 +179,10 @@ end
     end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
-                                                      λ, t, tspan[2],
-                                                      callback, init_cb, terminated)
+    cb, rcb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+                                                           dgdp_discrete,
+                                                           λ, t, tspan[2],
+                                                           callback, init_cb, terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
         cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb,
@@ -219,7 +221,11 @@ end
     end
     odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
                                      jac_prototype = adjoint_jac_prototype)
-    return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    if RetCB
+        return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
+    else
+        return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    end
 end
 
 @noinline function SDEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
@@ -287,10 +293,10 @@ end
                                                       noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
-                                                      dgdp_discrete, λ, t,
-                                                      tspan[2], callback, init_cb,
-                                                      terminated)
+    cb, _, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+                                                         dgdp_discrete, λ, t,
+                                                         tspan[2], callback, init_cb,
+                                                         terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
         cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb,
@@ -380,9 +386,10 @@ end
                                             noiseterm = false)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
-                                                      λ, t, tspan[2],
-                                                      callback, init_cb, terminated)
+    cb, _, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+                                                         dgdp_discrete,
+                                                         λ, t, tspan[2],
+                                                         callback, init_cb, terminated)
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
         cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb,

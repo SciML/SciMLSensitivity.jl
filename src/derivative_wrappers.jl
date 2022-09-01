@@ -231,6 +231,30 @@ function vecjacobian(y, λ, p, t, S::TS;
     return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
 end
 
+function vecpjacobian!(out, y, λ, p, t, S::TS) where {TS <: SensitivityFunction}
+    return _vecpjacobian!(out, y, λ, p, t, S, S.sensealg.autojacvec)
+end
+
+function _vecpjacobian!(out, y, λ, p, t, S::TS,
+                        isautojacvec::Bool) where {TS <: SensitivityFunction}
+    @unpack sensealg, f = S
+    @unpack f_cache, pJ, pf, paramjac_config = S.diffcache
+    if DiffEqBase.has_paramjac(f)
+        # Calculate the parameter Jacobian into pJ
+        f.paramjac(pJ, y, p, t)
+    else
+        pf.t = t
+        pf.u = y
+        if inplace_sensitivity(S)
+            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+        else
+            temp = jacobian(pf, p, sensealg)
+            pJ .= temp
+        end
+    end
+    mul!(out', λ', pJ)
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                        W) where {TS <: SensitivityFunction}
     @unpack sensealg, f = S

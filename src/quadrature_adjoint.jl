@@ -86,8 +86,8 @@ end
                                      dgdp_continuous::DG4 = nothing,
                                      g::G = nothing,
                                      ::Val{RetCB} = Val(false);
-                                     callback = CallbackSet()
-                                     ) where {DG1, DG2, DG3, DG4, G, RetCB}
+                                     callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
+                                                                      RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -131,8 +131,8 @@ end
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
     cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
-                                                      λ, t, tspan[2],
-                                                      callback, init_cb, terminated)
+                                    λ, t, tspan[2],
+                                    callback, init_cb, terminated)
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
@@ -324,7 +324,8 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                                 callback = CallbackSet(),
                                 kwargs...)
     adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-                                 dgdu_continuous, dgdp_continuous, g, Val(true); callback)
+                                      dgdu_continuous, dgdp_continuous, g, Val(true);
+                                      callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
                     save_everystep = true, save_start = true, kwargs...)
 

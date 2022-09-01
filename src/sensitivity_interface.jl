@@ -402,12 +402,14 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
+    rcb = nothing
     if sol.prob isa ODEProblem
-        adj_prob = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-                                     dgdu_continuous, dgdp_continuous, g;
-                                     checkpoints = checkpoints,
-                                     callback = callback,
-                                     abstol = abstol, reltol = reltol, kwargs...)
+        adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
+                                          dgdp_discrete,
+                                          dgdu_continuous, dgdp_continuous, g, Val(true);
+                                          checkpoints = checkpoints,
+                                          callback = callback,
+                                          abstol = abstol, reltol = reltol, kwargs...)
 
     elseif sol.prob isa SDEProblem
         adj_prob = SDEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
@@ -442,6 +444,21 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         dp = nothing
     else
         dp = adj_sol[end][(1:l) .+ length(sol.prob.u0)]'
+    end
+
+    if rcb !== nothing && !isempty(rcb.Δλas)
+        S = adj_prob.f.f
+        iλ = similar(rcb.λ, length(first(sol.u)))
+        out = zero(dp')
+        yy = similar(rcb.y)
+        for (Δλa, tt) in rcb.Δλas
+            iλ .= zero(eltype(iλ))
+            @unpack algevar_idxs = rcb.diffcache
+            iλ[algevar_idxs] .= Δλa
+            sol(yy, tt)
+            vecpjacobian!(out, yy, iλ, sol.prob.p, tt, S)
+            dp .+= out'
+        end
     end
 
     du0, dp
