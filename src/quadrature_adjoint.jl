@@ -400,7 +400,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                                atol = abstol, rtol = reltol)[1]
             end
         end
-        if !isempty(rcb.Δλas)
+        if rcb !== nothing && !isempty(rcb.Δλas)
             iλ = zero(rcb.λ)
             out = zero(res')
             yy = similar(rcb.y)
