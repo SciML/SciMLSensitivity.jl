@@ -232,11 +232,11 @@ function vecjacobian(y, λ, p, t, S::TS;
 end
 
 function vecpjacobian!(out, y, λ, p, t, S::TS) where {TS <: SensitivityFunction}
-    return _vecpjacobian!(out, y, λ, p, t, S, S.sensealg.autojacvec)
+    return _vecpjacobian!(out, y, λ, p, t, S)
 end
 
-function _vecpjacobian!(out, y, λ, p, t, S::TS,
-                        isautojacvec::Bool) where {TS <: SensitivityFunction}
+# TODO: actual v'pJ via AD
+function _vecpjacobian!(out, y, λ, p, t, S::TS) where {TS <: SensitivityFunction}
     @unpack sensealg, f = S
     @unpack f_cache, pJ, pf, paramjac_config = S.diffcache
     if DiffEqBase.has_paramjac(f)
