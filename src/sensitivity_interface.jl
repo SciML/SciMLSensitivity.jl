@@ -456,7 +456,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
             @unpack algevar_idxs = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
-            vecpjacobian!(out, yy, iλ, sol.prob.p, tt, S)
+            vecjacobian!(nothing, yy, iλ, sol.prob.p, tt, S, dgrad = out)
             dp .+= out'
         end
     end
