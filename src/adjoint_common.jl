@@ -57,8 +57,14 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         diffvar_idxs = findall(x -> any(!iszero, @view(mass_matrix[:, x])),
                                axes(mass_matrix, 2))
         algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
+        
         # TODO: operator
-        M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+        if VERSION >= v"1.8-"
+            M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+        else
+            M̃ = mass_matrix[diffvar_idxs, diffvar_idxs]
+        end
+        
         factorized_mass_matrix = lu(M̃, check = false)
         issuccess(factorized_mass_matrix) ||
             error("The submatrix corresponding to the differential variables of the mass matrix must be nonsingular!")
