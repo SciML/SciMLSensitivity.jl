@@ -84,8 +84,10 @@ end
                                      dgdp_discrete::DG2 = nothing,
                                      dgdu_continuous::DG3 = nothing,
                                      dgdp_continuous::DG4 = nothing,
-                                     g::G = nothing;
-                                     callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G}
+                                     g::G = nothing,
+                                     ::Val{RetCB} = Val(false);
+                                     callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
+                                                                      RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -128,9 +130,9 @@ end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
-    cb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
-                                                      λ, t, tspan[2],
-                                                      callback, init_cb, terminated)
+    cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+                                    λ, t, tspan[2],
+                                    callback, init_cb, terminated)
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
@@ -145,7 +147,11 @@ end
                                                                      mass_matrix = sol.prob.f.mass_matrix',
                                                                      jac_prototype = adjoint_jac_prototype)
     end
-    return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    if RetCB
+        return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
+    else
+        return ODEProblem(odefun, z0, tspan, p, callback = cb)
+    end
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
@@ -238,16 +244,10 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
                                 sensealg, dgdp_cache, dgdp)
 end
 
-function (S::AdjointSensitivityIntegrand)(out, t)
-    @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
+# out = λ df(u, p, t)/dp at u=y, p=p, t=t
+function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
+    @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
     f = sol.prob.f
-    if ArrayInterfaceCore.ismutable(y)
-        sol(y, t)
-        adj_sol(λ, t)
-    else
-        y = sol(t)
-        λ = adj_sol(t)
-    end
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
 
@@ -288,6 +288,19 @@ function (S::AdjointSensitivityIntegrand)(out, t)
     end
 
     # TODO: Add tracker?
+    return out
+end
+
+function (S::AdjointSensitivityIntegrand)(out, t)
+    @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
+    if ArrayInterfaceCore.ismutable(y)
+        sol(y, t)
+        adj_sol(λ, t)
+    else
+        y = sol(t)
+        λ = adj_sol(t)
+    end
+    vec_pjac!(out, λ, y, t, S)
 
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
@@ -310,8 +323,9 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                                 abstol = sensealg.abstol, reltol = sensealg.reltol,
                                 callback = CallbackSet(),
                                 kwargs...)
-    adj_prob = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-                                 dgdu_continuous, dgdp_continuous, g; callback)
+    adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+                                      dgdu_continuous, dgdp_continuous, g, Val(true);
+                                      callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
                     save_everystep = true, save_start = true, kwargs...)
 
@@ -384,6 +398,19 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             if t[1] != sol.prob.tspan[1]
                 res .+= quadgk(integrand, sol.prob.tspan[1], t[1],
                                atol = abstol, rtol = reltol)[1]
+            end
+        end
+        if rcb !== nothing && !isempty(rcb.Δλas)
+            iλ = zero(rcb.λ)
+            out = zero(res')
+            yy = similar(rcb.y)
+            for (Δλa, tt) in rcb.Δλas
+                @unpack algevar_idxs = rcb.diffcache
+                iλ[algevar_idxs] .= Δλa
+                sol(yy, tt)
+                vec_pjac!(out, iλ, yy, tt, integrand)
+                res .+= out'
+                iλ .= zero(eltype(iλ))
             end
         end
         return adj_sol[end], res

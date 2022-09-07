@@ -20,6 +20,10 @@ end
 function NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu, dgdp,
                                   jevery = nothing,
                                   cur_time = nothing)
+    !(f.mass_matrix isa UniformScaling ||
+      f.mass_matrix isa Tuple{UniformScaling, UniformScaling}) &&
+        throw(SHADOWING_DAE_ERROR())
+
     numparams = length(p)
     numindvar = length(u0)
 

@@ -40,6 +40,8 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
                                 paramjac, u0,
                                 alg, p, f_cache, mm,
                                 colorvec, tspan, g, dgdu, dgdp)
+    !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
+        throw(SHADOWING_DAE_ERROR())
     uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
     pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
 
@@ -677,4 +679,18 @@ end
 function check_for_g(sensealg::Union{ForwardLSS, AdjointLSS}, g)
     ((sensealg.LSSregularizer isa TimeDilation && g === nothing) &&
      error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing."))
+end
+
+const SHADOWING_DAE_MESSAGE = """
+                                  A mass matrix `mm` with `mm !== I || mm !== (I, I)` was used in a sensitivity
+                                  computation based on shadowing methods.
+                                  This indicates that you are trying to differentiate the solution of a DAE,
+                                  i.e. an ODE function that has additional algebraic constraints. However, the
+                                  shadowing methods are only compatible with ODEs, not with DAEs.
+                                  """
+
+struct SHADOWING_DAE_ERROR <: Exception end
+
+function Base.showerror(io::IO, e::SHADOWING_DAE_ERROR)
+    print(io, SHADOWING_DAE_MESSAGE)
 end

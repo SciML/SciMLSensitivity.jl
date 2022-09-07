@@ -57,8 +57,14 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         diffvar_idxs = findall(x -> any(!iszero, @view(mass_matrix[:, x])),
                                axes(mass_matrix, 2))
         algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
+
         # TODO: operator
-        M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+        if VERSION >= v"1.8-"
+            M̃ = @view mass_matrix[diffvar_idxs, diffvar_idxs]
+        else
+            M̃ = mass_matrix[diffvar_idxs, diffvar_idxs]
+        end
+
         factorized_mass_matrix = lu(M̃, check = false)
         issuccess(factorized_mass_matrix) ||
             error("The submatrix corresponding to the differential variables of the mass matrix must be nonsingular!")
@@ -405,7 +411,7 @@ inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
                            dg2Type,
-                           cacheType, fType, solType}
+                           cacheType, fType, solType, ΔλasType}
     isq::Bool
     λ::λType
     t::timeType
@@ -419,6 +425,7 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg
     diffcache::cacheType
     f::fType
     sol::solType
+    Δλas::ΔλasType
 end
 
 function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
@@ -428,14 +435,15 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(prob.u0)
+    Δλas = Tuple{typeof(λ), eltype(t)}[]
     if ArrayInterfaceCore.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
                                    sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-                                   nothing)
+                                   nothing, Δλas)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
                                    sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-                                   sensefun.sol)
+                                   sensefun.sol, Δλas)
     end
 end
 
@@ -479,9 +487,9 @@ function (f::ReverseLossCallback)(integrator)
         end
         dhdd = J[algevar_idxs, diffvar_idxs]
         dhda = J[algevar_idxs, algevar_idxs]
-        # TODO: maybe need a `conj`
-        Δλa = -dhda' \ gᵤ[algevar_idxs]
+        Δλa = -(dhda' \ gᵤ[algevar_idxs])
         Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
+        push!(f.Δλas, (Δλa, t[cur_time[]]))
     else
         Δλd = gᵤ
     end
@@ -519,7 +527,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
                                           terminated)
 
-    init_cb || return reverse_cbs, nothing
+    init_cb || return reverse_cbs, nothing, nothing
 
     # callbacks can lead to non-unique time points
     _t, duplicate_iterator_times = separate_nonunique(t)
@@ -536,9 +544,9 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
         # use same ref for cur_time to cope with concrete_solve
         cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
         cb_dupl = PresetTimeCallback(duplicate_iterator_times[1], cbrev_dupl_affect)
-        return CallbackSet(cb, reverse_cbs, cb_dupl), duplicate_iterator_times
+        return CallbackSet(cb, reverse_cbs, cb_dupl), rlcb, duplicate_iterator_times
     else
-        return CallbackSet(cb, reverse_cbs), duplicate_iterator_times
+        return CallbackSet(cb, reverse_cbs), rlcb, duplicate_iterator_times
     end
 end
 
