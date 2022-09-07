@@ -40,8 +40,8 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
                                 paramjac, u0,
                                 alg, p, f_cache, mm,
                                 colorvec, tspan, g, dgdu, dgdp)
-    !(mm isa UniformScaling) && throw(SHADOWING_DAE_ERROR())
-    !(mm isa Tuple{UniformScaling, UniformScaling}) && throw(SHADOWING_DAE_ERROR())
+    !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
+        throw(SHADOWING_DAE_ERROR())
     uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
     pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
 
