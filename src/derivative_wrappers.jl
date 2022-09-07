@@ -622,7 +622,7 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
         throw(ZygoteVJPNothingError())
     elseif tmp1 !== nothing
-        dλ !== nothing && (dλ = vec(tmp1))
+        dλ = vec(tmp1)
     end
 
     if dgrad !== nothing
