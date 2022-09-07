@@ -20,6 +20,7 @@ end
 function NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu, dgdp,
                                   jevery = nothing,
                                   cur_time = nothing)
+    f.mass_matrix !== I || f.mass_matrix !== (I, I) && throw(SHADOWING_DAE_ERROR())
     numparams = length(p)
     numindvar = length(u0)
 
