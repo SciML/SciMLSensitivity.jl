@@ -66,9 +66,9 @@ initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 
 function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32) 
+                         init_weight=glorot_normal, init_bias=zeros32)
     init_Ã = ()->copy(Ã)
-    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation, 
+    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation,
                                                                                                        init_Ã, init_weight, init_bias)
 end
 
@@ -85,14 +85,14 @@ diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
 
 # make NeuralODE work with Lux.Chain
 # remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
-initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model) 
+initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, node.model)
 initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,
@@ -116,7 +116,7 @@ end
 
 # Training
 function train()
-    ## Setup model 
+    ## Setup model
     rng = Random.default_rng()
     Random.seed!(rng, 0)
 
@@ -184,7 +184,7 @@ Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ```
 ### Training Data
 
-GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion. 
+GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion.
 ```julia
 (; train_mask, val_mask, test_mask) = g.ndata
 ytrain = y[:,train_mask]
@@ -227,8 +227,8 @@ function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32) 
-    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation, 
+                         init_weight=glorot_normal, init_bias=zeros32)
+    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation,
                                                                                        init_weight, init_bias)
 end
 
@@ -252,7 +252,7 @@ gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)                
+                 reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               node,

@@ -16,7 +16,7 @@ matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
 
 ```@example dataparallel
-using Lux, DiffEqFlux, DifferentialEquations, Random
+using Lux, DiffEqFlux, DifferentialEquations, CUDA, Random
 rng = Random.default_rng()
 
 dudt = Lux.Chain(Lux.Dense(2,50,tanh),Lux.Dense(50,2))
@@ -47,10 +47,10 @@ on GPUs this will parallelize the operations across the GPU. To GPU
 this, you'd simply move the parameters and the initial condition to the
 GPU:
 
-```julia
+```@example dataparallel
 xs = Float32.([0 1 2
                0 0 0])
-prob = ODEProblem(f,gpu(u0),(0f0,1f0),gpu(p))
+prob = ODEProblem(f,Lux.gpu(u0),(0f0,1f0),Lux.gpu(p))
 solve(prob,Tsit5())
 ```
 
@@ -81,7 +81,7 @@ interface.
 The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
-```@example dataparallel2
+```@example dataparallel
 using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationFlux
 pa = [1.0]
 u0 = [3.0]
@@ -132,7 +132,7 @@ an array of batches in order to perform our study. To do this, we
 first define a prototype `DEProblem`. Here we use the following
 `ODEProblem` as our base:
 
-```julia
+```@example dataparallel
 prob = ODEProblem((u, p, t) -> 1.01u .* p, [θ[1]], (0.0, 1.0), [θ[2]])
 ```
 
@@ -141,7 +141,7 @@ base problem. In this case, we want to change `u0` by a constant, i.e.
 `0.5 .+ i/100 .* prob.u0` for different trajectories labelled by `i`.
 Thus we use the [remake function from the problem interface](https://diffeq.sciml.ai/stable/basics/problem/#Modification-of-problem-types) to do so:
 
-```julia
+```@example dataparallel
 function prob_func(prob, i, repeat)
   remake(prob, u0 = 0.5 .+ i/100 .* prob.u0)
 end
@@ -149,7 +149,7 @@ end
 
 We now build the `EnsembleProblem` with this basis:
 
-```julia
+```@example dataparallel
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 ```
 
@@ -158,13 +158,13 @@ algorithm and choose the number of trajectories to solve. Here let's
 solve this in serial with 100 trajectories. Note that `i` will thus run
 from `1:100`.
 
-```julia
+```@example dataparallel
 sim = solve(ensemble_prob, Tsit5(), EnsembleSerial(), saveat = 0.1, trajectories = 100)
 ```
 
 and thus running in multithreading would be:
 
-```julia
+```@example dataparallel
 sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), saveat = 0.1, trajectories = 100)
 ```
 
@@ -172,7 +172,7 @@ This whole mechanism is differentiable, so we then put it in a training
 loop and it soars. Note that you need to make sure that [Julia's multithreading](https://docs.julialang.org/en/v1/manual/multi-threading/)
 is enabled, which you can do via:
 
-```julia
+```@example dataparallel
 Threads.nthreads()
 ```
 
@@ -181,7 +181,7 @@ Threads.nthreads()
 Changing to distributed computing is very simple as well. The setup is
 all the same, except you utilize `EnsembleDistributed` as the ensembler:
 
-```julia
+```@example dataparallel
 sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1, trajectories = 100)
 ```
 
@@ -250,7 +250,7 @@ The following is an example of minibatch ensemble parallelism across
 a GPU:
 
 ```julia
-using DifferentialEquations, Optimization, OptimizationOptimJL
+using DifferentialEquations, Optimization, OptimizationOptimJL, DiffEqGPU
 function f(du,u,p,t)
   @inbounds begin
     du[1] = 1.01 * u[1] * p[1] * p[2]
