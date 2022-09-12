@@ -46,6 +46,7 @@ end
         @time @safetestset "Continuous adjoint params" begin include("adjoint_param.jl") end
         @time @safetestset "Continuous and discrete costs" begin include("mixed_costs.jl") end
         @time @safetestset "Fully Out of Place adjoint sensitivity" begin include("adjoint_oop.jl") end
+        @time @safetestset "Differentiate LazyBuffer with ReverseDiff" begin include("lazybuffer.jl") end
     end
 
     if GROUP == "All" || GROUP == "Core4"
