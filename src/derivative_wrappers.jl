@@ -825,7 +825,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    for (i, λi) in enumerate(λ)
+    # number of Wiener processes
+    noise_rate_prototype = prob.noise_rate_prototype
+    m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
+
+    for i in 1:m
         tapei = S.diffcache.paramjac_noise_config[i]
         tu, tp, tt = ReverseDiff.input_hook(tapei)
         output = ReverseDiff.output_hook(tapei)
@@ -837,7 +841,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
         ReverseDiff.value!(tt, [t])
         ReverseDiff.forward_pass!(tapei)
         if StochasticDiffEq.is_diagonal_noise(prob)
-            ReverseDiff.increment_deriv!(output, λi)
+            ReverseDiff.increment_deriv!(output, λ[i])
         else
             ReverseDiff.increment_deriv!(output, λ)
         end
@@ -868,15 +872,19 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
+    # number of Wiener processes
+    noise_rate_prototype = prob.noise_rate_prototype
+    m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
+
     if StochasticDiffEq.is_diagonal_noise(prob)
         if inplace_sensitivity(S)
-            for (i, λi) in enumerate(λ)
+            for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(similar(u))
                     f(out_, u, p, t)
                     copy(out_[i])
                 end
-                tmp1, tmp2 = back(λi) #issue: tmp2 = zeros(p)
+                tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
                 if dgrad !== nothing
                     if tmp2 !== nothing
                         !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
@@ -886,11 +894,11 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                 dy !== nothing && (dy[i] = _dy)
             end
         else
-            for (i, λi) in enumerate(λ)
+            for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     f(u, p, t)[i]
                 end
-                tmp1, tmp2 = back(λi)
+                tmp1, tmp2 = back(λ[i])
                 if dgrad !== nothing
                     if tmp2 !== nothing
                         !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
@@ -902,7 +910,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         end
     else
         if inplace_sensitivity(S)
-            for (i, λi) in enumerate(λ)
+            for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(similar(prob.noise_rate_prototype))
                     f(out_, u, p, t)
@@ -918,14 +926,14 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                 dy !== nothing && (dy[:, i] .= vec(_dy))
             end
         else
-            for (i, λi) in enumerate(λ)
+            for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     f(u, p, t)[:, i]
                 end
                 tmp1, tmp2 = back(λ)
                 if dgrad !== nothing
                     if tmp2 !== nothing
-                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                        !isempty(dλ) && (dgrad[:, i] .= vec(tmp2))
                     end
                 end
                 if tmp1 === nothing

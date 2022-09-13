@@ -331,7 +331,9 @@ end
         # scalar noise case
         noise_matrix = nothing
     else
-        noise_matrix = similar(z0, length(z0), numstates)
+        m = sol.prob.noise_rate_prototype === nothing ? numstates :
+            size(sol.prob.noise_rate_prototype)[2]
+        noise_matrix = similar(z0, length(z0), m)
         noise_matrix .= false
     end
 

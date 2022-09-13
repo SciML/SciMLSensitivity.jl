@@ -297,9 +297,11 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         if sensealg.autojacvec isa ReverseDiffVJP
             jac_noise_config = nothing
             paramjac_noise_config = []
-
+            noise_rate_prototype = prob.noise_rate_prototype
+            # number of Wiener processes
+            m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
             if DiffEqBase.isinplace(prob)
-                for i in 1:numindvar
+                for i in 1:m
                     function noisetape(indx)
                         if StochasticDiffEq.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u, p, t
@@ -310,7 +312,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                             end
                         else
                             ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u, p, t
-                                du1 = similar(p, size(prob.noise_rate_prototype))
+                                du1 = similar(p, size(noise_rate_prototype))
                                 du1 .= false
                                 unwrappedf(du1, u, p, first(t))
                                 return du1[:, indx]
@@ -325,7 +327,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                     end
                 end
             else
-                for i in 1:numindvar
+                for i in 1:m
                     function noisetapeoop(indx)
                         if StochasticDiffEq.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [tspan[2]])) do u, p, t
