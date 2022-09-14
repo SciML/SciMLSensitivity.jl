@@ -1,6 +1,6 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, StochasticDiffEq
-using ForwardDiff, Zygote
+using FiniteDiff, ForwardDiff, Zygote
 using Random
 
 @info "SDE Non-Diagonal Noise Adjoints"
@@ -682,4 +682,70 @@ end
     @test dp2≈_dp2 rtol=1e-8
     @test dp3≈_dp3 rtol=1e-8
     @test_broken dp3≈_dp4 rtol=1e-8
+end
+
+@testset "Non-square diffusion matrix" begin
+    tstart = 0.0
+    tend = 0.1
+    dt = 0.005
+    tspan = (tstart, tend)
+
+    p = [1.0, 0.1]
+
+    dim = 3 # dimension of the system
+    m = 2 # number of Brownian motions
+    u0 = ones(dim)
+    noise_rate_prototype = zeros(dim, m) # diffusion matrix
+
+    function b_system(u, p, t)
+        [p[1] * u[i] for i in 1:dim]
+    end
+
+    function σ_system(u, p, t)
+        # construct a 3x2 matrix
+        dx = diagm([p[2] * u[i] for i in 1:m])
+        [dx; zeros(eltype(dx), 1, m)] # 1, m
+    end
+
+    prob = SDEProblem(b_system, σ_system, u0, tspan, p,
+                      noise_rate_prototype = noise_rate_prototype)
+    sol = solve(prob, EM(), dt = dt, save_noise = true)
+    ts = sol.t
+    Ws = sol.W.W
+    Z = DiffEqNoiseProcess.NoiseGrid(ts, Ws)
+
+    function loss(p; sensealg = nothing, Z = nothing)
+        _prob = remake(prob,
+                       u0 = convert.(eltype(p), prob.u0),
+                       p = p,
+                       noise = Z
+                       # noise_rate_prototype = noise_rate_prototype
+                       )
+        sol = solve(_prob, EulerHeun(), dt = dt, sensealg = sensealg)
+        sum(abs2, sol[end])
+    end
+
+    loss(p, Z = Z)
+
+    gFinD = FiniteDiff.finite_difference_gradient(p -> loss(p, Z = Z), p)
+    gFD = ForwardDiff.gradient(p -> loss(p, Z = Z), p)
+    gZy = Zygote.gradient(p -> loss(p, Z = Z), p)[1]
+
+    @test gFinD≈gFD rtol=1e-4
+    @test gFinD≈gZy rtol=1e-4
+
+    @show gFinD - gFD
+    @show gFinD - gZy
+
+    # ReverseDiffVJP(), ZygoteVJP()
+    gZy = Zygote.gradient(p -> loss(p, Z = Z,
+                                    sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP())),
+                          p)[1]
+    @test gFinD≈gZy rtol=1e-4
+    gZy = Zygote.gradient(p -> loss(p, Z = Z,
+                                    sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+                          p)[1]
+    @test gFinD≈gZy rtol=1e-4
+    gZy = Zygote.gradient(p -> loss(p, Z = Z, sensealg = ForwardDiffSensitivity()), p)[1]
+    @test gFinD≈gZy rtol=1e-4
 end

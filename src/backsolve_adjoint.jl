@@ -101,9 +101,11 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
 
     elseif typeof(du) <: AbstractMatrix
         # non-diagonal noise
-        dλ = @view du[1:idx, 1:idx]
-        dgrad = @view du[(idx + 1):(end - idx), 1:idx]
-        dy = @view du[(end - idx + 1):end, 1:idx]
+        m = prob.noise_rate_prototype === nothing ? idx :
+            size(prob.noise_rate_prototype)[2]
+        dλ = @view du[1:idx, 1:m]
+        dgrad = @view du[(idx + 1):(end - idx), 1:m]
+        dy = @view du[(end - idx + 1):end, 1:m]
     end
     λ, grad, _y, dλ, dgrad, dy
 end

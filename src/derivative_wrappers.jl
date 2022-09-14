@@ -827,7 +827,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
 
     # number of Wiener processes
     noise_rate_prototype = prob.noise_rate_prototype
-    m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
+    m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype)[2]
 
     for i in 1:m
         tapei = S.diffcache.paramjac_noise_config[i]
@@ -874,7 +874,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
 
     # number of Wiener processes
     noise_rate_prototype = prob.noise_rate_prototype
-    m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
+    m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype)[2]
 
     if StochasticDiffEq.is_diagonal_noise(prob)
         if inplace_sensitivity(S)
