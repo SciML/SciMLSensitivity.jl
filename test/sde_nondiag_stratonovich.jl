@@ -1,5 +1,6 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, StochasticDiffEq
+using DiffEqNoiseProcess
 using FiniteDiff, ForwardDiff, Zygote
 using Random
 
