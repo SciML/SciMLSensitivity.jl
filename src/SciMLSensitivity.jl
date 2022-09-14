@@ -15,7 +15,7 @@ import Enzyme
 import GPUArraysCore
 using StaticArrays
 
-import PreallocationTools: dualcache, get_tmp, DiffCache
+import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
 import FunctionWrappersWrappers
 
 using Cassette, DiffRules
