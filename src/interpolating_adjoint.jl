@@ -248,8 +248,10 @@ function split_states(du, u, t, S::TS;
 
     elseif typeof(du) <: AbstractMatrix
         # non-diagonal noise and noise mixing case
-        dλ = @view du[1:idx, 1:idx]
-        dgrad = @view du[(idx + 1):end, 1:idx]
+        m = prob.noise_rate_prototype === nothing ? idx :
+            size(prob.noise_rate_prototype)[2]
+        dλ = @view du[1:idx, 1:m]
+        dgrad = @view du[(idx + 1):end, 1:m]
     end
 
     λ, grad, y, dλ, dgrad, nothing
@@ -492,7 +494,9 @@ end
         # scalar noise case
         noise_matrix = nothing
     else
-        noise_matrix = similar(z0, length(z0), numstates)
+        m = sol.prob.noise_rate_prototype === nothing ? numstates :
+            size(sol.prob.noise_rate_prototype)[2]
+        noise_matrix = similar(z0, length(z0), m)
         noise_matrix .= false
     end
 

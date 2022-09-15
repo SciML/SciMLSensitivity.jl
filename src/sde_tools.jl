@@ -75,6 +75,6 @@ function (Tfunc::StochasticTransformedFunction)(u, p, t)
     end
     du = f(u, p, t)
 
-    du = @. du - ducor
+    ducor !== nothing && (du = @. du - ducor)
     return du
 end
