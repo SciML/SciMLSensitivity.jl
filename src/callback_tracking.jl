@@ -227,6 +227,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
+        @assert sensealg.autojacvec isa ReverseDiffVJP
         fakeS = CallbackSensitivityFunction(w, sensealg, S.diffcache, integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
@@ -297,13 +298,13 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
                                                      integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
                 vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
-                             dgrad = nothing, dy = nothing)
+                             dgrad = nothing, dy = nothing, recompile_tape = true)
                 grad .= dgrad
             end
         end
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
-                     dgrad = dgrad, dy = dy)
+                     dgrad = dgrad, dy = dy, recompile_tape = true)
 
         dgrad !== nothing && (dgrad .*= -1)
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
