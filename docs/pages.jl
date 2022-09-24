@@ -14,6 +14,7 @@ pages = [
                                                              "training_tips/divergence.md",
                                                              "training_tips/multiple_nn.md"],
                        "Neural Ordinary Differential Equation (Neural ODE) Tutorials" => Any["neural_ode/neural_ode_flux.md",
+                                                                                             "neural_ode/simplechains.md",
                                                                                              "neural_ode/neural_gde.md",
                                                                                              "neural_ode/minibatch.md"],
                        "Stochastic Differential Equation (SDE) Tutorials" => Any["sde_fitting/optimization_sde.md"],
