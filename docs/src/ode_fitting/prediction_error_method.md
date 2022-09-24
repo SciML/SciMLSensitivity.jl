@@ -132,8 +132,7 @@ plot(tsteps, [y ysim], label=["Data" "Simulation model"])
 
 p0 = [0.7, 1.0] # Initial guess of length and observer gain K
 optf2 = Optimization.OptimizationFunction((p,_)->predloss(p), adtype)
-optfunc2 = Optimization.instantiate_function(optf2, p0, adtype, nothing)
-optprob2 = Optimization.OptimizationProblem(optfunc2, p0)
+optprob2 = Optimization.OptimizationProblem(optf2, p0)
 
 respred = Optimization.solve(optprob2, PolyOpt(),
                                     maxiters = 5000)
