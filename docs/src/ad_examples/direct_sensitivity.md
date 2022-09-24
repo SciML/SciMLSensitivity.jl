@@ -129,11 +129,7 @@ function G(p)
   A = convert(Array,sol)
   sum(((1 .- A).^2)./2)
 end
-G([1.5,1.0,3.0])
 res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
-res3 = Calculus.gradient(G,[1.5,1.0,3.0])
-res4 = Tracker.gradient(G,[1.5,1.0,3.0])
-res5 = ReverseDiff.gradient(G,[1.5,1.0,3.0])
 ```
 
 and see this gives the same values.
