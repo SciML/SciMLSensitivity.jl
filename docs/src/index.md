@@ -32,6 +32,7 @@ To install SciMLSensitivity.jl, use the Julia package manager:
 ```julia
 using Pkg
 Pkg.add("SciMLSensitivity")
+```
 
 ## High Level Interface: `sensealg`
 
