@@ -25,6 +25,14 @@ Thus, what SciMLSensitivity.jl provides is:
     [NonlinearSolve.jl](https://nonlinearsolve.sciml.ai/dev/), 
     [LinearSolve.jl](http://linearsolve.sciml.ai/dev/), etc. first.
 
+## Installation
+
+To install SciMLSensitivity.jl, use the Julia package manager:
+
+```julia
+using Pkg
+Pkg.add("SciMLSensitivity")
+
 ## High Level Interface: `sensealg`
 
 The highest level interface is provided by the function `solve`:
@@ -189,6 +197,21 @@ oyster!
 As a proof of composability, note that the implementation of Bayesian neural ODEs required
 zero code changes to the library, and instead just relied on the composability with other
 Julia packages.
+
+## Contributing
+
+- Please refer to the
+  [SciML ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://github.com/SciML/ColPrac/blob/master/README.md)
+  for guidance on PRs, issues, and other matters relating to contributing to SciML.
+- See the [SciML Style Guide](https://github.com/SciML/SciMLStyle) for common coding practices and other style decisions.
+- There are a few community forums:
+    - The #diffeq-bridged and #sciml-bridged channels in the
+      [Julia Slack](https://julialang.org/slack/)
+    - The #diffeq-bridged and #sciml-bridged channels in the
+      [Julia Zulip](https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged)
+    - On the [Julia Discourse forums](https://discourse.julialang.org)
+    - See also [SciML Community page](https://sciml.ai/community/)
+
 
 ## Citation
 
