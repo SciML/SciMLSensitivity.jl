@@ -113,7 +113,7 @@ function (ff::RODEParamJacobianWrapper)(p)
     return du1
 end
 
-Base.@pure function determine_chunksize(u, alg::DiffEqBase.AbstractSensitivityAlgorithm)
+Base.@pure function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
     determine_chunksize(u, get_chunksize(alg))
 end
 
@@ -126,7 +126,7 @@ Base.@pure function determine_chunksize(u, CS)
 end
 
 function jacobian(f, x::AbstractArray{<:Number},
-                  alg::DiffEqBase.AbstractSensitivityAlgorithm)
+                  alg::AbstractOverloadingSensitivityAlgorithm)
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
@@ -138,7 +138,7 @@ end
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
                    fx::Union{Nothing, AbstractArray{<:Number}},
-                   alg::DiffEqBase.AbstractSensitivityAlgorithm, jac_config)
+                   alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
@@ -154,7 +154,7 @@ end
 
 function derivative!(df::AbstractArray{<:Number}, f,
                      x::Number,
-                     alg::DiffEqBase.AbstractSensitivityAlgorithm, der_config)
+                     alg::AbstractOverloadingSensitivityAlgorithm, der_config)
     if alg_autodiff(alg)
         ForwardDiff.derivative!(df, f, x) # der_config doesn't work
     else
@@ -165,7 +165,7 @@ end
 
 function gradient!(df::AbstractArray{<:Number}, f,
                    x::Union{Number, AbstractArray{<:Number}},
-                   alg::DiffEqBase.AbstractSensitivityAlgorithm, grad_config)
+                   alg::AbstractOverloadingSensitivityAlgorithm, grad_config)
     if alg_autodiff(alg)
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
@@ -180,7 +180,7 @@ end
 ``Jv <- J(f(x))v``
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
-                      v, alg::DiffEqBase.AbstractSensitivityAlgorithm, config)
+                      v, alg::AbstractOverloadingSensitivityAlgorithm, config)
     if alg_autodiff(alg)
         buffer, seed = config
         TD = typeof(first(seed))
@@ -203,7 +203,7 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
     nothing
 end
 function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                      M, alg::DiffEqBase.AbstractSensitivityAlgorithm, config)
+                      M, alg::AbstractOverloadingSensitivityAlgorithm, config)
     buffer, seed = config
     T = eltype(seed)
     numparams = length(ForwardDiff.partials(seed[1]))

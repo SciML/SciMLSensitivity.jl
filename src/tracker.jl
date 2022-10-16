@@ -37,7 +37,7 @@ DiffEqBase.promote_u0(u0, p::AbstractArray{<:Tracker.TrackedReal}, t0) = eltype(
 @inline Base.any(f::Function, x::Tracker.TrackedArray) = any(f, Tracker.data(x))
 
 # Support adaptive with non-tracked time
-@inline function DiffEqBase.ODE_DEFAULT_NORM(u::Tracker.TrackedArray, t) where {N}
+@inline function DiffEqBase.ODE_DEFAULT_NORM(u::Tracker.TrackedArray, t)
     sqrt(sum(abs2, DiffEqBase.value(u)) / length(u))
 end
 @inline function DiffEqBase.ODE_DEFAULT_NORM(u::AbstractArray{<:Tracker.TrackedReal, N},
@@ -54,11 +54,11 @@ end
 
 # Support TrackedReal time, don't drop tracking on the adaptivity there
 @inline function DiffEqBase.ODE_DEFAULT_NORM(u::Tracker.TrackedArray,
-                                             t::Tracker.TrackedReal) where {N}
+                                             t::Tracker.TrackedReal)
     sqrt(sum(abs2, u) / length(u))
 end
 @inline function DiffEqBase.ODE_DEFAULT_NORM(u::AbstractArray{<:Tracker.TrackedReal, N},
-                                             t::Tracker.TrackedReal) where {N}
+                                             t::Tracker.TrackedReal)
     sqrt(sum(x -> DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]), zip(u, Iterators.repeated(t))) /
          length(u))
 end
@@ -70,21 +70,21 @@ end
 @inline DiffEqBase.ODE_DEFAULT_NORM(u::Tracker.TrackedReal, t::Tracker.TrackedReal) = abs(u)
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem,
-                             sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,
+                             sensealg::Union{AbstractOverloadingSensitivityAlgorithm,
                                              Nothing}, u0::Tracker.TrackedArray,
                              p::Tracker.TrackedArray, args...; kwargs...)
     Tracker.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem,
-                             sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,
+                             sensealg::Union{AbstractOverloadingSensitivityAlgorithm,
                                              Nothing}, u0::Tracker.TrackedArray, p, args...;
                              kwargs...)
     Tracker.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
 end
 
 function DiffEqBase.solve_up(prob::DiffEqBase.DEProblem,
-                             sensealg::Union{DiffEqBase.AbstractSensitivityAlgorithm,
+                             sensealg::Union{AbstractOverloadingSensitivityAlgorithm,
                                              Nothing}, u0, p::Tracker.TrackedArray, args...;
                              kwargs...)
     Tracker.track(DiffEqBase.solve_up, prob, sensealg, u0, p, args...; kwargs...)
@@ -92,7 +92,7 @@ end
 
 Tracker.@grad function DiffEqBase.solve_up(prob,
                                            sensealg::Union{Nothing,
-                                                           DiffEqBase.AbstractSensitivityAlgorithm
+                                                           AbstractOverloadingSensitivityAlgorithm
                                                            },
                                            u0, p, args...;
                                            kwargs...)

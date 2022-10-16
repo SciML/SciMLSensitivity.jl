@@ -2,14 +2,17 @@ function SensitivityAlg(args...; kwargs...)
     @error("The SensitivtyAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
 end
 
+# This is to easily ignore AD passthrough
+abstract type AbstractOverloadingSensitivityAlgorithm{CS, AD, FDT} <:
+              DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
 abstract type AbstractForwardSensitivityAlgorithm{CS, AD, FDT} <:
-              DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
+              AbstractOverloadingSensitivityAlgorithm{CS, AD, FDT} end
 abstract type AbstractAdjointSensitivityAlgorithm{CS, AD, FDT} <:
-              DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
+              AbstractOverloadingSensitivityAlgorithm{CS, AD, FDT} end
 abstract type AbstractSecondOrderSensitivityAlgorithm{CS, AD, FDT} <:
-              DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
+              AbstractOverloadingSensitivityAlgorithm{CS, AD, FDT} end
 abstract type AbstractShadowingSensitivityAlgorithm{CS, AD, FDT} <:
-              DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT} end
+              AbstractOverloadingSensitivityAlgorithm{CS, AD, FDT} end
 
 """
 ```julia

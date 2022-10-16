@@ -435,16 +435,13 @@ end
 
 function seed_duals(x::AbstractArray{V}, f,
                     ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {V,
-                                                                                          T,
                                                                                           N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
     duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, eltype(vec(x))))}.(vec(x), seeds)
 end
 
 function seed_duals(x::Number, f,
-                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {V,
-                                                                                          T,
-                                                                                          N}
+                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, typeof(x)})
     duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, typeof(x)))}(x, seeds[1])
 end
