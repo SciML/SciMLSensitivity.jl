@@ -58,7 +58,7 @@ end
     sqrt(sum(abs2, u) / length(u))
 end
 @inline function DiffEqBase.ODE_DEFAULT_NORM(u::AbstractArray{<:Tracker.TrackedReal, N},
-                                             t::Tracker.TrackedReal)
+                                             t::Tracker.TrackedReal) where {N}
     sqrt(sum(x -> DiffEqBase.ODE_DEFAULT_NORM(x[1], x[2]), zip(u, Iterators.repeated(t))) /
          length(u))
 end
