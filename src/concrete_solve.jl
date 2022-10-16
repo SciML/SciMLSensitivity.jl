@@ -927,10 +927,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                                             alg, sensealg::ZygoteAdjoint,
                                             u0, p, originator::SciMLBase.ADOriginator,
                                             args...; kwargs...)
-
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
     Zygote.pullback((u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
-                                     sensealg = SensitivityADPassThrough(), kwargs_filtered...), u0,
+                                     sensealg = SensitivityADPassThrough(),
+                                     kwargs_filtered...), u0,
                     p)
 end
 
@@ -1169,7 +1169,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
 
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
-                     kwargs_filtered...)
+                    kwargs_filtered...)
         t = sol.t
         if DiffEqBase.isinplace(prob)
             u = map.(ReverseDiff.value, sol.u)

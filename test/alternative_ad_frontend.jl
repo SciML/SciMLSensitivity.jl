@@ -155,8 +155,9 @@ function ode(state, parameters, t)
 end
 
 function solve_euler(state, times, parameters)
-    problem = ODEProblem{true}(ode!, state, times[[1, end]], parameters; saveat=times, sensealg=ReverseDiffAdjoint())
-    return solve(problem, Euler(); dt=1e-1)
+    problem = ODEProblem{true}(ode!, state, times[[1, end]], parameters; saveat = times,
+                               sensealg = ReverseDiffAdjoint())
+    return solve(problem, Euler(); dt = 1e-1)
 end
 
 const initial_state = ones(2)
