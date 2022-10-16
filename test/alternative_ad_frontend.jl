@@ -144,3 +144,22 @@ res4 = ReverseDiff.gradient(loss2, p0)
 
 @test res1≈res3 atol=1e-14
 @test res2≈res4 atol=1e-14
+
+# Test for recursion https://discourse.julialang.org/t/diffeqsensitivity-jl-issues-with-reversediffadjoint-sensealg/88774
+function ode!(derivative, state, parameters, t)
+    derivative .= parameters
+end
+
+function ode(state, parameters, t)
+    return ode!(similar(state), state, parameters, t)
+end
+
+function solve_euler(state, times, parameters)
+    problem = ODEProblem{true}(ode!, state, times[[1, end]], parameters; saveat = times,
+                               sensealg = ReverseDiffAdjoint())
+    return solve(problem, Euler(); dt = 1e-1)
+end
+
+const initial_state = ones(2)
+const solution_times = [1.0, 2.0]
+ReverseDiff.gradient(p -> sum(sum(solve_euler(initial_state, solution_times, p))), zeros(2))

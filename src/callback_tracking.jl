@@ -141,7 +141,7 @@ struct FakeIntegrator{uType, P, tType, tprevType}
     tprev::tprevType
 end
 
-struct CallbackSensitivityFunction{fType, Alg <: DiffEqBase.AbstractSensitivityAlgorithm,
+struct CallbackSensitivityFunction{fType, Alg <: AbstractOverloadingSensitivityAlgorithm,
                                    C <: AdjointDiffCache, pType} <: SensitivityFunction
     f::fType
     sensealg::Alg
