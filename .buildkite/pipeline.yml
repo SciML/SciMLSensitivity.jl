@@ -1,5 +1,10 @@
 steps:
-  - label: "Callbacks1"
+  - label: "{{matrix}}"
+    matrix:
+      - "Callbacks1"
+      - "Callbacks2"
+    env:
+      GROUP: "{{matrix}}"
     plugins:
       - JuliaCI/julia#v1:
           version: "1"
@@ -9,24 +14,6 @@ steps:
       os: "linux"
       queue: "juliaecosystem"
       arch: "x86_64"
-    env:
-      GROUP: 'Callbacks1'
-    timeout_in_minutes: 120
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
-  - label: "Callbacks2"
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "1"
-      - JuliaCI/julia-test#v1:
-          coverage: true
-    agents:
-      os: "linux"
-      queue: "juliaecosystem"
-      arch: "x86_64"
-    env:
-      GROUP: 'Callbacks2'
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
