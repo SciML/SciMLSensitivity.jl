@@ -375,7 +375,7 @@ In plain terms, the quantities that were defined are:
 
 ### Controller
 We use a neural network to control the parameter Ω(t). Alternatively, one could
-also, e.g., use [tensor layers](https://diffeqflux.sciml.ai/dev/layers/TensorLayer/), Flux.jl, or Lux.jl.
+also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/TensorLayer/), Flux.jl, or Lux.jl.
 
 ```@example sdecontrol
 # state-aware
@@ -417,7 +417,7 @@ u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 We define the drift and diffusion term of the qubit. The SDE doesn't preserve the
 norm of the quantum state. To ensure the normalization of the state, we add a
 `DiscreteCallback` after each time step. Further, we use a NoiseGrid
-from the [DiffEqNoiseProcess](https://diffeq.sciml.ai/latest/features/noise_process/#Direct-Construction-Example)
+from the [DiffEqNoiseProcess](https://docs.sciml.ai/DiffEqDocs/stable/features/noise_process/#Direct-Construction-Example)
 package, as one possibility to simulate a 1D Brownian motion. Note that the NN
 is placed directly into the drift function, thus the control parameter Ω is
 continuously updated.
@@ -491,7 +491,7 @@ state. We create a parallelized `EnsembleProblem`, where the `prob_func` creates
 new `NoiseGrid` for every trajectory and loops over the initial states. The number
 of parallel trajectories and the used batch size can be tuned by the
 kwargs `trajectories=..` and `batchsize=..` in the `solve` call. See also [the
-parallel ensemble simulation docs](https://diffeq.sciml.ai/latest/features/ensemble/)
+parallel ensemble simulation docs](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/)
 for a description of the available ensemble algorithms. To optimize only the parameters
 of the neural network, we use `pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]`
 
@@ -623,7 +623,7 @@ We use the `ADAM` optimizer to optimize the parameters of the neural network.
 In each epoch, we draw new initial quantum states, compute the forward evolution,
 and, subsequently, the gradients of the loss function with respect to the parameters
 of the neural network.
-`sensealg` allows one to switch between the different [sensitivity modes](https://diffeqflux.sciml.ai/dev/ControllingAdjoints/).
+`sensealg` allows one to switch between the different [sensitivity modes](https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/#Using-and-Controlling-Sensitivity-Algorithms-within-AD).
 `InterpolatingAdjoint` and `BacksolveAdjoint` are the two possible continuous adjoint
 sensitivity methods. The necessary correction between Ito and Stratonovich integrals
 is computed under the hood in the SciMLSensitivity package.

@@ -21,9 +21,9 @@ Thus, what SciMLSensitivity.jl provides is:
 
     This documentation assumes familiarity with the solver packages for the respective problem
     types. If one is not familiar with the solver packages, please consult the documentation
-    for pieces like [DifferentialEquations.jl](https://diffeq.sciml.ai/stable/), 
-    [NonlinearSolve.jl](https://nonlinearsolve.sciml.ai/dev/), 
-    [LinearSolve.jl](http://linearsolve.sciml.ai/dev/), etc. first.
+    for pieces like [DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/), 
+    [NonlinearSolve.jl](https://docs.sciml.ai/NonlinearSolve/stable/), 
+    [LinearSolve.jl](https://docs.sciml.ai/LinearSolve/stable/), etc. first.
 
 ## Installation
 
@@ -46,10 +46,10 @@ solve(prob,args...;sensealg=InterpolatingAdjoint(),
 `solve` is fully compatible with automatic differentiation libraries
 like:
 
-- [Zygote.jl](https://github.com/FluxML/Zygote.jl)
-- [ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl)
+- [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
+- [ReverseDiff.jl](https://juliadiff.org/ReverseDiff.jl/)
 - [Tracker.jl](https://github.com/FluxML/Tracker.jl)
-- [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl)
+- [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/)
 
 and will automatically replace any calculations of the solution's derivative
 with a fast method. The keyword argument `sensealg` controls the dispatch to the
@@ -68,7 +68,7 @@ is used, i.e. going back to the AD mechanism.
 ## Equation Scope
 
 SciMLSensitivity.jl supports all of the equation types of the 
-[SciML Common Interface](https://scimlbase.sciml.ai/dev/), extending the problem
+[SciML Common Interface](https://docs.sciml.ai/SciMLBase/stable/), extending the problem
 types by adding overloads for automatic differentiation to improve the performance
 and flexibility of the differentiation system. This includes:
 
@@ -148,15 +148,15 @@ Many different training techniques are supported by this package, including:
 - Discretize-then-optimize (forward and reverse mode discrete sensitivity analysis)
   - This is a generalization of [ANODE](https://arxiv.org/pdf/1902.10298.pdf) and
     [ANODEv2](https://arxiv.org/pdf/1906.04596.pdf) to all
-    [DifferentialEquations.jl ODE solvers](https://diffeq.sciml.ai/latest/solvers/ode_solve/)
+    [DifferentialEquations.jl ODE solvers](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/)
 - Hybrid approaches (adaptive time stepping + AD for adaptive discretize-then-optimize)
 - O(1) memory backprop of ODEs via BacksolveAdjoint, and Virtual Brownian Trees for O(1) backprop of SDEs
 - [Continuous adjoints for integral loss functions](@ref continuous_loss)
 - Probabilistic programming and variational inference on ODEs/SDEs/DAEs/DDEs/hybrid
-  equations etc. is provided by integration with [Turing.jl](https://turing.ml/dev/)
+  equations etc. is provided by integration with [Turing.jl](https://turing.ml/stable/docs/using-turing/)
   and [Gen.jl](https://github.com/probcomp/Gen.jl). Reproduce
   [variational loss functions](https://arxiv.org/abs/2001.01328) by plugging
-  [composible libraries together](https://turing.ml/dev/tutorials/9-variationalinference/).
+  [composible libraries together](https://turing.ml/stable/tutorials/09-variational-inference/).
 
 all while mixing forward mode and reverse mode approaches as appropriate for the
 most speed. For more details on the adjoint sensitivity analysis methods for
@@ -182,7 +182,7 @@ use and swap out the ODE solver between any common interface compatible library,
 - LSODA.jl
 - [IRKGaussLegendre.jl](https://github.com/mikelehu/IRKGaussLegendre.jl)
 - [SciPyDiffEq.jl](https://github.com/SciML/SciPyDiffEq.jl)
-- [... etc. many other choices!](https://diffeq.sciml.ai/stable/solvers/ode_solve/)
+- [... etc. many other choices!](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/)
 
 In addition, due to the composability of the system, none of the components are directly
 tied to the Flux.jl machine learning framework. For example, you can [use SciMLSensitivity.jl
