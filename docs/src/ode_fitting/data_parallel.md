@@ -72,7 +72,7 @@ Instead of parallelizing within an ODE solve, one can parallelize the
 solves to the ODE itself. While this will be less effective on very
 large ODEs, like big neural ODE image classifiers, this method be effective
 even if the ODE is small or the `f` function is not well-parallelized.
-This kind of parallelism is done via the [DifferentialEquations.jl ensemble interface](https://diffeq.sciml.ai/stable/features/ensemble/). The following examples
+This kind of parallelism is done via the [DifferentialEquations.jl ensemble interface](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/). The following examples
 showcase multithreaded, cluster, and (multi)GPU parallelism through this
 interface.
 
@@ -139,7 +139,7 @@ prob = ODEProblem((u, p, t) -> 1.01u .* p, [θ[1]], (0.0, 1.0), [θ[2]])
 In the `prob_func` we define how to build a new problem based on the
 base problem. In this case, we want to change `u0` by a constant, i.e.
 `0.5 .+ i/100 .* prob.u0` for different trajectories labelled by `i`.
-Thus we use the [remake function from the problem interface](https://diffeq.sciml.ai/stable/basics/problem/#Modification-of-problem-types) to do so:
+Thus we use the [remake function from the problem interface](https://docs.sciml.ai/DiffEqDocs/stable/basics/problem/#Modification-of-problem-types) to do so:
 
 ```@example dataparallel
 function prob_func(prob, i, repeat)

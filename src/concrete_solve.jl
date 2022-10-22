@@ -197,7 +197,7 @@ const ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE = """
                                              Chosen adjoint method is not compatible with the chosen problem. NonlinearProblem
                                              and SteadyStateProblem require specific adjoint choices (like SteadyStateAdjoint)
                                              and will not work with adjoints designed for time series models. For more details,
-                                             see https://sensitivity.sciml.ai/dev/.
+                                             see https://docs.sciml.ai/SciMLSensitivity/stable/.
                                              """
 
 struct AdjointSteadyProblemPairingError <: Exception

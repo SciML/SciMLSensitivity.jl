@@ -51,7 +51,7 @@ sol = solve(prob,DP8())
 
 gives a continuous solution `sol(t)` with the derivative at each time point. This
 can then be used to define a continuous cost function via
-[Integrals.jl](https://github.com/SciML/Integrals.jl), though the derivative would
+[Integrals.jl](https://docs.sciml.ai/Integrals/stable/), though the derivative would
 need to be defined by hand using the extra sensitivity terms.
 
 ## Example: Continuous Adjoints on an Energy Functional

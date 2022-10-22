@@ -5,7 +5,7 @@ abstol = 1e-12
 reltol = 1e-12
 savingtimes = 0.5
 
-# see https://diffeq.sciml.ai/stable/features/callback_functions/#VectorContinuousCallback-Example
+# see https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/#VectorContinuousCallback-Example
 function test_vector_continuous_callback(cb, g)
     function f(du, u, p, t)
         du[1] = u[2]

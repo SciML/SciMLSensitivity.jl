@@ -11,7 +11,7 @@ requiring the user to do any of the setup.
 Current AD libraries whose calls are captured by the sensitivity
 system are:
 
-- [Zygote.jl](https://github.com/FluxML/Zygote.jl)
+- [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
 - [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
 
 ## Using and Controlling Sensitivity Algorithms within AD
@@ -167,7 +167,7 @@ When this is done, the choice of `ZygoteVJP` will utilize your VJP
 function during the internal steps of the adjoint. This is useful for
 models where automatic differentiation may have trouble producing
 optimal code. This can be paired with 
-[ModelingToolkit.jl](https://github.com/SciML/ModelingToolkit.jl)
+[ModelingToolkit.jl](https://docs.sciml.ai/ModelingToolkit/stable/)
 for producing hyper-optimized, sparse, and parallel VJP functions utilizing
 the automated symbolic conversions.
 
@@ -238,11 +238,11 @@ practice.
 
 To avoid the issues of backwards solving the ODE, `InterpolatingAdjoint`
 and `QuadratureAdjoint` utilize information from the forward pass.
-By default these methods utilize the [continuous solution](https://diffeq.sciml.ai/latest/basics/solution/#Interpolations-1)
+By default these methods utilize the [continuous solution](https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#Interpolations-1)
 provided by DifferentialEquations.jl in the calculations of the
 adjoint pass. `QuadratureAdjoint` uses this to build a continuous
 function for the solution of adjoint equation and then performs an
-adaptive quadrature via [Quadrature.jl](https://github.com/SciML/Quadrature.jl),
+adaptive quadrature via [Integrals.jl](https://docs.sciml.ai/Integrals/stable/),
 while `InterpolatingAdjoint` appends the integrand to the ODE so it's
 computed simultaneously to the Lagrange multiplier. When memory is
 not an issue, we find that the `QuadratureAdjoint` approach tends to
@@ -278,14 +278,14 @@ is done on the discretized system. While traditionally this can be
 done discrete sensitivity analysis, this is can be equivalently done
 by automatic differentiation on the solver itself. `ReverseDiffAdjoint`
 performs reverse-mode automatic differentiation on the solver via
-[ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl),
+[ReverseDiff.jl](https://juliadiff.org/ReverseDiff.jl/),
 `ZygoteAdjoint` performs reverse-mode automatic
 differentiation on the solver via
-[Zygote.jl](https://github.com/FluxML/Zygote.jl), and `TrackerAdjoint`
+[Zygote.jl](https://fluxml.ai/Zygote.jl/latest/), and `TrackerAdjoint`
 performs reverse-mode automatic differentiation on the solver via
 [Tracker.jl](https://github.com/FluxML/Tracker.jl). In addition,
 `ForwardDiffSensitivty` performs forward-mode automatic differentiation
-on the solver via [ForwardDiff.jl](https://github.com/JuliaDiff/ForwardDiff.jl).
+on the solver via [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/).
 
 We note that many studies have suggested that [this approach produces
 more accurate gradients than the optimize-than-discretize approach](https://arxiv.org/abs/2005.13420)

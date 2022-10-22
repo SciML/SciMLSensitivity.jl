@@ -4,7 +4,7 @@
 
       This tutorial assumes familiarity with DifferentialEquations.jl
       If you are not familiar with DifferentialEquations.jl, please consult
-      [the DifferentialEquations.jl documentation](https://diffeq.sciml.ai/stable/)
+      [the DifferentialEquations.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/)
 
 In this tutorial we will introduce how to use local sensitivity analysis via
 automatic differentiation. The automatic differentiation interfaces are the
@@ -38,7 +38,7 @@ differentiation methods.
 Let's say we need the derivative of the solution with respect to the initial condition
 `u0` and its parameters `p`. One of the simplest ways to do this is via ForwardDiff.jl.
 To do this, all that one needs to do is use 
-[the ForwardDiff.jl library](https://github.com/JuliaDiff/ForwardDiff.jl) to differentiate
+[the ForwardDiff.jl library](https://juliadiff.org/ForwardDiff.jl/stable/) to differentiate
 some function `f` which uses a differential equation `solve` inside of it. For example,
 let's say we want the derivative of the first component of ODE solution with respect to 
 these quantities at evenly spaced time points of `dt = 1`. We can compute this via:
@@ -67,11 +67,11 @@ solution at time `t=1` with respect to `p[1]`.
 
 !!! note
 
-      Since [the global error is 1-2 orders of magnitude higher than the local error](https://diffeq.sciml.ai/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect), we use accuracies of 1e-6 (instead of the default 1e-3) to get reasonable sensitivities
+      Since [the global error is 1-2 orders of magnitude higher than the local error](https://docs.sciml.ai/DiffEqDocs/stable/basics/faq/#What-does-tolerance-mean-and-how-much-error-should-I-expect), we use accuracies of 1e-6 (instead of the default 1e-3) to get reasonable sensitivities
 
 ## Reverse-Mode Automatic Differentiation
 
-[The `solve` function is automatically compatible with AD systems like Zygote.jl](https://diffeq.sciml.ai/latest/analysis/sensitivity/)
+[The `solve` function is automatically compatible with AD systems like Zygote.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
 and thus there is no machinery that is necessary to use other than to put `solve` inside of
 a function that is differentiated by Zygote. For example, the following computes the solution 
 to an ODE and computes the gradient of a loss function (the sum of the ODE's output at each 
