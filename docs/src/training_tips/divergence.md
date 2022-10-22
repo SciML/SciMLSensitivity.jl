@@ -8,7 +8,7 @@ an optimizer can take an excursion into a parameter regime which simply gives
 a model with an infinite solution.
 
 This can be addressed by using the retcode system. In DifferentialEquations.jl,
-[RetCodes](https://diffeq.sciml.ai/stable/basics/solution/#retcodes) detail
+[ReturnCodes](https://diffeq.sciml.ai/stable/basics/solution/#retcodes) detail
 the status of the returned solution. Thus if the retcode corresponds to a
 failure, we can use this to give an infinite loss and effectively discard the
 parameters. This is shown in the loss function:
@@ -17,7 +17,7 @@ parameters. This is shown in the loss function:
 function loss(p)
   tmp_prob = remake(prob, p=p)
   tmp_sol = solve(tmp_prob,Tsit5(),saveat=0.1)
-  if tmp_sol.retcode == :Success
+  if tmp_sol.retcode == ReturnCode.Success
     return sum(abs2,Array(tmp_sol) - dataset)
   else
     return Inf
@@ -56,7 +56,7 @@ scatter!(sol.t,dataset')
 function loss(p)
   tmp_prob = remake(prob, p=p)
   tmp_sol = solve(tmp_prob,Tsit5(),saveat=0.1)
-  if tmp_sol.retcode == :Success
+  if tmp_sol.retcode == ReturnCode.Success
     return sum(abs2,Array(tmp_sol) - dataset)
   else
     return Inf
