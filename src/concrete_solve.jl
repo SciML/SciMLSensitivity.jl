@@ -629,32 +629,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     sol = solve(remake(prob, p = p, u0 = u0), alg, args...; saveat = _saveat, kwargs...)
 
     # saveat values
-    # seems overcomplicated, but see the PR
-    if sol.retcode == ReturnCode.Terminated
-        # solver might be terminated by a callback
-        @assert haskey(kwargs, :callback) && length(sol.t) < 3
-        # In this case, we don't want to save the sensitivity solutions at ts=sol.t
-        # but only at the final time (and potentially starting time).
-        # Otherwise, there might be a BoundsError.
-        ts = eltype(sol.t)[]
-    else
-        if length(sol.t) == 1
-            ts = sol.t
-        else
-            ts = eltype(sol.t)[]
-            if sol.t[2] != sol.t[1]
-                push!(ts, sol.t[1])
-            end
-            for i in 2:(length(sol.t) - 1)
-                if sol.t[i] != sol.t[i + 1] && sol.t[i] != sol.t[i - 1]
-                    push!(ts, sol.t[i])
-                end
-            end
-            if sol.t[end] != sol.t[end - 1]
-                push!(ts, sol.t[end])
-            end
-        end
-    end
+    ts = sol.t
 
     function forward_sensitivity_backpass(Δ)
         if !(p === nothing || p === DiffEqBase.NullParameters())
@@ -743,8 +718,17 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
                     _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
-                    _dp = sum(eachindex(du)) do i
-                        J = du[i]
+                    if haskey(kwargs, :callback)
+                        # handle bounds errors: if one saves at other times, there can be more or less time points in the primal solution
+                        # than in the solution using dual numbers:
+                        indxs = findall(t -> t ∈ ts, _sol.t)
+                        _du = @view du[indxs]
+                    else
+                        _du = du
+                    end
+
+                    _dp = sum(eachindex(_du)) do i
+                        J = _du[i]
                         if Δ isa AbstractVector || Δ isa DESolution ||
                            Δ isa AbstractVectorOfArray
                             v = Δ[i]
@@ -870,8 +854,17 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
-                _du0 = sum(eachindex(du)) do i
-                    J = du[i]
+                if haskey(kwargs, :callback)
+                    # handle bounds errors: if one saves at other times, there can be more or less time points in the primal solution
+                    # than in the solution using dual numbers:
+                    indxs = findall(t -> t ∈ ts, _sol.t)
+                    _du = @view du[indxs]
+                else
+                    _du = du
+                end
+
+                _du0 = sum(eachindex(_du)) do i
+                    J = _du[i]
                     if Δ isa AbstractVector || Δ isa DESolution ||
                        Δ isa AbstractVectorOfArray
                         v = Δ[i]

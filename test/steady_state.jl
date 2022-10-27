@@ -496,12 +496,13 @@ end
     @test dp≈Zdp atol=1e-4
 
     # save_start = true, save_everystep=true
-    # not uniquely clear/defined how ForwardDiffSensitivity should save in this case.
-    @test_throws AssertionError Zygote.gradient((u0, p) -> loss(u0, p,
-                                                                sensealg = ForwardDiffSensitivity(),
-                                                                save_start = true,
-                                                                save_everystep = true),
-                                                u0, p)
+    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                sensealg = ForwardDiffSensitivity(),
+                                                save_start = true,
+                                                save_everystep = true),
+                                u0, p)
+    @test du0≈Zdu0 atol=1e-4
+    @test dp≈Zdp atol=1e-4
 
     Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
                                                 save_start = true, save_everystep = true),
