@@ -630,7 +630,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     # saveat values
     # seems overcomplicated, but see the PR
-    if sol.retcode == :Terminated
+    if sol.retcode == ReturnCode.Terminated
         # solver might be terminated by a callback
         @assert haskey(kwargs, :callback) && length(sol.t) < 3
         # In this case, we don't want to save the sensitivity solutions at ts=sol.t
