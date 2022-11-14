@@ -311,6 +311,10 @@ end
         if checkpoints[1] != tspan[2]
             pushfirst!(checkpoints, tspan[2])
         end
+        # check if end is in checkpoints.
+        if checkpoints[1] != tspan[1]
+            push!(checkpoints, tspan[1])
+        end
 
         if haskey(kwargs, :tstops)
             (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
