@@ -629,6 +629,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     sol = solve(remake(prob, p = p, u0 = u0), alg, args...; saveat = _saveat, kwargs...)
 
     # saveat values
+    # need all values here. Not only unique ones.
+    # if a callback is saving two times in primal solution, we also need to get it at least
+    # two times in the solution using dual numbers.
     ts = sol.t
 
     function forward_sensitivity_backpass(Δ)
@@ -719,9 +722,25 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                     if haskey(kwargs, :callback)
-                        # handle bounds errors: if one saves at other times, there can be more or less time points in the primal solution
-                        # than in the solution using dual numbers:
+                        # handle bounds errors: ForwardDiffSensitivity uses dual numbers, so there
+                        # can be more or less time points in the primal solution
+                        # than in the solution using dual numbers when adaptive solvers are used.
+                        # First step: filter all values, so that only time steps that actually occur
+                        # in the primal are left. This is for example necessary when `terminate!`
+                        # is used.
                         indxs = findall(t -> t ∈ ts, _sol.t)
+                        _ts = _sol.t[indxs]
+                        # after this filtering step, we might end up with a too large amount of indices.
+                        # For example, if a callback saved values in the primal, then we now potentially
+                        # save it by `saveat` and by `save_positions` of the callback.
+                        # Second step. Drop these duplicates values.
+                        if length(indxs) != length(ts)
+                            for i in (length(_ts) - 1):-1:2
+                                if _ts[i] == _ts[i + 1] && _ts[i] == _ts[i - 1]
+                                    deleteat!(indxs, i)
+                                end
+                            end
+                        end
                         _du = @view du[indxs]
                     else
                         _du = du
@@ -855,9 +874,25 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                 if haskey(kwargs, :callback)
-                    # handle bounds errors: if one saves at other times, there can be more or less time points in the primal solution
-                    # than in the solution using dual numbers:
+                    # handle bounds errors: ForwardDiffSensitivity uses dual numbers, so there
+                    # can be more or less time points in the primal solution
+                    # than in the solution using dual numbers when adaptive solvers are used.
+                    # First step: filter all values, so that only time steps that actually occur
+                    # in the primal are left. This is for example necessary when `terminate!`
+                    # is used.
                     indxs = findall(t -> t ∈ ts, _sol.t)
+                    _ts = _sol.t[indxs]
+                    # after this filtering step, we might end up with a too large amount of indices.
+                    # For example, if a callback saved values in the primal, then we now potentially
+                    # save it by `saveat` and by `save_positions` of the callback.
+                    # Second step. Drop these duplicates values.
+                    if length(indxs) != length(ts)
+                        for i in (length(_ts) - 1):-1:2
+                            if _ts[i] == _ts[i + 1] && _ts[i] == _ts[i - 1]
+                                deleteat!(indxs, i)
+                            end
+                        end
+                    end
                     _du = @view du[indxs]
                 else
                     _du = du
