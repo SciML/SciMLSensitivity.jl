@@ -531,5 +531,39 @@ end
                                     u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
+
+        function loss2(u0, p; sensealg = nothing, saveat = 1.0)
+            # remake tspan so saveat::Number makes sense
+            _prob = remake(prob, tspan = (0.0, 100.0), u0 = u0, p = p)
+            # saving arguments can have a huge influence here
+            sol = solve(_prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
+                        callback = cb_t, saveat = saveat)
+            res = sol.u[end]
+            g(res, p, nothing)
+        end
+
+        du0 = ForwardDiff.gradient((u0) -> loss2(u0, p), u0)
+        dp = ForwardDiff.gradient((p) -> loss2(u0, p), p)
+
+        # saveat::Number
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
+                                                    sensealg = ForwardDiffSensitivity()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
+                                    u0,
+                                    p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
+                                                    sensealg = InterpolatingAdjoint()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
     end
 end
