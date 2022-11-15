@@ -547,7 +547,7 @@ end
 
         # saveat::Number
         Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
-                                                    sensealg = ForwardDiffSensitivity()),
+                                                     sensealg = ForwardDiffSensitivity()),
                                     u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
@@ -557,7 +557,7 @@ end
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
         Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
-                                                    sensealg = InterpolatingAdjoint()),
+                                                     sensealg = InterpolatingAdjoint()),
                                     u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
