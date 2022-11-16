@@ -316,6 +316,10 @@ end
             (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
         end
 
+        # check if end is in checkpoints.
+        if checkpoints[end] != tspan[1]
+            push!(checkpoints, tspan[1])
+        end
     else
         tstops = nothing
     end
@@ -418,6 +422,15 @@ end
         # check if start is in checkpoints. Otherwise first interval is missed.
         if checkpoints[1] != tspan[2]
             pushfirst!(checkpoints, tspan[2])
+        end
+
+        if haskey(kwargs, :tstops)
+            (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
+        end
+
+        # check if end is in checkpoints.
+        if checkpoints[end] != tspan[1]
+            push!(checkpoints, tspan[1])
         end
     else
         tstops = nothing
@@ -549,6 +562,15 @@ end
         # check if start is in checkpoints. Otherwise first interval is missed.
         if checkpoints[1] != tspan[2]
             pushfirst!(checkpoints, tspan[2])
+        end
+
+        if haskey(kwargs, :tstops)
+            (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
+        end
+
+        # check if end is in checkpoints.
+        if checkpoints[end] != tspan[1]
+            push!(checkpoints, tspan[1])
         end
     else
         tstops = nothing
