@@ -89,8 +89,7 @@ res1 = Optimization.solve(optprob, ADAM(0.005), callback = callback,maxiters=100
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2,
-                              NLopt.LD_LBFGS(), maxiters=100,
-                              allow_f_increases = false)
+                              NLopt.LD_LBFGS(), maxiters=100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
@@ -105,8 +104,7 @@ optf3 = Optimization.OptimizationFunction((x,p)->loss_adjoint(x), adtype)
 
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
 res3 = Optimization.solve(optprob3,
-                              NLopt.LD_LBFGS(),maxiters=100,
-                              allow_f_increases = false)
+                              NLopt.LD_LBFGS(),maxiters=100)
 ```
 
 Now let's see what we received:

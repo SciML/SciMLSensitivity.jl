@@ -6,8 +6,7 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
-      SciMLSensitivity, Zygote, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
   x, y = u
@@ -72,7 +71,7 @@ more details, [see the DifferentialEquations.jl documentation](https://docs.scim
 ```
 
 ```@example optode
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, OptimizationOptimJL, 
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, 
       SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)

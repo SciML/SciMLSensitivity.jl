@@ -5,22 +5,8 @@ there are many strategies to avoid local minima:
 
 1. Insert stochasticity into the loss function through minibatching
 2. Weigh the loss function to allow for fitting earlier portions first
-3. Changing the optimizers to `allow_f_increases`
-4. Iteratively grow the fit
-5. Training the initial conditions and the parameters to start
-
-## `allow_f_increases=true`
-
-With Optim.jl optimizers, you can set `allow_f_increases=true` in order to let
-increases in the loss function not cause an automatic halt of the optimization
-process. Using a method like BFGS or NewtonTrustRegion is not guaranteed to
-have monotonic convergence and so this can stop early exits which can result
-in local minima. This looks like:
-
-```julia
-pmin = Optimization.solve(optprob, NewtonTrustRegion(), callback=callback,
-                              maxiters = 200, allow_f_increases = true)
-```
+3. Iteratively grow the fit
+4. Training the initial conditions and the parameters to start
 
 ## Iterative Growing Of Fits to Reduce Probability of Bad Local Minima
 
@@ -30,7 +16,7 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
-using Lux, DiffEqFlux, DifferentialEquations, Optimization, OptimizationOptimJL, Plots, Random
+using Lux, DifferentialEquations, Optimization, OptimizationFlux, Plots, Random
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -158,7 +144,6 @@ time span and (0, 10), any longer and more iterations will be required. Alternat
 one could use a mix of (4) and (5), or breaking up the trajectory into chunks and just (5).
 
 ```@example resetic
-
 using Flux, Plots, DifferentialEquations, SciMLSensitivity
 
 

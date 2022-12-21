@@ -18,7 +18,7 @@ In both of these examples, we may make use of measurements we have of the evolut
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
 ```@example PEM
-using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
+using DifferentialEquations, Optimization,  OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
 
 tspan = (0.1f0, Float32(20.0))
 tsteps = range(tspan[1], tspan[2], length = 1000)
