@@ -1,5 +1,5 @@
 pages = ["index.md",
-    "tutorials/getting_started.md",
+    "getting_started.md",
     "Tutorials" => Any["tutorials/parameter_estimation_ode.md",
                        "tutorials/direct_sensitivity.md",
                        "tutorials/adjoint_continuous_functional.md",
