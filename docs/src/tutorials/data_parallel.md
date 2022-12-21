@@ -1,7 +1,8 @@
 # Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching
 
-DiffEqFlux.jl allows for data-parallel batching optimally on one
-computer, across an entire compute cluster, and batching along GPUs.
+SciMLSensitivity.jl allows for data-parallel batching optimally on one
+computer, across an entire compute cluster, and batching along GPUs
+by performing differentiation of SciML `EnsembleProblem`s.
 This can be done by parallelizing within an ODE solve or between the
 ODE solves. The automatic differentiation tooling is compatible with
 the parallelism. The following examples demonstrate training over a few
@@ -290,5 +291,6 @@ res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)
 
 ## Multi-GPU Batching
 
-DiffEqGPU supports batching across multiple GPUs. See [its README](https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu)
+DiffEqGPU supports batching across multiple GPUs. See 
+[its README](https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu)
 for details on setting it up.

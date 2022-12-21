@@ -1,4 +1,4 @@
-# Optimization of Ordinary Differential Equations
+# [Parameter Estimation of Ordinary Differential Equations](@id odeparamestim)
 
 ## Copy-Paste Code
 
