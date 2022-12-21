@@ -83,7 +83,7 @@ Notice that Optimization.jl works on a vector input, so we have to concatenate `
 and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
-using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers, OptimizationOptimJL, Plots
+using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers, OptimizationNLopt, Plots
 
 u0 = Float32[2.; 0.]
 datasize = 30
@@ -144,7 +144,7 @@ result_neuralode = Optimization.solve(optprob,
 optprob2 = remake(optprob,u0 = result_neuralode.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-                                        LBFGS(),
+                                        NLopt.LD_LBFGS(),
                                         callback = callback,
                                         allow_f_increases = false)
 ```
