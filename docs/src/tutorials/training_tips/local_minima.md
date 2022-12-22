@@ -16,7 +16,8 @@ before except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
-using Lux, DifferentialEquations, Optimization, OptimizationFlux, Plots, Random
+using DifferentialEquations, SciMLSensitivity, Optimization, OptimizationFlux
+using Lux, Plots, Random
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -40,7 +41,7 @@ pinit, st = Lux.setup(rng, dudt2)
 pinit = Lux.ComponentArray(pinit)
 
 function neuralode_f(u, p, t)
-  dudt2(u, p, st)
+  dudt2(u, p, st)[1]
 end
 
 function predict_neuralode(p)
@@ -79,7 +80,9 @@ result_neuralode = Optimization.solve(optprob,
                                       ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
-callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
+pred = predict_neuralode(result_neuralode.u)
+plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
+scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
 ```
 
 However, we've now fallen into a trap of a local minima. If the optimizer changes
@@ -94,7 +97,7 @@ Let's start by reducing the timespan to `(0,1.5)`:
 ```@example iterativefit
 function predict_neuralode(p)
   prob = ODEProblem(neuralode_f, u0, (0.0f0, 1.5f0), p)
-  sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
+  sol = solve(prob, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
 
@@ -106,10 +109,10 @@ result_neuralode2 = Optimization.solve(optprob,
                                       ADAM(0.05), callback = callback,
                                       maxiters = 300)
 
-callback(result_neuralode2.u,loss_neuralode(result_neuralode2.u)...;doplot=true)
+pred = predict_neuralode(result_neuralode2.u)
+plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
+scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
 ```
-
-![](https://user-images.githubusercontent.com/1814174/81901707-f82ed400-958c-11ea-9e8e-0efb10d9b05c.png)
 
 This fits beautifully. Now let's grow the timespan and utilize the parameters
 from our `(0,1.5)` fit as the initial condition to our next fit:
@@ -117,18 +120,19 @@ from our `(0,1.5)` fit as the initial condition to our next fit:
 ```@example iterativefit
 function predict_neuralode(p)
   prob = ODEProblem(neuralode_f, u0, (0.0f0, 3.0f0), p)
-  sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
+  sol = solve(prob, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
 
-optprob = Optimization.OptimizationProblem(optf, result_neuralode.u)
+optprob = Optimization.OptimizationProblem(optf, result_neuralode2.u)
 result_neuralode3 = Optimization.solve(optprob,
                                         ADAM(0.05), maxiters = 300,
                                         callback = callback)
-callback(result_neuralode3.u,loss_neuralode(result_neuralode3.u)...;doplot=true)
-```
 
-![](https://user-images.githubusercontent.com/1814174/81901706-f7963d80-958c-11ea-856a-7f85af8695b8.png)
+pred = predict_neuralode(result_neuralode3.u)
+plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
+scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
+```
 
 Once again a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
@@ -136,22 +140,23 @@ to the full fit:
 ```@example iterativefit
 function predict_neuralode(p)
   prob = ODEProblem(neuralode_f, u0, (0.0f0, 5.0f0), p)
-  sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
+  sol = solve(prob, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
-                                      ADAM(0.01), maxiters = 300,
+                                      ADAM(0.01), maxiters = 500,
                                       callback = callback)
-callback(result_neuralode4.u,loss_neuralode(result_neuralode4.u)...;doplot=true)
-```
 
-![](https://user-images.githubusercontent.com/1814174/81901711-f82ed400-958c-11ea-9ba2-2b1f213b865a.png)
+pred = predict_neuralode(result_neuralode4.u)
+plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data")
+scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
+```
 
 ## Training both the initial conditions and the parameters to start
 
-In this example we will show how to use strategy (5) in order to accomplish the
+In this example we will show how to use strategy (4) in order to accomplish the
 same goal, except rather than growing the trajectory iteratively, we can train on
 the whole trajectory. We do this by allowing the neural ODE to learn both the
 initial conditions and parameters to start, and then reset the initial conditions
