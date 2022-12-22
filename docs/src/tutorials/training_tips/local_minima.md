@@ -45,7 +45,7 @@ end
 
 function predict_neuralode(p)
   prob = ODEProblem(neuralode_f, u0, tspan, p)
-  sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
+  sol = solve(prob, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
 
