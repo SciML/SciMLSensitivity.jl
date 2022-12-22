@@ -20,13 +20,13 @@ We start by defining a model of the pendulum. The model takes a parameter $L$ co
 ```@example PEM
 using DifferentialEquations, Optimization,  OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
 
-tspan = (0.1f0, Float32(20.0))
+tspan = (0.1, 20.0)
 tsteps = range(tspan[1], tspan[2], length = 1000)
 
-u0 = [0f0, 3f0] # Initial angle and angular velocity
+u0 = [0.0, 3.0] # Initial angle and angular velocity
 
 function simulator(du,u,p,t) # Pendulum dynamics
-    g = 9.82f0 # Gravitational constant
+    g = 9.82 # Gravitational constant
     L = p isa Number ? p : p[1] # Length of the pendulum
     gL = g/L
     θ  = u[1]
@@ -79,7 +79,7 @@ To feed the sampled data into the continuous-time simulation, we make use of an 
 y_int = LinearInterpolation(y,tsteps)
 
 function predictor(du,u,p,t)
-    g = 9.82f0
+    g = 9.82
     L, K, y = p # pendulum length, observer gain and measurements
     gL = g/L
     θ  = u[1]
