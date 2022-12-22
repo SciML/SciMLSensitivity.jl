@@ -43,8 +43,6 @@ function neuralode_f(u, p, t)
   dudt2(u, p, st)
 end
 
-prob_neuralode = NeuralODE(dudt2, tspan, Vern7(), saveat = tsteps, abstol=1e-6, reltol=1e-6)
-
 function predict_neuralode(p)
   prob = ODEProblem(neuralode_f, u0, tspan, p)
   sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
@@ -84,8 +82,6 @@ result_neuralode = Optimization.solve(optprob,
 callback(result_neuralode.u,loss_neuralode(result_neuralode.u)...;doplot=true)
 ```
 
-![](https://user-images.githubusercontent.com/1814174/81901710-f82ed400-958c-11ea-993f-118f5513d170.png)
-
 However, we've now fallen into a trap of a local minima. If the optimizer changes
 the parameters so it dips early, it will increase the loss because there will
 be more error in the later parts of the time series. Thus it tends to just stay
@@ -96,7 +92,11 @@ stages. Strategy (3) seems to be more robust, so this is what will be demonstrat
 Let's start by reducing the timespan to `(0,1.5)`:
 
 ```@example iterativefit
-prob_neuralode = NeuralODE(dudt2, (0.0f0,1.5f0), Tsit5(), saveat = tsteps[tsteps .<= 1.5])
+function predict_neuralode(p)
+  prob = ODEProblem(neuralode_f, u0, (0.0f0, 1.5f0), p)
+  sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
+  Array(sol)
+end
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_neuralode(x), adtype)
@@ -116,7 +116,7 @@ from our `(0,1.5)` fit as the initial condition to our next fit:
 
 ```@example iterativefit
 function predict_neuralode(p)
-  prob = ODEProblem(neuralode_f, u0, (0.0, 1.5), p)
+  prob = ODEProblem(neuralode_f, u0, (0.0f0, 3.0f0), p)
   sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
@@ -135,7 +135,7 @@ to the full fit:
 
 ```@example iterativefit
 function predict_neuralode(p)
-  prob = ODEProblem(neuralode_f, u0, (0.0, 5.0), p)
+  prob = ODEProblem(neuralode_f, u0, (0.0f0, 5.0f0), p)
   sol = solve(prob, Vern7, saveat = tsteps, abstol=1e-6, reltol=1e-6)
   Array(sol)
 end
