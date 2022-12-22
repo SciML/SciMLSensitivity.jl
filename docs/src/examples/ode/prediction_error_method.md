@@ -39,7 +39,7 @@ We assume that the true length of the pendulum is $L = 1$, and generate some dat
 
 ```@example PEM
 prob = ODEProblem(simulator,u0,tspan,1.0) # Simulate with L = 1
-sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)
+sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 y = sol[1,:] # This is the data we have available for parameter estimation
 plot(y, title="Pendulum simulation", label="angle")
 ```
@@ -50,13 +50,16 @@ We also define functions that simulate the system and calculate the loss, given 
 ```@example PEM
 function simulate(p)
     _prob = remake(prob,p=p)
-    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
+    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 end
 
 function simloss(p)
     yh = simulate(p)
-    e2 = yh
-    e2 .= abs2.(y .- yh)
+    if !SciMLBase.successful_retcode(yh.retcode)
+        return Inf
+    end
+    e2 = yh[1,:]
+    e2 .= abs2.(y .- e2)
     return mean(e2)
 end
 ```
@@ -95,13 +98,16 @@ predprob = ODEProblem(predictor,u0,tspan,nothing)
 function prediction(p)
     p_full = (p..., y_int)
     _prob = remake(predprob,u0=eltype(p).(u0),p=p_full)
-    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
+    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 end
 
 function predloss(p)
     yh = prediction(p)
-    e2 = yh
-    e2 .= abs2.(y .- yh)
+    if !SciMLBase.successful_retcode(yh.retcode)
+        return Inf
+    end
+    e2 = yh[1,:]
+    e2 .= abs2.(y .- e2)
     return mean(e2)
 end
 
@@ -126,7 +132,7 @@ optprob = Optimization.OptimizationProblem(optf, L0)
 
 ressim = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)
-ysim = simulate(ressim.u)
+ysim = simulate(ressim.u)[1,:]
 
 plot(tsteps, [y ysim], label=["Data" "Simulation model"])
 
@@ -136,7 +142,7 @@ optprob2 = Optimization.OptimizationProblem(optf2, p0)
 
 respred = Optimization.solve(optprob2, PolyOpt(),
                                     maxiters = 5000)
-ypred = simulate(respred.u)
+ypred = simulate(respred.u)[1,:]
 
 plot!(tsteps, ypred, label="Prediction model")
 ```
@@ -166,7 +172,7 @@ optprob = Optimization.OptimizationProblem(optf, p0)
 resprednoise = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)
 
-yprednoise = prediction(resprednoise.u)
+yprednoise = prediction(resprednoise.u)[1,:]
 plot!(tsteps, yprednoise, label="Prediction model with noisy measurements")
 ```
 
