@@ -98,9 +98,12 @@ du01,dp1 = Zygote.gradient(sum_of_solution,u0,p)
 Zygote.jl's automatic differentiation system is overloaded to allow SciMLSensitivity.jl
 to redefine the way the derivatives are computed, allowing trade-offs between numerical
 stability, memory, and compute performance, similar to how ODE solver algorithms are
-chosen. The algorithms for differentiation calculation are called `AbstractSensitivityAlgorithms`,
-or `sensealg`s for short. These are choosen by passing the `sensealg` keyword argument into solve.
+chosen. 
 
+### Choosing Sensitivity Algorithms
+
+The algorithms for differentiation calculation are called `AbstractSensitivityAlgorithms`,
+or `sensealg`s for short. These are choosen by passing the `sensealg` keyword argument into solve.
 Let's demonstrate this by choosing the `QuadratureAdjoint` `sensealg` for the differentiation of
 this system:
 
@@ -116,6 +119,9 @@ Here this computes the derivative of the output with respect to the initial
 condition and the the derivative with respect to the parameters respectively
 using the `QuadratureAdjoint()`. For more information on the choices of sensitivity
 algorithms, see the [reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq)
+
+!!! note
+    ForwardDiff.jl's automatic differentiation system ignores the sensitivity algorithms.
 
 ## When Should You Use Forward or Reverse Mode?
 
