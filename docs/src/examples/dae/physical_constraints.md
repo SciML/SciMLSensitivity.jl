@@ -9,7 +9,7 @@ zeros, then we have a constraint defined by the right hand side. Using
 terms must add to one. An example of this is as follows:
 
 ```@example dae
-using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Plots
+using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -64,7 +64,7 @@ l1 = first(loss_stiff_ndae(Lux.ComponentArray(pinit)))
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, BFGS(), maxiters=100)
+result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters=100)
 ```
 
 
@@ -73,7 +73,7 @@ result_stiff = Optimization.solve(optprob, BFGS(), maxiters=100)
 ### Load Packages
 
 ```@example dae2
-using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Plots
+using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -209,5 +209,5 @@ Finally, training with `Optimization.solve` by passing: *loss function*, *model 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, BFGS(), maxiters=100)
+result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters=100)
 ```

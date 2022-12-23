@@ -48,9 +48,13 @@ Likewise, the `sensealg` argument can be given to directly control the method
 by which the derivative is computed. For example:
 
 ```julia
-loss(u0,p) = sum(solve(prob,Tsit5(),u0=u0,p=p,saveat=0.1))
+loss(u0,p) = sum(solve(prob,Tsit5(),u0=u0,p=p,saveat=0.1,sensealg=ForwardSensitivity()))
 du0,dp = Zygote.gradient(loss,u0,p)
 ```
+
+would do reverse-mode automatic differentiation of the loss function, but when reversing
+over the ODE solve, it would do forward sensitivity analysis to compute the required
+pullbacks, effectively creating an algorithm that mixes forward and reverse differentiation.
 
 ## Choosing a Sensitivity Algorithm
 

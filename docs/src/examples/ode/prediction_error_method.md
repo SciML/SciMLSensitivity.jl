@@ -18,15 +18,15 @@ In both of these examples, we may make use of measurements we have of the evolut
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
 ```@example PEM
-using DifferentialEquations, Optimization, OptimizationOptimJL, OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
+using DifferentialEquations, Optimization,  OptimizationPolyalgorithms, Plots, Statistics, DataInterpolations, ForwardDiff
 
-tspan = (0.1f0, Float32(20.0))
+tspan = (0.1, 20.0)
 tsteps = range(tspan[1], tspan[2], length = 1000)
 
-u0 = [0f0, 3f0] # Initial angle and angular velocity
+u0 = [0.0, 3.0] # Initial angle and angular velocity
 
 function simulator(du,u,p,t) # Pendulum dynamics
-    g = 9.82f0 # Gravitational constant
+    g = 9.82 # Gravitational constant
     L = p isa Number ? p : p[1] # Length of the pendulum
     gL = g/L
     θ  = u[1]
@@ -39,7 +39,7 @@ We assume that the true length of the pendulum is $L = 1$, and generate some dat
 
 ```@example PEM
 prob = ODEProblem(simulator,u0,tspan,1.0) # Simulate with L = 1
-sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)
+sol = solve(prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 y = sol[1,:] # This is the data we have available for parameter estimation
 plot(y, title="Pendulum simulation", label="angle")
 ```
@@ -50,13 +50,16 @@ We also define functions that simulate the system and calculate the loss, given 
 ```@example PEM
 function simulate(p)
     _prob = remake(prob,p=p)
-    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
+    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 end
 
 function simloss(p)
     yh = simulate(p)
-    e2 = yh
-    e2 .= abs2.(y .- yh)
+    if !SciMLBase.successful_retcode(yh.retcode)
+        return Inf
+    end
+    e2 = yh[1,:]
+    e2 .= abs2.(y .- e2)
     return mean(e2)
 end
 ```
@@ -79,7 +82,7 @@ To feed the sampled data into the continuous-time simulation, we make use of an 
 y_int = LinearInterpolation(y,tsteps)
 
 function predictor(du,u,p,t)
-    g = 9.82f0
+    g = 9.82
     L, K, y = p # pendulum length, observer gain and measurements
     gL = g/L
     θ  = u[1]
@@ -95,13 +98,16 @@ predprob = ODEProblem(predictor,u0,tspan,nothing)
 function prediction(p)
     p_full = (p..., y_int)
     _prob = remake(predprob,u0=eltype(p).(u0),p=p_full)
-    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-6)[1,:]
+    solve(_prob, Tsit5(), saveat=tsteps, abstol = 1e-8, reltol = 1e-8)
 end
 
 function predloss(p)
     yh = prediction(p)
-    e2 = yh
-    e2 .= abs2.(y .- yh)
+    if !SciMLBase.successful_retcode(yh.retcode)
+        return Inf
+    end
+    e2 = yh[1,:]
+    e2 .= abs2.(y .- e2)
     return mean(e2)
 end
 
@@ -126,7 +132,7 @@ optprob = Optimization.OptimizationProblem(optf, L0)
 
 ressim = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)
-ysim = simulate(ressim.u)
+ysim = simulate(ressim.u)[1,:]
 
 plot(tsteps, [y ysim], label=["Data" "Simulation model"])
 
@@ -136,7 +142,7 @@ optprob2 = Optimization.OptimizationProblem(optf2, p0)
 
 respred = Optimization.solve(optprob2, PolyOpt(),
                                     maxiters = 5000)
-ypred = simulate(respred.u)
+ypred = simulate(respred.u)[1,:]
 
 plot!(tsteps, ypred, label="Prediction model")
 ```
@@ -166,7 +172,7 @@ optprob = Optimization.OptimizationProblem(optf, p0)
 resprednoise = Optimization.solve(optprob, PolyOpt(),
                                     maxiters = 5000)
 
-yprednoise = prediction(resprednoise.u)
+yprednoise = prediction(resprednoise.u)[1,:]
 plot!(tsteps, yprednoise, label="Prediction model with noisy measurements")
 ```
 

@@ -7,7 +7,7 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
-using Lux, DiffEqFlux, Optimization, OptimizationOptimJL, DifferentialEquations, Random
+using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Random
 
 rng = Random.default_rng()
 Random.seed!(rng,1)
@@ -82,7 +82,7 @@ optprob = Optimization.OptimizationProblem(optf, p)
 res1_uode = Optimization.solve(optprob, ADAM(0.01), callback=callback, maxiters = 500)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
-res2_uode = Optimization.solve(optprob2, BFGS(), maxiters = 10000, callback = callback)
+res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000, callback = callback)
 ```
 
 The key is that `Optimization.solve` acts on a single parameter vector `p`.
