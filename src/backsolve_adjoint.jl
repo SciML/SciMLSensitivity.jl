@@ -337,6 +337,10 @@ end
             size(sol.prob.noise_rate_prototype)[2]
         noise_matrix = similar(z0, length(z0), m)
         noise_matrix .= false
+        if _sol.W isa DiffEqNoiseProcess.NoiseProcess && _sol.W.dW isa AbstractMatrix
+            noise = DiffEqNoiseProcess.vec_NoiseProcess(_sol.W)
+            backwardnoise = reverse(noise)
+        end
     end
 
     return SDEProblem(sdefun, sense_diffusion, z0, tspan, p,
