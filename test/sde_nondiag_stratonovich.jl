@@ -750,3 +750,37 @@ end
     gZy = Zygote.gradient(p -> loss(p, Z = Z, sensealg = ForwardDiffSensitivity()), p)[1]
     @test gFinD≈gZy rtol=1e-4
 end
+
+@testset "Diagonal forward SDE and Non-Diagonal Reverse SDE with Non-Square input" begin
+    u = Float32.([0.0f0 1.0f0 2.0f0;
+                  0.0f0 0.0f0 1.0f0])
+
+    p = Float32.([-1.5 0.05 0.2;
+                  0.01 0.4 1.9])
+
+    tspan = (0.0f0, 1.0f0)
+
+    function f(u, p, t)
+        u .* p
+    end
+
+    function g(u, p, t)
+        u .* p + p
+    end
+
+    function dg!(out, u, p, t, i)
+        (out .= vec(u))
+    end
+
+    sdefun = SDEFunction(f, g)
+    prob2 = SDEProblem(sdefun, g, u, tspan, p)
+
+    sol = solve(prob2, EulerHeun(), dt = 0.01)
+
+    du, dp = adjoint_sensitivities(sol, EulerHeun(), t = tspan,
+                                   dgdu_discrete = dg!,
+                                   dt = 0.01, adaptive = false,
+                                   sensealg = BacksolveAdjoint())
+    @test !iszero(du)
+    @test !iszero(dp)
+end
