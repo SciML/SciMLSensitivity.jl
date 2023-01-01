@@ -13,6 +13,8 @@ Thus, what SciMLSensitivity.jl provides is:
 
 - Automatic differentiation overloads for improving the performance and flexibility
   of AD calls over `solve`.
+- A lower level direct interface for defining forward sensitivity and adjoint problems
+  to allow for minimal overhead and maximal performance.
 - A bunch of tutorials, documentation, and test cases for this combination
   with parameter estimation (data fitting / model calibration), neural network 
   libraries and GPUs.

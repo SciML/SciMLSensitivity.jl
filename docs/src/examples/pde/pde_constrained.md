@@ -5,7 +5,7 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 
 ```@example pde
 using DelimitedFiles,Plots
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, Zygote, OptimizationOptimJL
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, Zygote
 
 # Problem setup parameters:
 Lx = 10.0
@@ -102,7 +102,7 @@ res = Optimization.solve(optprob, PolyOpt(), callback = callback)
 ```@example pde2
 using DelimitedFiles,Plots
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, 
-      Zygote, OptimizationOptimJL
+      Zygote
 ```
 
 ### Parameters

@@ -386,9 +386,7 @@ An implementation of adjoint sensitivity analysis which develops a full
 continuous solution of the reverse solve in order to perform a post-ODE
 quadrature. This method requires the the dense solution and will ignore
 saving arguments during the gradient calculation. The tolerances in the
-constructor control the inner quadrature. The inner quadrature uses a
-ReverseDiff vjp if autojacvec, and `compile=false` by default but can
-compile the tape under the same circumstances as `ReverseDiffVJP`.
+constructor control the inner quadrature.
 
 This method is O(n^3 + p) for stiff / implicit equations (as opposed to the
 O((n+p)^3) scaling of BacksolveAdjoint and InterpolatingAdjoint), and thus
@@ -401,7 +399,7 @@ pass and is thus memory intensive.
 function QuadratureAdjoint(;chunk_size=0,autodiff=true,
                             diff_type=Val{:central},
                             autojacvec=nothing,abstol=1e-6,
-                            reltol=1e-3,compile=false)
+                            reltol=1e-3)
 ```
 
 ## Keyword Arguments
@@ -426,8 +424,6 @@ function QuadratureAdjoint(;chunk_size=0,autodiff=true,
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `abstol`: absolute tolerance for the quadrature calculation
 * `reltol`: relative tolerance for the quadrature calculation
-* `compile`: whether to compile the vjp calculation for the integrand calculation.
-  See `ReverseDiffVJP` for more details.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.

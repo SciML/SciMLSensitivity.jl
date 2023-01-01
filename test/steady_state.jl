@@ -448,75 +448,122 @@ end
         all(testval .< tol)
     end
     affect!(integrator) = terminate!(integrator)
-    cb_t = DiscreteCallback(condition, affect!, save_positions = (false, true))
+    cb_t1 = DiscreteCallback(condition, affect!, save_positions = (false, true))
+    cb_t2 = DiscreteCallback(condition, affect!, save_positions = (true, true))
 
-    sol = solve(prob, Tsit5(), reltol = tol, abstol = tol, callback = cb_t,
-                save_start = false, save_everystep = false)
+    for cb_t in (cb_t1, cb_t2)
+        sol = solve(prob, Tsit5(), reltol = tol, abstol = tol, callback = cb_t,
+                    save_start = false, save_everystep = false)
 
-    # derivative with respect to u0 and p0
-    function loss(u0, p; sensealg = nothing, save_start = false, save_everystep = false)
-        _prob = remake(prob, u0 = u0, p = p)
-        # saving arguments can have a huge influence here
-        sol = solve(_prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
-                    callback = cb_t,
-                    save_start = save_start, save_everystep = save_everystep)
-        res = sol.u[end]
-        g(res, p, nothing)
+        # derivative with respect to u0 and p0
+        function loss(u0, p; sensealg = nothing, save_start = false, save_everystep = false)
+            _prob = remake(prob, u0 = u0, p = p)
+            # saving arguments can have a huge influence here
+            sol = solve(_prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
+                        callback = cb_t,
+                        save_start = save_start, save_everystep = save_everystep)
+            res = sol.u[end]
+            g(res, p, nothing)
+        end
+
+        du0 = ForwardDiff.gradient((u0) -> loss(u0, p), u0)
+        dp = ForwardDiff.gradient((p) -> loss(u0, p), p)
+
+        # save_start = false, save_everystep=false
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = ForwardDiffSensitivity()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
+                                    u0,
+                                    p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = InterpolatingAdjoint()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+
+        # save_start = true, save_everystep=false
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = ForwardDiffSensitivity(),
+                                                    save_start = true), u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
+                                                    save_start = true), u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = InterpolatingAdjoint(),
+                                                    save_start = true), u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+
+        # save_start = true, save_everystep=true
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = ForwardDiffSensitivity(),
+                                                    save_start = true,
+                                                    save_everystep = true),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
+                                                    save_start = true,
+                                                    save_everystep = true),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p,
+                                                    sensealg = InterpolatingAdjoint(),
+                                                    save_start = true,
+                                                    save_everystep = true),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = QuadratureAdjoint(),
+                                                    save_start = true,
+                                                    save_everystep = true),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+
+        function loss2(u0, p; sensealg = nothing, saveat = 1.0)
+            # remake tspan so saveat::Number makes sense
+            _prob = remake(prob, tspan = (0.0, 100.0), u0 = u0, p = p)
+            # saving arguments can have a huge influence here
+            sol = solve(_prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
+                        callback = cb_t, saveat = saveat)
+            res = sol.u[end]
+            g(res, p, nothing)
+        end
+
+        du0 = ForwardDiff.gradient((u0) -> loss2(u0, p), u0)
+        dp = ForwardDiff.gradient((p) -> loss2(u0, p), p)
+
+        # saveat::Number
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
+                                                     sensealg = ForwardDiffSensitivity()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
+                                    u0,
+                                    p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p,
+                                                     sensealg = InterpolatingAdjoint()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
+                                    u0, p)
+        @test du0≈Zdu0 atol=1e-4
+        @test dp≈Zdp atol=1e-4
     end
-
-    du0 = ForwardDiff.gradient((u0) -> loss(u0, p), u0)
-    dp = ForwardDiff.gradient((p) -> loss(u0, p), p)
-
-    # save_start = false, save_everystep=false
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = ForwardDiffSensitivity()),
-                                u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()), u0,
-                                p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = InterpolatingAdjoint()),
-                                u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-
-    # save_start = true, save_everystep=false
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = ForwardDiffSensitivity(),
-                                                save_start = true), u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
-                                                save_start = true), u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = InterpolatingAdjoint(),
-                                                save_start = true), u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-
-    # save_start = true, save_everystep=true
-    # not uniquely clear/defined how ForwardDiffSensitivity should save in this case.
-    @test_throws AssertionError Zygote.gradient((u0, p) -> loss(u0, p,
-                                                                sensealg = ForwardDiffSensitivity(),
-                                                                save_start = true,
-                                                                save_everystep = true),
-                                                u0, p)
-
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
-                                                save_start = true, save_everystep = true),
-                                u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = InterpolatingAdjoint(),
-                                                save_start = true, save_everystep = true),
-                                u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
-    # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
-    Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = QuadratureAdjoint(),
-                                                save_start = true, save_everystep = true),
-                                u0, p)
-    @test du0≈Zdu0 atol=1e-4
-    @test dp≈Zdp atol=1e-4
 end

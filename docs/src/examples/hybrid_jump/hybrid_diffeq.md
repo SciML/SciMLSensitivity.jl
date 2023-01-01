@@ -1,7 +1,8 @@
 # Training Neural Networks in Hybrid Differential Equations
 
 Hybrid differential equations are differential equations with implicit or
-explicit discontinuities as specified by [callbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/).
+explicit discontinuities as specified by 
+[callbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/).
 In the following example, explicit dosing times are given for a pharmacometric
 model and the universal differential equation is trained to uncover the missing
 dynamical equations.
