@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, Zygote
-using SciMLSensitivity, Test, ForwardDiff
+using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
 
 abstol = 1e-12
 reltol = 1e-12
@@ -244,5 +244,38 @@ println("Continuous Callbacks")
 
         @test du01 ≈ dstuff[1:2]
         @test dp1 ≈ dstuff[3:4]
+    end
+    @testset "Re-compile tape in ReverseDiffVJP" begin
+        N0 = [0.0] # initial population
+        p = [100.0, 50.0] # steady-state pop., M
+        tspan = (0.0, 10.0) # integration time
+
+        # system
+        f(D, u, p, t) = (D[1] = p[1] - u[1])
+
+        # when N = 3α/4 we inject M cells.
+        condition(u, t, integrator) = u[1] - 3 // 4 * integrator.p[1]
+        affect!(integrator) = integrator.u[1] += integrator.p[2]
+        cb = ContinuousCallback(condition, affect!, save_positions = (false, false))
+        prob = ODEProblem(f, N0, tspan, p)
+
+        function loss(p, cb, sensealg)
+            _prob = remake(prob, p = p)
+            _sol = solve(_prob, Tsit5(); callback = cb,
+                         abstol = 1e-14, reltol = 1e-14,
+                         sensealg = sensealg)
+            _sol[end][1]
+        end
+
+        gND = FiniteDiff.finite_difference_gradient(p -> loss(p, cb, nothing), p)
+        gFD = ForwardDiff.gradient(p -> loss(p, cb, nothing), p)
+        # @show gND # [0.9999546000702386, 0.00018159971904994378]
+        @test gND≈gFD rtol=1e-10
+
+        for compile_tape in (true, false)
+            sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(compile_tape))
+            gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+            @test gFD≈gZy rtol=1e-10
+        end
     end
 end
