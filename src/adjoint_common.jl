@@ -388,7 +388,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
             autojacvec.chunksize
         end
 
-        paramjac_config = dualcache(zero(y), chunk), prob.p,
+        paramjac_config = dualcache(zero(y), chunk), p,
                           dualcache(zero(y), chunk),
                           dualcache(zero(y), chunk)
     else
@@ -440,7 +440,7 @@ function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
                 nothing
             end
         else
-            !isinplace
+            # !isinplace
             function (out, u, _p, t)
                 out .= f(u, _p, t)
                 nothing
