@@ -220,15 +220,15 @@ function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number
 end
 function vecjacobian!(dλ, y, λ, p, t, S::TS;
                       dgrad = nothing, dy = nothing,
-                      W = nothing, kwargs...) where {TS <: SensitivityFunction}
-    _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W; kwargs...)
+                      W = nothing) where {TS <: SensitivityFunction}
+    _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
     return
 end
 
 function vecjacobian(y, λ, p, t, S::TS;
                      dgrad = nothing, dy = nothing,
-                     W = nothing, kwargs...) where {TS <: SensitivityFunction}
-    return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W; kwargs...)
+                     W = nothing) where {TS <: SensitivityFunction}
+    return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
@@ -418,7 +418,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
-                       W; recompile_tape = false) where {TS <: SensitivityFunction}
+                       W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -431,7 +431,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
 
     if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
        (eltype(λ) <: eltype(prob.u0) && typeof(t) <: eltype(prob.u0) &&
-        compile_tape(sensealg.autojacvec) && !recompile_tape)
+        compile_tape(sensealg.autojacvec))
         tape = S.diffcache.paramjac_config
 
         ## These other cases happen due to autodiff in stiff ODE solvers
