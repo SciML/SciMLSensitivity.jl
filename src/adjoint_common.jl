@@ -44,7 +44,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     autojacvec = sensealg.autojacvec
 
     if isRODE
-        _W = last(Sol.W)
+        _W = last(sol.W)
     else
         _W = nothing
     end
@@ -185,6 +185,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         elseif noiseterm &&
                (!StochasticDiffEq.is_diagonal_noise(prob) || isnoisemixing(sensealg))
             tape = nothing
+            paramjac_config = tape
         else
             paramjac_config = get_paramjac_config(autojacvec, p, unwrappedf, y, _p, _t;
                                                   isinplace = isinplace,
@@ -391,7 +392,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
                           dualcache(zero(y), chunk),
                           dualcache(zero(y), chunk)
     else
-        paramjac_config = zero(y), prob.p, zero(y), zero(y)
+        paramjac_config = zero(y), p, zero(y), zero(y)
     end
     return paramjac_config
 end
