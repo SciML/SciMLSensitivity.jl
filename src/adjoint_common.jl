@@ -402,7 +402,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
                              isRODE = nothing, _W = nothing)
     if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
         chunk = if autojacvec.chunksize == 0
-            ForwardDiff.pickchunksize(length(u0))
+            ForwardDiff.pickchunksize(numindvar)
         else
             autojacvec.chunksize
         end
