@@ -4,7 +4,7 @@ As shown in the [stiff ODE tutorial](https://docs.sciml.ai/SciMLTutorialsOutput/
 differential-algebraic equations (DAEs) can be used to impose physical
 constraints. One way to define a DAE is through an ODE with a singular mass
 matrix. For example, if we make `Mu' = f(u)` where the last row of `M` is all
-zeros, then we have a constraint defined by the right hand side. Using
+zeros, then we have a constraint defined by the right-hand side. Using
 `NeuralODEMM`, we can use this to define a neural ODE where the sum of all 3
 terms must add to one. An example of this is as follows:
 
@@ -81,7 +81,7 @@ rng = Random.default_rng()
 
 ### Differential Equation
 
-First, we define our differential equations as a highly stiff problem which makes the
+First, we define our differential equations as a highly stiff problem, which makes the
 fitting difficult.
 
 ```@example dae2
@@ -118,7 +118,7 @@ all zeros)
 
 ### ODE Function, Problem and Solution
 
-We define and solve our ODE problem to generate the "labeled" data which will be used to
+We define and solve our ODE problem to generate the “labeled” data which will be used to
 train our Neural Network.
 
 ```@example dae2
@@ -127,7 +127,7 @@ prob_stiff = ODEProblem(stiff_func, u₀, tspan, p)
 sol_stiff = solve(prob_stiff, Rodas5(), saveat = 0.1)
 ```
 
-Because this is a DAE we need to make sure to use a **compatible solver**.
+Because this is a DAE, we need to make sure to use a **compatible solver**.
 `Rodas5` works well for this example.
 
 ### Neural Network Layers
@@ -163,7 +163,7 @@ end
 
 ### Train Parameters
 
-Training our network requires a **loss function**, an **optimizer** and a
+Training our network requires a **loss function**, an **optimizer**, and a
 **callback function** to display the progress.
 
 #### Loss

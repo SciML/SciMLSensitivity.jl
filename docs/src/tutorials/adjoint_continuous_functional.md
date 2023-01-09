@@ -19,7 +19,7 @@ vector.
 However, there is an expanded set of cost functionals supported by SciMLSensitivity.jl,
 continuous cost functionals, which are not possible through automatic differentiation
 interfaces. In an abstract sense, a continuous cost functional is a total cost ``G``
-defined as the integral of the instantanious cost ``g`` at all time points. In other words,
+defined as the integral of the instantaneous cost ``g`` at all time points. In other words,
 the total cost is defined as:
 
 ```math
@@ -33,7 +33,7 @@ functionals can be easily evaluated using the direct sensitivity analysis interf
 ## Example: Continuous Functionals with Forward Sensitivity Analysis via Interpolation
 
 Evaluating continuous cost functionals with forward sensitivity analysis is rather
-straightforward since one can simply use the fact that the solution from
+straightforward, since one can simply use the fact that the solution from
 `ODEForwardSensitivityProblem` is continuous when `dense=true`. For example,
 
 ```@example continuousadjoint
@@ -52,12 +52,12 @@ sol = solve(prob,DP8())
 gives a continuous solution `sol(t)` with the derivative at each time point. This
 can then be used to define a continuous cost function via
 [Integrals.jl](https://docs.sciml.ai/Integrals/stable/), though the derivative would
-need to be defined by hand using the extra sensitivity terms.
+need to be manually defined using the extra sensitivity terms.
 
 ## Example: Continuous Adjoints on an Energy Functional
 
 Continuous adjoints on a continuous functional are more automatic than forward mode.
-In this case we'd like to calculate the adjoint sensitivity of the scalar energy
+In this case, we'd like to calculate the adjoint sensitivity of the scalar energy
 functional:
 
 ```math

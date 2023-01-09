@@ -6,7 +6,7 @@ second order sensitivity analysis for fast Hessians and Hessian-vector
 products (via forward-over-reverse), we can utilize these in our neural/universal
 differential equation training processes.
 
-`sciml_train` is setup to automatically use second order sensitivity analysis
+`sciml_train` is set up to automatically use second order sensitivity analysis
 methods if a second order optimizer is requested via Optim.jl. Thus `Newton`
 and `NewtonTrustRegion` optimizers will use a second order Hessian-based
 optimization, while `KrylovTrustRegion` will utilize a Krylov-based method

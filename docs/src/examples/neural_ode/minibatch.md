@@ -88,9 +88,9 @@ xlabel!("Time")
 ylabel!("Temp") 
 ```
 
-When training a neural network we need to find the gradient with respect to our data set. There are three main ways to partition our data when using a training algorithm like gradient descent: stochastic, batching and mini-batching. Stochastic gradient descent trains on a single random data point each epoch. This allows for the neural network to better converge to the global minimum even on noisy data but is computationally inefficient. Batch gradient descent trains on the whole data set each epoch and while computationally efficient is prone to converging to local minima. Mini-batching combines both of these advantages and by training on a small random "mini-batch" of the data each epoch can converge to the global minimum while remaining more computationally efficient than stochastic descent. Typically we do this by randomly selecting subsets of the data each epoch and use this subset to train on. We can also pre-batch the data by creating an iterator holding these randomly selected batches before beginning to train. The proper size for the batch can be determined experimentally. Let us see how to do this with Julia. 
+When training a neural network, we need to find the gradient with respect to our data set. There are three main ways to partition our data when using a training algorithm like gradient descent: stochastic, batching and mini-batching. Stochastic gradient descent trains on a single random data point each epoch. This allows for the neural network to better converge to the global minimum even on noisy data, but is computationally inefficient. Batch gradient descent trains on the whole data set each epoch and while computationally efficient is prone to converging to local minima. Mini-batching combines both of these advantages and by training on a small random "mini-batch" of the data each epoch can converge to the global minimum while remaining more computationally efficient than stochastic descent. Typically, we do this by randomly selecting subsets of the data each epoch and use this subset to train on. We can also pre-batch the data by creating an iterator holding these randomly selected batches before beginning to train. The proper size for the batch can be determined experimentally. Let us see how to do this with Julia. 
 
-For this example we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so. 
+For this example, we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so. 
 
 ```@example minibatch
 using DifferentialEquations, Flux, Random, Plots
@@ -156,7 +156,7 @@ for (x, y) in train_loader
 end
 ```
 
-Now we train the neural network with a user defined call back function to display loss and the graphs with a maximum of 300 epochs. 
+Now we train the neural network with a user-defined call back function to display loss and the graphs with a maximum of 300 epochs. 
 
 ```@example minibatch
 numEpochs = 300
@@ -176,7 +176,7 @@ opt=ADAM(0.05)
 Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader,numEpochs), opt, cb=Flux.throttle(cb, 10))
 ```
 
-Finally we can see how well our trained network will generalize to new initial conditions. 
+Finally, we can see how well our trained network will generalize to new initial conditions. 
 
 ```@example minibatch
 starting_temp=collect(10:30:250)

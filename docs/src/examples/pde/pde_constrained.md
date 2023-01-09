@@ -107,7 +107,7 @@ using DifferentialEquations, Optimization, OptimizationPolyalgorithms,
 
 ### Parameters
 
-First, we setup the 1-dimensional space over which our equations will be evaluated.
+First, we set up the 1-dimensional space over which our equations will be evaluated.
 `x` spans **from 0.0 to 10.0** in steps of **0.01**; `t` spans **from 0.00 to 0.04** in
 steps of **4.0e-5**.
 
@@ -166,7 +166,7 @@ end
 
 ### Heat Differential Equation
 
-Next, we setup our desired set of equations in order to define our problem.
+Next, we set up our desired set of equations in order to define our problem.
 
 ```@example pde2
 ## ODE description of the Physics:
@@ -180,7 +180,7 @@ end
 
 ### Solve and Plot Ground Truth
 
-We then solve and plot our partial differential equation. This is the true solution which we
+We then solve and plot our partial differential equation. This is the true solution, which we
 will compare to further on.
 
 ```@example pde2
@@ -208,14 +208,14 @@ end
 
 ### Train Parameters
 
-Training our model requires a **loss function**, an **optimizer** and a **callback
+Training our model requires a **loss function**, an **optimizer**, and a **callback
 function** to display the progress.
 
 #### Loss
 
 We first make our predictions based on the current values of our parameters `ps`, then
 take the difference between the predicted solution and the truth above. For the loss, we
-use the **Mean squared error**.
+use the **mean squared error**.
 
 ```@example pde2
 ## Defining Loss function
@@ -272,7 +272,7 @@ plot!(PRED[end][:,end], lw=2, label="Prediction")
 
 The parameters are trained using `Optimization.solve` and adjoint sensitivities.
 The resulting best parameters are stored in `res` and `res.u` returns the
-parameters that minimizes the cost function.
+parameters that minimize the cost function.
 
 ```@example pde2
 adtype = Optimization.AutoZygote()

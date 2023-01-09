@@ -1,7 +1,7 @@
 # Controlling Stochastic Differential Equations
 
 In this tutorial, we show how to use DiffEqFlux to control the time evolution of a system
-described by a stochastic differential equations (SDE). Specifically, we consider a
+described by a stochastic differential equation (SDE). Specifically, we consider a
 continuously monitored qubit described by an SDE in the Ito sense with multiplicative
 scalar noise (see [1] for a reference):
 
@@ -312,7 +312,7 @@ using Plots
 ```
 
 ### Parameters
-We define the parameters of the qubit and hyper-parameters of the training process.
+We define the parameters of the qubit and hyperparameters of the training process.
 ```@example sdecontrol
 lr = 0.01f0
 epochs = 100
@@ -371,7 +371,7 @@ In plain terms, the quantities that were defined are:
 - `Δ` = detuning between the qubit and the laser
 - `Ωmax` = maximum frequency of the control laser
 - `κ` = decay rate
-- `C1` = loss function hyper-parameter
+- `C1` = loss function hyperparameter
 
 ### Controller
 We use a neural network to control the parameter Ω(t). Alternatively, one could

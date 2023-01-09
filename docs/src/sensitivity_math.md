@@ -65,7 +65,7 @@ by using a dual number with a single partial dimension, ``d = x + v \epsilon`` w
 f(d) = f(x) + Jv \epsilon
 ```
 
-as a fast way to calcuate ``Jv``. Thus, except when a sufficiently good function for `J` is given
+as a fast way to calculate ``Jv``. Thus, except when a sufficiently good function for `J` is given
 by the user, the Jacobian is never formed. For more details, consult the
 [MIT 18.337 lecture notes on forward mode AD](https://mitmath.github.io/18337/lecture8/automatic_differentiation.html).
 
@@ -100,7 +100,7 @@ requires the continuous forward solution in order to solve the adjoint solution,
 and the adjoint solution is required to be continuous in order to calculate the
 resulting integral.
 
-There is one extra detail to consider. In many cases we would like to calculate
+There is one extra detail to consider. In many cases, we would like to calculate
 the adjoint sensitivity of some discontinuous functional of the solution. One
 canonical function is the L2 loss against some data points, that is:
 
@@ -132,6 +132,6 @@ We note that
 ```
 
 is a vector-transpose Jacobian product, also known as a `vjp`, which can be efficiently computed
-using the pullback of backpropogation on the user function `f` with a forward pass at `u` with a
+using the pullback of backpropagation on the user function `f` with a forward pass at `u` with a
 pullback vector ``\lambda^{\star}``. For more information, consult the
-[MIT 18.337 lecture notes on reverse mode AD](https://mitmath.github.io/18337/lecture10/estimation_identification)
+[MIT 18.337 lecture notes on reverse mode AD](https://mitmath.github.io/18337/lecture10/estimation_identification).

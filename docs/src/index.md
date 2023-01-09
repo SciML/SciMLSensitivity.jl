@@ -3,9 +3,9 @@
 SciMLSensitivity.jl is the automatic differentiation and adjoints system for the SciML
 ecosystem. Also known as local sensitivity analysis, these methods allow for calculation
 of fast derivatives of SciML problem types which are commonly used to analyze model
-sensitivities, callibrate models to data, train neural ODEs, perform automated model
+sensitivities, calibrate models to data, train neural ODEs, perform automated model
 discovery via universal differential equations, and more. SciMLSensitivity.jl is
-a high level interface that pulls together all of the tools with heuristics
+a high-level interface that pulls together all the tools with heuristics
 and helper functions to make solving inverse problems and inferring models
 as easy as possible without losing efficiency.
 
@@ -36,7 +36,7 @@ using Pkg
 Pkg.add("SciMLSensitivity")
 ```
 
-## High Level Interface: `sensealg`
+## High-Level Interface: `sensealg`
 
 The highest level interface is provided by the function `solve`:
 
@@ -69,7 +69,7 @@ is used, i.e. going back to the AD mechanism.
     
 ## Equation Scope
 
-SciMLSensitivity.jl supports all of the equation types of the 
+SciMLSensitivity.jl supports all the equation types of the 
 [SciML Common Interface](https://docs.sciml.ai/SciMLBase/stable/), extending the problem
 types by adding overloads for automatic differentiation to improve the performance
 and flexibility of the differentiation system. This includes:
@@ -110,7 +110,7 @@ SciMLSensitivity is for universal differential equations, where these can includ
 delays, physical constraints, stochasticity, events, and all other kinds of
 interesting behavior that shows up in scientific simulations. Neural networks can
 be all or part of the model. They can be around the differential equation,
-in the cost function, or inside of the differential equation. Neural networks
+in the cost function, or inside the differential equation. Neural networks
 representing unknown portions of the model or functions can go anywhere you
 have uncertainty in the form of the scientific simulator. Forward sensitivity
 and adjoint equations are automatically generated with checkpointing and
@@ -138,13 +138,13 @@ post](https://julialang.org/blog/2019/01/fluxdiffeq) (which we try to keep
 updated for changes to the libraries). Additional demonstrations, like neural
 PDEs and neural jump SDEs, can be found [at this blog
 post](http://www.stochasticlifestyle.com/neural-jump-sdes-jump-diffusions-and-neural-pdes/)
-(among many others!). All of these features are only part of the advantage, as this library
+(among many others!). All these features are only part of the advantage, as this library
 [routinely benchmarks orders of magnitude faster than competing libraries like torchdiffeq](@ref Benchmarks).
 Use with GPUs is highly optimized by
 [recompiling the solvers to GPUs to remove all CPU-GPU data transfers](https://www.stochasticlifestyle.com/solving-systems-stochastic-pdes-using-gpus-julia/),
 while use with CPUs uses specialized kernels for accelerating differential equation solves.
 
-Many different training techniques are supported by this package, including:
+Many training techniques are supported by this package, including:
 
 - Optimize-then-discretize (backsolve adjoints, checkpointed adjoints, quadrature adjoints)
 - Discretize-then-optimize (forward and reverse mode discrete sensitivity analysis)
@@ -158,7 +158,7 @@ Many different training techniques are supported by this package, including:
   equations etc. is provided by integration with [Turing.jl](https://turing.ml/stable/docs/using-turing/)
   and [Gen.jl](https://github.com/probcomp/Gen.jl). Reproduce
   [variational loss functions](https://arxiv.org/abs/2001.01328) by plugging
-  [composible libraries together](https://turing.ml/stable/tutorials/09-variational-inference/).
+  [composable libraries together](https://turing.ml/stable/tutorials/09-variational-inference/).
 
 all while mixing forward mode and reverse mode approaches as appropriate for the
 most speed. For more details on the adjoint sensitivity analysis methods for
@@ -175,8 +175,8 @@ With this package, you can explore various ways to integrate the two methodologi
 ## Note on Modularity and Composability with Solvers
 
 Note that SciMLSensitivity.jl purely built on composable and modular infrastructure. 
-SciMLSensitivity provides high level helper functions and documentation for the user, but the
-code generation stack is modular and composes in many different ways. For example, one can
+SciMLSensitivity provides high-level helper functions and documentation for the user, but the
+code generation stack is modular and composes in many ways. For example, one can
 use and swap out the ODE solver between any common interface compatible library, like:
 
 - Sundials.jl
@@ -184,7 +184,7 @@ use and swap out the ODE solver between any common interface compatible library,
 - LSODA.jl
 - [IRKGaussLegendre.jl](https://github.com/mikelehu/IRKGaussLegendre.jl)
 - [SciPyDiffEq.jl](https://github.com/SciML/SciPyDiffEq.jl)
-- [... etc. many other choices!](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/)
+- [… etc. many other choices!](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/)
 
 In addition, due to the composability of the system, none of the components are directly
 tied to the Flux.jl machine learning framework. For example, you can [use SciMLSensitivity.jl

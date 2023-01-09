@@ -15,7 +15,7 @@ where
 ```
 under the assumption of ergodicity, ``\langle g \rangle_∞`` only depends on `p`.
 
-In the case of chaotic systems, the trajectories diverge with ``O(1)`` error]. This
+In the case of chaotic systems, the trajectories diverge with ``O(1)`` error. This
 can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia.org/wiki/Lorenz_system) at
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
@@ -39,7 +39,7 @@ sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
 
 More formally, such chaotic behavior can be analyzed using tools from
 [uncertainty quantification](@ref uncertainty_quantification).
-This effect of diverging trajectories is known as the butterfly effect and can be
+This effect of diverging trajectories is known as the butterfly effect, and can be
 formulated as "most (small) perturbations on initial conditions or parameters lead
 to new trajectories diverging exponentially fast from the original trajectory".
 
@@ -48,7 +48,7 @@ as follows: "For most initial conditions, the (homogeneous) tangent solutions gr
 exponentially fast."
 
 To compute derivatives of an objective ``\langle g \rangle_∞`` with respect to the
-parameters `p` of a chaotic systems, one thus encounters that "traditional" forward
+parameters `p` of a chaotic system, one thus encounters that “traditional” forward
 and adjoint sensitivity methods diverge because the tangent space diverges with a
 rate given by the Lyapunov exponent. Taking the average of these derivative can then
 also fail, i.e., one finds that the average derivative is not the derivative of
@@ -56,7 +56,7 @@ the average.
 
 Although numerically computed chaotic trajectories diverge from the true/original
 trajectory, the [shadowing theorem](http://mathworld.wolfram.com/ShadowingTheorem.html) guarantees that there exists an errorless trajectory
-with a slightly different initial condition that stays near ("shadows") the numerically
+with a slightly different initial condition that stays near (“shadows”) the numerically
 computed one, see, e.g, the [blog post](https://frankschae.github.io/post/shadowing/) or the [non-intrusive least squares shadowing paper](https://arxiv.org/abs/1611.00880) for more details.
 Essentially, the idea is to replace the ill-conditioned ODE by a well-conditioned
 optimization problem. Shadowing methods use the shadowing theorem within a renormalization

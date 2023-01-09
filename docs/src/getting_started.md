@@ -2,24 +2,25 @@
 
 !!! warn
 
-      This tutorial assumes familiarity with DifferentialEquations.jl
+      This tutorial assumes familiarity with DifferentialEquations.jl.
       If you are not familiar with DifferentialEquations.jl, please consult
-      [the DifferentialEquations.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/)
+      [the DifferentialEquations.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/).
 
 SciMLSensitivity.jl is a tool for obtaining derivatives of equation solvers,
 such as differential equation solvers. These can be used in many ways, such as
 for analyzing the local sensitivities of a system or to compute the gradients
-of cost functions for model calibratrion and parameter estimation. In this
-tutorial we will show how to make use of the tooling in SciMLSensitivity.jl
+of cost functions for model calibration and parameter estimation. In this
+tutorial, we will show how to make use of the tooling in SciMLSensitivity.jl
 to differentiate the ODE solvers.
 
 !!! note
-  SciMLSensitivity.jl applies to all equation solvers of the SciML ecosystem,
-  such as for linear solvers, nonlinear solvers, nonlinear optimization,
-  and more. This tutorial focuses on differential equations, so please see
-  the other tutorials focused on these other SciMLProblem types as necessary.
-  While the interface works similarly for all problem types, these tutorials
-  will showcase the aspects that are special to a given problem.
+
+    SciMLSensitivity.jl applies to all equation solvers of the SciML ecosystem,
+    such as linear solvers, nonlinear solvers, nonlinear optimization,
+    and more. This tutorial focuses on differential equations, so please see
+    the other tutorials focused on these other SciMLProblem types as necessary.
+    While the interface works similarly for all problem types, these tutorials
+    will showcase the aspects that are special to a given problem.
 
 ## Setup
 
@@ -45,10 +46,10 @@ differentiation methods.
 
 Let's say we need the derivative of the solution with respect to the initial condition
 `u0` and its parameters `p`. One of the simplest ways to do this is via ForwardDiff.jl.
-To do this, all that one needs to do is use 
+All one needs to do is to use 
 [the ForwardDiff.jl library](https://juliadiff.org/ForwardDiff.jl/stable/) to differentiate
 some function `f` which uses a differential equation `solve` inside of it. For example,
-let's say we want the derivative of the first component of ODE solution with respect to 
+let's say we want the derivative of the first component of the ODE solution with respect to 
 these quantities at evenly spaced time points of `dt = 1`. We can compute this via:
 
 ```@example diffode
@@ -80,7 +81,7 @@ solution at time `t=1` with respect to `p[1]`.
 ## Reverse-Mode Automatic Differentiation
 
 [The `solve` function is automatically compatible with AD systems like Zygote.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
-and thus there is no machinery that is necessary to use other than to put `solve` inside of
+and thus there is no machinery that is necessary to use other than to put `solve` inside
 a function that is differentiated by Zygote. For example, the following computes the solution 
 to an ODE and computes the gradient of a loss function (the sum of the ODE's output at each 
 timepoint with dt=0.1) via the adjoint method:
@@ -103,7 +104,7 @@ chosen.
 ### Choosing Sensitivity Algorithms
 
 The algorithms for differentiation calculation are called `AbstractSensitivityAlgorithms`,
-or `sensealg`s for short. These are choosen by passing the `sensealg` keyword argument into solve.
+or `sensealg`s for short. These are chosen by passing the `sensealg` keyword argument into solve.
 Let's demonstrate this by choosing the `QuadratureAdjoint` `sensealg` for the differentiation of
 this system:
 
@@ -116,9 +117,9 @@ du01,dp1 = Zygote.gradient(sum_of_solution,u0,p)
 ```
 
 Here this computes the derivative of the output with respect to the initial
-condition and the the derivative with respect to the parameters respectively
+condition and the derivative with respect to the parameters respectively
 using the `QuadratureAdjoint()`. For more information on the choices of sensitivity
-algorithms, see the [reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq)
+algorithms, see the [reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq).
 
 !!! note
     ForwardDiff.jl's automatic differentiation system ignores the sensitivity algorithms.
@@ -126,14 +127,14 @@ algorithms, see the [reference documentation in choosing sensitivity algorithms]
 ## When Should You Use Forward or Reverse Mode?
 
 Good question! The simple answer is, if you are differentiating a system of
-100 equations or less, use forward-mode, otherwise reverse-mode. But it can
+fewer than 100 equations, use forward-mode, otherwise reverse-mode. But it can
 be a lot more complicated than that! For more information, see the 
-[reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq)
+[reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq).
 
 ## And that is it! Where should you go from here?
 
 That's all there is to the basics of differentiating the ODE solvers with SciMLSensitivity.jl.
-That said, check out the follwing tutorials to dig into more detail:
+That said, check out the following tutorials to dig into more detail:
 
 * See the [ODE parameter estimation tutorial](@ref odeparamestim) to learn how to fit the parameters of ODE systems
 * See the [direct sensitivity tutorial](@ref direct_sensitivity) to dig into the lower level API for more performance
