@@ -10,9 +10,9 @@ there are many strategies to avoid local minima:
 
 ## Iterative Growing Of Fits to Reduce Probability of Bad Local Minima
 
-In this example we will show how to use strategy (4) in order to increase the
+In this example, we will show how to use strategy (4) in order to increase the
 robustness of the fit. Let's start with the same neural ODE example we've used
-before except with one small twist: we wish to find the neural ODE that fits
+before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
@@ -85,12 +85,12 @@ plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data"
 scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
 ```
 
-However, we've now fallen into a trap of a local minima. If the optimizer changes
-the parameters so it dips early, it will increase the loss because there will
+However, we've now fallen into a trap of a local minimum. If the optimizer changes
+the parameters, so it dips early, it will increase the loss because there will
 be more error in the later parts of the time series. Thus it tends to just stay
 flat and never fit perfectly. This thus suggests strategies (2) and (3): do not
 allow the later parts of the time series to influence the fit until the later
-stages. Strategy (3) seems to be more robust, so this is what will be demonstrated.
+stages. Strategy (3) seems more robust, so this is what will be demonstrated.
 
 Let's start by reducing the timespan to `(0,1.5)`:
 
@@ -134,7 +134,7 @@ plt = scatter(tsteps[1:size(pred,2)], ode_data[1,1:size(pred,2)], label = "data"
 scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
 ```
 
-Once again a great fit. Now we utilize these parameters as the initial condition
+Once again, a great fit. Now we utilize these parameters as the initial condition
 to the full fit:
 
 ```@example iterativefit
@@ -156,7 +156,7 @@ scatter!(plt, tsteps[1:size(pred,2)], pred[1,:], label = "prediction")
 
 ## Training both the initial conditions and the parameters to start
 
-In this example we will show how to use strategy (4) in order to accomplish the
+In this example, we will show how to use strategy (4) in order to accomplish the
 same goal, except rather than growing the trajectory iteratively, we can train on
 the whole trajectory. We do this by allowing the neural ODE to learn both the
 initial conditions and parameters to start, and then reset the initial conditions

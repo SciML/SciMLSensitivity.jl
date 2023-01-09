@@ -1,6 +1,6 @@
 # Neural Ordinary Differential Equations with Flux
 
-All of the tools of SciMLSensitivity.jl can be used with Flux.jl. A lot of the examples
+All the tools of SciMLSensitivity.jl can be used with Flux.jl. A lot of the examples
 have been written to use `FastChain` and `sciml_train`, but in all cases this
 can be changed to the `Chain` and `Flux.train!` workflow.
 
@@ -74,10 +74,10 @@ p,re = Flux.destructure(chain)
 
 returns `p` which is the vector of parameters for the chain and `re` which is
 a function `re(p)` that reconstructs the neural network with new parameters
-`p`. Using this function we can thus build our neural differential equations in
+`p`. Using this function, we can thus build our neural differential equations in
 an explicit parameter style.
 
-Let's use this to build and train a neural ODE from scratch. In this example we will
+Let's use this to build and train a neural ODE from scratch. In this example, we will
 optimize both the neural network parameters `p` and the input initial condition `u0`.
 Notice that Optimization.jl works on a vector input, so we have to concatenate `u0`
 and `p` and then in the loss function split to the pieces.
@@ -149,7 +149,7 @@ result_neuralode2 = Optimization.solve(optprob2,
 ```
 
 Notice that the advantage of this format is that we can use Optim's optimizers, like
-`LBFGS` with a full `Chain` object for all of Flux's neural networks, like
+`LBFGS` with a full `Chain` object, for all of Flux's neural networks, like
 convolutional neural networks.
 
 ![](https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif)

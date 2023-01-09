@@ -74,8 +74,8 @@ res = Optimization.solve(optprob,ADAM(), maxiters = 1000)
 # res = Optimization.solve(optprob,NLopt.LD_LBFGS(), maxiters = 1000) ### errors!
 ```
 
-You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call with Optim's optimizers which happens because
-of Zygote's behaviour for zero gradients in which case it returns `nothing`. To avoid such issue you can just use a different version of the same check which compares the size of the obtained 
+You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call with Optim's optimizers, which happens because
+of Zygote's behavior for zero gradients, in which case it returns `nothing`. To avoid such issues, you can just use a different version of the same check which compares the size of the obtained 
 solution and the data we have, shown below, which is easier to AD.
 
 ```julia

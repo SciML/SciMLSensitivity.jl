@@ -2,7 +2,7 @@
 
 This tutorial has been adapted from [here](https://github.com/CarloLucibello/GraphNeuralNetworks.jl/blob/master/examples/neural_ode_cora.jl).
 
-In this tutorial we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
+In this tutorial, we will use Graph Differential Equations (GDEs) to perform classification on the [CORA Dataset](https://relational.fit.cvut.cz/dataset/CORA). We shall be using the Graph Neural Networks primitives from the package [GraphNeuralNetworks](https://github.com/CarloLucibello/GraphNeuralNetworks.jl).
 
 ```julia
 # Load the packages
@@ -184,7 +184,7 @@ Ã = normalized_adjacency(g, add_self_loops=true) |> device
 ```
 ### Training Data
 
-GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset but train the model in a semi-supervised learning fashion.
+GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset, but train the model in a semi-supervised learning fashion.
 ```julia
 (; train_mask, val_mask, test_mask) = g.ndata
 ytrain = y[:,train_mask]
@@ -202,7 +202,7 @@ epochs = 20
 ```
 ## Define the Graph Neural Network
 
-Here we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more informations on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
+Here, we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more information on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
 
 
 ```julia
@@ -240,7 +240,7 @@ end
 
 ## Neural Graph Ordinary Differential Equations
 
-Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and the a `Dense` layer to project it from the latent space to the predictions. Finally a softmax layer gives us the probability of the input belonging to each target category.
+Let us now define the final model. We will use two GNN layers for approximating the gradients for the neural ODE. We use one additional `GCNConv` layer to project the data to a latent space and a `Dense` layer to project it from the latent space to the predictions. Finally, a softmax layer gives us the probability of the input belonging to each target category.
 
 ```julia
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
@@ -264,7 +264,7 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
 
 ### Loss Function and Accuracy
 
-We shall be using the standard categorical crossentropy loss function which is used for multiclass classification tasks.
+We shall be using the standard categorical crossentropy loss function, which is used for multiclass classification tasks.
 
 ```julia
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
@@ -283,7 +283,7 @@ end
 ```
 
 ### Setup Model
-We need to manually set up our mode with `Lux`, and convert the paramters to `ComponentArray` so that they can work well with sensitivity algorithms.
+We need to manually set up our mode with `Lux`, and convert the parameters to `ComponentArray` so that they can work well with sensitivity algorithms.
 ```julia
 rng = Random.default_rng()
 Random.seed!(rng, 0)
@@ -294,7 +294,7 @@ st = st |> device
 ```
 ### Optimizer
 
-For this task we will be using the `ADAM` optimizer with a learning rate of `0.01`.
+For this task, we will be using the `ADAM` optimizer with a learning rate of `0.01`.
 
 ```julia
 opt = Optimisers.Adam(0.01f0)
