@@ -11,7 +11,7 @@ different modes of parallelism. These examples are not exhaustive.
 ## Within-ODE Multithreaded and GPU Batching
 
 We end by noting that there is an alternative way of batching which
-can be more efficient in some cases like neural ODEs. With a neural
+can be more efficient in some cases, like neural ODEs. With neural
 networks, columns are treated independently (by the properties of
 matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
@@ -55,8 +55,8 @@ prob = ODEProblem(f,Lux.gpu(u0),(0f0,1f0),Lux.gpu(p))
 solve(prob,Tsit5())
 ```
 
-This method of parallelism is optimal if all of the operations are
-linear algebra operations such as a neural ODE. Thus this method of
+This method of parallelism is optimal if all the operations are
+linear algebra operations, such as a neural ODE. Thus this method of
 parallelism is demonstrated in the [MNIST tutorial](@ref mnist).
 
 However, this method of parallelism has many limitations. First of all,
@@ -130,7 +130,7 @@ In order to make use of the ensemble interface, we need to build an
 the different `DEProblem`s to solve. This is the place where we can
 randomly sample initial conditions or pull initial conditions from
 an array of batches in order to perform our study. To do this, we
-first define a prototype `DEProblem`. Here we use the following
+first define a prototype `DEProblem`. Here, we use the following
 `ODEProblem` as our base:
 
 ```@example dataparallel
@@ -154,7 +154,7 @@ We now build the `EnsembleProblem` with this basis:
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
 ```
 
-Now to solve an ensemble problem, we need to choose an ensembling
+Now, to solve an ensemble problem, we need to choose an ensembling
 algorithm and choose the number of trajectories to solve. Here let's
 solve this in serial with 100 trajectories. Note that `i` will thus run
 from `1:100`.
@@ -186,11 +186,11 @@ all the same, except you utilize `EnsembleDistributed` as the ensembler:
 sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1, trajectories = 100)
 ```
 
-Note that for this to work you need to ensure that your processes are
+Note that for this to work, you need to ensure that your processes are
 already started. For more information on setting up processes and utilizing
 a compute cluster, see [the official distributed documentation](https://docs.julialang.org/en/v1/manual/distributed-computing/). The key feature to recognize is that, due to
-the message passing required for cluster compute, one needs to ensure
-that all of the required functions are defined on the worker processes.
+the message passing required for cluster compute, one must ensure
+that all the required functions are defined on the worker processes.
 The following is a full example of a distributed batching setup:
 
 ```julia
@@ -243,7 +243,7 @@ to a cluster, check out [ClusterManagers.jl](https://github.com/JuliaParallel/Cl
 
 DiffEqGPU.jl allows for generating code parallelizes an ensemble on
 generated CUDA kernels. This method is efficient for sufficiently
-small (<100 ODE) problems where the significant computational cost
+small (<100 ODE) problems, where the significant computational cost
 is due to the large number of batch trajectories that need to be
 solved. This kernel-building process adds a few restrictions to the
 function, such as requiring it has no boundschecking or allocations.

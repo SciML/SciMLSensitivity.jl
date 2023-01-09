@@ -1,6 +1,6 @@
 # Handling Exogenous Input Signals
 
-The key to using exogeneous input signals is the same as in the rest of the
+The key to using exogenous input signals is the same as in the rest of the
 SciML universe: just use the function in the definition of the differential
 equation. For example, if it's a standard differential equation, you can
 use the form
@@ -30,7 +30,7 @@ which encloses an extra argument into `f` so that `_f` is now the interface-comp
 differential equation definition.
 
 Note that you can also learn what the exogenous equation is from data. For an
-example on how to do this, you can use the [Optimal Control Example](@ref optcontrol)
+example on how to do this, you can use the [Optimal Control Example](@ref optcontrol),
 which shows how to parameterize a `u(t)` by a universal function and learn that
 from data.
 

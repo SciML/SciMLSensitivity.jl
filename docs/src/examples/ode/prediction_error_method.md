@@ -1,6 +1,6 @@
 # [Prediction error method (PEM)](@id pemethod)
 
-When identifying linear systems from noisy data, the prediction-error method [^Ljung] is close to a gold standard when it comes to the quality of the models it produces, but is also one of the computationally more expensive methods due to its reliance on iterative, gradient-based estimation. When we are identifying nonlinear models, we typically do not have the luxury of closed-form, non-iterative solutions, while PEM is easier to adopt to the nonlinear setting.[^Larsson]
+When identifying linear systems from noisy data, the prediction-error method [^Ljung] is close to a gold standard when it comes to the quality of the models it produces, but is also one of the computationally more expensive methods due to its reliance on iterative, gradient-based estimation. When we are identifying nonlinear models, we typically do not have the luxury of closed-form, non-iterative solutions, while PEM is easier to adapt to the nonlinear setting.[^Larsson]
 
 Fundamentally, PEM changes the problem from minimizing a loss based on the simulation performance, to minimizing a loss based on shorter-term predictions. There are several benefits of doing so, and this example will highlight two:
 - The loss is often easier to optimize.
@@ -13,7 +13,7 @@ We will start by illustrating a common problem with simulation-error minimizatio
 
 Another case that poses a problem for simulation-error estimation is when the system is unstable or chaotic. A small error in either the initial condition or the parameters may cause the simulation error to diverge and its gradient to become meaningless.
 
-In both of these examples, we may make use of measurements we have of the evolution of the system to prevent the simulation error from diverging. For instance, if we have measured the angle of the pendulum, we can make use of this measurement to adjust the angle during the simulation to make sure it stays close to the measured angle. Instead of performing a pure simulation, we instead say that we *predict* the state a while forward in time, given all the measurements up until the current time point. By minimizing this prediction rather than the pure simulation, we can often prevent the model error from diverging even though we have a poor initial guess. 
+In both of these examples, we may make use of measurements we have of the evolution of the system to prevent the simulation error from diverging. For instance, if we have measured the angle of the pendulum, we can make use of this measurement to adjust the angle during the simulation to make sure it stays close to the measured angle. Instead of performing a pure simulation, we instead say that we *predict* the state a while forward in time, given all the measurements until the current time point. By minimizing this prediction rather than the pure simulation, we can often prevent the model error from diverging even though we have a poor initial guess. 
 
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum. 
 
@@ -120,7 +120,7 @@ plot!(Ls, predlosses, lab="Prediction loss")
 ```
 
 
-Once gain we look at the loss as a function of the parameter, and this time it looks a lot better. The loss is not convex, but the gradient points in the right direction over a much larger interval. Here, we arbitrarily set the observer gain to $K=1$, we will later let the optimizer learn this parameter.
+Once gain, we look at the loss as a function of the parameter, and this time it looks a lot better. The loss is not convex, but the gradient points in the right direction over a much larger interval. Here, we arbitrarily set the observer gain to $K=1$, we will later let the optimizer learn this parameter.
 
 For completeness, we also perform estimation using both losses. We choose an initial guess we know will be hard for the simulation-error minimization just to drive home the point:
 
@@ -155,7 +155,7 @@ respred.u
 ```
 
 Now, we might ask ourselves why we used a correct on the form $Ke$ and didn't instead set the angle in the simulation *equal* to the measurement. The reason is twofold
-1. If our prediction of the angle is 100% based on the measurements, the model parameters do not matter for the prediction and we can thus not hope to learn their values.
+1. If our prediction of the angle is 100% based on the measurements, the model parameters do not matter for the prediction, and we thus cannot hope to learn their values.
 2. The measurement is usually noisy, and we thus want to *fuse* the predictive power of the model with the information of the measurements. The Kalman filter is an optimal approach to this information fusion under special circumstances (linear model, Gaussian noise).
 
 We thus let the optimization *learn* the best value of the observer gain in order to make the best predictions. 

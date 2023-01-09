@@ -86,7 +86,7 @@ res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000, cal
 ```
 
 The key is that `Optimization.solve` acts on a single parameter vector `p`.
-Thus what we do here is concatenate all of the parameters into a single
+Thus what we do here is concatenate all the parameters into a single
 ComponentVector `p` and then train on this parameter
 vector. Whenever we need to evaluate the neural networks, we dereference the
 vector and grab the key that corresponds to the neural network.

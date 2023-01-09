@@ -6,7 +6,7 @@ The neural ODE focuses and finding a neural network such that:
 u^\prime = NN(u)
 ```
 
-However, in many cases in physics-based modeling, the key object is not the
+However, often in physics-based modeling, the key object is not the
 velocity but the acceleration: knowing the acceleration tells you the force
 field and thus the generating process for the dynamical system. Thus what we want
 to do is find the force, i.e.:

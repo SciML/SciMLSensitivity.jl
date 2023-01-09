@@ -5,7 +5,7 @@ SciMLSensitivity.jl) for forward-mode automatic differentiation of a small
 stochastic differential equation. For large parameter equations, like neural
 stochastic differential equations, you should use reverse-mode automatic
 differentiation. However, forward-mode can be more efficient for low numbers
-of parameters (<100). (Note: the default is reverse-mode AD which is more suitable
+of parameters (<100). (Note: the default is reverse-mode AD, which is more suitable
 for things like neural SDEs!)
 
 ## Example 1: Fitting Data with SDEs via Method of Moments and Parallelism
@@ -108,10 +108,10 @@ approximately 4 minutes.
 
 ## Example 2: Fitting SDEs via Bayesian Quasi-Likelihood Approaches
 
-An inference method which can be much more efficient in many cases is the quasi-likelihood approach.
+An inference method which can often be much more efficient is the quasi-likelihood approach.
 This approach matches the random likelihood of the SDE output with the random sampling of a Bayesian
 inference problem to more efficiently directly estimate the posterior distribution. For more information,
-please see [the Turing.jl Bayesian Differential Equations tutorial](https://github.com/TuringLang/TuringTutorials/blob/master/10_diffeq.ipynb)
+please see [the Turing.jl Bayesian Differential Equations tutorial](https://github.com/TuringLang/TuringTutorials/blob/master/10_diffeq.ipynb).
 
 ## Example 3: Controlling SDEs to an objective
 

@@ -10,7 +10,7 @@ demonstrates some of those functions.
 Forward sensitivity analysis is performed by defining and solving an augmented
 ODE. To define this augmented ODE, use the `ODEForwardSensitivityProblem` type
 instead of an ODE type. For example, we generate an ODE with the sensitivity
-equations attached for the Lotka-Volterra equations by:
+equations attached to the Lotka-Volterra equations by:
 
 ```@example directsense
 using OrdinaryDiffEq, SciMLSensitivity
@@ -67,8 +67,8 @@ solution, see the [direct forward sensitivity analysis manual page](@ref forward
 
 ## Example using `adjoint_sensitivities` for discrete adjoints
 
-In this example we will show solving for the adjoint sensitivities of a discrete
-cost functional. First let's solve the ODE and get a high quality continuous
+In this example, we will show solving for the adjoint sensitivities of a discrete
+cost functional. First, let's solve the ODE and get a high quality continuous
 solution:
 
 ```@example directsense

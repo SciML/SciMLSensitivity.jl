@@ -2,13 +2,13 @@
 
 ## Note on benchmarking and getting the best performance out of the SciML stack's adjoints
 
-From our [recent papers](https://arxiv.org/abs/1812.01892) it's clear that `EnzymeVJP` is the fastest,
-especially when the program is setup to be fully non-allocating mutating functions. Thus for all benchmarking,
+From our [recent papers](https://arxiv.org/abs/1812.01892), it's clear that `EnzymeVJP` is the fastest,
+especially when the program is set up to be fully non-allocating mutating functions. Thus for all benchmarking,
 especially with PDEs, this should be done. Neural network libraries don't make use of mutation effectively
 [except for SimpleChains.jl](https://julialang.org/blog/2022/04/simple-chains/), so we recommend creating a
 neural ODE / universal ODE with `ZygoteVJP` and Flux first, but then check the correctness by moving the
 implementation over to SimpleChains and if possible `EnzymeVJP`. This can be an order of magnitude improvement
-(or more) in many situations over all of the previous benchmarks using Zygote and Flux, and thus it's
+(or more) in many situations over all the previous benchmarks using Zygote and Flux, and thus it's
 highly recommended in scenarios that require performance.
 
 ## Vs Torchdiffeq 1 million and less ODEs
@@ -23,10 +23,10 @@ A training benchmark using the spiral ODE from the original neural ODE paper
 
 ## Vs torchsde on small SDEs
 
-Using the code from torchsde's README we demonstrated a [>70,000x performance
+Using the code from torchsde's README, we demonstrated a [>70,000x performance
 advantage over torchsde](https://gist.github.com/ChrisRackauckas/6a03e7b151c86b32d74b41af54d495c6).
-Further benchmarking is planned but was found to be computationally infeasible
-for the time being.
+Further benchmarking is planned, but was found to be computationally infeasible
+at this time.
 
 ## A bunch of adjoint choices on neural ODEs
 

@@ -60,7 +60,7 @@ result_ode = Optimization.solve(optprob, PolyOpt(),
 
 ## Explanation
 
-First let's create a Lotka-Volterra ODE using DifferentialEquations.jl. For
+First, let's create a Lotka-Volterra ODE using DifferentialEquations.jl. For
 more details, [see the DifferentialEquations.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/). The Lotka-Volterra equations have the form:
 
 ```math
@@ -104,10 +104,10 @@ savefig("LV_ode.png")
 ![LV Solution Plot](https://user-images.githubusercontent.com/1814174/51388169-9a07f300-1af6-11e9-8c6c-83c41e81d11c.png)
 
 For this first example, we do not yet include a neural network. We take
-[AD-compatible `solve`
-function](https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/) function
+[an AD-compatible `solve`
+function](https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/)
 that takes the parameters and an initial condition and returns the solution of
-the differential equation. Next we choose a loss function. Our goal will be to
+the differential equation. Next, we choose a loss function. Our goal will be to
 find parameters that make the Lotka-Volterra solution constant `x(t)=1`, so we
 define our loss as the squared distance from 1.
 
