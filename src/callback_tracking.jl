@@ -205,6 +205,8 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
     # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Thefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
+    !(sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}) &&
+        error("Only `ReverseDiffVJP` and `EnzymeVJP` are currently compatible with continuous adjoint sensitivity methods for hybrid DEs. Please select `ReverseDiffVJP` or `EnzymeVJP` as `autojacvec`.")
 
     # event times
     times = if typeof(cb) <: DiscreteCallback
@@ -214,17 +216,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
     end
 
     # precompute w and wp to generate a tape
-    if cb isa DiscreteCallback
-        w, wp = setup_w_wp(cb, true, nothing, nothing)
-    elseif cb isa ContinuousCallback
-        # compile a tape for pos and neg
-        w, wp = [setup_w_wp(cb, pos_neg, nothing, nothing) for pos_neg in (true, false)]
-    else
-        # cb isa VectorContinuousCallback
-        # compile a tape for pos/neg and all event indices
-        w, wp = [setup_w_wp(cb, pos_neg, event_idx, nothing) for pos_neg in (true, false)
-                 for event_idx in 1:(cb.len)]
-    end
+    cb_diffcaches = get_cb_diffcaches(cb, sensealg.autojacvec)
 
     function affect!(integrator)
         indx, pos_neg = get_indx(cb, integrator.t)
@@ -232,15 +224,14 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         event_idx = cb isa VectorContinuousCallback ? get_event_idx(cb, indx, pos_neg) :
                     nothing
 
-        # how can we make sure tprev didn't change, so precompiled tape is correct?
-        w, wp = setup_w_wp(cb, pos_neg, event_idx, tprev)
+        # update diffcache here to use the correct precompiled callback tape
+        w, wp = setup_w_wp(cb, sensealg.autojacvec, pos_neg, event_idx, tprev)
+        diffcaches = cb_diffcaches[pos_neg, event_idx]
 
         S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
-        @assert sensealg.autojacvec isa ReverseDiffVJP
-        # update diffcache here to use the correct precompiled callback tape?
-        fakeS = CallbackSensitivityFunction(w, sensealg, S.diffcache, integrator.sol.prob)
+        fakeS = CallbackSensitivityFunction(w, sensealg, diffcaches[1], integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
         λ, grad, y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
@@ -294,17 +285,18 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         if update_p
             # changes in parameters
             if !(sensealg isa QuadratureAdjoint)
-                fakeSp = CallbackSensitivityFunction(wp, sensealg, S.diffcache,
+                # reinit diffcache struct
+                #diffcache(t2)
+                fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
                                                      integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
                 vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
-                             dgrad = nothing, dy = nothing, recompile_tape = true)
+                             dgrad = nothing, dy = nothing)
                 grad .= dgrad
             end
         end
-
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
-                     dgrad = dgrad, dy = dy, recompile_tape = true)
+                     dgrad = dgrad, dy = dy)
 
         dgrad !== nothing && (dgrad .*= -1)
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
@@ -344,33 +336,117 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
     cb
 end
 
-function setup_w_wp(cb, pos_neg, event_idx, tprev)
+function setup_w_wp(cb::Union{DiscreteCallback, ContinuousCallback},
+                    autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
+                    tprev)
+    w = let tprev = tprev, pos_neg = pos_neg
+        function (du, u, p, t)
+            _affect! = get_affect!(cb, pos_neg)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            _affect!(fakeinteg)
+            du .= fakeinteg.u
+            nothing
+        end
+    end
+
+    wp = let tprev = tprev, pos_neg = pos_neg
+        function (dp, p, u, t)
+            _affect! = get_affect!(cb, pos_neg)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            _affect!(fakeinteg)
+            dp .= fakeinteg.p
+            nothing
+        end
+    end
+    return w, wp
+end
+
+function setup_w_wp(cb::VectorContinuousCallback,
+                    autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
+                    tprev)
     w = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
         function (du, u, p, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            if cb isa VectorContinuousCallback
-                _affect!(fakeinteg, event_idx)
-            else
-                _affect!(fakeinteg)
-            end
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            _affect!(fakeinteg, event_idx)
             du .= fakeinteg.u
+            nothing
         end
     end
 
     wp = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
         function (dp, p, u, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            if cb isa VectorContinuousCallback
-                _affect!(fakeinteg, event_idx)
-            else
-                _affect!(fakeinteg)
-            end
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            _affect!(fakeinteg, event_idx)
             dp .= fakeinteg.p
+            nothing
         end
     end
     return w, wp
+end
+
+function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
+    FakeIntegrator([x for x in u], [x for x in p], t, tprev)
+end
+get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
+
+function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
+                                     VectorContinuousCallback}, autojacvec)
+    _dc = []
+    if cb isa DiscreteCallback
+        pos_negs = (true,)
+    else
+        pos_negs = (true, false)
+    end
+    if cb isa VectorContinuousCallback
+        event_idxs = 1:(cb.len)
+    else
+        event_idxs = (nothing,)
+    end
+    for event_idx in event_idxs
+        for pos_neg in pos_negs
+            if (pos_neg && !isempty(cb.affect!.event_times)) ||
+               (!pos_neg && !isempty(cb.affect_neg!.event_times))
+                if pos_neg && !isempty(cb.affect!.event_times)
+                    y = cb.affect!.uleft[end]
+                    _p = cb.affect!.pleft[end]
+                    _t = cb.affect!.tprev[end]
+                else
+                    y = cb.affect_neg!.uleft[end]
+                    _p = cb.affect_neg!.pleft[end]
+                    _t = cb.affect_neg!.tprev[end]
+                end
+
+                w, wp = setup_w_wp(cb, autojacvec, pos_neg, event_idx, _t)
+
+                paramjac_config = get_paramjac_config(autojacvec, _p, w, y, _p, _t;
+                                                      numindvar = length(y), alg = nothing,
+                                                      isinplace = true, isRODE = false,
+                                                      _W = nothing)
+                pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
+
+                diffcache_w = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
+                                               nothing, nothing, nothing, paramjac_config,
+                                               nothing, nothing, nothing, nothing, nothing,
+                                               nothing, nothing, nothing, false)
+
+                paramjac_config = get_paramjac_config(autojacvec, y, wp, _p, y, _t;
+                                                      numindvar = length(y), alg = nothing,
+                                                      isinplace = true, isRODE = false,
+                                                      _W = nothing)
+                pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
+
+                diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
+                                                nothing, nothing, nothing, paramjac_config,
+                                                nothing, nothing, nothing, nothing, nothing,
+                                                nothing, nothing, nothing, false)
+
+                push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
+            end
+        end
+    end
+    return Dict(_dc)
 end
 
 get_indx(cb::DiscreteCallback, t) = (searchsortedfirst(cb.affect!.event_times, t), true)
