@@ -34,12 +34,12 @@ adjoint_sensitivities(sol,alg;t=nothing,
 ```
 
 Adjoint sensitivity analysis is used to find the gradient of the solution
-with respect to some functional of the solution. In many cases this is used
+with respect to some functional of the solution. Often, this is used
 in an optimization problem to return the gradient with respect to some cost
 function. It is equivalent to "backpropagation" or reverse-mode automatic
 differentiation of a differential equation.
 
-Using `adjoint_sensitivities` directly let's you do three things. One it can
+Using `adjoint_sensitivities` directly lets you do three things. First, it can
 allow you to be more efficient, since the sensitivity calculation can be done
 directly on a cost function, avoiding the overhead of building the derivative
 of the full concretized solution. It can also allow you to be more efficient
@@ -50,7 +50,7 @@ instead of just at discrete data points.
 !!! warning
 
       Adjoint sensitivity analysis functionality requires being able to solve
-      a differential equation defined by the parameter struct `p`. Thus while
+      a differential equation defined by the parameter struct `p`. Even though
       DifferentialEquations.jl can support any parameter struct type, usage
       with adjoint sensitivity analysis requires that `p` could be a valid
       type for being the initial condition `u0` of an array. This means that
@@ -90,10 +90,10 @@ and obtaining the sensitivities through the integral:
 \frac{dG}{dp}=\int_{t_{0}}^{T}\lambda^{\star}(t)f_{p}(t)+g_{p}(t)dt+\lambda^{\star}(t_{0})u_{p}(t_{0})
 ```
 
-As defined, that cost function only has non-zero values over nontrivial intervals. However, in many
-cases one may want to include in the cost function loss values at discrete points, for example, matching
-the data at time points `t`. In this case, terms of `g` can be represented by Dirac delta functions
-which are then applied in the corresponding ``\lambda^\star`` and ``\frac{dG}{dp}`` equations.
+As defined, that cost function only has non-zero values over nontrivial intervals. However, often
+one may want to include in the cost function loss values at discrete points, for example, matching
+the data at time points `t`. In this case, terms of `g` can be represented by Dirac delta functions,
+which are then applied to the corresponding ``\lambda^\star`` and ``\frac{dG}{dp}`` equations.
 
 For more information, see [Sensitivity Math Details](@ref sensitivity_math).
 
@@ -208,8 +208,8 @@ solving the adjoint problem.
 
 ### Example discrete adjoints on a cost function
 
-In this example we will show solving for the adjoint sensitivities of a discrete
-cost functional. First let's solve the ODE and get a high quality continuous
+In this example, we will show solving for the adjoint sensitivities of a discrete
+cost functional. First, let's solve the ODE and get a high quality continuous
 solution:
 
 ```julia
@@ -247,7 +247,7 @@ and thus:
 dg(out,u,p,t,i) = (out.=-1.0.+u)
 ```
 
-Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`. If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
+Also, we can omit `dgdp` because the cost function doesn't dependent on `p`. If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
 sensitivities, call:
 
 ```julia
@@ -281,7 +281,7 @@ and see this gives the same values.
 ### Example controlling adjoint method choices and checkpointing
 
 In the previous examples, all calculations were done using the interpolating
-method. This maximizes speed but at a cost of requiring a dense `sol`. If it
+method. This maximizes speed, but at a cost of requiring a dense `sol`. If it
 is not possible to hold a dense forward solution in memory, then one can use
 checkpointing. For example:
 
@@ -301,7 +301,7 @@ res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrete=dg,
 When grabbing a Jacobian value during the backwards solution, it will no longer
 interpolate to get the value. Instead, it will start a forward solution at the
 nearest checkpoint to build local interpolants in a way that conserves memory.
-By default the checkpoints are at `sol.t`, but we can override this:
+By default, the checkpoints are at `sol.t`, but we can override this:
 
 ```julia
 res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrte=dg,
@@ -311,7 +311,7 @@ res = adjoint_sensitivities(sol,Vern9();t=ts,dg_discrte=dg,
 
 ### Example continuous adjoints on an energy functional
 
-In this case we'd like to calculate the adjoint sensitivity of the scalar energy
+In this case, we'd like to calculate the adjoint sensitivity of the scalar energy
 functional:
 
 ```math
@@ -482,7 +482,7 @@ matrices.
 !!! warning
 
       Adjoint sensitivity analysis functionality requires being able to solve
-      a differential equation defined by the parameter struct `p`. Thus while
+      a differential equation defined by the parameter struct `p`. Even though
       DifferentialEquations.jl can support any parameter struct type, usage
       with adjoint sensitivity analysis requires that `p` could be a valid
       type for being the initial condition `u0` of an array. This means that
@@ -538,7 +538,7 @@ matrix.
 !!! warning
 
       Adjoint sensitivity analysis functionality requires being able to solve
-      a differential equation defined by the parameter struct `p`. Thus while
+      a differential equation defined by the parameter struct `p`. Even though
       DifferentialEquations.jl can support any parameter struct type, usage
       with adjoint sensitivity analysis requires that `p` could be a valid
       type for being the initial condition `u0` of an array. This means that

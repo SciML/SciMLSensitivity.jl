@@ -120,7 +120,7 @@ BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT
 ```
 
 An implementation of adjoint sensitivity analysis using a backwards solution of the ODE.
-By default this algorithm will use the values from the forward pass to perturb the
+By default, this algorithm will use the values from the forward pass to perturb the
 backwards solution to the correct spot, allowing reduced memory (O(1) memory). Checkpointing
 stabilization is included for additional numerical stability over the naive implementation.
 
@@ -171,7 +171,7 @@ documentation page or the docstrings of the vjp types.
 
 ## Applicability of Backsolve and Caution
 
-When `BacksolveAdjoint` is applicable, it is a fast method and requires the least memory.
+When `BacksolveAdjoint` is applicable, it is a fast method, and requires the least memory.
 However, one must be cautious because not all ODEs are stable under backwards integration
 by the majority of ODE solvers. An example of such an equation is the Lorenz equation.
 Notice that if one solves the Lorenz equation forward and then in reverse with any
@@ -194,7 +194,7 @@ sol = solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12)
 @show sol[end]-u0 #[-3.22091, -1.49394, 21.3435]
 ```
 
-Thus one should check the stability of the backsolve on their type of problem before
+Thus, one should check the stability of the backsolve on their type of problem before
 enabling this method. Additionally, using checkpointing with backsolve can be a
 low memory way to stabilize it.
 
@@ -277,9 +277,9 @@ InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD
 
 An implementation of adjoint sensitivity analysis which uses the interpolation of
 the forward solution for the reverse solve vector-Jacobian products. By
-default it requires a dense solution of the forward pass and will internally
+default it requires, a dense solution of the forward pass and will internally
 ignore saving arguments during the gradient calculation. When checkpointing is
-enabled it will only require the memory to interpolate between checkpoints.
+enabled, it will only require the memory to interpolate between checkpoints.
 
 ## Constructor
 
@@ -384,7 +384,7 @@ QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FD
 
 An implementation of adjoint sensitivity analysis which develops a full
 continuous solution of the reverse solve in order to perform a post-ODE
-quadrature. This method requires the the dense solution and will ignore
+quadrature. This method requires the dense solution and will ignore
 saving arguments during the gradient calculation. The tolerances in the
 constructor control the inner quadrature.
 
@@ -493,7 +493,7 @@ Compatible with a limited subset of `AbstractArray` types for `u0`, including `C
 !!! warn
 
     TrackerAdjoint is incompatible with Stiff ODE solvers using forward-mode automatic
-    differentiation for the Jacobians. Thus for example, `TRBDF2()` will error. Instead,
+    differentiation for the Jacobians. Thus, for example, `TRBDF2()` will error. Instead,
     use `autodiff=false`, i.e. `TRBDF2(autodiff=false)`. This will only remove the
     forward-mode automatic differentiation of the Jacobian construction, not the reverse-mode
     AD usage, and thus performance will still be nearly the same, though Jacobian accuracy
@@ -549,7 +549,7 @@ ForwardLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD
 
 An implementation of the discrete, forward-mode
 [least squares shadowing](https://arxiv.org/abs/1204.0159) (LSS) method. LSS replaces
-the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a
+the ill-conditioned initial value problem (`ODEProblem`) for chaotic systems by a
 well-conditioned least-squares problem. This allows for computing sensitivities of
 long-time averaged quantities with respect to the parameters of the `ODEProblem`. The
 computational cost of LSS scales as (number of states x number of time steps). Converges
@@ -582,7 +582,7 @@ ForwardLSS(;
     - `Cos2Windowing()`: cos^2 windowing of the time grid.
     - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
       a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
-      the times truncated at the beginnning and end of the trajectory, respectively.
+      the times truncated at the beginning and end of the trajectory, respectively.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
@@ -625,7 +625,7 @@ AdjointLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD
 
 An implementation of the discrete, adjoint-mode
 [least square shadowing](https://arxiv.org/abs/1204.0159) method. LSS replaces
-the ill-conditioned initial value probem (`ODEProblem`) for chaotic systems by a
+the ill-conditioned initial value problem (`ODEProblem`) for chaotic systems by a
 well-conditioned least-squares problem. This allows for computing sensitivities of
 long-time averaged quantities with respect to the parameters of the `ODEProblem`. The
 computational cost of LSS scales as (number of states x number of time steps). Converges
@@ -655,7 +655,7 @@ AdjointLSS(;
   regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
     - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
       a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
-      the times truncated at the beginnning and end of the trajectory, respectively.
+      the times truncated at the beginning and end of the trajectory, respectively.
       The default value for `t0skip` and `t1skip` is `zero(alpha)`.
 * `g`: instantaneous objective function of the long-time averaged objective.
 
@@ -725,12 +725,12 @@ An implementation of the forward-mode, continuous
 allows for computing sensitivities of long-time averaged quantities with respect to the
 parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSS` employs the continuous-time `ForwardSensitivity` method as tangent solver. To
-avoid an exponential blow-up of the (homogenous and inhomogenous) tangent solutions,
+avoid an exponential blow-up of the (homogenous and inhomogeneous) tangent solutions,
 the trajectory should be divided into sufficiently small segments, where the tangent solutions
 are rescaled on the interfaces. The computational and memory cost of NILSS scale with
-the number of unstable (positive) Lyapunov exponents (instead of the number of states as
+the number of unstable (positive) Lyapunov exponents (instead of the number of states, as
 in the LSS method). `NILSS` avoids the explicit construction of the Jacobian at each time
-step and thus should generally be preferred (for large system sizes) over `ForwardLSS`.
+step, and thus should generally be preferred (for large system sizes) over `ForwardLSS`.
 
 ## Constructor
 
@@ -814,13 +814,13 @@ An implementation of the adjoint-mode, continuous
 `NILSAS` allows for computing sensitivities of long-time averaged quantities with respect
 to the parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSAS` employs SciMLSensitivity.jl's continuous adjoint sensitivity methods on each segment
-to compute (homogenous and inhomogenous) adjoint solutions. To avoid an exponential blow-up
+to compute (homogenous and inhomogeneous) adjoint solutions. To avoid an exponential blow-up
 of the adjoint solutions, the trajectory should be divided into sufficiently small segments,
 where the adjoint solutions are rescaled on the interfaces. The computational and memory cost
 of NILSAS scale with the number of unstable, adjoint Lyapunov exponents (instead of the number
 of states as in the LSS method). `NILSAS` avoids the explicit construction of the Jacobian at
-each time step and thus should generally be preferred (for large system sizes) over `AdjointLSS`.
-`NILSAS` is favourable over `NILSS` for many parameters because NILSAS computes the gradient
+each time step, and thus should generally be preferred (for large system sizes) over `AdjointLSS`.
+`NILSAS` is favorable over `NILSS` for many parameters because NILSAS computes the gradient
 with respect to multiple parameters with negligible additional cost.
 
 ## Constructor
@@ -846,7 +846,7 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
 * `rng`: (Pseudo) random number generator. Used for initializing the terminate
   conditions of the homogenous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
 * `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogenous
-  and inhomogenous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
+  and inhomogeneous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
   * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
   differentiation with special seeding. The default is `true`. The total set
   of choices are:
@@ -944,8 +944,8 @@ SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
       is a boolean for whether to precompile the tape, which should only be done
       if there are no branches (`if` or `while` statements) in the `f` function.
 * `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
-  which uses a polyalgorithm to attempt to automatically choose an efficient
-  algorithm.
+  which uses a polyalgorithm to choose an efficient
+  algorithm automatically.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -980,8 +980,8 @@ ZygoteVJP <: VJPChoice
 
 Uses Zygote.jl to compute vector-Jacobian products. Tends to be the fastest VJP method if the
 ODE/DAE/SDE/DDE is written with mostly vectorized  functions (like neural networks and other
-layers from Flux.jl) and the `f` functions is given out-of-place. If the `f` function is
-in-place, then `Zygote.Buffer` arrays are used internally which can greatly reduce the
+layers from Flux.jl) and the `f` function is given out-of-place. If the `f` function is
+in-place, then `Zygote.Buffer` arrays are used internally, which can greatly reduce the
 performance of the VJP method.
 
 ## Constructor
@@ -1014,7 +1014,7 @@ Uses Enzyme.jl to compute vector-Jacobian products. Is the fastest VJP whenever 
 though Enzyme.jl currently has low coverage over the Julia programming language, for example
 restricting the user's defined `f` function to not do things like require garbage collection
 or calls to BLAS/LAPACK. However, mutation is supported, meaning that in-place `f` with
-fully mutating non-allocating code will work with Enzyme (provided no high level calls to C
+fully mutating non-allocating code will work with Enzyme (provided no high-level calls to C
 like BLAS/LAPACK are used) and this will be the most efficient adjoint implementation.
 
 ## Constructor
@@ -1025,7 +1025,7 @@ EnzymeVJP(;chunksize=0)
 
 ## Keyword Arguments
 
-- `chunksize`: the default chunk size for the temporary variables inside of the vjp's right
+- `chunksize`: the default chunk size for the temporary variables inside the vjp's right
   hand side definition. This is used for compatibility with ODE solves that default to using
   ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
   should be set to the maximum chunksize that can occur during an integration to preallocate
@@ -1078,9 +1078,9 @@ ReverseDiffVJP{compile} <: VJPChoice
 
 Uses ReverseDiff.jl to compute the vector-Jacobian products. If `f` is in-place,
 then it uses a array of structs formulation to do scalarized reverse mode,
-while if `f` is out-of-place then it uses an array-based reverse mode.
+while if `f` is out-of-place, then it uses an array-based reverse mode.
 
-Usually the fastest when scalarized operations exist in the f function
+Usually, the fastest when scalarized operations exist in the f function
 (like in scientific machine learning applications like Universal Differential Equations)
 and the boolean compilation is enabled (i.e. ReverseDiffVJP(true)), if EnzymeVJP fails on
 a given choice of `f`.
@@ -1096,7 +1096,7 @@ ReverseDiffVJP(compile=false)
 ## Keyword Arguments
 
 * `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
-  the performance of the method but requires that the `f` function of the ODE/DAE/SDE/DDE
+  the performance of the method, but requires that the `f` function of the ODE/DAE/SDE/DDE
   has no branching.
 """
 struct ReverseDiffVJP{compile} <: VJPChoice
