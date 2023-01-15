@@ -150,7 +150,7 @@ end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
                                                             ODEForwardSensitivityProblem requires being able to solve
-                                                            a differential equation defined by the parameter struct `p`. Thus while
+                                                            a differential equation defined by the parameter struct `p`. Even though
                                                             DifferentialEquations.jl can support any parameter struct type, usage
                                                             with ODEForwardSensitivityProblem requires that `p` could be a valid
                                                             type for being the initial condition `u0` of an array. This means that
@@ -187,14 +187,14 @@ function ODEForwardSensitivityProblem(f::Union{Function,DiffEqBase.AbstractODEFu
                                       kwargs...)
 
 Local forward sensitivity analysis gives a solution along with a timeseries of
-the sensitivities. Thus if one wishes to have a derivative at every possible
+the sensitivities. Thus, if one wishes to have a derivative at every possible
 time point, directly using the `ODEForwardSensitivityProblem` can be the most
 efficient method.
 
 !!! warning
 
       ODEForwardSensitivityProblem requires being able to solve
-      a differential equation defined by the parameter struct `p`. Thus while
+      a differential equation defined by the parameter struct `p`. Even though
       DifferentialEquations.jl can support any parameter struct type, usage
       with ODEForwardSensitivityProblem requires that `p` could be a valid
       type for being the initial condition `u0` of an array. This means that
@@ -235,7 +235,7 @@ For information on the mathematics behind these calculations, consult
 
 To define a sensitivity problem, simply use the `ODEForwardSensitivityProblem` type
 instead of an ODE type. For example, we generate an ODE with the sensitivity
-equations attached for the Lotka-Volterra equations by:
+equations attached to the Lotka-Volterra equations by:
 
 ```julia
 function f(du,u,p,t)
@@ -285,7 +285,7 @@ transposing so that the rows (the timeseries) is plotted.
 ![Local Sensitivity Solution](https://user-images.githubusercontent.com/1814174/170916167-11d1b5c6-3c3c-439a-92af-d3899e24d2ad.png)
 
 Here we see that there is a periodicity to the sensitivity which matches
-the periodicity of the Lotka-Volterra solutions. However, as time goes on the
+the periodicity of the Lotka-Volterra solutions. However, as time goes on, the
 sensitivity increases. This matches the analysis of Wilkins in Sensitivity
 Analysis for Oscillating Dynamical Systems.
 
@@ -333,7 +333,7 @@ dc = sol[sol.prob.indvars*3+1:sol.prob.indvars*4,:]
 ```
 
 This means that `da[1,i]` is the derivative of the `x(t)` by the parameter `a`
-at time `sol.t[i]`. Note that all of the functionality available to ODE solutions
+at time `sol.t[i]`. Note that all the functionality available to ODE solutions
 is available in this case, including interpolations and plot recipes (the recipes
 will plot the expanded system).
 """

@@ -126,7 +126,7 @@ end
                                      nilss = nothing,
                                      tspan = sol.prob.tspan,
                                      kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
-    # add homogenous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
+    # add homogeneous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
