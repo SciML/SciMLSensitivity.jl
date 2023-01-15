@@ -725,7 +725,7 @@ An implementation of the forward-mode, continuous
 allows for computing sensitivities of long-time averaged quantities with respect to the
 parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSS` employs the continuous-time `ForwardSensitivity` method as tangent solver. To
-avoid an exponential blow-up of the (homogenous and inhomogeneous) tangent solutions,
+avoid an exponential blow-up of the (homogeneous and inhomogeneous) tangent solutions,
 the trajectory should be divided into sufficiently small segments, where the tangent solutions
 are rescaled on the interfaces. The computational and memory cost of NILSS scale with
 the number of unstable (positive) Lyapunov exponents (instead of the number of states, as
@@ -753,7 +753,7 @@ NILSS(nseg, nstep; nus = nothing,
 * `nus`: Dimension of the unstable subspace. Default is `nothing`. `nus` must be
   smaller or equal to the state dimension (`length(u0)`). With the default choice,
   `nus = length(u0) - 1` will be set at compile time.
-* `rng`: (Pseudo) random number generator. Used for initializing the homogenous
+* `rng`: (Pseudo) random number generator. Used for initializing the homogeneous
   tangent states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
 * `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
   computations. Default is `true`.
@@ -814,7 +814,7 @@ An implementation of the adjoint-mode, continuous
 `NILSAS` allows for computing sensitivities of long-time averaged quantities with respect
 to the parameters of an `ODEProblem` by constraining the computation to the unstable subspace.
 `NILSAS` employs SciMLSensitivity.jl's continuous adjoint sensitivity methods on each segment
-to compute (homogenous and inhomogeneous) adjoint solutions. To avoid an exponential blow-up
+to compute (homogeneous and inhomogeneous) adjoint solutions. To avoid an exponential blow-up
 of the adjoint solutions, the trajectory should be divided into sufficiently small segments,
 where the adjoint solutions are rescaled on the interfaces. The computational and memory cost
 of NILSAS scale with the number of unstable, adjoint Lyapunov exponents (instead of the number
@@ -838,14 +838,14 @@ NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
 
 * `nseg`: Number of segments on full time interval on the attractor.
 * `nstep`: number of steps on each segment.
-* `M`: number of homogenous adjoint solutions. This number must be bigger or equal
+* `M`: number of homogeneous adjoint solutions. This number must be bigger or equal
   than the number of (positive, adjoint) Lyapunov exponents. Default is `nothing`.
 
 ## Keyword Arguments
 
 * `rng`: (Pseudo) random number generator. Used for initializing the terminate
-  conditions of the homogenous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
-* `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogenous
+  conditions of the homogeneous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
+* `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogeneous
   and inhomogeneous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
   * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
   differentiation with special seeding. The default is `true`. The total set

@@ -149,12 +149,12 @@ function NILSSProblem(prob, sensealg::NILSS;
                (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
     end
 
-    # inhomogenous forward sensitivity problem
+    # inhomogeneous forward sensitivity problem
     chunk_size = determine_chunksize(numparams, sensealg)
     autodiff = alg_autodiff(sensealg)
     difftype = diff_type(sensealg)
     autojacvec = sensealg.autojacvec
-    # homogenous + inhomogenous forward sensitivity problems
+    # homogeneous + inhomogeneous forward sensitivity problems
     forward_prob = ODEForwardSensitivityProblem(f, u0, tspan, p,
                                                 ForwardSensitivity(chunk_size = chunk_size,
                                                                    autodiff = autodiff,
@@ -271,7 +271,7 @@ function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
                 jacobianvec!(dp, S.uf, y, Sj, S.alg, S.jac_config)
             end
             if j == nus + 1
-                # inhomogenous (otherwise homogenous tangent solution)
+                # inhomogeneous (otherwise homogeneous tangent solution)
                 dp .+= @view S.pJ[:, i]
             end
         end

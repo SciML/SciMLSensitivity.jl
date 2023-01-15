@@ -91,7 +91,7 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
         @assert dgdu_continuous !== nothing || dgdp_continuous !== nothing || g !== nothing
     end
 
-    # homogenous + inhomogenous adjoint sensitivity problem
+    # homogeneous + inhomogeneous adjoint sensitivity problem
     # assign initial values to y, vstar, w
     y = copy(sol.u[end])
     z0 = terminate_conditions(adjoint_sensealg, rng, f, y, p, tspan[2], numindvar,
@@ -220,7 +220,7 @@ function (NS::NILSASSensitivityFunction)(du, u, p, t)
         dgrad .*= -1
 
         if j == 1
-            # j = 1 is the inhomogenous adjoint solution
+            # j = 1 is the inhomogeneous adjoint solution
             if !discrete
                 if dg_val isa Tuple
                     dλ .-= vec(dg_val[1])
@@ -233,7 +233,7 @@ function (NS::NILSASSensitivityFunction)(du, u, p, t)
 
     # quadratures
     dC, ddwv, ddwf, ddvf, ddJs, _, _, _, _, _ = split_quadratures(du, u, t, NS)
-    # j = 1 is the inhomogenous adjoint solution
+    # j = 1 is the inhomogeneous adjoint solution
     λv, _, _, _, _, dy = split_states(du, u, t, NS, 1)
     ddvf .= -dot(λv, dy)
     for j in 1:M
@@ -320,9 +320,9 @@ function renormalize!(prob::NILSASProblem, sol, z0, iseg)
     @unpack R, b = quadcache
 
     x = sol.u[end].x
-    # vstar_right (inhomogenous adjoint on the rhs of the interface)
+    # vstar_right (inhomogeneous adjoint on the rhs of the interface)
     vstar = @view x[1][1:numindvar]
-    # homogenous adjoint on the rhs of the interface
+    # homogeneous adjoint on the rhs of the interface
     W = @view x[1][(numindvar + 1):end]
     W = reshape(W, numindvar, M)
 
@@ -373,7 +373,7 @@ function reset!(z0, numindvar, vstar, b, Q)
     v = @view x0[1][1:numindvar]
     v .= vstar - vec(b' * Q')
 
-    # W_left (homogenous adjoint on lhs of the interface)
+    # W_left (homogeneous adjoint on lhs of the interface)
     w = @view x0[1][(numindvar + 1):end]
     w .= vec(Q)
 
