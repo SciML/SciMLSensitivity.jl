@@ -388,6 +388,15 @@ end
 end
 
 @testset "NonlinearProblem" begin
+    u0 = [0.0]
+    p = [2.0, 1.0]
+    prob = NonlinearProblem((du, u, p) -> du[1] = u[1] - p[1] + p[2], u0, p)
+    prob2 = NonlinearProblem{false}((u, p) -> u .- p[1] .+ p[2], u0, p)
+
+    solve1 = solve(remake(prob, p = p), NewtonRaphson())
+    solve2 = solve(prob2, NewtonRaphson())
+    @test solve1.u == solve2.u
+
     prob3 = SteadyStateProblem((u, p, t) -> -u .+ p[1] .- p[2], [0.0], p)
     solve3 = solve(prob3, DynamicSS(Rodas5()))
     @test solve1.u≈solve3.u rtol=1e-6
@@ -415,11 +424,15 @@ end
     dp3 = Zygote.gradient(p -> test_loss(p, prob3, alg = DynamicSS(Rodas5())), p)[1]
     dp4 = Zygote.gradient(p -> test_loss(p, prob4, alg = DynamicSS(Rodas5())), p)[1]
     dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]
+    dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
+    dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion(5)), p)[1]
     
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
     @test dp1≈dp4 rtol=1e-10
     @test dp1≈dp5 rtol=1e-10
+    @test dp1≈dp6 rtol=1e-10
+    @test dp1≈dp7 rtol=1e-10
 end
 
 @testset "Continuous sensitivity tools" begin
