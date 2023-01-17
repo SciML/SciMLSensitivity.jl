@@ -426,6 +426,7 @@ end
     dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]
     dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
     dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion(5)), p)[1]
+    dp8 = Zygote.gradient(p -> test_loss(p, prob2, alg = NLSolveJL()), p)[1]
 
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
@@ -433,6 +434,7 @@ end
     @test dp1≈dp5 rtol=1e-10
     @test dp1≈dp6 rtol=1e-10
     @test dp1≈dp7 rtol=1e-10
+    @test dp1≈dp8 rtol=1e-10
 end
 
 @testset "Continuous sensitivity tools" begin

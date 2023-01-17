@@ -41,6 +41,9 @@ Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
+[weakdeps]
+SciMLNLSolve = "e9a6253c-8580-4d32-9898-8661bb511710"
+
 [compat]
 Adapt = "1.0, 2.0, 3.0"
 ArrayInterfaceCore = "0.1.1"
@@ -68,6 +71,7 @@ RecursiveArrayTools = "2.4.2"
 Reexport = "0.2, 1.0"
 ReverseDiff = "1.9"
 SciMLBase = "1.66.0"
+SciMLNLSolve = "0.1.2"
 SimpleNonlinearSolve = "0.1.7"
 StaticArrays = "1"
 StochasticDiffEq = "6.20"
