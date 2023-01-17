@@ -37,23 +37,23 @@ optf = Optimization.OptimizationFunction((x,p)-&gt;loss_n_ode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 res = Optimization.solve(optprob, opt; callback = callback, maxiters=1000)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element Vector{Float32}:
- -0.12593165
-  0.107532956
- -3.9628663
- -1.1949415
- -0.31534633
- -0.5916756
- -2.6912544
- -1.791229
-  0.60693693
- -0.59823227
+ -0.40340418
+  0.43700665
+  0.6506466
+  0.55670226
+  0.12546478
+  0.38699508
+  1.9633155
+ -7.0520415
+ -0.6333051
+  0.43882862
   ⋮
- -0.64267427
-  0.3427687
-  0.43299168
-  0.10872085
- -0.19773382
- -0.39728928
- -0.7433079
-  0.15869594
-  0.32586992</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../second_order_adjoints/">« Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a><a class="docs-footer-nextpage" href="../../neural_ode/neural_ode_flux/">Neural Ordinary Differential Equations with Flux »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Tuesday 17 January 2023 19:33">Tuesday 17 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -5.192435
+ -0.48277423
+ -0.26126245
+  0.07030382
+ -0.47116536
+  0.12601116
+  0.62189245
+  0.15661326
+  0.3258745</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../second_order_adjoints/">« Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a><a class="docs-footer-nextpage" href="../../neural_ode/neural_ode_flux/">Neural Ordinary Differential Equations with Flux »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Tuesday 17 January 2023 19:33">Tuesday 17 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
