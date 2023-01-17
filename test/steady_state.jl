@@ -1,7 +1,7 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq
-using NonlinearSolve
+using NonlinearSolve, SciMLNLSolve
 using ForwardDiff, Calculus
 using Zygote
 using Random
