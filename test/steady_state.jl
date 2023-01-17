@@ -400,31 +400,39 @@ end
     prob3 = SteadyStateProblem((u, p, t) -> -u .+ p[1] .- p[2], [0.0], p)
     solve3 = solve(prob3, DynamicSS(Rodas5()))
     @test solve1.u≈solve3.u rtol=1e-6
-
+    
     prob4 = SteadyStateProblem((du, u, p, t) -> du[1] = -u[1] + p[1] - p[2], [0.0], p)
     solve4 = solve(prob4, DynamicSS(Rodas5()))
     @test solve3.u≈solve4.u rtol=1e-10
-
+    
     function test_loss(p, prob; alg = NewtonRaphson())
         _prob = remake(prob, p = p)
         sol = sum(solve(_prob, alg,
                         sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())))
         return sol
     end
-
+    
     test_loss(p, prob)
+    
     test_loss(p, prob2)
     test_loss(p, prob3, alg = DynamicSS(Rodas5()))
     test_loss(p, prob4, alg = DynamicSS(Rodas5()))
-
+    test_loss(p, prob2, alg = SimpleNewtonRaphson())
+    
     dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
     dp2 = Zygote.gradient(p -> test_loss(p, prob2), p)[1]
     dp3 = Zygote.gradient(p -> test_loss(p, prob3, alg = DynamicSS(Rodas5())), p)[1]
     dp4 = Zygote.gradient(p -> test_loss(p, prob4, alg = DynamicSS(Rodas5())), p)[1]
-
+    dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]
+    dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
+    dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion(5)), p)[1]
+    
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
     @test dp1≈dp4 rtol=1e-10
+    @test dp1≈dp5 rtol=1e-10
+    @test dp1≈dp6 rtol=1e-10
+    @test dp1≈dp7 rtol=1e-10
 end
 
 @testset "Continuous sensitivity tools" begin
