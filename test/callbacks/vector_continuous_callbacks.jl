@@ -38,21 +38,23 @@ function test_vector_continuous_callback(cb, g)
     @test dp1 ≈ dstuff[5:6]
 end
 
-@testset "VectorContinuous callbacks" begin @testset "MSE loss function bouncing-ball like" begin
-    g(u) = sum((1.0 .- u) .^ 2) ./ 2
-    function condition(out, u, t, integrator) # Event when event_f(u,t) == 0
-        out[1] = u[1]
-        out[2] = (u[3] - 10.0)u[3]
-    end
-    @testset "callback with linear affect" begin
-        function affect!(integrator, idx)
-            if idx == 1
-                integrator.u[2] = -integrator.p[2] * integrator.u[2]
-            elseif idx == 2
-                integrator.u[4] = -integrator.p[2] * integrator.u[4]
-            end
+@testset "VectorContinuous callbacks" begin
+    @testset "MSE loss function bouncing-ball like" begin
+        g(u) = sum((1.0 .- u) .^ 2) ./ 2
+        function condition(out, u, t, integrator) # Event when event_f(u,t) == 0
+            out[1] = u[1]
+            out[2] = (u[3] - 10.0)u[3]
         end
-        cb = VectorContinuousCallback(condition, affect!, 2)
-        test_vector_continuous_callback(cb, g)
+        @testset "callback with linear affect" begin
+            function affect!(integrator, idx)
+                if idx == 1
+                    integrator.u[2] = -integrator.p[2] * integrator.u[2]
+                elseif idx == 2
+                    integrator.u[4] = -integrator.p[2] * integrator.u[4]
+                end
+            end
+            cb = VectorContinuousCallback(condition, affect!, 2)
+            test_vector_continuous_callback(cb, g)
+        end
     end
-end end
+end

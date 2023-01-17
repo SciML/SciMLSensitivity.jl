@@ -146,141 +146,147 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     @test dp1 ≈ adj_sol[3:6, end]
 end
 
-@testset "Discrete callbacks" begin @testset "ODEs" begin
-    println("ODEs")
-    @testset "simple loss function" begin
-        g(sol) = sum(sol)
-        function dg!(out, u, p, t, i)
-            (out .= 1)
-        end
-        @testset "callbacks with no effect" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 0.0
-            cb = DiscreteCallback(condition, affect!, save_positions = (false, false))
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callbacks with no effect except saving the state" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 0.0
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 2.0
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callback at multiple time points" begin
-            affecttimes = [2.03, 4.0, 8.0]
-            condition(u, t, integrator) = t ∈ affecttimes
-            affect!(integrator) = integrator.u[1] += 2.0
-            cb = DiscreteCallback(condition, affect!)
-            test_discrete_callback(cb, affecttimes, g, dg!)
-        end
-        @testset "state-dependent += callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            function affect!(integrator)
-                (integrator.u .+= integrator.p[2] / 8 * sin.(integrator.u))
+@testset "Discrete callbacks" begin
+    @testset "ODEs" begin
+        println("ODEs")
+        @testset "simple loss function" begin
+            g(sol) = sum(sol)
+            function dg!(out, u, p, t, i)
+                (out .= 1)
             end
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "other callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "parameter changing callback at single time point" begin
-            condition(u, t, integrator) = t == 5.1
-            affect!(integrator) = (integrator.p .= 2 * integrator.p .- 0.5)
-            affect(integrator) = (integrator.p = 2 * integrator.p .- 0.5)
-            cb = DiscreteCallback(condition, affect!)
-            cboop = DiscreteCallback(condition, affect)
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.1]
-            test_discrete_callback(cb, tstops, g, dg!, cboop)
-        end
-        @testset "tprev dependent callback" begin
-            condition(u, t, integrator) = t == 5
-            function affect!(integrator)
-                (@show integrator.tprev; integrator.u[1] += integrator.t - integrator.tprev)
+            @testset "callbacks with no effect" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 0.0
+                cb = DiscreteCallback(condition, affect!, save_positions = (false, false))
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
             end
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [4.999, 5.0]
-            test_discrete_callback(cb, tstops, g, dg!, nothing, true)
+            @testset "callbacks with no effect except saving the state" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 0.0
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 2.0
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "callback at multiple time points" begin
+                affecttimes = [2.03, 4.0, 8.0]
+                condition(u, t, integrator) = t ∈ affecttimes
+                affect!(integrator) = integrator.u[1] += 2.0
+                cb = DiscreteCallback(condition, affect!)
+                test_discrete_callback(cb, affecttimes, g, dg!)
+            end
+            @testset "state-dependent += callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                function affect!(integrator)
+                    (integrator.u .+= integrator.p[2] / 8 * sin.(integrator.u))
+                end
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "other callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "parameter changing callback at single time point" begin
+                condition(u, t, integrator) = t == 5.1
+                affect!(integrator) = (integrator.p .= 2 * integrator.p .- 0.5)
+                affect(integrator) = (integrator.p = 2 * integrator.p .- 0.5)
+                cb = DiscreteCallback(condition, affect!)
+                cboop = DiscreteCallback(condition, affect)
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.1]
+                test_discrete_callback(cb, tstops, g, dg!, cboop)
+            end
+            @testset "tprev dependent callback" begin
+                condition(u, t, integrator) = t == 5
+                function affect!(integrator)
+                    (@show integrator.tprev;
+                     integrator.u[1] += integrator.t -
+                                        integrator.tprev)
+                end
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [4.999, 5.0]
+                test_discrete_callback(cb, tstops, g, dg!, nothing, true)
+            end
+        end
+        @testset "MSE loss function" begin
+            g(u) = sum((1.0 .- u) .^ 2) ./ 2
+            dg!(out, u, p, t, i) = (out .= -1.0 .+ u)
+            @testset "callbacks with no effect" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 0.0
+                cb = DiscreteCallback(condition, affect!, save_positions = (false, false))
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "callbacks with no effect except saving the state" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 0.0
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = integrator.u[1] += 2.0
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "callback at multiple time points" begin
+                affecttimes = [2.03, 4.0, 8.0]
+                condition(u, t, integrator) = t ∈ affecttimes
+                affect!(integrator) = integrator.u[1] += 2.0
+                cb = DiscreteCallback(condition, affect!)
+                test_discrete_callback(cb, affecttimes, g, dg!)
+            end
+            @testset "state-dependent += callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                function affect!(integrator)
+                    (integrator.u .+= integrator.p[2] / 8 * sin.(integrator.u))
+                end
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "other callback at single time point" begin
+                condition(u, t, integrator) = t == 5
+                affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [5.0]
+                test_discrete_callback(cb, tstops, g, dg!)
+            end
+            @testset "parameter changing callback at single time point" begin
+                condition(u, t, integrator) = t == 5.1
+                affect!(integrator) = (integrator.p .= 2 * integrator.p .- 0.5)
+                affect(integrator) = (integrator.p = 2 * integrator.p .- 0.5)
+                cb = DiscreteCallback(condition, affect!)
+                cboop = DiscreteCallback(condition, affect)
+                tstops = [5.1]
+                test_discrete_callback(cb, tstops, g, dg!, cboop)
+            end
+            @testset "tprev dependent callback" begin
+                condition(u, t, integrator) = t == 5
+                function affect!(integrator)
+                    (@show integrator.tprev;
+                     integrator.u[1] += integrator.t -
+                                        integrator.tprev)
+                end
+                cb = DiscreteCallback(condition, affect!)
+                tstops = [4.999, 5.0]
+                test_discrete_callback(cb, tstops, g, dg!, nothing, true)
+            end
         end
     end
-    @testset "MSE loss function" begin
-        g(u) = sum((1.0 .- u) .^ 2) ./ 2
-        dg!(out, u, p, t, i) = (out .= -1.0 .+ u)
-        @testset "callbacks with no effect" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 0.0
-            cb = DiscreteCallback(condition, affect!, save_positions = (false, false))
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callbacks with no effect except saving the state" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 0.0
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = integrator.u[1] += 2.0
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "callback at multiple time points" begin
-            affecttimes = [2.03, 4.0, 8.0]
-            condition(u, t, integrator) = t ∈ affecttimes
-            affect!(integrator) = integrator.u[1] += 2.0
-            cb = DiscreteCallback(condition, affect!)
-            test_discrete_callback(cb, affecttimes, g, dg!)
-        end
-        @testset "state-dependent += callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            function affect!(integrator)
-                (integrator.u .+= integrator.p[2] / 8 * sin.(integrator.u))
-            end
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "other callback at single time point" begin
-            condition(u, t, integrator) = t == 5
-            affect!(integrator) = (integrator.u[1] = 2.0; @show "triggered!")
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [5.0]
-            test_discrete_callback(cb, tstops, g, dg!)
-        end
-        @testset "parameter changing callback at single time point" begin
-            condition(u, t, integrator) = t == 5.1
-            affect!(integrator) = (integrator.p .= 2 * integrator.p .- 0.5)
-            affect(integrator) = (integrator.p = 2 * integrator.p .- 0.5)
-            cb = DiscreteCallback(condition, affect!)
-            cboop = DiscreteCallback(condition, affect)
-            tstops = [5.1]
-            test_discrete_callback(cb, tstops, g, dg!, cboop)
-        end
-        @testset "tprev dependent callback" begin
-            condition(u, t, integrator) = t == 5
-            function affect!(integrator)
-                (@show integrator.tprev; integrator.u[1] += integrator.t - integrator.tprev)
-            end
-            cb = DiscreteCallback(condition, affect!)
-            tstops = [4.999, 5.0]
-            test_discrete_callback(cb, tstops, g, dg!, nothing, true)
-        end
-    end
-end end
+end
