@@ -425,7 +425,7 @@ end
     dp4 = Zygote.gradient(p -> test_loss(p, prob4, alg = DynamicSS(Rodas5())), p)[1]
     dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]
     dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
-    dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion(5)), p)[1]
+    dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion()), p)[1]
     dp8 = Zygote.gradient(p -> test_loss(p, prob2, alg = NLSolveJL()), p)[1]
 
     @test dp1≈dp2 rtol=1e-10
