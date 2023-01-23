@@ -47,23 +47,23 @@ optf = Optimization.OptimizationFunction((x,p)-&gt;loss_neuralode(x), Optimizati
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
 res = Optimization.solve(optprob, ADAM(0.05),callback=callback,maxiters=300)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element StrideArraysCore.StaticStrideArray{Tuple{Static.StaticInt{252}}, (true,), Float32, 1, 1, 0, (1,), Tuple{Static.StaticInt{4}}, Tuple{Static.StaticInt{1}}, 252} with indices 1:1:252:
- -1.6704974
-  0.24385615
-  0.25686297
- -0.28593296
- -0.2552687
-  0.58865434
- -0.31208444
-  0.08554685
- -0.07308585
-  0.105167344
+ -0.16661829
+ -0.3845382
+ -0.5208673
+ -0.17909385
+ -0.10756059
+ -0.7730635
+ -0.2896542
+  0.347782
+ -0.13098384
+ -0.2919049
   ⋮
- -0.0054557393
-  0.37288183
-  0.5192908
-  0.43810326
- -0.27561206
- -0.42983243
-  0.5831174
- -0.4508112
- -0.063516535</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neural_ode_flux/">« Neural Ordinary Differential Equations with Flux</a><a class="docs-footer-nextpage" href="../neural_gde/">Neural Graph Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Friday 20 January 2023 22:14">Friday 20 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -0.3926739
+  0.03248359
+  0.43645948
+ -0.5001289
+  0.48764864
+  0.565983
+ -0.113237105
+ -0.6003355
+ -0.16111395</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neural_ode_flux/">« Neural Ordinary Differential Equations with Flux</a><a class="docs-footer-nextpage" href="../neural_gde/">Neural Graph Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 23 January 2023 13:05">Monday 23 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
