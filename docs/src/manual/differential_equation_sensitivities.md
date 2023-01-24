@@ -1,18 +1,18 @@
 # [Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)](@id sensitivity_diffeq)
 
-SciMLSensitivity.jl's high-level interface allows for specifying a 
+SciMLSensitivity.jl's high-level interface allows for specifying a
 sensitivity algorithm (`sensealg`) to control the method by which
 `solve` is differentiated in an automatic differentiation (AD)
-context by a compatible AD library. The underlying algorithms then 
-use the direct interface methods, like `ODEForwardSensitivityProblem` 
-and `adjoint_sensitivities`, to compute the derivatives without 
+context by a compatible AD library. The underlying algorithms then
+use the direct interface methods, like `ODEForwardSensitivityProblem`
+and `adjoint_sensitivities`, to compute the derivatives without
 requiring the user to do any of the setup.
 
 Current AD libraries whose calls are captured by the sensitivity
 system are:
 
-- [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
-- [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
+  - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
+  - [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
 
 ## Using and Controlling Sensitivity Algorithms within AD
 
@@ -21,15 +21,16 @@ Take for example this simple differential equation solve on Lotka-Volterra:
 ```julia
 using SciMLSensitivity, OrdinaryDiffEq, Zygote
 
-function fiip(du,u,p,t)
-  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+function fiip(du, u, p, t)
+    du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
 end
-p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
-prob = ODEProblem(fiip,u0,(0.0,10.0),p)
-sol = solve(prob,Tsit5())
-loss(u0,p) = sum(solve(prob,Tsit5(),u0=u0,p=p,saveat=0.1))
-du0,dp = Zygote.gradient(loss,u0,p)
+p = [1.5, 1.0, 3.0, 1.0];
+u0 = [1.0; 1.0];
+prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
+sol = solve(prob, Tsit5())
+loss(u0, p) = sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1))
+du0, dp = Zygote.gradient(loss, u0, p)
 ```
 
 This will compute the gradient of the loss function "sum of the values of the
@@ -48,8 +49,10 @@ Likewise, the `sensealg` argument can be given to directly control the method
 by which the derivative is computed. For example:
 
 ```julia
-loss(u0,p) = sum(solve(prob,Tsit5(),u0=u0,p=p,saveat=0.1,sensealg=ForwardSensitivity()))
-du0,dp = Zygote.gradient(loss,u0,p)
+function loss(u0, p)
+    sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1, sensealg = ForwardSensitivity()))
+end
+du0, dp = Zygote.gradient(loss, u0, p)
 ```
 
 would do reverse-mode automatic differentiation of the loss function, but when reversing
@@ -62,48 +65,50 @@ There are two classes of algorithms: the continuous sensitivity analysis
 methods, and the discrete sensitivity analysis methods (direct automatic
 differentiation). Generally:
 
-- [Continuous sensitivity analysis are more efficient while the discrete 
-  sensitivity analysis is more stable](https://arxiv.org/abs/2001.04385)
-  (full discussion is in the appendix of that paper)
-- Continuous sensitivity analysis methods only support a subset of
-  equations, which currently includes:
-    - ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
-    - SDEProblem
-    - SteadyStateProblem / NonlinearProblem
-- Discrete sensitivity analysis methods only support a subset of algorithms,
-  namely, the pure Julia solvers which are written generically.
+  - [Continuous sensitivity analysis are more efficient while the discrete
+    sensitivity analysis is more stable](https://arxiv.org/abs/2001.04385)
+    (full discussion is in the appendix of that paper)
+
+  - Continuous sensitivity analysis methods only support a subset of
+    equations, which currently includes:
+    
+      + ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
+      + SDEProblem
+      + SteadyStateProblem / NonlinearProblem
+  - Discrete sensitivity analysis methods only support a subset of algorithms,
+    namely, the pure Julia solvers which are written generically.
 
 For an analysis of which methods will be most efficient for computing the
 solution derivatives for a given problem, consult our analysis
 [in this arXiv paper](https://arxiv.org/abs/1812.01892). A general rule of thumb
 is:
 
-- `ForwardDiffSensitivity` is the fastest for differential equations with small
-  numbers of parameters (<100) and can be used on any differential equation
-  solver that is native Julia. If the chosen ODE solver is incompatible
-  with direct automatic differentiation, `ForwardSensitivty` may be used instead.
-- Adjoint sensitivity analysis is the fastest when the number of parameters is
-  sufficiently large. There are three configurations of note. Using
-  `QuadratureAdjoint` is the fastest but uses the most memory, `BacksolveAdjoint`
-  uses the least memory but on very stiff problems it may be unstable and
-  requires many checkpoints, while `InterpolatingAdjoint` is in the middle,
-  allowing checkpointing to control total memory use.
-- The methods which use direct automatic differentiation (`ReverseDiffAdjoint`,
-  `TrackerAdjoint`, `ForwardDiffSensitivity`, and `ZygoteAdjoint`) support
-  the full range of DifferentialEquations.jl features (SDEs, DDEs, events, etc.),
-  but only work on native Julia solvers.
-- For non-ODEs with large numbers of parameters, `TrackerAdjoint` in out-of-place
-  form may be the best performer on GPUs, and `ReverseDiffAdjoint`
-- `TrackerAdjoint` is able to use a `TrackedArray` form with out-of-place
-  functions `du = f(u,p,t)` but requires an `Array{TrackedReal}` form for
-  `f(du,u,p,t)` mutating `du`. The latter has much more overhead, and should be
-  avoided if possible. When solving non-ODEs with lots of parameters, using
-  `TrackerAdjoint` with an out-of-place definition may currently be the best option.
+  - `ForwardDiffSensitivity` is the fastest for differential equations with small
+    numbers of parameters (<100) and can be used on any differential equation
+    solver that is native Julia. If the chosen ODE solver is incompatible
+    with direct automatic differentiation, `ForwardSensitivty` may be used instead.
+  - Adjoint sensitivity analysis is the fastest when the number of parameters is
+    sufficiently large. There are three configurations of note. Using
+    `QuadratureAdjoint` is the fastest but uses the most memory, `BacksolveAdjoint`
+    uses the least memory but on very stiff problems it may be unstable and
+    requires many checkpoints, while `InterpolatingAdjoint` is in the middle,
+    allowing checkpointing to control total memory use.
+  - The methods which use direct automatic differentiation (`ReverseDiffAdjoint`,
+    `TrackerAdjoint`, `ForwardDiffSensitivity`, and `ZygoteAdjoint`) support
+    the full range of DifferentialEquations.jl features (SDEs, DDEs, events, etc.),
+    but only work on native Julia solvers.
+  - For non-ODEs with large numbers of parameters, `TrackerAdjoint` in out-of-place
+    form may be the best performer on GPUs, and `ReverseDiffAdjoint`
+  - `TrackerAdjoint` is able to use a `TrackedArray` form with out-of-place
+    functions `du = f(u,p,t)` but requires an `Array{TrackedReal}` form for
+    `f(du,u,p,t)` mutating `du`. The latter has much more overhead, and should be
+    avoided if possible. When solving non-ODEs with lots of parameters, using
+    `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
 !!! note
-
+    
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
-    `ReverseDiffAdjoint`, etc.) can be queried using the 
+    `ReverseDiffAdjoint`, etc.) can be queried using the
     `SciMLBase.isautodifferentiable(::SciMLAlgorithm)` trait function.
 
 If the chosen algorithm is a continuous sensitivity analysis algorithm, then an `autojacvec`
@@ -113,12 +118,12 @@ is the most efficient, though `autojacvec=false` is slightly less accurate but v
 efficiency. For adjoint methods, it's more complicated and dependent on the way that the user's
 `f` function is implemented:
 
-- `EnzymeVJP()` is the most efficient if it's applicable on your equation.
-- If your function has no branching (no if statements) but uses mutation, `ReverseDiffVJP(true)`
-  will be the most efficient after Enzyme. Otherwise, `ReverseDiffVJP()`, but you may wish to
-  proceed with eliminating mutation as without compilation enabled this can be slow.
-- If you are on the CPU or GPU and your function is very vectorized and has no mutation, choose `ZygoteVJP()`.
-- Else fallback to `TrackerVJP()` if Zygote does not support the function.
+  - `EnzymeVJP()` is the most efficient if it's applicable on your equation.
+  - If your function has no branching (no if statements) but uses mutation, `ReverseDiffVJP(true)`
+    will be the most efficient after Enzyme. Otherwise, `ReverseDiffVJP()`, but you may wish to
+    proceed with eliminating mutation as without compilation enabled this can be slow.
+  - If you are on the CPU or GPU and your function is very vectorized and has no mutation, choose `ZygoteVJP()`.
+  - Else fallback to `TrackerVJP()` if Zygote does not support the function.
 
 ## Special Notes on Non-ODE Differential Equation Problems
 
@@ -150,10 +155,10 @@ differentiation techniques.
 ### Hybrid Equations (Equations with events/callbacks) and Jump Equations
 
 `ForwardDiffSensitivity` can differentiate code with callbacks when `convert_tspan=true`.
-`ForwardSensitivity` is incompatible with hybrid equations. The shadowing methods are 
-incompatible with callbacks. All methods based on discrete adjoint sensitivity analysis 
-via automatic differentiation, like `ReverseDiffAdjoint`, `TrackerAdjoint`, or 
-`QuadratureAdjoint` are fully compatible with events. This applies to ODEs, SDEs, DAEs, 
+`ForwardSensitivity` is incompatible with hybrid equations. The shadowing methods are
+incompatible with callbacks. All methods based on discrete adjoint sensitivity analysis
+via automatic differentiation, like `ReverseDiffAdjoint`, `TrackerAdjoint`, or
+`QuadratureAdjoint` are fully compatible with events. This applies to ODEs, SDEs, DAEs,
 and DDEs. The continuous adjoint sensitivities `BacksolveAdjoint`, `InterpolatingAdjoint`,
 and `QuadratureAdjoint` are compatible with events for ODEs. `BacksolveAdjoint` and
 `InterpolatingAdjoint` can also handle events for SDEs. Use `BacksolveAdjoint` if
@@ -164,12 +169,12 @@ the continuous adjoint sensitivities do not support multiple events per time poi
 
 Note that when defining your differential equation, the vjp can be
 manually overwritten by providing the `AbstractSciMLFunction` definition
-with  a `vjp(u,p,t)` that returns a tuple `f(u,p,t),v->J*v` in the form of 
+with  a `vjp(u,p,t)` that returns a tuple `f(u,p,t),v->J*v` in the form of
 [ChainRules.jl](https://www.juliadiff.org/ChainRulesCore.jl/stable/).
 When this is done, the choice of `ZygoteVJP` will utilize your VJP
 function during the internal steps of the adjoint. This is useful for
 models where automatic differentiation may have trouble producing
-optimal code. This can be paired with 
+optimal code. This can be paired with
 [ModelingToolkit.jl](https://docs.sciml.ai/ModelingToolkit/stable/)
 for producing hyper-optimized, sparse, and parallel VJP functions utilizing
 the automated symbolic conversions.
@@ -223,7 +228,7 @@ like in stiff equations, PDE discretizations, and many other contexts,
 so it is not used by default. When training a neural ODE for machine
 learning applications, the user should try `BacksolveAdjoint` and see
 if it is sufficiently accurate on their problem. More details on this
-topic can be found in 
+topic can be found in
 [Stiff Neural Ordinary Differential Equations](https://aip.scitation.org/doi/10.1063/5.0060697)
 
 Note that DiffEqFlux's implementation of `BacksolveAdjoint` includes

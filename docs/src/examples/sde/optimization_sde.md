@@ -17,23 +17,23 @@ solution, so we need a sensible data source.
 ```@example sde
 using DifferentialEquations, SciMLSensitivity, Plots
 
-function lotka_volterra!(du,u,p,t)
-  x,y = u
-  α,β,γ,δ = p
-  du[1] = dx = α*x - β*x*y
-  du[2] = dy = δ*x*y - γ*y
+function lotka_volterra!(du, u, p, t)
+    x, y = u
+    α, β, γ, δ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = δ * x * y - γ * y
 end
-u0 = [1.0,1.0]
-tspan = (0.0,10.0)
+u0 = [1.0, 1.0]
+tspan = (0.0, 10.0)
 
-function multiplicative_noise!(du,u,p,t)
-  x,y = u
-  du[1] = p[5]*x
-  du[2] = p[6]*y
+function multiplicative_noise!(du, u, p, t)
+    x, y = u
+    du[1] = p[5] * x
+    du[2] = p[6] * y
 end
-p = [1.5,1.0,3.0,1.0,0.3,0.3]
+p = [1.5, 1.0, 3.0, 1.0, 0.3, 0.3]
 
-prob = SDEProblem(lotka_volterra!,multiplicative_noise!,u0,tspan,p)
+prob = SDEProblem(lotka_volterra!, multiplicative_noise!, u0, tspan, p)
 sol = solve(prob)
 plot(sol)
 ```
@@ -48,9 +48,9 @@ scenario, we will generate 10,000 trajectories from the SDE to build our dataset
 ```@example sde
 using Statistics
 ensembleprob = EnsembleProblem(prob)
-@time sol = solve(ensembleprob,SOSRI(),saveat=0.1,trajectories=10_000)
-truemean = mean(sol,dims=3)[:,:]
-truevar  = var(sol,dims=3)[:,:]
+@time sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 10_000)
+truemean = mean(sol, dims = 3)[:, :]
+truevar = var(sol, dims = 3)[:, :]
 ```
 
 From here, we wish to utilize the method of moments to fit the SDE's parameters.
@@ -60,24 +60,25 @@ then plot the evolution of the means and variances to verify the fit. For exampl
 
 ```@example sde
 function loss(p)
-  tmp_prob = remake(prob,p=p)
-  ensembleprob = EnsembleProblem(tmp_prob)
-  tmp_sol = solve(ensembleprob,SOSRI(),saveat=0.1,trajectories=1000)
-  arrsol = Array(tmp_sol)
-  sum(abs2,truemean - mean(arrsol,dims=3)) + 0.1sum(abs2,truevar - var(arrsol,dims=3)),arrsol
+    tmp_prob = remake(prob, p = p)
+    ensembleprob = EnsembleProblem(tmp_prob)
+    tmp_sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 1000)
+    arrsol = Array(tmp_sol)
+    sum(abs2, truemean - mean(arrsol, dims = 3)) +
+    0.1sum(abs2, truevar - var(arrsol, dims = 3)), arrsol
 end
 
-function cb2(p,l,arrsol)
-  @show p,l
-  means = mean(arrsol,dims=3)[:,:]
-  vars = var(arrsol,dims=3)[:,:]
-  p1 = plot(sol[1].t,means',lw=5)
-  scatter!(p1,sol[1].t,truemean')
-  p2 = plot(sol[1].t,vars',lw=5)
-  scatter!(p2,sol[1].t,truevar')
-  p = plot(p1,p2,layout = (2,1))
-  display(p)
-  false
+function cb2(p, l, arrsol)
+    @show p, l
+    means = mean(arrsol, dims = 3)[:, :]
+    vars = var(arrsol, dims = 3)[:, :]
+    p1 = plot(sol[1].t, means', lw = 5)
+    scatter!(p1, sol[1].t, truemean')
+    p2 = plot(sol[1].t, vars', lw = 5)
+    scatter!(p2, sol[1].t, truevar')
+    p = plot(p1, p2, layout = (2, 1))
+    display(p)
+    false
 end
 ```
 
@@ -85,11 +86,11 @@ We can then use `Optimization.solve` to fit the SDE:
 
 ```@example sde
 using Optimization, Zygote, OptimizationFlux
-pinit = [1.2,0.8,2.5,0.8,0.1,0.1]
+pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p) -> loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
-@time res = Optimization.solve(optprob,ADAM(0.05),callback=cb2,maxiters = 100)
+@time res = Optimization.solve(optprob, ADAM(0.05), callback = cb2, maxiters = 100)
 ```
 
 Notice that **both the parameters of the deterministic drift equations and the
@@ -122,29 +123,28 @@ solution to be close to the constant 1.
 using DifferentialEquations, DiffEqFlux, Optimization, OptimizationFlux, Plots
 
 function lotka_volterra!(du, u, p, t)
-  x, y = u
-  α, β, δ, γ = p
-  du[1] = dx = α*x - β*x*y
-  du[2] = dy = -δ*y + γ*x*y
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = -δ * y + γ * x * y
 end
 
 function lotka_volterra_noise!(du, u, p, t)
-  du[1] = 0.1u[1]
-  du[2] = 0.1u[2]
+    du[1] = 0.1u[1]
+    du[2] = 0.1u[2]
 end
 
-u0 = [1.0,1.0]
+u0 = [1.0, 1.0]
 tspan = (0.0, 10.0)
 p = [2.2, 1.0, 2.0, 0.4]
 prob_sde = SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
 
-
 function predict_sde(p)
-  return Array(solve(prob_sde, SOSRI(), p=p,
-               sensealg = ForwardDiffSensitivity(), saveat = 0.1))
+    return Array(solve(prob_sde, SOSRI(), p = p,
+                       sensealg = ForwardDiffSensitivity(), saveat = 0.1))
 end
 
-loss_sde(p) = sum(abs2, x-1 for x in predict_sde(p))
+loss_sde(p) = sum(abs2, x - 1 for x in predict_sde(p))
 ```
 
 For this training process, because the loss function is stochastic, we will use
@@ -155,11 +155,11 @@ like:
 
 ```@example sde
 callback = function (p, l)
-  display(l)
-  remade_solution = solve(remake(prob_sde, p = p), SOSRI(), saveat = 0.1)
-  plt = plot(remade_solution, ylim = (0, 6))
-  display(plt)
-  return false
+    display(l)
+    remade_solution = solve(remake(prob_sde, p = p), SOSRI(), saveat = 0.1)
+    plt = plot(remade_solution, ylim = (0, 6))
+    display(plt)
+    return false
 end
 ```
 
@@ -167,11 +167,11 @@ Let's optimize
 
 ```@example sde
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p) -> loss_sde(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
 result_sde = Optimization.solve(optprob, ADAM(0.1),
-                                    callback = callback, maxiters = 100)
+                                callback = callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

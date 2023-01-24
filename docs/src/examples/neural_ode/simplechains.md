@@ -7,7 +7,8 @@
 First, we'll need data for training the NeuralODE, which can be obtained by solving the ODE `u' = f(u,p,t)` numerically using the SciML ecosystem in Julia.
 
 ```@example sc_neuralode
-using SimpleChains, StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationFlux, Plots
+using SimpleChains, StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization,
+      OptimizationFlux, Plots
 
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
@@ -16,7 +17,7 @@ tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODE(u, p, t)
     true_A = @SMatrix Float32[-0.1 2.0; -2.0 -0.1]
-    ((u.^3)'true_A)'
+    ((u .^ 3)'true_A)'
 end
 
 prob = ODEProblem(trueODE, u0, tspan)
@@ -28,16 +29,14 @@ data = Array(solve(prob, Tsit5(), saveat = tsteps))
 Next, we set up a small neural network. It will be trained to output the derivative of the solution at each time step given the value of the solution at the previous time step, and the parameters of the network. Thus, we are treating the neural network as a function `f(u,p,t)`. The difference is that instead of relying on knowing the exact equation for the ODE, we get to solve it only with the data.
 
 ```@example sc_neuralode
-sc = SimpleChain(
-                static(2),
-                Activation(x -> x.^3),
-                TurboDense{true}(tanh, static(50)),
-                TurboDense{true}(identity, static(2))
-            )
+sc = SimpleChain(static(2),
+                 Activation(x -> x .^ 3),
+                 TurboDense{true}(tanh, static(50)),
+                 TurboDense{true}(identity, static(2)))
 
 p_nn = SimpleChains.init_params(sc)
 
-f(u,p,t) = sc(u,p)
+f(u, p, t) = sc(u, p)
 ```
 
 ## NeuralODE, Prediction and Loss
@@ -48,7 +47,8 @@ Now instead of the function `trueODE(u,p,t)` in the first code block, we pass th
 prob_nn = ODEProblem(f, u0, tspan)
 
 function predict_neuralode(p)
-    Array(solve(prob_nn, Tsit5();p=p,saveat=tsteps,sensealg=QuadratureAdjoint(autojacvec=ZygoteVJP())))
+    Array(solve(prob_nn, Tsit5(); p = p, saveat = tsteps,
+                sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())))
 end
 
 function loss_neuralode(p)
@@ -67,16 +67,17 @@ The adjoint of a neural ODE can be calculated through the various AD algorithms 
 ```@example sc_neuralode
 callback = function (p, l, pred; doplot = true)
     display(l)
-    plt = scatter(tsteps, data[1,:],label="data")
-    scatter!(plt, tsteps, pred[1,:], label = "prediction")
+    plt = scatter(tsteps, data[1, :], label = "data")
+    scatter!(plt, tsteps, pred[1, :], label = "prediction")
     if doplot
         display(plot(plt))
     end
     return false
 end
 
-optf = Optimization.OptimizationFunction((x,p)->loss_neuralode(x), Optimization.AutoZygote())
+optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x),
+                                         Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
-res = Optimization.solve(optprob, ADAM(0.05),callback=callback,maxiters=300)
+res = Optimization.solve(optprob, ADAM(0.05), callback = callback, maxiters = 300)
 ```

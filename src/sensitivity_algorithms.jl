@@ -16,7 +16,7 @@ abstract type AbstractShadowingSensitivityAlgorithm{CS, AD, FDT} <:
 
 """
 ```julia
-ForwardSensitivity{CS,AD,FDT} <: AbstractForwardSensitivityAlgorithm{CS,AD,FDT}
+ForwardSensitivity{CS, AD, FDT} <: AbstractForwardSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of continuous forward sensitivity analysis for propagating
@@ -27,37 +27,37 @@ within the reverse-mode automatic differentiation environment.
 ## Constructor
 
 ```julia
-function ForwardSensitivity(;
-                            chunk_size=0,autodiff=true,
-                            diff_type=Val{:central},
-                            autojacvec=autodiff,
-                            autojacmat=false)
+ForwardSensitivity(;
+                   chunk_size = 0, autodiff = true,
+                   diff_type = Val{:central},
+                   autojacvec = autodiff,
+                   autojacmat = false)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
-  computations. Default is `true`.
-* `chunk_size`: Chunk size for forward mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `autojacvec`: Calculate the Jacobian-vector product via automatic
-  differentiation with special seeding.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
+  - `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
+    computations. Default is `true`.
+  - `chunk_size`: Chunk size for forward mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `autojacvec`: Calculate the Jacobian-vector product via automatic
+    differentiation with special seeding.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
 
 Further details:
 
-- If `autodiff=true` and `autojacvec=true`, then the one chunk `J*v` forward-mode
-  directional derivative calculation trick is used to compute the product without
-  constructing the Jacobian (via ForwardDiff.jl).
-- If `autodiff=false` and `autojacvec=true`, then the numerical direction derivative
-  trick `(f(x+epsilon*v)-f(x))/epsilon` is used to compute `J*v` without constructing
-  the Jacobian.
-- If `autodiff=true` and `autojacvec=false`, then the Jacobian is constructed via
-  chunked forward-mode automatic differentiation (via ForwardDiff.jl).
-- If `autodiff=false` and `autojacvec=false`, then the Jacobian is constructed via
-  finite differences via FiniteDiff.jl.
+  - If `autodiff=true` and `autojacvec=true`, then the one chunk `J*v` forward-mode
+    directional derivative calculation trick is used to compute the product without
+    constructing the Jacobian (via ForwardDiff.jl).
+  - If `autodiff=false` and `autojacvec=true`, then the numerical direction derivative
+    trick `(f(x+epsilon*v)-f(x))/epsilon` is used to compute `J*v` without constructing
+    the Jacobian.
+  - If `autodiff=true` and `autojacvec=false`, then the Jacobian is constructed via
+    chunked forward-mode automatic differentiation (via ForwardDiff.jl).
+  - If `autodiff=false` and `autojacvec=false`, then the Jacobian is constructed via
+    finite differences via FiniteDiff.jl.
 
 ## SciMLProblem Support
 
@@ -80,7 +80,7 @@ end
 
 """
 ```julia
-ForwardDiffSensitivity{CS,CTS} <: AbstractForwardSensitivityAlgorithm{CS,Nothing,Nothing}
+ForwardDiffSensitivity{CS, CTS} <: AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing}
 ```
 
 An implementation of discrete forward sensitivity analysis through ForwardDiff.jl.
@@ -91,16 +91,16 @@ environment.
 ## Constructor
 
 ```julia
-ForwardDiffSensitivity(;chunk_size=0,convert_tspan=nothing)
+ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
 ```
 
 ## Keyword Arguments
 
-* `chunk_size`: the chunk size used by ForwardDiff for computing the Jacobian, i.e. the
-  number of simultaneous columns computed.
-* `convert_tspan`: whether to convert time to also be `Dual` valued. By default this is
-  `nothing` which will only convert if callbacks are found. Conversion is required in order
-  to accurately differentiate callbacks (hybrid equations).
+  - `chunk_size`: the chunk size used by ForwardDiff for computing the Jacobian, i.e. the
+    number of simultaneous columns computed.
+  - `convert_tspan`: whether to convert time to also be `Dual` valued. By default this is
+    `nothing` which will only convert if callbacks are found. Conversion is required in order
+    to accurately differentiate callbacks (hybrid equations).
 
 ## SciMLProblem Support
 
@@ -116,7 +116,7 @@ end
 
 """
 ```julia
-BacksolveAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+BacksolveAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of adjoint sensitivity analysis using a backwards solution of the ODE.
@@ -127,44 +127,48 @@ stabilization is included for additional numerical stability over the naive impl
 ## Constructor
 
 ```julia
-BacksolveAdjoint(;chunk_size=0,autodiff=true,
-                  diff_type=Val{:central},
-                  autojacvec=nothing,
-                  checkpointing=true, noisemixing=false)
+BacksolveAdjoint(; chunk_size = 0, autodiff = true,
+                 diff_type = Val{:central},
+                 autojacvec = nothing,
+                 checkpointing = true, noisemixing = false)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set
-  of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `TrackerVJP`: Uses Tracker.jl for the vjp.
-    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
-    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
-    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
-      is a boolean for whether to precompile the tape, which should only be done
-      if there are no branches (`if` or `while` statements) in the `f` function.
-* `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
-  to `true`.
-* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
-  For example, to compute the sensitivities of an SDE with diagonal diffusion
-  ```julia
-  function g_mixing!(du,u,p,t)
-    du[1] = p[3]*u[1] + p[4]*u[2]
-    du[2] = p[3]*u[1] + p[4]*u[2]
-    nothing
-  end
-  ```
-  correctly, `noisemixing=true` must be enabled. The default is `false`.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+    differentiation with special seeding. The default is `true`. The total set
+    of choices are:
+
+      + `false`: the Jacobian is constructed via FiniteDiff.jl
+      + `true`: the Jacobian is constructed via ForwardDiff.jl
+      + `TrackerVJP`: Uses Tracker.jl for the vjp.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+  - `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
+    to `true`.
+  - `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
+    For example, to compute the sensitivities of an SDE with diagonal diffusion
+
+    ```julia
+    function g_mixing!(du, u, p, t)
+        du[1] = p[3] * u[1] + p[4] * u[2]
+        du[2] = p[3] * u[1] + p[4] * u[2]
+        nothing
+    end
+    ```
+
+    correctly, `noisemixing=true` must be enabled. The default is `false`.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -180,18 +184,18 @@ from the forward solution. As a quick demonstration:
 
 ```julia
 using Sundials
-function lorenz(du,u,p,t)
- du[1] = 10.0*(u[2]-u[1])
- du[2] = u[1]*(28.0-u[3]) - u[2]
- du[3] = u[1]*u[2] - (8/3)*u[3]
+function lorenz(du, u, p, t)
+    du[1] = 10.0 * (u[2] - u[1])
+    du[2] = u[1] * (28.0 - u[3]) - u[2]
+    du[3] = u[1] * u[2] - (8 / 3) * u[3]
 end
-u0 = [1.0;0.0;0.0]
-tspan = (0.0,100.0)
-prob = ODEProblem(lorenz,u0,tspan)
-sol = solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12)
-prob2 = ODEProblem(lorenz,sol[end],(100.0,0.0))
-sol = solve(prob,Tsit5(),reltol=1e-12,abstol=1e-12)
-@show sol[end]-u0 #[-3.22091, -1.49394, 21.3435]
+u0 = [1.0; 0.0; 0.0]
+tspan = (0.0, 100.0)
+prob = ODEProblem(lorenz, u0, tspan)
+sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-12)
+prob2 = ODEProblem(lorenz, sol[end], (100.0, 0.0))
+sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-12)
+@show sol[end] - u0 #[-3.22091, -1.49394, 21.3435]
 ```
 
 Thus, one should check the stability of the backsolve on their type of problem before
@@ -216,40 +220,40 @@ callback functions (events).
 ## References
 
 ODE:
- Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
- R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
- for Scientific Machine Learning,	arXiv:2001.04385
+Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+for Scientific Machine Learning,	arXiv:2001.04385
 
- Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
- and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
- differential/algebraic equation solvers, ACM Transactions on Mathematical
- Software (TOMS), 31, pp:363–396 (2005)
+Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+differential/algebraic equation solvers, ACM Transactions on Mathematical
+Software (TOMS), 31, pp:363–396 (2005)
 
- Chen, R.T.Q. and Rubanova, Y. and Bettencourt, J. and Duvenaud, D. K.,
- Neural ordinary differential equations. In Advances in neural information processing
- systems, pp. 6571–6583 (2018)
+Chen, R.T.Q. and Rubanova, Y. and Bettencourt, J. and Duvenaud, D. K.,
+Neural ordinary differential equations. In Advances in neural information processing
+systems, pp. 6571–6583 (2018)
 
- Pontryagin, L. S. and Mishchenko, E.F. and Boltyanskii, V.G. and Gamkrelidze, R.V.
- The mathematical theory of optimal processes. Routledge, (1962)
+Pontryagin, L. S. and Mishchenko, E.F. and Boltyanskii, V.G. and Gamkrelidze, R.V.
+The mathematical theory of optimal processes. Routledge, (1962)
 
- Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
- and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
- continuous sensitivity analysis for derivatives of differential equation solutions,
- arXiv:1812.01892
+Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+continuous sensitivity analysis for derivatives of differential equation solutions,
+arXiv:1812.01892
 
 DAE:
- Cao, Y. and Li, S. and Petzold, L. and Serban, R., Adjoint sensitivity analysis
- for differential-algebraic equations: The adjoint DAE system and its numerical
- solution, SIAM journal on scientific computing 24 pp: 1076-1089 (2003)
+Cao, Y. and Li, S. and Petzold, L. and Serban, R., Adjoint sensitivity analysis
+for differential-algebraic equations: The adjoint DAE system and its numerical
+solution, SIAM journal on scientific computing 24 pp: 1076-1089 (2003)
 
 SDE:
- Gobet, E. and Munos, R., Sensitivity Analysis Using Ito-Malliavin Calculus and
- Martingales, and Application to Stochastic Optimal Control,
- SIAM Journal on control and optimization, 43, pp. 1676-1713 (2005)
+Gobet, E. and Munos, R., Sensitivity Analysis Using Ito-Malliavin Calculus and
+Martingales, and Application to Stochastic Optimal Control,
+SIAM Journal on control and optimization, 43, pp. 1676-1713 (2005)
 
- Li, X. and Wong, T.-K. L.and Chen, R. T. Q. and Duvenaud, D.,
- Scalable Gradients for Stochastic Differential Equations,
- PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
+Li, X. and Wong, T.-K. L.and Chen, R. T. Q. and Duvenaud, D.,
+Scalable Gradients for Stochastic Differential Equations,
+PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
 """
 struct BacksolveAdjoint{CS, AD, FDT, VJP} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
@@ -272,7 +276,7 @@ end
 
 """
 ```julia
-InterpolatingAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+InterpolatingAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of adjoint sensitivity analysis which uses the interpolation of
@@ -284,44 +288,48 @@ enabled, it will only require the memory to interpolate between checkpoints.
 ## Constructor
 
 ```julia
-function InterpolatingAdjoint(;chunk_size=0,autodiff=true,
-                               diff_type=Val{:central},
-                               autojacvec=nothing,
-                               checkpointing=false, noisemixing=false)
+InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
+                     diff_type = Val{:central},
+                     autojacvec = nothing,
+                     checkpointing = false, noisemixing = false)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set
-  of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `TrackerVJP`: Uses Tracker.jl for the vjp.
-    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
-    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
-    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
-      is a boolean for whether to precompile the tape, which should only be done
-      if there are no branches (`if` or `while` statements) in the `f` function.
-* `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
-  to `false`.
-* `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
-  For example, to compute the sensitivities of an SDE with diagonal diffusion
-  ```julia
-  function g_mixing!(du,u,p,t)
-    du[1] = p[3]*u[1] + p[4]*u[2]
-    du[2] = p[3]*u[1] + p[4]*u[2]
-    nothing
-  end
-  ```
-  correctly, `noisemixing=true` must be enabled. The default is `false`.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+    differentiation with special seeding. The default is `true`. The total set
+    of choices are:
+
+      + `false`: the Jacobian is constructed via FiniteDiff.jl
+      + `true`: the Jacobian is constructed via ForwardDiff.jl
+      + `TrackerVJP`: Uses Tracker.jl for the vjp.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+  - `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
+    to `false`.
+  - `noisemixing`: Handle noise processes that are not of the form `du[i] = f(u[i])`.
+    For example, to compute the sensitivities of an SDE with diagonal diffusion
+
+    ```julia
+    function g_mixing!(du, u, p, t)
+        du[1] = p[3] * u[1] + p[4] * u[2]
+        du[2] = p[3] * u[1] + p[4] * u[2]
+        nothing
+    end
+    ```
+
+    correctly, `noisemixing=true` must be enabled. The default is `false`.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -343,19 +351,19 @@ supports callbacks (events).
 
 ## References
 
- Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
- R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
- for Scientific Machine Learning,	arXiv:2001.04385
+Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+for Scientific Machine Learning,	arXiv:2001.04385
 
- Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
- and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
- differential/algebraic equation solvers, ACM Transactions on Mathematical
- Software (TOMS), 31, pp:363–396 (2005)
+Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+differential/algebraic equation solvers, ACM Transactions on Mathematical
+Software (TOMS), 31, pp:363–396 (2005)
 
- Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
- and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
- continuous sensitivity analysis for derivatives of differential equation solutions,
- arXiv:1812.01892
+Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+continuous sensitivity analysis for derivatives of differential equation solutions,
+arXiv:1812.01892
 """
 struct InterpolatingAdjoint{CS, AD, FDT, VJP} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
@@ -379,7 +387,7 @@ end
 
 """
 ```julia
-QuadratureAdjoint{CS,AD,FDT,VJP} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+QuadratureAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of adjoint sensitivity analysis which develops a full
@@ -396,34 +404,36 @@ pass and is thus memory intensive.
 ## Constructor
 
 ```julia
-function QuadratureAdjoint(;chunk_size=0,autodiff=true,
-                            diff_type=Val{:central},
-                            autojacvec=nothing,abstol=1e-6,
-                            reltol=1e-3)
+QuadratureAdjoint(; chunk_size = 0, autodiff = true,
+                  diff_type = Val{:central},
+                  autojacvec = nothing, abstol = 1e-6,
+                  reltol = 1e-3)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set
-  of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `TrackerVJP`: Uses Tracker.jl for the vjp.
-    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
-    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
-    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
-      is a boolean for whether to precompile the tape, which should only be done
-      if there are no branches (`if` or `while` statements) in the `f` function.
-* `abstol`: absolute tolerance for the quadrature calculation
-* `reltol`: relative tolerance for the quadrature calculation
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+    differentiation with special seeding. The default is `true`. The total set
+    of choices are:
+
+      + `false`: the Jacobian is constructed via FiniteDiff.jl
+      + `true`: the Jacobian is constructed via ForwardDiff.jl
+      + `TrackerVJP`: Uses Tracker.jl for the vjp.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+  - `abstol`: absolute tolerance for the quadrature calculation
+  - `reltol`: relative tolerance for the quadrature calculation
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -434,22 +444,22 @@ This `sensealg` only supports `ODEProblem`s. This `sensealg` supports events (ca
 
 ## References
 
- Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
- R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
- for Scientific Machine Learning,	arXiv:2001.04385
+Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+for Scientific Machine Learning,	arXiv:2001.04385
 
- Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
- and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
- differential/algebraic equation solvers, ACM Transactions on Mathematical
- Software (TOMS), 31, pp:363–396 (2005)
+Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+differential/algebraic equation solvers, ACM Transactions on Mathematical
+Software (TOMS), 31, pp:363–396 (2005)
 
- Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
- and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
- continuous sensitivity analysis for derivatives of differential equation solutions,
- arXiv:1812.01892
+Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+continuous sensitivity analysis for derivatives of differential equation solutions,
+arXiv:1812.01892
 
- Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
- differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
+Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
+differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
 struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
@@ -471,7 +481,7 @@ end
 
 """
 ```julia
-TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 ```
 
 An implementation of discrete adjoint sensitivity analysis
@@ -503,7 +513,7 @@ struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, noth
 
 """
 ```julia
-ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 ```
 
 An implementation of discrete adjoint sensitivity analysis using the ReverseDiff.jl
@@ -544,7 +554,7 @@ struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothi
 
 """
 ```julia
-ForwardLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+ForwardLSS{CS, AD, FDT, RType, gType} <: AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of the discrete, forward-mode
@@ -560,30 +570,32 @@ See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ```julia
 ForwardLSS(;
-          chunk_size=0,autodiff=true,
-          diff_type=Val{:central},
-          LSSregularizer=TimeDilation(10.0,0.0,0.0),
-          g=nothing)
+           chunk_size = 0, autodiff = true,
+           diff_type = Val{:central},
+           LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+           g = nothing)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `LSSregularizer`: Using `LSSregularizer`, one can choose between three different
-  regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
-    - `CosWindowing()`: cos windowing of the time grid, i.e. the time grid (saved
-      time steps) is transformed using a cosine.
-    - `Cos2Windowing()`: cos^2 windowing of the time grid.
-    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
-      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
-      the times truncated at the beginning and end of the trajectory, respectively.
-* `g`: instantaneous objective function of the long-time averaged objective.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `LSSregularizer`: Using `LSSregularizer`, one can choose between three different
+    regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
+
+      + `CosWindowing()`: cos windowing of the time grid, i.e. the time grid (saved
+        time steps) is transformed using a cosine.
+      + `Cos2Windowing()`: cos^2 windowing of the time grid.
+      + `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
+        a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
+        the times truncated at the beginning and end of the trajectory, respectively.
+  - `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
@@ -620,7 +632,7 @@ end
 
 """
 ```julia
-AdjointLSS{CS,AD,FDT,RType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+AdjointLSS{CS, AD, FDT, RType, gType} <: AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of the discrete, adjoint-mode
@@ -636,28 +648,30 @@ See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ```julia
 AdjointLSS(;
-          chunk_size=0,autodiff=true,
-          diff_type=Val{:central},
-          LSSRegularizer=TimeDilation(10.0,0.0,0.0),
-          g=nothing)
+           chunk_size = 0, autodiff = true,
+           diff_type = Val{:central},
+           LSSRegularizer = TimeDilation(10.0, 0.0, 0.0),
+           g = nothing)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `LSSregularizer`: Using `LSSregularizer`, one can choose between different
-  regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
-    - `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
-      a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
-      the times truncated at the beginning and end of the trajectory, respectively.
-      The default value for `t0skip` and `t1skip` is `zero(alpha)`.
-* `g`: instantaneous objective function of the long-time averaged objective.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `LSSregularizer`: Using `LSSregularizer`, one can choose between different
+    regularization routines. The default choice is `TimeDilation(10.0,0.0,0.0)`.
+
+      + `TimeDilation(alpha::Number,t0skip::Number,t1skip::Number)`: Corresponds to
+        a time dilation. `alpha` controls the weight. `t0skip` and `t1skip` indicate
+        the times truncated at the beginning and end of the trajectory, respectively.
+        The default value for `t0skip` and `t1skip` is `zero(alpha)`.
+  - `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
@@ -693,7 +707,7 @@ struct Cos2Windowing <: AbstractCosWindowing end
 
 """
 ```julia
-TimeDilation{T1<:Number} <: AbstractLSSregularizer
+TimeDilation{T1 <: Number} <: AbstractLSSregularizer
 ```
 
 A regularization method for `LSS`. See `?LSS` for
@@ -703,8 +717,8 @@ additional information and other methods.
 
 ```julia
 TimeDilation(alpha;
-          t0skip=zero(alpha),
-          t1skip=zero(alpha))
+             t0skip = zero(alpha),
+             t1skip = zero(alpha))
 ```
 """
 struct TimeDilation{T1 <: Number} <: AbstractLSSregularizer
@@ -716,7 +730,7 @@ function TimeDilation(alpha, t0skip = zero(alpha), t1skip = zero(alpha))
     TimeDilation{typeof(alpha)}(alpha, t0skip, t1skip)
 end
 """
-```julia
+```
 struct NILSS{CS,AD,FDT,RNG,nType,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
 ```
 
@@ -736,35 +750,35 @@ step, and thus should generally be preferred (for large system sizes) over `Forw
 
 ```julia
 NILSS(nseg, nstep; nus = nothing,
-                   rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-                   chunk_size=0,autodiff=true,
-                   diff_type=Val{:central},
-                   autojacvec=autodiff,
-                   g=nothing)
+      rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+      chunk_size = 0, autodiff = true,
+      diff_type = Val{:central},
+      autojacvec = autodiff,
+      g = nothing)
 ```
 
 ## Arguments
 
-* `nseg`: Number of segments on full time interval on the attractor.
-* `nstep`: number of steps on each segment.
+  - `nseg`: Number of segments on full time interval on the attractor.
+  - `nstep`: number of steps on each segment.
 
 ## Keyword Arguments
 
-* `nus`: Dimension of the unstable subspace. Default is `nothing`. `nus` must be
-  smaller or equal to the state dimension (`length(u0)`). With the default choice,
-  `nus = length(u0) - 1` will be set at compile time.
-* `rng`: (Pseudo) random number generator. Used for initializing the homogeneous
-  tangent states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
-* `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
-  computations. Default is `true`.
-* `chunk_size`: Chunk size for forward mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `autojacvec`: Calculate the Jacobian-vector product via automatic
-  differentiation with special seeding.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `g`: instantaneous objective function of the long-time averaged objective.
+  - `nus`: Dimension of the unstable subspace. Default is `nothing`. `nus` must be
+    smaller or equal to the state dimension (`length(u0)`). With the default choice,
+    `nus = length(u0) - 1` will be set at compile time.
+  - `rng`: (Pseudo) random number generator. Used for initializing the homogeneous
+    tangent states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
+  - `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
+    computations. Default is `true`.
+  - `chunk_size`: Chunk size for forward mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `autojacvec`: Calculate the Jacobian-vector product via automatic
+    differentiation with special seeding.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
@@ -775,6 +789,7 @@ same over infinite time independent of the specified initial conditions, such th
 the sensitivity with respect to the parameters is of interest.
 
 ## References
+
 Ni, A., Blonigan, P. J., Chater, M., Wang, Q., Zhang, Z., Sensitivity analy-
 sis on chaotic dynamical system by Non-Intrusive Least Square Shadowing
 (NI-LSS), in: 46th AIAA Fluid Dynamics Conference, AIAA AVIATION Forum (AIAA 2016-4399),
@@ -806,7 +821,7 @@ end
 
 """
 ```julia
-NILSAS{CS,AD,FDT,RNG,SENSE,gType} <: AbstractShadowingSensitivityAlgorithm{CS,AD,FDT}
+NILSAS{CS, AD, FDT, RNG, SENSE, gType} <: AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of the adjoint-mode, continuous
@@ -826,46 +841,48 @@ with respect to multiple parameters with negligible additional cost.
 ## Constructor
 
 ```julia
-NILSAS(nseg, nstep, M=nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-                                adjoint_sensealg = BacksolveAdjoint(autojacvec=ReverseDiffVJP()),
-                                chunk_size=0,autodiff=true,
-                                diff_type=Val{:central},
-                                g=nothing
-                                )
+NILSAS(nseg, nstep, M = nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+       adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+       chunk_size = 0, autodiff = true,
+       diff_type = Val{:central},
+       g = nothing)
 ```
 
 ## Arguments
 
-* `nseg`: Number of segments on full time interval on the attractor.
-* `nstep`: number of steps on each segment.
-* `M`: number of homogeneous adjoint solutions. This number must be bigger or equal
-  than the number of (positive, adjoint) Lyapunov exponents. Default is `nothing`.
+  - `nseg`: Number of segments on full time interval on the attractor.
+  - `nstep`: number of steps on each segment.
+  - `M`: number of homogeneous adjoint solutions. This number must be bigger or equal
+    than the number of (positive, adjoint) Lyapunov exponents. Default is `nothing`.
 
 ## Keyword Arguments
 
-* `rng`: (Pseudo) random number generator. Used for initializing the terminate
-  conditions of the homogeneous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
-* `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogeneous
-  and inhomogeneous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
-  * `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `true`. The total set
-  of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `TrackerVJP`: Uses Tracker.jl for the vjp.
-    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
-    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
-    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
-      is a boolean for whether to precompile the tape, which should only be done
-      if there are no branches (`if` or `while` statements) in the `f` function.
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `g`: instantaneous objective function of the long-time averaged objective.
+  - `rng`: (Pseudo) random number generator. Used for initializing the terminate
+    conditions of the homogeneous adjoint states (`w`). Default is `Xorshifts.Xoroshiro128Plus(rand(UInt64))`.
+
+  - `adjoint_sensealg`: Continuous adjoint sensitivity method to compute homogeneous
+    and inhomogeneous adjoint solutions on each segment. Default is `BacksolveAdjoint(autojacvec=ReverseDiffVJP())`.
+
+      + `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+        differentiation with special seeding. The default is `true`. The total set
+        of choices are:
+
+          * `false`: the Jacobian is constructed via FiniteDiff.jl
+          * `true`: the Jacobian is constructed via ForwardDiff.jl
+          * `TrackerVJP`: Uses Tracker.jl for the vjp.
+          * `ZygoteVJP`: Uses Zygote.jl for the vjp.
+          * `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+          * `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+            is a boolean for whether to precompile the tape, which should only be done
+            if there are no branches (`if` or `while` statements) in the `f` function.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `g`: instantaneous objective function of the long-time averaged objective.
 
 ## SciMLProblem Support
 
@@ -908,7 +925,7 @@ end
 
 """
 ```julia
-SteadyStateAdjoint{CS,AD,FDT,VJP,LS} <: AbstractAdjointSensitivityAlgorithm{CS,AD,FDT}
+SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of the adjoint differentiation of a nonlinear solve. Uses the
@@ -918,34 +935,36 @@ implicit function theorem to directly compute the derivative of the solution to
 ## Constructor
 
 ```julia
-SteadyStateAdjoint(;chunk_size = 0, autodiff = true,
-                    diff_type = Val{:central},
-                    autojacvec = autodiff, linsolve = nothing)
+SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
+                   diff_type = Val{:central},
+                   autojacvec = autodiff, linsolve = nothing)
 ```
 
 ## Keyword Arguments
 
-* `autodiff`: Use automatic differentiation for constructing the Jacobian
-  if the Jacobian needs to be constructed.  Defaults to `true`.
-* `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-  built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-  choice of chunk size.
-* `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
-  if the full Jacobian is required with `autodiff=false`.
-* `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-  differentiation with special seeding. The default is `nothing`. The total set
-  of choices are:
-    - `false`: the Jacobian is constructed via FiniteDiff.jl
-    - `true`: the Jacobian is constructed via ForwardDiff.jl
-    - `TrackerVJP`: Uses Tracker.jl for the vjp.
-    - `ZygoteVJP`: Uses Zygote.jl for the vjp.
-    - `EnzymeVJP`: Uses Enzyme.jl for the vjp.
-    - `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
-      is a boolean for whether to precompile the tape, which should only be done
-      if there are no branches (`if` or `while` statements) in the `f` function.
-* `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
-  which uses a polyalgorithm to choose an efficient
-  algorithm automatically.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+    differentiation with special seeding. The default is `nothing`. The total set
+    of choices are:
+
+      + `false`: the Jacobian is constructed via FiniteDiff.jl
+      + `true`: the Jacobian is constructed via ForwardDiff.jl
+      + `TrackerVJP`: Uses Tracker.jl for the vjp.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+  - `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
+    which uses a polyalgorithm to choose an efficient
+    algorithm automatically.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -987,18 +1006,17 @@ performance of the VJP method.
 ## Constructor
 
 ```julia
-ZygoteVJP(;allow_nothing=false)
+ZygoteVJP(; allow_nothing = false)
 ```
 
 Keyword arguments:
 
-* `allow_nothing`: whether `nothing`s should be implicitly converted to zeros. In Zygote,
-  the derivative of a function with respect to `p` which does not use `p` in any possible
-  calculation is given a derivative of `nothing` instead of zero. By default, this `nothing`
-  is caught in order to throw an informative error message about a potentially unintentional
-  misdefined function. However, if this was intentional, setting `allow_nothing=true` will
-  remove the error message.
-
+  - `allow_nothing`: whether `nothing`s should be implicitly converted to zeros. In Zygote,
+    the derivative of a function with respect to `p` which does not use `p` in any possible
+    calculation is given a derivative of `nothing` instead of zero. By default, this `nothing`
+    is caught in order to throw an informative error message about a potentially unintentional
+    misdefined function. However, if this was intentional, setting `allow_nothing=true` will
+    remove the error message.
 """
 struct ZygoteVJP <: VJPChoice
     allow_nothing::Bool
@@ -1020,18 +1038,17 @@ like BLAS/LAPACK are used) and this will be the most efficient adjoint implement
 ## Constructor
 
 ```julia
-EnzymeVJP(;chunksize=0)
+EnzymeVJP(; chunksize = 0)
 ```
 
 ## Keyword Arguments
 
-- `chunksize`: the default chunk size for the temporary variables inside the vjp's right
-  hand side definition. This is used for compatibility with ODE solves that default to using
-  ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
-  should be set to the maximum chunksize that can occur during an integration to preallocate
-  the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
-  but could be decreased if this value is known to be lower to conserve memory.
-
+  - `chunksize`: the default chunk size for the temporary variables inside the vjp's right
+    hand side definition. This is used for compatibility with ODE solves that default to using
+    ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
+    should be set to the maximum chunksize that can occur during an integration to preallocate
+    the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
+    but could be decreased if this value is known to be lower to conserve memory.
 """
 struct EnzymeVJP <: VJPChoice
     chunksize::Int
@@ -1054,17 +1071,17 @@ reverse mode.
 ## Constructor
 
 ```julia
-TrackerVJP(;allow_nothing=false)
+TrackerVJP(; allow_nothing = false)
 ```
 
 Keyword arguments:
 
-* `allow_nothing`: whether non-tracked values should be implicitly converted to zeros. In Tracker,
-  the derivative of a function with respect to `p` which does not use `p` in any possible
-  calculation is given an untracked return instead of zero. By default, this `nothing` Trackedness
-  is caught in order to throw an informative error message about a potentially unintentional
-  misdefined function. However, if this was intentional, setting `allow_nothing=true` will
-  remove the error message.
+  - `allow_nothing`: whether non-tracked values should be implicitly converted to zeros. In Tracker,
+    the derivative of a function with respect to `p` which does not use `p` in any possible
+    calculation is given an untracked return instead of zero. By default, this `nothing` Trackedness
+    is caught in order to throw an informative error message about a potentially unintentional
+    misdefined function. However, if this was intentional, setting `allow_nothing=true` will
+    remove the error message.
 """
 struct TrackerVJP <: VJPChoice
     allow_nothing::Bool
@@ -1090,14 +1107,14 @@ Does not support GPUs (CuArrays).
 ## Constructor
 
 ```julia
-ReverseDiffVJP(compile=false)
+ReverseDiffVJP(compile = false)
 ```
 
 ## Keyword Arguments
 
-* `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
-  the performance of the method, but requires that the `f` function of the ODE/DAE/SDE/DDE
-  has no branching.
+  - `compile`: Whether to cache the compilation of the reverse tape. This heavily increases
+    the performance of the method, but requires that the `f` function of the ODE/DAE/SDE/DDE
+    has no branching.
 """
 struct ReverseDiffVJP{compile} <: VJPChoice
     ReverseDiffVJP(compile = false) = new{compile}()
@@ -1146,7 +1163,7 @@ end
 
 """
 ```julia
-ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing,true,nothing}
+ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
 ```
 
 ForwardDiff.jl over a choice of `sensealg` method for the adjoint.

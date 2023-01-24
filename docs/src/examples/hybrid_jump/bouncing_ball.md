@@ -10,25 +10,25 @@ first start by implementing the ODE:
 ```@example bouncing_ball
 using Optimization, OptimizationPolyalgorithms, SciMLSensitivity, DifferentialEquations
 
-function f(du,u,p,t)
-  du[1] = u[2]
-  du[2] = -p[1]
+function f(du, u, p, t)
+    du[1] = u[2]
+    du[2] = -p[1]
 end
 
-function condition(u,t,integrator) # Event when event_f(u,t) == 0
-  u[1]
+function condition(u, t, integrator) # Event when event_f(u,t) == 0
+    u[1]
 end
 
 function affect!(integrator)
-  integrator.u[2] = -integrator.p[2]*integrator.u[2]
+    integrator.u[2] = -integrator.p[2] * integrator.u[2]
 end
 
-callback = ContinuousCallback(condition,affect!)
-u0 = [50.0,0.0]
-tspan = (0.0,15.0)
+callback = ContinuousCallback(condition, affect!)
+u0 = [50.0, 0.0]
+tspan = (0.0, 15.0)
 p = [9.8, 0.8]
-prob = ODEProblem(f,u0,tspan,p)
-sol = solve(prob,Tsit5(),callback=callback)
+prob = ODEProblem(f, u0, tspan, p)
+sol = solve(prob, Tsit5(), callback = callback)
 ```
 
 Here we have a friction coefficient of `0.8`. We want to refine this
@@ -38,14 +38,14 @@ the value 20:
 
 ```@example bouncing_ball
 function loss(θ)
-  sol = solve(prob,Tsit5(),p=[9.8,θ[1]],callback=callback)
-  target = 20.0
-  abs2(sol[end][1] - target)
+    sol = solve(prob, Tsit5(), p = [9.8, θ[1]], callback = callback)
+    target = 20.0
+    abs2(sol[end][1] - target)
 end
 
 loss([0.8])
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, [0.8])
 @time res = Optimization.solve(optprob, PolyOpt(), maxiters = 300)
 @show res.u # [0.866554105436901]

@@ -17,18 +17,18 @@ rng = Random.default_rng()
 function f!(du, u, p, t)
     y₁, y₂, y₃ = u
     k₁, k₂, k₃ = p
-    du[1] = -k₁*y₁ + k₃*y₂*y₃
-    du[2] =  k₁*y₁ - k₃*y₂*y₃ - k₂*y₂^2
-    du[3] =  y₁ + y₂ + y₃ - 1
+    du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
+    du[2] = k₁ * y₁ - k₃ * y₂ * y₃ - k₂ * y₂^2
+    du[3] = y₁ + y₂ + y₃ - 1
     return nothing
 end
 
 u₀ = [1.0, 0, 0]
-M = [1. 0  0
-     0  1. 0
-     0  0  0]
+M = [1.0 0 0
+     0 1.0 0
+     0 0 0]
 
-tspan = (0.0,1.0)
+tspan = (0.0, 1.0)
 p = [0.04, 3e7, 1e4]
 
 stiff_func = ODEFunction(f!, mass_matrix = M)
@@ -36,12 +36,12 @@ prob_stiff = ODEProblem(stiff_func, u₀, tspan, p)
 sol_stiff = solve(prob_stiff, Rodas5(), saveat = 0.1)
 
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),
-                 Lux.Dense(64, 2))
+                     Lux.Dense(64, 2))
 
 pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
-                               tspan, M, Rodas5(autodiff=false), saveat = 0.1)
+                               tspan, M, Rodas5(autodiff = false), saveat = 0.1)
 model_stiff_ndae(u₀, Lux.ComponentArray(pinit), st)
 
 function predict_stiff_ndae(p)
@@ -62,11 +62,10 @@ end
 l1 = first(loss_stiff_ndae(Lux.ComponentArray(pinit)))
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters=100)
+result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ```
-
 
 ## Step-by-Step Description
 
@@ -88,9 +87,9 @@ fitting difficult.
 function f!(du, u, p, t)
     y₁, y₂, y₃ = u
     k₁, k₂, k₃ = p
-    du[1] = -k₁*y₁ + k₃*y₂*y₃
-    du[2] =  k₁*y₁ - k₃*y₂*y₃ - k₂*y₂^2
-    du[3] =  y₁ + y₂ + y₃ - 1
+    du[1] = -k₁ * y₁ + k₃ * y₂ * y₃
+    du[2] = k₁ * y₁ - k₃ * y₂ * y₃ - k₂ * y₂^2
+    du[3] = y₁ + y₂ + y₃ - 1
     return nothing
 end
 ```
@@ -100,21 +99,20 @@ end
 ```@example dae2
 u₀ = [1.0, 0, 0]
 
-M = [1. 0  0
-     0  1. 0
-     0  0  0]
+M = [1.0 0 0
+     0 1.0 0
+     0 0 0]
 
-tspan = (0.0,1.0)
+tspan = (0.0, 1.0)
 
 p = [0.04, 3e7, 1e4]
 ```
 
-- `u₀` = Initial Conditions
-- `M` = Semi-explicit Mass Matrix (last row is the constraint equation and are therefore
-all zeros)
-- `tspan` = Time span over which to evaluate
-- `p` = parameters `k1`, `k2` and `k3` of the differential equation above
-
+  - `u₀` = Initial Conditions
+  - `M` = Semi-explicit Mass Matrix (last row is the constraint equation and are therefore
+    all zeros)
+  - `tspan` = Time span over which to evaluate
+  - `p` = parameters `k1`, `k2` and `k3` of the differential equation above
 
 ### ODE Function, Problem and Solution
 
@@ -138,12 +136,12 @@ is more suited to SciML applications (similarly for
 
 ```@example dae2
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),
-                 Lux.Dense(64, 2))
+                     Lux.Dense(64, 2))
 
 pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
-                               tspan, M, Rodas5(autodiff=false), saveat = 0.1)
+                               tspan, M, Rodas5(autodiff = false), saveat = 0.1)
 model_stiff_ndae(u₀, Lux.ComponentArray(pinit), st)
 ```
 
@@ -195,8 +193,8 @@ The callback function displays the loss during training.
 
 ```@example dae2
 callback = function (p, l, pred) #callback function to observe training
-  display(l)
-  return false
+    display(l)
+    return false
 end
 ```
 
@@ -207,7 +205,7 @@ Finally, training with `Optimization.solve` by passing: *loss function*, *model 
 
 ```@example dae2
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p) -> loss_stiff_ndae(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters=100)
+result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ```
