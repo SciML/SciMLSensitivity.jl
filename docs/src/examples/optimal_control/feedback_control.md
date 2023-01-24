@@ -10,7 +10,7 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```@example udeneuralcontrol
-using Flux, Optimization, OptimizationPolyalgorithms, 
+using Flux, Optimization, OptimizationPolyalgorithms,
       SciMLSensitivity, Zygote, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
@@ -19,11 +19,11 @@ tspan = (0.0f0, 25.0f0)
 tsteps = 0.0f0:1.0:25.0f0
 
 model_univ = Flux.Chain(Flux.Dense(2, 16, tanh),
-                       Flux.Dense(16, 16, tanh),
-                       Flux.Dense(16, 1))
+                        Flux.Dense(16, 16, tanh),
+                        Flux.Dense(16, 1))
 
 # The model weights are destructured into a vector of parameters
-p_model,re = Flux.destructure(model_univ)
+p_model, re = Flux.destructure(model_univ)
 n_weights = length(p_model)
 
 # Parameters of the second equation (linear dynamics)
@@ -44,23 +44,23 @@ function dudt_univ!(du, u, p, t)
 
     # Dynamics of the control and system
     dmodel_control = re(model_weights)(u)[1]
-    dsystem_output = α*system_output + β*model_control
+    dsystem_output = α * system_output + β * model_control
 
     # Update in place
     du[1] = dmodel_control
     du[2] = dsystem_output
 end
 
-prob_univ = ODEProblem(dudt_univ!, [0f0, u0], tspan, p_all)
-sol_univ = solve(prob_univ, Tsit5(),abstol = 1e-8, reltol = 1e-6)
+prob_univ = ODEProblem(dudt_univ!, [0.0f0, u0], tspan, p_all)
+sol_univ = solve(prob_univ, Tsit5(), abstol = 1e-8, reltol = 1e-6)
 
 function predict_univ(θ)
-  return Array(solve(prob_univ, Tsit5(), u0=[0f0, θ[1]], p=θ[2:end],
-                              sensealg = InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)),
-                              saveat = tsteps))
+    return Array(solve(prob_univ, Tsit5(), u0 = [0.0f0, θ[1]], p = θ[2:end],
+                       sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+                       saveat = tsteps))
 end
 
-loss_univ(θ) = sum(abs2, predict_univ(θ)[2,:] .- 1)
+loss_univ(θ) = sum(abs2, predict_univ(θ)[2, :] .- 1)
 l = loss_univ(θ)
 ```
 
@@ -68,26 +68,26 @@ l = loss_univ(θ)
 list_plots = []
 iter = 0
 callback = function (θ, l)
-  global list_plots, iter
+    global list_plots, iter
 
-  if iter == 0
-    list_plots = []
-  end
-  iter += 1
+    if iter == 0
+        list_plots = []
+    end
+    iter += 1
 
-  println(l)
+    println(l)
 
-  plt = plot(predict_univ(θ)', ylim = (0, 6))
-  push!(list_plots, plt)
-  display(plt)
-  return false
+    plt = plot(predict_univ(θ)', ylim = (0, 6))
+    push!(list_plots, plt)
+    display(plt)
+    return false
 end
 ```
 
 ```@example udeneuralcontrol
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss_univ(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
-                                     callback = callback)
+                                 callback = callback)
 ```

@@ -21,21 +21,22 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
-using DifferentialEquations, Flux, Optimization, OptimizationFlux, RecursiveArrayTools, Random
+using DifferentialEquations, Flux, Optimization, OptimizationFlux, RecursiveArrayTools,
+      Random
 
-u0 = Float32[0.; 2.]
-du0 = Float32[0.; 0.]
+u0 = Float32[0.0; 2.0]
+du0 = Float32[0.0; 0.0]
 tspan = (0.0f0, 1.0f0)
-t = range(tspan[1], tspan[2], length=20)
+t = range(tspan[1], tspan[2], length = 20)
 
 model = Flux.Chain(Flux.Dense(2, 50, tanh), Flux.Dense(50, 2))
-p,re = Flux.destructure(model)
+p, re = Flux.destructure(model)
 
-ff(du,u,p,t) = re(p)(u)
+ff(du, u, p, t) = re(p)(u)
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, p)
 
 function predict(p)
-    Array(solve(prob, Tsit5(), p=p, saveat=t))
+    Array(solve(prob, Tsit5(), p = p, saveat = t))
 end
 
 correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:1)[2:end])))
@@ -50,13 +51,13 @@ opt = ADAM(0.01)
 
 l1 = loss_n_ode(p)
 
-callback = function (p,l,pred)
+callback = function (p, l, pred)
     println(l)
     l < 0.01
 end
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss_n_ode(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
-res = Optimization.solve(optprob, opt; callback = callback, maxiters=1000)
+res = Optimization.solve(optprob, opt; callback = callback, maxiters = 1000)
 ```

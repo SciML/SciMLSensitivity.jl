@@ -175,7 +175,7 @@ function gradient!(df::AbstractArray{<:Number}, f,
 end
 
 """
-  jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
+jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 
 ``Jv <- J(f(x))v``
 """

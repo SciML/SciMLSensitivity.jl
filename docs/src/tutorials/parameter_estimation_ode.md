@@ -6,13 +6,14 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, SciMLSensitivity, Zygote, Plots
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
+      Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
-  x, y = u
-  α, β, δ, γ = p
-  du[1] = dx = α*x - β*x*y
-  du[2] = dy = -δ*y + γ*x*y
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = -δ * y + γ * x * y
 end
 
 # Initial condition
@@ -35,22 +36,22 @@ plot(sol)
 savefig("LV_ode.png")
 
 function loss(p)
-  sol = solve(prob, Tsit5(), p=p, saveat = tsteps)
-  loss = sum(abs2, sol.-1)
-  return loss, sol
+    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    loss = sum(abs2, sol .- 1)
+    return loss, sol
 end
 
 callback = function (p, l, pred)
-  display(l)
-  plt = plot(pred, ylim = (0, 6))
-  display(plt)
-  # Tell Optimization.solve to not halt the optimization. If return true, then
-  # optimization stops.
-  return false
+    display(l)
+    plt = plot(pred, ylim = (0, 6))
+    display(plt)
+    # Tell Optimization.solve to not halt the optimization. If return true, then
+    # optimization stops.
+    return false
 end
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
@@ -71,14 +72,14 @@ more details, [see the DifferentialEquations.jl documentation](https://docs.scim
 ```
 
 ```@example optode
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, 
+using DifferentialEquations, Optimization, OptimizationPolyalgorithms,
       SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
-  x, y = u
-  α, β, δ, γ = p
-  du[1] = dx = α*x - β*x*y
-  du[2] = dy = -δ*y + γ*x*y
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = -δ * y + γ * x * y
 end
 
 # Initial condition
@@ -113,9 +114,9 @@ define our loss as the squared distance from 1.
 
 ```@example optode
 function loss(p)
-  sol = solve(prob, Tsit5(), p=p, saveat = tsteps)
-  loss = sum(abs2, sol.-1)
-  return loss, sol
+    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    loss = sum(abs2, sol .- 1)
+    return loss, sol
 end
 ```
 
@@ -128,12 +129,12 @@ situation:
 
 ```@example optode
 callback = function (p, l, pred)
-  display(l)
-  plt = plot(pred, ylim = (0, 6))
-  display(plt)
-  # Tell Optimization.solve to not halt the optimization. If return true, then
-  # optimization stops.
-  return false
+    display(l)
+    plt = plot(pred, ylim = (0, 6))
+    display(plt)
+    # Tell Optimization.solve to not halt the optimization. If return true, then
+    # optimization stops.
+    return false
 end
 ```
 
@@ -141,7 +142,7 @@ Let's optimize the model.
 
 ```@example optode
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)->loss(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
@@ -156,7 +157,7 @@ that we solved the control problem and successfully found parameters to make the
 ODE solution constant:
 
 ```@example optode
-remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),      
+remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),
                         saveat = tsteps)
 plot(remade_solution, ylim = (0, 6))
 ```

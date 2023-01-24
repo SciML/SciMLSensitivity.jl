@@ -25,15 +25,15 @@ dataset = Cora();
 # Preprocess the data and compute adjacency matrix
 classes = dataset.metadata["classes"]
 g = mldataset2gnngraph(dataset) |> device
-onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
-onecold(y) =  map(argmax,eachcol(y))
+onehotbatch(data, labels) = device(labels) .== reshape(data, 1, size(data)...)
+onecold(y) = map(argmax, eachcol(y))
 X = g.ndata.features
 y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
 
-Ã = normalized_adjacency(g, add_self_loops=true) |> device
+Ã = normalized_adjacency(g, add_self_loops = true) |> device
 
 (; train_mask, val_mask, test_mask) = g.ndata
-ytrain = y[:,train_mask]
+ytrain = y[:, train_mask]
 
 # Model and Data Configuration
 nin = size(X, 1)
@@ -42,7 +42,7 @@ nout = length(classes)
 epochs = 20
 
 # Define the graph neural network
-struct ExplicitGCNConv{F1,F2,F3,F4} <: AbstractExplicitLayer
+struct ExplicitGCNConv{F1, F2, F3, F4} <: AbstractExplicitLayer
     in_chs::Int
     out_chs::Int
     activation::F1
@@ -58,18 +58,18 @@ function Base.show(io::IO, l::ExplicitGCNConv)
 end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
-        return (weight=d.init_weight(rng, d.out_chs, d.in_chs),
-                bias=d.init_bias(rng, d.out_chs, 1))
+    return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
+            bias = d.init_bias(rng, d.out_chs, 1))
 end
 
 initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
-
-function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32)
-    init_Ã = ()->copy(Ã)
-    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight), typeof(init_bias)}(first(ch), last(ch), activation,
-                                                                                                       init_Ã, init_weight, init_bias)
+function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
+                         init_weight = glorot_normal, init_bias = zeros32)
+    init_Ã = () -> copy(Ã)
+    return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight),
+                           typeof(init_bias)}(first(ch), last(ch), activation,
+                                              init_Ã, init_weight, init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -79,9 +79,9 @@ end
 
 # Define the Neural GDE
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
-    return dropdims(gpu(x); dims=3)
+    return dropdims(gpu(x); dims = 3)
 end
-diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
+diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims = 3)
 
 # make NeuralODE work with Lux.Chain
 # remove this once https://github.com/SciML/DiffEqFlux.jl/issues/727 is fixed
@@ -91,7 +91,7 @@ initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
-node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
+node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
                  reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
@@ -100,18 +100,18 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
               Dense(nhidden, nout))
 
 # Loss
-logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
+logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
 
 function loss(x, y, mask, model, ps, st)
     ŷ, st = model(x, ps, st)
-    return logitcrossentropy(ŷ[:,mask], y), st
+    return logitcrossentropy(ŷ[:, mask], y), st
 end
 
 function eval_loss_accuracy(X, y, mask, model, ps, st)
     ŷ, _ = model(X, ps, st)
-    l = logitcrossentropy(ŷ[:,mask], y[:,mask])
-    acc = mean(onecold(ŷ[:,mask]) .== onecold(y[:,mask]))
-    return (loss = round(l, digits=4), acc = round(acc*100, digits=2))
+    l = logitcrossentropy(ŷ[:, mask], y[:, mask])
+    acc = mean(onecold(ŷ[:, mask]) .== onecold(y[:, mask]))
+    return (loss = round(l, digits = 4), acc = round(acc * 100, digits = 2))
 end
 
 # Training
@@ -126,11 +126,11 @@ function train()
 
     ## Optimizer
     opt = Optimisers.ADAM(0.01f0)
-    st_opt = Optimisers.setup(opt,ps)
+    st_opt = Optimisers.setup(opt, ps)
 
     ## Training Loop
     for _ in 1:epochs
-        (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
+        (l, st), back = pullback(p -> loss(X, ytrain, train_mask, model, p, st), ps)
         gs = back((one(l), nothing))[1]
         st_opt, ps = Optimisers.update(st_opt, ps, gs)
         @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
@@ -175,19 +175,21 @@ Convert the data to `GNNGraph` and get the adjacency matrix from the graph `g`.
 ```julia
 classes = dataset.metadata["classes"]
 g = mldataset2gnngraph(dataset) |> device
-onehotbatch(data,labels)= device(labels).==reshape(data, 1,size(data)...)
-onecold(y) =  map(argmax,eachcol(y))
+onehotbatch(data, labels) = device(labels) .== reshape(data, 1, size(data)...)
+onecold(y) = map(argmax, eachcol(y))
 X = g.ndata.features
 y = onehotbatch(g.ndata.targets, classes) # a dense matrix is not the optimal, but we don't want to use Flux here
 
-Ã = normalized_adjacency(g, add_self_loops=true) |> device
+Ã = normalized_adjacency(g, add_self_loops = true) |> device
 ```
+
 ### Training Data
 
 GNNs operate on an entire graph, so we can't do any sort of minibatching here. We predict the entire dataset, but train the model in a semi-supervised learning fashion.
+
 ```julia
 (; train_mask, val_mask, test_mask) = g.ndata
-ytrain = y[:,train_mask]
+ytrain = y[:, train_mask]
 ```
 
 ## Model and Data Configuration
@@ -200,13 +202,13 @@ nhidden = 16
 nout = length(classes)
 epochs = 20
 ```
+
 ## Define the Graph Neural Network
 
 Here, we define a type of graph neural networks called `GCNConv`. We use the name `ExplicitGCNConv` to avoid naming conflicts with `GraphNeuralNetworks`. For more information on defining a layer with `Lux`, please consult to the [doc](http://lux.csail.mit.edu/dev/introduction/overview/#AbstractExplicitLayer-API).
 
-
 ```julia
-struct ExplicitGCNConv{F1,F2,F3} <: AbstractExplicitLayer
+struct ExplicitGCNConv{F1, F2, F3} <: AbstractExplicitLayer
     Ã::AbstractMatrix  # nomalized_adjacency matrix
     in_chs::Int
     out_chs::Int
@@ -222,14 +224,18 @@ function Base.show(io::IO, l::ExplicitGCNConv)
 end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
-        return (weight=d.init_weight(rng, d.out_chs, d.in_chs),
-                bias=d.init_bias(rng, d.out_chs, 1))
+    return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
+            bias = d.init_bias(rng, d.out_chs, 1))
 end
 
-function ExplicitGCNConv(Ã, ch::Pair{Int,Int}, activation = identity;
-                         init_weight=glorot_normal, init_bias=zeros32)
-    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã, first(ch), last(ch), activation,
-                                                                                       init_weight, init_bias)
+function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
+                         init_weight = glorot_normal, init_bias = zeros32)
+    return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã,
+                                                                                       first(ch),
+                                                                                       last(ch),
+                                                                                       activation,
+                                                                                       init_weight,
+                                                                                       init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -244,14 +250,14 @@ Let us now define the final model. We will use two GNN layers for approximating 
 
 ```julia
 function diffeqsol_to_array(x::ODESolution{T, N, <:AbstractVector{<:CuArray}}) where {T, N}
-    return dropdims(gpu(x); dims=3)
+    return dropdims(gpu(x); dims = 3)
 end
-diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims=3)
+diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims = 3)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
             ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
-node = NeuralODE(gnn, (0.f0, 1.f0), Tsit5(), save_everystep = false,
+node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
                  reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
@@ -267,23 +273,25 @@ model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
 We shall be using the standard categorical crossentropy loss function, which is used for multiclass classification tasks.
 
 ```julia
-logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims=1))
+logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
 
 function loss(x, y, mask, model, ps, st)
     ŷ, st = model(x, ps, st)
-    return logitcrossentropy(ŷ[:,mask], y), st
+    return logitcrossentropy(ŷ[:, mask], y), st
 end
 
 function eval_loss_accuracy(X, y, mask, model, ps, st)
     ŷ, _ = model(X, ps, st)
-    l = logitcrossentropy(ŷ[:,mask], y[:,mask])
-    acc = mean(onecold(ŷ[:,mask]) .== onecold(y[:,mask]))
-    return (loss = round(l, digits=4), acc = round(acc*100, digits=2))
+    l = logitcrossentropy(ŷ[:, mask], y[:, mask])
+    acc = mean(onecold(ŷ[:, mask]) .== onecold(y[:, mask]))
+    return (loss = round(l, digits = 4), acc = round(acc * 100, digits = 2))
 end
 ```
 
 ### Setup Model
+
 We need to manually set up our mode with `Lux`, and convert the parameters to `ComponentArray` so that they can work well with sensitivity algorithms.
+
 ```julia
 rng = Random.default_rng()
 Random.seed!(rng, 0)
@@ -292,13 +300,14 @@ ps, st = Lux.setup(rng, model)
 ps = ComponentArray(ps) |> device
 st = st |> device
 ```
+
 ### Optimizer
 
 For this task, we will be using the `ADAM` optimizer with a learning rate of `0.01`.
 
 ```julia
 opt = Optimisers.Adam(0.01f0)
-st_opt = Optimisers.setup(opt,ps)
+st_opt = Optimisers.setup(opt, ps)
 ```
 
 ## Training Loop
@@ -307,7 +316,7 @@ Finally, we use the package `Optimisers` to learn the parameters `ps`. We run th
 
 ```julia
 for _ in 1:epochs
-    (l,st), back = pullback(p->loss(X, ytrain, train_mask, model, p, st), ps)
+    (l, st), back = pullback(p -> loss(X, ytrain, train_mask, model, p, st), ps)
     gs = back((one(l), nothing))[1]
     st_opt, ps = Optimisers.update(st_opt, ps, gs)
     @show eval_loss_accuracy(X, y, val_mask, model, ps, st)

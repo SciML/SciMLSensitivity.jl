@@ -39,14 +39,14 @@ straightforward, since one can simply use the fact that the solution from
 ```@example continuousadjoint
 using OrdinaryDiffEq, SciMLSensitivity
 
-function f(du,u,p,t)
-  du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
-  du[2] = dy = -p[3]*u[2] + u[1]*u[2]
+function f(du, u, p, t)
+    du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + u[1] * u[2]
 end
 
-p = [1.5,1.0,3.0]
-prob = ODEForwardSensitivityProblem(f,[1.0;1.0],(0.0,10.0),p)
-sol = solve(prob,DP8())
+p = [1.5, 1.0, 3.0]
+prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
+sol = solve(prob, DP8())
 ```
 
 gives a continuous solution `sol(t)` with the derivative at each time point. This
@@ -67,24 +67,25 @@ G(u,p)=\int_{0}^{T}\frac{\sum_{i=1}^{n}u_{i}^{2}(t)}{2}dt
 which is:
 
 ```@example continuousadjoint
-g(u,p,t) = (sum(u).^2) ./ 2
+g(u, p, t) = (sum(u) .^ 2) ./ 2
 ```
 
 Notice that the gradient of this function with respect to the state `u` is:
 
 ```@example continuousadjoint
-function dg(out,u,p,t)
-  out[1]= u[1] + u[2]
-  out[2]= u[1] + u[2]
+function dg(out, u, p, t)
+    out[1] = u[1] + u[2]
+    out[2] = u[1] + u[2]
 end
 ```
 
 To get the adjoint sensitivities, we call:
 
 ```@example continuousadjoint
-prob = ODEProblem(f,[1.0;1.0],(0.0,10.0),p)
-sol = solve(prob,DP8())
-res = adjoint_sensitivities(sol,Vern9(),dgdu_continuous=dg,g=g,abstol=1e-8,reltol=1e-8)
+prob = ODEProblem(f, [1.0; 1.0], (0.0, 10.0), p)
+sol = solve(prob, DP8())
+res = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dg, g = g, abstol = 1e-8,
+                            reltol = 1e-8)
 ```
 
 Notice that we can check this against autodifferentiation and numerical
@@ -93,11 +94,11 @@ differentiation as follows:
 ```@example continuousadjoint
 using QuadGK, ForwardDiff, Calculus
 function G(p)
-  tmp_prob = remake(prob,p=p)
-  sol = solve(tmp_prob,Vern9(),abstol=1e-14,reltol=1e-14)
-  res,err = quadgk((t)-> (sum(sol(t)).^2)./2,0.0,10.0,atol=1e-14,rtol=1e-10)
-  res
+    tmp_prob = remake(prob, p = p)
+    sol = solve(tmp_prob, Vern9(), abstol = 1e-14, reltol = 1e-14)
+    res, err = quadgk((t) -> (sum(sol(t)) .^ 2) ./ 2, 0.0, 10.0, atol = 1e-14, rtol = 1e-10)
+    res
 end
-res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
-res3 = Calculus.gradient(G,[1.5,1.0,3.0])
+res2 = ForwardDiff.gradient(G, [1.5, 1.0, 3.0])
+res3 = Calculus.gradient(G, [1.5, 1.0, 3.0])
 ```
