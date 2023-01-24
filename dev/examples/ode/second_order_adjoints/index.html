@@ -8,19 +8,19 @@ tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODEfunc(du, u, p, t)
     true_A = [-0.1 2.0; -2.0 -0.1]
-    du .= ((u.^3)&#39;true_A)&#39;
+    du .= ((u .^ 3)&#39;true_A)&#39;
 end
 
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Flux.Chain(x -&gt; x.^3,
+dudt2 = Flux.Chain(x -&gt; x .^ 3,
                    Flux.Dense(2, 50, tanh),
                    Flux.Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
-  Array(prob_neuralode(u0, p)[1])
+    Array(prob_neuralode(u0, p)[1])
 end
 
 function loss_neuralode(p)
@@ -33,52 +33,54 @@ end
 list_plots = []
 iter = 0
 callback = function (p, l, pred; doplot = false)
-  global list_plots, iter
+    global list_plots, iter
 
-  if iter == 0
-    list_plots = []
-  end
-  iter += 1
+    if iter == 0
+        list_plots = []
+    end
+    iter += 1
 
-  display(l)
+    display(l)
 
-  # plot current prediction against data
-  plt = scatter(tsteps, ode_data[1,:], label = &quot;data&quot;)
-  scatter!(plt, tsteps, pred[1,:], label = &quot;prediction&quot;)
-  push!(list_plots, plt)
-  if doplot
-    display(plot(plt))
-  end
+    # plot current prediction against data
+    plt = scatter(tsteps, ode_data[1, :], label = &quot;data&quot;)
+    scatter!(plt, tsteps, pred[1, :], label = &quot;prediction&quot;)
+    push!(list_plots, plt)
+    if doplot
+        display(plot(plt))
+    end
 
-  return l &lt; 0.01
+    return l &lt; 0.01
 end
 
 adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x,p)-&gt;loss_neuralode(x), adtype)
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss_neuralode(x), adtype)
 
 optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.p)
-pstart = Optimization.solve(optprob1, ADAM(0.01), callback=callback, maxiters = 100).u
+pstart = Optimization.solve(optprob1, ADAM(0.01), callback = callback, maxiters = 100).u
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
-pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback=callback, maxiters = 200)
-pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback=callback, maxiters = 200)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element Vector{Float32}:
- -0.30752727
- -0.036686398
- -0.0052940645
-  0.036768477
- -0.31513217
-  0.12919301
-  0.06301402
-  0.14273849
- -0.12667355
-  0.27501062
+pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback = callback,
+                          maxiters = 200)
+pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback = callback,
+                          maxiters = 200)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element Vector{Float32}:
+ -0.31579217
+  0.043574482
+ -0.3188093
+ -0.14792128
+  0.23976739
+ -0.009024275
+ -0.100286156
+ -0.12600622
+ -0.10671857
+ -0.2960173
   ⋮
- -0.06362013
- -0.33218786
- -0.18655662
- -0.24389456
- -0.2246068
-  0.2444884
-  0.044614475
+ -0.13008904
+ -0.058515288
+ -0.12228374
+ -0.2566913
+ -0.042970203
+  0.16894159
+ -0.31886306
   0.0
-  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 23 January 2023 13:05">Monday 23 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.0</code></pre><p>Note that we do not demonstrate <code>Newton()</code> because we have not found a single case where it is competitive with the other two methods. <code>KrylovTrustRegion()</code> is generally the fastest due to its use of Hessian-vector products.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../prediction_error_method/">« Prediction error method (PEM)</a><a class="docs-footer-nextpage" href="../second_order_neural/">Neural Second Order Ordinary Differential Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 24 January 2023 14:01">Tuesday 24 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

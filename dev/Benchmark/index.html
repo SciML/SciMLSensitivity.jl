@@ -9,13 +9,13 @@ tsteps = range(tspan[1], tspan[2], length = datasize)
 
 function trueODEfunc(du, u, p, t)
     true_A = [-0.1 2.0; -2.0 -0.1]
-    du .= ((u.^3)&#39;true_A)&#39;
+    du .= ((u .^ 3)&#39;true_A)&#39;
 end
 
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = FastChain((x, p) -&gt; x.^3,
+dudt2 = FastChain((x, p) -&gt; x .^ 3,
                   FastDense(2, 50, tanh),
                   FastDense(50, 2))
 Random.seed!(100)
@@ -29,10 +29,11 @@ function loss_neuralode(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode,p)
+@btime Zygote.gradient(loss_neuralode, p)
 # 2.709 ms (56506 allocations: 6.62 MiB)
 
-prob_neuralode_interpolating = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=InterpolatingAdjoint(autojacvec=ReverseDiffVJP(true)))
+prob_neuralode_interpolating = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
 
 function loss_neuralode_interpolating(p)
     pred = Array(prob_neuralode_interpolating(u0, p))
@@ -40,10 +41,11 @@ function loss_neuralode_interpolating(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_interpolating,p)
+@btime Zygote.gradient(loss_neuralode_interpolating, p)
 # 5.501 ms (103835 allocations: 2.57 MiB)
 
-prob_neuralode_interpolating_zygote = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
+prob_neuralode_interpolating_zygote = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                                sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
 function loss_neuralode_interpolating_zygote(p)
     pred = Array(prob_neuralode_interpolating_zygote(u0, p))
@@ -51,10 +53,11 @@ function loss_neuralode_interpolating_zygote(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_interpolating_zygote,p)
+@btime Zygote.gradient(loss_neuralode_interpolating_zygote, p)
 # 2.899 ms (56150 allocations: 6.61 MiB)
 
-prob_neuralode_backsolve = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(true)))
+prob_neuralode_backsolve = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)))
 
 function loss_neuralode_backsolve(p)
     pred = Array(prob_neuralode_backsolve(u0, p))
@@ -62,10 +65,11 @@ function loss_neuralode_backsolve(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_backsolve,p)
+@btime Zygote.gradient(loss_neuralode_backsolve, p)
 # 4.871 ms (85855 allocations: 2.20 MiB)
 
-prob_neuralode_quad = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=QuadratureAdjoint(autojacvec=ReverseDiffVJP(true)))
+prob_neuralode_quad = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)))
 
 function loss_neuralode_quad(p)
     pred = Array(prob_neuralode_quad(u0, p))
@@ -73,10 +77,11 @@ function loss_neuralode_quad(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_quad,p)
+@btime Zygote.gradient(loss_neuralode_quad, p)
 # 11.748 ms (79549 allocations: 3.87 MiB)
 
-prob_neuralode_backsolve_tracker = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=BacksolveAdjoint(autojacvec=TrackerVJP()))
+prob_neuralode_backsolve_tracker = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                             sensealg = BacksolveAdjoint(autojacvec = TrackerVJP()))
 
 function loss_neuralode_backsolve_tracker(p)
     pred = Array(prob_neuralode_backsolve_tracker(u0, p))
@@ -84,10 +89,11 @@ function loss_neuralode_backsolve_tracker(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_backsolve_tracker,p)
+@btime Zygote.gradient(loss_neuralode_backsolve_tracker, p)
 # 27.604 ms (186143 allocations: 12.22 MiB)
 
-prob_neuralode_backsolve_zygote = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=BacksolveAdjoint(autojacvec=ZygoteVJP()))
+prob_neuralode_backsolve_zygote = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                            sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
 
 function loss_neuralode_backsolve_zygote(p)
     pred = Array(prob_neuralode_backsolve_zygote(u0, p))
@@ -95,10 +101,11 @@ function loss_neuralode_backsolve_zygote(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_backsolve_zygote,p)
+@btime Zygote.gradient(loss_neuralode_backsolve_zygote, p)
 # 2.091 ms (49883 allocations: 6.28 MiB)
 
-prob_neuralode_backsolve_false = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP(false)))
+prob_neuralode_backsolve_false = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                           sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(false)))
 
 function loss_neuralode_backsolve_false(p)
     pred = Array(prob_neuralode_backsolve_false(u0, p))
@@ -106,10 +113,11 @@ function loss_neuralode_backsolve_false(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_backsolve_false,p)
+@btime Zygote.gradient(loss_neuralode_backsolve_false, p)
 # 4.822 ms (9956 allocations: 1.03 MiB)
 
-prob_neuralode_tracker = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps, sensealg=TrackerAdjoint())
+prob_neuralode_tracker = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps,
+                                   sensealg = TrackerAdjoint())
 
 function loss_neuralode_tracker(p)
     pred = Array(prob_neuralode_tracker(u0, p))
@@ -117,5 +125,5 @@ function loss_neuralode_tracker(p)
     return loss
 end
 
-@btime Zygote.gradient(loss_neuralode_tracker,p)
-# 12.614 ms (76346 allocations: 3.12 MiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../manual/direct_adjoint_sensitivities/">« Direct Adjoint Sensitivities of Differential Equations</a><a class="docs-footer-nextpage" href="../sensitivity_math/">Sensitivity Math Details »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 23 January 2023 13:05">Monday 23 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+@btime Zygote.gradient(loss_neuralode_tracker, p)
+# 12.614 ms (76346 allocations: 3.12 MiB)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../manual/direct_adjoint_sensitivities/">« Direct Adjoint Sensitivities of Differential Equations</a><a class="docs-footer-nextpage" href="../sensitivity_math/">Sensitivity Math Details »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 24 January 2023 14:01">Tuesday 24 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
