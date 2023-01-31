@@ -1,6 +1,6 @@
 module SciMLSensitivity
 
-using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
+using DiffEqBase, ForwardDiff, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 using Adapt
 using LinearSolve
@@ -9,8 +9,7 @@ using StochasticDiffEq
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
-import ZygoteRules, Zygote, ReverseDiff
-import ArrayInterfaceCore, ArrayInterfaceTracker
+import ArrayInterfaceCore
 import Enzyme
 import GPUArraysCore
 using StaticArrays
@@ -52,9 +51,11 @@ include("sde_tools.jl")
 include("staticarrays.jl")
 
 # AD Extensions
-include("reversediff.jl")
-include("tracker.jl")
-include("zygote.jl")
+if !isdefined(Base, :get_extension)
+    include("../ext/ReverseDiffExt.jl")
+    include("../ext/TrackerExt.jl")
+    include("../ext/ZygoteExt.jl")
+end
 
 export extract_local_sensitivities
 
