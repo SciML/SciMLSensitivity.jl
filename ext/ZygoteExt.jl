@@ -1,6 +1,6 @@
 module ZygoteExt
 # Piracy that used to be requires, allowing Zyogote.jl to be specialized for SciML
-using ZygoteRules, SciMLBase
+using ZygoteRules, Zygote, SciMLBase
 
 function ∇tmap(cx, f, args...)
     ys_and_backs = SciMLBase.tmap((args...) -> Zygote._pullback(cx, f, args...), args...)
