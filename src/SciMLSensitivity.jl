@@ -51,11 +51,6 @@ include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("staticarrays.jl")
 
-# AD Extensions
-include("reversediff.jl")
-include("tracker.jl")
-include("zygote.jl")
-
 export extract_local_sensitivities
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
