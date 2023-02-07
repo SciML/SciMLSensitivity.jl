@@ -112,23 +112,23 @@ optprob2 = remake(optprob, u0 = result_neuralode.u)
 result_neuralode2 = Optimization.solve(optprob2,
                                        NLopt.LD_LBFGS(),
                                        callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 254-element Vector{Float64}:
-  2.057859797757832
-  0.11709423921522874
-  0.16140872348659746
-  0.5694428313869704
- -0.16558155779547298
- -0.4363774347548077
- -0.1762461423027977
-  0.12043545395183347
-  0.41552574484681504
- -0.569367473912347
+  1.9600767249964421
+  0.4047117942890961
+  1.0053934156456976
+ -0.30499174109289906
+  0.8019235812440779
+  0.9654897378810955
+  0.35091293130695306
+ -0.16126375910345106
+ -0.6581908035944897
+  0.7744497081398909
   ⋮
-  0.624060706675358
-  0.10582831190997628
-  0.7179722467388954
- -0.3728978074913732
- -0.2525080199789672
-  0.7929040080502864
-  0.6925180074319254
- -0.5921494055786133
-  0.2577882458264477</code></pre><p>Notice that the advantage of this format is that we can use Optim&#39;s optimizers, like <code>LBFGS</code> with a full <code>Chain</code> object, for all of Flux&#39;s neural networks, like convolutional neural networks.</p><p><img src="https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../simplechains/">Neural Ordinary Differential Equations with SimpleChains »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 7 February 2023 21:37">Tuesday 7 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.5041012461103824
+ -0.40093121970017287
+  0.006987419758240573
+  0.25537640666614736
+  0.19622473409783647
+  0.16848228274854407
+  0.6374352086000424
+ -0.3599741292856601
+ -0.4569503137833046</code></pre><p>Notice that the advantage of this format is that we can use Optim&#39;s optimizers, like <code>LBFGS</code> with a full <code>Chain</code> object, for all of Flux&#39;s neural networks, like convolutional neural networks.</p><p><img src="https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../simplechains/">Neural Ordinary Differential Equations with SimpleChains »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 7 February 2023 21:40">Tuesday 7 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
