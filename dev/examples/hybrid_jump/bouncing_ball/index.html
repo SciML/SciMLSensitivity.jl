@@ -28,12 +28,12 @@ t: 13-element Vector{Float64}:
   0.011326304086163171
   0.11336507963718272
   1.1337528351473782
-  3.1943828249996846
-  3.1943828249996846
-  8.305395344999186
-  8.305395344999186
- 12.394205360998795
- 12.394205360998795
+  3.1943828249996926
+  3.1943828249996926
+  8.305395344999182
+  8.305395344999182
+ 12.394205360998782
+ 12.394205360998782
  15.0
 u: 13-element Vector{Vector{Float64}}:
  [50.0, 0.0]
@@ -42,13 +42,13 @@ u: 13-element Vector{Vector{Float64}}:
  [49.99937140269516, -0.11099778004439904]
  [49.93702695772239, -1.1109777804443903]
  [43.70156209309689, -11.110777784444302]
- [7.76461924680934e-14, -31.30495168499692]
- [7.76461924680934e-14, 25.043961347997538]
- [6.163634369619797e-13, -25.04396134799746]
- [6.163634369619797e-13, 20.03516907839797]
- [4.712687518026383e-13, -20.035169078398127]
- [4.712687518026383e-13, 16.028135262718504]
- [8.494217007606231, -9.5086521994933]</code></pre><p>Here we have a friction coefficient of <code>0.8</code>. We want to refine this coefficient to find the value so that the predicted height of the ball at the endpoint is 20. We do this by minimizing a loss function against the value 20:</p><pre><code class="language-julia hljs">function loss(θ)
+ [5.1432817344611456e-15, -31.30495168499698]
+ [5.1432817344611456e-15, 25.043961347997584]
+ [5.058496228157902e-13, -25.04396134799733]
+ [5.058496228157902e-13, 20.035169078397868]
+ [1.115068773899498e-13, -20.035169078398138]
+ [1.115068773899498e-13, 16.02813526271851]
+ [8.494217007605767, -9.508652199493415]</code></pre><p>Here we have a friction coefficient of <code>0.8</code>. We want to refine this coefficient to find the value so that the predicted height of the ball at the endpoint is 20. We do this by minimizing a loss function against the value 20:</p><pre><code class="language-julia hljs">function loss(θ)
     sol = solve(prob, Tsit5(), p = [9.8, θ[1]], callback = callback)
     target = 20.0
     abs2(sol[end][1] - target)
@@ -60,4 +60,4 @@ optf = Optimization.OptimizationFunction((x, p) -&gt; loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, [0.8])
 @time res = Optimization.solve(optprob, PolyOpt(), maxiters = 300)
 @show res.u # [0.866554105436901]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Float64}:
- 0.866554105436908</code></pre><p>This runs in about <code>0.091215 seconds (533.45 k allocations: 80.717 MiB)</code> and finds an optimal drag coefficient.</p><h2 id="Note-on-Sensitivity-Methods"><a class="docs-heading-anchor" href="#Note-on-Sensitivity-Methods">Note on Sensitivity Methods</a><a id="Note-on-Sensitivity-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-Sensitivity-Methods" title="Permalink"></a></h2><p>The continuous adjoint sensitivities <code>BacksolveAdjoint</code>, <code>InterpolatingAdjoint</code>, and <code>QuadratureAdjoint</code> are compatible with events for ODEs. <code>BacksolveAdjoint</code> and <code>InterpolatingAdjoint</code> can also handle events for SDEs. Use <code>BacksolveAdjoint</code> if the event terminates the time evolution and several states are saved. Currently, the continuous adjoint sensitivities do not support multiple events per time point.</p><p>All methods based on discrete sensitivity analysis via automatic differentiation, like <code>ReverseDiffAdjoint</code>, <code>TrackerAdjoint</code>, or <code>ForwardDiffSensitivity</code> are the methods to use (and <code>ReverseDiffAdjoint</code> is demonstrated above), are compatible with events. This applies to SDEs, DAEs, and DDEs as well.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hybrid_diffeq/">« Training Neural Networks in Hybrid Differential Equations</a><a class="docs-footer-nextpage" href="../../bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Sunday 29 January 2023 00:52">Sunday 29 January 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 0.8665541054369095</code></pre><p>This runs in about <code>0.091215 seconds (533.45 k allocations: 80.717 MiB)</code> and finds an optimal drag coefficient.</p><h2 id="Note-on-Sensitivity-Methods"><a class="docs-heading-anchor" href="#Note-on-Sensitivity-Methods">Note on Sensitivity Methods</a><a id="Note-on-Sensitivity-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-Sensitivity-Methods" title="Permalink"></a></h2><p>The continuous adjoint sensitivities <code>BacksolveAdjoint</code>, <code>InterpolatingAdjoint</code>, and <code>QuadratureAdjoint</code> are compatible with events for ODEs. <code>BacksolveAdjoint</code> and <code>InterpolatingAdjoint</code> can also handle events for SDEs. Use <code>BacksolveAdjoint</code> if the event terminates the time evolution and several states are saved. Currently, the continuous adjoint sensitivities do not support multiple events per time point.</p><p>All methods based on discrete sensitivity analysis via automatic differentiation, like <code>ReverseDiffAdjoint</code>, <code>TrackerAdjoint</code>, or <code>ForwardDiffSensitivity</code> are the methods to use (and <code>ReverseDiffAdjoint</code> is demonstrated above), are compatible with events. This applies to SDEs, DAEs, and DDEs as well.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hybrid_diffeq/">« Training Neural Networks in Hybrid Differential Equations</a><a class="docs-footer-nextpage" href="../../bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 7 February 2023 21:37">Tuesday 7 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
