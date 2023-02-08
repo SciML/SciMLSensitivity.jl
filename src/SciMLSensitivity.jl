@@ -32,8 +32,6 @@ abstract type TransformedFunction end
 
 import SciMLBase: unwrapped_f
 
-abstract type AbstractSensitivityAlgorithm{CS, AD, FDT} <: AbstractSciMLAlgorithm end
-
 import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAlgorithm,
                   AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,
                   AbstractSecondOrderSensitivityAlgorithm, AbstractShadowingSensitivityAlgorithm
