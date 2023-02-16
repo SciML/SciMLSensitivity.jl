@@ -13,7 +13,7 @@ import ZygoteRules, Zygote, ReverseDiff
 import ArrayInterfaceCore, ArrayInterfaceTracker
 import Enzyme
 import GPUArraysCore
-using StaticArrays
+using StaticArraysCore
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
 import FunctionWrappersWrappers
