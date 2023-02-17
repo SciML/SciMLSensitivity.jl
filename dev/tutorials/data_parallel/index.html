@@ -8,84 +8,78 @@ f(u, p, t) = dudt(u, p, st)[1]</code></pre><pre class="documenter-example-output
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 11-element Vector{Float32}:
+t: 10-element Vector{Float32}:
  0.0
- 0.0031444
- 0.008320433
- 0.017992023
- 0.03629648
- 0.07235007
- 0.12760258
- 0.21628924
- 0.38821816
- 0.684854
+ 0.0059935343
+ 0.017677909
+ 0.037115537
+ 0.07312048
+ 0.13222809
+ 0.25789338
+ 0.44295847
+ 0.8143788
  1.0
-u: 11-element Vector{Vector{Float32}}:
+u: 10-element Vector{Vector{Float32}}:
  [2.0, 0.0]
- [1.9979287, -0.0009993487]
- [1.9945197, -0.002643737]
- [1.9881519, -0.0057141613]
- [1.9761074, -0.011517496]
- [1.9524117, -0.022918457]
- [1.9161704, -0.0403144]
- [1.8581868, -0.06804466]
- [1.7464619, -0.121130854]
- [1.5559438, -0.21065596]
- [1.3568985, -0.30294052]</code></pre><p>or we can solve this ODE where the initial condition is a matrix, where each column is an independent system:</p><pre><code class="language-julia hljs">u0 = Float32.([0 1 2
+ [1.9970248, 0.0009992408]
+ [1.9912331, 0.0029457672]
+ [1.9816233, 0.0061795115]
+ [1.9639047, 0.012154607]
+ [1.9350477, 0.021920253]
+ [1.8746432, 0.042492103]
+ [1.7880057, 0.07227211]
+ [1.6222947, 0.12992431]
+ [1.5434712, 0.15755622]</code></pre><p>or we can solve this ODE where the initial condition is a matrix, where each column is an independent system:</p><pre><code class="language-julia hljs">u0 = Float32.([0 1 2
                0 0 0])
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
 t: 10-element Vector{Float32}:
  0.0
- 0.0039484426
- 0.011419804
- 0.025094673
- 0.049713477
- 0.09785965
- 0.18130106
- 0.3454312
- 0.6187223
+ 0.007265037
+ 0.020346668
+ 0.043531902
+ 0.08579316
+ 0.17220733
+ 0.31674436
+ 0.5625391
+ 0.9817487
  1.0
 u: 10-element Vector{Matrix{Float32}}:
  [0.0 1.0 2.0; 0.0 0.0 0.0]
- [0.0 0.9986334 1.9973991; 0.0 -0.0006493178 -0.0012548404]
- [0.0 0.99604845 1.9924787; 0.0 -0.0018772834 -0.0036280002]
- [0.0 0.99132067 1.9834771; 0.0 -0.004122478 -0.007967222]
- [0.0 0.9828206 1.9672849; 0.0 -0.008156816 -0.015764855]
- [0.0 0.9662392 1.9356683; 0.0 -0.016018122 -0.030961508]
- [0.0 0.93763465 1.8810341; 0.0 -0.02955325 -0.05713301]
- [0.0 0.88186216 1.7741799; 0.0 -0.055847704 -0.10800241]
- [0.0 0.7904629 1.5981611; 0.0 -0.0986664 -0.19092254]
- [0.0 0.666062 1.3568983; 0.0 -0.1564088 -0.30294046]</code></pre><p>On the CPU this will multithread across the system (due to BLAS) and on GPUs this will parallelize the operations across the GPU. To GPU this, you&#39;d simply move the parameters and the initial condition to the GPU:</p><pre><code class="language-julia hljs">xs = Float32.([0 1 2
+ [0.0 0.9980181 1.9963939; 0.0 0.00072685763 0.0012111609]
+ [0.0 0.9944572 1.9899118; 0.0 0.002032721 0.0033900882]
+ [0.0 0.98817027 1.9784578; 0.0 0.0043378975 0.0072457558]
+ [0.0 0.97679025 1.9576937; 0.0 0.008509222 0.014252971]
+ [0.0 0.9538378 1.9156914; 0.0 0.016916305 0.028493803]
+ [0.0 0.9163836 1.8467945; 0.0 0.030612731 0.05203154]
+ [0.0 0.85530525 1.7334754; 0.0 0.052864764 0.09115751]
+ [0.0 0.75836927 1.551106; 0.0 0.08786292 0.15487641]
+ [0.0 0.7543476 1.5434716; 0.0 0.089304 0.1575562]</code></pre><p>On the CPU this will multithread across the system (due to BLAS) and on GPUs this will parallelize the operations across the GPU. To GPU this, you&#39;d simply move the parameters and the initial condition to the GPU:</p><pre><code class="language-julia hljs">xs = Float32.([0 1 2
                0 0 0])
 prob = ODEProblem(f, Lux.gpu(u0), (0.0f0, 1.0f0), Lux.gpu(p))
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 11-element Vector{Float32}:
+t: 9-element Vector{Float32}:
  0.0
- 0.003948443
- 0.011419805
- 0.025094677
- 0.049713485
- 0.097859666
- 0.17960529
- 0.32163867
- 0.54556936
- 0.92954147
+ 0.007265039
+ 0.019302942
+ 0.041853514
+ 0.08229336
+ 0.15153337
+ 0.28558564
+ 0.5659431
  1.0
-u: 11-element Vector{CUDA.CuArray{Float32, 2, CUDA.Mem.DeviceBuffer}}:
+u: 9-element Vector{CUDA.CuArray{Float32, 2, CUDA.Mem.DeviceBuffer}}:
  [0.0 1.0 2.0; 0.0 0.0 0.0]
- [0.0 0.9986334 1.9973991; 0.0 -0.0006493179 -0.0012548405]
- [0.0 0.99604845 1.9924787; 0.0 -0.0018772837 -0.0036280004]
- [0.0 0.99132067 1.9834771; 0.0 -0.0041224784 -0.0079672225]
- [0.0 0.9828206 1.9672849; 0.0 -0.0081568165 -0.015764859]
- [0.0 0.9662392 1.9356683; 0.0 -0.016018124 -0.03096151]
- [0.0 0.9382143 1.8821424; 0.0 -0.02927928 -0.056603193]
- [0.0 0.8899063 1.7896183; 0.0 -0.052063026 -0.10067832]
- [0.0 0.81474715 1.6450349; 0.0 -0.087322526 -0.1689439]
- [0.0 0.6887746 1.4010838; 0.0 -0.14591216 -0.28255817]
- [0.0 0.66606194 1.3568981; 0.0 -0.15640874 -0.30294052]</code></pre><p>This method of parallelism is optimal if all the operations are linear algebra operations, such as a neural ODE. Thus this method of parallelism is demonstrated in the <a href="tutorials/@ref mnist">MNIST tutorial</a>.</p><p>However, this method of parallelism has many limitations. First of all, the ODE function is required to be written in a way that is independent across the columns. Not all ODEs are written like this, so one needs to be careful. But additionally, this method is ineffective if the ODE function has many serial operations, like <code>u[1]*u[2] - u[3]</code>. In such a case, this indexing behavior will dominate the runtime and cause the parallelism to sometimes even be detrimental.</p><h1 id="Out-of-ODE-Parallelism"><a class="docs-heading-anchor" href="#Out-of-ODE-Parallelism">Out of ODE Parallelism</a><a id="Out-of-ODE-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Out-of-ODE-Parallelism" title="Permalink"></a></h1><p>Instead of parallelizing within an ODE solve, one can parallelize the solves to the ODE itself. While this will be less effective on very large ODEs, like big neural ODE image classifiers, this method be effective even if the ODE is small or the <code>f</code> function is not well-parallelized. This kind of parallelism is done via the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">DifferentialEquations.jl ensemble interface</a>. The following examples showcase multithreaded, cluster, and (multi)GPU parallelism through this interface.</p><h2 id="Multithreaded-Batching-At-a-Glance"><a class="docs-heading-anchor" href="#Multithreaded-Batching-At-a-Glance">Multithreaded Batching At a Glance</a><a id="Multithreaded-Batching-At-a-Glance-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-At-a-Glance" title="Permalink"></a></h2><p>The following is a full copy-paste example for the multithreading. Distributed and GPU minibatching are described below.</p><pre><code class="language-julia hljs">using DifferentialEquations, Optimization, OptimizationFlux
+ [0.0 0.9980181 1.9963939; 0.0 0.00072685786 0.0012111623]
+ [0.0 0.9947409 1.9904284; 0.0 0.0019286722 0.0032163337]
+ [0.0 0.98862433 1.9792855; 0.0 0.0041714227 0.006966907]
+ [0.0 0.9777288 1.9594076; 0.0 0.008165266 0.01367371]
+ [0.0 0.9592905 1.9256845; 0.0 0.014919896 0.025097761]
+ [0.0 0.92435986 1.861504; 0.0 0.027698629 0.04698862]
+ [0.0 0.85448176 1.7319394; 0.0 0.05316379 0.09169083]
+ [0.0 0.7543474 1.5434713; 0.0 0.08930388 0.15755624]</code></pre><p>This method of parallelism is optimal if all the operations are linear algebra operations, such as a neural ODE. Thus this method of parallelism is demonstrated in the <a href="tutorials/@ref mnist">MNIST tutorial</a>.</p><p>However, this method of parallelism has many limitations. First of all, the ODE function is required to be written in a way that is independent across the columns. Not all ODEs are written like this, so one needs to be careful. But additionally, this method is ineffective if the ODE function has many serial operations, like <code>u[1]*u[2] - u[3]</code>. In such a case, this indexing behavior will dominate the runtime and cause the parallelism to sometimes even be detrimental.</p><h1 id="Out-of-ODE-Parallelism"><a class="docs-heading-anchor" href="#Out-of-ODE-Parallelism">Out of ODE Parallelism</a><a id="Out-of-ODE-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Out-of-ODE-Parallelism" title="Permalink"></a></h1><p>Instead of parallelizing within an ODE solve, one can parallelize the solves to the ODE itself. While this will be less effective on very large ODEs, like big neural ODE image classifiers, this method be effective even if the ODE is small or the <code>f</code> function is not well-parallelized. This kind of parallelism is done via the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">DifferentialEquations.jl ensemble interface</a>. The following examples showcase multithreaded, cluster, and (multi)GPU parallelism through this interface.</p><h2 id="Multithreaded-Batching-At-a-Glance"><a class="docs-heading-anchor" href="#Multithreaded-Batching-At-a-Glance">Multithreaded Batching At a Glance</a><a id="Multithreaded-Batching-At-a-Glance-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-At-a-Glance" title="Permalink"></a></h2><p>The following is a full copy-paste example for the multithreading. Distributed and GPU minibatching are described below.</p><pre><code class="language-julia hljs">using DifferentialEquations, Optimization, OptimizationFlux
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]
@@ -130,9 +124,9 @@ u0: 1-element Vector{Float64}:
  3.0</code></pre><p>In the <code>prob_func</code> we define how to build a new problem based on the base problem. In this case, we want to change <code>u0</code> by a constant, i.e. <code>0.5 .+ i/100 .* prob.u0</code> for different trajectories labelled by <code>i</code>. Thus we use the <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/problem/#Modification-of-problem-types">remake function from the problem interface</a> to do so:</p><pre><code class="language-julia hljs">function prob_func(prob, i, repeat)
     remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">prob_func (generic function with 1 method)</code></pre><p>We now build the <code>EnsembleProblem</code> with this basis:</p><pre><code class="language-julia hljs">ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleProblem with problem ODEProblem</code></pre><p>Now, to solve an ensemble problem, we need to choose an ensembling algorithm and choose the number of trajectories to solve. Here let&#39;s solve this in serial with 100 trajectories. Note that <code>i</code> will thus run from <code>1:100</code>.</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleSerial(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
-SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache{Float64, Float64}}, DiffEqBase.DEStats, Nothing}</code></pre><p>and thus running in multithreading would be:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
-SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache{Float64, Float64}}, DiffEqBase.DEStats, Nothing}</code></pre><p>This whole mechanism is differentiable, so we then put it in a training loop and it soars. Note that you need to make sure that <a href="https://docs.julialang.org/en/v1/manual/multi-threading/">Julia&#39;s multithreading</a> is enabled, which you can do via:</p><pre><code class="language-julia hljs">Threads.nthreads()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2</code></pre><h2 id="Distributed-Batching-Across-a-Cluster"><a class="docs-heading-anchor" href="#Distributed-Batching-Across-a-Cluster">Distributed Batching Across a Cluster</a><a id="Distributed-Batching-Across-a-Cluster-1"></a><a class="docs-heading-anchor-permalink" href="#Distributed-Batching-Across-a-Cluster" title="Permalink"></a></h2><p>Changing to distributed computing is very simple as well. The setup is all the same, except you utilize <code>EnsembleDistributed</code> as the ensembler:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
-SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache{Float64, Float64}}, DiffEqBase.DEStats, Nothing}</code></pre><p>Note that for this to work, you need to ensure that your processes are already started. For more information on setting up processes and utilizing a compute cluster, see <a href="https://docs.julialang.org/en/v1/manual/distributed-computing/">the official distributed documentation</a>. The key feature to recognize is that, due to the message passing required for cluster compute, one must ensure that all the required functions are defined on the worker processes. The following is a full example of a distributed batching setup:</p><pre><code class="language-julia hljs">using Distributed
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache}, DiffEqBase.DEStats, Nothing}</code></pre><p>and thus running in multithreading would be:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache}, DiffEqBase.DEStats, Nothing}</code></pre><p>This whole mechanism is differentiable, so we then put it in a training loop and it soars. Note that you need to make sure that <a href="https://docs.julialang.org/en/v1/manual/multi-threading/">Julia&#39;s multithreading</a> is enabled, which you can do via:</p><pre><code class="language-julia hljs">Threads.nthreads()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2</code></pre><h2 id="Distributed-Batching-Across-a-Cluster"><a class="docs-heading-anchor" href="#Distributed-Batching-Across-a-Cluster">Distributed Batching Across a Cluster</a><a id="Distributed-Batching-Across-a-Cluster-1"></a><a class="docs-heading-anchor-permalink" href="#Distributed-Batching-Across-a-Cluster" title="Permalink"></a></h2><p>Changing to distributed computing is very simple as well. The setup is all the same, except you utilize <code>EnsembleDistributed</code> as the ensembler:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, NamedTuple{(), Tuple{}}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEq.Tsit5{typeof(OrdinaryDiffEq.trivial_limiter!), typeof(OrdinaryDiffEq.trivial_limiter!), Static.False}, OrdinaryDiffEq.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, OrdinaryDiffEq.Tsit5ConstantCache}, DiffEqBase.DEStats, Nothing}</code></pre><p>Note that for this to work, you need to ensure that your processes are already started. For more information on setting up processes and utilizing a compute cluster, see <a href="https://docs.julialang.org/en/v1/manual/distributed-computing/">the official distributed documentation</a>. The key feature to recognize is that, due to the message passing required for cluster compute, one must ensure that all the required functions are defined on the worker processes. The following is a full example of a distributed batching setup:</p><pre><code class="language-julia hljs">using Distributed
 addprocs(4)
 
 @everywhere begin
@@ -203,4 +197,4 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -&gt; loss_gpu(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 
-res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><h2 id="Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Multi-GPU-Batching">Multi-GPU Batching</a><a id="Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-GPU-Batching" title="Permalink"></a></h2><p>DiffEqGPU supports batching across multiple GPUs. See <a href="https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu">its README</a> for details on setting it up.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../adjoint_continuous_functional/">« Adjoint Sensitivity Analysis of Continuous Functionals</a><a class="docs-footer-nextpage" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 8 February 2023 17:59">Wednesday 8 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><h2 id="Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Multi-GPU-Batching">Multi-GPU Batching</a><a id="Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-GPU-Batching" title="Permalink"></a></h2><p>DiffEqGPU supports batching across multiple GPUs. See <a href="https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu">its README</a> for details on setting it up.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../adjoint_continuous_functional/">« Adjoint Sensitivity Analysis of Continuous Functionals</a><a class="docs-footer-nextpage" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Friday 17 February 2023 03:26">Friday 17 February 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
