@@ -118,7 +118,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    if ArrayInterfaceCore.ismutable(u0)
+    if ArrayInterface.ismutable(u0)
         len = length(u0)
         λ = similar(u0, len)
         λ .= false
@@ -140,10 +140,10 @@ end
 
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
-        odefun = ODEFunction{ArrayInterfaceCore.ismutable(z0), true}(sense,
+        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
                                                                      jac_prototype = adjoint_jac_prototype)
     else
-        odefun = ODEFunction{ArrayInterfaceCore.ismutable(z0), true}(sense,
+        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
                                                                      mass_matrix = sol.prob.f.mass_matrix',
                                                                      jac_prototype = adjoint_jac_prototype)
     end
@@ -293,7 +293,7 @@ end
 
 function (S::AdjointSensitivityIntegrand)(out, t)
     @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
-    if ArrayInterfaceCore.ismutable(y)
+    if ArrayInterface.ismutable(y)
         sol(y, t)
         adj_sol(λ, t)
     else
@@ -372,7 +372,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
 
             for i in (length(t) - 1):-1:1
-                if ArrayInterfaceCore.ismutable(res)
+                if ArrayInterface.ismutable(res)
                     res .+= quadgk(integrand, t[i], t[i + 1],
                                    atol = abstol, rtol = reltol)[1]
                 else

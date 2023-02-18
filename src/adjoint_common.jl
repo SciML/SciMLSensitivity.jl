@@ -481,7 +481,7 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     prob = getprob(sensefun)
     idx = length(prob.u0)
     Δλas = Tuple{typeof(λ), eltype(t)}[]
-    if ArrayInterfaceCore.ismutable(y)
+    if ArrayInterface.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
                                    sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
                                    nothing, Δλas)
@@ -502,7 +502,7 @@ function (f::ReverseLossCallback)(integrator)
         copyto!(y, integrator.u[(end - idx + 1):end])
     end
 
-    if ArrayInterfaceCore.ismutable(u)
+    if ArrayInterface.ismutable(u)
         # Warning: alias here! Be careful with λ
         gᵤ = isq ? λ : @view(λ[1:idx])
         if dgdu !== nothing
@@ -543,7 +543,7 @@ function (f::ReverseLossCallback)(integrator)
         F !== I && F !== (I, I) && ldiv!(F, Δλd)
     end
 
-    if ArrayInterfaceCore.ismutable(u)
+    if ArrayInterface.ismutable(u)
         u[diffvar_idxs] .+= Δλd
     else
         @assert sensealg isa QuadratureAdjoint

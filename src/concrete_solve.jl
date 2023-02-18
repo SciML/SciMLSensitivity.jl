@@ -472,7 +472,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         else
             cb2 = cb
         end
-        if ArrayInterfaceCore.ismutable(eltype(sol.u))
+        if ArrayInterface.ismutable(eltype(sol.u))
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
                                             dgdu_discrete = df_iip,
                                             sensealg = sensealg,
@@ -672,7 +672,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                              p[(((j + 1) * chunk_size) + 1):end])
                     end
 
-                    pdual = ArrayInterfaceCore.restructure(p, pdualvec)
+                    pdual = ArrayInterface.restructure(p, pdualvec)
                     u0dual = convert.(eltype(pdualvec), u0)
 
                     if (convert_tspan(sensealg) === nothing &&
@@ -768,7 +768,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     end
                     push!(pparts, vec(_dp))
                 end
-                ArrayInterfaceCore.restructure(p, reduce(vcat, pparts))
+                ArrayInterface.restructure(p, reduce(vcat, pparts))
             end
         else
             dp = nothing
@@ -819,7 +819,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                              u0[(((j + 1) * chunk_size) + 1):end])
                     end
 
-                    u0dual = ArrayInterfaceCore.restructure(u0, u0dualvec)
+                    u0dual = ArrayInterface.restructure(u0, u0dualvec)
                 end
 
                 if p === nothing || p === DiffEqBase.NullParameters()
@@ -927,7 +927,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             if u0 isa Number
                 first(_du0)
             else
-                ArrayInterfaceCore.restructure(u0, reduce(vcat, du0parts))
+                ArrayInterface.restructure(u0, reduce(vcat, du0parts))
             end
         end
 
