@@ -32,10 +32,6 @@ abstract type TransformedFunction end
 
 import SciMLBase: unwrapped_f
 
-import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAlgorithm,
-                  AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,
-                  AbstractSecondOrderSensitivityAlgorithm, AbstractShadowingSensitivityAlgorithm
-
 include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
@@ -54,6 +50,11 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("staticarrays.jl")
+
+# AD Extensions
+include("reversediff.jl")
+include("tracker.jl")
+include("zygote.jl")
 
 export extract_local_sensitivities
 
