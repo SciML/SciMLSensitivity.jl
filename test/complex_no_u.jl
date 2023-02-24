@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, LinearAlgebra, Optimization, OptimizationFlux, Flux
-nn = Chain(Dense(1, 16), Dense(16, 16, tanh), Dense(16, 2))
+nn = Chain(Dense(1, 16), Dense(16, 16, tanh), Dense(16, 2)) |> f64
 initial, re = Flux.destructure(nn)
 
 function ode2!(u, p, t)
