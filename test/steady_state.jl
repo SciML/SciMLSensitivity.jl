@@ -471,7 +471,7 @@ end
                                     u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(autojacvec = EnzymeVJP())),
+        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
                                     u0,
                                     p)
         @test du0≈Zdu0 atol=1e-4
