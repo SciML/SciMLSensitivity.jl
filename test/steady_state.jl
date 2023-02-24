@@ -423,7 +423,6 @@ end
     @test dp1≈dp8 rtol=1e-10
 end
 
-#=
 @testset "Continuous sensitivity tools" begin
     function f!(du, u, p, t)
         du[1] = p[1] + p[2] * u[1]
@@ -564,4 +563,3 @@ end
         @test dp≈Zdp atol=1e-4
     end
 end
-=#
