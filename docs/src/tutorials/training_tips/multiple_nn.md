@@ -7,7 +7,7 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
-using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Random
+using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt, DifferentialEquations, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
@@ -38,13 +38,13 @@ NN_2 = Lux.Chain(Lux.Dense(3, 16, tanh), Lux.Dense(16, 1))
 p2, st2 = Lux.setup(rng, NN_2)
 scaling_factor = 1.0f0
 
-p1 = Lux.ComponentArray(p1)
-p2 = Lux.ComponentArray(p2)
+p1 = ComponentArray(p1)
+p2 = ComponentArray(p2)
 
-p = Lux.ComponentArray{eltype(p1)}()
-p = Lux.ComponentArray(p; p1)
-p = Lux.ComponentArray(p; p2)
-p = Lux.ComponentArray(p; scaling_factor)
+p = ComponentArray{eltype(p1)}()
+p = ComponentArray(p; p1)
+p = ComponentArray(p; p2)
+p = ComponentArray(p; scaling_factor)
 
 function dudt_(u, p, t)
     v, w = u

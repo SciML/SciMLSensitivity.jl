@@ -9,7 +9,7 @@ zeros, then we have a constraint defined by the right-hand side. Using
 terms must add to one. An example of this is as follows:
 
 ```@example dae
-using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -42,7 +42,7 @@ pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
                                tspan, M, Rodas5(autodiff = false), saveat = 0.1)
-model_stiff_ndae(u₀, Lux.ComponentArray(pinit), st)
+model_stiff_ndae(u₀, ComponentArray(pinit), st)
 
 function predict_stiff_ndae(p)
     return model_stiff_ndae(u₀, p, st)[1]
@@ -59,11 +59,11 @@ end
 #   return false
 # end
 
-l1 = first(loss_stiff_ndae(Lux.ComponentArray(pinit)))
+l1 = first(loss_stiff_ndae(ComponentArray(pinit)))
 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
+optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
 result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ```
 
@@ -72,7 +72,7 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ### Load Packages
 
 ```@example dae2
-using Lux, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -142,7 +142,7 @@ pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
                                tspan, M, Rodas5(autodiff = false), saveat = 0.1)
-model_stiff_ndae(u₀, Lux.ComponentArray(pinit), st)
+model_stiff_ndae(u₀, ComponentArray(pinit), st)
 ```
 
 Because this is a stiff problem, we have manually imposed that sum constraint via
@@ -176,7 +176,7 @@ function loss_stiff_ndae(p)
     return loss, pred
 end
 
-l1 = first(loss_stiff_ndae(Lux.ComponentArray(pinit)))
+l1 = first(loss_stiff_ndae(ComponentArray(pinit)))
 ```
 
 Notice that we are feeding the **parameters** of `model_stiff_ndae` to the `loss_stiff_ndae`
@@ -206,6 +206,6 @@ Finally, training with `Optimization.solve` by passing: *loss function*, *model 
 ```@example dae2
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, Lux.ComponentArray(pinit))
+optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
 result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ```
