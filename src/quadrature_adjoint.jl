@@ -141,11 +141,11 @@ end
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                     jac_prototype = adjoint_jac_prototype)
+                                                                 jac_prototype = adjoint_jac_prototype)
     else
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                     mass_matrix = sol.prob.f.mass_matrix',
-                                                                     jac_prototype = adjoint_jac_prototype)
+                                                                 mass_matrix = sol.prob.f.mass_matrix',
+                                                                 jac_prototype = adjoint_jac_prototype)
     end
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb

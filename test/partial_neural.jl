@@ -19,7 +19,7 @@ prob = ODEProblem(dudt2_, x, tspan, _p)
 solve(prob, Tsit5())
 
 function predict_rd(θ)
-    Array(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:end], abstol = 1f-7, reltol = 1f-5))
+    Array(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:end], abstol = 1.0f-7, reltol = 1.0f-5))
 end
 
 loss_rd(p) = sum(abs2, x - 1 for x in predict_rd(p))

@@ -9,7 +9,8 @@ zeros, then we have a constraint defined by the right-hand side. Using
 terms must add to one. An example of this is as follows:
 
 ```@example dae
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
+      DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -72,7 +73,8 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ### Load Packages
 
 ```@example dae2
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt, DifferentialEquations, Plots
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
+      DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()

@@ -7,7 +7,8 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
-using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt, DifferentialEquations, Random
+using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt,
+      DifferentialEquations, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
