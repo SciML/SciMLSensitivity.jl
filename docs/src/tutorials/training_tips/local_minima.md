@@ -16,7 +16,8 @@ before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
-using DifferentialEquations, SciMLSensitivity, Optimization, OptimizationFlux
+using DifferentialEquations, ComponentArrays, SciMLSensitivity, Optimization,
+      OptimizationFlux
 using Lux, Plots, Random
 
 rng = Random.default_rng()
@@ -38,7 +39,7 @@ dudt2 = Lux.Chain(ActivationFunction(x -> x .^ 3),
                   Lux.Dense(16, 2))
 
 pinit, st = Lux.setup(rng, dudt2)
-pinit = Lux.ComponentArray(pinit)
+pinit = ComponentArray(pinit)
 
 function neuralode_f(u, p, t)
     dudt2(u, p, st)[1]

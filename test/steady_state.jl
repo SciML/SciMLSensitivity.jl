@@ -73,14 +73,7 @@ Random.seed!(12345)
         @info "Calculate adjoint sensitivities from autodiff & numerical diff"
         function G(p)
             tmp_prob = remake(prob, u0 = convert.(eltype(p), prob.u0), p = p)
-            sol = solve(tmp_prob,
-                        SSRootfind(nlsolve = (f!, u0, abstol) -> (res = NLsolve.nlsolve(f!,
-                                                                                        u0,
-                                                                                        autodiff = :forward,
-                                                                                        method = :newton,
-                                                                                        iterations = Int(1e6),
-                                                                                        ftol = 1e-14);
-                                                                  res.zero)))
+            sol = solve(tmp_prob, DynamicSS(Rodas5()))
             A = convert(Array, sol)
             g(A, p, nothing)
         end
@@ -259,14 +252,7 @@ Random.seed!(12345)
     @testset "for u0: (should be zero, steady state does not depend on initial condition)" begin
         res5 = ForwardDiff.gradient(prob.u0) do u0
             tmp_prob = remake(prob, u0 = u0)
-            sol = solve(tmp_prob,
-                        SSRootfind(nlsolve = (f!, u0, abstol) -> (res = NLsolve.nlsolve(f!,
-                                                                                        u0,
-                                                                                        autodiff = :forward,
-                                                                                        method = :newton,
-                                                                                        iterations = Int(1e6),
-                                                                                        ftol = 1e-14);
-                                                                  res.zero)))
+            sol = solve(tmp_prob, DynamicSS(Rodas5()))
             A = convert(Array, sol)
             g(A, p, nothing)
         end

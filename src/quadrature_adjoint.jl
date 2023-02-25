@@ -107,7 +107,7 @@ end
 
     terminated = false
     if hasfield(typeof(sol), :retcode)
-        if sol.retcode == :Terminated
+        if sol.retcode == ReturnCode.Terminated
             tspan = (tspan[1], sol.t[end])
             terminated = true
         end
@@ -141,11 +141,11 @@ end
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                     jac_prototype = adjoint_jac_prototype)
+                                                                 jac_prototype = adjoint_jac_prototype)
     else
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                     mass_matrix = sol.prob.f.mass_matrix',
-                                                                     jac_prototype = adjoint_jac_prototype)
+                                                                 mass_matrix = sol.prob.f.mass_matrix',
+                                                                 jac_prototype = adjoint_jac_prototype)
     end
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
@@ -359,12 +359,12 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
 
             # correction for end interval.
-            if t[end] != sol.prob.tspan[2] && sol.retcode !== :Terminated
+            if t[end] != sol.prob.tspan[2] && sol.retcode !== ReturnCode.Terminated
                 res .+= quadgk(integrand, t[end], sol.prob.tspan[end],
                                atol = abstol, rtol = reltol)[1]
             end
 
-            if sol.retcode === :Terminated
+            if sol.retcode === ReturnCode.Terminated
                 integrand = update_integrand_and_dgrad(res, sensealg, callback, integrand,
                                                        adj_prob, sol, dgdu_discrete,
                                                        dgdp_discrete, dλ, dgrad, t[end],

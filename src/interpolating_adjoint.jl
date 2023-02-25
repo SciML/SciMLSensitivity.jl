@@ -290,7 +290,7 @@ end
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
-        if sol.retcode == :Terminated
+        if sol.retcode == ReturnCode.Terminated
             tspan = (tspan[1], sol.t[end])
             terminated = true
         end
@@ -402,7 +402,7 @@ end
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
-        if sol.retcode == :Terminated
+        if sol.retcode == ReturnCode.Terminated
             tspan = (tspan[1], sol.t[end])
             terminated = true
         end
@@ -542,7 +542,7 @@ end
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
-        if sol.retcode == :Terminated
+        if sol.retcode == ReturnCode.Terminated
             tspan = (tspan[1], sol.t[end])
             terminated = true
         end
