@@ -16,8 +16,9 @@ function inplace_vjp(prob, u0, p, verbose)
         true
     catch e
         if verbose
-            @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-            show(e)
+            @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
+            showerror(stderr,e)
+            println()
         end
         false
     end
@@ -47,8 +48,9 @@ function inplace_vjp(prob, u0, p, verbose)
         ReverseDiffVJP(compile)
     catch e
         if verbose
-            @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-            show(e)
+            @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
+            showerror(stderr,e)
+            println()
         end
         false
     end
@@ -75,8 +77,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             ZygoteVJP()
         catch e
             if verbose
-                @warn "ZygoteVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                show(e)
+                @warn "ZygoteVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
+                showerror(stderr,e)
+                println()
             end
             false
         end
@@ -87,8 +90,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 ReverseDiffVJP()
             catch e
                 if verbose
-                    @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                    show(e)
+                    @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
+                    showerror(stderr,e)
+                    println()
                 end
                 false
             end
@@ -100,8 +104,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 TrackerVJP()
             catch e
                 if verbose
-                    @warn "TrackerVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                    show(e)
+                    @warn "TrackerVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
+                    showerror(stderr,e)
+                    println()
                 end
                 false
             end
