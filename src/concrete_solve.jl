@@ -17,7 +17,7 @@ function inplace_vjp(prob, u0, p, verbose)
     catch e
         if verbose
             @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-            println(e)
+            show(e)
         end
         false
     end
@@ -45,10 +45,10 @@ function inplace_vjp(prob, u0, p, verbose)
             return vec(du1)
         end
         ReverseDiffVJP(compile)
-    catch
+    catch e
         if verbose
             @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-            println(e)
+            show(e)
         end
         false
     end
@@ -73,10 +73,10 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
         vjp = try
             Zygote.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
             ZygoteVJP()
-        catch
+        catch e
             if verbose
                 @warn "ZygoteVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                println(e)
+                show(e)
             end
             false
         end
@@ -85,10 +85,10 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             vjp = try
                 ReverseDiff.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
                 ReverseDiffVJP()
-            catch
+            catch e
                 if verbose
                     @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                    println(e)
+                    show(e)
                 end
                 false
             end
@@ -98,10 +98,10 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             vjp = try
                 Tracker.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
                 TrackerVJP()
-            catch
+            catch e
                 if verbose
                     @warn "TrackerVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)"
-                    println(e)
+                    show(e)
                 end
                 false
             end
