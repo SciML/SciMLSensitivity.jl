@@ -66,6 +66,14 @@ Base.@pure function ForwardSensitivity(;
     ForwardSensitivity{chunk_size, autodiff, diff_type}(autojacvec, autojacmat)
 end
 
+function Base.show(io::IO, t::Type{ForwardSensitivity{CS, AD, FDT}}) where {CS, AD, FDT}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "ForwardSensitivity{$CS,$AD,$FDT}")
+    else
+        print(io, "ForwardSensitivity{…}")
+    end
+end
+
 """
 ```julia
 ForwardDiffSensitivity{CS, CTS} <: AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing}
@@ -100,6 +108,14 @@ struct ForwardDiffSensitivity{CS, CTS} <:
        AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing} end
 Base.@pure function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
     ForwardDiffSensitivity{chunk_size, convert_tspan}()
+end
+
+function Base.show(io::IO, t::Type{ForwardDiffSensitivity{CS, CTS}}) where {CS, CTS}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "ForwardDiffSensitivity{$CS,$CTS}")
+    else
+        print(io, "ForwardDiffSensitivity{…}")
+    end
 end
 
 """
@@ -257,6 +273,15 @@ Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
                                                                           checkpointing,
                                                                           noisemixing)
 end
+
+function Base.show(io::IO, t::Type{BacksolveAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "BacksolveAdjoint{$CS,$AD,$FDT,$VJP}")
+    else
+        print(io, "BacksolveAdjoint{$VJP,…}")
+    end
+end
+
 function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
                                                sensealg.noisemixing)
@@ -367,6 +392,15 @@ Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
                                                                               checkpointing,
                                                                               noisemixing)
 end
+
+function Base.show(io::IO, t::Type{InterpolatingAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "InterpolatingAdjoint{$CS,$AD,$FDT,$VJP}")
+    else
+        print(io, "InterpolatingAdjoint{$VJP,…}")
+    end
+end
+
 function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
                 vjp) where {CS, AD, FDT}
     InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
@@ -462,6 +496,15 @@ Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
     QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
                                                                            abstol, reltol)
 end
+
+function Base.show(io::IO, t::Type{QuadratureAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "QuadratureAdjoint{$CS,$AD,$FDT,$VJP}")
+    else
+        print(io, "QuadratureAdjoint{$VJP,…}")
+    end
+end
+
 function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.abstol,
                                                 sensealg.reltol)
@@ -966,6 +1009,14 @@ struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
+end
+
+function Base.show(io::IO, t::Type{SteadyStateAdjoint{CS, AD, FDT, VJP, LS}}) where {CS, AD, FDT, VJP, LS}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "SteadyStateAdjoint{$CS,$AD,$FDT,$VJP,$LS}")
+    else
+        print(io, "SteadyStateAdjoint{$VJP,…}")
+    end
 end
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
