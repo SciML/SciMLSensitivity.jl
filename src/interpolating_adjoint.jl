@@ -15,6 +15,19 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
     noiseterm::Bool
 end
 
+function Base.show(io::IO,
+                    t::Type{ODEInterpolatingAdjointSensitivityFunction{C,
+                    Alg,uType, SType, CPS, pType,
+                    fType}}) where {C,
+                    Alg,uType, SType, CPS, pType,
+                    fType}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "ODEInterpolatingAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$CPS,$pType,$fType}")
+    else
+        print(io, "ODEInterpolatingAdjointSensitivityFunction{…}")
+    end
+end
+
 mutable struct CheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals
