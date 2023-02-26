@@ -21,6 +21,19 @@ struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateT
     issemiexplicitdae::Bool
 end
 
+function Base.show(io::IO,
+                    t::Type{AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
+                    DG2, DI,
+                    AI, FM}}) where {UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
+                    DG2, DI,
+                    AI, FM}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "AdjointDiffCache{$UF,$PF,$G,$TJ,$PJT,$uType,$JC,$GC,$PJC,$JNC,$PJNC,$rateType,$DG1,$DG2,$DI,$AI,$FM}")
+    else
+        print(io, "AdjointDiffCache{…}")
+    end
+end
+
 """
     adjointdiffcache(g,sensealg,discrete,sol,dg,alg;quad=false)
 

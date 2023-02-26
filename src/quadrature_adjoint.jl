@@ -11,6 +11,21 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
 end
 
+function Base.show(io::IO,
+                    t::Type{ODEQuadratureAdjointSensitivityFunction{C,
+                    Alg,
+                    uType, SType,
+                    fType}}) where {C,
+                    Alg,
+                    uType, SType,
+                    fType}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "ODEQuadratureAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$fType}")
+    else
+        print(io, "ODEQuadratureAdjointSensitivityFunction{…}")
+    end
+end
+
 function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
                                                  alg)
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;

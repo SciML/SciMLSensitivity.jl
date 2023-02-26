@@ -20,6 +20,14 @@ struct SteadyStateAdjointSensitivityFunction{
     linsolve::LS
 end
 
+function Base.show(io::IO, t::Type{SteadyStateAdjointSensitivityFunction{C,Alg,uType,SType,fType,CV,λType,VJPType,LS}}) where {C,Alg,uType,SType,fType,CV,λType,VJPType,LS}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "SteadyStateAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$fType,$CV,$λType,$VJPType,$LS}")
+    else
+        print(io, "SteadyStateAdjointSensitivityFunction{…}")
+    end
+end
+
 function SteadyStateAdjointSensitivityFunction(g,
                                                sensealg, alg,
                                                sol,

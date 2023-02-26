@@ -11,6 +11,19 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     noiseterm::Bool
 end
 
+function Base.show(io::IO,
+                    t::Type{ODEBacksolveSensitivityFunction{C, Alg,
+                    uType, pType,
+                    fType}}) where {C, Alg,
+                    uType, pType,
+                    fType}
+    if TruncatedStacktraces.VERBOSE[]
+        print(io, "ODEBacksolveSensitivityFunction{$C,$Alg,$uType,$pType,$fType}")
+    else
+        print(io, "ODEBacksolveSensitivityFunction{…}")
+    end
+end
+
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
                                          noiseterm = false)
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;

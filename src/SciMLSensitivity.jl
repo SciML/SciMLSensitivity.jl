@@ -14,6 +14,7 @@ import ArrayInterface
 import Enzyme
 import GPUArraysCore
 using StaticArraysCore
+import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
 import FunctionWrappersWrappers
