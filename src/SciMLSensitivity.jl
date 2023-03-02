@@ -14,6 +14,8 @@ import ArrayInterface
 import Enzyme
 import GPUArraysCore
 using StaticArraysCore
+using SparseDiffTools
+using SciMLOperators
 import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
