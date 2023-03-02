@@ -37,11 +37,35 @@ struct ODEForwardSensitivityFunction{iip, F, A, Tt, OJ, J, JP, S, PJ, TW, TWt, U
 end
 
 function Base.show(io::IO,
-                    t::Type{ODEForwardSensitivityFunction{iip, F, A, Tt, OJ, J, JP, S, PJ, TW, TWt, UF, PF, JC,
-                    PJC, Alg, fc, JM, pJM, MM, CV}}) where {iip, F, A, Tt, OJ, J, JP, S, PJ, TW, TWt, UF, PF, JC,
-                    PJC, Alg, fc, JM, pJM, MM, CV}
+                   t::Type{
+                           ODEForwardSensitivityFunction{iip, F, A, Tt, OJ, J, JP, S, PJ,
+                                                         TW, TWt, UF, PF, JC,
+                                                         PJC, Alg, fc, JM, pJM, MM, CV}}) where {
+                                                                                                 iip,
+                                                                                                 F,
+                                                                                                 A,
+                                                                                                 Tt,
+                                                                                                 OJ,
+                                                                                                 J,
+                                                                                                 JP,
+                                                                                                 S,
+                                                                                                 PJ,
+                                                                                                 TW,
+                                                                                                 TWt,
+                                                                                                 UF,
+                                                                                                 PF,
+                                                                                                 JC,
+                                                                                                 PJC,
+                                                                                                 Alg,
+                                                                                                 fc,
+                                                                                                 JM,
+                                                                                                 pJM,
+                                                                                                 MM,
+                                                                                                 CV
+                                                                                                 }
     if TruncatedStacktraces.VERBOSE[]
-        print(io, "ODEForwardSensitivityFunction{$iip,$F,$A,$Tt,$OJ,$J,$JP,$S,$PJ,$TW,$TWt,$UF,$PF,$JC,$PJC,$Alg,$fc,$JM,$pJM,$MM,$CV}")
+        print(io,
+              "ODEForwardSensitivityFunction{$iip,$F,$A,$Tt,$OJ,$J,$JP,$S,$PJ,$TW,$TWt,$UF,$PF,$JC,$PJC,$Alg,$fc,$JM,$pJM,$MM,$CV}")
     else
         print(io, "ODEForwardSensitivityFunction{…}")
     end

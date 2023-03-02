@@ -16,13 +16,20 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
 end
 
 function Base.show(io::IO,
-                    t::Type{ODEInterpolatingAdjointSensitivityFunction{C,
-                    Alg,uType, SType, CPS, pType,
-                    fType}}) where {C,
-                    Alg,uType, SType, CPS, pType,
-                    fType}
+                   t::Type{
+                           ODEInterpolatingAdjointSensitivityFunction{C,
+                                                                      Alg, uType, SType,
+                                                                      CPS, pType,
+                                                                      fType}}) where {C,
+                                                                                      Alg,
+                                                                                      uType,
+                                                                                      SType,
+                                                                                      CPS,
+                                                                                      pType,
+                                                                                      fType}
     if TruncatedStacktraces.VERBOSE[]
-        print(io, "ODEInterpolatingAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$CPS,$pType,$fType}")
+        print(io,
+              "ODEInterpolatingAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$CPS,$pType,$fType}")
     else
         print(io, "ODEInterpolatingAdjointSensitivityFunction{…}")
     end

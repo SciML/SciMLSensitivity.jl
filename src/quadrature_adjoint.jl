@@ -12,13 +12,15 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
 end
 
 function Base.show(io::IO,
-                    t::Type{ODEQuadratureAdjointSensitivityFunction{C,
-                    Alg,
-                    uType, SType,
-                    fType}}) where {C,
-                    Alg,
-                    uType, SType,
-                    fType}
+                   t::Type{
+                           ODEQuadratureAdjointSensitivityFunction{C,
+                                                                   Alg,
+                                                                   uType, SType,
+                                                                   fType}}) where {C,
+                                                                                   Alg,
+                                                                                   uType,
+                                                                                   SType,
+                                                                                   fType}
     if TruncatedStacktraces.VERBOSE[]
         print(io, "ODEQuadratureAdjointSensitivityFunction{$C,$Alg,$uType,$SType,$fType}")
     else

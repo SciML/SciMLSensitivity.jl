@@ -274,7 +274,8 @@ Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
                                                                           noisemixing)
 end
 
-function Base.show(io::IO, t::Type{BacksolveAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+function Base.show(io::IO,
+                   t::Type{BacksolveAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
     if TruncatedStacktraces.VERBOSE[]
         print(io, "BacksolveAdjoint{$CS,$AD,$FDT,$VJP}")
     else
@@ -393,7 +394,8 @@ Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
                                                                               noisemixing)
 end
 
-function Base.show(io::IO, t::Type{InterpolatingAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+function Base.show(io::IO,
+                   t::Type{InterpolatingAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
     if TruncatedStacktraces.VERBOSE[]
         print(io, "InterpolatingAdjoint{$CS,$AD,$FDT,$VJP}")
     else
@@ -497,7 +499,8 @@ Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
                                                                            abstol, reltol)
 end
 
-function Base.show(io::IO, t::Type{QuadratureAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
+function Base.show(io::IO,
+                   t::Type{QuadratureAdjoint{CS, AD, FDT, VJP}}) where {CS, AD, FDT, VJP}
     if TruncatedStacktraces.VERBOSE[]
         print(io, "QuadratureAdjoint{$CS,$AD,$FDT,$VJP}")
     else
@@ -1011,7 +1014,9 @@ struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <:
     linsolve::LS
 end
 
-function Base.show(io::IO, t::Type{SteadyStateAdjoint{CS, AD, FDT, VJP, LS}}) where {CS, AD, FDT, VJP, LS}
+function Base.show(io::IO,
+                   t::Type{SteadyStateAdjoint{CS, AD, FDT, VJP, LS}}) where {CS, AD, FDT,
+                                                                             VJP, LS}
     if TruncatedStacktraces.VERBOSE[]
         print(io, "SteadyStateAdjoint{$CS,$AD,$FDT,$VJP,$LS}")
     else
