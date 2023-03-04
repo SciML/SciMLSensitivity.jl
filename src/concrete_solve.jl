@@ -17,7 +17,7 @@ function inplace_vjp(prob, u0, p, verbose)
     catch e
         if verbose
             @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-            showerror(stderr,e)
+            showerror(stderr, e)
             println()
         end
         false
@@ -49,7 +49,7 @@ function inplace_vjp(prob, u0, p, verbose)
     catch e
         if verbose
             @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-            showerror(stderr,e)
+            showerror(stderr, e)
             println()
         end
         false
@@ -78,7 +78,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
         catch e
             if verbose
                 @warn "ZygoteVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                showerror(stderr,e)
+                showerror(stderr, e)
                 println()
             end
             false
@@ -91,7 +91,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             catch e
                 if verbose
                     @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                    showerror(stderr,e)
+                    showerror(stderr, e)
                     println()
                 end
                 false
@@ -105,7 +105,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             catch e
                 if verbose
                     @warn "TrackerVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                    showerror(stderr,e)
+                    showerror(stderr, e)
                     println()
                 end
                 false
