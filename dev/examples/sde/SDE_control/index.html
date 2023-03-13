@@ -328,25 +328,25 @@ nn = FastChain(FastDense(4, 32, relu),
                FastDense(32, 1, tanh))
 
 p_nn = initial_params(nn) # random initial parameters</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">193-element Vector{Float32}:
- -0.10283953
-  0.24584198
- -0.16006276
-  0.0044850525
-  0.25235036
-  0.33560884
-  0.22814311
- -0.051263034
- -0.34157375
- -0.35602015
+  0.31765464
+  0.17344137
+ -0.07653205
+  0.17282929
+  0.31903
+ -0.32568973
+  0.107472725
+  0.19685632
+  0.19361797
+ -0.073253214
   ⋮
-  0.3920771
- -0.34713957
-  0.31008223
-  0.3196854
-  0.37223697
- -0.12639746
-  0.33453888
- -0.18394935
+  0.07440776
+  0.39818037
+ -0.35682836
+ -0.16522107
+  0.38142407
+  0.22535554
+ -0.3624968
+ -0.29200637
   0.0</code></pre><h3 id="Initial-state"><a class="docs-heading-anchor" href="#Initial-state">Initial state</a><a id="Initial-state-1"></a><a class="docs-heading-anchor-permalink" href="#Initial-state" title="Permalink"></a></h3><p>We prepare <code>n_par</code> initial states, uniformly distributed over the Bloch sphere. To avoid complex numbers in our simulations, we split the state of the qubit</p><p class="math-container">\[  ψ(t) = c_e(t) (1,0) + c_d(t) (0,1)\]</p><p>into its real and imaginary part.</p><pre><code class="language-julia hljs"># initial state anywhere on the Bloch sphere
 function prepare_initial(dt, n_par)
     # shape 4 x n_par
@@ -368,10 +368,10 @@ end
 # ψtar = |e&gt;
 
 u0 = prepare_initial(myparameters.dt, myparameters.numtraj)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4×16 Matrix{Float32}:
- 0.815097   0.699731   0.519822  …   0.770808   0.940727   0.326116
- 0.288186   0.531624   0.827798     -0.211586  -0.245395   0.32723
- 0.0        0.0        0.0           0.0        0.0        0.0
- 0.502558  -0.477234  -0.211033     -0.600904   0.234124  -0.886887</code></pre><h3 id="Defining-the-SDE"><a class="docs-heading-anchor" href="#Defining-the-SDE">Defining the SDE</a><a id="Defining-the-SDE-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-SDE" title="Permalink"></a></h3><p>We define the drift and diffusion term of the qubit. The SDE doesn&#39;t preserve the norm of the quantum state. To ensure the normalization of the state, we add a <code>DiscreteCallback</code> after each time step. Further, we use a NoiseGrid from the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/noise_process/#Direct-Construction-Example">DiffEqNoiseProcess</a> package, as one possibility to simulate a 1D Brownian motion. Note that the NN is placed directly into the drift function, thus the control parameter Ω is continuously updated.</p><pre><code class="language-julia hljs"># Define SDE
+  0.964702   0.807341  0.677662   0.547027  …   0.246431  0.444674   0.857412
+ -0.057431  -0.221571  0.621915   0.54175      -0.456603  0.344939  -0.175173
+  0.0        0.0       0.0        0.0           0.0       0.0        0.0
+ -0.257006   0.546907  0.392423  -0.638176      0.85486   0.826609  -0.483901</code></pre><h3 id="Defining-the-SDE"><a class="docs-heading-anchor" href="#Defining-the-SDE">Defining the SDE</a><a id="Defining-the-SDE-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-SDE" title="Permalink"></a></h3><p>We define the drift and diffusion term of the qubit. The SDE doesn&#39;t preserve the norm of the quantum state. To ensure the normalization of the state, we add a <code>DiscreteCallback</code> after each time step. Further, we use a NoiseGrid from the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/noise_process/#Direct-Construction-Example">DiffEqNoiseProcess</a> package, as one possibility to simulate a 1D Brownian motion. Note that the NN is placed directly into the drift function, thus the control parameter Ω is continuously updated.</p><pre><code class="language-julia hljs"># Define SDE
 function qubit_drift!(du, u, p, t)
     # expansion coefficients |Ψ&gt; = ce |e&gt; + cd |d&gt;
     ceR, cdR, ceI, cdI = u # real and imaginary parts
@@ -431,10 +431,10 @@ prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparamet
                         callback = callback, noise = NG)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SDEProblem with uType Vector{Float32} and tType Float32. In-place: true
 timespan: (0.0f0, 1.0f0)
 u0: 4-element Vector{Float32}:
- 0.8150974
- 0.28818643
- 0.0
- 0.5025583</code></pre><h3 id="Compute-loss-function"><a class="docs-heading-anchor" href="#Compute-loss-function">Compute loss function</a><a id="Compute-loss-function-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-loss-function" title="Permalink"></a></h3><p>We&#39;d like to prepare the excited state of the qubit. An appropriate choice for the loss function is the infidelity of the state ψ(t) with respect to the excited state. We create a parallelized <code>EnsembleProblem</code>, where the <code>prob_func</code> creates a new <code>NoiseGrid</code> for every trajectory and loops over the initial states. The number of parallel trajectories and the used batch size can be tuned by the kwargs <code>trajectories=..</code> and <code>batchsize=..</code> in the <code>solve</code> call. See also <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">the parallel ensemble simulation docs</a> for a description of the available ensemble algorithms. To optimize only the parameters of the neural network, we use <code>pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]</code></p><pre><code class="language-julia hljs"># compute loss
+  0.9647018
+ -0.057431
+  0.0
+ -0.2570063</code></pre><h3 id="Compute-loss-function"><a class="docs-heading-anchor" href="#Compute-loss-function">Compute loss function</a><a id="Compute-loss-function-1"></a><a class="docs-heading-anchor-permalink" href="#Compute-loss-function" title="Permalink"></a></h3><p>We&#39;d like to prepare the excited state of the qubit. An appropriate choice for the loss function is the infidelity of the state ψ(t) with respect to the excited state. We create a parallelized <code>EnsembleProblem</code>, where the <code>prob_func</code> creates a new <code>NoiseGrid</code> for every trajectory and loops over the initial states. The number of parallel trajectories and the used batch size can be tuned by the kwargs <code>trajectories=..</code> and <code>batchsize=..</code> in the <code>solve</code> call. See also <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">the parallel ensemble simulation docs</a> for a description of the available ensemble algorithms. To optimize only the parameters of the neural network, we use <code>pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]</code></p><pre><code class="language-julia hljs"># compute loss
 function g(u, p, t)
     ceR = @view u[1, :, :]
     cdR = @view u[2, :, :]
@@ -548,4 +548,4 @@ res = Optimization.solve(optprob, ADAM(myparameters.lr), callback = visualizatio
                          maxiters = 100)
 
 # plot optimized control
-visualization_callback(res.u, loss(res.u); doplot = true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p><img src="https://user-images.githubusercontent.com/42201748/107991039-10c59200-6fd6-11eb-8a97-a1c8d18a266b.png" alt="Evolution of the fidelity as a function of time"/></p><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><p>[1] Schäfer, Frank, Pavel Sekatski, Martin Koppenhöfer, Christoph Bruder, and Michal Kloc. &quot;Control of stochastic quantum dynamics by differentiable programming.&quot; Machine Learning: Science and Technology 2, no. 3 (2021): 035004.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimization_sde/">« Optimization of Stochastic Differential Equations</a><a class="docs-footer-nextpage" href="../../dde/delay_diffeq/">Delay Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 4 March 2023 17:03">Saturday 4 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+visualization_callback(res.u, loss(res.u); doplot = true)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><p><img src="https://user-images.githubusercontent.com/42201748/107991039-10c59200-6fd6-11eb-8a97-a1c8d18a266b.png" alt="Evolution of the fidelity as a function of time"/></p><h2 id="References"><a class="docs-heading-anchor" href="#References">References</a><a id="References-1"></a><a class="docs-heading-anchor-permalink" href="#References" title="Permalink"></a></h2><p>[1] Schäfer, Frank, Pavel Sekatski, Martin Koppenhöfer, Christoph Bruder, and Michal Kloc. &quot;Control of stochastic quantum dynamics by differentiable programming.&quot; Machine Learning: Science and Technology 2, no. 3 (2021): 035004.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimization_sde/">« Optimization of Stochastic Differential Equations</a><a class="docs-footer-nextpage" href="../../dde/delay_diffeq/">Delay Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 13 March 2023 15:22">Monday 13 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
