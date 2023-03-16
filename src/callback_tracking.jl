@@ -60,6 +60,8 @@ struct TrackedAffect{T, T2, T3, T4, T5, T6}
     affect!::T4
     correction::T5
     event_idx::Vector{T6}
+    func_start::Bool
+    funciter::Int
 end
 
 TrackedAffect(t::Number, u, p, affect!::Nothing, correction) = nothing
@@ -67,7 +69,9 @@ function TrackedAffect(t::Number, u, p, affect!, correction)
     TrackedAffect(Vector{typeof(t)}(undef, 0), Vector{typeof(t)}(undef, 0),
                   Vector{typeof(u)}(undef, 0), Vector{typeof(p)}(undef, 0), affect!,
                   correction,
-                  Vector{Int}(undef, 0))
+                  Vector{Int}(undef, 0),
+                  true,
+                  0)
 end
 
 function (f::TrackedAffect)(integrator, event_idx = nothing)
