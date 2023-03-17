@@ -60,8 +60,6 @@ struct TrackedAffect{T, T2, T3, T4, T5, T6}
     affect!::T4
     correction::T5
     event_idx::Vector{T6}
-    func_start::Bool
-    funciter::Int
 end
 
 TrackedAffect(t::Number, u, p, affect!::Nothing, correction) = nothing
@@ -69,9 +67,7 @@ function TrackedAffect(t::Number, u, p, affect!, correction)
     TrackedAffect(Vector{typeof(t)}(undef, 0), Vector{typeof(t)}(undef, 0),
                   Vector{typeof(u)}(undef, 0), Vector{typeof(p)}(undef, 0), affect!,
                   correction,
-                  Vector{Int}(undef, 0),
-                  true,
-                  0)
+                  Vector{Int}(undef, 0))
 end
 
 function (f::TrackedAffect)(integrator, event_idx = nothing)
@@ -105,12 +101,18 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     end
 end
 
+# extend the DiffEqCallbacks.functioncalling_affect_initialize to fit TrackedAffect
+import DiffEqCallbacks: functioncalling_affect_initialize
+function functioncalling_affect_initialize(affect::TrackedAffect, u, t, integrator)
+    functioncalling_affect_initialize(affect.affect!, u, t, integrator)
+end
+
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
     DiscreteCallback(cb.condition,
                      TrackedAffect(t, u, p, cb.affect!, correction),
-                     cb.initialize,
-                     cb.finalize,
+                     cb.initialize, 
+                     cb.finalize, 
                      cb.save_positions)
 end
 
@@ -119,8 +121,8 @@ function _track_callback(cb::ContinuousCallback, t, u, p, sensealg)
     ContinuousCallback(cb.condition,
                        TrackedAffect(t, u, p, cb.affect!, correction),
                        TrackedAffect(t, u, p, cb.affect_neg!, correction),
-                       cb.initialize,
-                       cb.finalize,
+                       cb.initialize, 
+                       cb.finalize, 
                        cb.idxs,
                        cb.rootfind, cb.interp_points,
                        cb.save_positions,
@@ -132,7 +134,10 @@ function _track_callback(cb::VectorContinuousCallback, t, u, p, sensealg)
     VectorContinuousCallback(cb.condition,
                              TrackedAffect(t, u, p, cb.affect!, correction),
                              TrackedAffect(t, u, p, cb.affect_neg!, correction),
-                             cb.len, cb.initialize, cb.finalize, cb.idxs,
+                             cb.len,
+                             cb.initialize, 
+                             cb.finalize, 
+                             cb.idxs,
                              cb.rootfind, cb.interp_points,
                              collect(cb.save_positions),
                              cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge)
