@@ -1193,3 +1193,8 @@ struct ForwardDiffOverAdjoint{A} <:
        AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
     adjalg::A
 end
+
+get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile} = AutoReverseDiff(; compile = compile)
+get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
+get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
+get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()

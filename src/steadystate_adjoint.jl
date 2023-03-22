@@ -99,6 +99,7 @@ end
 
     if !needs_jac
         # TODO: FixedVecJacOperator should respect the `autojacvec` of the algorithm
+        #operator = VecJac(f, y, p; autodiff = )
         operator = FixedVecJacOperator(f, y, p, Val(DiffEqBase.isinplace(sol.prob)))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
     else

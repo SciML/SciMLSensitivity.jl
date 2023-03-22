@@ -14,6 +14,7 @@ import ArrayInterface
 import Enzyme
 import GPUArraysCore
 using StaticArraysCore
+using ADTypes
 using SparseDiffTools
 using SciMLOperators
 import TruncatedStacktraces
