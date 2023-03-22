@@ -49,9 +49,11 @@ end
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
+    needs_jac = if has_adjoint(f)
+        false
     # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
     #       cases where the length(u0) > 50 and if yes till what threshold
-    needs_jac = if sensealg.linsolve === nothing
+    elseif sensealg.linsolve === nothing
         length(u0) <= 50
     else
         LinearSolve.needs_concrete_A(sensealg.linsolve)
@@ -98,9 +100,7 @@ end
     end
 
     if !needs_jac
-        # TODO: FixedVecJacOperator should respect the `autojacvec` of the algorithm
-        #operator = VecJac(f, y, p; autodiff = )
-        operator = FixedVecJacOperator(f, y, p, Val(DiffEqBase.isinplace(sol.prob)))
+        operator = VecJac(f, y, p; autodiff = get_autodiff_from_vjp(vjp))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
     else
         linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
@@ -136,25 +136,4 @@ end
         vjp .*= -1
         return vjp
     end
-end
-
-function FixedVecJacOperator(f_in, y, p, ::Val{false})
-    # NOTE: Zygote doesn't support inplace
-    input, f = Zygote.pullback(x -> f_in(x, p, nothing), y)
-    output = f(input)[1]
-    function f_operator!(du, u, p, t)
-        du .= vec(f(reshape(u, size(input)))[1])
-        return du
-    end
-    op = FunctionOperator(f_operator!, vec(input), vec(output))
-    return op
-end
-
-function FixedVecJacOperator(f, y, p, ::Val{true})
-    function f_operator!(du, u, p, t)
-        num_vecjac!(du, (_du, _u) -> f(reshape(_du, size(y)), _u, p, t),
-                    y, reshape(u, size(y)))
-        return du
-    end
-    return FunctionOperator(f_operator!, vec(y); p)
 end
