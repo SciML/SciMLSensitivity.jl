@@ -4,6 +4,7 @@ the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/SciMLSensitivity.jl/issues/4
 """
+
 track_callbacks(cb, t, u, p, sensealg) = track_callbacks(CallbackSet(cb), t, u, p, sensealg)
 function track_callbacks(cb::CallbackSet, t, u, p, sensealg)
     CallbackSet(map(cb -> _track_callback(cb, t, u, p, sensealg), cb.continuous_callbacks),
@@ -70,6 +71,38 @@ function TrackedAffect(t::Number, u, p, affect!, correction)
                   Vector{Int}(undef, 0))
 end
 
+# Wildcard for Callbacks with TrackedAffect in it
+import SciMLBase: ContinuousCallback, VectorContinuousCallback, DiscreteCallback, DECallback, DEIntegrator
+CallbackUsingTrackedAffect = Union{ContinuousCallback{<:Any, TrackedAffect, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any}, 
+                                   VectorContinuousCallback{<:Any, TrackedAffect, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any},
+                                   DiscreteCallback{<:Any, TrackedAffect, <:Any, <:Any}}
+
+# extend callback initialization function in DiffEqBase.jl 
+import DiffEqBase: initialize!
+function initialize!(u, t, integrator::DEIntegrator, any_modified::Bool,
+    c::CallbackUsingTrackedAffect, cs::DECallback...)
+    c.initialize(c, c.affect.affect!, u, t, integrator)
+    initialize!(u, t, integrator, any_modified || integrator.u_modified, cs...)
+end
+function initialize!(u, t, integrator::DEIntegrator, any_modified::Bool,
+    c::CallbackUsingTrackedAffect)
+    c.initialize(c, c.affect.affect!, u, t, integrator)
+    any_modified || integrator.u_modified
+end
+
+# extend callback finalization function in DiffEqBase.jl 
+import DiffEqBase: finalize!
+function finalize!(u, t, integrator::DEIntegrator, any_modified::Bool,
+    c::CallbackUsingTrackedAffect, cs::DECallback...)
+    c.finalize(c, c.affect.affect!, u, t, integrator)
+    finalize!(u, t, integrator, any_modified || integrator.u_modified, cs...)
+end
+function finalize!(u, t, integrator::DEIntegrator, any_modified::Bool,
+    c::CallbackUsingTrackedAffect)
+    c.finalize(c, c.affect.affect!, u, t, integrator)
+    any_modified || integrator.u_modified
+end
+
 function (f::TrackedAffect)(integrator, event_idx = nothing)
     uleft = deepcopy(integrator.u)
     pleft = deepcopy(integrator.p)
@@ -99,12 +132,6 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
             end
         end
     end
-end
-
-# extend the DiffEqCallbacks.functioncalling_affect_initialize to fit TrackedAffect
-import DiffEqCallbacks: functioncalling_affect_initialize
-function functioncalling_affect_initialize(affect::TrackedAffect, u, t, integrator)
-    functioncalling_affect_initialize(affect.affect!, u, t, integrator)
 end
 
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
