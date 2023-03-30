@@ -77,23 +77,23 @@ res1_uode = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiter
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
 res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000,
                                callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 147-element Vector{Float64}:
-  0.1477462500333786
- -0.39094242453575134
- -0.0681489035487175
-  0.4985581040382385
- -0.14340059459209442
-  0.0696292296051979
-  0.14644405245780945
- -0.9020662903785706
-  0.3221783936023712
- -0.8455924987792969
-  ⋮
-  0.15576738119125366
-  0.2667526602745056
-  0.45867204666137695
- -0.2330889254808426
-  0.12990449368953705
-  0.2765374481678009
- -0.03514280542731285
- -0.07924619317054749
-  0.862991213798523</code></pre><p>The key is that <code>Optimization.solve</code> acts on a single parameter vector <code>p</code>. Thus what we do here is concatenate all the parameters into a single ComponentVector <code>p</code> and then train on this parameter vector. Whenever we need to evaluate the neural networks, we dereference the vector and grab the key that corresponds to the neural network. For example, the <code>p1</code> portion is <code>p.p1</code>, which is why the first neural network&#39;s evolution is written like <code>NN_1([v,w], p.p1)</code>.</p><p>This method is flexible to use with many optimizers and in fairly optimized ways. We can also see with the <code>scaling_factor</code> that we can grab parameters directly out of the vector and use them as needed.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../divergence/">« Handling Divergent and Unstable Trajectories</a><a class="docs-footer-nextpage" href="../../../examples/ode/exogenous_input/">Handling Exogenous Input Signals »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Friday 24 March 2023 21:38">Friday 24 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+   ⋮
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN
+ NaN</code></pre><p>The key is that <code>Optimization.solve</code> acts on a single parameter vector <code>p</code>. Thus what we do here is concatenate all the parameters into a single ComponentVector <code>p</code> and then train on this parameter vector. Whenever we need to evaluate the neural networks, we dereference the vector and grab the key that corresponds to the neural network. For example, the <code>p1</code> portion is <code>p.p1</code>, which is why the first neural network&#39;s evolution is written like <code>NN_1([v,w], p.p1)</code>.</p><p>This method is flexible to use with many optimizers and in fairly optimized ways. We can also see with the <code>scaling_factor</code> that we can grab parameters directly out of the vector and use them as needed.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../divergence/">« Handling Divergent and Unstable Trajectories</a><a class="docs-footer-nextpage" href="../../../examples/ode/exogenous_input/">Handling Exogenous Input Signals »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Thursday 30 March 2023 22:22">Thursday 30 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
