@@ -136,9 +136,10 @@ BacksolveAdjoint(; chunk_size = 0, autodiff = true,
   - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
     if the full Jacobian is required with `autodiff=false`.
   - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-    differentiation with special seeding. The default is `true`. The total set
-    of choices are:
+    differentiation with special seeding. The total set of choices are:
 
+      + `nothing`: uses an automatic algorithm to automatically choose the vjp.
+        This is the default and recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
@@ -300,9 +301,10 @@ InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
   - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
     if the full Jacobian is required with `autodiff=false`.
   - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-    differentiation with special seeding. The default is `true`. The total set
-    of choices are:
+    differentiation with special seeding. The total set of choices are:
 
+      + `nothing`: uses an automatic algorithm to automatically choose the vjp.
+        This is the default and recommended for most users.                                                                                                                                        
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
@@ -419,9 +421,10 @@ QuadratureAdjoint(; chunk_size = 0, autodiff = true,
   - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
     if the full Jacobian is required with `autodiff=false`.
   - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-    differentiation with special seeding. The default is `true`. The total set
-    of choices are:
+    differentiation with special seeding. The total set of choices are:
 
+      + `nothing`: uses an automatic algorithm to automatically choose the vjp.
+        This is the default and recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
@@ -952,9 +955,10 @@ SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
   - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
     if the full Jacobian is required with `autodiff=false`.
   - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
-    differentiation with special seeding. The default is `nothing`. The total set
-    of choices are:
+    differentiation with special seeding. The total set of choices are:
 
+      + `nothing`: uses an automatic algorithm to automatically choose the vjp.
+        This is the default and recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
