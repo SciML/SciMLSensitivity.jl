@@ -8,11 +8,13 @@ function inplace_vjp(prob, u0, p, verbose)
 
     ez = try
         f = unwrapped_f(prob.f)
-        Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(du, du),
-                        copy(u0), copy(p), prob.tspan[1]) do out, u, _p, t
+
+        function adfunc(out, u, _p, t)
             f(out, u, _p, t)
             nothing
         end
+        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, du),
+                        copy(u0), copy(p), prob.tspan[1])
         true
     catch e
         if verbose
