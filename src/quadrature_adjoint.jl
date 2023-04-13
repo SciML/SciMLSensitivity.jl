@@ -285,7 +285,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         tmp3, tmp4 = paramjac_config
         tmp4 .= λ
         out .= 0
-        Enzyme.autodiff(pf, Enzyme.Duplicated(tmp3, tmp4),
+        Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
                         y, Enzyme.Duplicated(p, out), t)
     end
 
