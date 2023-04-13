@@ -684,12 +684,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     if inplace_sensitivity(S)
         if W === nothing
-            Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup,
                             Enzyme.Const(t))
         else
-            Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup,
                             Enzyme.Const(t), Enzyme.Const(W))
@@ -701,11 +701,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy !== nothing && (dy .= tmp3)
     else
         if W === nothing
-            Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
                             Enzyme.DuplicatedNoNeed(y, tmp1),
                             dup, Enzyme.Const(t), Enzyme.Const(W))
         end

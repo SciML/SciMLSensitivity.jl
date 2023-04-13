@@ -71,7 +71,7 @@ function TrackedAffect(t::Number, u, p, affect!, correction)
 end
 
 function Base.hasproperty(f::TrackedAffect, s::Symbol)
-    if hasfield(TrackedAffect, s)               
+    if hasfield(TrackedAffect, s)
         return true
     else
         _affect = getfield(f, :affect!)
@@ -80,7 +80,7 @@ function Base.hasproperty(f::TrackedAffect, s::Symbol)
 end
 
 function Base.getproperty(f::TrackedAffect, s::Symbol)
-    if hasfield(TrackedAffect, s)               
+    if hasfield(TrackedAffect, s)
         return getfield(f, s)
     else
         _affect = getfield(f, :affect!)
@@ -89,7 +89,7 @@ function Base.getproperty(f::TrackedAffect, s::Symbol)
 end
 
 function Base.setproperty!(f::TrackedAffect, s::Symbol, value)
-    if hasfield(TrackedAffect, s)               
+    if hasfield(TrackedAffect, s)
         return setfield!(f, s, value)
     else
         _affect = getfield(f, :affect!)
