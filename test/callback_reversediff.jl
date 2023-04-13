@@ -17,7 +17,8 @@ function functionCalling(x, t, integrator)
 end
 
 cbPreTime = PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
-cbFctCall = FunctionCallingCallback(functionCalling; func_everystep=true, func_start=true)
+cbFctCall = FunctionCallingCallback(functionCalling; func_everystep = true,
+                                    func_start = true)
 
 function trueODEfunc(du, u, p, t)
     du .= -u
@@ -25,7 +26,8 @@ end
 t = range(tspan[1], tspan[2], length = datasize)
 
 prob = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob, Tsit5(), callback = CallbackSet(cbPreTime, cbFctCall), saveat = t))
+ode_data = Array(solve(prob, Tsit5(), callback = CallbackSet(cbPreTime, cbFctCall),
+                       saveat = t))
 dudt2 = Chain(Dense(2, 50, tanh),
               Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
