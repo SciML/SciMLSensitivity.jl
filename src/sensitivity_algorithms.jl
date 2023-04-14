@@ -993,7 +993,8 @@ Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
     SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(linsolve)
                        }(autojacvec, linsolve)
 end
-function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, LS}, vjp) where {CS, AD, FDT, LS}
+function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS},
+                vjp) where {CS, AD, FDT, VJP, LS}
     SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
 end
 
