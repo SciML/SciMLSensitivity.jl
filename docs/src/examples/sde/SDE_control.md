@@ -134,7 +134,7 @@ end
 function qubit_diffusion!(du, u, p, t)
     ceR, cdR, ceI, cdI = u # real and imaginary parts
 
-    κ = p[end]
+    κ = p.myparameters[end]
 
     du .= false
 
@@ -180,7 +180,7 @@ function g(u, p, t)
 end
 
 function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -218,7 +218,7 @@ end
 # visualization -- run for new batch
 function visualize(p; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -526,7 +526,7 @@ function g(u, p, t)
 end
 
 function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -570,7 +570,7 @@ a function of the time steps at which loss values are computed.
 ```@example sdecontrol
 function visualize(p; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
