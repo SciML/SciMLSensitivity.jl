@@ -7,5 +7,5 @@ Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 [compat]
 CUDA = "3.12, 4"
 DiffEqCallbacks = "2.24"
-DiffEqFlux = "1.52"
+DiffEqFlux = "1.52, 2"
 Flux = "0.13"
