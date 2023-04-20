@@ -24,7 +24,7 @@ using DiffEqFlux
 using SciMLSensitivity
 using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Statistics, LinearAlgebra, Random
+using Zygote, Statistics, LinearAlgebra, Random
 using Plots
 
 #################################################
