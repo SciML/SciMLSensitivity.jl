@@ -25,7 +25,10 @@ using SciMLSensitivity
 using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Zygote, Statistics, LinearAlgebra, Random
+using Lux, Random, ComponentArrays
 using Plots
+
+rng = Random.default_rng()
 
 #################################################
 lr = 0.01f0
@@ -76,10 +79,11 @@ myparameters = Parameters{typeof(dt), typeof(numtraj), typeof(tspan)}(lr, epochs
 # Define Neural Network
 
 # state-aware
-nn = FastChain(FastDense(4, 32, relu),
-               FastDense(32, 1, tanh))
+nn = Lux.Chain(Lux.Dense(4, 32, relu),
+               Lux.Dense(32, 1, tanh))
 
-p_nn = initial_params(nn) # random initial parameters
+p_nn, st = Lux.setup(rng, nn)
+p_nn = ComponentArray(pp)
 
 ###############################################
 # initial state anywhere on the Bloch sphere
@@ -114,9 +118,9 @@ function qubit_drift!(du, u, p, t)
     # Δ: atomic frequency
     # Ω: Rabi frequency for field in x direction
     # κ: spontaneous emission
-    Δ, Ωmax, κ = p[(end - 2):end]
-    nn_weights = p[1:(end - 3)]
-    Ω = (nn(u, nn_weights) .* Ωmax)[1]
+    Δ, Ωmax, κ = p.myparameters
+    nn_weights = p.p_nn
+    Ω = (nn(u, nn_weights, st) .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
@@ -159,7 +163,7 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
@@ -385,10 +389,11 @@ also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/T
 
 ```@example sdecontrol
 # state-aware
-nn = FastChain(FastDense(4, 32, relu),
-               FastDense(32, 1, tanh))
+nn = Lux.Dense(Lux.Dense(4, 32, relu),
+               Lux.Dense(32, 1, tanh))
 
-p_nn = initial_params(nn) # random initial parameters
+p_nn, st = Lux.setup(rng, nn)
+p_nn = ComponentArray(pp)
 ```
 
 ### Initial state
@@ -445,9 +450,9 @@ function qubit_drift!(du, u, p, t)
     # Δ: atomic frequency
     # Ω: Rabi frequency for field in x direction
     # κ: spontaneous emission
-    Δ, Ωmax, κ = p[(end - 2):end]
-    nn_weights = p[1:(end - 3)]
-    Ω = (nn(u, nn_weights) .* Ωmax)[1]
+    Δ, Ωmax, κ = p.myparameters
+    nn_weights = p.p_nn
+    Ω = (nn(u, nn_weights, st) .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
@@ -490,7 +495,7 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
