@@ -83,7 +83,7 @@ nn = Lux.Chain(Lux.Dense(4, 32, relu),
                Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
-p_nn = ComponentArray(pp)
+p_nn = ComponentArray(p_nn)
 
 ###############################################
 # initial state anywhere on the Bloch sphere
@@ -312,7 +312,8 @@ using DiffEqFlux
 using SciMLSensitivity
 using Optimization
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Statistics, LinearAlgebra, Random
+using Statistics, LinearAlgebra
+using Lux, Random, ComponentArrays
 using Plots
 ```
 
@@ -393,7 +394,7 @@ nn = Lux.Dense(Lux.Dense(4, 32, relu),
                Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
-p_nn = ComponentArray(pp)
+p_nn = ComponentArray(p_nn)
 ```
 
 ### Initial state
