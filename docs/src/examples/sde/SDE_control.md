@@ -22,7 +22,7 @@ follow a full explanation of the definition and training process:
 # load packages
 using DiffEqFlux
 using SciMLSensitivity
-using Optimization
+using Optimization, OptimizationOptimisers
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Zygote, Statistics, LinearAlgebra, Random
 using Lux, Random, ComponentArrays
@@ -296,7 +296,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, ADAM(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control
@@ -310,7 +310,7 @@ visualization_callback(res.u, loss(res.u); doplot = true)
 ```@example sdecontrol
 using DiffEqFlux
 using SciMLSensitivity
-using Optimization, Zygote
+using Optimization, OptimizationOptimisers, Zygote
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra
 using Lux, Random, ComponentArrays
@@ -653,7 +653,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, ADAM(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control
