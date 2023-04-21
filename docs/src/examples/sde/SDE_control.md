@@ -179,8 +179,8 @@ function g(u, p, t)
     p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -216,9 +216,9 @@ end
 
 #########################################
 # visualization -- run for new batch
-function visualize(p; alg = EM())
+function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -327,6 +327,8 @@ epochs = 100
 
 numtraj = 16 # number of trajectories in parallel simulations for training
 numtrajplot = 32 # .. for plotting
+
+rng = Random.default_rng()
 
 # time range for the solver
 dt = 0.0005f0
@@ -525,8 +527,8 @@ function g(u, p, t)
     p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -568,9 +570,9 @@ standard deviation of the fidelity of a bunch of trajectories (`myparameters.num
 a function of the time steps at which loss values are computed.
 
 ```@example sdecontrol
-function visualize(p; alg = EM())
+function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p.p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
