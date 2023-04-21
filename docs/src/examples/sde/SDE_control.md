@@ -120,7 +120,7 @@ function qubit_drift!(du, u, p, t)
     # κ: spontaneous emission
     Δ, Ωmax, κ = p.myparameters
     nn_weights = p.p_nn
-    Ω = (nn(u, nn_weights, st) .* Ωmax)[1]
+    Ω = (nn(u, nn_weights, st)[1] .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
@@ -455,7 +455,7 @@ function qubit_drift!(du, u, p, t)
     # κ: spontaneous emission
     Δ, Ωmax, κ = p.myparameters
     nn_weights = p.p_nn
-    Ω = (nn(u, nn_weights, st) .* Ωmax)[1]
+    Ω = (nn(u, nn_weights, st)[1] .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
