@@ -310,7 +310,7 @@ visualization_callback(res.u, loss(res.u); doplot = true)
 ```@example sdecontrol
 using DiffEqFlux
 using SciMLSensitivity
-using Optimization
+using Optimization, Zygote
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Statistics, LinearAlgebra
 using Lux, Random, ComponentArrays
@@ -390,7 +390,7 @@ also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/T
 
 ```@example sdecontrol
 # state-aware
-nn = Lux.Dense(Lux.Dense(4, 32, relu),
+nn = Lux.Chain(Lux.Dense(4, 32, relu),
                Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
