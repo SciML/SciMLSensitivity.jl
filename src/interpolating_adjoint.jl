@@ -230,7 +230,11 @@ function split_states(du, u, t, S::TS;
                 checkpoint_sol.cpsol = cpsol′
                 checkpoint_sol.cursor = cursor′
             end
-            checkpoint_sol.cpsol(y, t, continuity = :right)
+            if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                y = checkpoint_sol.cpsol(t, continuity = :right)
+            else
+                checkpoint_sol.cpsol(y, t, continuity = :right)
+            end
         end
     end
 

@@ -966,14 +966,30 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
             end
         end
     else
-        g[1].t = t
-        g[1].p = p
-        gradient!(dg_val[1], g[1], y, S.sensealg, g_grad_config[1])
+        if typeof(t) === typeof(g[1].t) && typeof(g[1].p) === typeof(p)
+            gradwrap = g[1]
+            gradwrap.t = t
+            gradwrap.p = p
+            gradconfig = g_grad_config[1]
+        else
+            gradwrap = UGradientWrapper(g[1].f, t, p)
+            gradconfig = build_grad_config(S.sensealg, gradwrap, y, p)
+        end
+
+        gradient!(dg_val[1], gradwrap, y, S.sensealg, gradconfig)
         dλ .-= vec(dg_val[1])
+
         if dgrad !== nothing
-            g[2].t = t
-            g[2].u = y
-            gradient!(dg_val[2], g[2], p, S.sensealg, g_grad_config[2])
+            if typeof(t) === typeof(g[2].t) && typeof(g[2].u) === typeof(y)
+                gradwrap = g[2]
+                gradwrap.t = t
+                gradwrap.u = y
+                gradconfig = g_grad_config[2]
+            else
+                gradwrap = ParamGradientWrapper(g[2].f, t, p)
+                gradconfig = build_grad_config(S.sensealg, g[2].f, y, p)
+            end
+            gradient!(dg_val[2], gradwrap, p, S.sensealg, gradconfig)
             dgrad .-= vec(dg_val[2])
         end
     end
