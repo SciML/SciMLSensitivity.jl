@@ -863,7 +863,17 @@ for iip in [true, false]
                                        sensealg = BacksolveAdjoint(checkpointing = true),
                                        checkpoints = sol_singular_mm.t)
     @test_broken res_bs2≈res rtol=1e-5
+
+    # Check continuous adjoint case with autodiff
+    # https://discourse.julialang.org/t/sensitivity-fail-on-daes/98205
+    sol = solve(prob_singular_mm, Rodas5(), reltol = 1e-8, abstol = 1e-8)
+    sensealg = InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
+    _, dp = adjoint_sensitivities(sol, Rodas5(); sensealg=sensealg, g=(u, p, t)->sum(u));
+    @test all(iszero,dp)
 end
+
+
+
 
 # u' = x = p * u
 function simple_linear_dae(du, u, p, t)
