@@ -132,9 +132,11 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             pgpp_config = build_grad_config(sensealg, pgpp, p, p)
             pg = (pgpu, pgpp)
             pg_config = (pgpu_config, pgpp_config)
-            dg_val = (DiffCache(similar(u0, numindvar),1) DiffCache(similar(u0, numparams),1))
-            dg_val[1] .= false
-            dg_val[2] .= false
+            dg_val = (DiffCache(similar(u0, numindvar),1), DiffCache(similar(u0, numparams),1))
+            dg_val[1].du .= false
+            dg_val[1].dual_du .= false
+            dg_val[2].du .= false
+            dg_val[2].dual_du .= false
         end
     else
         dg_val = nothing
