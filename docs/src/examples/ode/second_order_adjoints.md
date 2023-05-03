@@ -14,7 +14,8 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```@example secondorderadjoints
-using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations, Plots, Random
+using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations,
+      Plots, Random, OptimizationOptimJL
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
