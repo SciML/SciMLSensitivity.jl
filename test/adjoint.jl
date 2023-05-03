@@ -870,6 +870,11 @@ for iip in [true, false]
     sensealg = InterpolatingAdjoint(autojacvec=ZygoteVJP(), checkpointing=true)
     _, dp = adjoint_sensitivities(sol, Rodas5(); sensealg=sensealg, g=(u, p, t)->sum(u));
     @test all(iszero,dp)
+    
+    _, dp1 = adjoint_sensitivities(sol, Rosenbrock23(autodiff=false); sensealg=sensealg, g=(u, p, t)->u[3]+sum(u));
+    _, dp2 = adjoint_sensitivities(sol, Rodas5(); sensealg=sensealg, g=(u, p, t)->u[3]+sum(u));
+    @test dp1 ≈ dp2 rtol=1e-4
+    
 end
 
 
