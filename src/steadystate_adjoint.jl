@@ -84,15 +84,16 @@ end
         dgdu_val, dgdp_val = diffcache.dg_val
     end
 
+    tmp = vec(get_tmp(dgdu_val, y))
     if dgdu !== nothing
-        dgdu(dgdu_val, y, p, nothing, nothing)
+        dgdu(tmp, y, p, nothing, nothing)
     else
         if g !== nothing
             if dgdp_val !== nothing
-                gradient!(vec(dgdu_val), diffcache.g[1], y, sensealg,
+                gradient!(tmp, diffcache.g[1], y, sensealg,
                           diffcache.g_grad_config[1])
             else
-                gradient!(vec(dgdu_val), diffcache.g, y, sensealg, diffcache.g_grad_config)
+                gradient!(tmp, diffcache.g, y, sensealg, diffcache.g_grad_config)
             end
         end
     end
@@ -100,20 +101,20 @@ end
     if !needs_jac
         # TODO: FixedVecJacOperator should respect the `autojacvec` of the algorithm
         operator = FixedVecJacOperator(f, y, p, Val(DiffEqBase.isinplace(sol.prob)))
-        linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
+        linear_problem = LinearProblem(operator, tmp; u0 = vec(λ))
     else
-        linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
+        linear_problem = LinearProblem(diffcache.J', tmp'; u0 = vec(λ))
     end
 
     # Zygote pullback function won't work with deepcopy
     solve(linear_problem, linsolve; alias_A = true) # u is vec(λ)
 
     try
-        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
+        vecjacobian!(tmp, y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
-            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
+            vecjacobian!(tmp, y, λ, p, nothing, false, dgrad = vjp,
                          dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
@@ -124,13 +125,13 @@ end
     if g !== nothing || dgdp !== nothing
         # compute del g/del p
         if dgdp !== nothing
-            dgdp(dgdp_val, y, p, nothing, nothing)
+            dgdp(tmp, y, p, nothing, nothing)
         else
             @unpack g_grad_config = diffcache
-            gradient!(dgdp_val, diffcache.g[2], p, sensealg, g_grad_config[2])
+            gradient!(tmp, diffcache.g[2], p, sensealg, g_grad_config[2])
         end
-        dgdp_val .-= vjp
-        return dgdp_val
+        tmp .-= vjp
+        return tmp
     else
         vjp .*= -1
         return vjp
