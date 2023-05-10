@@ -1,7 +1,7 @@
 name = "SciMLSensitivity"
 uuid = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
 authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <mayingbo5@gmail.com>"]
-version = "7.27.0"
+version = "7.31.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -54,7 +54,7 @@ DiffEqNoiseProcess = "4.1.4, 5.0"
 DiffRules = "1"
 Distributions = "0.24, 0.25"
 EllipsisNotation = "1"
-Enzyme = "0.10.14"
+Enzyme = "=0.11.0"
 FiniteDiff = "2"
 ForwardDiff = "0.10"
 FunctionWrappersWrappers = "0.1"

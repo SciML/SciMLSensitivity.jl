@@ -70,6 +70,33 @@ function TrackedAffect(t::Number, u, p, affect!, correction)
                   Vector{Int}(undef, 0))
 end
 
+function Base.hasproperty(f::TrackedAffect, s::Symbol)
+    if hasfield(TrackedAffect, s)
+        return true
+    else
+        _affect = getfield(f, :affect!)
+        return hasfield(typeof(_affect), s)
+    end
+end
+
+function Base.getproperty(f::TrackedAffect, s::Symbol)
+    if hasfield(TrackedAffect, s)
+        return getfield(f, s)
+    else
+        _affect = getfield(f, :affect!)
+        return getfield(_affect, s)
+    end
+end
+
+function Base.setproperty!(f::TrackedAffect, s::Symbol, value)
+    if hasfield(TrackedAffect, s)
+        return setfield!(f, s, value)
+    else
+        _affect = getfield(f, :affect!)
+        return setfield!(_affect, s, value)
+    end
+end
+
 function (f::TrackedAffect)(integrator, event_idx = nothing)
     uleft = deepcopy(integrator.u)
     pleft = deepcopy(integrator.p)

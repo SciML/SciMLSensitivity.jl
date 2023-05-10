@@ -22,10 +22,13 @@ follow a full explanation of the definition and training process:
 # load packages
 using DiffEqFlux
 using SciMLSensitivity
-using Optimization
+using Optimization, OptimizationOptimisers
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Statistics, LinearAlgebra, Random
+using Zygote, Statistics, LinearAlgebra, Random
+using Lux, Random, ComponentArrays
 using Plots
+
+rng = Random.default_rng()
 
 #################################################
 lr = 0.01f0
@@ -76,10 +79,11 @@ myparameters = Parameters{typeof(dt), typeof(numtraj), typeof(tspan)}(lr, epochs
 # Define Neural Network
 
 # state-aware
-nn = FastChain(FastDense(4, 32, relu),
-               FastDense(32, 1, tanh))
+nn = Lux.Chain(Lux.Dense(4, 32, relu),
+               Lux.Dense(32, 1, tanh))
 
-p_nn = initial_params(nn) # random initial parameters
+p_nn, st = Lux.setup(rng, nn)
+p_nn = ComponentArray(p_nn)
 
 ###############################################
 # initial state anywhere on the Bloch sphere
@@ -114,9 +118,9 @@ function qubit_drift!(du, u, p, t)
     # Δ: atomic frequency
     # Ω: Rabi frequency for field in x direction
     # κ: spontaneous emission
-    Δ, Ωmax, κ = p[(end - 2):end]
-    nn_weights = p[1:(end - 3)]
-    Ω = (nn(u, nn_weights) .* Ωmax)[1]
+    Δ, Ωmax, κ = p.myparameters
+    nn_weights = p.p_nn
+    Ω = (nn(u, nn_weights, st)[1] .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
@@ -130,7 +134,7 @@ end
 function qubit_diffusion!(du, u, p, t)
     ceR, cdR, ceI, cdI = u # real and imaginary parts
 
-    κ = p[end]
+    κ = p.myparameters[end]
 
     du .= false
 
@@ -159,7 +163,7 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
@@ -175,8 +179,8 @@ function g(u, p, t)
     p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -212,9 +216,9 @@ end
 
 #########################################
 # visualization -- run for new batch
-function visualize(p; alg = EM())
+function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -292,7 +296,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, ADAM(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control
@@ -306,9 +310,10 @@ visualization_callback(res.u, loss(res.u); doplot = true)
 ```@example sdecontrol
 using DiffEqFlux
 using SciMLSensitivity
-using Optimization
+using Optimization, OptimizationOptimisers, Zygote
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Statistics, LinearAlgebra, Random
+using Statistics, LinearAlgebra
+using Lux, Random, ComponentArrays
 using Plots
 ```
 
@@ -322,6 +327,8 @@ epochs = 100
 
 numtraj = 16 # number of trajectories in parallel simulations for training
 numtrajplot = 32 # .. for plotting
+
+rng = Random.default_rng()
 
 # time range for the solver
 dt = 0.0005f0
@@ -385,10 +392,11 @@ also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/T
 
 ```@example sdecontrol
 # state-aware
-nn = FastChain(FastDense(4, 32, relu),
-               FastDense(32, 1, tanh))
+nn = Lux.Chain(Lux.Dense(4, 32, relu),
+               Lux.Dense(32, 1, tanh))
 
-p_nn = initial_params(nn) # random initial parameters
+p_nn, st = Lux.setup(rng, nn)
+p_nn = ComponentArray(p_nn)
 ```
 
 ### Initial state
@@ -445,9 +453,9 @@ function qubit_drift!(du, u, p, t)
     # Δ: atomic frequency
     # Ω: Rabi frequency for field in x direction
     # κ: spontaneous emission
-    Δ, Ωmax, κ = p[(end - 2):end]
-    nn_weights = p[1:(end - 3)]
-    Ω = (nn(u, nn_weights) .* Ωmax)[1]
+    Δ, Ωmax, κ = p.myparameters
+    nn_weights = p.p_nn
+    Ω = (nn(u, nn_weights, st)[1] .* Ωmax)[1]
 
     @inbounds begin
         du[1] = 1 // 2 * (ceI * Δ - ceR * κ + cdI * Ω)
@@ -490,7 +498,7 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = [p_nn; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
@@ -519,8 +527,8 @@ function g(u, p, t)
     p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -562,9 +570,9 @@ standard deviation of the fidelity of a bunch of trajectories (`myparameters.num
 a function of the time steps at which loss values are computed.
 
 ```@example sdecontrol
-function visualize(p; alg = EM())
+function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = [p; myparameters.Δ; myparameters.Ωmax; myparameters.κ]
+    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -645,7 +653,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, ADAM(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control
