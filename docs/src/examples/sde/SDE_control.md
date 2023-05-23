@@ -163,7 +163,8 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+p_all = ComponentArray(p_nn = p_nn,
+                       myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
@@ -180,7 +181,9 @@ function g(u, p, t)
 end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn,
+                          myparameters = [myparameters.Δ; myparameters.Ωmax;
+                                          myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -218,7 +221,9 @@ end
 # visualization -- run for new batch
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn,
+                          myparameters = [myparameters.Δ; myparameters.Ωmax;
+                                          myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -296,7 +301,8 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
+                         callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control
@@ -498,7 +504,8 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+p_all = ComponentArray(p_nn = p_nn,
+                       myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
                         p_all,
@@ -528,7 +535,9 @@ function g(u, p, t)
 end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn,
+                          myparameters = [myparameters.Δ; myparameters.Ωmax;
+                                          myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -572,7 +581,9 @@ a function of the time steps at which loss values are computed.
 ```@example sdecontrol
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p_nn, myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    pars = ComponentArray(p_nn = p_nn,
+                          myparameters = [myparameters.Δ; myparameters.Ωmax;
+                                          myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -653,7 +664,8 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr), callback = visualization_callback,
+res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
+                         callback = visualization_callback,
                          maxiters = 100)
 
 # plot optimized control

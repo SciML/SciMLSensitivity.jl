@@ -101,7 +101,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         algevar_idxs = 1:0
     end
 
-    if !needs_jac && !(issemiexplicitdae || !isautojacvec)
+    if !needs_jac && !issemiexplicitdae && !(autojacvec isa Bool)
         J = nothing
     else
         if SciMLBase.forwarddiffs_model_time(alg)
@@ -142,7 +142,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         pg_config = nothing
     end
 
-    if DiffEqBase.has_jac(f) || (J === nothing)
+    if DiffEqBase.has_jac(f) || J === nothing
         jac_config = nothing
         uf = nothing
     else
@@ -198,7 +198,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
-    elseif DiffEqBase.has_paramjac(f) || isautojacvec || quad ||
+    elseif DiffEqBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
         pf = nothing
@@ -221,7 +221,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         end
     end
 
-    pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
+    pJ = (quad || !(autojacvec isa Bool)) ? nothing : similar(u0, numindvar, numparams)
 
     f_cache = isinplace ? deepcopy(u0) : nothing
 
