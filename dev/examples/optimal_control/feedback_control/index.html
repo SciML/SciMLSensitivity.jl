@@ -50,7 +50,7 @@ function predict_univ(θ)
 end
 
 loss_univ(θ) = sum(abs2, predict_univ(θ)[2, :] .- 1)
-l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">7.423272f10</code></pre><pre><code class="language-julia hljs">list_plots = []
+l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2.2536037f8</code></pre><pre><code class="language-julia hljs">list_plots = []
 iter = 0
 callback = function (θ, l)
     global list_plots, iter
@@ -71,23 +71,23 @@ optf = Optimization.OptimizationFunction((x, p) -&gt; loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
                                  callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 340-element Vector{Float32}:
-  1.0000002
-  0.10457476
-  0.19501793
- -0.49584058
- -0.80012214
-  0.613116
- -0.60569185
-  0.022680355
- -0.07762506
-  0.24236728
+  1.0334784
+ -0.48070425
+ -0.3229108
+ -0.47518826
+  0.46138683
+ -0.45606866
+ -0.15467645
+ -0.19700989
+ -0.19635779
+ -0.41746342
   ⋮
- -0.6485084
-  0.21880697
- -0.048321087
-  0.30536753
- -0.023351409
-  0.51536214
- -0.26715952
- -1.605014f-6
- -0.7458021</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 3 May 2023 12:43">Wednesday 3 May 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0.11377662
+ -0.060421783
+  0.4559451
+ -0.32916126
+  0.019438958
+ -0.35901192
+  0.0429042
+  0.43363193
+ -0.5424829</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 27 May 2023 22:50">Saturday 27 May 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

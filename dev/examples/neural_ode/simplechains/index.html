@@ -14,8 +14,8 @@ end
 
 prob = ODEProblem(trueODE, u0, tspan)
 data = Array(solve(prob, Tsit5(), saveat = tsteps))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×30 Matrix{Float32}:
- 2.0  1.9465    1.74179  1.23834  0.577135  …  1.40958   1.37135   1.28975
- 0.0  0.798832  1.46473  1.80877  1.86465      0.465373  0.743805  0.98676</code></pre><h2 id="Neural-Network"><a class="docs-heading-anchor" href="#Neural-Network">Neural Network</a><a id="Neural-Network-1"></a><a class="docs-heading-anchor-permalink" href="#Neural-Network" title="Permalink"></a></h2><p>Next, we set up a small neural network. It will be trained to output the derivative of the solution at each time step given the value of the solution at the previous time step, and the parameters of the network. Thus, we are treating the neural network as a function <code>f(u,p,t)</code>. The difference is that instead of relying on knowing the exact equation for the ODE, we get to solve it only with the data.</p><pre><code class="language-julia hljs">sc = SimpleChain(static(2),
+ 2.0  1.9465    1.74179  1.23834  0.577135  …  1.40958   1.37135   1.28974
+ 0.0  0.798832  1.46473  1.80877  1.86465      0.465407  0.743839  0.98679</code></pre><h2 id="Neural-Network"><a class="docs-heading-anchor" href="#Neural-Network">Neural Network</a><a id="Neural-Network-1"></a><a class="docs-heading-anchor-permalink" href="#Neural-Network" title="Permalink"></a></h2><p>Next, we set up a small neural network. It will be trained to output the derivative of the solution at each time step given the value of the solution at the previous time step, and the parameters of the network. Thus, we are treating the neural network as a function <code>f(u,p,t)</code>. The difference is that instead of relying on knowing the exact equation for the ODE, we get to solve it only with the data.</p><pre><code class="language-julia hljs">sc = SimpleChain(static(2),
                  Activation(x -&gt; x .^ 3),
                  TurboDense{true}(tanh, static(50)),
                  TurboDense{true}(identity, static(2)))
@@ -48,23 +48,23 @@ optf = Optimization.OptimizationFunction((x, p) -&gt; loss_neuralode(x),
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
 res = Optimization.solve(optprob, ADAM(0.05), callback = callback, maxiters = 300)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 252-element StrideArraysCore.StaticStrideArray{Float32, 1, (1,), Tuple{Static.StaticInt{252}}, Tuple{Nothing}, Tuple{Static.StaticInt{1}}, 252} with indices static(1):static(252):
-  0.30575767
-  0.43264195
- -0.2394258
- -0.3490094
-  0.4077968
- -0.34194785
- -0.2805698
- -0.43062088
- -0.74315864
-  0.9597923
+ -0.034661286
+ -0.81877965
+  0.20033796
+  0.04169347
+  0.2598496
+  0.37445128
+ -0.21476382
+ -0.050836362
+  0.24421242
+ -0.17465109
   ⋮
-  0.047487542
-  0.22509679
- -0.6903954
-  0.2258738
-  0.41476342
-  0.5173997
- -0.08675851
- -0.49488044
- -0.17054436</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neural_ode_flux/">« Neural Ordinary Differential Equations with Flux</a><a class="docs-footer-nextpage" href="../neural_gde/">Neural Graph Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 3 May 2023 12:43">Wednesday 3 May 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -0.6970568
+  0.35151297
+  0.4349514
+ -0.40600207
+ -0.75140053
+  0.09914535
+ -0.80488455
+ -0.71603733
+ -0.18301226</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../neural_ode_flux/">« Neural Ordinary Differential Equations with Flux</a><a class="docs-footer-nextpage" href="../neural_gde/">Neural Graph Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 27 May 2023 22:50">Saturday 27 May 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
