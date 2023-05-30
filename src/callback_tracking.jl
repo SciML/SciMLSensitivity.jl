@@ -414,7 +414,7 @@ function setup_w_wp(cb::VectorContinuousCallback,
 end
 
 function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
-    FakeIntegrator([x for x in u], [x for x in p], t, tprev)
+    FakeIntegrator([x for x in u], p, t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
