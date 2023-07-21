@@ -657,7 +657,7 @@ mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Func
     out_cache::outType
 end
 function (ff::VectorConditionTimeWrapper)(t)
-    (ff.f(ff.out_cache, ff.u, t, ff.integrator); [ff.out_cache[ff.event_idx]])
+    (out = zeros(typeof(t), length(ff.out_cache)); ff.f(out, ff.u, t, ff.integrator); [out[ff.event_idx]])
 end
 
 mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Function
