@@ -57,4 +57,19 @@ end
             test_vector_continuous_callback(cb, g)
         end
     end
+    @testset "Test condition function that depends on time only" begin
+        g(u) = sum((1.0 .- u) .^ 2) ./ 2
+        function condition(out, x, t, integrator)
+            out[1] = sin(t)
+            out[2] = cos(t)
+        end
+
+        function affect!(integrator, idx)
+            println("$(idx) triggered!")
+            u_new = [0.5, 1.0, 0.0, 0.0]
+            integrator.u .= u_new
+        end
+        cb = VectorContinuousCallback(condition, affect!, 2)
+        test_vector_continuous_callback(cb, g)
+    end
 end
