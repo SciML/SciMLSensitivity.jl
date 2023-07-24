@@ -10,7 +10,7 @@ terms must add to one. An example of this is as follows:
 
 ```@example dae
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-      DifferentialEquations, Plots
+    DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -26,8 +26,8 @@ end
 
 u₀ = [1.0, 0, 0]
 M = [1.0 0 0
-     0 1.0 0
-     0 0 0]
+    0 1.0 0
+    0 0 0]
 
 tspan = (0.0, 1.0)
 p = [0.04, 3e7, 1e4]
@@ -37,12 +37,12 @@ prob_stiff = ODEProblem(stiff_func, u₀, tspan, p)
 sol_stiff = solve(prob_stiff, Rodas5(), saveat = 0.1)
 
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),
-                     Lux.Dense(64, 2))
+    Lux.Dense(64, 2))
 
 pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
-                               tspan, M, Rodas5(autodiff = false), saveat = 0.1)
+    tspan, M, Rodas5(autodiff = false), saveat = 0.1)
 model_stiff_ndae(u₀, ComponentArray(pinit), st)
 
 function predict_stiff_ndae(p)
@@ -74,7 +74,7 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 
 ```@example dae2
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-      DifferentialEquations, Plots
+    DifferentialEquations, Plots
 
 using Random
 rng = Random.default_rng()
@@ -102,8 +102,8 @@ end
 u₀ = [1.0, 0, 0]
 
 M = [1.0 0 0
-     0 1.0 0
-     0 0 0]
+    0 1.0 0
+    0 0 0]
 
 tspan = (0.0, 1.0)
 
@@ -138,12 +138,12 @@ is more suited to SciML applications (similarly for
 
 ```@example dae2
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),
-                     Lux.Dense(64, 2))
+    Lux.Dense(64, 2))
 
 pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
-                               tspan, M, Rodas5(autodiff = false), saveat = 0.1)
+    tspan, M, Rodas5(autodiff = false), saveat = 0.1)
 model_stiff_ndae(u₀, ComponentArray(pinit), st)
 ```
 

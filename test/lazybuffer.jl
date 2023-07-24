@@ -23,7 +23,7 @@ using Random, FiniteDiff, ForwardDiff, ReverseDiff, SciMLSensitivity, Zygote
     function loss(u0, p; sensealg = nothing)
         _prob = remake(prob, u0 = u0, p = p)
         _sol = solve(_prob, Tsit5(), sensealg = sensealg, saveat = 0.1, abstol = 1e-14,
-                     reltol = 1e-14)
+            reltol = 1e-14)
         sum(abs2, _sol)
     end
 
@@ -37,8 +37,8 @@ using Random, FiniteDiff, ForwardDiff, ReverseDiff, SciMLSensitivity, Zygote
     @test dp≈Fdp rtol=1e-8
 
     Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p;
-                                                sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-                                u0, p)
+            sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+        u0, p)
     @test du0≈Zdu0 rtol=1e-8
     @test dp≈Zdp rtol=1e-8
 end

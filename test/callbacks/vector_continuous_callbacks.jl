@@ -19,20 +19,20 @@ function test_vector_continuous_callback(cb, g)
     p = [9.8, 0.9]
     prob = ODEProblem(f, u0, tspan, p)
     sol = solve(prob, Tsit5(), callback = cb, abstol = abstol, reltol = reltol,
-                saveat = savingtimes)
+        saveat = savingtimes)
 
     du01, dp1 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                         callback = cb, abstol = abstol,
-                                                         reltol = reltol,
-                                                         saveat = savingtimes,
-                                                         sensealg = BacksolveAdjoint())),
-                                      u0, p)
+            callback = cb, abstol = abstol,
+            reltol = reltol,
+            saveat = savingtimes,
+            sensealg = BacksolveAdjoint())),
+        u0, p)
 
     dstuff = @time ForwardDiff.gradient((θ) -> g(solve(prob, Tsit5(), u0 = θ[1:4],
-                                                       p = θ[5:6], callback = cb,
-                                                       abstol = abstol, reltol = reltol,
-                                                       saveat = savingtimes)),
-                                        [u0; p])
+            p = θ[5:6], callback = cb,
+            abstol = abstol, reltol = reltol,
+            saveat = savingtimes)),
+        [u0; p])
 
     @test du01 ≈ dstuff[1:4]
     @test dp1 ≈ dstuff[5:6]

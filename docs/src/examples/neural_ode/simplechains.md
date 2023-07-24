@@ -7,8 +7,9 @@
 First, we'll need data for training the NeuralODE, which can be obtained by solving the ODE `u' = f(u,p,t)` numerically using the SciML ecosystem in Julia.
 
 ```@example sc_neuralode
-using SimpleChains, StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization,
-      OptimizationFlux, Plots
+using SimpleChains,
+    StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization,
+    OptimizationFlux, Plots
 
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
@@ -30,9 +31,9 @@ Next, we set up a small neural network. It will be trained to output the derivat
 
 ```@example sc_neuralode
 sc = SimpleChain(static(2),
-                 Activation(x -> x .^ 3),
-                 TurboDense{true}(tanh, static(50)),
-                 TurboDense{true}(identity, static(2)))
+    Activation(x -> x .^ 3),
+    TurboDense{true}(tanh, static(50)),
+    TurboDense{true}(identity, static(2)))
 
 p_nn = SimpleChains.init_params(sc)
 
@@ -48,7 +49,7 @@ prob_nn = ODEProblem(f, u0, tspan)
 
 function predict_neuralode(p)
     Array(solve(prob_nn, Tsit5(); p = p, saveat = tsteps,
-                sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())))
+        sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())))
 end
 
 function loss_neuralode(p)
@@ -76,7 +77,7 @@ callback = function (p, l, pred; doplot = true)
 end
 
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x),
-                                         Optimization.AutoZygote())
+    Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
 res = Optimization.solve(optprob, ADAM(0.05), callback = callback, maxiters = 300)

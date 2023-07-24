@@ -1,5 +1,5 @@
 using SciMLSensitivity, ForwardDiff, Distributions, OrdinaryDiffEq,
-      LinearAlgebra, Test
+    LinearAlgebra, Test
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -22,7 +22,7 @@ function fiip_expe_SciML_forw_sen_SciML()
     prob = ODEForwardSensitivityProblem(fiip, u0, (0.0, 10.0), p, saveat = 0:10)
     prob_func = function (prob, i, repeat)
         _prob = remake(prob, u0 = [isa(ui, Distribution) ? rand(ui) : ui for ui in u0_dist],
-                       p = [isa(pj, Distribution) ? rand(pj) : pj for pj in p_dist])
+            p = [isa(pj, Distribution) ? rand(pj) : pj for pj in p_dist])
         _prob
     end
     output_func = function (sol, i)

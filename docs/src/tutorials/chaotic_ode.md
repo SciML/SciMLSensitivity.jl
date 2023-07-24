@@ -115,7 +115,7 @@ g(u, p, t) = u[end]
 function G(p)
     _prob = remake(prob_attractor, p = p)
     _sol = solve(_prob, Vern9(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01,
-                 sensealg = ForwardLSS(g = g))
+        sensealg = ForwardLSS(g = g))
     sum(getindex.(_sol.u, 3))
 end
 dp1 = Zygote.gradient(p -> G(p), p)

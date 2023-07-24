@@ -41,7 +41,7 @@ used as an input into the neural network of a neural ODE system.
 
 ```@example exogenous
 using DifferentialEquations, Lux, ComponentArrays, DiffEqFlux, Optimization,
-      OptimizationPolyalgorithms, OptimizationFlux, Plots, Random
+    OptimizationPolyalgorithms, OptimizationFlux, Plots, Random
 
 rng = Random.default_rng()
 tspan = (0.1f0, Float32(10.0))

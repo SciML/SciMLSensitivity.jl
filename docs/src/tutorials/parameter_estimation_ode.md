@@ -6,8 +6,9 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
-      Zygote, Plots
+using DifferentialEquations,
+    Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
+    Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -55,8 +56,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                callback = callback,
-                                maxiters = 100)
+    callback = callback,
+    maxiters = 100)
 ```
 
 ## Explanation
@@ -72,8 +73,9 @@ more details, [see the DifferentialEquations.jl documentation](https://docs.scim
 ```
 
 ```@example optode
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms,
-      SciMLSensitivity, Zygote, Plots
+using DifferentialEquations,
+    Optimization, OptimizationPolyalgorithms,
+    SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -146,8 +148,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p)
 
 result_ode = Optimization.solve(optprob, PolyOpt(),
-                                callback = callback,
-                                maxiters = 100)
+    callback = callback,
+    maxiters = 100)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can
@@ -158,7 +160,7 @@ ODE solution constant:
 
 ```@example optode
 remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),
-                        saveat = tsteps)
+    saveat = tsteps)
 plot(remade_solution, ylim = (0, 6))
 ```
 
