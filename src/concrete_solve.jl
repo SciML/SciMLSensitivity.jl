@@ -3,6 +3,8 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 
+const have_not_warned_vjp = Ref(true)
+
 function inplace_vjp(prob, u0, p, verbose)
     du = copy(u0)
 
@@ -17,10 +19,11 @@ function inplace_vjp(prob, u0, p, verbose)
             copy(u0), copy(p), prob.tspan[1])
         true
     catch e
-        if verbose
+        if verbose || have_not_warned_vjp[]
             @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
             showerror(stderr, e)
             println()
+            have_not_warned_vjp[] = false
         end
         false
     end
@@ -61,6 +64,7 @@ function inplace_vjp(prob, u0, p, verbose)
             @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
             showerror(stderr, e)
             println()
+            have_not_warned_vjp[] = false
         end
         false
     end
