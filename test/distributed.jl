@@ -17,7 +17,7 @@ function model4()
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
     sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1,
-                trajectories = 100)
+        trajectories = 100)
 end
 
 # loss function

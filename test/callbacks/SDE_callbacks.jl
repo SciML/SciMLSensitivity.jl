@@ -31,7 +31,7 @@ function test_SDE_callbacks()
 
     function predict_sde(p)
         return Array(solve(prob_sde, EM(), p = p, saveat = savingtimes,
-                           sensealg = ForwardDiffSensitivity(), dt = 0.001, callback = cb))
+            sensealg = ForwardDiffSensitivity(), dt = 0.001, callback = cb))
     end
 
     loss_sde(p) = sum(abs2, x - 1 for x in predict_sde(p))

@@ -1,8 +1,8 @@
 struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
-                                               Alg <: QuadratureAdjoint,
-                                               uType, SType,
-                                               fType <: DiffEqBase.AbstractDiffEqFunction
-                                               } <: SensitivityFunction
+    Alg <: QuadratureAdjoint,
+    uType, SType,
+    fType <: DiffEqBase.AbstractDiffEqFunction,
+} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -14,11 +14,11 @@ end
 TruncatedStacktraces.@truncate_stacktrace ODEQuadratureAdjointSensitivityFunction
 
 function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-                                                 alg)
+    alg)
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
-                                    quad = true)
+        quad = true)
     return ODEQuadratureAdjointSensitivityFunction(diffcache, sensealg, discrete,
-                                                   y, sol, sol.prob.f)
+        y, sol, sol.prob.f)
 end
 
 # u = λ'
@@ -81,15 +81,15 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol, sensealg::QuadratureAdjoint, alg,
-                                     t = nothing,
-                                     dgdu_discrete::DG1 = nothing,
-                                     dgdp_discrete::DG2 = nothing,
-                                     dgdu_continuous::DG3 = nothing,
-                                     dgdp_continuous::DG4 = nothing,
-                                     g::G = nothing,
-                                     ::Val{RetCB} = Val(false);
-                                     callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
-                                                                      RetCB}
+    t = nothing,
+    dgdu_discrete::DG1 = nothing,
+    dgdp_discrete::DG2 = nothing,
+    dgdu_continuous::DG3 = nothing,
+    dgdp_continuous::DG4 = nothing,
+    g::G = nothing,
+    ::Val{RetCB} = Val(false);
+    callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
+    RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -128,13 +128,13 @@ end
         λ = zero(u0)
     end
     sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                    dgdu_continuous, dgdp_continuous, alg)
+        dgdu_continuous, dgdp_continuous, alg)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
     cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
-                                    λ, t, tspan[2],
-                                    callback, init_cb, terminated)
+        λ, t, tspan[2],
+        callback, init_cb, terminated)
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
@@ -143,11 +143,11 @@ end
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                 jac_prototype = adjoint_jac_prototype)
+            jac_prototype = adjoint_jac_prototype)
     else
         odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-                                                                 mass_matrix = sol.prob.f.mass_matrix',
-                                                                 jac_prototype = adjoint_jac_prototype)
+            mass_matrix = sol.prob.f.mass_matrix',
+            jac_prototype = adjoint_jac_prototype)
     end
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
@@ -157,7 +157,7 @@ end
 end
 
 struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
-                                   G}
+    G}
     sol::S
     adj_sol::AS
     p::pType
@@ -243,7 +243,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-                                sensealg, dgdp_cache, dgdp)
+        sensealg, dgdp_cache, dgdp)
 end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
@@ -286,7 +286,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         tmp4 .= λ
         out .= 0
         Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
-                        y, Enzyme.Duplicated(p, out), t)
+            y, Enzyme.Duplicated(p, out), t)
     end
 
     # TODO: Add tracker?
@@ -317,19 +317,19 @@ function (S::AdjointSensitivityIntegrand)(t)
 end
 
 function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothing,
-                                dgdu_discrete = nothing,
-                                dgdp_discrete = nothing,
-                                dgdu_continuous = nothing,
-                                dgdp_continuous = nothing,
-                                g = nothing,
-                                abstol = sensealg.abstol, reltol = sensealg.reltol,
-                                callback = CallbackSet(),
-                                kwargs...)
+    dgdu_discrete = nothing,
+    dgdp_discrete = nothing,
+    dgdu_continuous = nothing,
+    dgdp_continuous = nothing,
+    g = nothing,
+    abstol = sensealg.abstol, reltol = sensealg.reltol,
+    callback = CallbackSet(),
+    kwargs...)
     adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-                                      dgdu_continuous, dgdp_continuous, g, Val(true);
-                                      callback)
+        dgdu_continuous, dgdp_continuous, g, Val(true);
+        callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
-                    save_everystep = true, save_start = true, kwargs...)
+        save_everystep = true, save_start = true, kwargs...)
 
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
@@ -339,7 +339,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
         if t === nothing
             res, err = quadgk(integrand, sol.prob.tspan[1], sol.prob.tspan[2],
-                              atol = abstol, rtol = reltol)
+                atol = abstol, rtol = reltol)
         else
             res = zero(integrand.p)'
 
@@ -363,30 +363,30 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             # correction for end interval.
             if t[end] != sol.prob.tspan[2] && sol.retcode !== ReturnCode.Terminated
                 res .+= quadgk(integrand, t[end], sol.prob.tspan[end],
-                               atol = abstol, rtol = reltol)[1]
+                    atol = abstol, rtol = reltol)[1]
             end
 
             if sol.retcode === ReturnCode.Terminated
                 integrand = update_integrand_and_dgrad(res, sensealg, callback, integrand,
-                                                       adj_prob, sol, dgdu_discrete,
-                                                       dgdp_discrete, dλ, dgrad, t[end],
-                                                       cur_time)
+                    adj_prob, sol, dgdu_discrete,
+                    dgdp_discrete, dλ, dgrad, t[end],
+                    cur_time)
             end
 
             for i in (length(t) - 1):-1:1
                 if ArrayInterface.ismutable(res)
                     res .+= quadgk(integrand, t[i], t[i + 1],
-                                   atol = abstol, rtol = reltol)[1]
+                        atol = abstol, rtol = reltol)[1]
                 else
                     res += quadgk(integrand, t[i], t[i + 1],
-                                  atol = abstol, rtol = reltol)[1]
+                        atol = abstol, rtol = reltol)[1]
                 end
                 if t[i] == t[i + 1]
                     integrand = update_integrand_and_dgrad(res, sensealg, callback,
-                                                           integrand,
-                                                           adj_prob, sol, dgdu_discrete,
-                                                           dgdp_discrete, dλ, dgrad, t[i],
-                                                           cur_time)
+                        integrand,
+                        adj_prob, sol, dgdu_discrete,
+                        dgdp_discrete, dλ, dgrad, t[i],
+                        cur_time)
                 end
                 if dgdp_discrete !== nothing
                     @unpack y = integrand
@@ -399,7 +399,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             # correction for start interval
             if t[1] != sol.prob.tspan[1]
                 res .+= quadgk(integrand, sol.prob.tspan[1], t[1],
-                               atol = abstol, rtol = reltol)[1]
+                    atol = abstol, rtol = reltol)[1]
             end
         end
         if rcb !== nothing && !isempty(rcb.Δλas)
@@ -422,36 +422,36 @@ end
 function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
     @unpack sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp = integrand
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-                                sensealg, dgdp_cache, dgdp)
+        sensealg, dgdp_cache, dgdp)
 end
 
 function update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, callbacks, integrand,
-                                    adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
-                                    ti, cur_time)
+    adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
+    ti, cur_time)
     for cb in callbacks.discrete_callbacks
         if ti ∈ cb.affect!.event_times
             integrand = _update_integrand_and_dgrad(res, sensealg, cb,
-                                                    integrand, adj_prob, sol,
-                                                    dgdu_discrete,
-                                                    dgdp_discrete, dλ, dgrad,
-                                                    ti, cur_time)
+                integrand, adj_prob, sol,
+                dgdu_discrete,
+                dgdp_discrete, dλ, dgrad,
+                ti, cur_time)
         end
     end
     for cb in callbacks.continuous_callbacks
         if ti ∈ cb.affect!.event_times ||
            ti ∈ cb.affect_neg!.event_times
             integrand = _update_integrand_and_dgrad(res, sensealg, cb,
-                                                    integrand, adj_prob, sol,
-                                                    dgdu_discrete,
-                                                    dgdp_discrete, dλ, dgrad,
-                                                    ti, cur_time)
+                integrand, adj_prob, sol,
+                dgdu_discrete,
+                dgdp_discrete, dλ, dgrad,
+                ti, cur_time)
         end
     end
     return integrand
 end
 
 function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integrand,
-                                     adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
+    adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
@@ -471,7 +471,7 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
         fakeSp = CallbackSensitivityFunction(wp, sensealg, adj_prob.f.f.diffcache, sol.prob)
         #vjp with Jacobin given by dw/dp before event and vector given by grad
         vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
-                     dgrad = nothing, dy = nothing)
+            dgrad = nothing, dy = nothing)
         integrand = update_p_integrand(integrand, _p)
     end
 

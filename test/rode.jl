@@ -41,17 +41,17 @@ end
     # Test if Forward and ReverseMode AD agree.
     Random.seed!(seed)
     du0ReverseDiff, dpReverseDiff = Zygote.gradient((u0, p) -> sum(Array(solve(prob,
-                                                                               RandomEM(),
-                                                                               dt = dt,
-                                                                               u0 = u0,
-                                                                               p = p,
-                                                                               saveat = t,
-                                                                               sensealg = ReverseDiffAdjoint())) .^
+            RandomEM(),
+            dt = dt,
+            u0 = u0,
+            p = p,
+            saveat = t,
+            sensealg = ReverseDiffAdjoint())) .^
                                                                    2 / 2), u0, p)
     Random.seed!(seed)
     dForward = ForwardDiff.gradient((θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
-                                                           u0 = θ[1:2], p = θ[3:4],
-                                                           saveat = t)) .^ 2 / 2), [u0; p])
+            u0 = θ[1:2], p = θ[3:4],
+            saveat = t)) .^ 2 / 2), [u0; p])
 
     @info dForward
 
@@ -68,8 +68,8 @@ end
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint())
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint())
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -78,31 +78,31 @@ end
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -126,8 +126,8 @@ end
     prob_aug = RODEProblem{true}(faug, u0, tspan, p)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, saveat = t)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -142,40 +142,40 @@ end
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Zygote
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -186,8 +186,8 @@ end
     prob_aug = RODEProblem{true}(faug, u0, tspan, p)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, dense = true)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -198,7 +198,7 @@ end
     sol = solve(prob, RandomEM(), dt = dt, save_noise = true, dense = true)
     Random.seed!(seed)
     sol_long = solve(remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
-                     save_noise = true, dense = true)
+        save_noise = true, dense = true)
 
     @test sol_long(t)≈sol(t) rtol=1e-12
     @test sol_long.W.W[1:(end - 10)]≈sol.W.W[1:end] rtol=1e-12
@@ -206,52 +206,52 @@ end
     # test gradients with saveat solution and checkpointing
     noise = NoiseGrid(sol_long.W.t, sol_long.W.W)
     sol2 = solve(remake(prob, noise = noise, tspan = (tspan[1], tspan[2])), RandomEM(),
-                 dt = dt, saveat = t)
+        dt = dt, saveat = t)
 
     @test sol_long(t)≈sol2(t) rtol=1e-12
     @test sol_long.W.W≈sol2.W.W rtol=1e-12
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ReverseDiffVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ReverseDiffVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Zygote
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -261,11 +261,11 @@ end
     faug = RODEFunction(f, jac = jac, paramjac = paramjac)
     prob_aug = RODEProblem{true}(faug, u0, tspan, p, noise = noise)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = false, dense = false,
-                saveat = t)
+        saveat = t)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -296,17 +296,17 @@ end
     # Test if Forward and ReverseMode AD agree.
     Random.seed!(seed)
     du0ReverseDiff, dpReverseDiff = Zygote.gradient((u0, p) -> sum(Array(solve(prob,
-                                                                               RandomEM(),
-                                                                               dt = dt,
-                                                                               u0 = u0,
-                                                                               p = p,
-                                                                               saveat = t,
-                                                                               sensealg = ReverseDiffAdjoint())) .^
+            RandomEM(),
+            dt = dt,
+            u0 = u0,
+            p = p,
+            saveat = t,
+            sensealg = ReverseDiffAdjoint())) .^
                                                                    2 / 2), u0, p)
     Random.seed!(seed)
     dForward = ForwardDiff.gradient((θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
-                                                           u0 = θ[1:2], p = θ[3:4],
-                                                           saveat = t)) .^ 2 / 2), [u0; p])
+            u0 = θ[1:2], p = θ[3:4],
+            saveat = t)) .^ 2 / 2), [u0; p])
 
     @info dForward
 
@@ -323,8 +323,8 @@ end
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -333,32 +333,32 @@ end
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Zygote
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -382,8 +382,8 @@ end
     prob_aug = RODEProblem{false}(faug, u0, tspan, p)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, saveat = t)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = BacksolveAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -398,40 +398,40 @@ end
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Zygote
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -442,8 +442,8 @@ end
     prob_aug = RODEProblem{false}(faug, u0, tspan, p)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, dense = true)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -454,7 +454,7 @@ end
     sol = solve(prob, RandomEM(), dt = dt, save_noise = true, dense = true)
     Random.seed!(seed)
     sol_long = solve(remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
-                     save_noise = true, dense = true)
+        save_noise = true, dense = true)
 
     @test sol_long(t)≈sol(t) rtol=1e-12
     @test sol_long.W.W[1:(end - 10)]≈sol.W.W[1:end] rtol=1e-12
@@ -462,52 +462,52 @@ end
     # test gradients with saveat solution and checkpointing
     noise = NoiseGrid(sol_long.W.t, sol_long.W.W)
     sol2 = solve(remake(prob, noise = noise, tspan = (tspan[1], tspan[2])), RandomEM(),
-                 dt = dt, saveat = t)
+        dt = dt, saveat = t)
 
     @test sol_long(t)≈sol2(t) rtol=1e-12
     @test sol_long.W.W≈sol2.W.W rtol=1e-12
 
     # ReverseDiff
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ReverseDiffVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ReverseDiffVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # ReverseDiff with compiled tape
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ReverseDiffVJP(true)))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ReverseDiffVJP(true)))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Zygote
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = ZygoteVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = ZygoteVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # Tracker
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = TrackerVJP()))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = TrackerVJP()))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
 
     # isautojacvec = false
     du0, dp = adjoint_sensitivities(sol2, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2
@@ -517,11 +517,11 @@ end
     faug = RODEFunction(f, jac = jac, paramjac = paramjac)
     prob_aug = RODEProblem{false}(faug, u0, tspan, p, noise = noise)
     sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = false, saveat = t,
-                dense = false)
+        dense = false)
     du0, dp = adjoint_sensitivities(sol, RandomEM(), t = Array(t), dgdu_discrete = dg!,
-                                    dt = dt, adaptive = false,
-                                    sensealg = InterpolatingAdjoint(checkpointing = true,
-                                                                    autojacvec = false))
+        dt = dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true,
+            autojacvec = false))
 
     @test du0ReverseDiff≈du0 rtol=1e-2
     @test dpReverseDiff≈dp' rtol=1e-2

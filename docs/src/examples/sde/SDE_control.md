@@ -70,17 +70,17 @@ struct Parameters{flType, intType, tType}
 end
 
 myparameters = Parameters{typeof(dt), typeof(numtraj), typeof(tspan)}(lr, epochs, numtraj,
-                                                                      numtrajplot, dt,
-                                                                      tinterval, tspan,
-                                                                      Nintervals, ts,
-                                                                      Δ, Ωmax, κ, C1)
+    numtrajplot, dt,
+    tinterval, tspan,
+    Nintervals, ts,
+    Δ, Ωmax, κ, C1)
 
 ################################################
 # Define Neural Network
 
 # state-aware
 nn = Lux.Chain(Lux.Dense(4, 32, relu),
-               Lux.Dense(32, 1, tanh))
+    Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
 p_nn = ComponentArray(p_nn)
@@ -164,11 +164,11 @@ NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
 p_all = ComponentArray(p_nn = p_nn,
-                       myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
-                        p_all,
-                        callback = callback, noise = NG)
+    p_all,
+    callback = callback, noise = NG)
 
 #########################################
 # compute loss
@@ -182,8 +182,8 @@ end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     pars = ComponentArray(p_nn = p_nn,
-                          myparameters = [myparameters.Δ; myparameters.Ωmax;
-                                          myparameters.κ])
+        myparameters = [myparameters.Δ myparameters.Ωmax
+            myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -194,22 +194,22 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         NG = CreateGrid(myparameters.ts, W1)
 
         remake(prob,
-               p = pars,
-               u0 = u0tmp,
-               callback = callback,
-               noise = NG)
+            p = pars,
+            u0 = u0tmp,
+            callback = callback,
+            noise = NG)
     end
 
     ensembleprob = EnsembleProblem(prob,
-                                   prob_func = prob_func,
-                                   safetycopy = true)
+        prob_func = prob_func,
+        safetycopy = true)
 
     _sol = solve(ensembleprob, alg, EnsembleThreads(),
-                 sensealg = sensealg,
-                 saveat = myparameters.tinterval,
-                 dt = myparameters.dt,
-                 adaptive = false,
-                 trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
+        sensealg = sensealg,
+        saveat = myparameters.tinterval,
+        dt = myparameters.dt,
+        adaptive = false,
+        trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
     A = convert(Array, _sol)
 
     l = g(A, [myparameters.C1], nothing)
@@ -222,8 +222,8 @@ end
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
     pars = ComponentArray(p_nn = p_nn,
-                          myparameters = [myparameters.Δ; myparameters.Ωmax;
-                                          myparameters.κ])
+        myparameters = [myparameters.Δ myparameters.Ωmax
+            myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -233,22 +233,22 @@ function visualize(p_nn; alg = EM())
         NG = CreateGrid(myparameters.ts, W1)
 
         remake(prob,
-               p = pars,
-               u0 = u0tmp,
-               callback = callback,
-               noise = NG)
+            p = pars,
+            u0 = u0tmp,
+            callback = callback,
+            noise = NG)
     end
 
     ensembleprob = EnsembleProblem(prob,
-                                   prob_func = prob_func,
-                                   safetycopy = true)
+        prob_func = prob_func,
+        safetycopy = true)
 
     u = solve(ensembleprob, alg, EnsembleThreads(),
-              saveat = myparameters.tinterval,
-              dt = myparameters.dt,
-              adaptive = false, #abstol=1e-6, reltol=1e-6,
-              trajectories = myparameters.numtrajplot,
-              batch_size = myparameters.numtrajplot)
+        saveat = myparameters.tinterval,
+        dt = myparameters.dt,
+        adaptive = false, #abstol=1e-6, reltol=1e-6,
+        trajectories = myparameters.numtrajplot,
+        batch_size = myparameters.numtrajplot)
 
     ceR = @view u[1, :, :]
     cdR = @view u[2, :, :]
@@ -266,9 +266,9 @@ function visualize(p_nn; alg = EM())
     sf = std(fidelity, dims = 2)[:]
 
     pl1 = plot(0:(myparameters.Nintervals), mf,
-               ribbon = sf,
-               ylim = (0, 1), xlim = (0, myparameters.Nintervals),
-               c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
+        ribbon = sf,
+        ylim = (0, 1), xlim = (0, myparameters.Nintervals),
+        c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
 
     pl = plot(pl1, legend = false, size = (400, 360))
     return pl, loss
@@ -302,8 +302,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
-                         callback = visualization_callback,
-                         maxiters = 100)
+    callback = visualization_callback,
+    maxiters = 100)
 
 # plot optimized control
 visualization_callback(res.u, loss(res.u); doplot = true)
@@ -369,10 +369,10 @@ struct Parameters{flType, intType, tType}
 end
 
 myparameters = Parameters{typeof(dt), typeof(numtraj), typeof(tspan)}(lr, epochs, numtraj,
-                                                                      numtrajplot, dt,
-                                                                      tinterval, tspan,
-                                                                      Nintervals, ts,
-                                                                      Δ, Ωmax, κ, C1)
+    numtrajplot, dt,
+    tinterval, tspan,
+    Nintervals, ts,
+    Δ, Ωmax, κ, C1)
 ```
 
 In plain terms, the quantities that were defined are:
@@ -399,7 +399,7 @@ also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/T
 ```@example sdecontrol
 # state-aware
 nn = Lux.Chain(Lux.Dense(4, 32, relu),
-               Lux.Dense(32, 1, tanh))
+    Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
 p_nn = ComponentArray(p_nn)
@@ -505,11 +505,11 @@ NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
 p_all = ComponentArray(p_nn = p_nn,
-                       myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
-                        p_all,
-                        callback = callback, noise = NG)
+    p_all,
+    callback = callback, noise = NG)
 ```
 
 ### Compute loss function
@@ -536,8 +536,8 @@ end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     pars = ComponentArray(p_nn = p_nn,
-                          myparameters = [myparameters.Δ; myparameters.Ωmax;
-                                          myparameters.κ])
+        myparameters = [myparameters.Δ myparameters.Ωmax
+            myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -548,22 +548,22 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         NG = CreateGrid(myparameters.ts, W1)
 
         remake(prob,
-               p = pars,
-               u0 = u0tmp,
-               callback = callback,
-               noise = NG)
+            p = pars,
+            u0 = u0tmp,
+            callback = callback,
+            noise = NG)
     end
 
     ensembleprob = EnsembleProblem(prob,
-                                   prob_func = prob_func,
-                                   safetycopy = true)
+        prob_func = prob_func,
+        safetycopy = true)
 
     _sol = solve(ensembleprob, alg, EnsembleThreads(),
-                 sensealg = sensealg,
-                 saveat = myparameters.tinterval,
-                 dt = myparameters.dt,
-                 adaptive = false,
-                 trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
+        sensealg = sensealg,
+        saveat = myparameters.tinterval,
+        dt = myparameters.dt,
+        adaptive = false,
+        trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
     A = convert(Array, _sol)
 
     l = g(A, [myparameters.C1], nothing)
@@ -582,8 +582,8 @@ a function of the time steps at which loss values are computed.
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
     pars = ComponentArray(p_nn = p_nn,
-                          myparameters = [myparameters.Δ; myparameters.Ωmax;
-                                          myparameters.κ])
+        myparameters = [myparameters.Δ myparameters.Ωmax
+            myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -593,22 +593,22 @@ function visualize(p_nn; alg = EM())
         NG = CreateGrid(myparameters.ts, W1)
 
         remake(prob,
-               p = pars,
-               u0 = u0tmp,
-               callback = callback,
-               noise = NG)
+            p = pars,
+            u0 = u0tmp,
+            callback = callback,
+            noise = NG)
     end
 
     ensembleprob = EnsembleProblem(prob,
-                                   prob_func = prob_func,
-                                   safetycopy = true)
+        prob_func = prob_func,
+        safetycopy = true)
 
     u = solve(ensembleprob, alg, EnsembleThreads(),
-              saveat = myparameters.tinterval,
-              dt = myparameters.dt,
-              adaptive = false, #abstol=1e-6, reltol=1e-6,
-              trajectories = myparameters.numtrajplot,
-              batch_size = myparameters.numtrajplot)
+        saveat = myparameters.tinterval,
+        dt = myparameters.dt,
+        adaptive = false, #abstol=1e-6, reltol=1e-6,
+        trajectories = myparameters.numtrajplot,
+        batch_size = myparameters.numtrajplot)
 
     ceR = @view u[1, :, :]
     cdR = @view u[2, :, :]
@@ -626,9 +626,9 @@ function visualize(p_nn; alg = EM())
     sf = std(fidelity, dims = 2)[:]
 
     pl1 = plot(0:(myparameters.Nintervals), mf,
-               ribbon = sf,
-               ylim = (0, 1), xlim = (0, myparameters.Nintervals),
-               c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
+        ribbon = sf,
+        ylim = (0, 1), xlim = (0, myparameters.Nintervals),
+        c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
 
     pl = plot(pl1, legend = false, size = (400, 360))
     return pl, loss
@@ -665,8 +665,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
-                         callback = visualization_callback,
-                         maxiters = 100)
+    callback = visualization_callback,
+    maxiters = 100)
 
 # plot optimized control
 visualization_callback(res.u, loss(res.u); doplot = true)

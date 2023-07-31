@@ -69,7 +69,7 @@ end
 
 opt = ADAM(0.05)
 Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader, numEpochs), opt,
-            cb = Flux.throttle(cb, 10))
+    cb = Flux.throttle(cb, 10))
 
 #Now lets see how well it generalizes to new initial conditions 
 
@@ -79,7 +79,7 @@ color_cycle = palette(:tab10)
 pl = plot()
 for (j, temp) in enumerate(starting_temp)
     ode_test_sol = solve(ODEProblem(true_sol, [temp], (0.0f0, 10.0f0)), Tsit5(),
-                         saveat = 0.0:0.5:10.0)
+        saveat = 0.0:0.5:10.0)
     ode_nn_sol = solve(ODEProblem{false}(dudt_, [temp], (0.0f0, 10.0f0), θ))
     scatter!(pl, ode_test_sol, var = (0, 1), label = "", color = color_cycle[j])
     plot!(pl, ode_nn_sol, var = (0, 1), label = "", color = color_cycle[j], lw = 2.0)
@@ -178,7 +178,7 @@ end
 
 opt = ADAM(0.05)
 Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader, numEpochs), opt,
-            cb = Flux.throttle(cb, 10))
+    cb = Flux.throttle(cb, 10))
 ```
 
 Finally, we can see how well our trained network will generalize to new initial conditions.
@@ -190,7 +190,7 @@ color_cycle = palette(:tab10)
 pl = plot()
 for (j, temp) in enumerate(starting_temp)
     ode_test_sol = solve(ODEProblem(true_sol, [temp], (0.0f0, 10.0f0)), Tsit5(),
-                         saveat = 0.0:0.5:10.0)
+        saveat = 0.0:0.5:10.0)
     ode_nn_sol = solve(ODEProblem{false}(dudt_, [temp], (0.0f0, 10.0f0), θ))
     scatter!(pl, ode_test_sol, var = (0, 1), label = "", color = color_cycle[j])
     plot!(pl, ode_nn_sol, var = (0, 1), label = "", color = color_cycle[j], lw = 2.0)

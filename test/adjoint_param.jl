@@ -24,15 +24,15 @@ dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
 res_interp = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
-                                   dgdp_continuous = dgdp, abstol = abstol,
-                                   reltol = reltol, sensealg = InterpolatingAdjoint())
+    dgdp_continuous = dgdp, abstol = abstol,
+    reltol = reltol, sensealg = InterpolatingAdjoint())
 res_quad = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
-                                 dgdp_continuous = dgdp, abstol = abstol,
-                                 reltol = reltol, sensealg = QuadratureAdjoint())
+    dgdp_continuous = dgdp, abstol = abstol,
+    reltol = reltol, sensealg = QuadratureAdjoint())
 res_back = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
-                                 dgdp_continuous = dgdp, abstol = abstol,
-                                 reltol = reltol,
-                                 sensealg = BacksolveAdjoint(checkpointing = true)) # it's blowing up
+    dgdp_continuous = dgdp, abstol = abstol,
+    reltol = reltol,
+    sensealg = BacksolveAdjoint(checkpointing = true)) # it's blowing up
 
 function G(p)
     tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))
@@ -61,7 +61,7 @@ dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
 du0, dp = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
-                                dgdp_continuous = dgdp; abstol = abstol, reltol = reltol)
+    dgdp_continuous = dgdp; abstol = abstol, reltol = reltol)
 
 function G(p)
     tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))
@@ -88,13 +88,13 @@ function model(p, sensealg)
     end
 
     output = solve(ODEProblem(du!,
-                              u0,
-                              (0.0, 10.0),
-                              p),
-                   Tsit5(),
-                   saveat = collect(0:0.1:7),
-                   sensealg = sensealg,
-                   abstol = abstol, reltol = reltol)
+            u0,
+            (0.0, 10.0),
+            p),
+        Tsit5(),
+        saveat = collect(0:0.1:7),
+        sensealg = sensealg,
+        abstol = abstol, reltol = reltol)
     return Array(output[1, :, :]) # only return y, not y′
 end
 

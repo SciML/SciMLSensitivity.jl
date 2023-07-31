@@ -18,7 +18,7 @@ end
 
 cbPreTime = PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
 cbFctCall = FunctionCallingCallback(functionCalling; func_everystep = true,
-                                    func_start = true)
+    func_start = true)
 
 function trueODEfunc(du, u, p, t)
     du .= -u
@@ -27,9 +27,9 @@ t = range(tspan[1], tspan[2], length = datasize)
 
 prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), callback = CallbackSet(cbPreTime, cbFctCall),
-                       saveat = t))
+    saveat = t))
 dudt2 = Chain(Dense(2, 50, tanh),
-              Dense(50, 2))
+    Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 
 function dudt(du, u, p, t)
@@ -45,7 +45,8 @@ cb = PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
 function predict_n_ode()
     _prob = remake(prob, p = p)
     Array(solve(_prob, Tsit5(), u0 = z0, p = p, callback = cb, saveat = t,
-                sensealg = ReverseDiffAdjoint()))[1:2, :]
+        sensealg = ReverseDiffAdjoint()))[1:2,
+        :]
     #Array(solve(prob,Tsit5(),u0=z0,p=p,saveat=t))[1:2,:]
 end
 

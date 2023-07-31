@@ -19,20 +19,20 @@ function test_vector_continuous_callback(cb, g)
     p = [9.8, 0.9]
     prob = ODEProblem(f, u0, tspan, p)
     sol = solve(prob, Tsit5(), callback = cb, abstol = abstol, reltol = reltol,
-                saveat = savingtimes)
+        saveat = savingtimes)
 
     du01, dp1 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                         callback = cb, abstol = abstol,
-                                                         reltol = reltol,
-                                                         saveat = savingtimes,
-                                                         sensealg = BacksolveAdjoint())),
-                                      u0, p)
+            callback = cb, abstol = abstol,
+            reltol = reltol,
+            saveat = savingtimes,
+            sensealg = BacksolveAdjoint())),
+        u0, p)
 
     dstuff = @time ForwardDiff.gradient((θ) -> g(solve(prob, Tsit5(), u0 = θ[1:4],
-                                                       p = θ[5:6], callback = cb,
-                                                       abstol = abstol, reltol = reltol,
-                                                       saveat = savingtimes)),
-                                        [u0; p])
+            p = θ[5:6], callback = cb,
+            abstol = abstol, reltol = reltol,
+            saveat = savingtimes)),
+        [u0; p])
 
     @test du01 ≈ dstuff[1:4]
     @test dp1 ≈ dstuff[5:6]
@@ -56,5 +56,20 @@ end
             cb = VectorContinuousCallback(condition, affect!, 2)
             test_vector_continuous_callback(cb, g)
         end
+    end
+    @testset "Test condition function that depends on time only" begin
+        g(u) = sum((1.0 .- u) .^ 2) ./ 2
+        function condition(out, x, t, integrator)
+            out[1] = sin(t)
+            out[2] = cos(t)
+        end
+
+        function affect!(integrator, idx)
+            println("$(idx) triggered!")
+            u_new = [0.5, 1.0, 0.0, 0.0]
+            integrator.u .= u_new
+        end
+        cb = VectorContinuousCallback(condition, affect!, 2)
+        test_vector_continuous_callback(cb, g)
     end
 end
