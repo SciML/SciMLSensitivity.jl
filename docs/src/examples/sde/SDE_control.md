@@ -534,7 +534,7 @@ end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
+        myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
@@ -580,7 +580,7 @@ a function of the time steps at which loss values are computed.
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
+        myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
 
     function prob_func(prob, i, repeat)
