@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers · SciMLSensitivity.jl</title><script data-outdated-warner src="assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/SciMLSensitivity/stable/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="SciMLSensitivity.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>SciMLSensitivity.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#High-Level-Interface:-sensealg"><span>High-Level Interface: <code>sensealg</code></span></a></li><li><a class="tocitem" href="#Equation-Scope"><span>Equation Scope</span></a></li><li><a class="tocitem" href="#SciMLSensitivity-and-Universal-Differential-Equations"><span>SciMLSensitivity and Universal Differential Equations</span></a></li><li><a class="tocitem" href="#Note-on-Modularity-and-Composability-with-Solvers"><span>Note on Modularity and Composability with Solvers</span></a></li><li><a class="tocitem" href="#Contributing"><span>Contributing</span></a></li><li><a class="tocitem" href="#Citation"><span>Citation</span></a></li><li><a class="tocitem" href="#Reproducibility"><span>Reproducibility</span></a></li></ul></li><li><a class="tocitem" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="tutorials/parameter_estimation_ode/">Parameter Estimation of Ordinary Differential Equations</a></li><li><a class="tocitem" href="tutorials/direct_sensitivity/">Direct Sensitivity Analysis Functionality</a></li><li><a class="tocitem" href="tutorials/adjoint_continuous_functional/">Adjoint Sensitivity Analysis of Continuous Functionals</a></li><li><a class="tocitem" href="tutorials/data_parallel/">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a></li><li><a class="tocitem" href="tutorials/chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods)</a></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">Training Techniques and Tips</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="tutorials/training_tips/local_minima/">Strategies to Avoid Local Minima</a></li><li><a class="tocitem" href="tutorials/training_tips/divergence/">Handling Divergent and Unstable Trajectories</a></li><li><a class="tocitem" href="tutorials/training_tips/multiple_nn/">Simultaneous Fitting of Multiple Neural Networks</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">Ordinary Differential Equations (ODEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/ode/exogenous_input/">Handling Exogenous Input Signals</a></li><li><a class="tocitem" href="examples/ode/prediction_error_method/">Prediction error method (PEM)</a></li><li><a class="tocitem" href="examples/ode/second_order_adjoints/">Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a></li><li><a class="tocitem" href="examples/ode/second_order_neural/">Neural Second Order Ordinary Differential Equation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Neural Ordinary Differential Equations (Neural ODE)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/neural_ode/neural_ode_flux/">Neural Ordinary Differential Equations with Flux</a></li><li><a class="tocitem" href="examples/neural_ode/simplechains/">Neural Ordinary Differential Equations with SimpleChains</a></li><li><a class="tocitem" href="examples/neural_ode/neural_gde/">Neural Graph Differential Equations</a></li><li><a class="tocitem" href="examples/neural_ode/minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-3" type="checkbox"/><label class="tocitem" for="menuitem-4-3"><span class="docs-label">Stochastic Differential Equations (SDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/sde/optimization_sde/">Optimization of Stochastic Differential Equations</a></li><li><a class="tocitem" href="examples/sde/SDE_control/">Controlling Stochastic Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-4" type="checkbox"/><label class="tocitem" for="menuitem-4-4"><span class="docs-label">Delay Differential Equations (DDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/dde/delay_diffeq/">Delay Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-5" type="checkbox"/><label class="tocitem" for="menuitem-4-5"><span class="docs-label">Differential-Algebraic Equations (DAEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/dae/physical_constraints/">Enforcing Physical Constraints via Universal Differential-Algebraic Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-6" type="checkbox"/><label class="tocitem" for="menuitem-4-6"><span class="docs-label">Partial Differential Equations (PDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/pde/pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-7" type="checkbox"/><label class="tocitem" for="menuitem-4-7"><span class="docs-label">Hybrid and Jump Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/hybrid_jump/hybrid_diffeq/">Training Neural Networks in Hybrid Differential Equations</a></li><li><a class="tocitem" href="examples/hybrid_jump/bouncing_ball/">Bouncing Ball Hybrid ODE Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-8" type="checkbox"/><label class="tocitem" for="menuitem-4-8"><span class="docs-label">Bayesian Estimation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-9" type="checkbox"/><label class="tocitem" for="menuitem-4-9"><span class="docs-label">Optimal and Model Predictive Control</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/optimal_control/optimal_control/">Solving Optimal Control Problems with Universal Differential Equations</a></li><li><a class="tocitem" href="examples/optimal_control/feedback_control/">Universal Differential Equations for Neural Feedback Control</a></li></ul></li></ul></li><li><span class="tocitem">Manual and APIs</span><ul><li><a class="tocitem" href="manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="manual/nonlinear_solve_sensitivities/">Sensitivity Algorithms for Nonlinear Problems with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="manual/direct_forward_sensitivity/">Direct Forward Sensitivity Analysis of ODEs</a></li><li><a class="tocitem" href="manual/direct_adjoint_sensitivities/">Direct Adjoint Sensitivities of Differential Equations</a></li></ul></li><li><a class="tocitem" href="Benchmark/">Benchmarks</a></li><li><a class="tocitem" href="sensitivity_math/">Sensitivity Math Details</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqSensitivity.jl/blob/master/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="SciMLSensitivity:-Automatic-Differentiation-and-Adjoints-for-(Differential)-Equation-Solvers"><a class="docs-heading-anchor" href="#SciMLSensitivity:-Automatic-Differentiation-and-Adjoints-for-(Differential)-Equation-Solvers">SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a><a id="SciMLSensitivity:-Automatic-Differentiation-and-Adjoints-for-(Differential)-Equation-Solvers-1"></a><a class="docs-heading-anchor-permalink" href="#SciMLSensitivity:-Automatic-Differentiation-and-Adjoints-for-(Differential)-Equation-Solvers" title="Permalink"></a></h1><p>SciMLSensitivity.jl is the automatic differentiation and adjoints system for the SciML ecosystem. Also known as local sensitivity analysis, these methods allow for calculation of fast derivatives of SciML problem types which are commonly used to analyze model sensitivities, calibrate models to data, train neural ODEs, perform automated model discovery via universal differential equations, and more. SciMLSensitivity.jl is a high-level interface that pulls together all the tools with heuristics and helper functions to make solving inverse problems and inferring models as easy as possible without losing efficiency.</p><p>Thus, what SciMLSensitivity.jl provides is:</p><ul><li>Automatic differentiation overloads for improving the performance and flexibility of AD calls over <code>solve</code>.</li><li>A lower level direct interface for defining forward sensitivity and adjoint problems to allow for minimal overhead and maximal performance.</li><li>A bunch of tutorials, documentation, and test cases for this combination with parameter estimation (data fitting / model calibration), neural network libraries and GPUs.</li></ul><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>This documentation assumes familiarity with the solver packages for the respective problem types. If one is not familiar with the solver packages, please consult the documentation for pieces like <a href="https://docs.sciml.ai/DiffEqDocs/stable/">DifferentialEquations.jl</a>, <a href="https://docs.sciml.ai/NonlinearSolve/stable/">NonlinearSolve.jl</a>, <a href="https://docs.sciml.ai/LinearSolve/stable/">LinearSolve.jl</a>, etc. first.</p></div></div><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>To install SciMLSensitivity.jl, use the Julia package manager:</p><pre><code class="language-julia hljs">using Pkg
+Pkg.add(&quot;SciMLSensitivity&quot;)</code></pre><h2 id="High-Level-Interface:-sensealg"><a class="docs-heading-anchor" href="#High-Level-Interface:-sensealg">High-Level Interface: <code>sensealg</code></a><a id="High-Level-Interface:-sensealg-1"></a><a class="docs-heading-anchor-permalink" href="#High-Level-Interface:-sensealg" title="Permalink"></a></h2><p>The highest level interface is provided by the function <code>solve</code>:</p><pre><code class="language-julia hljs">solve(prob, args...; sensealg = InterpolatingAdjoint(),
+    checkpoints = sol.t, kwargs...)</code></pre><p><code>solve</code> is fully compatible with automatic differentiation libraries like:</p><ul><li><a href="https://fluxml.ai/Zygote.jl/stable/">Zygote.jl</a></li><li><a href="https://juliadiff.org/ReverseDiff.jl/">ReverseDiff.jl</a></li><li><a href="https://github.com/FluxML/Tracker.jl">Tracker.jl</a></li><li><a href="https://juliadiff.org/ForwardDiff.jl/stable/">ForwardDiff.jl</a></li></ul><p>and will automatically replace any calculations of the solution&#39;s derivative with a fast method. The keyword argument <code>sensealg</code> controls the dispatch to the <code>AbstractSensitivityAlgorithm</code> used for the sensitivity calculation. Note that <code>solve</code> in an AD context does not allow higher order interpolations unless <code>sensealg=DiffEqBase.SensitivityADPassThrough()</code> is used, i.e. going back to the AD mechanism.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The behavior of ForwardDiff.jl is different from the other automatic differentiation libraries mentioned above. The <code>sensealg</code> keyword is ignored. Instead, the differential equations are solved using <code>Dual</code> numbers for <code>u0</code> and <code>p</code>. If only <code>p</code> is perturbed in the sensitivity analysis, but not <code>u0</code>, the state is still implemented as a <code>Dual</code> number. ForwardDiff.jl will thus not dispatch into continuous forward nor adjoint sensitivity analysis even if a <code>sensealg</code> is provided.</p></div></div><h2 id="Equation-Scope"><a class="docs-heading-anchor" href="#Equation-Scope">Equation Scope</a><a id="Equation-Scope-1"></a><a class="docs-heading-anchor-permalink" href="#Equation-Scope" title="Permalink"></a></h2><p>SciMLSensitivity.jl supports all the equation types of the <a href="https://docs.sciml.ai/SciMLBase/stable/">SciML Common Interface</a>, extending the problem types by adding overloads for automatic differentiation to improve the performance and flexibility of the differentiation system. This includes:</p><ul><li><p>Linear systems (<code>LinearProblem</code>)</p><ul><li>Direct methods for dense and sparse</li><li>Iterative solvers with preconditioning</li></ul></li><li><p>Nonlinear Systems (<code>NonlinearProblem</code>)</p><ul><li>Systems of nonlinear equations</li><li>Scalar bracketing systems</li></ul></li><li><p>Integrals (quadrature) (<code>QuadratureProblem</code>)</p></li><li><p>Differential Equations</p><ul><li>Discrete equations (function maps, discrete stochastic (Gillespie/Markov) simulations) (<code>DiscreteProblem</code>)</li><li>Ordinary differential equations (ODEs) (<code>ODEProblem</code>)</li><li>Split and Partitioned ODEs (Symplectic integrators, IMEX Methods) (<code>SplitODEProblem</code>)</li><li>Stochastic ordinary differential equations (SODEs or SDEs) (<code>SDEProblem</code>)</li><li>Stochastic differential-algebraic equations (SDAEs) (<code>SDEProblem</code> with mass matrices)</li><li>Random differential equations (RODEs or RDEs) (<code>RODEProblem</code>)</li><li>Differential algebraic equations (DAEs) (<code>DAEProblem</code> and <code>ODEProblem</code> with mass matrices)</li><li>Delay differential equations (DDEs) (<code>DDEProblem</code>)</li><li>Neutral, retarded, and algebraic delay differential equations (NDDEs, RDDEs, and DDAEs)</li><li>Stochastic delay differential equations (SDDEs) (<code>SDDEProblem</code>)</li><li>Experimental support for stochastic neutral, retarded, and algebraic delay differential equations (SNDDEs, SRDDEs, and SDDAEs)</li><li>Mixed discrete and continuous equations (Hybrid Equations, Jump Diffusions) (<code>DEProblem</code>s with callbacks)</li></ul></li><li><p>Optimization (<code>OptimizationProblem</code>)</p><ul><li>Nonlinear (constrained) optimization</li></ul></li><li><p>(Stochastic/Delay/Differential-Algebraic) Partial Differential Equations (<code>PDESystem</code>)</p><ul><li>Finite difference and finite volume methods</li><li>Interfaces to finite element methods</li><li>Physics-Informed Neural Networks (PINNs)</li><li>Integro-Differential Equations</li><li>Fractional Differential Equations</li></ul></li></ul><h2 id="SciMLSensitivity-and-Universal-Differential-Equations"><a class="docs-heading-anchor" href="#SciMLSensitivity-and-Universal-Differential-Equations">SciMLSensitivity and Universal Differential Equations</a><a id="SciMLSensitivity-and-Universal-Differential-Equations-1"></a><a class="docs-heading-anchor-permalink" href="#SciMLSensitivity-and-Universal-Differential-Equations" title="Permalink"></a></h2><p>SciMLSensitivity is for universal differential equations, where these can include delays, physical constraints, stochasticity, events, and all other kinds of interesting behavior that shows up in scientific simulations. Neural networks can be all or part of the model. They can be around the differential equation, in the cost function, or inside the differential equation. Neural networks representing unknown portions of the model or functions can go anywhere you have uncertainty in the form of the scientific simulator. Forward sensitivity and adjoint equations are automatically generated with checkpointing and stabilization to ensure it works for large stiff equations, while specializations on static objects allows for high efficiency on small equations. For an overview of the topic with applications, consult the paper <a href="https://arxiv.org/abs/2001.04385">Universal Differential Equations for Scientific Machine Learning</a>.</p><p>You can efficiently use the package for:</p><ul><li>Parameter estimation of scientific models (ODEs, SDEs, DDEs, DAEs, etc.)</li><li>Neural ODEs, Neural SDE, Neural DAEs, Neural DDEs, etc.</li><li>Nonlinear optimal control, including training neural controllers</li><li>(Stiff) universal ordinary differential equations (universal ODEs)</li><li>Universal stochastic differential equations (universal SDEs)</li><li>Universal delay differential equations (universal DDEs)</li><li>Universal partial differential equations (universal PDEs)</li><li>Universal jump stochastic differential equations (universal jump diffusions)</li><li>Hybrid universal differential equations (universal DEs with event handling)</li></ul><p>with high order, adaptive, implicit, GPU-accelerated, Newton-Krylov, etc. methods. For examples, please refer to <a href="https://julialang.org/blog/2019/01/fluxdiffeq">the DiffEqFlux release blog post</a> (which we try to keep updated for changes to the libraries). Additional demonstrations, like neural PDEs and neural jump SDEs, can be found <a href="http://www.stochasticlifestyle.com/neural-jump-sdes-jump-diffusions-and-neural-pdes/">at this blog post</a> (among many others!). All these features are only part of the advantage, as this library <a href="Benchmark/#Benchmarks">routinely benchmarks orders of magnitude faster than competing libraries like torchdiffeq</a>. Use with GPUs is highly optimized by <a href="https://www.stochasticlifestyle.com/solving-systems-stochastic-pdes-using-gpus-julia/">recompiling the solvers to GPUs to remove all CPU-GPU data transfers</a>, while use with CPUs uses specialized kernels for accelerating differential equation solves.</p><p>Many training techniques are supported by this package, including:</p><ul><li><p>Optimize-then-discretize (backsolve adjoints, checkpointed adjoints, quadrature adjoints)</p></li><li><p>Discretize-then-optimize (forward and reverse mode discrete sensitivity analysis)</p><ul><li>This is a generalization of <a href="https://arxiv.org/pdf/1902.10298.pdf">ANODE</a> and <a href="https://arxiv.org/pdf/1906.04596.pdf">ANODEv2</a> to all <a href="https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/">DifferentialEquations.jl ODE solvers</a></li></ul></li><li><p>Hybrid approaches (adaptive time stepping + AD for adaptive discretize-then-optimize)</p></li><li><p>O(1) memory backprop of ODEs via BacksolveAdjoint, and Virtual Brownian Trees for O(1) backprop of SDEs</p></li><li><p><a href="tutorials/adjoint_continuous_functional/#continuous_loss">Continuous adjoints for integral loss functions</a></p></li><li><p>Probabilistic programming and variational inference on ODEs/SDEs/DAEs/DDEs/hybrid equations etc. is provided by integration with <a href="https://turing.ml/stable/docs/using-turing/">Turing.jl</a> and <a href="https://github.com/probcomp/Gen.jl">Gen.jl</a>. Reproduce <a href="https://arxiv.org/abs/2001.01328">variational loss functions</a> by plugging <a href="https://turing.ml/stable/tutorials/09-variational-inference/">composable libraries together</a>.</p></li></ul><p>all while mixing forward mode and reverse mode approaches as appropriate for the most speed. For more details on the adjoint sensitivity analysis methods for computing fast gradients, see the <a href="manual/differential_equation_sensitivities/#sensitivity_diffeq">adjoints details page</a>.</p><p>With this package, you can explore various ways to integrate the two methodologies:</p><ul><li>Neural networks can be defined where the “activations” are nonlinear functions described by differential equations</li><li>Neural networks can be defined where some layers are ODE solves</li><li>ODEs can be defined where some terms are neural networks</li><li>Cost functions on ODEs can define neural networks</li></ul><h2 id="Note-on-Modularity-and-Composability-with-Solvers"><a class="docs-heading-anchor" href="#Note-on-Modularity-and-Composability-with-Solvers">Note on Modularity and Composability with Solvers</a><a id="Note-on-Modularity-and-Composability-with-Solvers-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-Modularity-and-Composability-with-Solvers" title="Permalink"></a></h2><p>Note that SciMLSensitivity.jl purely built on composable and modular infrastructure. SciMLSensitivity provides high-level helper functions and documentation for the user, but the code generation stack is modular and composes in many ways. For example, one can use and swap out the ODE solver between any common interface compatible library, like:</p><ul><li>Sundials.jl</li><li>OrdinaryDiffEq.jl</li><li>LSODA.jl</li><li><a href="https://github.com/mikelehu/IRKGaussLegendre.jl">IRKGaussLegendre.jl</a></li><li><a href="https://github.com/SciML/SciPyDiffEq.jl">SciPyDiffEq.jl</a></li><li><a href="https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/">… etc. many other choices!</a></li></ul><p>In addition, due to the composability of the system, none of the components are directly tied to the Flux.jl machine learning framework. For example, you can <a href="https://youtu.be/n2MwJ1guGVQ?t=284">use SciMLSensitivity.jl to generate TensorFlow graphs and train the neural network with TensorFlow.jl</a>, <a href="https://github.com/FluxML/Torch.jl">use PyTorch arrays via Torch.jl</a>, and more all with single line code changes by utilizing the underlying code generation. The tutorials shown here are thus mostly a guide on how to use the ecosystem as a whole, only showing a small snippet of the possible ways to compose the thousands of differentiable libraries together! Swap out ODEs for SDEs, DDEs, DAEs, etc., put quadrature libraries or <a href="https://github.com/mcabbott/Tullio.jl">Tullio.jl</a> in the loss function, the world is your oyster!</p><p>As a proof of composability, note that the implementation of Bayesian neural ODEs required zero code changes to the library, and instead just relied on the composability with other Julia packages.</p><h2 id="Contributing"><a class="docs-heading-anchor" href="#Contributing">Contributing</a><a id="Contributing-1"></a><a class="docs-heading-anchor-permalink" href="#Contributing" title="Permalink"></a></h2><ul><li><p>Please refer to the <a href="https://github.com/SciML/ColPrac/blob/master/README.md">SciML ColPrac: Contributor&#39;s Guide on Collaborative Practices for Community Packages</a> for guidance on PRs, issues, and other matters relating to contributing to SciML.</p></li><li><p>See the <a href="https://github.com/SciML/SciMLStyle">SciML Style Guide</a> for common coding practices and other style decisions.</p></li><li><p>There are a few community forums:</p><ul><li>The #diffeq-bridged and #sciml-bridged channels in the <a href="https://julialang.org/slack/">Julia Slack</a></li><li>The #diffeq-bridged and #sciml-bridged channels in the <a href="https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged">Julia Zulip</a></li><li>On the <a href="https://discourse.julialang.org">Julia Discourse forums</a></li><li>See also <a href="https://sciml.ai/community/">SciML Community page</a></li></ul></li></ul><h2 id="Citation"><a class="docs-heading-anchor" href="#Citation">Citation</a><a id="Citation-1"></a><a class="docs-heading-anchor-permalink" href="#Citation" title="Permalink"></a></h2><p>If you use SciMLSensitivity.jl or are influenced by its ideas, please cite:</p><pre><code class="nohighlight hljs">@article{rackauckas2020universal,
+  title={Universal differential equations for scientific machine learning},
+  author={Rackauckas, Christopher and Ma, Yingbo and Martensen, Julius and Warner, Collin and Zubov, Kirill and Supekar, Rohit and Skinner, Dominic and Ramadhan, Ali},
+  journal={arXiv preprint arXiv:2001.04385},
+  year={2020}
+}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `/var/lib/buildkite-agent/builds/gpuci-14/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
+  [052768ef] CUDA v4.4.0
+  [49dc2e85] Calculus v0.5.1
+  [b0b7db55] ComponentArrays v0.14.0
+  [82cc6244] DataInterpolations v4.0.1
+  [2b5f629d] DiffEqBase v6.127.0
+  [459566f4] DiffEqCallbacks v2.26.1
+  [aae7a2af] DiffEqFlux v2.1.0
+  [77a26b50] DiffEqNoiseProcess v5.17.2
+  [0c46a032] DifferentialEquations v7.8.0
+  [e30172f5] Documenter v0.27.25
+⌅ [587475ba] Flux v0.13.17
+  [f6369f11] ForwardDiff v0.10.35
+⌃ [cffab07f] GraphNeuralNetworks v0.6.7
+  [c8e1da08] IterTools v1.8.0
+  [b2108857] Lux v0.5.0
+  [eb30cadb] MLDatasets v0.7.11
+⌅ [872c559c] NNlib v0.8.21
+  [3bd65402] Optimisers v0.2.19
+⌃ [7f7a1694] Optimization v3.14.0
+  [253f991c] OptimizationFlux v0.1.4
+⌃ [4e6fcdb7] OptimizationNLopt v0.1.5
+⌃ [36348300] OptimizationOptimJL v0.1.8
+⌃ [42dfb2eb] OptimizationOptimisers v0.1.2
+  [500b13db] OptimizationPolyalgorithms v0.1.1
+  [1dea7af3] OrdinaryDiffEq v6.53.4
+  [91a5bcdd] Plots v1.38.17
+  [1fd47b50] QuadGK v2.8.2
+  [731186ca] RecursiveArrayTools v2.38.7
+  [37e2e3b7] ReverseDiff v1.15.0
+⌃ [1ed8b502] SciMLSensitivity v7.35.0
+  [de6bee2f] SimpleChains v0.4.5
+  [90137ffa] StaticArrays v1.6.2
+  [789caeaf] StochasticDiffEq v6.61.3
+  [9f7883ad] Tracker v0.2.26
+  [e88e6eb3] Zygote v0.6.62
+  [37e2e46d] LinearAlgebra
+  [9a3f8284] Random
+  [10745b16] Statistics v1.9.0
+Info Packages marked with ⌃ and ⌅ have new versions available, but those with ⌅ are restricted by compatibility constraints from upgrading. To see why use `status --outdated`</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.9.2
+Commit e4ee485e909 (2023-07-05 09:39 UTC)
+Platform Info:
+  OS: Linux (x86_64-linux-gnu)
+  CPU: 48 × AMD EPYC 7402 24-Core Processor
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-14.0.6 (ORCJIT, znver2)
+  Threads: 1 on 2 virtual cores
+Environment:
+  JULIA_CPU_THREADS = 2
+  JULIA_DEPOT_PATH = /root/.cache/julia-buildkite-plugin/depots/ea52448d-f230-4619-b27a-2d98107bd215
+  LD_LIBRARY_PATH = /usr/local/nvidia/lib:/usr/local/nvidia/lib64
+  JULIA_PKG_SERVER =
+  JULIA_IMAGE_THREADS = 1</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `/var/lib/buildkite-agent/builds/gpuci-14/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
+  [47edcb42] ADTypes v0.1.6
+  [a4c015fc] ANSIColoredPrinters v0.0.1
+  [621f4979] AbstractFFTs v1.5.0
+  [1520ce14] AbstractTrees v0.4.4
+  [79e6a3ab] Adapt v3.6.2
+  [dce04be8] ArgCheck v2.3.0
+  [ec485272] ArnoldiMethod v0.2.0
+  [4fba245c] ArrayInterface v7.4.11
+  [30b0a656] ArrayInterfaceCore v0.1.29
+  [4c555306] ArrayLayouts v1.1.1
+  [a9b6321e] Atomix v0.1.0
+  [ab4f0b2a] BFloat16s v0.4.2
+  [aae01518] BandedMatrices v0.17.34
+  [198e06fe] BangBang v0.3.39
+  [9718e550] Baselet v0.1.1
+  [6e4b80f9] BenchmarkTools v1.3.2
+  [d1d4a3ce] BitFlags v0.1.7
+  [62783981] BitTwiddlingConvenienceFunctions v0.1.5
+⌅ [764a87c0] BoundaryValueDiffEq v2.11.0
+  [e1450e63] BufferedStreams v1.2.0
+  [fa961155] CEnum v0.4.2
+  [2a0fbf3d] CPUSummary v0.2.3
+  [336ed68f] CSV v0.10.11
+  [052768ef] CUDA v4.4.0
+  [1af6417a] CUDA_Runtime_Discovery v0.2.2
+  [49dc2e85] Calculus v0.5.1
+  [7057c7e9] Cassette v0.3.11
+  [082447d4] ChainRules v1.53.0
+  [d360d2e6] ChainRulesCore v1.16.0
+  [46823bd8] Chemfiles v0.10.40
+  [fb6a15b2] CloseOpenIntervals v0.1.12
+  [523fee87] CodecBzip2 v0.7.2
+  [944b1d66] CodecZlib v0.7.2
+  [35d6a980] ColorSchemes v3.22.0
+  [3da002f7] ColorTypes v0.11.4
+  [c3611d14] ColorVectorSpace v0.10.0
+  [5ae59095] Colors v0.12.10
+  [38540f10] CommonSolve v0.2.4
+  [bbf7d656] CommonSubexpressions v0.3.0
+  [34da2185] Compat v4.8.0
+  [b0b7db55] ComponentArrays v0.14.0
+  [a33af91c] CompositionsBase v0.1.2
+  [2569d6c7] ConcreteStructs v0.2.3
+  [f0e56b4a] ConcurrentUtilities v2.2.1
+  [88cd18e8] ConsoleProgressMonitor v0.1.2
+  [187b0558] ConstructionBase v1.5.3
+  [6add18c4] ContextVariablesX v0.1.3
+  [d38c429a] Contour v0.6.2
+  [adafc99b] CpuId v0.3.1
+  [a8cc5b0e] Crayons v4.1.1
+  [9a962f9c] DataAPI v1.15.0
+  [124859b0] DataDeps v0.7.11
+  [a93c6f00] DataFrames v1.6.1
+  [82cc6244] DataInterpolations v4.0.1
+  [864edb3b] DataStructures v0.18.14
+  [e2d170a0] DataValueInterfaces v1.0.0
+  [244e2a9f] DefineSingletons v0.1.2
+  [bcd4f6db] DelayDiffEq v5.42.0
+  [8bb1440f] DelimitedFiles v1.9.1
+  [2b5f629d] DiffEqBase v6.127.0
+  [459566f4] DiffEqCallbacks v2.26.1
+  [aae7a2af] DiffEqFlux v2.1.0
+  [77a26b50] DiffEqNoiseProcess v5.17.2
+  [163ba53b] DiffResults v1.1.0
+  [b552c78f] DiffRules v1.15.1
+  [0c46a032] DifferentialEquations v7.8.0
+  [b4f34e82] Distances v0.10.9
+  [31c24e10] Distributions v0.25.98
+  [ced4e74d] DistributionsAD v0.6.51
+  [ffbed154] DocStringExtensions v0.9.3
+  [e30172f5] Documenter v0.27.25
+  [fa6b7ba4] DualNumbers v0.6.8
+  [da5c29d0] EllipsisNotation v1.7.0
+  [4e289a0a] EnumX v1.0.4
+  [7da242da] Enzyme v0.11.6
+  [f151be2c] EnzymeCore v0.5.1
+  [460bff9d] ExceptionUnwrapping v0.1.9
+  [d4d017d3] ExponentialUtilities v1.24.0
+  [e2ba6199] ExprTools v0.1.10
+  [c87230d0] FFMPEG v0.4.1
+  [cc61a311] FLoops v0.2.1
+  [b9860ae5] FLoopsBase v0.1.1
+  [7034ab61] FastBroadcast v0.2.6
+  [9aa1b823] FastClosures v0.3.2
+  [29a986be] FastLapackInterface v2.0.0
+  [5789e2e9] FileIO v1.16.1
+  [48062228] FilePathsBase v0.9.20
+  [1a297f60] FillArrays v1.5.0
+  [6a86dc24] FiniteDiff v2.21.1
+  [53c48c17] FixedPointNumbers v0.8.4
+⌅ [587475ba] Flux v0.13.17
+  [59287772] Formatting v0.4.2
+  [f6369f11] ForwardDiff v0.10.35
+  [069b7b12] FunctionWrappers v1.1.3
+  [77dc65aa] FunctionWrappersWrappers v0.1.3
+  [d9f16b24] Functors v0.4.5
+  [0c68f7d7] GPUArrays v8.8.1
+  [46192b85] GPUArraysCore v0.1.5
+  [61eb1bfa] GPUCompiler v0.21.4
+  [28b8d3ca] GR v0.72.9
+  [92fee26a] GZip v0.5.1
+  [c145ed77] GenericSchur v0.5.3
+  [c27321d9] Glob v1.3.1
+⌃ [cffab07f] GraphNeuralNetworks v0.6.7
+  [86223c79] Graphs v1.8.0
+  [42e2da0e] Grisu v1.0.2
+  [f67ccb44] HDF5 v0.16.15
+  [cd3eb016] HTTP v1.9.14
+  [3e5b6fbb] HostCPUFeatures v0.1.15
+  [34004b35] HypergeometricFunctions v0.3.23
+  [b5f81e59] IOCapture v0.2.3
+  [7869d1d1] IRTools v0.4.10
+  [615f187c] IfElse v0.1.1
+  [c817782e] ImageBase v0.1.7
+  [a09fc81d] ImageCore v0.10.1
+  [4e3cecfd] ImageShow v0.3.8
+  [d25df0c9] Inflate v0.1.3
+  [22cec73e] InitialValues v0.3.1
+  [842dd82b] InlineStrings v1.4.0
+  [7d512f48] InternedStrings v0.7.0
+  [41ab1584] InvertedIndices v1.3.0
+  [92d709cd] IrrationalConstants v0.2.2
+  [c8e1da08] IterTools v1.8.0
+  [82899510] IteratorInterfaceExtensions v1.0.0
+  [033835bb] JLD2 v0.4.33
+  [1019f520] JLFzf v0.1.5
+  [692b3bcd] JLLWrappers v1.4.1
+  [682c06a0] JSON v0.21.4
+  [0f8b85d8] JSON3 v1.13.1
+  [b14d175d] JuliaVariables v0.2.4
+  [ccbc3e58] JumpProcesses v9.7.2
+  [ef3ab10e] KLU v0.4.0
+  [63c18a36] KernelAbstractions v0.9.8
+  [ba0b0d4f] Krylov v0.9.2
+  [0b1a1467] KrylovKit v0.6.0
+  [929cbde3] LLVM v6.1.0
+  [b964fa9f] LaTeXStrings v1.3.0
+  [23fbe1c1] Latexify v0.16.1
+  [10f19ff3] LayoutPointers v0.1.14
+  [50d2b5c4] Lazy v0.15.1
+  [8cdb02fc] LazyModules v0.3.1
+  [1d6d02ad] LeftChildRightSiblingTrees v0.2.0
+  [2d8b4e74] LevyArea v1.0.0
+  [d3d80556] LineSearches v7.2.0
+  [7ed4a6bd] LinearSolve v2.4.2
+  [2ab3a3ac] LogExpFunctions v0.3.24
+  [e6f89c97] LoggingExtras v1.0.0
+  [bdcacae8] LoopVectorization v0.12.165
+  [b2108857] Lux v0.5.0
+  [bb33d45b] LuxCore v0.1.4
+  [34f89e08] LuxDeviceUtils v0.1.5
+  [82251201] LuxLib v0.3.1
+  [23992714] MAT v0.10.5
+  [eb30cadb] MLDatasets v0.7.11
+  [d8e11817] MLStyle v0.4.17
+  [f1d291b0] MLUtils v0.4.3
+  [1914dd2f] MacroTools v0.5.10
+  [d125e4d3] ManualMemory v0.1.8
+  [dbb5928d] MappedArrays v0.4.2
+  [b8f27783] MathOptInterface v1.18.0
+  [fdba3010] MathProgBase v0.7.8
+  [739be429] MbedTLS v1.1.7
+  [442fdcdd] Measures v0.3.2
+  [128add7d] MicroCollections v0.1.4
+  [e1d29d7a] Missings v1.1.0
+  [e94cdb99] MosaicViews v0.3.4
+  [46d2c3a1] MuladdMacro v0.2.4
+  [d8a4904e] MutableArithmetics v1.3.0
+  [d41bc354] NLSolversBase v7.8.3
+  [76087f3c] NLopt v0.6.5
+  [2774e3e8] NLsolve v4.5.1
+⌅ [872c559c] NNlib v0.8.21
+  [a00861dc] NNlibCUDA v0.2.7
+  [15e1cf62] NPZ v0.4.3
+  [77ba4419] NaNMath v1.0.2
+  [71a1bf82] NameResolution v0.1.5
+  [b8a86587] NearestNeighbors v0.4.13
+  [8913a72c] NonlinearSolve v1.9.0
+  [d8793406] ObjectFile v0.4.0
+  [6fe1bfb0] OffsetArrays v1.12.10
+  [0b1bfda6] OneHotArrays v0.2.4
+  [4d8831e6] OpenSSL v1.4.1
+  [429524aa] Optim v1.7.6
+  [3bd65402] Optimisers v0.2.19
+⌃ [7f7a1694] Optimization v3.14.0
+  [253f991c] OptimizationFlux v0.1.4
+⌃ [4e6fcdb7] OptimizationNLopt v0.1.5
+⌃ [36348300] OptimizationOptimJL v0.1.8
+⌃ [42dfb2eb] OptimizationOptimisers v0.1.2
+  [500b13db] OptimizationPolyalgorithms v0.1.1
+  [bac558e1] OrderedCollections v1.6.2
+  [1dea7af3] OrdinaryDiffEq v6.53.4
+  [90014a1f] PDMats v0.11.17
+  [65ce6f38] PackageExtensionCompat v1.0.0
+  [5432bcbf] PaddedViews v0.5.12
+  [d96e819e] Parameters v0.12.3
+  [69de0a69] Parsers v2.7.2
+  [570af359] PartialFunctions v1.1.1
+  [fbb45041] Pickle v0.3.3
+  [b98c9c47] Pipe v1.3.0
+  [ccf2f8ad] PlotThemes v3.1.0
+  [995b91a9] PlotUtils v1.3.5
+  [91a5bcdd] Plots v1.38.17
+  [e409e4f3] PoissonRandom v0.4.4
+  [f517fe37] Polyester v0.7.5
+  [1d0040c9] PolyesterWeave v0.2.1
+  [2dfb63ee] PooledArrays v1.4.2
+  [85a6dd25] PositiveFactorizations v0.2.4
+  [d236fae5] PreallocationTools v0.4.12
+  [aea7be01] PrecompileTools v1.1.2
+  [21216c6a] Preferences v1.4.0
+  [8162dcfd] PrettyPrint v0.2.0
+  [08abe8d2] PrettyTables v2.2.7
+  [33c8b6b6] ProgressLogging v0.1.4
+  [92933f4c] ProgressMeter v1.7.2
+  [1fd47b50] QuadGK v2.8.2
+  [74087812] Random123 v1.6.1
+  [e6cf234a] RandomNumbers v1.5.3
+  [c1ae055f] RealDot v0.1.0
+  [3cdcf5f2] RecipesBase v1.3.4
+  [01d81517] RecipesPipeline v0.6.12
+  [731186ca] RecursiveArrayTools v2.38.7
+  [f2c3362d] RecursiveFactorization v0.2.18
+  [189a3867] Reexport v1.2.2
+  [05181044] RelocatableFolders v1.0.0
+  [ae029012] Requires v1.3.0
+  [ae5879a3] ResettableStacks v1.1.1
+  [37e2e3b7] ReverseDiff v1.15.0
+  [79098fc4] Rmath v0.7.1
+  [7e49a35a] RuntimeGeneratedFunctions v0.5.11
+  [94e857df] SIMDTypes v0.1.0
+  [476501e8] SLEEFPirates v0.6.39
+  [0bca4576] SciMLBase v1.94.0
+  [e9a6253c] SciMLNLSolve v0.1.8
+  [c0aeaf25] SciMLOperators v0.3.6
+⌃ [1ed8b502] SciMLSensitivity v7.35.0
+  [6c6a2e73] Scratch v1.2.0
+  [91c51154] SentinelArrays v1.4.0
+  [efcf1570] Setfield v1.1.1
+  [605ecd9f] ShowCases v0.1.0
+  [992d4aef] Showoff v1.0.3
+  [777ac1f9] SimpleBufferStream v1.1.0
+  [de6bee2f] SimpleChains v0.4.5
+  [727e6d20] SimpleNonlinearSolve v0.1.18
+  [699a6c99] SimpleTraits v0.9.4
+  [ce78b400] SimpleUnPack v1.1.0
+  [66db9d55] SnoopPrecompile v1.0.3
+  [a2af1166] SortingAlgorithms v1.1.1
+  [47a9eef4] SparseDiffTools v2.4.1
+  [e56a9233] Sparspak v0.3.9
+  [276daf66] SpecialFunctions v2.3.0
+  [171d559e] SplittablesBase v0.1.15
+  [cae243ae] StackViews v0.1.1
+  [aedffcd0] Static v0.8.8
+  [0d7ed370] StaticArrayInterface v1.4.0
+  [90137ffa] StaticArrays v1.6.2
+  [1e83bf80] StaticArraysCore v1.4.2
+  [82ae8749] StatsAPI v1.6.0
+  [2913bbd2] StatsBase v0.34.0
+  [4c63d2b9] StatsFuns v1.3.0
+  [9672c7b4] SteadyStateDiffEq v1.16.0
+  [789caeaf] StochasticDiffEq v6.61.3
+  [7792a7ef] StrideArraysCore v0.4.17
+⌅ [5e0ebb24] Strided v1.2.3
+  [69024149] StringEncodings v0.3.7
+  [892a3eda] StringManipulation v0.3.0
+  [09ab397b] StructArrays v0.6.15
+  [53d494c1] StructIO v0.3.0
+  [856f2bd8] StructTypes v1.10.0
+  [c3572dad] Sundials v4.19.3
+  [2efcf032] SymbolicIndexingInterface v0.2.2
+  [3783bdb8] TableTraits v1.0.1
+  [bd369af6] Tables v1.10.1
+  [62fd8b95] TensorCore v0.1.1
+  [5d786b92] TerminalLoggers v0.1.7
+  [8290d209] ThreadingUtilities v0.5.2
+  [a759f4b9] TimerOutputs v0.5.23
+  [9f7883ad] Tracker v0.2.26
+  [3bb67fe8] TranscodingStreams v0.9.13
+  [28d57a85] Transducers v0.4.78
+  [a2a6695c] TreeViews v0.3.0
+  [d5829a12] TriangularSolve v0.1.19
+  [410a4b4d] Tricks v0.1.7
+  [781d530d] TruncatedStacktraces v1.4.0
+  [9d95972d] TupleTools v1.3.0
+  [5c2747f8] URIs v1.4.2
+  [3a884ed6] UnPack v1.0.2
+  [1cfade01] UnicodeFun v0.4.1
+  [1986cc42] Unitful v1.15.0
+  [45397f5d] UnitfulLatexify v1.6.3
+  [013be700] UnsafeAtomics v0.2.1
+  [d80eeb9a] UnsafeAtomicsLLVM v0.1.3
+  [41fe7b60] Unzip v0.2.0
+  [3d5dd08c] VectorizationBase v0.21.64
+  [33b4df10] VectorizedRNG v0.2.24
+  [19fa3120] VertexSafeGraphs v0.2.0
+  [ea10d353] WeakRefStrings v1.4.2
+  [d49dbf32] WeightInitializers v0.1.0
+  [76eceee3] WorkerUtilities v1.6.1
+  [a5390f91] ZipFile v0.10.1
+  [e88e6eb3] Zygote v0.6.62
+  [700de1a5] ZygoteRules v0.2.3
+  [02a925ec] cuDNN v1.1.0
+  [6e34b625] Bzip2_jll v1.0.8+0
+  [4ee394cb] CUDA_Driver_jll v0.5.0+1
+  [76a88914] CUDA_Runtime_jll v0.6.0+0
+  [62b44479] CUDNN_jll v8.9.2+0
+  [83423d85] Cairo_jll v1.16.1+1
+  [78a364fa] Chemfiles_jll v0.10.4+0
+  [7cc45869] Enzyme_jll v0.0.78+0
+  [2e619515] Expat_jll v2.5.0+0
+⌃ [b22a6f82] FFMPEG_jll v4.4.2+2
+  [a3f928ae] Fontconfig_jll v2.13.93+0
+  [d7e528f0] FreeType2_jll v2.13.1+0
+  [559328eb] FriBidi_jll v1.0.10+0
+  [0656b61e] GLFW_jll v3.3.8+0
+  [d2c73de3] GR_jll v0.72.9+0
+  [78b55507] Gettext_jll v0.21.0+0
+  [7746bdde] Glib_jll v2.74.0+2
+  [3b182d85] Graphite2_jll v1.3.14+0
+⌃ [0234f1f7] HDF5_jll v1.12.2+2
+  [2e76f6c2] HarfBuzz_jll v2.8.1+1
+  [aacddb02] JpegTurbo_jll v2.1.91+0
+  [c1c5ebd0] LAME_jll v3.100.1+0
+  [88015f11] LERC_jll v3.0.0+1
+  [dad2f222] LLVMExtra_jll v0.0.23+0
+  [1d63c593] LLVMOpenMP_jll v15.0.4+0
+  [dd4b983a] LZO_jll v2.10.1+0
+⌅ [e9f186c6] Libffi_jll v3.2.2+1
+  [d4300ac3] Libgcrypt_jll v1.8.7+0
+  [7e76a0d4] Libglvnd_jll v1.6.0+0
+  [7add5ba3] Libgpg_error_jll v1.42.0+0
+  [94ce4f54] Libiconv_jll v1.16.1+2
+  [4b2f31a3] Libmount_jll v2.35.0+0
+  [89763e89] Libtiff_jll v4.5.1+1
+  [38a345b3] Libuuid_jll v2.36.0+0
+  [079eb43e] NLopt_jll v2.7.1+0
+  [e7412a2a] Ogg_jll v1.3.5+1
+⌅ [458c3c95] OpenSSL_jll v1.1.21+0
+  [efe28fd5] OpenSpecFun_jll v0.5.5+0
+  [91d4177d] Opus_jll v1.3.2+0
+  [30392449] Pixman_jll v0.42.2+0
+  [c0090381] Qt6Base_jll v6.4.2+3
+  [f50d1b31] Rmath_jll v0.4.0+0
+⌅ [fb77eaff] Sundials_jll v5.2.1+0
+  [a2964d1f] Wayland_jll v1.21.0+0
+  [2381bf8a] Wayland_protocols_jll v1.25.0+0
+  [02c8fc9c] XML2_jll v2.10.3+0
+  [aed1982a] XSLT_jll v1.1.34+0
+  [ffd25f8a] XZ_jll v5.4.3+1
+  [4f6342f7] Xorg_libX11_jll v1.8.6+0
+  [0c0b7dd1] Xorg_libXau_jll v1.0.11+0
+  [935fb764] Xorg_libXcursor_jll v1.2.0+4
+  [a3789734] Xorg_libXdmcp_jll v1.1.4+0
+  [1082639a] Xorg_libXext_jll v1.3.4+4
+  [d091e8ba] Xorg_libXfixes_jll v5.0.3+4
+  [a51aa0fd] Xorg_libXi_jll v1.7.10+4
+  [d1454406] Xorg_libXinerama_jll v1.1.4+4
+  [ec84b674] Xorg_libXrandr_jll v1.5.2+4
+  [ea2f1a96] Xorg_libXrender_jll v0.9.10+4
+  [14d82f49] Xorg_libpthread_stubs_jll v0.1.1+0
+  [c7cfdc94] Xorg_libxcb_jll v1.15.0+0
+  [cc61e674] Xorg_libxkbfile_jll v1.1.2+0
+  [12413925] Xorg_xcb_util_image_jll v0.4.0+1
+  [2def613f] Xorg_xcb_util_jll v0.4.0+1
+  [975044d2] Xorg_xcb_util_keysyms_jll v0.4.0+1
+  [0d47668e] Xorg_xcb_util_renderutil_jll v0.3.9+1
+  [c22f9ab0] Xorg_xcb_util_wm_jll v0.4.1+1
+  [35661453] Xorg_xkbcomp_jll v1.4.6+0
+  [33bec58e] Xorg_xkeyboard_config_jll v2.39.0+0
+  [c5fb5394] Xorg_xtrans_jll v1.5.0+0
+  [3161d3a3] Zstd_jll v1.5.5+0
+⌅ [214eeab7] fzf_jll v0.29.0+0
+  [a4ae2306] libaom_jll v3.4.0+0
+  [0ac62f75] libass_jll v0.15.1+0
+  [f638f0a6] libfdk_aac_jll v2.0.2+0
+  [b53b4c65] libpng_jll v1.6.38+0
+  [f27f6e37] libvorbis_jll v1.3.7+1
+  [1270edf5] x264_jll v2021.5.5+0
+  [dfaa095f] x265_jll v3.5.0+0
+  [d8fb68d0] xkbcommon_jll v1.4.1+0
+  [0dad84c5] ArgTools v1.1.1
+  [56f22d72] Artifacts
+  [2a0f44e3] Base64
+  [ade2ca70] Dates
+  [8ba89e20] Distributed
+  [f43a241f] Downloads v1.6.0
+  [7b1f6079] FileWatching
+  [9fa8497b] Future
+  [b77e0a4c] InteractiveUtils
+  [4af54fe1] LazyArtifacts
+  [b27032c2] LibCURL v0.6.3
+  [76f85450] LibGit2
+  [8f399da3] Libdl
+  [37e2e46d] LinearAlgebra
+  [56ddb016] Logging
+  [d6f4376e] Markdown
+  [a63ad114] Mmap
+  [ca575930] NetworkOptions v1.2.0
+  [44cfe95a] Pkg v1.9.2
+  [de0858da] Printf
+  [9abbd945] Profile
+  [3fa0cd96] REPL
+  [9a3f8284] Random
+  [ea8e919c] SHA v0.7.0
+  [9e88b42a] Serialization
+  [1a1011a3] SharedArrays
+  [6462fe0b] Sockets
+  [2f01184e] SparseArrays
+  [10745b16] Statistics v1.9.0
+  [4607b0f0] SuiteSparse
+  [fa267f1f] TOML v1.0.3
+  [a4e569a6] Tar v1.10.0
+  [8dfed614] Test
+  [cf7118a7] UUIDs
+  [4ec0a83e] Unicode
+  [e66e0078] CompilerSupportLibraries_jll v1.0.5+0
+  [deac9b47] LibCURL_jll v7.84.0+0
+  [29816b5a] LibSSH2_jll v1.10.2+0
+  [c8ffd9c3] MbedTLS_jll v2.28.2+0
+  [14a3606d] MozillaCACerts_jll v2022.10.11
+  [4536629a] OpenBLAS_jll v0.3.21+4
+  [05823500] OpenLibm_jll v0.8.1+0
+  [efcefdf7] PCRE2_jll v10.42.0+0
+  [bea87d4a] SuiteSparse_jll v5.10.1+6
+  [83775a58] Zlib_jll v1.2.13+0
+  [8e850b90] libblastrampoline_jll v5.8.0+0
+  [8e850ede] nghttp2_jll v1.48.0+0
+  [3f19e933] p7zip_jll v17.4.0+0
+Info Packages marked with ⌃ and ⌅ have new versions available, but those with ⌅ are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details>You can also download the 
+<a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.36.0/assets/Manifest.toml">manifest</a> file and the
+<a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.36.0/assets/Project.toml">project</a> file.</article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Tuesday 1 August 2023 09:43">Tuesday 1 August 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
