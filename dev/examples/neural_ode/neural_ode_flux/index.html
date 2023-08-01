@@ -14,8 +14,8 @@ prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -&gt; x .^ 3,
-                   Flux.Dense(2, 50, tanh),
-                   Flux.Dense(50, 2))
+    Flux.Dense(2, 50, tanh),
+    Flux.Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
@@ -49,7 +49,7 @@ data = Iterators.repeated((), 1000)
 res1 = Flux.train!(loss_n_ode, Flux.params(u0, p), data, ADAM(0.05), cb = callback)
 
 callback()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">false</code></pre><h2 id="Using-Flux-Chain-neural-networks-with-Optimization.jl"><a class="docs-heading-anchor" href="#Using-Flux-Chain-neural-networks-with-Optimization.jl">Using Flux <code>Chain</code> neural networks with Optimization.jl</a><a id="Using-Flux-Chain-neural-networks-with-Optimization.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Using-Flux-Chain-neural-networks-with-Optimization.jl" title="Permalink"></a></h2><p>Flux neural networks can be used with Optimization.jl by using the <code>Flux.destructure</code> function. In this case, if <code>dudt</code> is a Flux chain, then:</p><pre><code class="language-julia hljs">p, re = Flux.destructure(chain)</code></pre><p>returns <code>p</code> which is the vector of parameters for the chain and <code>re</code> which is a function <code>re(p)</code> that reconstructs the neural network with new parameters <code>p</code>. Using this function, we can thus build our neural differential equations in an explicit parameter style.</p><p>Let&#39;s use this to build and train a neural ODE from scratch. In this example, we will optimize both the neural network parameters <code>p</code> and the input initial condition <code>u0</code>. Notice that Optimization.jl works on a vector input, so we have to concatenate <code>u0</code> and <code>p</code> and then in the loss function split to the pieces.</p><pre><code class="language-julia hljs">using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
-      OptimizationNLopt, Plots
+    OptimizationNLopt, Plots
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -64,8 +64,8 @@ prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -&gt; x .^ 3,
-                   Flux.Dense(2, 50, tanh),
-                   Flux.Dense(50, 2))
+    Flux.Dense(2, 50, tanh),
+    Flux.Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
@@ -103,15 +103,15 @@ optf = Optimization.OptimizationFunction((p, _) -&gt; loss_n_ode(p), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 
 result_neuralode = Optimization.solve(optprob,
-                                      OptimizationOptimisers.Adam(0.05),
-                                      callback = callback,
-                                      maxiters = 300)
+    OptimizationOptimisers.Adam(0.05),
+    callback = callback,
+    maxiters = 300)
 
 optprob2 = remake(optprob, u0 = result_neuralode.u)
 
 result_neuralode2 = Optimization.solve(optprob2,
-                                       NLopt.LD_LBFGS(),
-                                       callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 254-element Vector{Float64}:
+    NLopt.LD_LBFGS(),
+    callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 254-element Vector{Float64}:
  NaN
  NaN
  NaN
@@ -131,4 +131,4 @@ result_neuralode2 = Optimization.solve(optprob2,
  NaN
  NaN
  NaN
- NaN</code></pre><p>Notice that the advantage of this format is that we can use Optim&#39;s optimizers, like <code>LBFGS</code> with a full <code>Chain</code> object, for all of Flux&#39;s neural networks, like convolutional neural networks.</p><p><img src="https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../simplechains/">Neural Ordinary Differential Equations with SimpleChains »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Thursday 13 July 2023 13:40">Thursday 13 July 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ NaN</code></pre><p>Notice that the advantage of this format is that we can use Optim&#39;s optimizers, like <code>LBFGS</code> with a full <code>Chain</code> object, for all of Flux&#39;s neural networks, like convolutional neural networks.</p><p><img src="https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../ode/second_order_neural/">« Neural Second Order Ordinary Differential Equation</a><a class="docs-footer-nextpage" href="../simplechains/">Neural Ordinary Differential Equations with SimpleChains »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Tuesday 1 August 2023 09:44">Tuesday 1 August 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

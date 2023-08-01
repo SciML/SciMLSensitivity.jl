@@ -53,17 +53,17 @@ end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
     return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
-            bias = d.init_bias(rng, d.out_chs, 1))
+        bias = d.init_bias(rng, d.out_chs, 1))
 end
 
 initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-                         init_weight = glorot_normal, init_bias = zeros32)
+    init_weight = glorot_normal, init_bias = zeros32)
     init_Ã = () -&gt; copy(Ã)
     return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight),
-                           typeof(init_bias)}(first(ch), last(ch), activation,
-                                              init_Ã, init_weight, init_bias)
+        typeof(init_bias)}(first(ch), last(ch), activation,
+        init_Ã, init_weight, init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -83,15 +83,15 @@ initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, no
 initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu),
-            ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu))
+    ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu))
 
 node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)
+    reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin =&gt; nhidden, relu),
-              node,
-              diffeqsol_to_array,
-              Dense(nhidden, nout))
+    node,
+    diffeqsol_to_array,
+    Dense(nhidden, nout))
 
 # Loss
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
@@ -171,17 +171,17 @@ end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
     return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
-            bias = d.init_bias(rng, d.out_chs, 1))
+        bias = d.init_bias(rng, d.out_chs, 1))
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-                         init_weight = glorot_normal, init_bias = zeros32)
+    init_weight = glorot_normal, init_bias = zeros32)
     return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã,
-                                                                                       first(ch),
-                                                                                       last(ch),
-                                                                                       activation,
-                                                                                       init_weight,
-                                                                                       init_bias)
+        first(ch),
+        last(ch),
+        activation,
+        init_weight,
+        init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -193,15 +193,15 @@ end
 diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims = 3)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu),
-            ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu))
+    ExplicitGCNConv(Ã, nhidden =&gt; nhidden, relu))
 
 node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)
+    reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin =&gt; nhidden, relu),
-              node,
-              diffeqsol_to_array,
-              Dense(nhidden, nout))</code></pre><h2 id="Training-Configuration"><a class="docs-heading-anchor" href="#Training-Configuration">Training Configuration</a><a id="Training-Configuration-1"></a><a class="docs-heading-anchor-permalink" href="#Training-Configuration" title="Permalink"></a></h2><h3 id="Loss-Function-and-Accuracy"><a class="docs-heading-anchor" href="#Loss-Function-and-Accuracy">Loss Function and Accuracy</a><a id="Loss-Function-and-Accuracy-1"></a><a class="docs-heading-anchor-permalink" href="#Loss-Function-and-Accuracy" title="Permalink"></a></h3><p>We shall be using the standard categorical crossentropy loss function, which is used for multiclass classification tasks.</p><pre><code class="language-julia hljs">logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
+    node,
+    diffeqsol_to_array,
+    Dense(nhidden, nout))</code></pre><h2 id="Training-Configuration"><a class="docs-heading-anchor" href="#Training-Configuration">Training Configuration</a><a id="Training-Configuration-1"></a><a class="docs-heading-anchor-permalink" href="#Training-Configuration" title="Permalink"></a></h2><h3 id="Loss-Function-and-Accuracy"><a class="docs-heading-anchor" href="#Loss-Function-and-Accuracy">Loss Function and Accuracy</a><a id="Loss-Function-and-Accuracy-1"></a><a class="docs-heading-anchor-permalink" href="#Loss-Function-and-Accuracy" title="Permalink"></a></h3><p>We shall be using the standard categorical crossentropy loss function, which is used for multiclass classification tasks.</p><pre><code class="language-julia hljs">logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
 
 function loss(x, y, mask, model, ps, st)
     ŷ, st = model(x, ps, st)
@@ -224,4 +224,4 @@ st_opt = Optimisers.setup(opt, ps)</code></pre><h2 id="Training-Loop"><a class="
     gs = back((one(l), nothing))[1]
     st_opt, ps = Optimisers.update(st_opt, ps, gs)
     @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../simplechains/">« Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Thursday 13 July 2023 13:40">Thursday 13 July 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../simplechains/">« Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Tuesday 1 August 2023 09:44">Tuesday 1 August 2023</span>. Using Julia version 1.9.2.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
