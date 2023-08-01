@@ -164,7 +164,7 @@ NG = CreateGrid(myparameters.ts, W1)
 
 # get control pulses
 p_all = ComponentArray(p_nn = p_nn,
-    myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
+    myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 # define SDE problem
 prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
     p_all,
@@ -182,8 +182,7 @@ end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
-            myparameters.κ])
+        myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -222,8 +221,7 @@ end
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
-            myparameters.κ])
+        myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -536,7 +534,7 @@ end
 
 function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
+        myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
@@ -582,7 +580,7 @@ a function of the time steps at which loss values are computed.
 function visualize(p_nn; alg = EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
     pars = ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ myparameters.Ωmax
+        myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
 
     function prob_func(prob, i, repeat)

@@ -415,7 +415,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         x = vec(Δ[1])
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        vec(_out) .= adapt(outtype, vec(Δ[1]))
+                        vec(_out) .= vec(adapt(outtype, Δ[1]))
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
                             vec(Δ[1])[_save_idxs])
@@ -426,7 +426,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         x = vec(Δ)
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        vec(_out) .= adapt(outtype, vec(Δ))
+                        vec(_out) .= vec(adapt(outtype, Δ))
                     else
                         x = vec(Δ)
                         vec(@view(_out[_save_idxs])) .= adapt(outtype, @view(x[_save_idxs]))
