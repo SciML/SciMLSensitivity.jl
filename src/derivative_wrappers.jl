@@ -878,36 +878,24 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
 
     if StochasticDiffEq.is_diagonal_noise(prob)
         if inplace_sensitivity(S)
-            for i in 1:m
-                _dy, back = Zygote.pullback(y, p) do u, p
-                    out_ = Zygote.Buffer(similar(u))
-                    f(out_, u, p, t)
-                    copy(out_[i])
-                end
-                tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
-                if dgrad !== nothing
-                    if tmp2 !== nothing
-                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
-                    end
-                end
-                dλ !== nothing && (dλ[:, i] .= vec(tmp1))
-                dy !== nothing && (dy[i] = _dy)
+            _dy, back = Zygote.pullback(y, p) do u, p
+                out_ = Zygote.Buffer(similar(u))
+                f(out_, u, p, t)
+                copy(out_)
             end
         else
-            for i in 1:m
-                _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)[i]
-                end
-                tmp1, tmp2 = back(λ[i])
-                if dgrad !== nothing
-                    if tmp2 !== nothing
-                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
-                    end
-                end
-                dλ !== nothing && (dλ[:, i] .= vec(tmp1))
-                dy !== nothing && (dy[i] = _dy)
+            _dy, back = Zygote.pullback(y, p) do u, p
+                f(u, p, t)
             end
         end
+        out = [back(x) for x in eachcol(Diagonal(λ))]
+        if dgrad !== nothing
+            if tmp2 !== nothing
+                !isempty(dgrad) && (dgrad .= vec(stack(last.(out))))
+            end
+        end
+        dλ !== nothing && (dλ .= vec(stack(first.(out))))
+        dy !== nothing && (dy .= _dy)
     else
         if inplace_sensitivity(S)
             for i in 1:m
