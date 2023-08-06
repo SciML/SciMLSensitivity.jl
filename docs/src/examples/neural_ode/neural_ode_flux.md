@@ -141,12 +141,6 @@ result_neuralode = Optimization.solve(optprob,
     OptimizationOptimisers.Adam(0.05),
     callback = callback,
     maxiters = 300)
-
-optprob2 = remake(optprob, u0 = result_neuralode.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-    NLopt.LD_LBFGS(),
-    callback = callback)
 ```
 
 Notice that the advantage of this format is that we can use Optim's optimizers, like
