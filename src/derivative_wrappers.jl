@@ -877,26 +877,50 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype)[2]
 
     if StochasticDiffEq.is_diagonal_noise(prob)
-        if inplace_sensitivity(S)
-            _dy, back = Zygote.pullback(y, p) do u, p
-                out_ = Zygote.Buffer(similar(u))
-                f(out_, u, p, t)
-                copy(out_)
+        if VERSION < v"1.9" # pre "stack" function
+            for i in 1:m
+                if inplace_sensitivity(S)
+                    _dy, back = Zygote.pullback(y, p) do u, p
+                        out_ = Zygote.Buffer(similar(u))
+                        f(out_, u, p, t)
+                        copy(out_[i])
+                    end
+                else
+                    _dy, back = Zygote.pullback(y, p) do u, p
+                        f(u, p, t)[i]
+                    end
+                end
+                tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
+                if dgrad !== nothing
+                    if tmp2 !== nothing
+                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
+                    end
+                end
+                dλ !== nothing && (dλ[:, i] .= vec(tmp1))
+                dy !== nothing && (dy[i] = _dy)
             end
         else
-            _dy, back = Zygote.pullback(y, p) do u, p
-                f(u, p, t)
+            if inplace_sensitivity(S)
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    out_ = Zygote.Buffer(similar(u))
+                    f(out_, u, p, t)
+                    copy(out_)
+                end
+            else
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    f(u, p, t)
+                end
             end
-        end
-        out = [back(x) for x in eachcol(Diagonal(λ))]
-        if dgrad !== nothing
-            tmp2 = last.(out)
-            if !(eltype(tmp2) isa Nothing)
-                !isempty(dgrad) && (dgrad .= vec(stack(tmp2)))
+            out = [back(x) for x in eachcol(Diagonal(λ))]
+            if dgrad !== nothing
+                tmp2 = last.(out)
+                if !(eltype(tmp2) isa Nothing)
+                    !isempty(dgrad) && (dgrad .= stack(tmp2))
+                end
             end
+            dλ !== nothing && (dλ .= vec(stack(first.(out))))
+            dy !== nothing && (dy .= _dy)
         end
-        dλ !== nothing && (dλ .= vec(stack(first.(out))))
-        dy !== nothing && (dy .= _dy)
     else
         if inplace_sensitivity(S)
             for i in 1:m
