@@ -55,7 +55,7 @@ struct ForwardSensitivity{CS, AD, FDT} <: AbstractForwardSensitivityAlgorithm{CS
     autojacvec::Bool
     autojacmat::Bool
 end
-Base.@pure function ForwardSensitivity(;
+function ForwardSensitivity(;
     chunk_size = 0, autodiff = true,
     diff_type = Val{:central},
     autojacvec = autodiff,
@@ -100,7 +100,7 @@ accurately differentiate code with callbacks only when `convert_tspan=true`.
 """
 struct ForwardDiffSensitivity{CS, CTS} <:
        AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing} end
-Base.@pure function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
+function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
     ForwardDiffSensitivity{chunk_size, convert_tspan}()
 end
 
