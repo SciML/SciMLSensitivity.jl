@@ -918,7 +918,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     !isempty(dgrad) && (dgrad .= stack(tmp2))
                 end
             end
-            dλ !== nothing && (dλ .= vec(stack(first.(out))))
+            dλ !== nothing && (dλ .= stack(first.(out)))
             dy !== nothing && (dy .= _dy)
         end
     else
