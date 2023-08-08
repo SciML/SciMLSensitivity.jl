@@ -329,7 +329,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
-                    save_everystep = true, save_start = true, kwargs...)
+        save_everystep = true, save_start = true, kwargs...)
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
         return adj_sol[end], nothing

@@ -18,8 +18,20 @@ end
 
 prob = ODEProblem(f, [1.0; 1.0], (0.0, 0.1), p)
 sol = solve(prob, DP8())
-res_gauss = adjoint_sensitivities(sol, Vern9(), sensealg=GaussAdjoint(), dgdu_continuous = dg, g = g, abstol = 1e-8, reltol = 1e-8)
-res_quad = adjoint_sensitivities(sol, Vern9(), sensealg=QuadratureAdjoint(), dgdu_continuous = dg, g = g, abstol = 1e-8, reltol = 1e-8)
+res_gauss = adjoint_sensitivities(sol,
+    Vern9(),
+    sensealg = GaussAdjoint(),
+    dgdu_continuous = dg,
+    g = g,
+    abstol = 1e-8,
+    reltol = 1e-8)
+res_quad = adjoint_sensitivities(sol,
+    Vern9(),
+    sensealg = QuadratureAdjoint(),
+    dgdu_continuous = dg,
+    g = g,
+    abstol = 1e-8,
+    reltol = 1e-8)
 
 @test isapprox(res_gauss[1], res_quad[1], atol = 1e-8, rtol = 1e-8)
 @test isapprox(res_gauss[2], res_quad[2], atol = 1e-8, rtol = 1e-8)

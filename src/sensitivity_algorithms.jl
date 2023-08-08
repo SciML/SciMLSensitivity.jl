@@ -483,7 +483,6 @@ function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {C
         sensealg.reltol)
 end
 
-
 """
 ```julia
 GaussAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
@@ -566,8 +565,8 @@ struct GaussAdjoint{CS, AD, FDT, VJP} <:
     autojacvec::VJP
 end
 Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
-                                      diff_type = Val{:central},
-                                      autojacvec = nothing)
+    diff_type = Val{:central},
+    autojacvec = nothing)
     GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec)
 end
 
