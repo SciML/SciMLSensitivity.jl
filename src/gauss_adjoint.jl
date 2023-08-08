@@ -286,6 +286,8 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         out .= 0
         Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
                         y, Enzyme.Duplicated(p, out), t)
+    else
+        error("Not supported")
     end
 
     # TODO: Add tracker?
