@@ -287,7 +287,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
                         y, Enzyme.Duplicated(p, out), t)
     else
-        error("Not supported")
+        error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
 
     # TODO: Add tracker?
