@@ -15,7 +15,7 @@ optimizations.
 
 ```@example secondorderadjoints
 using Flux, DiffEqFlux, Optimization, OptimizationFlux, DifferentialEquations,
-      Plots, Random, OptimizationOptimJL
+    Plots, Random, OptimizationOptimJL
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -31,8 +31,8 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 dudt2 = Flux.Chain(x -> x .^ 3,
-                   Flux.Dense(2, 50, tanh),
-                   Flux.Dense(50, 2))
+    Flux.Dense(2, 50, tanh),
+    Flux.Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
 
 function predict_neuralode(p)
@@ -77,9 +77,9 @@ pstart = Optimization.solve(optprob1, ADAM(0.01), callback = callback, maxiters 
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback = callback,
-                          maxiters = 200)
+    maxiters = 200)
 pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback = callback,
-                          maxiters = 200)
+    maxiters = 200)
 ```
 
 Note that we do not demonstrate `Newton()` because we have not found a single

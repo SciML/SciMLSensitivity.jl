@@ -24,9 +24,9 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
     proboop = ODEProblem(fiip, u0, tspan, p)
 
     sol1 = solve(prob, Tsit5(), u0 = u0, p = p, callback = cb, abstol = abstol,
-                 reltol = reltol, saveat = savingtimes)
+        reltol = reltol, saveat = savingtimes)
     sol2 = solve(prob, Tsit5(), u0 = u0, p = p, abstol = abstol, reltol = reltol,
-                 saveat = savingtimes)
+        saveat = savingtimes)
 
     if cb.save_positions == [1, 1]
         @test length(sol1.t) != length(sol2.t)
@@ -35,60 +35,60 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
     end
 
     du01, dp1 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                         callback = cb, abstol = abstol,
-                                                         reltol = reltol,
-                                                         saveat = savingtimes,
-                                                         sensealg = BacksolveAdjoint())),
-                                      u0, p)
+            callback = cb, abstol = abstol,
+            reltol = reltol,
+            saveat = savingtimes,
+            sensealg = BacksolveAdjoint())),
+        u0, p)
 
     du01b, dp1b = Zygote.gradient((u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
-                                                     callback = cb, abstol = abstol,
-                                                     reltol = reltol, saveat = savingtimes,
-                                                     sensealg = BacksolveAdjoint())),
-                                  u0, p)
+            callback = cb, abstol = abstol,
+            reltol = reltol, saveat = savingtimes,
+            sensealg = BacksolveAdjoint())),
+        u0, p)
 
     du01c, dp1c = Zygote.gradient((u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
-                                                     callback = cb, abstol = abstol,
-                                                     reltol = reltol, saveat = savingtimes,
-                                                     sensealg = BacksolveAdjoint(checkpointing = false))),
-                                  u0, p)
+            callback = cb, abstol = abstol,
+            reltol = reltol, saveat = savingtimes,
+            sensealg = BacksolveAdjoint(checkpointing = false))),
+        u0, p)
 
     if !only_backsolve
         @test_broken du02, dp2 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(),
-                                                                          u0 = u0, p = p,
-                                                                          callback = cb,
-                                                                          abstol = abstol,
-                                                                          reltol = reltol,
-                                                                          saveat = savingtimes,
-                                                                          sensealg = ReverseDiffAdjoint())),
-                                                       u0, p)
+                u0 = u0, p = p,
+                callback = cb,
+                abstol = abstol,
+                reltol = reltol,
+                saveat = savingtimes,
+                sensealg = ReverseDiffAdjoint())),
+            u0, p)
 
         du03, dp3 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                             callback = cb, abstol = abstol,
-                                                             reltol = reltol,
-                                                             saveat = savingtimes,
-                                                             sensealg = InterpolatingAdjoint(checkpointing = true))),
-                                          u0, p)
+                callback = cb, abstol = abstol,
+                reltol = reltol,
+                saveat = savingtimes,
+                sensealg = InterpolatingAdjoint(checkpointing = true))),
+            u0, p)
 
         du03c, dp3c = Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                         callback = cb, abstol = abstol,
-                                                         reltol = reltol,
-                                                         saveat = savingtimes,
-                                                         sensealg = InterpolatingAdjoint(checkpointing = false))),
-                                      u0, p)
+                callback = cb, abstol = abstol,
+                reltol = reltol,
+                saveat = savingtimes,
+                sensealg = InterpolatingAdjoint(checkpointing = false))),
+            u0, p)
 
         du04, dp4 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                             callback = cb, abstol = abstol,
-                                                             reltol = reltol,
-                                                             saveat = savingtimes,
-                                                             sensealg = QuadratureAdjoint())),
-                                          u0, p)
+                callback = cb, abstol = abstol,
+                reltol = reltol,
+                saveat = savingtimes,
+                sensealg = QuadratureAdjoint())),
+            u0, p)
     end
     dstuff = @time ForwardDiff.gradient((θ) -> g(solve(prob, Tsit5(), u0 = θ[1:2],
-                                                       p = θ[3:4], callback = cb,
-                                                       abstol = abstol, reltol = reltol,
-                                                       saveat = savingtimes)),
-                                        [u0; p])
+            p = θ[3:4], callback = cb,
+            abstol = abstol, reltol = reltol,
+            saveat = savingtimes)),
+        [u0; p])
 
     @info dstuff
 
@@ -115,15 +115,15 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
     end
 
     cb2 = SciMLSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p,
-                                           BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     sol_track = solve(prob, Tsit5(), u0 = u0, p = p, callback = cb2, abstol = abstol,
-                      reltol = reltol, saveat = savingtimes)
+        reltol = reltol, saveat = savingtimes)
 
     adj_prob = ODEAdjointProblem(sol_track, BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-                                 Tsit5(),
-                                 sol_track.t, dg!,
-                                 callback = cb2,
-                                 abstol = abstol, reltol = reltol)
+        Tsit5(),
+        sol_track.t, dg!,
+        callback = cb2,
+        abstol = abstol, reltol = reltol)
     adj_sol = solve(adj_prob, Tsit5(), abstol = abstol, reltol = reltol)
     @test du01 ≈ adj_sol[1:2, end]
     @test dp1 ≈ adj_sol[3:4, end]
@@ -228,17 +228,17 @@ println("Continuous Callbacks")
         cb = ContinuousCallback(condition, affect!)
 
         du01, dp1 = Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
-                                                       callback = cb, abstol = abstol,
-                                                       reltol = reltol,
-                                                       saveat = savingtimes,
-                                                       sensealg = BacksolveAdjoint())),
-                                    u0, p)
+                callback = cb, abstol = abstol,
+                reltol = reltol,
+                saveat = savingtimes,
+                sensealg = BacksolveAdjoint())),
+            u0, p)
 
         dstuff = @time ForwardDiff.gradient((θ) -> g(solve(prob, Tsit5(), u0 = θ[1:2],
-                                                           p = θ[3:4], callback = cb,
-                                                           abstol = abstol, reltol = reltol,
-                                                           saveat = savingtimes)),
-                                            [u0; p])
+                p = θ[3:4], callback = cb,
+                abstol = abstol, reltol = reltol,
+                saveat = savingtimes)),
+            [u0; p])
 
         @info dstuff
 
@@ -262,8 +262,8 @@ println("Continuous Callbacks")
         function loss(p, cb, sensealg)
             _prob = remake(prob, p = p)
             _sol = solve(_prob, Tsit5(); callback = cb,
-                         abstol = 1e-14, reltol = 1e-14,
-                         sensealg = sensealg)
+                abstol = 1e-14, reltol = 1e-14,
+                sensealg = sensealg)
             _sol[end][1]
         end
 

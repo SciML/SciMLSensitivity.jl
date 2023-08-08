@@ -1,8 +1,8 @@
 struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
-                                                  Alg <: InterpolatingAdjoint,
-                                                  uType, SType, CPS, pType,
-                                                  fType <:
-                                                  DiffEqBase.AbstractDiffEqFunction} <:
+    Alg <: InterpolatingAdjoint,
+    uType, SType, CPS, pType,
+    fType <:
+    DiffEqBase.AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -26,10 +26,10 @@ mutable struct CheckpointSolution{S, I, T, T2}
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-                                                    f, alg,
-                                                    checkpoints, tols, tstops = nothing;
-                                                    noiseterm = false,
-                                                    tspan = reverse(sol.prob.tspan))
+    f, alg,
+    checkpoints, tols, tstops = nothing;
+    noiseterm = false,
+    tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
@@ -52,30 +52,30 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
             elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
                 #idx2 = searchsortedfirst(_sol.W.t, interval[2]+1000eps(interval[1]))
                 forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx1:end],
-                                                            _sol.W.W[idx1:end])
+                    _sol.W.W[idx1:end])
             else
                 error("NoiseProcess type not implemented.")
             end
             dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
 
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
-                                 noise = forwardnoise),
-                          sol.alg, save_noise = false; dt = dt, tstops = _sol.t[idx1:end],
-                          tols...)
+                    noise = forwardnoise),
+                sol.alg, save_noise = false; dt = dt, tstops = _sol.t[idx1:end],
+                tols...)
         else
             if tstops === nothing
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                              sol.alg; tols...)
+                    sol.alg; tols...)
             else
                 if maximum(interval[1] .< tstops .< interval[2])
                     # callback might have changed p
                     _p = reset_p(sol.prob.kwargs[:callback], interval)
                     cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                                  tstops = tstops,
-                                  p = _p, sol.alg; tols...)
+                        tstops = tstops,
+                        p = _p, sol.alg; tols...)
                 else
                     cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                                  tstops = tstops, sol.alg; tols...)
+                        tstops = tstops, sol.alg; tols...)
                 end
             end
         end
@@ -86,12 +86,12 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
     end
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-                                    quad = false, noiseterm = noiseterm)
+        quad = false, noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
-                                                      discrete, y, sol,
-                                                      checkpoint_sol, sol.prob, f,
-                                                      noiseterm)
+        discrete, y, sol,
+        checkpoint_sol, sol.prob, f,
+        noiseterm)
 end
 
 function findcursor(intervals, t)
@@ -157,8 +157,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t, W)
 end
 
 function split_states(du, u, t, S::TS;
-                      update = true) where {TS <:
-                                            ODEInterpolatingAdjointSensitivityFunction}
+    update = true) where {TS <:
+         ODEInterpolatingAdjointSensitivityFunction}
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
     idx = length(y)
 
@@ -187,43 +187,43 @@ function split_states(du, u, t, S::TS;
                     idx1 = searchsortedfirst(_sol.t, interval[1] - 100eps(interval[1]))
                     idx2 = searchsortedfirst(_sol.t, interval[2] + 100eps(interval[2]))
                     idx_noise = searchsortedfirst(_sol.W.t,
-                                                  interval[1] - 100eps(interval[1]))
+                        interval[1] - 100eps(interval[1]))
                     if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
                         _sol.W.save_everystep = false
                         forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W,
-                                                                       indx = idx_noise)
+                            indx = idx_noise)
                     elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
                         forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx_noise:end],
-                                                                    _sol.W.W[idx_noise:end])
+                            _sol.W.W[idx_noise:end])
                     else
                         error("NoiseProcess type not implemented.")
                     end
                     prob′ = remake(prob, tspan = intervals[cursor′], u0 = y,
-                                   noise = forwardnoise)
+                        noise = forwardnoise)
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
                     cpsol′ = solve(prob′, sol.alg, save_noise = false; dt = dt,
-                                   tstops = _sol.t[idx1:idx2], checkpoint_sol.tols...)
+                        tstops = _sol.t[idx1:idx2], checkpoint_sol.tols...)
                 else
                     if checkpoint_sol.tstops === nothing
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(prob′, sol.alg;
-                                       dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                                       checkpoint_sol.tols...)
+                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            checkpoint_sol.tols...)
                     else
                         if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                             # callback might have changed p
                             _p = reset_p(prob.kwargs[:callback], interval)
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(prob′, sol.alg;
-                                           dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                                           tstops = checkpoint_sol.tstops,
-                                           checkpoint_sol.tols...)
+                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                tstops = checkpoint_sol.tstops,
+                                checkpoint_sol.tols...)
                         else
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                             cpsol′ = solve(prob′, sol.alg;
-                                           dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                                           tstops = checkpoint_sol.tstops,
-                                           checkpoint_sol.tols...)
+                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                tstops = checkpoint_sol.tstops,
+                                checkpoint_sol.tols...)
                         end
                     end
                 end
@@ -261,17 +261,17 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-                                     t = nothing,
-                                     dgdu_discrete::DG1 = nothing,
-                                     dgdp_discrete::DG2 = nothing,
-                                     dgdu_continuous::DG3 = nothing,
-                                     dgdp_continuous::DG4 = nothing,
-                                     g::G = nothing,
-                                     ::Val{RetCB} = Val(false);
-                                     checkpoints = sol.t,
-                                     callback = CallbackSet(),
-                                     reltol = nothing, abstol = nothing,
-                                     kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
+    t = nothing,
+    dgdu_discrete::DG1 = nothing,
+    dgdp_discrete::DG2 = nothing,
+    dgdu_continuous::DG3 = nothing,
+    dgdp_continuous::DG4 = nothing,
+    g::G = nothing,
+    ::Val{RetCB} = Val(false);
+    checkpoints = sol.t,
+    callback = CallbackSet(),
+    reltol = nothing, abstol = nothing,
+    kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -336,16 +336,16 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dgdu_continuous, dgdp_continuous, f,
-                                                       alg, checkpoints,
-                                                       (reltol = reltol, abstol = abstol),
-                                                       tstops, tspan = tspan)
+        dgdu_continuous, dgdp_continuous, f,
+        alg, checkpoints,
+        (reltol = reltol, abstol = abstol),
+        tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing)
     cb, rcb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
-                                                           dgdp_discrete,
-                                                           λ, t, tspan[2],
-                                                           callback, init_cb, terminated)
+        dgdp_discrete,
+        λ, t, tspan[2],
+        callback, init_cb, terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
@@ -357,7 +357,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-              copy(zzz') II]
+            copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -369,11 +369,11 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-                                 copy(zzz') II]
+            copy(zzz') II]
     end
 
     odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
-                                     jac_prototype = adjoint_jac_prototype)
+        jac_prototype = adjoint_jac_prototype)
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
     else
@@ -382,17 +382,17 @@ end
 end
 
 @noinline function SDEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-                                     t = nothing,
-                                     dgdu_discrete::DG1 = nothing,
-                                     dgdp_discrete::DG2 = nothing,
-                                     dgdu_continuous::DG3 = nothing,
-                                     dgdp_continuous::DG4 = nothing,
-                                     g::G = nothing;
-                                     checkpoints = sol.t,
-                                     callback = CallbackSet(),
-                                     reltol = nothing, abstol = nothing,
-                                     diffusion_jac = nothing, diffusion_paramjac = nothing,
-                                     kwargs...) where {DG1, DG2, DG3, DG4, G}
+    t = nothing,
+    dgdu_discrete::DG1 = nothing,
+    dgdp_discrete::DG2 = nothing,
+    dgdu_continuous::DG3 = nothing,
+    dgdp_continuous::DG4 = nothing,
+    g::G = nothing;
+    checkpoints = sol.t,
+    callback = CallbackSet(),
+    reltol = nothing, abstol = nothing,
+    diffusion_jac = nothing, diffusion_paramjac = nothing,
+    kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -447,31 +447,31 @@ end
     λ .= false
 
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                             dgdu_continuous,
-                                                             dgdp_continuous, sol.prob.f,
-                                                             alg, checkpoints,
-                                                             (reltol = reltol,
-                                                              abstol = abstol),
-                                                             tspan = tspan)
+        dgdu_continuous,
+        dgdp_continuous, sol.prob.f,
+        alg, checkpoints,
+        (reltol = reltol,
+            abstol = abstol),
+        tspan = tspan)
 
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
-                                                                jac = diffusion_jac,
-                                                                paramjac = diffusion_paramjac)
+        jac = diffusion_jac,
+        paramjac = diffusion_paramjac)
     sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                                 dgdu_continuous,
-                                                                 dgdp_continuous,
-                                                                 diffusion_function,
-                                                                 alg, checkpoints,
-                                                                 (reltol = reltol,
-                                                                  abstol = abstol);
-                                                                 tspan = tspan,
-                                                                 noiseterm = true)
+        dgdu_continuous,
+        dgdp_continuous,
+        diffusion_function,
+        alg, checkpoints,
+        (reltol = reltol,
+            abstol = abstol);
+        tspan = tspan,
+        noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, _, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
-                                                         dgdp_discrete, λ, t,
-                                                         tspan[2], callback, init_cb,
-                                                         terminated)
+        dgdp_discrete, λ, t,
+        tspan[2], callback, init_cb,
+        terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
@@ -483,7 +483,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-              copy(zzz') II]
+            copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -495,11 +495,11 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-                                 copy(zzz') II]
+            copy(zzz') II]
     end
 
     sdefun = SDEFunction(sense_drift, sense_diffusion, mass_matrix = mm,
-                         jac_prototype = adjoint_jac_prototype)
+        jac_prototype = adjoint_jac_prototype)
 
     # replicated noise
     _sol = deepcopy(sol)
@@ -516,22 +516,22 @@ end
     end
 
     return SDEProblem(sdefun, sense_diffusion, z0, tspan, p,
-                      callback = cb,
-                      noise = backwardnoise,
-                      noise_rate_prototype = noise_matrix)
+        callback = cb,
+        noise = backwardnoise,
+        noise_rate_prototype = noise_matrix)
 end
 
 @noinline function RODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-                                      t = nothing,
-                                      dgdu_discrete::DG1 = nothing,
-                                      dgdp_discrete::DG2 = nothing,
-                                      dgdu_continuous::DG3 = nothing,
-                                      dgdp_continuous::DG4 = nothing,
-                                      g::G = nothing;
-                                      checkpoints = sol.t,
-                                      callback = CallbackSet(),
-                                      reltol = nothing, abstol = nothing,
-                                      kwargs...) where {DG1, DG2, DG3, DG4, G}
+    t = nothing,
+    dgdu_discrete::DG1 = nothing,
+    dgdp_discrete::DG2 = nothing,
+    dgdu_continuous::DG3 = nothing,
+    dgdp_continuous::DG4 = nothing,
+    g::G = nothing;
+    checkpoints = sol.t,
+    callback = CallbackSet(),
+    reltol = nothing, abstol = nothing,
+    kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -588,16 +588,16 @@ end
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
-                                                       dgdu_continuous, dgdp_continuous, f,
-                                                       alg, checkpoints,
-                                                       (reltol = reltol, abstol = abstol),
-                                                       tstops, tspan = tspan)
+        dgdu_continuous, dgdp_continuous, f,
+        alg, checkpoints,
+        (reltol = reltol, abstol = abstol),
+        tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, _, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
-                                                         dgdp_discrete,
-                                                         λ, t, tspan[2],
-                                                         callback, init_cb, terminated)
+        dgdp_discrete,
+        λ, t, tspan[2],
+        callback, init_cb, terminated)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
@@ -609,7 +609,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-              copy(zzz') II]
+            copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -621,7 +621,7 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-                                 copy(zzz') II]
+            copy(zzz') II]
     end
 
     rodefun = RODEFunction(sense, mass_matrix = mm, jac_prototype = adjoint_jac_prototype)
@@ -634,7 +634,7 @@ end
         reinit!(backwardnoise, backwardnoise.t[2] - backwardnoise.t[1], t0 = tspan[1])
 
     return RODEProblem(rodefun, z0, tspan, p, callback = cb,
-                       noise = backwardnoise)
+        noise = backwardnoise)
 end
 
 function reset_p(CBS, interval)
@@ -674,7 +674,7 @@ function reset_p(CBS, interval)
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
             else
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
-                                                                                         1)[perm2]])
+                    1)[perm2]])
             end
         else
             if ts[perm][2] < ts2[perm2][2]
@@ -682,10 +682,10 @@ function reset_p(CBS, interval)
             else
                 if ts2[perm2][3] == 0
                     p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2,
-                                                                                         1)[perm2]])
+                        1)[perm2]])
                 else
                     p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
-                                                                                             1)[perm2]])
+                        1)[perm2]])
                 end
             end
         end

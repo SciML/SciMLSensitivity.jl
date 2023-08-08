@@ -15,8 +15,8 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = gpu(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 dudt2 = Chain(x -> x .^ 3,
-              Dense(2, 50, tanh),
-              Dense(50, 2)) |> gpu
+    Dense(2, 50, tanh),
+    Dense(50, 2)) |> gpu
 u0 = Float32[2.0; 0.0] |> gpu
 
 _p, re = Flux.destructure(dudt2)

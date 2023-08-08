@@ -38,7 +38,7 @@ function model2()
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
     sim = solve(ensemble_prob, Tsit5(), EnsembleSerial(), saveat = 0.1,
-                trajectories = 100).u
+        trajectories = 100).u
 end
 loss() = sum(abs2, [sum(abs2, 1.0 .- u) for u in model2()])
 

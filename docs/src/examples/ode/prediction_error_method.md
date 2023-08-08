@@ -20,7 +20,7 @@ We start by defining a model of the pendulum. The model takes a parameter $L$ co
 
 ```@example PEM
 using DifferentialEquations, Optimization, OptimizationPolyalgorithms, Plots, Statistics,
-      DataInterpolations, ForwardDiff
+    DataInterpolations, ForwardDiff
 
 tspan = (0.1, 20.0)
 tsteps = range(tspan[1], tspan[2], length = 1000)
@@ -72,7 +72,7 @@ We now look at the loss landscape as a function of the pendulum length:
 Ls = 0.01:0.01:2
 simlosses = simloss.(Ls)
 fig_loss = plot(Ls, simlosses, title = "Loss landscape", xlabel = "Pendulum length",
-                ylabel = "MSE loss", lab = "Simulation loss")
+    ylabel = "MSE loss", lab = "Simulation loss")
 ```
 
 This figure is interesting, the loss is of course 0 for the true value $L=1$, but for values $L < 1$, the overall slope actually points in the wrong direction! Moreover, the loss is oscillatory, indicating that this is a terrible function to optimize, and that we would need a very good initial guess for a local search to converge to the true value. Note, this example is chosen to be one-dimensional in order to allow these kinds of visualizations, and one-dimensional problems are typically not hard to solve, but the reasoning extends to higher-dimensional and harder problems.
@@ -133,7 +133,7 @@ optf = Optimization.OptimizationFunction((x, p) -> simloss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, L0)
 
 ressim = Optimization.solve(optprob, PolyOpt(),
-                            maxiters = 5000)
+    maxiters = 5000)
 ysim = simulate(ressim.u)[1, :]
 
 plot(tsteps, [y ysim], label = ["Data" "Simulation model"])
@@ -143,7 +143,7 @@ optf2 = Optimization.OptimizationFunction((p, _) -> predloss(p), adtype)
 optprob2 = Optimization.OptimizationProblem(optf2, p0)
 
 respred = Optimization.solve(optprob2, PolyOpt(),
-                             maxiters = 5000)
+    maxiters = 5000)
 ypred = simulate(respred.u)[1, :]
 
 plot!(tsteps, ypred, label = "Prediction model")
@@ -172,7 +172,7 @@ optf = Optimization.OptimizationFunction((x, p) -> predloss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, p0)
 
 resprednoise = Optimization.solve(optprob, PolyOpt(),
-                                  maxiters = 5000)
+    maxiters = 5000)
 
 yprednoise = prediction(resprednoise.u)[1, :]
 plot!(tsteps, yprednoise, label = "Prediction model with noisy measurements")

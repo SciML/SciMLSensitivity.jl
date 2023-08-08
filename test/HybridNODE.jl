@@ -10,7 +10,7 @@ function test_hybridNODE(sensealg)
     target = 3.0 * (1:datalength) ./ datalength  # some dummy data to fit to
     cbinput = rand(1, datalength) #some external ODE contribution
     pmodel = Chain(Dense(2, 10, init = zeros),
-                   Dense(10, 2, init = zeros))
+        Dense(10, 2, init = zeros))
     p, re = Flux.destructure(pmodel)
     dudt(u, p, t) = re(p)(u)
 
@@ -27,8 +27,8 @@ function test_hybridNODE(sensealg)
 
     function predict_n_ode(p)
         arr = Array(solve(prob, Tsit5(),
-                          p = p, sensealg = sensealg, saveat = 2.0, callback = callback))[1,
-                                                                                          2:2:end]
+            p = p, sensealg = sensealg, saveat = 2.0, callback = callback))[1,
+            2:2:end]
         return arr[1:datalength]
     end
 
@@ -43,7 +43,7 @@ function test_hybridNODE(sensealg)
     end
     @show sensealg
     Flux.train!(loss_n_ode, Flux.params(p), Iterators.repeated((), 20), ADAM(0.005),
-                cb = cb)
+        cb = cb)
     @test loss_n_ode() < 0.5
     println("  ")
 end
@@ -64,14 +64,14 @@ function test_hybridNODE2(sensealg)
         dx[3:4] .= 0.0f0
     end
     cb_ = PeriodicCallback(trueaffect!, 0.1f0, save_positions = (true, true),
-                           initial_affect = true)
+        initial_affect = true)
     prob = ODEProblem(trueODEfunc, u0, tspan)
     sol = solve(prob, Tsit5(), callback = cb_, save_everystep = false, save_start = true)
     ode_data = Array(sol)[1:2, 1:end]'
 
     ## Make model
     dudt2 = Chain(Dense(4, 50, tanh),
-                  Dense(50, 2))
+        Dense(50, 2))
     p, re = Flux.destructure(dudt2) # use this p as the initial condition!
     function affect!(integrator)
         integrator.u[3:4] = -3 * integrator.u[1:2]
@@ -83,13 +83,14 @@ function test_hybridNODE2(sensealg)
     z0 = u0
     prob = ODEProblem(ODEfunc, z0, tspan)
     cb = PeriodicCallback(affect!, 0.1f0, save_positions = (true, true),
-                          initial_affect = true)
+        initial_affect = true)
 
     ## Initialize learning functions
     function predict_n_ode()
         _prob = remake(prob, p = p)
         Array(solve(_prob, Tsit5(), u0 = z0, p = p, callback = cb, save_everystep = false,
-                    save_start = true, sensealg = sensealg))[1:2, :]
+            save_start = true, sensealg = sensealg))[1:2,
+            :]
     end
     function loss_n_ode()
         pred = predict_n_ode()[1:2, 1:end]'
@@ -142,9 +143,9 @@ function test_hybridNODE3(sensealg)
     true_data = convert.(Float32, true_data)
     callback_data = true_data * 1.0f-3
     train_dataloader = Flux.Data.DataLoader((true_data = true_data,
-                                             callback_data = callback_data), batchsize = 1)
+            callback_data = callback_data), batchsize = 1)
     dudt2 = Chain(Dense(2, 50, tanh),
-                  Dense(50, 2))
+        Dense(50, 2))
     p, re = Flux.destructure(dudt2)
     function dudt(du, u, p, t)
         du .= re(p)(u)
@@ -161,7 +162,7 @@ function test_hybridNODE3(sensealg)
     function predict_n_ode(true_data_0, callback_data, sense)
         _prob = remake(prob, p = p, u0 = true_data_0)
         solve(_prob, Tsit5(), callback = callback_(callback_data), saveat = t,
-              sensealg = sense)
+            sensealg = sense)
     end
 
     function loss_n_ode(true_data, callback_data)

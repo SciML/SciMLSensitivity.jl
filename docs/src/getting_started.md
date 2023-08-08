@@ -113,7 +113,7 @@ this system:
 function sum_of_solution(u0, p)
     _prob = remake(prob, u0 = u0, p = p)
     sum(solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
-              sensealg = QuadratureAdjoint()))
+        sensealg = QuadratureAdjoint()))
 end
 du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
 ```

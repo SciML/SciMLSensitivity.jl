@@ -14,7 +14,7 @@ prob = ODEProblem(lotka_volterra, u0, (0.0, 10.0), p)
 
 function predict_rd(p)
     Array(solve(prob, Tsit5(), p = p, saveat = 0.1, reltol = 1e-4,
-                sensealg = TrackerAdjoint()))
+        sensealg = TrackerAdjoint()))
 end
 loss_rd(p) = sum(abs2, x - 1 for x in predict_rd(p))
 loss_rd() = sum(abs2, x - 1 for x in predict_rd(p))
@@ -40,7 +40,7 @@ loss2 = loss_rd()
 p = [2.2, 1.0, 2.0, 0.4]
 function predict_fd()
     vec(Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:1.0, reltol = 1e-4,
-                    sensealg = ForwardDiffSensitivity())))
+        sensealg = ForwardDiffSensitivity())))
 end
 loss_fd() = sum(abs2, x - 1 for x in predict_fd())
 loss_fd()

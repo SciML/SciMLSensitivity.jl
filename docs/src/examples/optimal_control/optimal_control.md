@@ -37,7 +37,7 @@ of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
 using Flux, DifferentialEquations, Optimization, OptimizationNLopt, OptimizationFlux,
-      SciMLSensitivity, Zygote, Plots, Statistics, Random
+    SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
 tspan = (0.0f0, 8.0f0)
@@ -55,7 +55,7 @@ solve(prob, Vern9(), abstol = 1e-10, reltol = 1e-10)
 
 function predict_adjoint(θ)
     Array(solve(prob, Vern9(), p = θ, saveat = ts,
-                sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
 end
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
@@ -91,7 +91,7 @@ res1 = Optimization.solve(optprob, ADAM(0.005), callback = callback, maxiters = 
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2,
-                          NLopt.LD_LBFGS(), maxiters = 100)
+    NLopt.LD_LBFGS(), maxiters = 100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
@@ -107,7 +107,7 @@ optf3 = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
 res3 = Optimization.solve(optprob3,
-                          NLopt.LD_LBFGS(), maxiters = 100)
+    NLopt.LD_LBFGS(), maxiters = 100)
 ```
 
 Now let's see what we received:

@@ -113,7 +113,7 @@ sensitivities, call:
 ```@example directsense
 ts = 0:0.5:10
 res = adjoint_sensitivities(sol, Vern9(), t = ts, dgdu_discrete = dg, abstol = 1e-14,
-                            reltol = 1e-14)
+    reltol = 1e-14)
 ```
 
 This is super high accuracy. As always, there's a tradeoff between accuracy
@@ -125,7 +125,7 @@ using ForwardDiff, Calculus, ReverseDiff, Tracker
 function G(p)
     tmp_prob = remake(prob, u0 = convert.(eltype(p), prob.u0), p = p)
     sol = solve(tmp_prob, Vern9(), abstol = 1e-14, reltol = 1e-14, saveat = ts,
-                sensealg = SensitivityADPassThrough())
+        sensealg = SensitivityADPassThrough())
     A = convert(Array, sol)
     sum(((1 .- A) .^ 2) ./ 2)
 end

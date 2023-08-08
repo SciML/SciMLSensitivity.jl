@@ -65,7 +65,8 @@ function loss(p)
     tmp_sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 1000)
     arrsol = Array(tmp_sol)
     sum(abs2, truemean - mean(arrsol, dims = 3)) +
-    0.1sum(abs2, truevar - var(arrsol, dims = 3)), arrsol
+    0.1sum(abs2, truevar - var(arrsol, dims = 3)),
+    arrsol
 end
 
 function cb2(p, l, arrsol)
@@ -141,7 +142,7 @@ prob_sde = SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
 
 function predict_sde(p)
     return Array(solve(prob_sde, SOSRI(), p = p,
-                       sensealg = ForwardDiffSensitivity(), saveat = 0.1))
+        sensealg = ForwardDiffSensitivity(), saveat = 0.1))
 end
 
 loss_sde(p) = sum(abs2, x - 1 for x in predict_sde(p))
@@ -171,7 +172,7 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
 result_sde = Optimization.solve(optprob, ADAM(0.1),
-                                callback = callback, maxiters = 100)
+    callback = callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

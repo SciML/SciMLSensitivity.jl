@@ -16,8 +16,9 @@ before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
-using DifferentialEquations, ComponentArrays, SciMLSensitivity, Optimization,
-      OptimizationFlux
+using DifferentialEquations,
+    ComponentArrays, SciMLSensitivity, Optimization,
+    OptimizationFlux
 using Lux, Plots, Random
 
 rng = Random.default_rng()
@@ -34,9 +35,9 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Lux.Chain(ActivationFunction(x -> x .^ 3),
-                  Lux.Dense(2, 16, tanh),
-                  Lux.Dense(16, 2))
+dudt2 = Lux.Chain(x -> x .^ 3,
+    Lux.Dense(2, 16, tanh),
+    Lux.Dense(16, 2))
 
 pinit, st = Lux.setup(rng, dudt2)
 pinit = ComponentArray(pinit)
@@ -78,8 +79,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode = Optimization.solve(optprob,
-                                      ADAM(0.05), callback = callback,
-                                      maxiters = 300)
+    ADAM(0.05), callback = callback,
+    maxiters = 300)
 
 pred = predict_neuralode(result_neuralode.u)
 plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -107,8 +108,8 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, pinit)
 result_neuralode2 = Optimization.solve(optprob,
-                                       ADAM(0.05), callback = callback,
-                                       maxiters = 300)
+    ADAM(0.05), callback = callback,
+    maxiters = 300)
 
 pred = predict_neuralode(result_neuralode2.u)
 plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -127,8 +128,8 @@ end
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode2.u)
 result_neuralode3 = Optimization.solve(optprob,
-                                       ADAM(0.05), maxiters = 300,
-                                       callback = callback)
+    ADAM(0.05), maxiters = 300,
+    callback = callback)
 
 pred = predict_neuralode(result_neuralode3.u)
 plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -147,8 +148,8 @@ end
 
 optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
 result_neuralode4 = Optimization.solve(optprob,
-                                       ADAM(0.01), maxiters = 500,
-                                       callback = callback)
+    ADAM(0.01), maxiters = 500,
+    callback = callback)
 
 pred = predict_neuralode(result_neuralode4.u)
 plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -184,7 +185,7 @@ ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 #Using flux here to easily demonstrate the idea, but this can be done with Optimization.solve!
 dudt2 = Chain(Dense(2, 16, tanh),
-              Dense(16, 2))
+    Dense(16, 2))
 
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
@@ -220,12 +221,12 @@ data = Iterators.repeated((), 1000)
 
 #Specify to flux to include both the initial conditions (IC) and parameters of the NODE to train
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-            Flux.Optimise.ADAM(0.05), cb = callback)
+    Flux.Optimise.ADAM(0.05), cb = callback)
 
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), cb = callback)
+    Flux.Optimise.ADAM(0.05), cb = callback)
 
 callback()
 
@@ -238,7 +239,7 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 dudt2 = Chain(Dense(2, 16, tanh),
-              Dense(16, 2))
+    Dense(16, 2))
 
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
@@ -247,11 +248,11 @@ prob = ODEProblem(dudt, u0, tspan)
 data = Iterators.repeated((), 1500)
 
 Flux.train!(loss_n_ode, Flux.params(u0, p), data,
-            Flux.Optimise.ADAM(0.05), cb = callback)
+    Flux.Optimise.ADAM(0.05), cb = callback)
 
 u0 = Float32[2.0; 0.0]
 Flux.train!(loss_n_ode, Flux.params(p), data,
-            Flux.Optimise.ADAM(0.05), cb = callback)
+    Flux.Optimise.ADAM(0.05), cb = callback)
 
 callback()
 ```

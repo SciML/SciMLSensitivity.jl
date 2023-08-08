@@ -113,11 +113,11 @@ function (ff::RODEParamJacobianWrapper)(p)
     return du1
 end
 
-Base.@pure function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
+function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
     determine_chunksize(u, get_chunksize(alg))
 end
 
-Base.@pure function determine_chunksize(u, CS)
+function determine_chunksize(u, CS)
     if CS != 0
         return CS
     else
@@ -126,7 +126,7 @@ Base.@pure function determine_chunksize(u, CS)
 end
 
 function jacobian(f, x::AbstractArray{<:Number},
-                  alg::AbstractOverloadingSensitivityAlgorithm)
+    alg::AbstractOverloadingSensitivityAlgorithm)
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
@@ -137,8 +137,8 @@ function jacobian(f, x::AbstractArray{<:Number},
 end
 
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                   fx::Union{Nothing, AbstractArray{<:Number}},
-                   alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+    fx::Union{Nothing, AbstractArray{<:Number}},
+    alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
@@ -153,8 +153,8 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
 end
 
 function derivative!(df::AbstractArray{<:Number}, f,
-                     x::Number,
-                     alg::AbstractOverloadingSensitivityAlgorithm, der_config)
+    x::Number,
+    alg::AbstractOverloadingSensitivityAlgorithm, der_config)
     if alg_autodiff(alg)
         ForwardDiff.derivative!(df, f, x) # der_config doesn't work
     else
@@ -164,8 +164,8 @@ function derivative!(df::AbstractArray{<:Number}, f,
 end
 
 function gradient!(df::AbstractArray{<:Number}, f,
-                   x::Union{Number, AbstractArray{<:Number}},
-                   alg::AbstractOverloadingSensitivityAlgorithm, grad_config)
+    x::Union{Number, AbstractArray{<:Number}},
+    alg::AbstractOverloadingSensitivityAlgorithm, grad_config)
     if alg_autodiff(alg)
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
@@ -180,7 +180,7 @@ jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 ``Jv <- J(f(x))v``
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
-                      v, alg::AbstractOverloadingSensitivityAlgorithm, config)
+    v, alg::AbstractOverloadingSensitivityAlgorithm, config)
     if alg_autodiff(alg)
         buffer, seed = config
         TD = typeof(first(seed))
@@ -203,7 +203,7 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
     nothing
 end
 function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-                      M, alg::AbstractOverloadingSensitivityAlgorithm, config)
+    M, alg::AbstractOverloadingSensitivityAlgorithm, config)
     buffer, seed = config
     T = eltype(seed)
     numparams = length(ForwardDiff.partials(seed[1]))
@@ -219,20 +219,20 @@ function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number
     return nothing
 end
 function vecjacobian!(dλ, y, λ, p, t, S::TS;
-                      dgrad = nothing, dy = nothing,
-                      W = nothing) where {TS <: SensitivityFunction}
+    dgrad = nothing, dy = nothing,
+    W = nothing) where {TS <: SensitivityFunction}
     _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
     return
 end
 
 function vecjacobian(y, λ, p, t, S::TS;
-                     dgrad = nothing, dy = nothing,
-                     W = nothing) where {TS <: SensitivityFunction}
+    dgrad = nothing, dy = nothing,
+    W = nothing) where {TS <: SensitivityFunction}
     return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
-                       W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg, f = S
     prob = getprob(S)
 
@@ -361,7 +361,7 @@ function Base.showerror(io::IO, e::TrackerVJPNothingError)
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
-                       W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     f = unwrapped_f(S.f)
 
@@ -418,7 +418,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
-                       W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -535,7 +535,7 @@ function Base.showerror(io::IO, e::ZygoteVJPNothingError)
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
-                       W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -600,7 +600,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
 end
 
 function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
-                      W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -636,7 +636,7 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
-                       W) where {TS <: SensitivityFunction}
+    W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     f = unwrapped_f(S.f)
 
@@ -685,14 +685,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     if inplace_sensitivity(S)
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                            Enzyme.Duplicated(y, tmp1),
-                            dup,
-                            Enzyme.Const(t))
+                Enzyme.Duplicated(y, tmp1),
+                dup,
+                Enzyme.Const(t))
         else
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                            Enzyme.Duplicated(y, tmp1),
-                            dup,
-                            Enzyme.Const(t), Enzyme.Const(W))
+                Enzyme.Duplicated(y, tmp1),
+                dup,
+                Enzyme.Const(t), Enzyme.Const(W))
         end
 
         dλ !== nothing && (dλ .= tmp1)
@@ -702,12 +702,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                            Enzyme.Duplicated(y, tmp1),
-                            dup, Enzyme.Const(t))
+                Enzyme.Duplicated(y, tmp1),
+                dup, Enzyme.Const(t))
         else
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                            Enzyme.Duplicated(y, tmp1),
-                            dup, Enzyme.Const(t), Enzyme.Const(W))
+                Enzyme.Duplicated(y, tmp1),
+                dup, Enzyme.Const(t), Enzyme.Const(W))
         end
         if dy !== nothing
             out_ = if W === nothing
@@ -726,13 +726,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 end
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
-                   dgrad = nothing, dλ = nothing, dy = nothing)
+    dgrad = nothing, dλ = nothing, dy = nothing)
     _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)
     return
 end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
-                    dy) where {TS <: SensitivityFunction}
+    dy) where {TS <: SensitivityFunction}
     @unpack sensealg, f = S
     prob = getprob(S)
 
@@ -820,7 +820,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
 end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
-                    dy) where {TS <: SensitivityFunction}
+    dy) where {TS <: SensitivityFunction}
     @unpack sensealg, = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -867,7 +867,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
 end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
-                    dy) where {TS <: SensitivityFunction}
+    dy) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -877,12 +877,18 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype)[2]
 
     if StochasticDiffEq.is_diagonal_noise(prob)
-        if inplace_sensitivity(S)
+        if VERSION < v"1.9" # pre "stack" function
             for i in 1:m
-                _dy, back = Zygote.pullback(y, p) do u, p
-                    out_ = Zygote.Buffer(similar(u))
-                    f(out_, u, p, t)
-                    copy(out_[i])
+                if inplace_sensitivity(S)
+                    _dy, back = Zygote.pullback(y, p) do u, p
+                        out_ = Zygote.Buffer(similar(u))
+                        f(out_, u, p, t)
+                        copy(out_[i])
+                    end
+                else
+                    _dy, back = Zygote.pullback(y, p) do u, p
+                        f(u, p, t)[i]
+                    end
                 end
                 tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
                 if dgrad !== nothing
@@ -894,19 +900,26 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                 dy !== nothing && (dy[i] = _dy)
             end
         else
-            for i in 1:m
+            if inplace_sensitivity(S)
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)[i]
+                    out_ = Zygote.Buffer(similar(u))
+                    f(out_, u, p, t)
+                    copy(out_)
                 end
-                tmp1, tmp2 = back(λ[i])
-                if dgrad !== nothing
-                    if tmp2 !== nothing
-                        !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
-                    end
+            else
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    f(u, p, t)
                 end
-                dλ !== nothing && (dλ[:, i] .= vec(tmp1))
-                dy !== nothing && (dy[i] = _dy)
             end
+            out = [back(x) for x in eachcol(Diagonal(λ))]
+            if dgrad !== nothing
+                tmp2 = last.(out)
+                if !(eltype(tmp2) isa Nothing)
+                    !isempty(dgrad) && (dgrad .= stack(tmp2))
+                end
+            end
+            dλ !== nothing && (dλ .= stack(first.(out)))
+            dy !== nothing && (dy .= _dy)
         end
     else
         if inplace_sensitivity(S)
@@ -950,7 +963,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
 end
 
 function accumulate_cost!(dλ, y, p, t, S::TS,
-                          dgrad = nothing) where {TS <: SensitivityFunction}
+    dgrad = nothing) where {TS <: SensitivityFunction}
     @unpack dgdu, dgdp, dg_val, g, g_grad_config = S.diffcache
 
     if dgdu !== nothing
@@ -981,7 +994,7 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
 end
 
 function accumulate_cost(dλ, y, p, t, S::TS,
-                         dgrad = nothing) where {TS <: SensitivityFunction}
+    dgrad = nothing) where {TS <: SensitivityFunction}
     @unpack dgdu, dgdp = S.diffcache
 
     dλ -= dgdu(y, p, t)
@@ -996,13 +1009,13 @@ end
 function build_jac_config(alg, uf, u)
     if alg_autodiff(alg)
         jac_config = ForwardDiff.JacobianConfig(uf, u, u,
-                                                ForwardDiff.Chunk{
-                                                                  determine_chunksize(u,
-                                                                                      alg)}())
+            ForwardDiff.Chunk{
+                determine_chunksize(u,
+                    alg)}())
     else
         if diff_type(alg) != Val{:complex}
             jac_config = FiniteDiff.JacobianCache(zero(u), zero(u),
-                                                  zero(u), diff_type(alg))
+                zero(u), diff_type(alg))
         else
             tmp = Complex{eltype(u)}.(u)
             du1 = Complex{eltype(u)}.(du1)
@@ -1015,13 +1028,13 @@ end
 function build_param_jac_config(alg, pf, u, p)
     if alg_autodiff(alg)
         jac_config = ForwardDiff.JacobianConfig(pf, u, p,
-                                                ForwardDiff.Chunk{
-                                                                  determine_chunksize(p,
-                                                                                      alg)}())
+            ForwardDiff.Chunk{
+                determine_chunksize(p,
+                    alg)}())
     else
         if diff_type(alg) != Val{:complex}
             jac_config = FiniteDiff.JacobianCache(similar(p), similar(u),
-                                                  similar(u), diff_type(alg))
+                similar(u), diff_type(alg))
         else
             tmp = Complex{eltype(p)}.(p)
             du1 = Complex{eltype(u)}.(u)
@@ -1034,10 +1047,10 @@ end
 function build_grad_config(alg, tf, du1, t)
     if alg_autodiff(alg)
         grad_config = ForwardDiff.GradientConfig(tf, du1,
-                                                 ForwardDiff.Chunk{
-                                                                   determine_chunksize(du1,
-                                                                                       alg)
-                                                                   }())
+            ForwardDiff.Chunk{
+                determine_chunksize(du1,
+                    alg),
+            }())
     else
         grad_config = FiniteDiff.GradientCache(du1, t, diff_type(alg))
     end

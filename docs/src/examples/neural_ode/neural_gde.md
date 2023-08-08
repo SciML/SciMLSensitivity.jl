@@ -59,17 +59,17 @@ end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
     return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
-            bias = d.init_bias(rng, d.out_chs, 1))
+        bias = d.init_bias(rng, d.out_chs, 1))
 end
 
 initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-                         init_weight = glorot_normal, init_bias = zeros32)
+    init_weight = glorot_normal, init_bias = zeros32)
     init_Ã = () -> copy(Ã)
     return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight),
-                           typeof(init_bias)}(first(ch), last(ch), activation,
-                                              init_Ã, init_weight, init_bias)
+        typeof(init_bias)}(first(ch), last(ch), activation,
+        init_Ã, init_weight, init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -89,15 +89,15 @@ initialparameters(rng::AbstractRNG, node::NeuralODE) = initialparameters(rng, no
 initialstates(rng::AbstractRNG, node::NeuralODE) = initialstates(rng, node.model)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
-            ExplicitGCNConv(Ã, nhidden => nhidden, relu))
+    ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)
+    reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
-              node,
-              diffeqsol_to_array,
-              Dense(nhidden, nout))
+    node,
+    diffeqsol_to_array,
+    Dense(nhidden, nout))
 
 # Loss
 logitcrossentropy(ŷ, y) = mean(-sum(y .* logsoftmax(ŷ); dims = 1))
@@ -225,17 +225,17 @@ end
 
 function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
     return (weight = d.init_weight(rng, d.out_chs, d.in_chs),
-            bias = d.init_bias(rng, d.out_chs, 1))
+        bias = d.init_bias(rng, d.out_chs, 1))
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-                         init_weight = glorot_normal, init_bias = zeros32)
+    init_weight = glorot_normal, init_bias = zeros32)
     return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã,
-                                                                                       first(ch),
-                                                                                       last(ch),
-                                                                                       activation,
-                                                                                       init_weight,
-                                                                                       init_bias)
+        first(ch),
+        last(ch),
+        activation,
+        init_weight,
+        init_bias)
 end
 
 function (l::ExplicitGCNConv)(x::AbstractMatrix, ps, st::NamedTuple)
@@ -255,15 +255,15 @@ end
 diffeqsol_to_array(x::ODESolution) = dropdims(Array(x); dims = 3)
 
 gnn = Chain(ExplicitGCNConv(Ã, nhidden => nhidden, relu),
-            ExplicitGCNConv(Ã, nhidden => nhidden, relu))
+    ExplicitGCNConv(Ã, nhidden => nhidden, relu))
 
 node = NeuralODE(gnn, (0.0f0, 1.0f0), Tsit5(), save_everystep = false,
-                 reltol = 1e-3, abstol = 1e-3, save_start = false)
+    reltol = 1e-3, abstol = 1e-3, save_start = false)
 
 model = Chain(ExplicitGCNConv(Ã, nin => nhidden, relu),
-              node,
-              diffeqsol_to_array,
-              Dense(nhidden, nout))
+    node,
+    diffeqsol_to_array,
+    Dense(nhidden, nout))
 ```
 
 ## Training Configuration

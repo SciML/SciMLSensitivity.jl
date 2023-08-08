@@ -30,12 +30,12 @@ function QuadratureCache(u0, M, nseg, numparams)
     b = Array{eltype(u0)}(undef, M, nseg)
 
     QuadratureCache{typeof(dwv), typeof(dwfs), typeof(dvf), typeof(dvfs), typeof(C)}(dwv,
-                                                                                     dwf,
-                                                                                     dwfs,
-                                                                                     dvf,
-                                                                                     dvfs,
-                                                                                     dJs, C,
-                                                                                     R, b)
+        dwf,
+        dwfs,
+        dvf,
+        dvfs,
+        dJs, C,
+        R, b)
 end
 
 struct NILSASProblem{A, NILSS, Aprob, Qcache, solType, z0Type, tType, G, T, DG1, DG2}
@@ -54,9 +54,9 @@ struct NILSASProblem{A, NILSS, Aprob, Qcache, solType, z0Type, tType, G, T, DG1,
 end
 
 function NILSASProblem(sol, sensealg::NILSAS, alg;
-                       t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
-                       dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
-                       kwargs...)
+    t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
+    dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
+    kwargs...)
     @unpack p, u0, tspan, f = sol.prob
     @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
 
@@ -95,39 +95,39 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
     # assign initial values to y, vstar, w
     y = copy(sol.u[end])
     z0 = terminate_conditions(adjoint_sensealg, rng, f, y, p, tspan[2], numindvar,
-                              numparams, M)
+        numparams, M)
     nilss = NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu_continuous,
-                                     dgdp_continuous)
+        dgdp_continuous)
     tspan = (tspan[2] - T_seg, tspan[2])
     checkpoints = tspan[1]:dtsave:tspan[2]
 
     adjoint_prob = ODEAdjointProblem(sol, adjoint_sensealg, alg, t, dgdu_discrete,
-                                     dgdp_discrete,
-                                     dgdu_continuous, dgdp_continuous,
-                                     g;
-                                     checkpoints = checkpoints,
-                                     z0 = z0, M = M, nilss = nilss, tspan = tspan,
-                                     kwargs...)
+        dgdp_discrete,
+        dgdu_continuous, dgdp_continuous,
+        g;
+        checkpoints = checkpoints,
+        z0 = z0, M = M, nilss = nilss, tspan = tspan,
+        kwargs...)
 
     # pre-allocate variables for integration Eq.(23) in NILSAS paper.
     quadcache = QuadratureCache(u0, M, nseg, numparams)
 
     NILSASProblem{typeof(sensealg), typeof(nilss), typeof(adjoint_prob), typeof(quadcache),
-                  typeof(sol), typeof(z0), typeof(t), typeof(g), typeof(T_seg),
-                  typeof(dgdu_discrete), typeof(dgdp_discrete)}(sensealg,
-                                                                nilss,
-                                                                adjoint_prob,
-                                                                quadcache,
-                                                                sol,
-                                                                deepcopy(z0),
-                                                                t,
-                                                                g, T_seg,
-                                                                dtsave, dgdu_discrete,
-                                                                dgdp_discrete)
+        typeof(sol), typeof(z0), typeof(t), typeof(g), typeof(T_seg),
+        typeof(dgdu_discrete), typeof(dgdp_discrete)}(sensealg,
+        nilss,
+        adjoint_prob,
+        quadcache,
+        sol,
+        deepcopy(z0),
+        t,
+        g, T_seg,
+        dtsave, dgdu_discrete,
+        dgdp_discrete)
 end
 
 function terminate_conditions(alg::BacksolveAdjoint, rng, f, y, p, t, numindvar, numparams,
-                              M)
+    M)
     if isinplace(f)
         f_unit = zero(y)
         f(f_unit, y, p, t)
@@ -156,7 +156,7 @@ function terminate_conditions(alg::BacksolveAdjoint, rng, f, y, p, t, numindvar,
     dJs = zeros(numparams)
 
     return ArrayPartition([vst; vec(W)], zeros(numparams * (M + 1)), y, C, dwv, dwf, dvf,
-                          dJs)
+        dJs)
 end
 
 function split_states(du, u, t, NS::NILSASSensitivityFunction, j; update = true)
@@ -295,16 +295,16 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
         t2 = tspan[1] - (nseg - iseg) * T_seg
         checkpoints = t1:dtsave:t2
         _prob = ODEAdjointProblem(sol, adjoint_sensealg, alg, t, dgdu_discrete,
-                                  dgdp_discrete,
-                                  dgdu, dgdp, g;
-                                  checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
-                                  tspan = (t1, t2), kwargs...)
+            dgdp_discrete,
+            dgdu, dgdp, g;
+            checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
+            tspan = (t1, t2), kwargs...)
         _sol = solve(_prob, alg; save_everystep = false, save_start = false,
-                     saveat = eltype(sol[1])[],
-                     dt = dtsave,
-                     tstops = checkpoints,
-                     callback = cb,
-                     kwargs...)
+            saveat = eltype(sol[1])[],
+            dt = dtsave,
+            tstops = checkpoints,
+            callback = cb,
+            kwargs...)
 
         # renormalize at interfaces and store quadratures
         # update sense problem
