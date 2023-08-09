@@ -232,7 +232,7 @@ p = [1.5, 1.0, 3.0, 1.0]
 jac_call_count = 0
 function jac_with_count(J, u, p, t)
     global jac_call_count
-    jac_call_count+=1
+    jac_call_count += 1
     (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
     J[1, 1] = a + y * b * -1
     J[2, 1] = t * y
@@ -242,8 +242,14 @@ end
 
 f = ODEFunction(fb, jac = jac_with_count, paramjac = paramjac)
 p = [1.5, 1.0, 3.0]
-absolutely_no_ad_sensealg = ForwardSensitivity(autodiff=false, autojacvec=false, autojacmat=false)
-prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p, absolutely_no_ad_sensealg)
+absolutely_no_ad_sensealg = ForwardSensitivity(autodiff = false,
+    autojacvec = false,
+    autojacmat = false)
+prob = ODEForwardSensitivityProblem(f,
+    [1.0; 1.0],
+    (0.0, 10.0),
+    p,
+    absolutely_no_ad_sensealg)
 @test SciMLSensitivity.has_original_jac(prob.f)
 @assert jac_call_count == 0
 solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
