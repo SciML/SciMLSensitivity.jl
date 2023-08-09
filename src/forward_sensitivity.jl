@@ -38,7 +38,7 @@ end
 
 TruncatedStacktraces.@truncate_stacktrace ODEForwardSensitivityFunction
 
-has_original_jac(S) = isdefined(S, :original_jac) && S.jac !== nothing
+has_original_jac(S) = isdefined(S, :original_jac) && S.original_jac !== nothing
 
 struct NILSSForwardSensitivityFunction{iip, sensefunType, senseType, MM} <:
        DiffEqBase.AbstractODEFunction{iip}
