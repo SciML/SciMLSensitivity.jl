@@ -330,9 +330,8 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
-    adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
-        save_everystep = true, save_start = true, callback = CallbackSet(cb,cb2), kwargs...)
-
+    adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false, 
+            save_start = false, save_end = true, callback = CallbackSet(cb,cb2), kwargs...)
     res = compute_dGdp(integrand_values)'
 
     if rcb !== nothing && !isempty(rcb.Δλas)
