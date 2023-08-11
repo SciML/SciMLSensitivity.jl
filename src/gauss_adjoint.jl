@@ -333,7 +333,24 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
         save_everystep = true, save_start = true, callback = CallbackSet(cb,cb2), kwargs...)
-    return adj_sol[end], compute_dGdp(integrand_values)'
+
+    res = compute_dGdp(integrand_values)'
+
+    if rcb !== nothing && !isempty(rcb.Δλas)
+        iλ = zero(rcb.λ)
+        out = zero(res')
+        yy = similar(rcb.y)
+        for (Δλa, tt) in rcb.Δλas
+            @unpack algevar_idxs = rcb.diffcache
+            iλ[algevar_idxs] .= Δλa
+            sol(yy, tt)
+            vec_pjac!(out, iλ, yy, tt, integrand)
+            res .+= out'
+            iλ .= zero(eltype(iλ))
+        end
+    end
+
+    return adj_sol[end], res
 end
 
 function compute_dGdp(integrand::IntegrandValues)

@@ -961,7 +961,7 @@ prob_singular_mm = ODEProblem(ODEFunction(simple_linear_dae,
     [2.2, 1.1], (0.0, 1.5), p)
 sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
     reltol = 1e-14, abstol = 1e-14)
-ts = [0.5, 1.5]
+ts = [0.01, 0.5, 1.0, 1.5]
 dg_singular(out, u, p, t, i) = fill!(out, 1)
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
         sol -> sum(sum, sol.u)), vec(p))
@@ -969,17 +969,13 @@ for salg in [
     QuadratureAdjoint(),
     InterpolatingAdjoint(),
     BacksolveAdjoint(),
-    GaussAdjoint(),
+    GaussAdjoint()
 ]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    if salg == GaussAdjoint()
-        @test_broken res'≈reference_sol rtol=1e-5
-    else
         @test res'≈reference_sol rtol=1e-5
-    end
 end
 
 # u' = x = p * u^2
@@ -1004,17 +1000,13 @@ for salg in [
     QuadratureAdjoint(),
     InterpolatingAdjoint(),
     BacksolveAdjoint(),
-    GaussAdjoint(),
+    GaussAdjoint()
 ]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    if salg == GaussAdjoint()
-        @test_broken res'≈reference_sol rtol=1e-7
-    else
         @test res'≈reference_sol rtol=1e-7
-    end
 end
 
 function pend(du, u, p, t)
@@ -1052,9 +1044,5 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    if salg == GaussAdjoint()
-        @test_broken res'≈reference_sol rtol=1e-7
-    else
         @test res'≈reference_sol rtol=1e-7
-    end
 end
