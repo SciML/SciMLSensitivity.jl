@@ -830,12 +830,10 @@ _, res = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_mm, ts, sum), vec(p))
 @test res'≈reference_sol rtol=1e-11
 
-# TEST FAILS HERE. WORKS FOR LOWER TOLERANCE
 _, res_gauss = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
     abstol = 1e-14, reltol = 1e-14,
     sensealg = GaussAdjoint())
-@test_broken res_gauss≈res rtol=1e-11
-@test res_gauss≈res rtol=1e-3
+@test res_gauss≈res rtol=1e-11
 
 _, res_interp = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
     abstol = 1e-14, reltol = 1e-14,
@@ -862,11 +860,11 @@ g_cont(u, p, t) = (sum(u) .^ 2) ./ 2
 dg_cont(out, u, p, t) = out .= sum(u)
 _, easy_res_cont = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
     g = g_cont,
-    abstol = 1e-10, reltol = 1e-10,
+    abstol = 1e-14, reltol = 1e-14,
     sensealg = QuadratureAdjoint())
 _, easy_res_cont_gauss = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
     g = g_cont,
-    abstol = 1e-10, reltol = 1e-10,
+    abstol = 1e-14, reltol = 1e-14,
     sensealg = GaussAdjoint())
 function G_cont(p)
     tmp_prob_mm = remake(prob_mm, u0 = eltype(p).(prob_mm.u0), p = p,
@@ -878,8 +876,8 @@ function G_cont(p)
     res
 end
 reference_sol_cont = ForwardDiff.gradient(G_cont, p)
-@test easy_res_cont'≈reference_sol_cont rtol=1e-3
-@test easy_res_cont_gauss'≈reference_sol_cont rtol=1e-3
+@test easy_res_cont'≈reference_sol_cont rtol=1e-11
+@test easy_res_cont_gauss'≈reference_sol_cont rtol=1e-11
 
 @info "Singular mass matrix"
 function rober(du, u, p, t)

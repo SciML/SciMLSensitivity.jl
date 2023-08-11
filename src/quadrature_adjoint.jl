@@ -98,7 +98,7 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack p, u0, tspan = sol.prob
-
+ 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
@@ -325,11 +325,13 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
     abstol = sensealg.abstol, reltol = sensealg.reltol,
     callback = CallbackSet(),
     kwargs...)
+
     adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
         save_everystep = true, save_start = true, kwargs...)
+    
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
         return adj_sol[end], nothing

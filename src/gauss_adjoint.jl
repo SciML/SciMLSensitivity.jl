@@ -150,7 +150,7 @@ end
             jac_prototype = adjoint_jac_prototype)
     end
     if RetCB
-        return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
+        return ODEProblem(odefun, z0, tspan, p), cb, rcb
     else
         return ODEProblem(odefun, z0, tspan, p, callback = cb)
     end
@@ -327,12 +327,12 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
     integrand_values = IntegrandValues(Vector{Float64})
     cb = IntegratingCallback((u, t, integrator) -> integrand(t, u)[:], integrand_values)
-    callback = CallbackSet(callback, cb)
-    adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+    adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
+
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
-        save_everystep = true, save_start = true, kwargs...)
+        save_everystep = true, save_start = true, callback = CallbackSet(cb,cb2), kwargs...)
     return adj_sol[end], compute_dGdp(integrand_values)'
 end
 

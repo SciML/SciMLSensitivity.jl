@@ -531,8 +531,6 @@ GaussAdjoint(; chunk_size = 0, autodiff = true,
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
-  - `abstol`: absolute tolerance for the quadrature calculation
-  - `reltol`: relative tolerance for the quadrature calculation
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
