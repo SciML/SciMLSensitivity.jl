@@ -330,7 +330,6 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
-
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
         save_everystep = true, save_start = true, callback = CallbackSet(cb,cb2), kwargs...)
 
@@ -354,13 +353,11 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 end
 
 function compute_dGdp(integrand::IntegrandValues)
-    temp = zeros(length(integrand.integrand), length(integrand.integrand[1]))
-    for i in 1:length(integrand.integrand)
-        for j in 1:length(integrand.integrand[1])
-            temp[i, j] = integrand.integrand[i][j]
-        end
+    res = zeros(length(integrand.integrand[1]))
+    for (i, j) in enumerate(integrand.integrand)
+        res .+= j
     end
-    return sum(temp, dims = 1)[:]
+    return res
 end
 
 function update_p_integrand(integrand::GaussIntegrand, p)
