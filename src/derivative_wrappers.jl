@@ -911,7 +911,8 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     f(u, p, t)
                 end
             end
-            out = map(back, eachcol(Diagonal(λ)))
+            diag = Diagonal(λ) + 0 * y # workaround: create dense diagonal matrix without scalar indexing
+            out = map(back, eachcol(diag))
             if dgrad !== nothing
                 tmp2 = last.(out)
                 if !(eltype(tmp2) isa Nothing)
