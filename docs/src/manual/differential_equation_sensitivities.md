@@ -88,11 +88,13 @@ is:
     solver that is native Julia. If the chosen ODE solver is incompatible
     with direct automatic differentiation, `ForwardSensitivty` may be used instead.
   - Adjoint sensitivity analysis is the fastest when the number of parameters is
-    sufficiently large. There are three configurations of note. Using
-    `QuadratureAdjoint` is the fastest but uses the most memory, `BacksolveAdjoint`
+    sufficiently large. `GaussAdjoint` should be generally preferred. `BacksolveAdjoint`
     uses the least memory but on very stiff problems it may be unstable and
-    requires many checkpoints, while `InterpolatingAdjoint` is in the middle,
-    allowing checkpointing to control total memory use.
+    requires many checkpoints, while `InterpolatingAdjoint` is more compute intensive
+    than `GaussAdjoint` but allows for allows for checkpointing which can reduce the
+    total memory requirement (`GaussAdjoint` in the future will support checkpointing
+    in which case `QuadratureAdjoint` and `InterpolatingAdjoint` would only be
+    recommending in rare benchmarking scenarios).
   - The methods which use direct automatic differentiation (`ReverseDiffAdjoint`,
     `TrackerAdjoint`, `ForwardDiffSensitivity`, and `ZygoteAdjoint`) support
     the full range of DifferentialEquations.jl features (SDEs, DDEs, events, etc.),
@@ -132,7 +134,7 @@ equations, specific notices apply to other forms:
 
 ### Differential-Algebraic Equations
 
-We note that while all 3 are compatible with index-1 DAEs via the
+We note that while all continuous adjoints are compatible with index-1 DAEs via the
 [derivation in the universal differential equations paper](https://arxiv.org/abs/2001.04385)
 (note the reinitialization), we do not recommend `BacksolveAdjoint`
 on DAEs because the stiffness inherent in these problems tends to
@@ -160,7 +162,7 @@ incompatible with callbacks. All methods based on discrete adjoint sensitivity a
 via automatic differentiation, like `ReverseDiffAdjoint`, `TrackerAdjoint`, or
 `QuadratureAdjoint` are fully compatible with events. This applies to ODEs, SDEs, DAEs,
 and DDEs. The continuous adjoint sensitivities `BacksolveAdjoint`, `InterpolatingAdjoint`,
-and `QuadratureAdjoint` are compatible with events for ODEs. `BacksolveAdjoint` and
+`GaussAdjoint`, and `QuadratureAdjoint` are compatible with events for ODEs. `BacksolveAdjoint` and
 `InterpolatingAdjoint` can also handle events for SDEs. Use `BacksolveAdjoint` if
 the event terminates the time evolution and several states are saved. Currently,
 the continuous adjoint sensitivities do not support multiple events per time point.
@@ -189,6 +191,7 @@ the definition of the methods.
 ForwardSensitivity
 ForwardDiffSensitivity
 BacksolveAdjoint
+GaussAdjoint
 InterpolatingAdjoint
 QuadratureAdjoint
 ReverseDiffAdjoint
