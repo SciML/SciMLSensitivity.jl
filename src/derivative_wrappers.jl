@@ -915,10 +915,10 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             if dgrad !== nothing
                 tmp2 = last.(out)
                 if !(eltype(tmp2) isa Nothing)
-                    !isempty(dgrad) && (dgrad .= stack(collect.(tmp2)))
+                    !isempty(dgrad) && (dgrad .= reduce(hcat, tmp2))
                 end
             end
-            dλ !== nothing && (dλ .= stack(collect.(first.(out))))
+            dλ !== nothing && (dλ .= reduce(hcat, first.(out)))
             dy !== nothing && (dy .= _dy)
         end
     else
