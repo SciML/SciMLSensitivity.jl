@@ -911,7 +911,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     f(u, p, t)
                 end
             end
-            out = map(back, eachcol(Diagonal(λ)))
+            out = map(back, eachcol(collect(Diagonal(λ))))
             if dgrad !== nothing
                 tmp2 = last.(out)
                 if !(eltype(tmp2) isa Nothing)
