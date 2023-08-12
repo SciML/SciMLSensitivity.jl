@@ -52,6 +52,7 @@ include("nilsas.jl")
 include("backsolve_adjoint.jl")
 include("interpolating_adjoint.jl")
 include("quadrature_adjoint.jl")
+include("gauss_adjoint.jl")
 include("callback_tracking.jl")
 include("concrete_solve.jl")
 include("second_order.jl")
@@ -69,7 +70,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
     NILSSProblem, NILSASProblem,
     shadow_forward, shadow_adjoint
 
-export BacksolveAdjoint, QuadratureAdjoint, InterpolatingAdjoint,
+export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, InterpolatingAdjoint,
     TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
     ForwardSensitivity, ForwardDiffSensitivity,
     ForwardDiffOverAdjoint,

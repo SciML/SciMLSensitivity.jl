@@ -99,7 +99,6 @@ _, easy_res62 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete
     sensealg = InterpolatingAdjoint(checkpointing = true,
         autojacvec = false),
     checkpoints = sol.t[1:500:end])
-
 # It should automatically be checkpointing since the solution isn't dense
 _, easy_res7 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
@@ -131,7 +130,22 @@ _, easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = QuadratureAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
-
+_, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint())
+_, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = false))
+_, easy_res143 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
+_, easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -162,6 +176,10 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res11, rtol = 1e-9)
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res13, rtol = 1e-9)
+@test isapprox(res, easy_res14, rtol = 1e-9)
+@test isapprox(res, easy_res142, rtol = 1e-9)
+@test isapprox(res, easy_res143, rtol = 1e-9)
+@test isapprox(res, easy_res144, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -245,7 +263,14 @@ _, easy_res11 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discr
 #                                     reltol=1e-14,
 #                                     sensealg=QuadratureAdjoint(autojacvec=SciMLSensitivity.EnzymeVJP())
 #                                     ) isa Tuple
-
+_, easy_res12 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint())
+_, easy_res122 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
@@ -263,6 +288,8 @@ _, easy_res11 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discr
 @test isapprox(res, easy_res11, rtol = 1e-9)
 #@test isapprox(res, easy_res12, rtol = 1e-9)
 #@test isapprox(res, easy_res13, rtol = 1e-9)
+@test isapprox(res, easy_res12, rtol = 1e-9)
+@test isapprox(res, easy_res122, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 
@@ -405,6 +432,18 @@ ū05, adj53 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg, ab
         autojacvec = ReverseDiffVJP(true)),
     reltol = 1e-14)
 
+ū06, adj6 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
+    sensealg = GaussAdjoint(),
+    reltol = 1e-14)
+
+ū062, adj62 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = false),
+    reltol = 1e-14)
+
+ū06, adj63 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+    reltol = 1e-14)
 ū0args, adjargs = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     save_everystep = false, save_start = false,
@@ -434,6 +473,8 @@ end
 @test ū042≈res rtol=1e-10
 @test ū05≈res rtol=1e-10
 @test ū052≈res rtol=1e-10
+@test ū06≈res rtol=1e-10
+@test ū062≈res rtol=1e-10
 @test adj≈adjnou0 rtol=1e-10
 @test adj≈adj2 rtol=1e-10
 @test adj≈adj22 rtol=1e-10
@@ -445,6 +486,9 @@ end
 @test adj≈adj5 rtol=1e-10
 @test adj≈adj52 rtol=1e-10
 @test adj≈adj53 rtol=1e-10
+@test adj≈adj6 rtol=1e-10
+@test adj≈adj62 rtol=1e-10
+@test adj≈adj63 rtol=1e-10
 
 @test ū0args≈res rtol=1e-10
 @test adjargs≈adj rtol=1e-10
@@ -563,6 +607,26 @@ _, easy_res38 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
     checkpoints = sol.t[1:500:end],
     sensealg = InterpolatingAdjoint(checkpointing = true,
         autojacvec = false))
+println("40")
+_, easy_res40 = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint())
+_, easy_res41 = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(false)))
+_, easy_res42 = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = false))
+println("43")
+_, easy_res43 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint())
+_, easy_res44 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = false))
 
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
@@ -583,6 +647,11 @@ _, easy_res38 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
 @test norm(easy_res36 .- res) < 1e-8
 @test norm(easy_res37 .- res) < 1e-8
 @test norm(easy_res38 .- res) < 1e-8
+@test norm(easy_res40 .- res) < 1e-8
+@test norm(easy_res41 .- res) < 1e-8
+@test norm(easy_res42 .- res) < 1e-8
+@test norm(easy_res43 .- res) < 1e-8
+@test norm(easy_res44 .- res) < 1e-8
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -761,6 +830,11 @@ _, res = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_mm, ts, sum), vec(p))
 @test res'≈reference_sol rtol=1e-11
 
+_, res_gauss = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
+    abstol = 1e-14, reltol = 1e-14,
+    sensealg = GaussAdjoint())
+@test res_gauss≈res rtol=1e-11
+
 _, res_interp = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
     abstol = 1e-14, reltol = 1e-14,
     sensealg = InterpolatingAdjoint())
@@ -786,8 +860,12 @@ g_cont(u, p, t) = (sum(u) .^ 2) ./ 2
 dg_cont(out, u, p, t) = out .= sum(u)
 _, easy_res_cont = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
     g = g_cont,
-    abstol = 1e-10, reltol = 1e-10,
+    abstol = 1e-14, reltol = 1e-14,
     sensealg = QuadratureAdjoint())
+_, easy_res_cont_gauss = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
+    g = g_cont,
+    abstol = 1e-14, reltol = 1e-14,
+    sensealg = GaussAdjoint())
 function G_cont(p)
     tmp_prob_mm = remake(prob_mm, u0 = eltype(p).(prob_mm.u0), p = p,
         tspan = eltype(p).(prob_mm.tspan))
@@ -798,7 +876,8 @@ function G_cont(p)
     res
 end
 reference_sol_cont = ForwardDiff.gradient(G_cont, p)
-@test easy_res_cont'≈reference_sol_cont rtol=1e-3
+@test easy_res_cont'≈reference_sol_cont rtol=1e-11
+@test easy_res_cont_gauss'≈reference_sol_cont rtol=1e-11
 
 @info "Singular mass matrix"
 function rober(du, u, p, t)
@@ -835,6 +914,12 @@ for iip in [true, false]
     reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
             sol -> sum(last, sol.u)), vec(p))
     @test res'≈reference_sol rtol=1e-5
+
+    _, res_gauss = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+        dgdu_discrete = dg_singular, abstol = 1e-8,
+        reltol = 1e-8, sensealg = GaussAdjoint(),
+        maxiters = Int(1e6))
+    @test res_gauss≈res rtol=1e-5
 
     _, res_interp = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular,
@@ -876,16 +961,21 @@ prob_singular_mm = ODEProblem(ODEFunction(simple_linear_dae,
     [2.2, 1.1], (0.0, 1.5), p)
 sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
     reltol = 1e-14, abstol = 1e-14)
-ts = [0.5, 1.5]
+ts = [0.01, 0.25, 0.5, 1.0, 1.5]
 dg_singular(out, u, p, t, i) = fill!(out, 1)
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
         sol -> sum(sum, sol.u)), vec(p))
-for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+for salg in [
+    QuadratureAdjoint(),
+    InterpolatingAdjoint(),
+    BacksolveAdjoint(),
+    GaussAdjoint()
+]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    @test res'≈reference_sol rtol=1e-5
+        @test res'≈reference_sol rtol=1e-5
 end
 
 # u' = x = p * u^2
@@ -906,12 +996,17 @@ _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
     maxiters = Int(1e6))
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
         sol -> sum(sum, sol.u)), vec(p))
-for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+for salg in [
+    QuadratureAdjoint(),
+    InterpolatingAdjoint(),
+    BacksolveAdjoint(),
+    GaussAdjoint()
+]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    @test res'≈reference_sol rtol=1e-7
+        @test res'≈reference_sol rtol=1e-7
 end
 
 function pend(du, u, p, t)
@@ -939,10 +1034,15 @@ _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
     maxiters = Int(1e6))
 reference_sol = ForwardDiff.gradient(p -> G(p, prob_singular_mm, ts,
         sol -> sum(last, sol.u)), vec(p))
-for salg in [QuadratureAdjoint(), InterpolatingAdjoint(), BacksolveAdjoint()]
+for salg in [
+    QuadratureAdjoint(),
+    InterpolatingAdjoint(),
+    BacksolveAdjoint(),
+    GaussAdjoint(),
+]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    @test res'≈reference_sol rtol=1e-7
+        @test res'≈reference_sol rtol=1e-7
 end
