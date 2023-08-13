@@ -71,8 +71,10 @@ end
         @time @safetestset "Error Messages" begin
             include("error_messages.jl")
         end
-        @time @safetestset "Autodiff Events" begin
-            include("autodiff_events.jl")
+        if VERSION >= v"1.9"
+            @time @safetestset "Autodiff Events" begin
+                include("autodiff_events.jl")
+            end
         end
         @time @safetestset "Null Parameters" begin
             include("null_parameters.jl")
@@ -125,10 +127,11 @@ end
         @time @safetestset "Layers DDE" begin
             include("layers_dde.jl")
         end
-        @time @safetestset "SDE - Neural" begin
-            include("sde_neural.jl")
+        if VERSION >= v"1.9"
+            @time @safetestset "SDE - Neural" begin
+                include("sde_neural.jl")
+            end
         end
-
         # No `@safetestset` since it requires running in Main
         @time @testset "Distributed" begin
             include("distributed.jl")
@@ -154,8 +157,10 @@ end
         @time @safetestset "HybridNODE" begin
             include("HybridNODE.jl")
         end
-        @time @safetestset "ForwardDiff Sparsity Components" begin
-            include("forwarddiffsensitivity_sparsity_components.jl")
+        if VERSION >= v"1.9"
+            @time @safetestset "ForwardDiff Sparsity Components" begin
+                include("forwarddiffsensitivity_sparsity_components.jl")
+            end
         end
         @time @safetestset "Complex No u" begin
             include("complex_no_u.jl")
