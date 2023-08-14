@@ -91,7 +91,7 @@ is:
     sufficiently large. `GaussAdjoint` should be generally preferred. `BacksolveAdjoint`
     uses the least memory but on very stiff problems it may be unstable and
     requires many checkpoints, while `InterpolatingAdjoint` is more compute intensive
-    than `GaussAdjoint` but allows for allows for checkpointing which can reduce the
+    than `GaussAdjoint` but allows for checkpointing which can reduce the
     total memory requirement (`GaussAdjoint` in the future will support checkpointing
     in which case `QuadratureAdjoint` and `InterpolatingAdjoint` would only be
     recommending in rare benchmarking scenarios).
