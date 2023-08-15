@@ -247,14 +247,16 @@ This can stabilize the adjoint in some applications, but for highly
 stiff applications the divergence can be too fast for this to work in
 practice.
 
-To avoid the issues of backwards solving the ODE, `InterpolatingAdjoint`
-and `QuadratureAdjoint` utilize information from the forward pass.
+To avoid the issues of backwards solving the ODE, `InterpolatingAdjoint`, `QuadratureAdjoint`, and `GaussAdjoint` utilize information from the forward pass.
 By default, these methods utilize the [continuous solution](https://docs.sciml.ai/DiffEqDocs/stable/basics/solution/#Interpolations-1)
 provided by DifferentialEquations.jl in the calculations of the
 adjoint pass. `QuadratureAdjoint` uses this to build a continuous
 function for the solution of the adjoint equation and then performs an
-adaptive quadrature via [Integrals.jl](https://docs.sciml.ai/Integrals/stable/),
-while `InterpolatingAdjoint` appends the integrand to the ODE, so it's
+adaptive quadrature via [Integrals.jl](https://docs.sciml.ai/Integrals/stable/);
+`GaussAdjoint` computes the integrand with a callback that performs
+adaptive quadrature via [Integrals.jl](https://docs.sciml.ai/Integrals/stable/)
+during the adjoint equation solve;
+`InterpolatingAdjoint` appends the integrand to the ODE, so it's
 computed simultaneously to the Lagrange multiplier. When memory is
 not an issue, we find that the `QuadratureAdjoint` approach tends to
 be the most efficient as it has a significantly smaller adjoint
@@ -263,6 +265,9 @@ form requires holding the full continuous solution of the adjoint which
 can be a significant burden for large parameter problems. The
 `InterpolatingAdjoint` is thus a compromise between memory efficiency
 and compute efficiency, and is in the same spirit as [CVODES](https://computing.llnl.gov/projects/sundials).
+`GaussAdjoint` combines the advantages of both of these approaaches,
+having a small adjoint differential equation while not requiring 
+saving the full continuous solution of the adjoint problem.
 
 However, if the memory cost of the `InterpolatingAdjoint` is too high,
 checkpointing can be used via `InterpolatingAdjoint(checkpointing=true)`.
