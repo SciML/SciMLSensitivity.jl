@@ -1076,7 +1076,7 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <:
+struct SteadyStateAdjoint{CJ, BD, CS, AD, FDT, VJP, LS} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
@@ -1085,20 +1085,19 @@ end
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing, linsolve = nothing)
-    SteadyStateAdjoint{
-        chunk_size,
-        autodiff,
-        diff_type,
-        typeof(autojacvec),
-        typeof(linsolve),
-    }(autojacvec,
-        linsolve)
+    diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
+    concrete_jac = false, assume_uniform_blocked_diagonal = false)
+    return SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), _unwrap_val(concrete_jac),
+        _unwrap_val(assume_uniform_blocked_diagonal)}(autojacvec, linsolve)
 end
-function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS},
-    vjp) where {CS, AD, FDT, VJP, LS}
-    SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
+
+needs_concrete_jac(::SteadyStateAdjoint{CJ}) where {CJ} = Val(CJ)
+assume_uniform_blocked_diagonal(::SteadyStateAdjoint{CJ, BD}) where {CJ, BD} = Val(BD)
+
+function setvjp(sensealg::SteadyStateAdjoint{CJ, BD, CS, AD, FDT, VJP, LS},
+    vjp) where {CJ, BD, CS, AD, FDT, VJP, LS}
+    SteadyStateAdjoint{CJ, BD, CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
 end
 
 abstract type VJPChoice end

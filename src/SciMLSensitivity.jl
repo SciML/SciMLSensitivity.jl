@@ -34,7 +34,7 @@ import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, Pr
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
-import SciMLBase: unwrapped_f
+import SciMLBase: unwrapped_f, _unwrap_val
 
 import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAlgorithm,
     AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,

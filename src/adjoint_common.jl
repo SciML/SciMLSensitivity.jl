@@ -29,8 +29,8 @@ TruncatedStacktraces.@truncate_stacktrace AdjointDiffCache
 return (AdjointDiffCache, y)
 """
 function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f, alg;
-    quad = false,
-    noiseterm = false, needs_jac = false) where {G, DG1, DG2}
+    quad = false, noiseterm = false, needs_jac = false,
+    jac_prototype = nothing) where {G, DG1, DG2}
     prob = sol.prob
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         @unpack u0, p = prob
@@ -104,12 +104,13 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     if !needs_jac && !issemiexplicitdae && !(autojacvec isa Bool)
         J = nothing
     else
+        # jac_prototype can be provided if we want to exploit sparsity
+        J_ = jac_prototype !== nothing ? jac_prototype : similar(u0, numindvar, numindvar)
         if SciMLBase.forwarddiffs_model_time(alg)
             # 1 chunk is fine because it's only t
-            J = dualcache(similar(u0, numindvar, numindvar),
-                ForwardDiff.pickchunksize(length(u0)))
+            J = dualcache(J_, ForwardDiff.pickchunksize(length(u0)))
         else
-            J = similar(u0, numindvar, numindvar)
+            J = J_
         end
     end
 
