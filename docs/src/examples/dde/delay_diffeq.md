@@ -6,7 +6,7 @@ like:
 
 ```@example dde
 using DifferentialEquations, Optimization, SciMLSensitivity,
-      OptimizationPolyalgorithms
+    OptimizationPolyalgorithms
 
 # Define the same LV equation, but including a delay parameter
 function delay_lotka_volterra!(du, u, h, p, t)
@@ -28,12 +28,12 @@ u0 = [1.0, 1.0]
 
 # Define the problem as a delay differential equation
 prob_dde = DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
-                      constant_lags = [0.1])
+    constant_lags = [0.1])
 
 function predict_dde(p)
     return Array(solve(prob_dde, MethodOfSteps(Tsit5()),
-                       u0 = u0, p = p, saveat = 0.1,
-                       sensealg = ReverseDiffAdjoint()))
+        u0 = u0, p = p, saveat = 0.1,
+        sensealg = ReverseDiffAdjoint()))
 end
 
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))
@@ -43,7 +43,7 @@ callback = function (p, l...; doplot = false)
     display(loss_dde(p))
     doplot &&
         display(plot(solve(remake(prob_dde, p = p), MethodOfSteps(Tsit5()), saveat = 0.1),
-                     ylim = (0, 6)))
+            ylim = (0, 6)))
     return false
 end
 
@@ -66,7 +66,7 @@ callback = function (p, l...; doplot = false)
     display(loss_dde(p))
     doplot &&
         display(plot(solve(remake(prob_dde, p = p), MethodOfSteps(Tsit5()), saveat = 0.1),
-                     ylim = (0, 6)))
+            ylim = (0, 6)))
     return false
 end
 

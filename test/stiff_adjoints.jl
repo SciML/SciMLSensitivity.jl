@@ -25,7 +25,7 @@ target_data = solve(prob0, RadauIIA5(), saveat = 0:0.5:10.0);
 loss_function = function (p)
     prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0, abstol = 1e-10,
-                       reltol = 1e-10)
+        reltol = 1e-10)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -42,7 +42,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 loss_function = function (p)
     prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0, abstol = 1e-10,
-                       reltol = 1e-10)
+        reltol = 1e-10)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -57,7 +57,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 loss_function = function (p)
     prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0, abstol = 1e-8,
-                       reltol = 1e-8)
+        reltol = 1e-8)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -92,7 +92,7 @@ target_data = solve(prob0, RadauIIA5(), saveat = 0:0.5:10.0);
 loss_function = function (p)
     prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, RadauIIA5(); saveat = 0.0:0.5:10.0, abstol = 1e-10,
-                       reltol = 1e-10)
+        reltol = 1e-10)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -110,7 +110,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 loss_function = function (p)
     prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, TRBDF2(); saveat = 0.0:0.5:10.0, abstol = 1e-10,
-                       reltol = 1e-10)
+        reltol = 1e-10)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -125,7 +125,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 loss_function = function (p)
     prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, Rosenbrock23(); saveat = 0.0:0.5:10.0, abstol = 1e-8,
-                       reltol = 1e-8)
+        reltol = 1e-8)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -140,7 +140,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 loss_function = function (p)
     prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
     prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol = 1e-12,
-                       reltol = 1e-12)
+        reltol = 1e-12)
 
     tmpdata = prediction[[1, 2], :]
     tdata = target_data[[1, 2], :]
@@ -197,7 +197,7 @@ if VERSION >= v"1.7-"
         function loss(p, sensealg)
             prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
             sol = solve(prob, solver, dt = 0.01, saveat = 0.1, sensealg = sensealg,
-                        abstol = 1e-5, reltol = 1e-5)
+                abstol = 1e-5, reltol = 1e-5)
             sum(abs2, Array(sol))
         end
 
@@ -235,7 +235,7 @@ if VERSION >= v"1.7-"
         sensealg = QuadratureAdjoint(autodiff = false, autojacvec = vjp)
         _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
         sum(solve(_prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = 1,
-                  sensealg = sensealg))
+            sensealg = sensealg))
     end
 
     u0 = [1.0, 0.0, 0.0]
@@ -245,13 +245,13 @@ if VERSION >= v"1.7-"
     grad2 = Zygote.gradient(sum_of_solution_CASA, [u0; p])[1]
     grad3 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP()), [u0; p])[1]
     grad4 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP(true)),
-                            [u0; p])[1]
+        [u0; p])[1]
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = true), [u0; p])[1]
     grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()),
-                                     [u0; p])[1]
+        [u0; p])[1]
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = TrackerVJP()),
-                                     [u0; p])[1]
+        [u0; p])[1]
 
     @test grad1 ≈ grad2
     @test grad1 ≈ grad3

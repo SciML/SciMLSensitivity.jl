@@ -1,6 +1,6 @@
 # for Ito / Stratonovich conversion
 struct StochasticTransformedFunction{pType, fType <: DiffEqBase.AbstractDiffEqFunction,
-                                     gType, noiseType, cfType} <: TransformedFunction
+    gType, noiseType, cfType} <: TransformedFunction
     prob::pType
     f::fType
     g::gType
@@ -19,7 +19,7 @@ function StochasticTransformedFunction(sol, f, g, corfunc_analytical = nothing)
     end
 
     return StochasticTransformedFunction(prob, f, g, gtmp, DiffEqBase.isinplace(prob),
-                                         corfunc_analytical)
+        corfunc_analytical)
 end
 
 function (Tfunc::StochasticTransformedFunction)(du, u, p, t)

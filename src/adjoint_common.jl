@@ -1,6 +1,6 @@
 struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
-                        DG2, DI,
-                        AI, FM}
+    DG2, DI,
+    AI, FM}
     uf::UF
     pf::PF
     g::G
@@ -29,8 +29,8 @@ TruncatedStacktraces.@truncate_stacktrace AdjointDiffCache
 return (AdjointDiffCache, y)
 """
 function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f, alg;
-                          quad = false,
-                          noiseterm = false, needs_jac = false) where {G, DG1, DG2}
+    quad = false,
+    noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         @unpack u0, p = prob
@@ -81,7 +81,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         mass_matrix = mass_matrix'
         diffvar_idxs = findall(x -> any(!iszero, @view(mass_matrix[:, x])),
-                               axes(mass_matrix, 2))
+            axes(mass_matrix, 2))
         algevar_idxs = setdiff(eachindex(u0), diffvar_idxs)
 
         # TODO: operator
@@ -101,13 +101,13 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         algevar_idxs = 1:0
     end
 
-    if !needs_jac && !(issemiexplicitdae || !isautojacvec)
+    if !needs_jac && !issemiexplicitdae && !(autojacvec isa Bool)
         J = nothing
     else
         if SciMLBase.forwarddiffs_model_time(alg)
             # 1 chunk is fine because it's only t
             J = dualcache(similar(u0, numindvar, numindvar),
-                          ForwardDiff.pickchunksize(length(u0)))
+                ForwardDiff.pickchunksize(length(u0)))
         else
             J = similar(u0, numindvar, numindvar)
         end
@@ -142,7 +142,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         pg_config = nothing
     end
 
-    if DiffEqBase.has_jac(f) || (J === nothing)
+    if DiffEqBase.has_jac(f) || J === nothing
         jac_config = nothing
         uf = nothing
     else
@@ -190,15 +190,15 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             paramjac_config = tape
         else
             paramjac_config = get_paramjac_config(autojacvec, p, unwrappedf, y, _p, _t;
-                                                  isinplace = isinplace,
-                                                  isRODE = isRODE, _W = _W)
+                isinplace = isinplace,
+                isRODE = isRODE, _W = _W)
         end
 
         pf = nothing
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
-    elseif DiffEqBase.has_paramjac(f) || isautojacvec || quad ||
+    elseif DiffEqBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
         pf = nothing
@@ -221,7 +221,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         end
     end
 
-    pJ = (quad || isautojacvec) ? nothing : similar(u0, numindvar, numparams)
+    pJ = (quad || !(autojacvec isa Bool)) ? nothing : similar(u0, numindvar, numparams)
 
     f_cache = isinplace ? deepcopy(u0) : nothing
 
@@ -291,9 +291,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                     end
                 else
                     pf = ParamNonDiagNoiseJacobianWrapper(unwrappedf, _t, y,
-                                                          prob.noise_rate_prototype)
+                        prob.noise_rate_prototype)
                     uf = UNonDiagNoiseJacobianWrapper(unwrappedf, _t, p,
-                                                      prob.noise_rate_prototype)
+                        prob.noise_rate_prototype)
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
                 end
                 paramjac_noise_config = build_param_jac_config(sensealg, pf, y, p)
@@ -330,17 +330,17 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     end
 
     adjoint_cache = AdjointDiffCache(uf, pf, pg, J, pJ, dg_val,
-                                     jac_config, pg_config, paramjac_config,
-                                     jac_noise_config, paramjac_noise_config,
-                                     f_cache, dgdu, dgdp, diffvar_idxs, algevar_idxs,
-                                     factorized_mass_matrix, issemiexplicitdae)
+        jac_config, pg_config, paramjac_config,
+        jac_noise_config, paramjac_noise_config,
+        f_cache, dgdu, dgdp, diffvar_idxs, algevar_idxs,
+        factorized_mass_matrix, issemiexplicitdae)
 
     return adjoint_cache, y
 end
 
 function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
-                             numindvar = nothing, alg = nothing, isinplace = true,
-                             isRODE = false, _W = nothing)
+    numindvar = nothing, alg = nothing, isinplace = true,
+    isRODE = false, _W = nothing)
     # f = unwrappedf
     if isinplace
         if !isRODE
@@ -380,9 +380,9 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
 end
 
 function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters, f, y, _p,
-                             _t;
-                             numindvar, alg, isinplace = nothing, isRODE = nothing,
-                             _W = nothing)
+    _t;
+    numindvar, alg, isinplace = nothing, isRODE = nothing,
+    _W = nothing)
     if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
         chunk = if autojacvec.chunksize == 0
             ForwardDiff.pickchunksize(numindvar)
@@ -391,8 +391,8 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
         end
 
         paramjac_config = dualcache(zero(y), chunk), p,
-                          dualcache(zero(y), chunk),
-                          dualcache(zero(y), chunk)
+        dualcache(zero(y), chunk),
+        dualcache(zero(y), chunk)
     else
         paramjac_config = zero(y), p, zero(y), zero(y)
     end
@@ -400,8 +400,8 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
 end
 
 function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, alg,
-                             isinplace = nothing,
-                             isRODE = nothing, _W = nothing)
+    isinplace = nothing,
+    isRODE = nothing, _W = nothing)
     if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
         chunk = if autojacvec.chunksize == 0
             ForwardDiff.pickchunksize(numindvar)
@@ -410,9 +410,9 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
         end
 
         paramjac_config = dualcache(zero(y), chunk),
-                          zero(_p),
-                          dualcache(zero(y), chunk),
-                          dualcache(zero(y), chunk)
+        zero(_p),
+        dualcache(zero(y), chunk),
+        dualcache(zero(y), chunk)
     else
         paramjac_config = zero(y), zero(_p), zero(y), zero(y)
     end
@@ -420,7 +420,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
 end
 
 function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
-                isRODE = nothing)
+    isRODE = nothing)
     nothing
 end
 
@@ -457,8 +457,8 @@ end
 inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
-                           dg2Type,
-                           cacheType, fType, solType, ΔλasType}
+    dg2Type,
+    cacheType, fType, solType, ΔλasType}
     isq::Bool
     λ::λType
     t::timeType
@@ -485,12 +485,12 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     Δλas = Tuple{typeof(λ), eltype(t)}[]
     if ArrayInterface.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-                                   nothing, Δλas)
+            sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
+            nothing, Δλas)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
-                                   sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-                                   sensefun.sol, Δλas)
+            sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
+            sensefun.sol, Δλas)
     end
 end
 
@@ -558,7 +558,7 @@ end
 
 # handle discrete loss contributions
 function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
-                            terminated = false)
+    terminated = false)
     if sensefun isa NILSASSensitivityFunction
         @unpack sensealg = sensefun.S
     else
@@ -572,7 +572,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     end
 
     reverse_cbs = setup_reverse_callbacks(callback, sensealg, dgdu, dgdp, cur_time,
-                                          terminated)
+        terminated)
 
     init_cb || return reverse_cbs, nothing, nothing
 

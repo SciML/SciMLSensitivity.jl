@@ -21,8 +21,9 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
-using DifferentialEquations, Flux, Optimization, OptimizationFlux, RecursiveArrayTools,
-      Random
+using DifferentialEquations,
+    Flux, Optimization, OptimizationFlux, RecursiveArrayTools,
+    Random
 
 u0 = Float32[0.0; 2.0]
 du0 = Float32[0.0; 0.0]

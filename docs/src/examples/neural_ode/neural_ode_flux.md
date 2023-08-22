@@ -25,8 +25,8 @@ prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -> x .^ 3,
-                   Flux.Dense(2, 50, tanh),
-                   Flux.Dense(50, 2))
+    Flux.Dense(2, 50, tanh),
+    Flux.Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
@@ -84,7 +84,7 @@ and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
 using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
-      OptimizationNLopt, Plots
+    OptimizationNLopt, Plots
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -99,8 +99,8 @@ prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -> x .^ 3,
-                   Flux.Dense(2, 50, tanh),
-                   Flux.Dense(50, 2))
+    Flux.Dense(2, 50, tanh),
+    Flux.Dense(50, 2))
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
@@ -138,15 +138,9 @@ optf = Optimization.OptimizationFunction((p, _) -> loss_n_ode(p), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 
 result_neuralode = Optimization.solve(optprob,
-                                      OptimizationOptimisers.Adam(0.05),
-                                      callback = callback,
-                                      maxiters = 300)
-
-optprob2 = remake(optprob, u0 = result_neuralode.u)
-
-result_neuralode2 = Optimization.solve(optprob2,
-                                       NLopt.LD_LBFGS(),
-                                       callback = callback)
+    OptimizationOptimisers.Adam(0.05),
+    callback = callback,
+    maxiters = 300)
 ```
 
 Notice that the advantage of this format is that we can use Optim's optimizers, like

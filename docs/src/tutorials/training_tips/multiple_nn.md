@@ -8,7 +8,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
 using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt,
-      DifferentialEquations, Random
+    DifferentialEquations, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
@@ -58,8 +58,8 @@ sol_nn = solve(prob_nn, Tsit5(), saveat = sol.t)
 
 function predict(θ)
     Array(solve(prob_nn, Vern7(), p = θ, saveat = sol.t,
-                abstol = 1e-6, reltol = 1e-6,
-                sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
+        abstol = 1e-6, reltol = 1e-6,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
 end
 
 # No regularisation right now
@@ -84,7 +84,7 @@ res1_uode = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiter
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
 res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000,
-                               callback = callback)
+    callback = callback)
 ```
 
 The key is that `Optimization.solve` acts on a single parameter vector `p`.

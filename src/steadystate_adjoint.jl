@@ -1,14 +1,14 @@
 struct SteadyStateAdjointSensitivityFunction{
-                                             C <: AdjointDiffCache,
-                                             Alg <: SteadyStateAdjoint,
-                                             uType,
-                                             SType,
-                                             fType <: ODEFunction,
-                                             CV,
-                                             λType,
-                                             VJPType,
-                                             LS
-                                             } <: SensitivityFunction
+    C <: AdjointDiffCache,
+    Alg <: SteadyStateAdjoint,
+    uType,
+    SType,
+    fType <: ODEFunction,
+    CV,
+    λType,
+    VJPType,
+    LS,
+} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     y::uType
@@ -23,23 +23,23 @@ end
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjointSensitivityFunction
 
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
-                                               colorvec, needs_jac)
+    colorvec, needs_jac)
     @unpack p, u0 = sol.prob
 
     diffcache, y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
-                                    quad = false, needs_jac)
+        quad = false, needs_jac)
 
     λ = zero(y)
     linsolve = needs_jac ? nothing : sensealg.linsolve
     vjp = similar(λ, length(p))
 
     SteadyStateAdjointSensitivityFunction(diffcache, sensealg, y, sol, f, colorvec, λ, vjp,
-                                          linsolve)
+        linsolve)
 end
 
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
-                                             dgdu::DG1 = nothing, dgdp::DG2 = nothing,
-                                             g::G = nothing; kwargs...) where {DG1, DG2, G}
+    dgdu::DG1 = nothing, dgdp::DG2 = nothing,
+    g::G = nothing; kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
 
     if sol.prob isa NonlinearProblem
@@ -63,7 +63,7 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
-                                                  f, f.colorvec, needs_jac)
+        f, f.colorvec, needs_jac)
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
 
     if needs_jac
@@ -72,7 +72,7 @@ end
         else
             if DiffEqBase.isinplace(sol.prob)
                 jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache,
-                          sensealg, diffcache.jac_config)
+                    sensealg, diffcache.jac_config)
             else
                 diffcache.J .= jacobian(diffcache.uf, y, sensealg)
             end
@@ -92,7 +92,7 @@ end
         if g !== nothing
             if dgdp_val !== nothing
                 gradient!(vec(dgdu_val), diffcache.g[1], y, sensealg,
-                          diffcache.g_grad_config[1])
+                    diffcache.g_grad_config[1])
             else
                 gradient!(vec(dgdu_val), diffcache.g, y, sensealg, diffcache.g_grad_config)
             end
@@ -100,7 +100,8 @@ end
     end
 
     if !needs_jac
-        operator = VecJac(f, y, p; autodiff = get_autodiff_from_vjp(vjp))
+        operator = 
+    (f, y, p; autodiff = get_autodiff_from_vjp(vjp))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
     else
         linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
@@ -115,7 +116,7 @@ end
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
             vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
-                         dy = nothing)
+                dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
             throw(e)

@@ -26,22 +26,22 @@ p = [1.5, 1.0, 3.0]
 prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 probInpl = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p)
 probnoad = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-                                        ForwardSensitivity(autodiff = false))
+    ForwardSensitivity(autodiff = false))
 probnoadjacvec = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-                                              ForwardSensitivity(autodiff = false,
-                                                                 autojacvec = true))
+    ForwardSensitivity(autodiff = false,
+        autojacvec = true))
 probnoad2 = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p,
-                                         ForwardSensitivity(autodiff = false))
+    ForwardSensitivity(autodiff = false))
 probvecmat = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-                                          ForwardSensitivity(autojacvec = false,
-                                                             autojacmat = true))
+    ForwardSensitivity(autojacvec = false,
+        autojacmat = true))
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 @test_broken solve(probInpl, KenCarp4(), abstol = 1e-14, reltol = 1e-14).retcode == :Success
 solInpl = solve(probInpl, KenCarp4(autodiff = false), abstol = 1e-14, reltol = 1e-14)
 solInpl2 = solve(probInpl, Rodas4(autodiff = false), abstol = 1e-10, reltol = 1e-10)
 solnoad = solve(probnoad, KenCarp4(autodiff = false), abstol = 1e-14, reltol = 1e-14)
 solnoadjacvec = solve(probnoadjacvec, KenCarp4(autodiff = false), abstol = 1e-14,
-                      reltol = 1e-14)
+    reltol = 1e-14)
 solnoad2 = solve(probnoad, KenCarp4(autodiff = false), abstol = 1e-14, reltol = 1e-14)
 solvecmat = solve(probvecmat, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 
@@ -63,7 +63,7 @@ dc = sol[(sol.prob.f.numindvar * 3 + 1):(sol.prob.f.numindvar * 4), :]
 sense_res1 = [da[:, end] db[:, end] dc[:, end]]
 
 prob = ODEForwardSensitivityProblem(f.f, [1.0; 1.0], (0.0, 10.0), p,
-                                    ForwardSensitivity(autojacvec = true))
+    ForwardSensitivity(autojacvec = true))
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01)
 x = sol[1:(sol.prob.f.numindvar), :]
 
@@ -122,7 +122,7 @@ tmp = similar(sol[1])
 ### ForwardDiff version
 
 prob = ODEForwardSensitivityProblem(f.f, [1.0; 1.0], (0.0, 10.0), p,
-                                    ForwardDiffSensitivity())
+    ForwardDiffSensitivity())
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01)
 
 xall, dpall = extract_local_sensitivities(sol)
@@ -181,23 +181,23 @@ f_MM = ODEFunction(rober_MM, mass_matrix = M)
 f_no_MM = ODEFunction(rober_no_MM)
 
 prob_MM_ForwardSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p,
-                                                          ForwardSensitivity())
+    ForwardSensitivity())
 sol_MM_ForwardSensitivity = solve(prob_MM_ForwardSensitivity, Rodas4(autodiff = false),
-                                  reltol = 1e-14, abstol = 1e-14)
+    reltol = 1e-14, abstol = 1e-14)
 
 prob_MM_ForwardDiffSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p,
-                                                              ForwardDiffSensitivity())
+    ForwardDiffSensitivity())
 sol_MM_ForwardDiffSensitivity = solve(prob_MM_ForwardDiffSensitivity,
-                                      Rodas4(autodiff = false), reltol = 1e-14,
-                                      abstol = 1e-14)
+    Rodas4(autodiff = false), reltol = 1e-14,
+    abstol = 1e-14)
 
 prob_no_MM = ODEForwardSensitivityProblem(f_no_MM, u0, tspan, p, ForwardSensitivity())
 sol_no_MM = solve(prob_no_MM, Rodas4(autodiff = false), reltol = 1e-14, abstol = 1e-14)
 
 sen_MM_ForwardSensitivity = extract_local_sensitivities(sol_MM_ForwardSensitivity, 10.0,
-                                                        true)
+    true)
 sen_MM_ForwardDiffSensitivity = extract_local_sensitivities(sol_MM_ForwardDiffSensitivity,
-                                                            10.0, true)
+    10.0, true)
 sen_no_MM = extract_local_sensitivities(sol_no_MM, 10.0, true)
 
 @test sen_MM_ForwardSensitivity[2]≈sen_MM_ForwardDiffSensitivity[2] atol=1e-10 rtol=1e-10
@@ -223,7 +223,34 @@ end
 u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0, 1.0]
 @test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra_oop,
-                                                                                             u0,
-                                                                                             (0.0,
-                                                                                              10.0),
-                                                                                             p)
+    u0,
+    (0.0,
+        10.0),
+    p)
+
+# Make sure original jac is actually called if it is passed and autodiff is fully off
+jac_call_count = 0
+function jac_with_count(J, u, p, t)
+    global jac_call_count
+    jac_call_count += 1
+    (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
+    J[1, 1] = a + y * b * -1
+    J[2, 1] = t * y
+    J[1, 2] = b * x * -1
+    J[2, 2] = t * c * -1 + t * x
+end
+
+f = ODEFunction(fb, jac = jac_with_count, paramjac = paramjac)
+p = [1.5, 1.0, 3.0]
+absolutely_no_ad_sensealg = ForwardSensitivity(autodiff = false,
+    autojacvec = false,
+    autojacmat = false)
+prob = ODEForwardSensitivityProblem(f,
+    [1.0; 1.0],
+    (0.0, 10.0),
+    p,
+    absolutely_no_ad_sensealg)
+@test SciMLSensitivity.has_original_jac(prob.f)
+@assert jac_call_count == 0
+solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
+@test jac_call_count > 0

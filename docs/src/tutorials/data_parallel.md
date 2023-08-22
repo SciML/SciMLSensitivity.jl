@@ -38,7 +38,7 @@ each column is an independent system:
 
 ```@example dataparallel
 u0 = Float32.([0 1 2
-               0 0 0])
+    0 0 0])
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())
 ```
@@ -50,7 +50,7 @@ GPU:
 
 ```@example dataparallel
 xs = Float32.([0 1 2
-               0 0 0])
+    0 0 0])
 prob = ODEProblem(f, Lux.gpu(u0), (0.0f0, 1.0f0), Lux.gpu(p))
 solve(prob, Tsit5())
 ```
@@ -253,7 +253,9 @@ a GPU:
 ```julia
 using DifferentialEquations, Optimization, OptimizationFlux, DiffEqGPU
 function f(du, u, p, t)
-    @inbounds begin du[1] = 1.01 * u[1] * p[1] * p[2] end
+    @inbounds begin
+        du[1] = 1.01 * u[1] * p[1] * p[2]
+    end
 end
 
 pa = [1.0]

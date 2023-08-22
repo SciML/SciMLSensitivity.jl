@@ -37,13 +37,13 @@ Random.seed!(238248735)
     ensembleprob = EnsembleProblem(prob)
 
     solution = solve(ensembleprob,
-                     SOSRI(),
-                     EnsembleThreads();
-                     trajectories = 1000,
-                     abstol = 1e-5,
-                     reltol = 1e-5,
-                     maxiters = 1e8,
-                     saveat = tsteps)
+        SOSRI(),
+        EnsembleThreads();
+        trajectories = 1000,
+        abstol = 1e-5,
+        reltol = 1e-5,
+        maxiters = 1e8,
+        saveat = tsteps)
 
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
@@ -96,10 +96,10 @@ Random.seed!(238248735)
         tmp_prob = remake(prob_nn, p = θ)
         ensembleprob = EnsembleProblem(tmp_prob)
         tmp_sol = Array(solve(ensembleprob,
-                              EM();
-                              dt = tsteps.step,
-                              trajectories = 100,
-                              sensealg = ReverseDiffAdjoint()))
+            EM();
+            dt = tsteps.step,
+            trajectories = 100,
+            sensealg = ReverseDiffAdjoint()))
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
         sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
@@ -109,10 +109,10 @@ Random.seed!(238248735)
         tmp_prob = remake(prob_nn_op, p = θ)
         ensembleprob = EnsembleProblem(tmp_prob)
         tmp_sol = Array(solve(ensembleprob,
-                              EM();
-                              dt = tsteps.step,
-                              trajectories = 100,
-                              sensealg = ReverseDiffAdjoint()))
+            EM();
+            dt = tsteps.step,
+            trajectories = 100,
+            sensealg = ReverseDiffAdjoint()))
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
         sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
@@ -137,7 +137,7 @@ Random.seed!(238248735)
     println("Test non-mutating form")
 
     optf = Optimization.OptimizationFunction((x, p) -> loss_op(x),
-                                             Optimization.AutoZygote())
+        Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, α)
     res2 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
 end
@@ -188,9 +188,9 @@ end
         ensembleprob = EnsembleProblem(prob, prob_func = prob_func)
 
         _sol = solve(ensembleprob, alg, EnsembleThreads(),
-                     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-                     saveat = ts, trajectories = 10,
-                     abstol = 1e-1, reltol = 1e-1)
+            sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+            saveat = ts, trajectories = 10,
+            abstol = 1e-1, reltol = 1e-1)
         A = convert(Array, _sol)
         sum(abs2, A .- 1), mean(A)
     end
@@ -208,17 +208,17 @@ end
     end
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, LambaEM()),
-                                             Optimization.AutoZygote())
+        Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, SOSRI()),
-                                             Optimization.AutoZygote())
+        Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, prob, LambaEM()),
-                                             Optimization.AutoZygote())
+        Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, p_nn)
     res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
 end

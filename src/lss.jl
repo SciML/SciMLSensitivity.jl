@@ -6,8 +6,8 @@ struct LSSSchur{wBType, wEType, BType, EType}
 end
 
 struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc, JM, pJM,
-                              MM, CV,
-                              DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG} <:
+    MM, CV,
+    DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG} <:
        DiffEqBase.AbstractODEFunction{iip}
     f::F
     analytic::A
@@ -37,9 +37,9 @@ struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc,
 end
 
 function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, sparsity,
-                                paramjac, u0,
-                                alg, p, f_cache, mm,
-                                colorvec, tspan, g, dgdu, dgdp)
+    paramjac, u0,
+    alg, p, f_cache, mm,
+    colorvec, tspan, g, dgdu, dgdp)
     !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
     uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
@@ -86,30 +86,30 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
     end
 
     LSSSensitivityFunction{isinplace(f), typeof(f), typeof(analytic),
-                           typeof(jac), typeof(jac_prototype), typeof(sparsity),
-                           typeof(paramjac),
-                           typeof(uf),
-                           typeof(pf), typeof(jac_config),
-                           typeof(paramjac_config), typeof(alg),
-                           typeof(f_cache),
-                           typeof(J), typeof(pJ), typeof(mm), typeof(f.colorvec),
-                           typeof(dgdu), typeof(dgdp),
-                           typeof(pgpu), typeof(pgpp), typeof(pgpu_config),
-                           typeof(pgpp_config), typeof(dg_val)}(f, analytic, jac,
-                                                                jac_prototype, sparsity,
-                                                                paramjac, uf, pf, J, pJ,
-                                                                jac_config, paramjac_config,
-                                                                alg,
-                                                                numparams, numindvar,
-                                                                f_cache, mm, colorvec,
-                                                                dgdu, dgdp,
-                                                                pgpu, pgpp, pgpu_config,
-                                                                pgpp_config, dg_val)
+        typeof(jac), typeof(jac_prototype), typeof(sparsity),
+        typeof(paramjac),
+        typeof(uf),
+        typeof(pf), typeof(jac_config),
+        typeof(paramjac_config), typeof(alg),
+        typeof(f_cache),
+        typeof(J), typeof(pJ), typeof(mm), typeof(f.colorvec),
+        typeof(dgdu), typeof(dgdp),
+        typeof(pgpu), typeof(pgpp), typeof(pgpu_config),
+        typeof(pgpp_config), typeof(dg_val)}(f, analytic, jac,
+        jac_prototype, sparsity,
+        paramjac, uf, pf, J, pJ,
+        jac_config, paramjac_config,
+        alg,
+        numparams, numindvar,
+        f_cache, mm, colorvec,
+        dgdu, dgdp,
+        pgpu, pgpp, pgpu_config,
+        pgpp_config, dg_val)
 end
 
 struct ForwardLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, Ftype, bType,
-                         ηType, wType, vType, windowType,
-                         ΔtType, G0, G, resType}
+    ηType, wType, vType, windowType,
+    ΔtType, G0, G, resType}
     sensealg::A
     diffcache::C
     sol::solType
@@ -131,12 +131,12 @@ struct ForwardLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, Ftype
 end
 
 function ForwardLSSProblem(sol, sensealg::ForwardLSS;
-                           t = nothing, dgdu_discrete = nothing,
-                           dgdp_discrete = nothing,
-                           dgdu_continuous = nothing,
-                           dgdp_continuous = nothing,
-                           g = sensealg.g,
-                           kwargs...)
+    t = nothing, dgdu_discrete = nothing,
+    dgdp_discrete = nothing,
+    dgdu_continuous = nothing,
+    dgdp_continuous = nothing,
+    g = sensealg.g,
+    kwargs...)
     @unpack p, u0, tspan = sol.prob
 
     isinplace = DiffEqBase.isinplace(sol.prob.f)
@@ -163,11 +163,11 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
     end
     f = sol.prob.f
     sense = LSSSensitivityFunction(sensealg, f, f.analytic, f.jac,
-                                   f.jac_prototype, f.sparsity, f.paramjac,
-                                   u0, sensealg,
-                                   p, similar(u0), f.mass_matrix,
-                                   f.colorvec,
-                                   tspan, g, dgdu, dgdp)
+        f.jac_prototype, f.sparsity, f.paramjac,
+        u0, sensealg,
+        p, similar(u0), f.mass_matrix,
+        f.colorvec,
+        tspan, g, dgdu, dgdp)
 
     @unpack numparams, numindvar = sense
     Nt = length(sol.t)
@@ -207,14 +207,14 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
     res = similar(u0, numparams)
 
     ForwardLSSProblem{typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
-                      typeof(umid), typeof(dudt),
-                      typeof(S), typeof(F), typeof(b), typeof(η), typeof(w), typeof(v),
-                      typeof(window), typeof(Δt),
-                      typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
-                                                          dt, umid, dudt, S, F,
-                                                          b, η, w, v,
-                                                          window, Δt, Nt, g0, g,
-                                                          res)
+        typeof(umid), typeof(dudt),
+        typeof(S), typeof(F), typeof(b), typeof(η), typeof(w), typeof(v),
+        typeof(window), typeof(Δt),
+        typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
+        dt, umid, dudt, S, F,
+        b, η, w, v,
+        window, Δt, Nt, g0, g,
+        res)
 end
 
 function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::TimeDilation)
@@ -288,9 +288,9 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
         end
         B0 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-                     (i * numindvar + 1):((i + 1) * numindvar)]
+            (i * numindvar + 1):((i + 1) * numindvar)]
         B1 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-                     ((i - 1) * numindvar + 1):(i * numindvar)]
+            ((i - 1) * numindvar + 1):(i * numindvar)]
         B0 .+= I / dt[i] - J / 2
         B1 .+= -I / dt[i] - J / 2
     end
@@ -340,7 +340,7 @@ function shadow_forward(prob::ForwardLSSProblem; sensealg = prob.sensealg)
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-                        LSSregularizer::TimeDilation)
+    LSSregularizer::TimeDilation)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
     @unpack wBinv, wEinv, B, E = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -394,7 +394,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-                        LSSregularizer::CosWindowing)
+    LSSregularizer::CosWindowing)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -428,7 +428,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-                        LSSregularizer::Cos2Windowing)
+    LSSregularizer::Cos2Windowing)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -483,8 +483,8 @@ function accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
     return nothing
 end
 struct AdjointLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, FType, hType,
-                         bType, wType,
-                         ΔtType, G0, G, resType}
+    bType, wType,
+    ΔtType, G0, G, resType}
     sensealg::A
     diffcache::C
     sol::solType
@@ -504,10 +504,10 @@ struct AdjointLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, FType
 end
 
 function AdjointLSSProblem(sol, sensealg::AdjointLSS;
-                           t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
-                           dgdu_continuous = nothing, dgdp_continuous = nothing,
-                           g = sensealg.g,
-                           kwargs...)
+    t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
+    dgdu_continuous = nothing, dgdp_continuous = nothing,
+    g = sensealg.g,
+    kwargs...)
     @unpack f, p, u0, tspan = sol.prob
 
     isinplace = DiffEqBase.isinplace(f)
@@ -534,11 +534,11 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
     end
 
     sense = LSSSensitivityFunction(sensealg, f, f.analytic, f.jac,
-                                   f.jac_prototype, f.sparsity, f.paramjac,
-                                   u0, sensealg,
-                                   p, similar(u0), f.mass_matrix,
-                                   f.colorvec,
-                                   tspan, g, dgdu, dgdp)
+        f.jac_prototype, f.sparsity, f.paramjac,
+        u0, sensealg,
+        p, similar(u0), f.mass_matrix,
+        f.colorvec,
+        tspan, g, dgdu, dgdp)
 
     @unpack numparams, numindvar = sense
     Nt = length(sol.t)
@@ -577,13 +577,13 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
     res = similar(u0, numparams)
 
     AdjointLSSProblem{typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
-                      typeof(umid), typeof(dudt),
-                      typeof(S), typeof(F), typeof(h), typeof(b), typeof(wa), typeof(Δt),
-                      typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
-                                                          dt, umid, dudt, S, F,
-                                                          h, b, wa,
-                                                          Δt, Nt, g0, g,
-                                                          res)
+        typeof(umid), typeof(dudt),
+        typeof(S), typeof(F), typeof(h), typeof(b), typeof(wa), typeof(Δt),
+        typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
+        dt, umid, dudt, S, F,
+        h, b, wa,
+        Δt, Nt, g0, g,
+        res)
 end
 
 function h!(h, g0, g, u, p, wEinv)
@@ -630,7 +630,7 @@ function shadow_adjoint(prob::AdjointLSSProblem; sensealg = prob.sensealg)
 end
 
 function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
-                        LSSregularizer::TimeDilation)
+    LSSregularizer::TimeDilation)
     @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
     @unpack wBinv, B, E = S
     @unpack dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache

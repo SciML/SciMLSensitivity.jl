@@ -55,11 +55,11 @@ struct ForwardSensitivity{CS, AD, FDT} <: AbstractForwardSensitivityAlgorithm{CS
     autojacvec::Bool
     autojacmat::Bool
 end
-Base.@pure function ForwardSensitivity(;
-                                       chunk_size = 0, autodiff = true,
-                                       diff_type = Val{:central},
-                                       autojacvec = autodiff,
-                                       autojacmat = false)
+function ForwardSensitivity(;
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    autojacvec = autodiff,
+    autojacmat = false)
     autojacvec && autojacmat &&
         error("Choose either Jacobian matrix products or Jacobian vector products,
                 autojacmat and autojacvec cannot both be true")
@@ -100,7 +100,7 @@ accurately differentiate code with callbacks only when `convert_tspan=true`.
 """
 struct ForwardDiffSensitivity{CS, CTS} <:
        AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing} end
-Base.@pure function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
+function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
     ForwardDiffSensitivity{chunk_size, convert_tspan}()
 end
 
@@ -255,19 +255,19 @@ struct BacksolveAdjoint{CS, AD, FDT, VJP} <:
     noisemixing::Bool
 end
 Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
-                                     diff_type = Val{:central},
-                                     autojacvec = nothing,
-                                     checkpointing = true, noisemixing = false)
+    diff_type = Val{:central},
+    autojacvec = nothing,
+    checkpointing = true, noisemixing = false)
     BacksolveAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
-                                                                          checkpointing,
-                                                                          noisemixing)
+        checkpointing,
+        noisemixing)
 end
 
 TruncatedStacktraces.@truncate_stacktrace BacksolveAdjoint
 
 function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
-                                               sensealg.noisemixing)
+        sensealg.noisemixing)
 end
 
 """
@@ -369,20 +369,20 @@ struct InterpolatingAdjoint{CS, AD, FDT, VJP} <:
     noisemixing::Bool
 end
 Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
-                                         diff_type = Val{:central},
-                                         autojacvec = nothing,
-                                         checkpointing = false, noisemixing = false)
+    diff_type = Val{:central},
+    autojacvec = nothing,
+    checkpointing = false, noisemixing = false)
     InterpolatingAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
-                                                                              checkpointing,
-                                                                              noisemixing)
+        checkpointing,
+        noisemixing)
 end
 
 TruncatedStacktraces.@truncate_stacktrace InterpolatingAdjoint
 
 function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
-                vjp) where {CS, AD, FDT}
+    vjp) where {CS, AD, FDT}
     InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
-                                                   sensealg.noisemixing)
+        sensealg.noisemixing)
 end
 
 """
@@ -469,18 +469,109 @@ struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
     reltol::Float64
 end
 Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
-                                      diff_type = Val{:central},
-                                      autojacvec = nothing, abstol = 1e-6,
-                                      reltol = 1e-3)
+    diff_type = Val{:central},
+    autojacvec = nothing, abstol = 1e-6,
+    reltol = 1e-3)
     QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
-                                                                           abstol, reltol)
+        abstol, reltol)
 end
 
 TruncatedStacktraces.@truncate_stacktrace QuadratureAdjoint
 
 function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.abstol,
-                                                sensealg.reltol)
+        sensealg.reltol)
+end
+
+"""
+```julia
+GaussAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+```
+
+An implementation of adjoint sensitivity analysis which solves the quadrature
+during the reverse solve with a callback, thus not requiring a dense adjoint
+solution. This method requires the dense forward solution and will ignore
+saving arguments during the gradient calculation. The tolerances in the
+constructor control the inner quadrature.
+
+This method is O(n^3 + p) for stiff / implicit equations (as opposed to the
+O((n+p)^3) scaling of BacksolveAdjoint and InterpolatingAdjoint), and thus
+is much more compute efficient. It also does not requires holding a dense reverse
+pass and is thus memory efficient.
+
+## Constructor
+
+```julia
+GaussAdjoint(; chunk_size = 0, autodiff = true,
+                  diff_type = Val{:central},
+                  autojacvec = nothing, abstol = 1e-6,
+                  reltol = 1e-3)
+```
+
+## Keyword Arguments
+
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed.  Defaults to `true`.
+
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
+    differentiation with special seeding. The total set of choices are:
+
+      + `nothing`: uses an automatic algorithm to automatically choose the vjp.
+        This is the default and recommended for most users.
+      + `false`: the Jacobian is constructed via FiniteDiff.jl
+      + `true`: the Jacobian is constructed via ForwardDiff.jl
+      + `TrackerVJP`: Uses Tracker.jl for the vjp.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+
+For more details on the vjp choices, please consult the sensitivity algorithms
+documentation page or the docstrings of the vjp types.
+
+## SciMLProblem Support
+
+This `sensealg` only supports `ODEProblem`s. This `sensealg` supports events (callbacks).
+
+## References
+
+Rackauckas, C. and Ma, Y. and Martensen, J. and Warner, C. and Zubov, K. and Supekar,
+R. and Skinner, D. and Ramadhana, A. and Edelman, A., Universal Differential Equations
+for Scientific Machine Learning,	arXiv:2001.04385
+
+Hindmarsh, A. C. and Brown, P. N. and Grant, K. E. and Lee, S. L. and Serban, R.
+and Shumaker, D. E. and Woodward, C. S., SUNDIALS: Suite of nonlinear and
+differential/algebraic equation solvers, ACM Transactions on Mathematical
+Software (TOMS), 31, pp:363–396 (2005)
+
+Rackauckas, C. and Ma, Y. and Dixit, V. and Guo, X. and Innes, M. and Revels, J.
+and Nyberg, J. and Ivaturi, V., A comparison of automatic differentiation and
+continuous sensitivity analysis for derivatives of differential equation solutions,
+arXiv:1812.01892
+
+Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
+differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
+"""
+struct GaussAdjoint{CS, AD, FDT, VJP} <:
+       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    autojacvec::VJP
+end
+Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    autojacvec = nothing)
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec)
+end
+
+TruncatedStacktraces.@truncate_stacktrace GaussAdjoint
+
+function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
+    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp)
 end
 
 """
@@ -626,12 +717,12 @@ struct ForwardLSS{CS, AD, FDT, RType, gType} <:
     g::gType
 end
 Base.@pure function ForwardLSS(;
-                               chunk_size = 0, autodiff = true,
-                               diff_type = Val{:central},
-                               LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-                               g = nothing)
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+    g = nothing)
     ForwardLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(LSSregularizer,
-                                                                                   g)
+        g)
 end
 
 """
@@ -696,12 +787,12 @@ struct AdjointLSS{CS, AD, FDT, RType, gType} <:
     g::gType
 end
 Base.@pure function AdjointLSS(;
-                               chunk_size = 0, autodiff = true,
-                               diff_type = Val{:central},
-                               LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-                               g = nothing)
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+    g = nothing)
     AdjointLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(LSSregularizer,
-                                                                                   g)
+        g)
 end
 
 abstract type AbstractLSSregularizer end
@@ -812,15 +903,15 @@ struct NILSS{CS, AD, FDT, RNG, nType, gType} <:
     g::gType
 end
 Base.@pure function NILSS(nseg, nstep; nus = nothing,
-                          rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-                          chunk_size = 0, autodiff = true,
-                          diff_type = Val{:central},
-                          autojacvec = autodiff,
-                          g = nothing)
+    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    autojacvec = autodiff,
+    g = nothing)
     NILSS{chunk_size, autodiff, diff_type, typeof(rng), typeof(nus), typeof(g)}(rng, nseg,
-                                                                                nstep, nus,
-                                                                                autojacvec,
-                                                                                g)
+        nstep, nus,
+        autojacvec,
+        g)
 end
 
 """
@@ -912,19 +1003,25 @@ struct NILSAS{CS, AD, FDT, RNG, SENSE, gType} <:
     g::gType
 end
 Base.@pure function NILSAS(nseg, nstep, M = nothing;
-                           rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-                           adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-                           chunk_size = 0, autodiff = true,
-                           diff_type = Val{:central},
-                           g = nothing)
+    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+    adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    g = nothing)
 
     # integer dimension of the unstable subspace
     M === nothing &&
         error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
 
-    NILSAS{chunk_size, autodiff, diff_type, typeof(rng), typeof(adjoint_sensealg), typeof(g)
-           }(rng, adjoint_sensealg, M,
-             nseg, nstep, g)
+    NILSAS{
+        chunk_size,
+        autodiff,
+        diff_type,
+        typeof(rng),
+        typeof(adjoint_sensealg),
+        typeof(g),
+    }(rng, adjoint_sensealg, M,
+        nseg, nstep, g)
 end
 
 """
@@ -988,13 +1085,19 @@ end
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-                                       diff_type = Val{:central},
-                                       autojacvec = nothing, linsolve = nothing)
-    SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(linsolve)
-                       }(autojacvec, linsolve)
+    diff_type = Val{:central},
+    autojacvec = nothing, linsolve = nothing)
+    SteadyStateAdjoint{
+        chunk_size,
+        autodiff,
+        diff_type,
+        typeof(autojacvec),
+        typeof(linsolve),
+    }(autojacvec,
+        linsolve)
 end
 function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS},
-                vjp) where {CS, AD, FDT, VJP, LS}
+    vjp) where {CS, AD, FDT, VJP, LS}
     SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
 end
 
@@ -1130,25 +1233,37 @@ end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
-@inline function alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT}) where {
-                                                                                                CS,
-                                                                                                AD,
-                                                                                                FDT
-                                                                                                }
+@inline function alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+    CS,
+    AD,
+    FDT,
+}) where {
+    CS,
+    AD,
+    FDT,
+}
     AD
 end
-@inline function get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT}) where {
-                                                                                                 CS,
-                                                                                                 AD,
-                                                                                                 FDT
-                                                                                                 }
+@inline function get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+    CS,
+    AD,
+    FDT,
+}) where {
+    CS,
+    AD,
+    FDT,
+}
     CS
 end
-@inline function diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{CS, AD, FDT}) where {
-                                                                                             CS,
-                                                                                             AD,
-                                                                                             FDT
-                                                                                             }
+@inline function diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+    CS,
+    AD,
+    FDT,
+}) where {
+    CS,
+    AD,
+    FDT,
+}
     FDT
 end
 @inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)

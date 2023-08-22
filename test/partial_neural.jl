@@ -1,5 +1,6 @@
-using SciMLSensitivity, Flux, Optimization, OptimizationFlux, OptimizationOptimJL,
-      OrdinaryDiffEq, Test
+using SciMLSensitivity,
+    Flux, Optimization, OptimizationFlux, OptimizationOptimJL,
+    OrdinaryDiffEq, Test
 
 x = Float32[0.8; 0.8]
 tspan = (0.0f0, 10.0f0)
@@ -78,7 +79,7 @@ cb(θ, l)
 
 loss1 = loss_adjoint(θ)
 optfunc = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x),
-                                            Optimization.AutoZygote())
+    Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optfunc, θ)
 res1 = Optimization.solve(optprob, ADAM(0.01), callback = cb, maxiters = 100)
 

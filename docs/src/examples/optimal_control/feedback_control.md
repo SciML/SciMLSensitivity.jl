@@ -11,7 +11,7 @@ equation to stay close to 1.
 
 ```@example udeneuralcontrol
 using Flux, Optimization, OptimizationPolyalgorithms,
-      SciMLSensitivity, Zygote, DifferentialEquations, Plots, Random
+    SciMLSensitivity, Zygote, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
 u0 = 1.1f0
@@ -19,8 +19,8 @@ tspan = (0.0f0, 25.0f0)
 tsteps = 0.0f0:1.0:25.0f0
 
 model_univ = Flux.Chain(Flux.Dense(2, 16, tanh),
-                        Flux.Dense(16, 16, tanh),
-                        Flux.Dense(16, 1))
+    Flux.Dense(16, 16, tanh),
+    Flux.Dense(16, 1))
 
 # The model weights are destructured into a vector of parameters
 p_model, re = Flux.destructure(model_univ)
@@ -56,8 +56,8 @@ sol_univ = solve(prob_univ, Tsit5(), abstol = 1e-8, reltol = 1e-6)
 
 function predict_univ(θ)
     return Array(solve(prob_univ, Tsit5(), u0 = [0.0f0, θ[1]], p = θ[2:end],
-                       sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
-                       saveat = tsteps))
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        saveat = tsteps))
 end
 
 loss_univ(θ) = sum(abs2, predict_univ(θ)[2, :] .- 1)
@@ -89,5 +89,5 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
-                                 callback = callback)
+    callback = callback)
 ```

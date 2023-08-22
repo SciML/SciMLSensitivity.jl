@@ -113,14 +113,14 @@ this system:
 function sum_of_solution(u0, p)
     _prob = remake(prob, u0 = u0, p = p)
     sum(solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
-              sensealg = QuadratureAdjoint()))
+        sensealg = GaussAdjoint()))
 end
 du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
 ```
 
 Here this computes the derivative of the output with respect to the initial
 condition and the derivative with respect to the parameters respectively
-using the `QuadratureAdjoint()`. For more information on the choices of sensitivity
+using the `GaussAdjoint()`. For more information on the choices of sensitivity
 algorithms, see the [reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq).
 
 !!! note
