@@ -4,6 +4,7 @@ authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <
 version = "7.37.0"
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
 Cassette = "7057c7e9-c182-5462-911a-8362d720325c"
@@ -71,7 +72,7 @@ ReverseDiff = "1.9"
 SciMLBase = "1.66.0"
 SciMLOperators = "0.1, 0.2, 0.3"
 SimpleNonlinearSolve = "0.1.8"
-SparseDiffTools = "2"
+SparseDiffTools = "2.4"
 StaticArraysCore = "1.4"
 StochasticDiffEq = "6.20"
 Tracker = "0.2"
