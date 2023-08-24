@@ -89,6 +89,7 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
             abstol = abstol, reltol = reltol,
             saveat = savingtimes)),
         [u0; p])
+    println(dstuff)
 
     @info dstuff
 
@@ -181,6 +182,7 @@ println("Continuous Callbacks")
             cb = ContinuousCallback(condition, affect!, save_positions = (true, true))
             test_continuous_callback(cb, g, dg!; only_backsolve = true)
         end
+        
     end
     @testset "MSE loss function bouncing-ball like" begin
         g(u) = sum((1.0 .- u) .^ 2) ./ 2
@@ -281,4 +283,5 @@ println("Continuous Callbacks")
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD≈gZy rtol=1e-10
     end
+    
 end
