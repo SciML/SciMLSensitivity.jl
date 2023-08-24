@@ -152,7 +152,7 @@ end
     if RetCB
         return ODEProblem(odefun, z0, tspan, p), cb, rcb
     else
-        return ODEProblem(odefun, z0, tspan, p, callback = cb)
+        return ODEProblem(odefun, z0, tspan, p, callback = cb), cb, rcb
     end
 end
 
@@ -326,7 +326,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     kwargs...)
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
     integrand_values = IntegrandValues(Vector{Float64})
-    cb = IntegratingCallback((u, t, integrator) -> integrand(t, u)[:], integrand_values)
+    cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
