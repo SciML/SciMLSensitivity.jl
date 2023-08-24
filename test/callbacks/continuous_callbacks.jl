@@ -89,7 +89,6 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
             abstol = abstol, reltol = reltol,
             saveat = savingtimes)),
         [u0; p])
-    println(dstuff)
 
     @info dstuff
 
