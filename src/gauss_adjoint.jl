@@ -1,34 +1,82 @@
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: GaussAdjoint,
-    uType, SType,
-    fType <: DiffEqBase.AbstractDiffEqFunction,
-} <: SensitivityFunction
+    uType, SType, CPS, pType,
+    fType <: DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
     y::uType
     sol::SType
+    checkpoint_sol::CPS
+    prob::pType
     f::fType
 end
 
 TruncatedStacktraces.@truncate_stacktrace ODEGaussAdjointSensitivityFunction
 
+mutable struct GaussCheckpointSolution{S, I, T2}
+    cpsol::S # solution in a checkpoint interval
+    intervals::I # checkpoint intervals
+    cursor::Int # sol.prob.tspan = intervals[cursor]
+    tstops::T2 # for callbacks
+end
+
 function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-    alg)
+    alg,
+    checkpoints, tstops = nothing;
+    tspan = reverse(sol.prob.tspan))
+    checkpointing = ischeckpointing(sensealg, sol)
+    (checkpointing && checkpoints === nothing) &&
+        error("checkpoints must be passed when checkpointing is enabled.")
+
+    checkpoint_sol = if checkpointing
+        intervals = map(tuple, @view(checkpoints[1:(end - 1)]), @view(checkpoints[2:end]))
+        interval_end = intervals[end][end]
+        tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
+        cursor = lastindex(intervals)
+        interval = intervals[cursor]
+        if tstops === nothing
+            cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                sol.alg)
+        else
+            if maximum(interval[1] .< tstops .< interval[2])
+                # callback might have changed p
+                _p = Gaussreset_p(sol.prob.kwargs[:callback], interval)
+                cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    tstops = tstops,
+                    p = _p, sol.alg)
+            else
+                cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    tstops = tstops, sol.alg)
+            end
+        end
+        GaussCheckpointSolution(cpsol, intervals, cursor, tstops)
+    else
+        nothing
+    end
+
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
         quad = true)
+
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
-        y, sol, sol.prob.f)
+        y, sol, checkpoint_sol, sol.prob, sol.prob.f)
+end
+
+function Gaussfindcursor(intervals, t)
+    # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
+    lt(x, t) = <(x[2], t)
+    return searchsortedfirst(intervals, t, lt = lt)
 end
 
 # u = λ'
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, discrete = S
+    @unpack sol, checkpoint_sol, discrete, prob = S
     f = sol.prob.f
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
     vecjacobian!(dλ, y, λ, p, t, S)
+
     dλ .*= -one(eltype(λ))
 
     discrete || accumulate_cost!(dλ, y, p, t, S)
@@ -36,7 +84,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
-    @unpack sol, discrete = S
+    @unpack sol, checkpoint_sol, discrete, prob = S
     f = sol.prob.f
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
@@ -51,20 +99,63 @@ function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
 end
 
 function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
-    @unpack y, sol = S
+    @unpack sol, y, checkpoint_sol, discrete, prob, f = S
+    idx = length(y)
 
     if update
-        if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
-            y = sol(t, continuity = :right)
+        if checkpoint_sol === nothing
+            if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                y = sol(t, continuity = :right)
+            else
+                sol(y, t, continuity = :right)
+            end
         else
-            sol(y, t, continuity = :right)
+            intervals = checkpoint_sol.intervals
+            interval = intervals[checkpoint_sol.cursor]
+            if !(interval[1] <= t <= interval[2])
+                cursor′ = Gaussfindcursor(intervals, t)
+                interval = intervals[cursor′]
+                cpsol_t = checkpoint_sol.cpsol.t
+                if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                    y = sol(interval[1])
+                else
+                    sol(y, interval[1])
+                end
+                if checkpoint_sol.tstops === nothing
+                    prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                    cpsol′ = solve(prob′, sol.alg;
+                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]))
+                else
+                    if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                        # callback might have changed p
+                        _p = Gaussreset_p(prob.kwargs[:callback], interval)
+                        prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
+                        cpsol′ = solve(prob′, sol.alg;
+                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            tstops = checkpoint_sol.tstops)
+                    else
+                        prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                        cpsol′ = solve(prob′, sol.alg;
+                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            tstops = checkpoint_sol.tstops)
+                    end
+                end
+                checkpoint_sol.cpsol = cpsol′
+                checkpoint_sol.cursor = cursor′
+            end
+            checkpoint_sol.cpsol(y, t, continuity = :right)
         end
     end
 
-    λ = u
-    dλ = du
+    λ = @view u[1:idx]
+    grad = @view u[(idx + 1):end]
 
-    λ, nothing, y, dλ, nothing, nothing
+    if length(u) == length(du)
+        dλ = @view du[1:idx]
+        dgrad = @view du[(idx + 1):end]
+    end
+
+    λ, grad, y, dλ, dgrad, nothing
 end
 
 function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
@@ -80,6 +171,9 @@ function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
+#adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+#        dgdu_continuous, dgdp_continuous, g, Val(true);
+#        callback=callback)
 @noinline function ODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
     t = nothing,
     dgdu_discrete::DG1 = nothing,
@@ -88,6 +182,7 @@ end
     dgdp_continuous::DG4 = nothing,
     g::G = nothing,
     ::Val{RetCB} = Val(false);
+    checkpoints = sol.t,
     callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
     RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
@@ -120,6 +215,29 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
+    # remove duplicates from checkpoints
+    if ischeckpointing(sensealg, sol) &&
+       (length(unique(checkpoints)) != length(checkpoints))
+        _checkpoints, duplicate_iterator_times = separate_nonunique(checkpoints)
+        tstops = duplicate_iterator_times[1]
+        checkpoints = filter(x -> x ∉ tstops, _checkpoints)
+        # check if start is in checkpoints. Otherwise first interval is missed.
+        if checkpoints[1] != tspan[2]
+            pushfirst!(checkpoints, tspan[2])
+        end
+
+        if haskey(kwargs, :tstops)
+            (tstops !== kwargs[:tstops]) && unique!(push!(tstops, kwargs[:tstops]...))
+        end
+
+        # check if end is in checkpoints.
+        if checkpoints[end] != tspan[1]
+            push!(checkpoints, tspan[1])
+        end
+    else
+        tstops = nothing
+    end
+
     if ArrayInterface.ismutable(u0)
         len = length(u0)
         λ = similar(u0, len)
@@ -128,7 +246,7 @@ end
         λ = zero(u0)
     end
     sense = ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol,
-        dgdu_continuous, dgdp_continuous, alg)
+        dgdu_continuous, dgdp_continuous, alg, checkpoints, tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
@@ -155,6 +273,66 @@ end
         return ODEProblem(odefun, z0, tspan, p, callback = cb), cb, rcb
     end
 end
+
+function Gaussreset_p(CBS, interval)
+    # check which events are close to tspan[1]
+    if !isempty(CBS.discrete_callbacks)
+        ts = map(CBS.discrete_callbacks) do cb
+            indx = searchsortedfirst(cb.affect!.event_times, interval[1])
+            (indx, cb.affect!.event_times[indx])
+        end
+        perm = minimum(sortperm([t for t in getindex.(ts, 2)]))
+    end
+
+    if !isempty(CBS.continuous_callbacks)
+        ts2 = map(CBS.continuous_callbacks) do cb
+            if !isempty(cb.affect!.event_times) && isempty(cb.affect_neg!.event_times)
+                indx = searchsortedfirst(cb.affect!.event_times, interval[1])
+                return (indx, cb.affect!.event_times[indx], 0) # zero for affect!
+            elseif isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
+                indx = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
+                return (indx, cb.affect_neg!.event_times[indx], 1) # one for affect_neg!
+            elseif !isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
+                indx1 = searchsortedfirst(cb.affect!.event_times, interval[1])
+                indx2 = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
+                if cb.affect!.event_times[indx1] < cb.affect_neg!.event_times[indx2]
+                    return (indx1, cb.affect!.event_times[indx1], 0)
+                else
+                    return (indx2, cb.affect_neg!.event_times[indx2], 1)
+                end
+            else
+                error("Expected event but reset_p couldn't find event time. Please report this error.")
+            end
+        end
+        perm2 = minimum(sortperm([t for t in getindex.(ts2, 2)]))
+        # check if continuous or discrete callback was applied first if both occur in interval
+        if isempty(CBS.discrete_callbacks)
+            if ts2[perm2][3] == 0
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
+            else
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                    1)[perm2]])
+            end
+        else
+            if ts[perm][2] < ts2[perm2][2]
+                p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
+            else
+                if ts2[perm2][3] == 0
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2,
+                        1)[perm2]])
+                else
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                        1)[perm2]])
+                end
+            end
+        end
+    else
+        p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
+    end
+
+    return p
+end
+
 
 struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
     G}
@@ -329,7 +507,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
-        callback)
+        callback=callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false, 
             save_start = false, save_end = true, callback = CallbackSet(cb,cb2), kwargs...)
     res = compute_dGdp(integrand_values)'
