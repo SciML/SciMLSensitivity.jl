@@ -146,6 +146,17 @@ _, easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+_, easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true),
+    checkpoints = sol.t[1:500:end])
+_, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true,
+        autojacvec = false),
+    checkpoints = sol.t[1:500:end])
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -180,6 +191,8 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res142, rtol = 1e-9)
 @test isapprox(res, easy_res143, rtol = 1e-9)
 @test isapprox(res, easy_res144, rtol = 1e-9)
+@test isapprox(res, easy_res145, rtol = 1e-4)
+@test isapprox(res, easy_res146, rtol = 1e-4)
 
 println("OOP adjoint sensitivities ")
 
@@ -271,6 +284,11 @@ _, easy_res122 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = d
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
+_, easy_res123 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true),
+    checkpoints = soloop_nodense.t[1:5:end])
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
@@ -290,6 +308,7 @@ _, easy_res122 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = d
 #@test isapprox(res, easy_res13, rtol = 1e-9)
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res122, rtol = 1e-9)
+@test isapprox(res, easy_res123, rtol = 1e-4)
 
 println("Calculate adjoint sensitivities ")
 

@@ -357,7 +357,7 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 """
 function adjoint_sensitivities(sol, args...;
     sensealg = InterpolatingAdjoint(),
-    verbose = true, kwargs...)
+    verbose = true, checkpoints = sol.t, kwargs...)
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
             has_cb = kwargs[:callback] !== nothing

@@ -561,17 +561,19 @@ differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science
 struct GaussAdjoint{CS, AD, FDT, VJP} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
+    checkpointing::Bool
 end
 Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
     diff_type = Val{:central},
-    autojacvec = nothing)
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec)
+    autojacvec = nothing,
+    checkpointing=false)
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec, checkpointing)
 end
 
 TruncatedStacktraces.@truncate_stacktrace GaussAdjoint
 
 function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
-    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp)
+    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
 """
@@ -1272,6 +1274,8 @@ end
 @inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
+@inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
 @inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
