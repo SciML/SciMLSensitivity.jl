@@ -261,19 +261,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         fakeS = CallbackSensitivityFunction(w, sensealg, diffcaches[1], integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
-        λ, grad, _y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
-
-        if sensealg isa BacksolveAdjoint
-            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
-            y = S.y
-            if eltype(_y) <: ForwardDiff.Dual # handle implicit solvers
-                copyto!(vec(y), ForwardDiff.value.(_y))
-            else
-                copyto!(vec(y), _y)
-            end
-        else
-            y = _y
-        end
+        λ, grad, y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
 
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
@@ -314,6 +302,18 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             end
         end
 
+        if sensealg isa BacksolveAdjoint
+            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+            _y = S.y
+            if eltype(y) <: ForwardDiff.Dual # handle implicit solvers
+                copyto!(vec(_y), ForwardDiff.value.(y))
+            else
+                copyto!(vec(_y), y)
+            end
+        else
+            _y = y
+        end
+
         if update_p
             # changes in parameters
             if !(sensealg isa QuadratureAdjoint)
@@ -322,13 +322,13 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
                 fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
                     integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
-                vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
+                vecjacobian!(dgrad, integrator.p, grad, _y, integrator.t, fakeSp;
                     dgrad = nothing, dy = nothing)
                 grad .= dgrad
             end
         end
 
-        vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
+        vecjacobian!(dλ, _y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
         dgrad !== nothing && (dgrad .*= -1)
@@ -352,9 +352,6 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
 
         if !(sensealg isa QuadratureAdjoint)
             grad .-= dgrad
-        end
-        if sensealg isa BacksolveAdjoint
-            copyto!(_y, y)
         end
     end
 
@@ -524,8 +521,8 @@ function get_event_idx(cb::VectorContinuousCallback, indx, bool)
 end
 
 function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
-    # y is actually here the cache from the SensitivityFunctions; for BacksolveAdjoint, we
-    # therefore need to update also the integrator state
+    # For BacksolveAdjoint, y is a view to the integrator state;
+    # for the other methods, it's the S.y cache
     copyto!(y, cb.affect!.uleft[indx])
     update_p = (p != cb.affect!.pleft[indx])
     update_p && copyto!(p, cb.affect!.pleft[indx])
