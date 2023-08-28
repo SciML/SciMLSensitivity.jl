@@ -291,6 +291,17 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
 
         update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)
 
+        if sensealg isa BacksolveAdjoint
+            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+            _y = S.y
+            if eltype(y) <: ForwardDiff.Dual # handle implicit solvers
+                copyto!(vec(_y), ForwardDiff.value.(y))
+            else
+                copyto!(vec(_y), y)
+            end
+            y = _y
+        end
+
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # compute the correction of the right limit (with left state limit inserted into dgdt)
             @unpack dy_left, cur_time = correction
@@ -302,18 +313,6 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             end
         end
 
-        if sensealg isa BacksolveAdjoint
-            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
-            _y = S.y
-            if eltype(y) <: ForwardDiff.Dual # handle implicit solvers
-                copyto!(vec(_y), ForwardDiff.value.(y))
-            else
-                copyto!(vec(_y), y)
-            end
-        else
-            _y = y
-        end
-
         if update_p
             # changes in parameters
             if !(sensealg isa QuadratureAdjoint)
@@ -322,13 +321,13 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
                 fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
                     integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
-                vecjacobian!(dgrad, integrator.p, grad, _y, integrator.t, fakeSp;
+                vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
                     dgrad = nothing, dy = nothing)
                 grad .= dgrad
             end
         end
 
-        vecjacobian!(dλ, _y, λ, integrator.p, integrator.t, fakeS;
+        vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
         dgrad !== nothing && (dgrad .*= -1)
