@@ -265,7 +265,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
 
         if sensealg isa BacksolveAdjoint
             # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
-            @unpack y = S
+            y = S.y
             if eltype(_y) <: ForwardDiff.Dual # handle implicit solvers
                 copyto!(vec(y), ForwardDiff.value.(_y))
             else
@@ -274,6 +274,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         else
             y = _y
         end
+
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
@@ -300,7 +301,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             end
         end
 
-        update_p = copy_to_integrator!(cb, y, integrator.p, integrator.t, indx, pos_neg)
+        update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # compute the correction of the right limit (with left state limit inserted into dgdt)
@@ -351,6 +352,9 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
 
         if !(sensealg isa QuadratureAdjoint)
             grad .-= dgrad
+        end
+        if sensealg isa BacksolveAdjoint
+            copyto!(_y, y)
         end
     end
 
@@ -519,15 +523,20 @@ function get_event_idx(cb::VectorContinuousCallback, indx, bool)
     end
 end
 
-function copy_to_integrator!(cb::DiscreteCallback, y, p, t, indx, bool)
+function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
+    # y is actually here the cache from the SensitivityFunctions; for BacksolveAdjoint, we
+    # therefore need to update also the integrator state
     copyto!(y, cb.affect!.uleft[indx])
     update_p = (p != cb.affect!.pleft[indx])
     update_p && copyto!(p, cb.affect!.pleft[indx])
     update_p
 end
 
-function copy_to_integrator!(cb::Union{ContinuousCallback, VectorContinuousCallback}, y, p,
-    t, indx, bool)
+function copy_to_integrator!(cb::Union{ContinuousCallback, VectorContinuousCallback},
+    y,
+    p,
+    indx,
+    bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
         update_p = (p != cb.affect!.pleft[indx])
