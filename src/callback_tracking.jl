@@ -261,8 +261,19 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         fakeS = CallbackSensitivityFunction(w, sensealg, diffcaches[1], integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
-        λ, grad, y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
+        λ, grad, _y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
 
+        if sensealg isa BacksolveAdjoint
+            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+            @unpack y = S
+            if eltype(_y) <: ForwardDiff.Dual # handle implicit solvers
+                copyto!(vec(y), ForwardDiff.value.(_y))
+            else
+                copyto!(vec(y), _y)
+            end
+        else
+            y = _y
+        end
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
@@ -290,13 +301,6 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         end
 
         update_p = copy_to_integrator!(cb, y, integrator.p, integrator.t, indx, pos_neg)
-        # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
-        if sensealg isa BacksolveAdjoint
-            _size = pos_neg ? size(cb.affect!.uleft[indx]) :
-                    size(cb.affect_neg!.uleft[indx])
-            y = reshape(y, _size)
-            dy = reshape(dy, _size)
-        end
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # compute the correction of the right limit (with left state limit inserted into dgdt)
@@ -322,6 +326,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
                 grad .= dgrad
             end
         end
+
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
