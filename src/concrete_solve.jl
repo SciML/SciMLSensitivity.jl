@@ -6,19 +6,45 @@
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
+__unwrapped_f(f) = unwrapped_f(f)
+__unwrapped_f(f::NonlinearFunction) = f.f
+
 function inplace_vjp(prob, u0, p, verbose)
     du = copy(u0)
+
+    tspan_nothing = hasmethod(__unwrapped_f(prob.f),
+        Tuple{typeof(du), typeof(u0), typeof(p), Nothing})
+    no_tspan = (!hasfield(typeof(prob), :tspan) || !(hasmethod(__unwrapped_f(prob.f),
+        Tuple{typeof(du), typeof(u0), typeof(p), typeof(first(prob.tspan))}))) &&
+               !tspan_nothing
+    if !no_tspan
+        if tspan_nothing
+            __t = nothing
+        else
+            __t = first(prob.tspan)
+        end
+    end
 
     ez = try
         f = unwrapped_f(prob.f)
 
-        function adfunc(out, u, _p, t)
-            f(out, u, _p, t)
-            nothing
+        if no_tspan
+            function adfunc_nlprob(out, u, _p)
+                f(out, u, _p)
+                nothing
+            end
+            Enzyme.autodiff(Enzyme.Reverse, adfunc_nlprob, Enzyme.Duplicated(du, du),
+                copy(u0), copy(p))
+            true
+        else
+            function adfunc(out, u, _p, t)
+                f(out, u, _p, t)
+                nothing
+            end
+            Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, du),
+                copy(u0), copy(p), __t)
+            true
         end
-        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, du),
-            copy(u0), copy(p), prob.tspan[1])
-        true
     catch e
         if verbose || have_not_warned_vjp[]
             @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
@@ -36,9 +62,17 @@ function inplace_vjp(prob, u0, p, verbose)
     compile = try
         f = unwrapped_f(prob.f)
         if DiffEqBase.isinplace(prob)
-            !hasbranching(f, copy(u0), u0, p, prob.tspan[1])
+            if no_tspan
+                !hasbranching(f, copy(u0), u0, p)
+            else
+                !hasbranching(f, copy(u0), u0, p, __t)
+            end
         else
-            !hasbranching(f, u0, p, prob.tspan[1])
+            if no_tspan
+                !hasbranching(f, u0, p)
+            else
+                !hasbranching(f, u0, p, __t)
+            end
         end
     catch
         false
@@ -47,16 +81,48 @@ function inplace_vjp(prob, u0, p, verbose)
     vjp = try
         f = unwrapped_f(prob.f)
         if p === nothing || p isa SciMLBase.NullParameters
-            ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
-                du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
-                return vec(du1)
+            if no_tspan
+                ReverseDiff.GradientTape((copy(u0),)) do u
+                    du1 = similar(u, size(u))
+                    f(du1, u, p)
+                    return vec(du1)
+                end
+            else
+                if tspan_nothing
+                    ReverseDiff.GradientTape((copy(u0),)) do u
+                        du1 = similar(u, size(u))
+                        f(du1, u, p, nothing)
+                        return vec(du1)
+                    end
+                else
+                    ReverseDiff.GradientTape((copy(u0), [__t])) do u, t
+                        du1 = similar(u, size(u))
+                        f(du1, u, p, first(t))
+                        return vec(du1)
+                    end
+                end
             end
         else
-            ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u, p, t
-                du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
-                return vec(du1)
+            if no_tspan
+                ReverseDiff.GradientTape((copy(u0), p)) do u, p
+                    du1 = similar(u, size(u))
+                    f(du1, u, p)
+                    return vec(du1)
+                end
+            else
+                if tspan_nothing
+                    ReverseDiff.GradientTape((copy(u0), p)) do u, p
+                        du1 = similar(u, size(u))
+                        f(du1, u, p, nothing)
+                        return vec(du1)
+                    end
+                else
+                    ReverseDiff.GradientTape((copy(u0), p, [__t])) do u, p, t
+                        du1 = similar(u, size(u))
+                        f(du1, u, p, first(t))
+                        return vec(du1)
+                    end
+                end
             end
         end
         ReverseDiffVJP(compile)

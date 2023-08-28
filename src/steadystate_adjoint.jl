@@ -50,6 +50,7 @@ end
                 (blocksize, blocksize)))
             sd = JacPrototypeSparsityDetection(; jac_prototype)
         else
+            jac_prototype = nothing
             sd = NoSparsityDetection()
         end
     else
@@ -95,11 +96,19 @@ end
     end
 
     if !needs_jac
-        __f(x) = vec(f(reshape(x, size(y)), p, nothing))
-        operator = VecJac(__f, vec(y); autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+        if DiffEqBase.isinplace(sol.prob)
+            __f_iip(fx, x) = f(reshape(fx, size(diffcache.f_cache)), reshape(x, size(y)), p,
+                nothing)
+            operator = VecJac(__f_iip, vec(diffcache.f_cache), vec(y);
+                autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+        else
+            __f_oop(x) = vec(f(reshape(x, size(y)), p, nothing))
+            operator = VecJac(__f_oop, vec(y);
+                autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+        end
 
         if linsolve === nothing && sensealg.uniform_blocked_diagonal_jacobian
-            @warn "linsolve not specified, and Jacobian is specified to be uniform blocked diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
+            @warn "linsolve not specified, and Jacobian is specified to be uniform block diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
             linsolve = SimpleGMRES(; blocksize, restart=false)
         end
 

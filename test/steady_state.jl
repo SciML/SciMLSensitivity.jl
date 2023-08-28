@@ -587,3 +587,70 @@ end
         @test dp≈Zdp atol=1e-4
     end
 end
+
+@testset "High Level Interface to Control Steady State Adjoint Internals" begin
+    u0 = zeros(32)
+    p = [2.0, 1.0]
+
+    # Diagonal Jacobian Problem
+    prob = NonlinearProblem((u, p) -> u .- p[1] .+ p[2], u0, p)
+    solve1 = solve(remake(prob, p = p), NewtonRaphson())
+
+    function test_loss(p, prob; alg = NewtonRaphson(),
+        sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
+        _prob = remake(prob, p = p)
+        sol = sum(solve(_prob, alg; sensealg))
+        return sol
+    end
+
+    test_loss(p, prob)
+
+    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
+
+    @test dp1[1] ≈ 32
+    @test dp1[2] ≈ -32
+
+    for uniform_blocked_diagonal_jacobian in (true, false),
+        linsolve_method in (SSAdjointFullJacobianLinsolve(),
+            SSAdjointIterativeVJPLinsolve(), SSAdjointHeuristicLinsolve()),
+        concrete_jac in (true, false)
+
+        sensealg = SteadyStateAdjoint(; autojacvec = ZygoteVJP(),
+            uniform_blocked_diagonal_jacobian, linsolve_method, concrete_jac)
+        test_loss(p, prob; sensealg)
+        dp1 = Zygote.gradient(p -> test_loss(p, prob; sensealg), p)[1]
+
+        @test dp1[1] ≈ 32
+        @test dp1[2] ≈ -32
+    end
+
+    # Inplace version
+    prob = NonlinearProblem((du, u, p) -> (du .= u .- p[1] .+ p[2]), u0, p)
+
+    function test_loss(p, prob; alg = NewtonRaphson(), sensealg = SteadyStateAdjoint())
+        _prob = remake(prob, p = p)
+        sol = sum(solve(_prob, alg; sensealg))
+        return sol
+    end
+
+    test_loss(p, prob)
+
+    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
+
+    @test dp1[1] ≈ 32
+    @test dp1[2] ≈ -32
+
+    for uniform_blocked_diagonal_jacobian in (true, false),
+        linsolve_method in (SSAdjointFullJacobianLinsolve(),
+            SSAdjointIterativeVJPLinsolve(), SSAdjointHeuristicLinsolve()),
+        concrete_jac in (true, false)
+
+        sensealg = SteadyStateAdjoint(; uniform_blocked_diagonal_jacobian, linsolve_method,
+            concrete_jac)
+        test_loss(p, prob; sensealg)
+        dp1 = Zygote.gradient(p -> test_loss(p, prob; sensealg), p)[1]
+
+        @test dp1[1] ≈ 32
+        @test dp1[2] ≈ -32
+    end
+end

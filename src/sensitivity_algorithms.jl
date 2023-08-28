@@ -1373,3 +1373,7 @@ get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
 get_autodiff_from_vjp(::Nothing) = AutoZygote()
+function get_autodiff_from_vjp(b::Bool)
+    b && return AutoForwardDiff()
+    return AutoFiniteDiff()
+end
