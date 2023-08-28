@@ -1,14 +1,5 @@
-struct SteadyStateAdjointSensitivityFunction{
-    C <: AdjointDiffCache,
-    Alg <: SteadyStateAdjoint,
-    uType,
-    SType,
-    fType <: ODEFunction,
-    CV,
-    λType,
-    VJPType,
-    LS,
-} <: SensitivityFunction
+struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache, Alg<:SteadyStateAdjoint,
+    uType, SType, fType<:ODEFunction, CV, λType, VJPType, LS,} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     y::uType
@@ -39,29 +30,31 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
 end
 
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
-    dgdu::DG1 = nothing, dgdp::DG2 = nothing,
-    g::G = nothing; kwargs...) where {DG1, DG2, G}
-    # TODO: Sparsity Exploiting
+    dgdu::DG1 = nothing, dgdp::DG2 = nothing, g::G = nothing; kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
-
     sol.prob isa NonlinearProblem && (f = ODEFunction(f))
+    u0_len = length(u0)
 
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
-    needs_jac = if has_adjoint(f)
-        false
-    # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
-    #       cases where the length(u0) > 50 and if yes till what threshold
-    needs_jac = needs_concrete_jac(sensealg) ||
-                (sensealg.linsolve === nothing && length(u0) ≤ 50) ||
-                LinearSolve.needs_concrete_A(sensealg.linsolve)
+    needs_jac = needs_concrete_jac(sensealg, u0)
+    sensealg.uniform_blocked_diagonal_jacobian && (blocksize = u0_len ÷ size(u0, ndims(u0)))
 
     p === DiffEqBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
-    # TODO: Specify jac_prototype for sparse problems
-    jac_prototype = nothing
+    if needs_jac
+        if sensealg.uniform_blocked_diagonal_jacobian
+            jac_prototype = sparse(BandedMatrix(similar(u0, u0_len, u0_len),
+                (blocksize, blocksize)))
+            sd = JacPrototypeSparsityDetection(; jac_prototype)
+        else
+            sd = NoSparsityDetection()
+        end
+    else
+        jac_prototype = nothing
+    end
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
         f, f.colorvec, needs_jac, jac_prototype)
     @unpack diffcache, y, sol, λ, vjp, linsolve = sense
@@ -71,10 +64,12 @@ end
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)
-                jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache,
-                    sensealg, diffcache.jac_config)
+                # TODO: reuse diffcache.jac_config??
+                sparse_jacobian!(diffcache.J, jacobian_adtype(sensealg), sd, diffcache.uf,
+                    diffcache.f_cache, y)
             else
-                diffcache.J .= jacobian(diffcache.uf, y, sensealg)
+                sparse_jacobian!(diffcache.J, jacobian_adtype(sensealg), sd, diffcache.uf,
+                    y)
             end
         end
     end
@@ -100,24 +95,29 @@ end
     end
 
     if !needs_jac
-        # operator = VecJac(f, y, p; Val(DiffEqBase.isinplace(sol.prob)))
-        __f = y -> f(y, p, nothing)
-        operator = VecJac(__f, y; autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
-        linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
+        __f(x) = vec(f(reshape(x, size(y)), p, nothing))
+        operator = VecJac(__f, vec(y); autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+
+        if linsolve === nothing && sensealg.uniform_blocked_diagonal_jacobian
+            @warn "linsolve not specified, and Jacobian is specified to be uniform blocked diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
+            linsolve = SimpleGMRES(; blocksize, restart=false)
+        end
+
+        A_ = operator
     else
-        linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
+        A_ = diffcache.J'
     end
 
-    # Zygote pullback function won't work with deepcopy
-    solve(linear_problem, linsolve; alias_A = true) # u is vec(λ)
+    linear_problem = LinearProblem(A_, vec(dgdu_val'); u0=vec(λ))
+    sol = solve(linear_problem, linsolve; alias_A=true) # u is vec(λ)
 
     try
-        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
+        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad=vjp, dy=nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to nonlinear solve adjoint + numerical vjp"
-            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
-                dy = nothing)
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad=vjp,
+                dy=nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
             throw(e)

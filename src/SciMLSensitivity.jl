@@ -17,6 +17,8 @@ using StaticArraysCore
 using ADTypes
 using SparseDiffTools
 using SciMLOperators
+using BandedMatrices
+using SparseArrays
 import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
@@ -83,5 +85,8 @@ export second_order_sensitivities, second_order_sensitivity_product
 export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
+
+export SSAdjointFullJacobianLinsolve, SSAdjointIterativeVJPLinsolve,
+    SSAdjointHeuristicLinsolve
 
 end # module

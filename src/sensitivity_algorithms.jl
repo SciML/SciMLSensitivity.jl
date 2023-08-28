@@ -304,7 +304,7 @@ InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
     differentiation with special seeding. The total set of choices are:
 
       + `nothing`: uses an automatic algorithm to automatically choose the vjp.
-        This is the default and recommended for most users.                                                                                                                                        
+        This is the default and recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
@@ -1024,9 +1024,17 @@ Base.@pure function NILSAS(nseg, nstep, M = nothing;
         nseg, nstep, g)
 end
 
+abstract type AbstractSSAdjointLinsolveMethod end
+
+struct SSAdjointFullJacobianLinsolve <: AbstractSSAdjointLinsolveMethod end
+struct SSAdjointIterativeVJPLinsolve <: AbstractSSAdjointLinsolveMethod end
+Base.@kwdef struct SSAdjointHeuristicLinsolve <: AbstractSSAdjointLinsolveMethod
+    auto_switch_threshold::Int = 50
+end
+
 """
 ```julia
-SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM <: AbstractSSAdjointLinsolveMethod} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of the adjoint differentiation of a nonlinear solve. Uses the
@@ -1036,9 +1044,10 @@ implicit function theorem to directly compute the derivative of the solution to
 ## Constructor
 
 ```julia
-SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-                   diff_type = Val{:central},
-                   autojacvec = autodiff, linsolve = nothing)
+SteadyStateAdjoint(; chunk_size = 0, autodiff = true, diff_type = Val{:central},
+                   autojacvec = nothing, linsolve = nothing, linsolve = nothing,
+                   concrete_jac = false, uniform_blocked_diagonal_jacobian::Bool = false,
+                   linsolve_method = SSAdjointHeuristicLinsolve(50))
 ```
 
 ## Keyword Arguments
@@ -1065,8 +1074,26 @@ SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
   - `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
-    which uses a polyalgorithm to choose an efficient
-    algorithm automatically.
+    which uses a polyalgorithm to choose an efficient algorithm automatically.
+  - `concrete_jac`: If `true`, ignore every other directive and mandatorily construct
+    the Jacobian. (default: `false`)
+  - `uniform_blocked_diagonal_jacobian`: If `true`, the jacobian is assumed to be uniformly
+    block diagonal with a block size = `div(length(u0), size(u0, ndims(u0)))`. This allows
+    using sparse differentiation to construct the Jacobian or specialized iterative linear
+    solvers.
+  - `linsolve_method`: The method used to solve the linear system. There are the following
+    choices: (it is recommended to use the default `SSAdjointHeuristicLinsolve`, unless
+    benchmarking or an analytic jacobian is known)
+
+      + `SSAdjointFullJacobianLinsolve`: Construct the full Jacobian and solve the linear
+        system. This is typically efficient for small systems.
+      + `SSAdjointIterativeVJPLinsolve`: Use an iterative method to solve the linear system
+        with the vjp. This is typically efficient for large systems.
+      + `SSAdjointHeuristicLinsolve(; auto_switch_threshold = 50)`: Use a heuristic to
+        automatically determine if we should construct the jacobian or use an iterative
+        solve. If the Jacobian is constructed for any other reason
+        (like `concrete_jac=true`), we will not use an iterative solver (unless forced via
+        `linsolve`).
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -1076,28 +1103,54 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CJ, BD, CS, AD, FDT, VJP, LS} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+struct SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM <: AbstractSSAdjointLinsolveMethod} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
+    linsolve_method::LM
+    uniform_blocked_diagonal_jacobian::Bool
 end
 
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
     diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-    concrete_jac = false, assume_uniform_blocked_diagonal = false)
-    return SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), _unwrap_val(concrete_jac),
-        _unwrap_val(assume_uniform_blocked_diagonal)}(autojacvec, linsolve)
+    concrete_jac = false, uniform_blocked_diagonal_jacobian::Bool = false,
+    linsolve_method = SSAdjointHeuristicLinsolve(50))
+    return SteadyStateAdjoint{_unwrap_val(concrete_jac), chunk_size, autodiff, diff_type,
+        typeof(autojacvec), typeof(linsolve), typeof(linsolve_method)}(autojacvec, linsolve,
+        linsolve_method, uniform_blocked_diagonal_jacobian)
 end
 
-needs_concrete_jac(::SteadyStateAdjoint{CJ}) where {CJ} = Val(CJ)
-assume_uniform_blocked_diagonal(::SteadyStateAdjoint{CJ, BD}) where {CJ, BD} = Val(BD)
+function needs_concrete_jac(S::SteadyStateAdjoint{CJ}, u0) where {CJ}
+    # Force Jacobian Construction
+    CJ && return true
+    # Check if the users wants us to use a specific method
+    lm_needs = needs_concrete_jac(S, S.linsolve_method, u0)
+    lm_needs && return true
+    # If nothing is true then only construct if the linear solver needs the jacobian
+    return S.linsolve === nothing ? false : LinearSolve.needs_concrete_A(S.linsolve)
+end
 
-function setvjp(sensealg::SteadyStateAdjoint{CJ, BD, CS, AD, FDT, VJP, LS},
-    vjp) where {CJ, BD, CS, AD, FDT, VJP, LS}
-    SteadyStateAdjoint{CJ, BD, CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
+function jacobian_adtype(S::SteadyStateAdjoint{CJ, CS, AD}) where {CJ, CS, AD}
+    # FIXME: Don't ignore the chunk size. Will need to verify upstream.
+    if S.uniform_blocked_diagonal_jacobian
+        return AD ? AutoSparseForwardDiff() : AutoSparseFiniteDiff()
+    else
+        return AD ? AutoForwardDiff() : AutoFiniteDiff()
+    end
+end
+
+function setvjp(sensealg::SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM},
+    vjp) where {CJ, CS, AD, FDT, VJP, LS, LM}
+    return SteadyStateAdjoint{CJ, CS, AD, FDT, typeof(vjp), LS, LM}(vjp,
+        sensealg.linsolve, sensealg.linsolve_method,
+        sensealg.uniform_blocked_diagonal_jacobian)
+end
+
+needs_concrete_jac(::SteadyStateAdjoint, ::SSAdjointFullJacobianLinsolve, _) = true
+needs_concrete_jac(::SteadyStateAdjoint, ::SSAdjointIterativeVJPLinsolve, _) = false
+function needs_concrete_jac(S::SteadyStateAdjoint, L::SSAdjointHeuristicLinsolve, u0)
+    return length(u0) ≤ L.auto_switch_threshold
 end
 
 abstract type VJPChoice end
@@ -1313,7 +1366,10 @@ struct ForwardDiffOverAdjoint{A} <:
     adjalg::A
 end
 
-get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile} = AutoReverseDiff(; compile = compile)
+function get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile}
+    return AutoReverseDiff(; compile)
+end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
+get_autodiff_from_vjp(::Nothing) = AutoZygote()
