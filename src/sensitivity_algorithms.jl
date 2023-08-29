@@ -1148,7 +1148,12 @@ function setvjp(sensealg::SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM},
 end
 
 needs_concrete_jac(::SteadyStateAdjoint, ::SSAdjointFullJacobianLinsolve, _) = true
-needs_concrete_jac(::SteadyStateAdjoint, ::SSAdjointIterativeVJPLinsolve, _) = false
+function needs_concrete_jac(S::SteadyStateAdjoint, ::SSAdjointIterativeVJPLinsolve, _)
+    if S.linsolve !== nothing && LinearSolve.needs_concrete_A(S.linsolve)
+        error("$(S.linsolve) requires a concrete Matrix. Cannot be solved using the Iterative VJPs!")
+    end
+    return false
+end
 function needs_concrete_jac(S::SteadyStateAdjoint, L::SSAdjointHeuristicLinsolve, u0)
     return length(u0) ≤ L.auto_switch_threshold
 end
