@@ -14,21 +14,22 @@ end
 
 TruncatedStacktraces.@truncate_stacktrace ODEGaussAdjointSensitivityFunction
 
-mutable struct GaussCheckpointSolution{S, I, T2}
+mutable struct GaussCheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals
     cursor::Int # sol.prob.tspan = intervals[cursor]
+    tols::T
     tstops::T2 # for callbacks
 end
 
 function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
     alg,
-    checkpoints, tstops = nothing;
+    checkpoints, tols, tstops = nothing;
     tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
-
+    
     checkpoint_sol = if checkpointing
         intervals = map(tuple, @view(checkpoints[1:(end - 1)]), @view(checkpoints[2:end]))
         interval_end = intervals[end][end]
@@ -37,20 +38,20 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
         interval = intervals[cursor]
         if tstops === nothing
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                sol.alg)
+                sol.alg; tols...)
         else
             if maximum(interval[1] .< tstops .< interval[2])
                 # callback might have changed p
                 _p = Gaussreset_p(sol.prob.kwargs[:callback], interval)
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     tstops = tstops,
-                    p = _p, sol.alg)
+                    p = _p, sol.alg; tols...)
             else
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    tstops = tstops, sol.alg)
+                    tstops = tstops, sol.alg; tols...)
             end
         end
-        GaussCheckpointSolution(cpsol, intervals, cursor, tstops)
+        GaussCheckpointSolution(cpsol, intervals, cursor, tols, tstops)
     else
         nothing
     end
@@ -124,7 +125,8 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                 if checkpoint_sol.tstops === nothing
                     prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                     cpsol′ = solve(prob′, sol.alg;
-                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]))
+                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                        checkpoint_sol.tols...)
                 else
                     if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                         # callback might have changed p
@@ -132,12 +134,14 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                         cpsol′ = solve(prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                            tstops = checkpoint_sol.tstops)
+                            tstops = checkpoint_sol.tstops,
+                            checkpoint_sol.tols...)
                     else
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                            tstops = checkpoint_sol.tstops)
+                            tstops = checkpoint_sol.tstops,
+                            checkpoint_sol.tols...)
                     end
                 end
                 checkpoint_sol.cpsol = cpsol′
@@ -183,7 +187,8 @@ end
     g::G = nothing,
     ::Val{RetCB} = Val(false);
     checkpoints = sol.t,
-    callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
+    callback = CallbackSet(),
+    reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
     RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
@@ -246,7 +251,7 @@ end
         λ = zero(u0)
     end
     sense = ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol,
-        dgdu_continuous, dgdp_continuous, alg, checkpoints, tstops, tspan = tspan)
+        dgdu_continuous, dgdp_continuous, alg, checkpoints, (reltol = reltol, abstol = abstol), tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
@@ -500,16 +505,26 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     dgdp_continuous = nothing,
     g = nothing,
     abstol = sensealg.abstol, reltol = sensealg.reltol,
+    checkpoints = sol.t,
     callback = CallbackSet(),
     kwargs...)
+
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
     integrand_values = IntegrandValues(Vector{Float64})
     cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
-        callback=callback)
+        checkpoints = checkpoints,
+        callback=callback, reltol = reltol, abstol = abstol, kwargs...)
+
+    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
+
+    
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false, 
-            save_start = false, save_end = true, callback = CallbackSet(cb,cb2), kwargs...)
+            save_start = false, save_end = true, saveat = eltype(sol[1])[], tstops = tstops,
+            callback = CallbackSet(cb,cb2), kwargs...)
+    
+    
     res = compute_dGdp(integrand_values)'
 
     if rcb !== nothing && !isempty(rcb.Δλas)

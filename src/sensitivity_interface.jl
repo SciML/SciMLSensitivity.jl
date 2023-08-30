@@ -357,7 +357,7 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 """
 function adjoint_sensitivities(sol, args...;
     sensealg = InterpolatingAdjoint(),
-    verbose = true, checkpoints = sol.t, kwargs...)
+    verbose = true, kwargs...)
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
             has_cb = kwargs[:callback] !== nothing
@@ -401,7 +401,6 @@ function _adjoint_sensitivities(sol, sensealg, alg;
        (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
-
     rcb = nothing
     if sol.prob isa ODEProblem
         adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
