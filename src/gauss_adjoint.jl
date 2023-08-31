@@ -524,7 +524,6 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
             save_start = false, save_end = true, saveat = eltype(sol[1])[], tstops = tstops,
             callback = CallbackSet(cb,cb2), kwargs...)
     
-    
     res = compute_dGdp(integrand_values)'
 
     if rcb !== nothing && !isempty(rcb.Δλas)
