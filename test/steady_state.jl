@@ -424,6 +424,27 @@ end
     @test dp1≈dp6 rtol=1e-10
     @test dp1≈dp7 rtol=1e-10
     @test dp1≈dp8 rtol=1e-10
+
+    # Larger Batched Problem: For testing the Iterative Solvers Path
+    u0 = zeros(128)
+    p = [2.0, 1.0]
+
+    prob = NonlinearProblem((u, p) -> u .- p[1] .+ p[2], u0, p)
+    solve1 = solve(remake(prob, p = p), NewtonRaphson())
+
+    function test_loss(p, prob; alg = NewtonRaphson())
+        _prob = remake(prob, p = p)
+        sol = sum(solve(_prob, alg,
+            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP())))
+        return sol
+    end
+
+    test_loss(p, prob)
+
+    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
+
+    @test dp1[1] ≈ 128
+    @test dp1[2] ≈ -128
 end
 
 @testset "Continuous sensitivity tools" begin

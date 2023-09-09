@@ -101,7 +101,8 @@ end
 
     if !needs_jac
         # operator = VecJac(f, y, p; Val(DiffEqBase.isinplace(sol.prob)))
-        operator = VecJac(f, y, p; autodiff = get_autodiff_from_vjp(vjp))
+        __f = y -> f(y, p, nothing)
+        operator = VecJac(__f, y; autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
     else
         linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
