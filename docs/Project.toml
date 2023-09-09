@@ -41,7 +41,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 CUDA = "3.12, 4"
 Calculus = "0.5"
-ComponentArrays = "0.13, 0.14"
+ComponentArrays = "0.13, 0.14, 0.15"
 DataInterpolations = "3.10, 4"
 DiffEqBase = "6.106"
 DiffEqCallbacks = "2.24"
