@@ -80,7 +80,6 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
             end
         end
         CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
-
     else
         nothing
     end
@@ -161,7 +160,6 @@ function split_states(du, u, t, S::TS;
          ODEInterpolatingAdjointSensitivityFunction}
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
     idx = length(y)
-
     if update
         if checkpoint_sol === nothing
             if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
