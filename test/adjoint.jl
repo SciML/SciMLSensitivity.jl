@@ -150,7 +150,7 @@ _, easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discret
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(checkpointing = true),
-    checkpoints = sol.t[1:500:end])
+    checkpoints = sol.t[1:2:end])
 _, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
