@@ -31,7 +31,6 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
-    
     checkpoint_sol = if checkpointing
         intervals = map(tuple, @view(checkpoints[1:(end - 1)]), @view(checkpoints[2:end]))
         interval_end = intervals[end][end]
@@ -76,8 +75,8 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
                         tstops = tstops, sol.alg; tols...)
                 end
             end
-            GaussCheckpointSolution(cpsol, intervals, cursor, tols, tstops)
         end
+        GaussCheckpointSolution(cpsol, intervals, cursor, tols, tstops)
     else
         nothing
     end
@@ -97,20 +96,76 @@ end
 
 # u = λ'
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob = S
-    f = sol.prob.f
-
+    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    #f = sol.prob.f
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
-
-    vecjacobian!(dλ, y, λ, p, t, S)
+    #vecjacobian!(dλ, y, λ, p, t, S)
+    if S.noiseterm
+        if length(u) == length(du)
+            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+               !isnoisemixing(S.sensealg)
+            vecjacobian!(dλ, y, λ, p, t, S)
+            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
+        else
+            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ)
+        end
+    else
+        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+    end
 
     dλ .*= -one(eltype(λ))
-
-    discrete || accumulate_cost!(dλ, y, p, t, S)
+    dgrad .*= -one(eltype(dgrad))
+    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad = dgrad)
     return nothing
 end
 
+#=
+# add tstop on all the checkpoints
+function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
+    @unpack sol, checkpoint_sol, discrete, prob, f = S
+
+    λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
+
+    if S.noiseterm
+        if length(u) == length(du)
+            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+               !isnoisemixing(S.sensealg)
+            vecjacobian!(dλ, y, λ, p, t, S)
+            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
+        else
+            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ)
+        end
+    else
+        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+    end
+
+    dλ .*= -one(eltype(λ))
+    dgrad .*= -one(eltype(dgrad))
+
+    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+    return nothing
+end
+=#
+function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
+
+    @unpack sol, checkpoint_sol, discrete, prob, f = S
+
+    λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
+
+    vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, W = W)
+
+    dλ .*= -one(eltype(λ))
+    dgrad .*= -one(eltype(dgrad))
+
+    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+    return nothing
+end
+
+
 function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
+
     @unpack sol, checkpoint_sol, discrete, prob = S
     f = sol.prob.f
 
@@ -128,7 +183,6 @@ end
 function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
     idx = length(y)
-
     if update
         if checkpoint_sol === nothing
             if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -200,15 +254,12 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
             checkpoint_sol.cpsol(y, t, continuity = :right)
         end
     end
-
     λ = @view u[1:idx]
     grad = @view u[(idx + 1):end]
-
     if length(u) == length(du)
         dλ = @view du[1:idx]
         dgrad = @view du[(idx + 1):end]
     end
-
     λ, grad, y, dλ, dgrad, nothing
 end
 
@@ -329,7 +380,7 @@ end
     end
 end
 
-function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
+@noinline function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
     t = nothing,
     dgdu_discrete::DG1 = nothing,
     dgdp_discrete::DG2 = nothing,
@@ -347,7 +398,6 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         error("It looks like you're using the direct `adjoint_sensitivities` interface
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
-
     @unpack f, p, u0, tspan = sol.prob
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -358,11 +408,9 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         end
     end
     tspan = reverse(tspan)
-
     discrete = (t !== nothing &&
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
-
     # remove duplicates from checkpoints
     if ischeckpointing(sensealg, sol) &&
        (length(unique(checkpoints)) != length(checkpoints))
@@ -385,7 +433,6 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
     else
         tstops = nothing
     end
-
     numstates = length(u0)
     numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
@@ -401,12 +448,6 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         (reltol = reltol,
             abstol = abstol),
         tspan = tspan)
-
-        g, sensealg, discrete, sol, dgdu, dgdp,
-        alg,
-        checkpoints, tols, tstops = nothing;
-        tspan = reverse(sol.prob.tspan)
-
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
         jac = diffusion_jac,
         paramjac = diffusion_paramjac)
@@ -438,7 +479,6 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         mm = [adjmm zzz
             copy(zzz') II]
     end
-
     jac_prototype = sol.prob.f.jac_prototype
     if !sense_drift.discrete || jac_prototype === nothing
         adjoint_jac_prototype = nothing
@@ -450,10 +490,8 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
             copy(zzz') II]
     end
-
     sdefun = SDEFunction(sense_drift, sense_diffusion, mass_matrix = mm,
         jac_prototype = adjoint_jac_prototype)
-
     # replicated noise
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
@@ -467,14 +505,13 @@ function SDEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         noise_matrix = similar(z0, length(z0), m)
         noise_matrix .= false
     end
-
     return SDEProblem(sdefun, sense_diffusion, z0, tspan, p,
         callback = cb,
         noise = backwardnoise,
         noise_rate_prototype = noise_matrix), cb, nothing
 end
 
-function RODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
+@noinline function RODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
     t = nothing,
     dgdu_discrete::DG1 = nothing,
     dgdp_discrete::DG2 = nothing,
@@ -491,7 +528,6 @@ function RODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
         error("It looks like you're using the direct `adjoint_sensitivities` interface
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
-
     @unpack f, p, u0, tspan = sol.prob
 
     # check if solution was terminated, then use reduced time span
@@ -783,7 +819,6 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
-
     # TODO: Add tracker?
     return out
 end
@@ -796,7 +831,6 @@ function (S::GaussIntegrand)(out, t, λ)
         y = sol(t)
     end
     vec_pjac!(out, λ, y, t, S)
-
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
         out .+= dgdp_cache
@@ -817,13 +851,15 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     g = nothing,
     abstol = sensealg.abstol, reltol = sensealg.reltol,
     checkpoints = sol.t,
+    corfunc_analytical = false,
     callback = CallbackSet(),
     kwargs...)
-
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
     integrand_values = IntegrandValues(Float64, Vector{Float64})
     cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
-
+    rcb = nothing
+    cb2 = nothing
+    adj_prob = nothing
     if sol.prob isa ODEProblem
         adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
@@ -856,11 +892,10 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
 
-    
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false, 
             save_start = false, save_end = true, saveat = eltype(sol[1])[], tstops = tstops,
-            callback = CallbackSet(cb,cb2), kwargs...)
-    
+            callback = CallbackSet(cb,cb2), 
+            kwargs...)
     res = compute_dGdp(integrand_values)'
 
     if rcb !== nothing && !isempty(rcb.Δλas)
