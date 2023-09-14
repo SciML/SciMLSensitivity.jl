@@ -92,7 +92,7 @@ _, easy_res6 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete 
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true),
-    checkpoints = sol.t[1:500:end])
+    checkpoints = sol.t[1:10:end])
 _, easy_res62 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -146,11 +146,11 @@ _, easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
-_, easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+_, easy_res145 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(checkpointing = true),
-    checkpoints = sol.t[1:2:end])
+    checkpoints = sol.t[1:10:end])
 _, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -191,8 +191,8 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res142, rtol = 1e-9)
 @test isapprox(res, easy_res143, rtol = 1e-9)
 @test isapprox(res, easy_res144, rtol = 1e-9)
-@test isapprox(res, easy_res145, rtol = 1e-4)
-@test isapprox(res, easy_res146, rtol = 1e-4)
+@test isapprox(res, easy_res145, rtol = 1e-9)
+@test isapprox(res, easy_res146, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 

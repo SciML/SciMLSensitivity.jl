@@ -34,6 +34,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
 
+
     checkpoint_sol = if checkpointing
         intervals = map(tuple, @view(checkpoints[1:(end - 1)]), @view(checkpoints[2:end]))
         interval_end = intervals[end][end]
@@ -86,6 +87,7 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
+
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
         discrete, y, sol,
@@ -399,6 +401,7 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
+
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
