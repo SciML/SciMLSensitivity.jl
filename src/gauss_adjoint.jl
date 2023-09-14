@@ -28,6 +28,7 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
     checkpoints, tols, tstops = nothing;
     noiseterm = false,
     tspan = reverse(sol.prob.tspan))
+
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
@@ -37,7 +38,6 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
         tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
         cursor = lastindex(intervals)
         interval = intervals[cursor]
-
         if typeof(sol.prob) <: Union{SDEProblem, RODEProblem}
             # replicated noise
             _sol = deepcopy(sol)
@@ -55,24 +55,35 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
             end
             dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
 
+            #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
+            #        noise = forwardnoise),
+            #    sol.alg, save_noise = false; dt = dt, tstops = _sol.t[idx1:end],
+            #    tols...)
+
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
                     noise = forwardnoise),
-                sol.alg, save_noise = false; dt = dt, tstops = _sol.t[idx1:end],
+                sol.alg, save_noise = false; dt = dt, dense=true,
                 tols...)
         else
             if tstops === nothing
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    sol.alg; tols...)
+                    sol.alg; dense=true, tols...)
             else
                 if maximum(interval[1] .< tstops .< interval[2])
                     # callback might have changed p
                     _p = Gaussreset_p(sol.prob.kwargs[:callback], interval)
+                    #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    #    tstops = tstops,
+                    #    p = _p, sol.alg; tols...)
+
                     cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                        tstops = tstops,
+                        dense=true,
                         p = _p, sol.alg; tols...)
                 else
+                    #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    #    tstops = tstops, sol.alg; tols...)
                     cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                        tstops = tstops, sol.alg; tols...)
+                        sol.alg; dense=true, tols...)
                 end
             end
         end
@@ -83,7 +94,6 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dg
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
         quad = true, noiseterm = noiseterm)
-
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
         y, sol, checkpoint_sol, sol.prob, f, noiseterm)
 end
@@ -99,70 +109,40 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
     @unpack sol, checkpoint_sol, discrete, prob, f = S
     #f = sol.prob.f
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
+
     #vecjacobian!(dλ, y, λ, p, t, S)
     if S.noiseterm
         if length(u) == length(du)
-            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+            vecjacobian!(dλ, y, λ, p, t, S)
         elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S)
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
+            jacNoise!(λ, y, p, t, S)
         else
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ)
+            jacNoise!(λ, y, p, t, S, dλ = dλ)
         end
     else
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+        vecjacobian!(dλ, y, λ, p, t, S)
     end
 
     dλ .*= -one(eltype(λ))
-    dgrad .*= -one(eltype(dgrad))
-    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad = dgrad)
+    discrete || accumulate_cost!(dλ, y, p, t, S)
     return nothing
 end
 
-#=
-# add tstop on all the checkpoints
-function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
-
-    λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
-
-    if S.noiseterm
-        if length(u) == length(du)
-            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
-        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
-               !isnoisemixing(S.sensealg)
-            vecjacobian!(dλ, y, λ, p, t, S)
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
-        else
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ)
-        end
-    else
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
-    end
-
-    dλ .*= -one(eltype(λ))
-    dgrad .*= -one(eltype(dgrad))
-
-    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
-    return nothing
-end
-=#
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
 
     @unpack sol, checkpoint_sol, discrete, prob, f = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, W = W)
+    vecjacobian!(dλ, y, λ, p, t, S, W = W)
 
     dλ .*= -one(eltype(λ))
-    dgrad .*= -one(eltype(dgrad))
 
-    discrete || accumulate_cost!(dλ, y, p, t, S, dgrad)
+    discrete || accumulate_cost!(dλ, y, p, t, S)
     return nothing
 end
-
 
 function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
 
@@ -182,7 +162,6 @@ end
 
 function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
-    idx = length(y)
     if update
         if checkpoint_sol === nothing
             if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -222,9 +201,41 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                     prob′ = remake(prob, tspan = intervals[cursor′], u0 = y,
                         noise = forwardnoise)
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
-                    cpsol′ = solve(prob′, sol.alg, save_noise = false; dt = dt,
-                        tstops = _sol.t[idx1:idx2], checkpoint_sol.tols...)
+                    #cpsol′ = solve(prob′, sol.alg, save_noise = false; dt = dt,
+                    #    tstops = _sol.t[idx1:idx2], checkpoint_sol.tols...)
+                    cpsol′ = solve(prob′, sol.alg, save_noise = false; dense=true, dt = dt,
+                            checkpoint_sol.tols...)
                 else
+                    #=
+                    if checkpoint_sol.tstops === nothing
+                        prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                        #cpsol′ = solve(prob′, sol.alg;
+                        #    dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                        #    checkpoint_sol.tols...)
+                        cpsol′ = solve(prob′, sol.alg; dense=true,
+                            checkpoint_sol.tols...)
+                    else
+                        if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                            # callback might have changed p
+                            _p = Gaussreset_p(prob.kwargs[:callback], interval)
+                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
+                            #cpsol′ = solve(prob′, sol.alg;
+                            #    dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            #    tstops = checkpoint_sol.tstops,
+                            #    checkpoint_sol.tols...)
+                            cpsol′ = solve(prob′, sol.alg; dense=true,
+                                        checkpoint_sol.tols...)
+                        else
+                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                            #cpsol′ = solve(prob′, sol.alg;
+                            #    dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            #    tstops = checkpoint_sol.tstops,
+                            #    checkpoint_sol.tols...)
+                            cpsol′ = solve(prob′, sol.alg; dense=true,
+                                checkpoint_sol.tols...)
+                        end
+                    end
+                    =#
                     if checkpoint_sol.tstops === nothing
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(prob′, sol.alg;
@@ -233,7 +244,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                     else
                         if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                             # callback might have changed p
-                            _p = Gaussreset_p(prob.kwargs[:callback], interval)
+                            _p = reset_p(prob.kwargs[:callback], interval)
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(prob′, sol.alg;
                                 dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
@@ -254,13 +265,9 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
             checkpoint_sol.cpsol(y, t, continuity = :right)
         end
     end
-    λ = @view u[1:idx]
-    grad = @view u[(idx + 1):end]
-    if length(u) == length(du)
-        dλ = @view du[1:idx]
-        dgrad = @view du[(idx + 1):end]
-    end
-    λ, grad, y, dλ, dgrad, nothing
+    λ = u
+    dλ = du
+    λ, nothing, y, dλ, nothing, nothing
 end
 
 function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
@@ -344,6 +351,7 @@ end
         tstops = nothing
     end
 
+
     if ArrayInterface.ismutable(u0)
         len = length(u0)
         λ = similar(u0, len)
@@ -399,6 +407,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
     @unpack f, p, u0, tspan = sol.prob
+
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
@@ -436,7 +445,7 @@ end
     numstates = length(u0)
     numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
 
-    len = numstates + numparams
+    len = numstates
 
     λ = one(eltype(u0)) .* similar(p, len)
     λ .= false
@@ -505,8 +514,9 @@ end
         noise_matrix = similar(z0, length(z0), m)
         noise_matrix .= false
     end
+
     return SDEProblem(sdefun, sense_diffusion, z0, tspan, p,
-        callback = cb,
+        #callback = cb,
         noise = backwardnoise,
         noise_rate_prototype = noise_matrix), cb, nothing
 end
@@ -823,6 +833,24 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     return out
 end
 
+# for checkpointing
+#=
+function (S::GaussIntegrand)(out, t, λ, sol)
+    @unpack y, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg = S
+    if ArrayInterface.ismutable(y)
+        sol(y, t)
+    else
+        y = sol(t)
+    end
+    vec_pjac!(out, λ, y, t, S)
+    if S.dgdp !== nothing
+        S.dgdp(dgdp_cache, y, p, t)
+        out .+= dgdp_cache
+    end
+    out'
+end
+=#
+
 function (S::GaussIntegrand)(out, t, λ)
     @unpack y, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
     if ArrayInterface.ismutable(y)
@@ -854,18 +882,14 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     corfunc_analytical = false,
     callback = CallbackSet(),
     kwargs...)
+
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
-<<<<<<< HEAD
     integrand_values = IntegrandValuesSum(DiffEqCallbacks.allocate_zeros(sol.prob.p))
     cb = IntegratingSumCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
-
-=======
-    integrand_values = IntegrandValues(Float64, Vector{Float64})
-    cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
->>>>>>> 3d04a21c (added test for GaussAdjoint SDEs, test fails)
+
     if sol.prob isa ODEProblem
         adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,

@@ -75,6 +75,7 @@ p2 = [1.01, 0.87]
     @show res_sde_u02, res_sde_p2
     
     
+    
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = tend / 1e2, adaptive = false,
@@ -85,7 +86,6 @@ p2 = [1.01, 0.87]
 
     @show res_sde_u02, res_sde_p2
     
-    #=
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         abstol = 1e-14,
@@ -95,10 +95,11 @@ p2 = [1.01, 0.87]
 
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
-    =#
-
+    
+    @show res_sde_u0, res_sde_p
     @show res_sde_u02, res_sde_p2
-
+    
+    
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
@@ -144,6 +145,7 @@ p2 = [1.01, 0.87]
     @test isapprox(true_grads[1], res_sde_u0, rtol = 1e-4)
     @test isapprox(true_grads[2], res_sde_p2', atol = 1e-4)
     @test isapprox(true_grads[1], res_sde_u02, rtol = 1e-4)
+    
 end
 
 @testset "SDE oop scalar noise tests" begin
