@@ -86,6 +86,13 @@ function ODEForwardSensitivityFunction(f, analytic, tgrad, original_jac, jac, ja
     return sensefun
 end
 
+function Base.getproperty(f::ODEForwardSensitivityFunction, name::Symbol)
+    name == :observed && return f.f.observed
+    return getfield(f, name)
+end
+Base.propertynames(f::ODEForwardSensitivityFunction) = (:observed, fieldnames(typeof(f)))
+SciMLBase.has_observed(f::ODEForwardSensitivityFunction) = SciMLBase.has_observed(f.f)
+
 function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]

@@ -254,3 +254,9 @@ prob = ODEForwardSensitivityProblem(f,
 @assert jac_call_count == 0
 solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 @test jac_call_count > 0
+
+# Observed delegation
+f = prob.f
+@assert f isa ODEForwardSensitivityFunction
+@test hasproperty(f, :observed)
+@test f.observed == SciMLBase.DEFAULT_OBSERVED
