@@ -289,13 +289,17 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
             end
         end
 
-        update_p = copy_to_integrator!(cb, y, integrator.p, integrator.t, indx, pos_neg)
-        # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+        update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)
+
         if sensealg isa BacksolveAdjoint
-            _size = pos_neg ? size(cb.affect!.uleft[indx]) :
-                    size(cb.affect_neg!.uleft[indx])
-            y = reshape(y, _size)
-            dy = reshape(dy, _size)
+            # reshape u and du (y and dy) to match forward pass (e.g., for matrices as initial conditions). Only needed for BacksolveAdjoint
+            _y = S.y
+            if eltype(y) <: ForwardDiff.Dual # handle implicit solvers
+                copyto!(vec(_y), ForwardDiff.value.(y))
+            else
+                copyto!(vec(_y), y)
+            end
+            y = _y
         end
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
@@ -322,6 +326,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
                 grad .= dgrad
             end
         end
+
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
@@ -514,15 +519,20 @@ function get_event_idx(cb::VectorContinuousCallback, indx, bool)
     end
 end
 
-function copy_to_integrator!(cb::DiscreteCallback, y, p, t, indx, bool)
+function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
+    # For BacksolveAdjoint, y is a view to the integrator state;
+    # for the other methods, it's the S.y cache
     copyto!(y, cb.affect!.uleft[indx])
     update_p = (p != cb.affect!.pleft[indx])
     update_p && copyto!(p, cb.affect!.pleft[indx])
     update_p
 end
 
-function copy_to_integrator!(cb::Union{ContinuousCallback, VectorContinuousCallback}, y, p,
-    t, indx, bool)
+function copy_to_integrator!(cb::Union{ContinuousCallback, VectorContinuousCallback},
+    y,
+    p,
+    indx,
+    bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
         update_p = (p != cb.affect!.pleft[indx])
