@@ -19,6 +19,7 @@ using SparseDiffTools
 using SciMLOperators
 using BandedMatrices
 using SparseArrays
+using Functors
 import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache

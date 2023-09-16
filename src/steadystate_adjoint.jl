@@ -1,5 +1,6 @@
-struct SteadyStateAdjointSensitivityFunction{C<:AdjointDiffCache, Alg<:SteadyStateAdjoint,
-    uType, SType, fType<:ODEFunction, CV, λType, VJPType, LS,} <: SensitivityFunction
+struct SteadyStateAdjointSensitivityFunction{C <: AdjointDiffCache,
+    Alg <: SteadyStateAdjoint,
+    uType, SType, fType <: ODEFunction, CV, λType, VJPType, LS} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     y::uType
@@ -13,6 +14,16 @@ end
 
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjointSensitivityFunction
 
+allocate_vjp(λ, x::Tuple) = allocate_vjp.((λ,), x)
+allocate_vjp(λ, x::NamedTuple{F}) where {F} = NamedTuple{F}(allocate_vjp(λ, values(x)))
+allocate_vjp(λ, x::AbstractArray) = similar(λ, size(x))
+allocate_vjp(λ, x) = fmap(x -> similar(λ, size(x)), x)
+
+neg!(x::AbstractArray) = x .*= -1
+neg!(x::Tuple) = neg!.(x)
+neg!(x::NamedTuple{F}) where {F} = NamedTuple{F}(neg!(values(x)))
+neg!(x) = fmap(neg!, x)
+
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
     colorvec, needs_jac, jac_prototype)
     @unpack p, u0 = sol.prob
@@ -23,7 +34,7 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
     λ = zero(y)
     # Override the choice of the user if we feel that it is not a fast enough choice.
     linsolve = needs_jac ? nothing : sensealg.linsolve
-    vjp = similar(λ, length(p))
+    vjp = allocate_vjp(λ, p)
 
     return SteadyStateAdjointSensitivityFunction(diffcache, sensealg, y, sol, f, colorvec,
         λ, vjp, linsolve)
@@ -97,19 +108,21 @@ end
 
     if !needs_jac
         if DiffEqBase.isinplace(sol.prob)
-            __f_iip(fx, x) = f(reshape(fx, size(diffcache.f_cache)), reshape(x, size(y)), p,
-                nothing)
+            function __f_iip(fx, x)
+                f(reshape(fx, size(diffcache.f_cache)), reshape(x, size(y)), p,
+                    nothing)
+            end
             operator = VecJac(__f_iip, vec(diffcache.f_cache), vec(y);
-                autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+                autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         else
             __f_oop(x) = vec(f(reshape(x, size(y)), p, nothing))
             operator = VecJac(__f_oop, vec(y);
-                autodiff=get_autodiff_from_vjp(sensealg.autojacvec))
+                autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         end
 
         if linsolve === nothing && sensealg.uniform_blocked_diagonal_jacobian
             @warn "linsolve not specified, and Jacobian is specified to be uniform block diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
-            linsolve = SimpleGMRES(; blocksize, restart=false)
+            linsolve = SimpleGMRES(; blocksize, restart = false)
         end
 
         A_ = operator
@@ -117,16 +130,16 @@ end
         A_ = diffcache.J'
     end
 
-    linear_problem = LinearProblem(A_, vec(dgdu_val'); u0=vec(λ))
-    sol = solve(linear_problem, linsolve; alias_A=true) # u is vec(λ)
+    linear_problem = LinearProblem(A_, vec(dgdu_val'); u0 = vec(λ))
+    sol = solve(linear_problem, linsolve; alias_A = true) # u is vec(λ)
 
     try
-        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad=vjp, dy=nothing)
+        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to nonlinear solve adjoint + numerical vjp"
-            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad=vjp,
-                dy=nothing)
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
+                dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
             throw(e)
@@ -134,6 +147,8 @@ end
     end
 
     if g !== nothing || dgdp !== nothing
+        # This code-path doesn't support Arbitrary Parameter Structures yet!
+        @assert vjp isa AbstractArray
         # compute del g/del p
         if dgdp !== nothing
             dgdp(dgdp_val, y, p, nothing, nothing)
@@ -144,7 +159,6 @@ end
         dgdp_val .-= vjp
         return dgdp_val
     else
-        vjp .*= -1
-        return vjp
+        return neg!(vjp)
     end
 end

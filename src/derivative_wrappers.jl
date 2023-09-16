@@ -534,6 +534,12 @@ function Base.showerror(io::IO, e::ZygoteVJPNothingError)
     print(io, ZYGOTEVJP_NOTHING_MESSAGE)
 end
 
+recursive_copyto!(y::AbstractArray, x::AbstractArray) = copyto!(y, x)
+recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
+recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
+    map(recursive_copyto!, values(y), values(x))
+recursive_copyto!(y, x) = fmap(recursive_copyto!, y, x)
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
@@ -579,20 +585,20 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         end
 
         # Grab values from `_dy` before `back` in case mutated
-        dy !== nothing && (dy[:] .= vec(_dy))
+        dy !== nothing && recursive_copyto!(dy, _dy)
 
         tmp1, tmp2 = back(λ)
         if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
             throw(ZygoteVJPNothingError())
         elseif tmp1 !== nothing
-            dλ !== nothing && (dλ[:] .= vec(tmp1))
+            dλ !== nothing && recursive_copyto!(dλ, tmp1)
         end
 
         if dgrad !== nothing
             if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
                 throw(ZygoteVJPNothingError())
             elseif tmp2 !== nothing
-                !isempty(dgrad) && (dgrad[:] .= vec(tmp2))
+                !isempty(dgrad) && recursive_copyto!(dgrad, tmp2)
             end
         end
     end
