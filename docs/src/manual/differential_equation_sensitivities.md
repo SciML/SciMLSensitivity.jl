@@ -13,6 +13,7 @@ system are:
 
   - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
   - [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
+  - [ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl)
 
 ## Using and Controlling Sensitivity Algorithms within AD
 
