@@ -4,6 +4,7 @@
 # Based on problem information!
 
 const have_not_warned_vjp = Ref(true)
+const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 function inplace_vjp(prob, u0, p, verbose)
     du = copy(u0)
@@ -20,8 +21,8 @@ function inplace_vjp(prob, u0, p, verbose)
         true
     catch e
         if verbose || have_not_warned_vjp[]
-            @warn "EnzymeVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-            showerror(stderr, e)
+            @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+            STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
             println()
             have_not_warned_vjp[] = false
         end
@@ -61,8 +62,8 @@ function inplace_vjp(prob, u0, p, verbose)
         ReverseDiffVJP(compile)
     catch e
         if verbose
-            @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-            showerror(stderr, e)
+            @warn "Potential performance improvement omitted. ReverseDiffVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+            STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
             println()
             have_not_warned_vjp[] = false
         end
@@ -95,8 +96,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             ZygoteVJP()
         catch e
             if verbose
-                @warn "ZygoteVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                showerror(stderr, e)
+                @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+                STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                 println()
             end
             false
@@ -112,8 +113,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 ReverseDiffVJP()
             catch e
                 if verbose
-                    @warn "ReverseDiffVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                    showerror(stderr, e)
+                    @warn "Potential performance improvement omitted. ReverseDiffVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+                    STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                     println()
                 end
                 false
@@ -130,8 +131,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 TrackerVJP()
             catch e
                 if verbose
-                    @warn "TrackerVJP tried and failed in the automated AD choice algorithm with the following error. (To turn off this printing, add `verbose = false` to the `solve` call)\n"
-                    showerror(stderr, e)
+                    @warn "Potential performance improvement omitted. TrackerVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+                    STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                     println()
                 end
                 false
