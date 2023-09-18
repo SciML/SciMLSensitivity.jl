@@ -684,8 +684,8 @@ function Gaussreset_p(CBS, interval)
 
     return p
 end
-
-function GaussIntegrand(sol, sensealg, dgdp = nothing)
+    
+function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
     @unpack f, p, tspan, u0 = prob
     numparams = length(p)
@@ -755,7 +755,34 @@ function GaussIntegrand(sol, sensealg, dgdp = nothing)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
-    GaussIntegrand(sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
+
+    cpsol = sol
+    checkpointing = ischeckpointing(sensealg, sol)
+    if checkpointing && typeof(sol.prob) <: Union{SDEProblem, RODEProblem}
+        intervals = map(tuple, @view(checkpoints[1:(end - 1)]), @view(checkpoints[2:end]))
+        interval_end = intervals[end][end]
+        tspan[1] > interval_end && push!(intervals, (interval_end, tspan[1]))
+        cursor = lastindex(intervals)
+        interval = intervals[cursor]
+        _sol = deepcopy(sol)
+        idx1 = searchsortedfirst(_sol.W.t, interval[1] - 1000eps(interval[1]))
+        if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+            sol.W.save_everystep = false
+            _sol.W.save_everystep = false
+            forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx = idx1)
+        elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+            forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx1:end],
+                _sol.W.W[idx1:end])
+        else
+            error("NoiseProcess type not implemented.")
+        end
+        dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
+        cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
+                noise = forwardnoise),
+            sol.alg, save_noise = false; dt = dt, dense=true)
+    end
+
+    GaussIntegrand(cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end
 
@@ -839,7 +866,11 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     callback = CallbackSet(),
     kwargs...)
 
-    integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
+    #gi_sol = sol
+    #if ischeckpointing(sensealg, sol)
+    #    gi_sol = nothing
+    #end
+    integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValues(Float64, Vector{Float64})
     cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     rcb = nothing
