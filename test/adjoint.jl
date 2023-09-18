@@ -146,11 +146,11 @@ _, easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
-_, easy_res145 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+_, easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(checkpointing = true),
-    checkpoints = sol.t[1:10:end])
+    checkpoints = sol.t[1:500:end])
 _, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
