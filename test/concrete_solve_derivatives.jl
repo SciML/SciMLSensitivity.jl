@@ -174,7 +174,7 @@ du012, dp12 = Zygote.gradient((u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p
 du013, dp13 = Zygote.gradient((u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
     abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1, save_idxs = 1:1,
-    sensealg = GuassAdjoint())),
+    sensealg = GaussAdjoint())),
     u0, p)
 
 @test ū02≈du05 rtol=1e-12
