@@ -221,6 +221,7 @@ end
 function vecjacobian!(dλ, y, λ, p, t, S::TS;
     dgrad = nothing, dy = nothing,
     W = nothing) where {TS <: SensitivityFunction}
+    #println("vecjacobian! is called")
     _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
     return
 end
@@ -233,6 +234,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
     W) where {TS <: SensitivityFunction}
+    println("_vecjacobian! is called")
     @unpack sensealg, f = S
     prob = getprob(S)
 
@@ -362,6 +364,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
     W) where {TS <: SensitivityFunction}
+    println("_vecjacobian! is called 2")
     @unpack sensealg = S
     f = unwrapped_f(S.f)
 
@@ -419,6 +422,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
     W) where {TS <: SensitivityFunction}
+    println("_vecjacobian! is called 3")
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -530,12 +534,20 @@ const ZYGOTEVJP_NOTHING_MESSAGE = """
 
 struct ZygoteVJPNothingError <: Exception end
 
+
+recursive_copyto!(y::AbstractArray, x::AbstractArray) = copyto!(y, x)
+recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
+recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
+    map(recursive_copyto!, values(y), values(x))
+#recursive_copyto!(y, x) = fmap(recursive_copyto!, y, x)
+
 function Base.showerror(io::IO, e::ZygoteVJPNothingError)
     print(io, ZYGOTEVJP_NOTHING_MESSAGE)
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     W) where {TS <: SensitivityFunction}
+    println("_vecjacobian! is called 4")
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -637,13 +649,14 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
     W) where {TS <: SensitivityFunction}
+    println("_vecjacobian! is called 5")
     @unpack sensealg = S
     f = unwrapped_f(S.f)
 
     prob = getprob(S)
 
     _tmp1, tmp2, _tmp3, _tmp4 = S.diffcache.paramjac_config
-
+    println(tmp2)
     if _tmp1 isa DiffCache
         tmp1 = get_tmp(_tmp1, y)
         tmp3 = get_tmp(_tmp3, dλ)
@@ -670,6 +683,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         Enzyme.Const(p)
     end
+    println(tmp2)
     #end
 
     #if dy !== nothing
@@ -694,8 +708,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
-
         dλ !== nothing && (dλ .= tmp1)
+        println(tmp2)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
             (dgrad[:] .= vec(tmp2))
         dy !== nothing && (dy .= tmp3)
@@ -727,6 +741,7 @@ end
 
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
     dgrad = nothing, dλ = nothing, dy = nothing)
+    println("jacNoise! is called")
     _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)
     return
 end

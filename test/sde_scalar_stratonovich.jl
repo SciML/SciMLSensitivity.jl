@@ -8,8 +8,10 @@ seed = 100
 Random.seed!(seed)
 
 tstart = 0.0
-tend = 0.1
-dt = 0.005
+#tend = 0.1
+#dt = 0.005
+tend = 0.0001
+dt = 0.00005
 trange = (tstart, tend)
 t = tstart:dt:tend
 tarray = collect(t)
@@ -23,6 +25,71 @@ function dg!(out, u, p, t, i)
 end
 
 p2 = [1.01, 0.87]
+
+
+
+using DiffEqNoiseProcess
+
+#dtscalar = 1e-7
+dtscalar = tend / 1e3
+
+f!(du, u, p, t) = (du .= p[1] * u)
+σ!(du, u, p, t) = (du .= p[2] * u)
+
+@info "scalar SDE"
+
+Random.seed!(seed)
+W = WienerProcess(0.0, 0.0, 0.0)
+u0 = rand(2)
+
+linear_analytic_strat(u0, p, t, W) = @.(u0*exp(p[1] * t + p[2] * W))
+
+prob = SDEProblem(SDEFunction(f!, σ!, analytic = linear_analytic_strat), σ!, u0, trange,
+    p2,
+    noise = W)
+sol = solve(prob, EulerHeun(), dt = dtscalar, save_noise = true)
+
+@test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+
+
+res_sde_u0, res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+    dgdu_discrete = dg!,
+    dt = dtscalar, adaptive = false,
+    sensealg = BacksolveAdjoint())
+
+@show res_sde_u0, res_sde_p
+
+res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+    dgdu_discrete = dg!,
+    dt = tend / 1e2, adaptive = false,
+    sensealg = InterpolatingAdjoint())
+
+@test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
+@test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+
+
+
+res_sde_u02, res_sde_p2, int = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+    dgdu_discrete = dg!,
+    dt = dtscalar, adaptive = false,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint())
+
+@test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
+@test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+
+@show res_sde_u0, res_sde_p
+@show res_sde_u02, res_sde_p2
+
+
+
+
+
+
+
+
+
 
 # scalar noise
 @testset "SDE inplace scalar noise tests" begin
