@@ -797,7 +797,6 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     # y is aliased
 
     if !isautojacvec
-        println("not autojacvec")
         if DiffEqBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
@@ -820,7 +819,6 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.reverse_pass!(tape)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
-        println("ZygoteVJP")
         _dy, back = Zygote.pullback(p) do p
             vec(f(y, p, t))
         end
@@ -928,7 +926,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         end
     end
 
-    return adj_sol[end], res, integrand_values
+    return adj_sol[end], res'
 end
 
 recursive_add!(x::AbstractArray, y::AbstractArray) = x .+= y
