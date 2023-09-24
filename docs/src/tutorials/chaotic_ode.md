@@ -21,7 +21,7 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
 ```@example chaosode
-using OrdinaryDiffEq, SciMLSensitivity, Zygote
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, Plots
 
 function lorenz!(du, u, p, t)
     du[1] = 10 * (u[2] - u[1])
@@ -35,9 +35,16 @@ u0 = [1.0, 0.0, 0.0]
 prob = ODEProblem(lorenz!, u0, tspan, p)
 sol = solve(prob, Vern9(), abstol = 1e-14, reltol = 1e-14)
 sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
+pl1 = plot(sol, vars = (1, 2, 3), legend = true,
+  label = "sol",
+  labelfontsize = 20,
+  lw = 2,
+  xlabel = "x", ylabel = "y", zlabel = "z",
+  margin = 4Plots.mm
+)
+plot!(pl1, sol2, vars = (1, 2, 3), label = "sol2", xlims = (-25, 30), ylims = (-30, 30), zlims = (5, 49)
+)
 ```
-
-![Chaotic behavior of the Lorenz system](../assets/chaos_eps_pert.png)
 
 More formally, such chaotic behavior can be analyzed using tools from
 [uncertainty quantification](https://docs.sciml.ai/DiffEqCallbacks/stable/uncertainty_quantification/).
