@@ -40,7 +40,7 @@ sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
 ![Chaotic behavior of the Lorenz system](../assets/chaos_eps_pert.png)
 
 More formally, such chaotic behavior can be analyzed using tools from
-[uncertainty quantification](@ref uncertainty_quantification).
+[uncertainty quantification](https://docs.sciml.ai/DiffEqCallbacks/stable/uncertainty_quantification/).
 This effect of diverging trajectories is known as the butterfly effect, and can be
 formulated as "most (small) perturbations on initial conditions or parameters lead
 to new trajectories diverging exponentially fast from the original trajectory".
