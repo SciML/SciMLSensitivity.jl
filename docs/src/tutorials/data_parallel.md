@@ -57,7 +57,7 @@ solve(prob, Tsit5())
 
 This method of parallelism is optimal if all the operations are
 linear algebra operations, such as a neural ODE. Thus this method of
-parallelism is demonstrated in the [MNIST tutorial](@ref mnist).
+parallelism is demonstrated in the [MNIST tutorial](https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/).
 
 However, this method of parallelism has many limitations. First of all,
 the ODE function is required to be written in a way that is independent
