@@ -163,10 +163,10 @@ Many training techniques are supported by this package, including:
   - O(1) memory backprop of ODEs via BacksolveAdjoint, and Virtual Brownian Trees for O(1) backprop of SDEs
   - [Continuous adjoints for integral loss functions](@ref continuous_loss)
   - Probabilistic programming and variational inference on ODEs/SDEs/DAEs/DDEs/hybrid
-    equations etc. is provided by integration with [Turing.jl](https://turing.ml/stable/docs/using-turing/)
+    equations etc. is provided by integration with [Turing.jl](https://turinglang.org/v0.29/docs/using-turing/get-started)
     and [Gen.jl](https://github.com/probcomp/Gen.jl). Reproduce
     [variational loss functions](https://arxiv.org/abs/2001.01328) by plugging
-    [composable libraries together](https://turing.ml/stable/tutorials/09-variational-inference/).
+    [composable libraries together](https://turinglang.org/v0.29/tutorials/09-variational-inference/).
 
 all while mixing forward mode and reverse mode approaches as appropriate for the
 most speed. For more details on the adjoint sensitivity analysis methods for
@@ -279,32 +279,19 @@ Pkg.status(; mode = PKGMODE_MANIFEST) # hide
 </details>
 ```
 
-```@raw html
-You can also download the 
-<a href="
-```
-
 ```@eval
 using TOML
+using Markdown
 version = TOML.parse(read("../../Project.toml", String))["version"]
 name = TOML.parse(read("../../Project.toml", String))["name"]
-link = "https://github.com/SciML/" * name * ".jl/tree/gh-pages/v" * version *
-       "/assets/Manifest.toml"
-```
-
-```@raw html
-">manifest</a> file and the
-<a href="
-```
-
-```@eval
-using TOML
-version = TOML.parse(read("../../Project.toml", String))["version"]
-name = TOML.parse(read("../../Project.toml", String))["name"]
-link = "https://github.com/SciML/" * name * ".jl/tree/gh-pages/v" * version *
-       "/assets/Project.toml"
-```
-
-```@raw html
-">project</a> file.
+link_manifest = "https://github.com/SciML/" * name * ".jl/tree/gh-pages/v" * version *
+                "/assets/Manifest.toml"
+link_project = "https://github.com/SciML/" * name * ".jl/tree/gh-pages/v" * version *
+               "/assets/Project.toml"
+Markdown.parse("""You can also download the
+[manifest]($link_manifest)
+file and the
+[project]($link_project)
+file.
+""")
 ```

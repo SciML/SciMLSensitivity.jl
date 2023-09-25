@@ -113,7 +113,7 @@ approximately 4 minutes.
 An inference method which can often be much more efficient is the quasi-likelihood approach.
 This approach matches the random likelihood of the SDE output with the random sampling of a Bayesian
 inference problem to more efficiently directly estimate the posterior distribution. For more information,
-please see [the Turing.jl Bayesian Differential Equations tutorial](https://github.com/TuringLang/TuringTutorials/blob/master/10_diffeq.ipynb).
+please see [the Turing.jl Bayesian Differential Equations tutorial](https://turinglang.org/v0.29/tutorials/10-bayesian-differential-equations/).
 
 ## Example 3: Controlling SDEs to an objective
 

@@ -1,6 +1,6 @@
 # Enforcing Physical Constraints via Universal Differential-Algebraic Equations
 
-As shown in the [stiff ODE tutorial](https://docs.sciml.ai/SciMLTutorialsOutput/stable/advanced/02-advanced_ODE_solving/#Handling-Mass-Matrices),
+As shown in [DiffEqDocs](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/dae_example/),
 differential-algebraic equations (DAEs) can be used to impose physical
 constraints. One way to define a DAE is through an ODE with a singular mass
 matrix. For example, if we make `Mu' = f(u)` where the last row of `M` is all
