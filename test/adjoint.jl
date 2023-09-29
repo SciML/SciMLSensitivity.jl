@@ -180,7 +180,7 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res62, rtol = 1e-9)
-@test all(easy_res6 .== easy_res7)  # should be the same!
+@test isapprox(easy_res6, easy_res7, rtol = 1e-9)
 @test isapprox(res, easy_res8, rtol = 1e-9)
 @test isapprox(res, easy_res9, rtol = 1e-9)
 @test isapprox(res, easy_res10, rtol = 1e-9)

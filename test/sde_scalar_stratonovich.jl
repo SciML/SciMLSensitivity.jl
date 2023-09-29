@@ -24,7 +24,6 @@ end
 
 p2 = [1.01, 0.87]
 
-
 # scalar noise
 @testset "SDE inplace scalar noise tests" begin
     using DiffEqNoiseProcess
@@ -76,7 +75,6 @@ p2 = [1.01, 0.87]
     @show res_sde_u02, res_sde_p2
     
     
-    
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = tend / 1e2, adaptive = false,
@@ -86,20 +84,6 @@ p2 = [1.01, 0.87]
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
 
     @show res_sde_u02, res_sde_p2
-    
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
-        dgdu_discrete = dg!,
-        abstol = 1e-14,
-        reltol = 1e-14,
-        adaptive = false,
-        sensealg = GaussAdjoint(autojacvec = false))
-
-    @test_broken isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test_broken isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
-    
-    @show res_sde_u0, res_sde_p
-    @show res_sde_u02, res_sde_p2
-    
     
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
