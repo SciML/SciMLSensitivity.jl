@@ -1,7 +1,7 @@
 name = "SciMLSensitivity"
 uuid = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
 authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <mayingbo5@gmail.com>"]
-version = "7.40.0"
+version = "7.41.0"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
@@ -54,7 +54,7 @@ ArrayInterface = "7"
 BandedMatrices = "0.17"
 Cassette = "0.3.6"
 ChainRulesCore = "0.10.7, 1"
-DiffEqBase = "6.93"
+DiffEqBase = "6.93 - 6.130.3"
 DiffEqCallbacks = "2.29"
 DiffEqNoiseProcess = "4.1.4, 5.0"
 DiffRules = "1"
