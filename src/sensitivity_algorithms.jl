@@ -1103,11 +1103,12 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM <: AbstractSSAdjointLinsolveMethod} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+struct SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM <: AbstractSSAdjointLinsolveMethod, LK} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_method::LM
     uniform_blocked_diagonal_jacobian::Bool
+    linsolve_kwargs::LK
 end
 
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
@@ -1115,10 +1116,11 @@ TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
     diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
     concrete_jac = false, uniform_blocked_diagonal_jacobian::Bool = false,
-    linsolve_method = SSAdjointHeuristicLinsolve(50))
+    linsolve_method = SSAdjointHeuristicLinsolve(50), linsolve_kwargs = (;))
     return SteadyStateAdjoint{_unwrap_val(concrete_jac), chunk_size, autodiff, diff_type,
-        typeof(autojacvec), typeof(linsolve), typeof(linsolve_method)}(autojacvec, linsolve,
-        linsolve_method, uniform_blocked_diagonal_jacobian)
+        typeof(autojacvec), typeof(linsolve), typeof(linsolve_method),
+        typeof(linsolve_kwargs)}(autojacvec, linsolve, linsolve_method,
+        uniform_blocked_diagonal_jacobian, linsolve_kwargs)
 end
 
 function needs_concrete_jac(S::SteadyStateAdjoint{CJ}, u0) where {CJ}
@@ -1140,11 +1142,11 @@ function jacobian_adtype(S::SteadyStateAdjoint{CJ, CS, AD}) where {CJ, CS, AD}
     end
 end
 
-function setvjp(sensealg::SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM},
-    vjp) where {CJ, CS, AD, FDT, VJP, LS, LM}
-    return SteadyStateAdjoint{CJ, CS, AD, FDT, typeof(vjp), LS, LM}(vjp,
+function setvjp(sensealg::SteadyStateAdjoint{CJ, CS, AD, FDT, VJP, LS, LM, LK},
+    vjp) where {CJ, CS, AD, FDT, VJP, LS, LM, LK}
+    return SteadyStateAdjoint{CJ, CS, AD, FDT, typeof(vjp), LS, LM, LK}(vjp,
         sensealg.linsolve, sensealg.linsolve_method,
-        sensealg.uniform_blocked_diagonal_jacobian)
+        sensealg.uniform_blocked_diagonal_jacobian, sensealg.linsolve_kwargs)
 end
 
 needs_concrete_jac(::SteadyStateAdjoint, ::SSAdjointFullJacobianLinsolve, _) = true

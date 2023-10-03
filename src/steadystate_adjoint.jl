@@ -120,9 +120,14 @@ end
                 autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         end
 
-        if linsolve === nothing && sensealg.uniform_blocked_diagonal_jacobian
-            @warn "linsolve not specified, and Jacobian is specified to be uniform block diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
-            linsolve = SimpleGMRES(; blocksize, restart = false)
+        if sensealg.uniform_blocked_diagonal_jacobian
+            if linsolve === nothing
+                @warn "linsolve not specified, and Jacobian is specified to be uniform block diagonal. Using SimpleGMRES with blocksize $blocksize" maxlog=1
+                linsolve = SimpleGMRES(; blocksize)
+            elseif linsolve isa SimpleGMRES && linsolve.blocksize ≤ 0
+                linsolve = SimpleGMRES(; linsolve.restart, blocksize, linsolve.warm_start,
+                    linsolve.memory)
+            end
         end
 
         A_ = operator
@@ -131,7 +136,7 @@ end
     end
 
     linear_problem = LinearProblem(A_, vec(dgdu_val'); u0 = vec(λ))
-    sol = solve(linear_problem, linsolve; alias_A = true) # u is vec(λ)
+    sol = solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
 
     try
         vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)

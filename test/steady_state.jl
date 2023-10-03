@@ -295,11 +295,8 @@ end
         dp1d = Zygote.gradient(p -> sum(solve(prob, DynamicSS(Rodas5()), u0 = u0, p = p)),
             p)
         dp2d = Zygote.gradient(p -> sum((2.0 .-
-                                         solve(prob,
-                DynamicSS(Rodas5()),
-                u0 = u0,
-                p = p)) .^
-                                        2) / 2.0, p)
+                                         solve(prob, DynamicSS(Rodas5()); u0, p)) .^ 2) /
+                                    2.0, p)
 
         @test res1≈dp1[1] rtol=1e-12
         @test res2≈dp2[1] rtol=1e-12
@@ -395,8 +392,8 @@ end
     @test solve3.u≈solve4.u rtol=1e-10
 
     function test_loss(p, prob; alg = NewtonRaphson())
-        _prob = remake(prob, p = p)
-        sol = sum(solve(_prob, alg,
+        _prob = remake(prob; p)
+        sol = sum(solve(_prob, alg;
             sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())))
         return sol
     end
