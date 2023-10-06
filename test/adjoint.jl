@@ -130,11 +130,11 @@ _, easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = QuadratureAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
- _, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+_, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint())
-_, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    _, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false))
@@ -232,7 +232,7 @@ _, easy_res6 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discre
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true),
     checkpoints = soloop_nodense.t[1:5:end])
-@test_broken easy_res62 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
+@test_broken _, easy_res62 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
     dgdu_discrete = dg, abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true,
