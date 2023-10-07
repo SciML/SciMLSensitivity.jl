@@ -53,9 +53,6 @@ end
     end
 
     if GROUP == "All" || GROUP == "Core2"
-        @time @safetestset "hasbranching" begin
-            include("hasbranching.jl")
-        end
         @time @safetestset "Literal Adjoint" begin
             include("literal_adjoint.jl")
         end

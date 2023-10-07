@@ -21,10 +21,8 @@ import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
 import FunctionWrappersWrappers
-
-using Cassette, DiffRules
-using Core: CodeInfo, SlotNumber, SSAValue, ReturnNode, GotoIfNot
 using EllipsisNotation
+using FunctionProperties: hasbranching
 
 using Markdown
 
@@ -41,7 +39,6 @@ import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAl
     AbstractSecondOrderSensitivityAlgorithm,
     AbstractShadowingSensitivityAlgorithm
 
-include("hasbranching.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")
