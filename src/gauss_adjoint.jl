@@ -325,14 +325,14 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     callback = CallbackSet(),
     kwargs...)
     integrand = GaussIntegrand(sol, sensealg, dgdp_continuous)
-    integrand_values = IntegrandValues(Vector{Float64})
-    cb = IntegratingCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
+    integrand_values = IntegrandValuesSum(DiffEqCallbacks.allocate_zeros(sol.prob.p))
+    cb = IntegratingSumCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
     adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false, 
             save_start = false, save_end = true, callback = CallbackSet(cb,cb2), kwargs...)
-    res = compute_dGdp(integrand_values)'
+    res = integrand_values.integrand'
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         iλ = zero(rcb.λ)
@@ -349,14 +349,6 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     end
 
     return adj_sol[end], res
-end
-
-function compute_dGdp(integrand::IntegrandValues)
-    res = zeros(length(integrand.integrand[1]))
-    for (i, j) in enumerate(integrand.integrand)
-        res .+= j
-    end
-    return res
 end
 
 function update_p_integrand(integrand::GaussIntegrand, p)
