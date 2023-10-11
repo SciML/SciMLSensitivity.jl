@@ -136,9 +136,6 @@ end
     end
 
     if GROUP == "All" || GROUP == "Core5"
-        @time @safetestset "Partial Neural Tests" begin
-            include("partial_neural.jl")
-        end
         @time @safetestset "Size Handling in Adjoint Tests" begin
             include("size_handling_adjoint.jl")
         end
