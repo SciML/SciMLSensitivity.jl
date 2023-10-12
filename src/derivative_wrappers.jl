@@ -313,13 +313,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
             if inplace_sensitivity(S)
                 f(dy, y, p, t)
             else
-                dy[:] .= vec(f(y, p, t))
+                recursive_copyto!(dy, vec(f(y, p, t)))
             end
         else
             if inplace_sensitivity(S)
                 f(dy, y, p, t, W)
             else
-                dy[:] .= vec(f(y, p, t, W))
+                recursive_copyto!(dy, vec(f(y, p, t, W)))
             end
         end
     end
@@ -386,11 +386,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         end
 
         # Grab values from `_dy` before `back` in case mutated
-        dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+        dy !== nothing && recursive_copyto!(dy, Tracker.data(_dy))
 
         tmp1, tmp2 = Tracker.data.(back(λ))
-        dλ !== nothing && (dλ[:] .= vec(tmp1))
-        dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+        dλ !== nothing && recursive_copyto!(dλ, tmp1)
+        dgrad !== nothing && recursive_copyto!(dgrad, tmp2)
     else
         if W === nothing
             _dy, back = Tracker.forward(y, p) do u, p
@@ -408,11 +408,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         end
 
         # Grab values from `_dy` before `back` in case mutated
-        dy !== nothing && (dy[:] .= vec(Tracker.data(_dy)))
+        dy !== nothing && recursive_copyto!(dy, Tracker.data(_dy))
 
         tmp1, tmp2 = Tracker.data.(back(λ))
-        dλ !== nothing && (dλ[:] .= vec(tmp1))
-        dgrad !== nothing && (dgrad[:] .= vec(tmp2))
+        dλ !== nothing && recursive_copyto!(dλ, tmp1)
+        dgrad !== nothing && recursive_copyto!(dgrad, tmp2)
     end
     return
 end
@@ -556,15 +556,15 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         end
 
         # Grab values from `_dy` before `back` in case mutated
-        dy !== nothing && (dy[:] .= vec(_dy))
+        dy !== nothing && recursive_copyto!(dy, _dy)
 
         tmp1, tmp2 = back(λ)
-        dλ !== nothing && (dλ[:] .= vec(tmp1))
+        dλ !== nothing && recursive_copyto!(dλ, tmp1)
         if dgrad !== nothing
             if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
                 throw(ZygoteVJPNothingError())
             else
-                !isempty(dgrad) && (dgrad[:] .= vec(tmp2))
+                !isempty(dgrad) && recursive_copyto!(dgrad, tmp2)
             end
         end
     else
@@ -579,20 +579,20 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         end
 
         # Grab values from `_dy` before `back` in case mutated
-        dy !== nothing && (dy[:] .= vec(_dy))
+        dy !== nothing && recursive_copyto!(dy, _dy)
 
         tmp1, tmp2 = back(λ)
         if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
             throw(ZygoteVJPNothingError())
         elseif tmp1 !== nothing
-            dλ !== nothing && (dλ[:] .= vec(tmp1))
+            dλ !== nothing && recursive_copyto!(dλ, tmp1)
         end
 
         if dgrad !== nothing
             if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
                 throw(ZygoteVJPNothingError())
             elseif tmp2 !== nothing
-                !isempty(dgrad) && (dgrad[:] .= vec(tmp2))
+                !isempty(dgrad) && recursive_copyto!(dgrad, tmp2)
             end
         end
     end
@@ -616,7 +616,7 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     end
 
     # Grab values from `_dy` before `back` in case mutated
-    dy !== nothing && (dy[:] .= vec(_dy))
+    dy !== nothing && recursive_copyto!(dy, _dy)
 
     tmp1, tmp2 = back(λ)
     if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
@@ -629,7 +629,7 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
         if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
             throw(ZygoteVJPNothingError())
         elseif tmp2 !== nothing
-            (dgrad[:] .= vec(tmp2))
+            recursive_copyto!(dgrad, tmp2)
         end
     end
     return dy, dλ, dgrad
@@ -697,7 +697,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
         dλ !== nothing && (dλ .= tmp1)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
-            (dgrad[:] .= vec(tmp2))
+            recursive_copyto!(dgrad, tmp2)
         dy !== nothing && (dy .= tmp3)
     else
         if W === nothing
@@ -715,11 +715,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
             else
                 f(y, p, t, W)
             end
-            dy[:] .= vec(out_)
+            recursive_copyto!(dy, out_)
         end
         dλ !== nothing && (dλ .= tmp1)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
-            (dgrad[:] .= vec(tmp2))
+            recursive_copyto!(dgrad, tmp2)
         dy !== nothing && (dy .= tmp3)
     end
     return
@@ -755,7 +755,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
 
         if StochasticDiffEq.is_diagonal_noise(prob)
             pJt = transpose(λ) .* transpose(pJ)
-            dgrad[:] .= vec(pJt)
+            recursive_copyto!(dgrad, pJt)
         else
             m = size(prob.noise_rate_prototype)[2]
             for i in 1:m
@@ -808,7 +808,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
 
         if StochasticDiffEq.is_diagonal_noise(prob)
             Jt = transpose(λ) .* transpose(J)
-            dλ[:] .= vec(Jt)
+            recursive_copyto!(dλ, Jt)
         else
             for i in 1:m
                 tmp = λ' * J[((i - 1) * m + 1):(i * m), :]

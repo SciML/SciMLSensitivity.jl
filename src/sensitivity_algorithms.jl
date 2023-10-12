@@ -304,7 +304,7 @@ InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
     differentiation with special seeding. The total set of choices are:
 
       + `nothing`: uses an automatic algorithm to automatically choose the vjp.
-        This is the default and recommended for most users.                                                                                                                                        
+        This is the default and recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl
       + `true`: the Jacobian is constructed via ForwardDiff.jl
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
@@ -1067,6 +1067,7 @@ SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
   - `linsolve`: the linear solver used in the adjoint solve. Defaults to `nothing`,
     which uses a polyalgorithm to choose an efficient
     algorithm automatically.
+  - `linsolve_kwargs`: keyword arguments to be passed to the linear solver.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
@@ -1076,29 +1077,25 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <:
+struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
+    linsolve_kwargs::LK
 end
 
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing, linsolve = nothing)
-    SteadyStateAdjoint{
-        chunk_size,
-        autodiff,
-        diff_type,
-        typeof(autojacvec),
-        typeof(linsolve),
-    }(autojacvec,
-        linsolve)
+    diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
+    linsolve_kwargs=(;))
+    return SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs)}(autojacvec, linsolve, linsolve_kwargs)
 end
-function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS},
-    vjp) where {CS, AD, FDT, VJP, LS}
-    SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS}(vjp, sensealg.linsolve)
+function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
+    vjp) where {CS, AD, FDT, VJP, LS, LK}
+    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs)
 end
 
 abstract type VJPChoice end
@@ -1314,7 +1311,9 @@ struct ForwardDiffOverAdjoint{A} <:
     adjalg::A
 end
 
-get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile} = AutoReverseDiff(; compile = compile)
+get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile} = AutoReverseDiff(; compile)
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
+get_autodiff_from_vjp(::Nothing) = AutoZygote()
+get_autodiff_from_vjp(b::Bool) = ifelse(b, AutoForwardDiff(), AutoFiniteDiff())
