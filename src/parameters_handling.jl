@@ -27,7 +27,7 @@ recursive_neg!(x) = fmap(recursive_neg!, x)
 
 `y .-= x` for generic `x` and `y`. This is used to handle non-array parameters!
 """
-recursive_sub!(y::AbstractArray, x::AbstractArray) = (y .-= x)
+recursive_sub!(y::AbstractArray, x::AbstractArray) = axpy!(-1, x, y)
 recursive_sub!(y::Tuple, x::Tuple) = map(recursive_sub!, y, x)
 recursive_sub!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
     NamedTuple{F}(map(recursive_sub!, values(y), values(x)))
