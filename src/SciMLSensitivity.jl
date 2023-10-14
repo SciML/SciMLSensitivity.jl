@@ -17,6 +17,7 @@ using StaticArraysCore
 using ADTypes
 using SparseDiffTools
 using SciMLOperators
+using Functors
 import TruncatedStacktraces
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
@@ -32,13 +33,14 @@ import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, Pr
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
-import SciMLBase: unwrapped_f
+import SciMLBase: unwrapped_f, _unwrap_val
 
 import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAlgorithm,
     AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,
     AbstractSecondOrderSensitivityAlgorithm,
     AbstractShadowingSensitivityAlgorithm
 
+include("parameters_handling.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")

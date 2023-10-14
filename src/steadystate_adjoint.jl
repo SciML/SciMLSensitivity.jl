@@ -1,14 +1,6 @@
-struct SteadyStateAdjointSensitivityFunction{
-    C <: AdjointDiffCache,
-    Alg <: SteadyStateAdjoint,
-    uType,
-    SType,
-    fType <: ODEFunction,
-    CV,
-    λType,
-    VJPType,
-    LS,
-} <: SensitivityFunction
+struct SteadyStateAdjointSensitivityFunction{C <: AdjointDiffCache,
+    Alg <: SteadyStateAdjoint, uType, SType, fType <: ODEFunction, CV, λType, VJPType,
+    LS} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     y::uType
@@ -31,10 +23,10 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
 
     λ = zero(y)
     linsolve = needs_jac ? nothing : sensealg.linsolve
-    vjp = similar(λ, length(p))
+    vjp = allocate_vjp(λ, p)
 
-    SteadyStateAdjointSensitivityFunction(diffcache, sensealg, y, sol, f, colorvec, λ, vjp,
-        linsolve)
+    return SteadyStateAdjointSensitivityFunction(diffcache, sensealg, y, sol, f, colorvec,
+        λ, vjp, linsolve)
 end
 
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
@@ -51,10 +43,10 @@ end
 
     needs_jac = if has_adjoint(f)
         false
-    # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
-    #       cases where the length(u0) > 50 and if yes till what threshold
+        # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
+        #       cases where the length(u0) > 50 and if yes till what threshold
     elseif sensealg.linsolve === nothing
-        length(u0) <= 50
+        length(u0) ≤ 50
     else
         LinearSolve.needs_concrete_A(sensealg.linsolve)
     end
@@ -100,7 +92,6 @@ end
     end
 
     if !needs_jac
-        # operator = VecJac(f, y, p; Val(DiffEqBase.isinplace(sol.prob)))
         __f = y -> f(y, p, nothing)
         operator = VecJac(__f, y; autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
@@ -109,15 +100,14 @@ end
     end
 
     # Zygote pullback function won't work with deepcopy
-    solve(linear_problem, linsolve; alias_A = true) # u is vec(λ)
+    solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
 
     try
         vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
-            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp,
-                dy = nothing)
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, false, dgrad = vjp, dy = nothing)
         else
             @warn "AD choice of autojacvec failed in nonlinear solve adjoint"
             throw(e)
@@ -132,10 +122,10 @@ end
             @unpack g_grad_config = diffcache
             gradient!(dgdp_val, diffcache.g[2], p, sensealg, g_grad_config[2])
         end
-        dgdp_val .-= vjp
+        recursive_sub!(dgdp_val, vjp)
         return dgdp_val
     else
-        vjp .*= -1
+        recursive_neg!(vjp)
         return vjp
     end
 end
