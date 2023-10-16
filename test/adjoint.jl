@@ -134,7 +134,7 @@ _, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint())
-    _, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+_, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false))
@@ -994,7 +994,7 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-5
+    @test res'≈reference_sol rtol=1e-5
 end
 
 # u' = x = p * u^2
@@ -1025,7 +1025,7 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-7
+    @test res'≈reference_sol rtol=1e-7
 end
 
 function pend(du, u, p, t)
@@ -1063,5 +1063,5 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-7
+    @test res'≈reference_sol rtol=1e-7
 end

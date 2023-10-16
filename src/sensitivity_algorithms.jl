@@ -504,8 +504,7 @@ pass and is thus memory efficient.
 ```julia
 GaussAdjoint(; chunk_size = 0, autodiff = true,
                   diff_type = Val{:central},
-                  autojacvec = nothing, abstol = 1e-6,
-                  reltol = 1e-3)
+                  autojacvec = nothing)
 ```
 
 ## Keyword Arguments

@@ -427,7 +427,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     end
 
     cpsol = sol
-    
+
     GaussIntegrand(cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end
@@ -466,8 +466,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        #out[:] .= vec(tmp[1])
-        recursive_copyto!(out,tmp[1])
+        recursive_copyto!(out, tmp[1])
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4 = paramjac_config
         tmp4 .= λ
@@ -494,13 +493,11 @@ function (S::GaussIntegrand)(out, t, λ)
         @show typeof(dgdp_cache)
         out .+= dgdp_cache
     end
-    #out'
     out
 end
 
 function (S::GaussIntegrand)(t, λ)
-    #out = similar(S.p)
-    out = DiffEqCallbacks.allocate_zeros(S.p)
+    out = allocate_zeros(S.p)
     S(out, t, λ)
 end
 
@@ -510,15 +507,16 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     dgdu_continuous = nothing,
     dgdp_continuous = nothing,
     g = nothing,
-    abstol = sensealg.abstol, reltol = sensealg.reltol,
+    abstol = 1e-6, reltol = 1e-3,
     checkpoints = sol.t,
     corfunc_analytical = false,
     callback = CallbackSet(),
     kwargs...)
 
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(DiffEqCallbacks.allocate_zeros(sol.prob.p))
-    cb = IntegratingSumCallback((out, u, t, integrator) -> vec(integrand(out, t, u)), integrand_values, similar(sol.prob.p))
+    integrand_values = IntegrandValuesSum(allocate_zeros(sol.prob.p))
+    cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
+        integrand_values, allocate_vjp(sol.prob.p))
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
@@ -539,46 +537,27 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
             save_start = false, save_end = true, saveat = eltype(sol[1])[], tstops = tstops,
             callback = CallbackSet(cb,cb2), kwargs...)
-    res = compute_dGdp(integrand_values)'
+    res = integrand_values.integrand
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         iλ = zero(rcb.λ)
-        out = zero(res')
+        out = zero(res)
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas
             @unpack algevar_idxs = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
             vec_pjac!(out, iλ, yy, tt, integrand)
-            res .+= out'
+            res .+= out
             iλ .= zero(eltype(iλ))
         end
     end
 
-    return adj_sol[end], res'
+    return adj_sol[end], __maybe_adjoint(res)
 end
 
-recursive_add!(x::AbstractArray, y::AbstractArray) = x .+= y
-recursive_add!(x::Tuple, y::Tuple) = recursive_add!.(x, y)
-function recursive_add!(x::NamedTuple{F}, y::NamedTuple{F}) where {F}
-    return NamedTuple{F}(recursive_add!(values(x), values(y)))
-end
-function compute_dGdp(integrand::IntegrandValues)
-    res = DiffEqCallbacks.allocate_zeros(integrand.integrand[1])
-    for (i, j) in enumerate(integrand.integrand)
-        recursive_add!(res, j)
-    end
-    return res
-end
-#=
-function compute_dGdp(integrand::IntegrandValues)
-    res = zeros(length(integrand.integrand[1]))
-    for (i, j) in enumerate(integrand.integrand)
-        res .+= j
-    end
-    return res
-end
-=#
+__maybe_adjoint(x::AbstractArray) = x'
+__maybe_adjoint(x) = x
 
 function update_p_integrand(integrand::GaussIntegrand, p)
     @unpack sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp = integrand

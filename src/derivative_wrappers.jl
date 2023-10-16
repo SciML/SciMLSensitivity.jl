@@ -530,13 +530,6 @@ const ZYGOTEVJP_NOTHING_MESSAGE = """
 
 struct ZygoteVJPNothingError <: Exception end
 
-
-recursive_copyto!(y::AbstractArray, x::AbstractArray) = copyto!(y, x)
-recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
-recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
-    map(recursive_copyto!, values(y), values(x))
-#recursive_copyto!(y, x) = fmap(recursive_copyto!, y, x)
-
 function Base.showerror(io::IO, e::ZygoteVJPNothingError)
     print(io, ZYGOTEVJP_NOTHING_MESSAGE)
 end
