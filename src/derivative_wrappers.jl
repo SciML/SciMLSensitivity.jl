@@ -643,7 +643,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     prob = getprob(S)
 
     _tmp1, tmp2, _tmp3, _tmp4 = S.diffcache.paramjac_config
-
     if _tmp1 isa DiffCache
         tmp1 = get_tmp(_tmp1, y)
         tmp3 = get_tmp(_tmp3, dλ)
@@ -694,7 +693,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
-
         dλ !== nothing && (dλ .= tmp1)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)

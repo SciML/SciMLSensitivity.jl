@@ -80,13 +80,13 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
             end
         end
         CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
-
     else
         nothing
     end
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
+
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
         discrete, y, sol,
@@ -161,7 +161,6 @@ function split_states(du, u, t, S::TS;
          ODEInterpolatingAdjointSensitivityFunction}
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
     idx = length(y)
-
     if update
         if checkpoint_sol === nothing
             if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -401,6 +400,7 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack f, p, u0, tspan = sol.prob
+
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)

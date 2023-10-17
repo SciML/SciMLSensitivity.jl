@@ -401,7 +401,6 @@ function _adjoint_sensitivities(sol, sensealg, alg;
        (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
-
     rcb = nothing
     if sol.prob isa ODEProblem
         adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,

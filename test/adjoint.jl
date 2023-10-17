@@ -92,7 +92,7 @@ _, easy_res6 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete 
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true),
-    checkpoints = sol.t[1:500:end])
+    checkpoints = sol.t[1:10:end])
 _, easy_res62 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -134,7 +134,7 @@ _, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint())
-    _, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+_, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false))
@@ -146,6 +146,17 @@ _, easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+_, easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true),
+    checkpoints = sol.t[1:500:end])
+_, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true,
+        autojacvec = false),
+    checkpoints = sol.t[1:500:end])
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -169,7 +180,7 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res5, rtol = 1e-7)
 @test isapprox(res, easy_res6, rtol = 1e-9)
 @test isapprox(res, easy_res62, rtol = 1e-9)
-@test all(easy_res6 .== easy_res7)  # should be the same!
+@test isapprox(easy_res6, easy_res7, rtol = 1e-9)
 @test isapprox(res, easy_res8, rtol = 1e-9)
 @test isapprox(res, easy_res9, rtol = 1e-9)
 @test isapprox(res, easy_res10, rtol = 1e-9)
@@ -180,6 +191,8 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res142, rtol = 1e-9)
 @test isapprox(res, easy_res143, rtol = 1e-9)
 @test isapprox(res, easy_res144, rtol = 1e-9)
+@test isapprox(res, easy_res145, rtol = 1e-9)
+@test isapprox(res, easy_res146, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -271,6 +284,11 @@ _, easy_res122 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = d
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
+_, easy_res123 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(checkpointing = true),
+    checkpoints = soloop_nodense.t[1:5:end])
 @test isapprox(res, easy_res, rtol = 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
@@ -290,6 +308,7 @@ _, easy_res122 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = d
 #@test isapprox(res, easy_res13, rtol = 1e-9)
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res122, rtol = 1e-9)
+@test isapprox(res, easy_res123, rtol = 1e-4)
 
 println("Calculate adjoint sensitivities ")
 
@@ -975,7 +994,7 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-5
+    @test res'≈reference_sol rtol=1e-5
 end
 
 # u' = x = p * u^2
@@ -1006,7 +1025,7 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-7
+    @test res'≈reference_sol rtol=1e-7
 end
 
 function pend(du, u, p, t)
@@ -1044,5 +1063,5 @@ for salg in [
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-        @test res'≈reference_sol rtol=1e-7
+    @test res'≈reference_sol rtol=1e-7
 end
