@@ -1,5 +1,5 @@
-using OrdinaryDiffEq, SciMLSensitivity, Flux
-using ComponentArrays, LinearAlgebra, Optimization, Test
+using OrdinaryDiffEq, SciMLSensitivity
+using ComponentArrays, LinearAlgebra, Optimization, OptimizationOptimisers, Test
 
 const nknots = 10
 const h = 1.0 / (nknots + 1)
@@ -31,6 +31,6 @@ p0 = ComponentArray(k = 1.0)
 
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, p0)
-res = Optimization.solve(optprob, ADAM(0.01), maxiters = 100)
+res = Optimization.solve(optprob, Adam(0.01), maxiters = 100)
 
 @test res.u.k≈0.42461977305259074 rtol=1e-1
