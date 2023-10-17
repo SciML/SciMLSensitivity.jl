@@ -210,6 +210,10 @@ trajectory and reduces the numerical caused by drift.
 This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg` supports
 callback functions (events).
 
+### Disclaimer for `SDEProblem`s
+
+The runtime of this algorithm is in O(n^2) for diagonal-noise SDEs until issue #854 is solved.
+
 ## References
 
 ODE:
@@ -345,6 +349,10 @@ The total compute cost is no more than double the original forward compute cost.
 
 This `sensealg` only supports `ODEProblem`s, `SDEProblem`s, and `RODEProblem`s. This `sensealg`
 supports callbacks (events).
+
+### Disclaimer for `SDEProblem`s
+
+The runtime of this algorithm is in O(n^2) for diagonal-noise SDEs until issue #854 is solved.
 
 ## References
 
