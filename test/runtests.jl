@@ -159,6 +159,9 @@ end
         @time @safetestset "Complex No u" begin
             include("complex_no_u.jl")
         end
+        @time @safetestset "Parameter Handling" begin
+            include("parameter_handling.jl")
+        end
     end
 
     if GROUP == "All" || GROUP == "SDE1"
