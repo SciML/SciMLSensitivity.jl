@@ -693,10 +693,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
-        dλ !== nothing && (dλ .= tmp1)
+        dλ !== nothing && recursive_copyto!(dλ,tmp1)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
-        dy !== nothing && (dy .= tmp3)
+        dy !== nothing && recursive_copyto!(dy,tmp3)
     else
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
@@ -715,10 +715,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
             end
             recursive_copyto!(dy, out_)
         end
-        dλ !== nothing && (dλ .= tmp1)
+        dλ !== nothing && recursive_copyto!(dλ,tmp1)
         dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
-        dy !== nothing && (dy .= tmp3)
+        dy !== nothing && recursive_copyto!(dy,tmp3)
     end
     return
 end
