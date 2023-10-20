@@ -50,7 +50,7 @@ function predict_univ(θ)
 end
 
 loss_univ(θ) = sum(abs2, predict_univ(θ)[2, :] .- 1)
-l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2.6454255f11</code></pre><pre><code class="language-julia hljs">list_plots = []
+l = loss_univ(θ)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3.7739895f11</code></pre><pre><code class="language-julia hljs">list_plots = []
 iter = 0
 callback = function (θ, l)
     global list_plots, iter
@@ -71,23 +71,23 @@ optf = Optimization.OptimizationFunction((x, p) -&gt; loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(),
     callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 340-element Vector{Float32}:
-  1.0025939
-  0.4563608
- -0.14714134
-  0.32197186
-  0.37791768
-  0.20452327
-  0.5189816
- -0.18938234
-  0.09258537
- -0.64991444
+  0.8821696
+  0.2409512
+ -0.18095638
+  0.32205695
+ -0.27807313
+  0.3689591
+ -0.24501055
+ -0.20651275
+  0.6212174
+ -0.28938007
   ⋮
-  0.105831236
-  0.44539893
- -0.05792576
-  0.5470648
- -0.05032897
- -0.18963471
- -0.091808505
- -0.005263711
-  0.013208335</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.1 on <span class="colophon-date" title="Friday 20 October 2023 06:59">Friday 20 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ -0.57198083
+  0.30624393
+ -0.47797614
+ -0.33271495
+  0.1901186
+  0.4894112
+  0.004015037
+  0.24268465
+ -0.40934846</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../optimal_control/">« Solving Optimal Control Problems with Universal Differential Equations</a><a class="docs-footer-nextpage" href="../../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.1 on <span class="colophon-date" title="Friday 20 October 2023 07:09">Friday 20 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
