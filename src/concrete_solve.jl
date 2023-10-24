@@ -6,10 +6,10 @@
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
-function inplace_vjp(prob, u0, p, verbose)
+function inplace_vjp(prob, alg, u0, p, verbose)
     du = copy(u0)
 
-    ez = try
+    ez = SciMLBase.forwarddiffs_model(alg) && try
         f = unwrapped_f(prob.f)
 
         function adfunc(out, u, _p, t)
@@ -74,7 +74,7 @@ function inplace_vjp(prob, u0, p, verbose)
 end
 
 function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractSDEProblem}, u0, p,
+        SciMLBase.AbstractSDEProblem}, alg, u0, p,
     verbose)
     default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
@@ -183,7 +183,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
     return default_sensealg
 end
 
-function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
+function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProblem}, alg, u0, p,
     verbose)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
@@ -191,7 +191,7 @@ function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProb
         # this only effects the Jacobian calculation and is same computation order
         SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
     else
-        vjp = inplace_vjp(prob, u0, p, verbose)
+        vjp = inplace_vjp(prob, alg, u0, p, verbose)
         SteadyStateAdjoint(autojacvec = vjp)
     end
     return default_sensealg
@@ -208,7 +208,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     else
         has_cb = false
     end
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+    default_sensealg = automatic_sensealg_choice(prob, alg, u0, p, verbose)
     if has_cb && typeof(default_sensealg) <: AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
@@ -224,7 +224,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     sensealg::Nothing, u0, p,
     originator::SciMLBase.ADOriginator, args...;
     verbose = true, kwargs...)
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+    default_sensealg = automatic_sensealg_choice(prob, alg, u0, p, verbose)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
         kwargs...)
