@@ -390,11 +390,12 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
             autojacvec.chunksize
         end
 
-        paramjac_config = dualcache(zero(y), chunk), p,
-        dualcache(zero(y), chunk),
-        dualcache(zero(y), chunk)
+        paramjac_config = FixedSizeDiffCache(zero(y), chunk), p,
+        FixedSizeDiffCache(zero(y), chunk),
+        FixedSizeDiffCache(zero(y), chunk),
+        FixedSizeDiffCache(zero(y), chunk)
     else
-        paramjac_config = zero(y), p, zero(y), zero(y)
+        paramjac_config = zero(y), p, zero(y), zero(y), zero(y)
     end
     return paramjac_config
 end
@@ -409,12 +410,13 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
             autojacvec.chunksize
         end
 
-        paramjac_config = dualcache(zero(y), chunk),
+        paramjac_config = FixedSizeDiffCache(zero(y), chunk),
         zero(_p),
-        dualcache(zero(y), chunk),
-        dualcache(zero(y), chunk)
+        FixedSizeDiffCache(zero(y), chunk),
+        FixedSizeDiffCache(zero(y), chunk),
+        FixedSizeDiffCache(zero(y), chunk)
     else
-        paramjac_config = zero(y), zero(_p), zero(y), zero(y)
+        paramjac_config = zero(y), zero(_p), zero(y), zero(y), zero(y)
     end
     return paramjac_config
 end

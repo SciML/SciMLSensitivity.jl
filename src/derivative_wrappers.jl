@@ -642,23 +642,22 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
 
-    _tmp1, tmp2, _tmp3, _tmp4 = S.diffcache.paramjac_config
-    if _tmp1 isa DiffCache
-        tmp1 = get_tmp(_tmp1, y)
+    _tmp1, tmp2, _tmp3, _tmp4, _tmp5 = S.diffcache.paramjac_config
+
+    if _tmp1 isa FixedSizeDiffCache
+        tmp1 = get_tmp(_tmp1, dλ)
         tmp3 = get_tmp(_tmp3, dλ)
         tmp4 = get_tmp(_tmp4, dλ)
-
-        # workaround https://github.com/SciML/PreallocationTools.jl/pull/32
-        # the return type might not match y
-        # https://github.com/SciML/SciMLSensitivity.jl/issues/707
-        tmp1 = typeof(y) !== typeof(tmp1) ? ArrayInterface.restructure(y, tmp1) : tmp1
+        ytmp = get_tmp(_tmp5, dλ)
     else
         tmp1 = _tmp1
         tmp3 = _tmp3
         tmp4 = _tmp4
+        ytmp = _tmp5
     end
 
     tmp1 .= 0 # should be removed for dλ
+    ytmp .= y
 
     #if dgrad !== nothing
     #  tmp2 = dgrad
@@ -670,7 +669,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         Enzyme.Const(p)
     end
     #end
-
+ 
     #if dy !== nothing
     #      tmp3 = dy
     #else
@@ -684,12 +683,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     if inplace_sensitivity(S)
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Duplicated(y, tmp1),
+                Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Duplicated(y, tmp1),
+                Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
@@ -700,11 +699,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Duplicated(y, tmp1),
+                Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
             Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Duplicated(y, tmp1),
+                Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
         end
         if dy !== nothing
