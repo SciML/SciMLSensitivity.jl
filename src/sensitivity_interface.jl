@@ -366,7 +366,7 @@ function adjoint_sensitivities(sol, args...;
         end
         if !has_cb
             _sensealg = if isinplace(sol.prob)
-                setvjp(sensealg, inplace_vjp(sol.prob, sol.prob.u0, sol.prob.p, verbose))
+                setvjp(sensealg, inplace_vjp(sol.prob, sol.alg, sol.prob.u0, sol.prob.p, verbose))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
