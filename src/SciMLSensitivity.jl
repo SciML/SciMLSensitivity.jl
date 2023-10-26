@@ -20,7 +20,7 @@ using SciMLOperators
 using Functors
 import TruncatedStacktraces
 
-import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache
+import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache, FixedSizeDiffCache
 import FunctionWrappersWrappers
 using EllipsisNotation
 using FunctionProperties: hasbranching

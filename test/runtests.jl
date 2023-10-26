@@ -136,6 +136,9 @@ end
     end
 
     if GROUP == "All" || GROUP == "Core5"
+        @time @safetestset "Nested AD Regression Tests" begin
+            include("nested_ad_regression.jl")
+        end
         @time @safetestset "Size Handling in Adjoint Tests" begin
             include("size_handling_adjoint.jl")
         end
