@@ -25,11 +25,13 @@ fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
     u0 = z0,
     p = policy_params)
 
+sensealg = InterpolatingAdjoint()
+sensealg = SciMLSensitivity.setvjp(sensealg, SciMLSensitivity.inplace_vjp(fwd_sol.prob, fwd_sol.prob.u0, fwd_sol.prob.p, true))
+
 solve(ODEAdjointProblem(fwd_sol,
-        InterpolatingAdjoint(),
+        sensealg,
         Tsit5(),
-        (out, x, p, t, i) -> (out .= 1),
-        [1.0]), Tsit5())
+        [1.0], (out, x, p, t, i) -> (out .= 1)), Tsit5())
 
 A = ones(2, 2)
 B = ones(2, 2)
@@ -47,10 +49,11 @@ policy_params = ones(2, 2)
 z0 = zeros(3)
 fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
     u0 = z0,
-    p = policy_params)
+    p = policy_params, Tsit5())
 
 solve(ODEAdjointProblem(fwd_sol,
-    InterpolatingAdjoint(),
+    sensealg,
     Tsit5(),
-    (out, x, p, t, i) -> (out .= 1),
-    [1.0]))
+    [1.0],
+    (out, x, p, t, i) -> (out .= 1)),
+    Tsit5())
