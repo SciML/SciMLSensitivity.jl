@@ -17,6 +17,9 @@ end
         @time @safetestset "Sparse Adjoint Sensitivity" begin
             include("sparse_adjoint.jl")
         end
+        @time @safetestset "Adjoint Shapes" begin
+            include("adjoint_shapes.jl")
+        end
         @time @safetestset "Second Order Sensitivity" begin
             include("second_order.jl")
         end
