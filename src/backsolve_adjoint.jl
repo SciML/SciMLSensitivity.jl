@@ -101,7 +101,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx), 1:idx]
         dy = @view du[idx2]
 
-    elseif typeof(du) <: AbstractMatrix
+    elseif du isa AbstractMatrix
         # non-diagonal noise
         m = prob.noise_rate_prototype === nothing ? idx :
             size(prob.noise_rate_prototype)[2]
@@ -334,7 +334,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end]) <: Number
+    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else

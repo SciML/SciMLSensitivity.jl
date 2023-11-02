@@ -23,7 +23,7 @@ function loss(p)
 end
 
 grad = Zygote.gradient(loss, p)
-@test typeof(grad[1]) <: SArray
+@test grad[1] isa SArray
 grad2 = ForwardDiff.gradient(loss, p)
 @test grad[1]≈grad2 rtol=1e-12
 
@@ -34,7 +34,7 @@ function loss_mat(p)
 end
 
 grad = Zygote.gradient(loss_mat, p)
-@test typeof(grad[1]) <: SArray
+@test grad[1] isa SArray
 grad2 = ForwardDiff.gradient(loss_mat, p)
 @test grad[1]≈grad2 rtol=1e-12
 

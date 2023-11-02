@@ -361,7 +361,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
     p === nothing &&
         error("You must have parameters to use parameter sensitivity calculations!")
 
-    if !(typeof(p) <: Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(ForwardSensitivityParameterCompatibilityError())
     end
