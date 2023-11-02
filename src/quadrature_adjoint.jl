@@ -54,7 +54,7 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
     @unpack y, sol = S
 
     if update
-        if typeof(t) <: ForwardDiff.Dual && eltype(y) <: AbstractFloat
+        if t isa ForwardDiff.Dual && eltype(y) <: AbstractFloat
             y = sol(t, continuity = :right)
         else
             sol(y, t, continuity = :right)

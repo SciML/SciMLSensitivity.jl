@@ -57,7 +57,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         y = copy(sol.u[end])
     end
 
-    if typeof(prob.p) <: DiffEqBase.NullParameters
+    if prob.p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
     else
         _p = prob.p

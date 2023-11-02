@@ -209,7 +209,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         has_cb = false
     end
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
-    if has_cb && typeof(default_sensealg) <: AbstractAdjointSensitivityAlgorithm
+    if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
@@ -296,7 +296,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     saveat = eltype(prob.tspan)[],
     save_idxs = nothing,
     kwargs...)
-    if !(sensealg isa GaussAdjoint) && !(typeof(p) <: Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    if !(sensealg isa GaussAdjoint) && !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
@@ -324,7 +324,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         Base.diff_names(Base._nt_names(values(kwargs)),
             (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
-    if typeof(sensealg) <: BacksolveAdjoint
+    if sensealg isa BacksolveAdjoint
         sol = solve(_prob, alg, args...; save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
@@ -341,7 +341,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     # solver to do the backsolve all the way back to `u0` Since the start aliases
     # `_prob.u0`, this doesn't actually use more memory But it cleans up the
     # implementation and makes `save_start` and `save_end` arg safe.
-    if typeof(sensealg) <: BacksolveAdjoint
+    if sensealg isa BacksolveAdjoint
         # Saving behavior unchanged
         ts = sol.t
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
@@ -406,14 +406,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     function adjoint_sensitivity_backpass(Δ)
         function df_iip(_out, u, p, t, i)
-            outtype = typeof(_out) <: SubArray ?
+            outtype = _out isa SubArray ?
                       DiffEqBase.parameterless_type(_out.parent) :
                       DiffEqBase.parameterless_type(_out)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         x = vec(Δ[1])
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
@@ -424,7 +424,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     end
                 else
                     Δ isa NoTangent && return
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         x = vec(Δ)
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
@@ -437,9 +437,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
                     x = Δ[i]
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         _out[_save_idxs] = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
                         vec(_out) .= vec(x)
@@ -447,7 +447,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
                 else
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         _out[_save_idxs] = adapt(outtype,
                             reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                                 size(Δ)[end])[_save_idxs,
@@ -470,9 +470,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         function df_oop(u, p, t, i; outtype = nothing)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if typeof(Δ) <: AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         x = vec(Δ[1])
                         _out = adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
@@ -483,7 +483,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     end
                 else
                     Δ isa NoTangent && return
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         x = vec(Δ)
                         _out = adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
@@ -496,9 +496,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
                     x = Δ[i]
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         _out = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
                         _out = vec(x)
@@ -506,7 +506,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         _out = vec(@view(x[_save_idxs]))
                     end
                 else
-                    if typeof(_save_idxs) <: Number
+                    if _save_idxs isa Number
                         _out = adapt(outtype,
                             reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                                 size(Δ)[end])[_save_idxs,
@@ -569,7 +569,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     args...;
     save_idxs = nothing,
     kwargs...)
-    if !(typeof(p) <: Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(ForwardSensitivityParameterCompatibilityError())
     end
@@ -675,7 +675,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     u0, p, originator::SciMLBase.ADOriginator,
     args...; saveat = eltype(prob.tspan)[],
     kwargs...) where {CS, CTS}
-    if !(typeof(p) <: Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(ForwardDiffSensitivityParameterCompatibilityError())
     end
@@ -746,7 +746,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                     ## Force recompile mode because it won't handle the duals
                     ## Would require a manual tag to be applied
-                    if typeof(prob.f) <: ODEFunction
+                    if prob.f isa ODEFunction
                         if prob.f.jac_prototype !== nothing
                             _f = ODEFunction{SciMLBase.isinplace(prob.f),
                                 SciMLBase.FullSpecialize}(unwrapped_f(prob.f),
@@ -756,7 +756,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                             _f = ODEFunction{SciMLBase.isinplace(prob.f),
                                 SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                         end
-                    elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+                    elseif prob.f isa SDEFunction && prob.f.jac_prototype !== nothing
                         _f = SDEFunction{SciMLBase.isinplace(prob.f),
                             SciMLBase.FullSpecialize}(unwrapped_f(prob.f),
                             jac_prototype = convert.(eltype(u0dual),
@@ -899,7 +899,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                 ## Force recompile mode because it won't handle the duals
                 ## Would require a manual tag to be applied
-                if typeof(prob.f) <: ODEFunction
+                if prob.f isa ODEFunction
                     if prob.f.jac_prototype !== nothing
                         _f = ODEFunction{SciMLBase.isinplace(prob.f),
                             SciMLBase.FullSpecialize}(unwrapped_f(prob.f),
@@ -909,7 +909,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         _f = ODEFunction{SciMLBase.isinplace(prob.f),
                             SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                     end
-                elseif typeof(prob.f) <: SDEFunction && prob.f.jac_prototype !== nothing
+                elseif prob.f isa SDEFunction && prob.f.jac_prototype !== nothing
                     _f = SDEFunction{SciMLBase.isinplace(prob.f), SciMLBase.FullSpecialize}(unwrapped_f(prob.f),
                         jac_prototype = convert.(eltype(pdual),
                             prob.f.jac_prototype))
@@ -1059,7 +1059,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             end
         else
             # use TrackedArray for efficiency of the tape
-            if typeof(prob) <:
+            if prob isa
                Union{SciMLBase.AbstractDDEProblem, SciMLBase.AbstractDAEProblem,
                 SciMLBase.AbstractSDDEProblem}
                 _f = function (u, p, h, t) # For DDE, but also works for (du,u,p,t) DAE
@@ -1072,7 +1072,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                 end
 
                 # Only define `g` for the stochastic ones
-                if typeof(prob) <: SciMLBase.AbstractSDEProblem
+                if prob isa SciMLBase.AbstractSDEProblem
                     _g = function (u, p, h, t)
                         out = prob.g(u, p, h, t)
                         if out isa TrackedArray
@@ -1094,7 +1094,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                         }(_f),
                         u0 = _u0, p = _p, tspan = _tspan)
                 end
-            elseif typeof(prob) <:
+            elseif prob isa
                    Union{SciMLBase.AbstractODEProblem, SciMLBase.AbstractSDEProblem}
                 _f = function (u, p, t)
                     out = prob.f(u, p, t)
@@ -1104,7 +1104,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                         Tracker.collect(out)
                     end
                 end
-                if typeof(prob) <: SciMLBase.AbstractSDEProblem
+                if prob isa SciMLBase.AbstractSDEProblem
                     _g = function (u, p, t)
                         out = prob.g(u, p, t)
                         if out isa TrackedArray
@@ -1135,7 +1135,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
 
-        if typeof(sol.u[1]) <: Array
+        if sol.u[1] isa Array
             return Array(sol)
         else
             tmp = vec(sol.u[1])
@@ -1150,11 +1150,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
 
     out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, p)
     function tracker_adjoint_backpass(ybar)
-        tmp = if eltype(ybar) <: Number && typeof(u0) <: Array
+        tmp = if eltype(ybar) <: Number && u0 isa Array
             Array(ybar)
         elseif eltype(ybar) <: Number # CuArray{Floats}
             ybar
-        elseif typeof(ybar[1]) <: Array
+        elseif ybar[1] isa Array
             return Array(ybar)
         else
             tmp = vec(ybar.u[1])
@@ -1273,7 +1273,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     tu, tp = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
     ReverseDiff.value!(tu, u0)
-    typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
+    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
     ReverseDiff.forward_pass!(tape)
     function reversediff_adjoint_backpass(ybar)
         _ybar = if ybar isa VectorOfArray
@@ -1364,8 +1364,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     function adjoint_sensitivity_backpass(Δ)
         function df(_out, u, p, t, i)
-            if typeof(Δ) <: AbstractArray{<:AbstractArray} || typeof(Δ) <: DESolution
-                if typeof(_save_idxs) <: Number
+            if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
+                if _save_idxs isa Number
                     _out[_save_idxs] = Δ[i][_save_idxs]
                 elseif _save_idxs isa Colon
                     vec(_out) .= vec(Δ[i])
@@ -1373,7 +1373,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
                     vec(@view(_out[_save_idxs])) .= vec(Δ[i][_save_idxs])
                 end
             else
-                if typeof(_save_idxs) <: Number
+                if _save_idxs isa Number
                     _out[_save_idxs] = adapt(DiffEqBase.parameterless_type(u0),
                         reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                             size(Δ)[end])[_save_idxs, i])
@@ -1440,9 +1440,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
-            if typeof(_save_idxs) <: Number
+            if _save_idxs isa Number
                 _out[_save_idxs] = Δ[_save_idxs]
-            elseif typeof(Δ) <: Number
+            elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
             else
                 @. _out[_save_idxs] = Δ[_save_idxs]

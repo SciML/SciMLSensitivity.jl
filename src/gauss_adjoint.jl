@@ -139,7 +139,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
     @unpack sol, y, checkpoint_sol, discrete, prob, f, GaussInt = S
     if update
         if checkpoint_sol === nothing
-            if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+            if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                 y = sol(t, continuity = :right)
             else
                 sol(y, t, continuity = :right)
@@ -151,7 +151,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = checkpoint_sol.cpsol.t
-                if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                     y = sol(interval[1])
                 else
                     sol(y, interval[1])

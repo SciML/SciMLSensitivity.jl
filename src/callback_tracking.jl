@@ -236,7 +236,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         error("Only `ReverseDiffVJP` and `EnzymeVJP` are currently compatible with continuous adjoint sensitivity methods for hybrid DEs. Please select `ReverseDiffVJP` or `EnzymeVJP` as `autojacvec`.")
 
     # event times
-    times = if typeof(cb) <: DiscreteCallback
+    times = if cb isa DiscreteCallback
         cb.affect!.event_times
     else
         [cb.affect!.event_times; cb.affect_neg!.event_times]

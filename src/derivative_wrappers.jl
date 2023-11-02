@@ -423,14 +423,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    if typeof(p) <: DiffEqBase.NullParameters
+    if p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
     else
         _p = p
     end
 
     if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
-       (eltype(λ) <: eltype(prob.u0) && typeof(t) <: eltype(prob.u0) &&
+       (eltype(λ) <: eltype(prob.u0) && t isa eltype(prob.u0) &&
         compile_tape(sensealg.autojacvec))
         tape = S.diffcache.paramjac_config
 
@@ -485,7 +485,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     end
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
-    typeof(p) <: DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
+    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
     if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
         ReverseDiff.value!(tt, [t])
     end
@@ -662,7 +662,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #if dgrad !== nothing
     #  tmp2 = dgrad
     #else
-    dup = if !(typeof(tmp2) <: DiffEqBase.NullParameters)
+    dup = if !(tmp2 isa DiffEqBase.NullParameters)
         tmp2 .= 0
         Enzyme.Duplicated(p, tmp2)
     else
@@ -693,7 +693,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 Enzyme.Const(t), Enzyme.Const(W))
         end
         dλ !== nothing && recursive_copyto!(dλ,tmp1)
-        dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
+        dgrad !== nothing && !(tmp2 isa DiffEqBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
         dy !== nothing && recursive_copyto!(dy,tmp3)
     else
@@ -715,7 +715,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
             recursive_copyto!(dy, out_)
         end
         dλ !== nothing && recursive_copyto!(dλ,tmp1)
-        dgrad !== nothing && !(typeof(tmp2) <: DiffEqBase.NullParameters) &&
+        dgrad !== nothing && !(tmp2 isa DiffEqBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
         dy !== nothing && recursive_copyto!(dy,tmp3)
     end

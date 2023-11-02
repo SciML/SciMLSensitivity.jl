@@ -41,15 +41,15 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
         cursor = lastindex(intervals)
         interval = intervals[cursor]
 
-        if typeof(sol.prob) <: Union{SDEProblem, RODEProblem}
+        if sol.prob isa Union{SDEProblem, RODEProblem}
             # replicated noise
             _sol = deepcopy(sol)
             idx1 = searchsortedfirst(_sol.W.t, interval[1] - 1000eps(interval[1]))
-            if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+            if sol.W isa DiffEqNoiseProcess.NoiseProcess
                 sol.W.save_everystep = false
                 _sol.W.save_everystep = false
                 forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx = idx1)
-            elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+            elseif sol.W isa DiffEqNoiseProcess.NoiseGrid
                 #idx2 = searchsortedfirst(_sol.W.t, interval[2]+1000eps(interval[1]))
                 forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx1:end],
                     _sol.W.W[idx1:end])
@@ -163,7 +163,7 @@ function split_states(du, u, t, S::TS;
     idx = length(y)
     if update
         if checkpoint_sol === nothing
-            if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+            if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                 y = sol(t, continuity = :right)
             else
                 sol(y, t, continuity = :right)
@@ -175,23 +175,23 @@ function split_states(du, u, t, S::TS;
                 cursor′ = findcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = checkpoint_sol.cpsol.t
-                if typeof(t) <: ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                     y = sol(interval[1])
                 else
                     sol(y, interval[1])
                 end
-                if typeof(sol.prob) <: Union{SDEProblem, RODEProblem}
+                if sol.prob isa Union{SDEProblem, RODEProblem}
                     #idx1 = searchsortedfirst(sol.t, interval[1])
                     _sol = deepcopy(sol)
                     idx1 = searchsortedfirst(_sol.t, interval[1] - 100eps(interval[1]))
                     idx2 = searchsortedfirst(_sol.t, interval[2] + 100eps(interval[2]))
                     idx_noise = searchsortedfirst(_sol.W.t,
                         interval[1] - 100eps(interval[1]))
-                    if typeof(sol.W) <: DiffEqNoiseProcess.NoiseProcess
+                    if sol.W isa DiffEqNoiseProcess.NoiseProcess
                         _sol.W.save_everystep = false
                         forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W,
                             indx = idx_noise)
-                    elseif typeof(sol.W) <: DiffEqNoiseProcess.NoiseGrid
+                    elseif sol.W isa DiffEqNoiseProcess.NoiseGrid
                         forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx_noise:end],
                             _sol.W.W[idx_noise:end])
                     else
@@ -247,7 +247,7 @@ function split_states(du, u, t, S::TS;
         dλ = @view du[idx1]
         dgrad = @view du[(idx + 1):end, 1:idx]
 
-    elseif typeof(du) <: AbstractMatrix
+    elseif du isa AbstractMatrix
         # non-diagonal noise and noise mixing case
         m = prob.noise_rate_prototype === nothing ? idx :
             size(prob.noise_rate_prototype)[2]
@@ -505,7 +505,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && typeof(sol.W[end]) <: Number
+    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else
