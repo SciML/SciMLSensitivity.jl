@@ -73,7 +73,7 @@ by the user, the Jacobian is never formed. For more details, consult the
 
 This adjoint requires the definition of some scalar functional ``g(u,p)``
 where ``u(t,p)`` is the (numerical) solution to the differential equation
-``d/dt u(t,p)=f(t,u,p)`` with ``t\in [0,T]`` and ``u(t_0,p)=u_0``.
+``\frac{du(t,p)}{dt=f(t,u,p)}`` with ``t\in [0,T]`` and ``u(t_0,p)=u_0``.
 Adjoint sensitivity analysis finds the gradient of
 
 ```math
