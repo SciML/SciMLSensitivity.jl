@@ -51,14 +51,14 @@ Note that the Jacobian-vector product
 \frac{\partial f}{\partial u}\frac{\partial u}{\partial p_{j}}
 ```
 
-can be computed without forming the Jacobian. With finite differences, this through using the following
+can be computed without forming the Jacobian. With finite differences, this can be done using the following
 formula for the directional derivative
 
 ```math
 Jv \approx \frac{f(x+v \epsilon) - f(x)}{\epsilon},
 ```
 
-or, alternatively and without truncation error,
+alternatively and without truncation error,
 by using a dual number with a single partial dimension, ``d = x + v \epsilon`` we get that
 
 ```math
