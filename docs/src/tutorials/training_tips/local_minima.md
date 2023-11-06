@@ -18,7 +18,7 @@ on `(0,5.0)`. Naively, we use the same training strategy as before:
 ```@example iterativefit
 using DifferentialEquations,
     ComponentArrays, SciMLSensitivity, Optimization,
-    OptimizationFlux
+    OptimizationOptimisers
 using Lux, Plots, Random
 
 rng = Random.default_rng()

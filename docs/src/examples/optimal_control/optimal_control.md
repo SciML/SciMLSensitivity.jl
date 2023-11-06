@@ -36,7 +36,7 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
-using Flux, DifferentialEquations, Optimization, OptimizationNLopt, OptimizationFlux,
+using Flux, DifferentialEquations, Optimization, OptimizationNLopt, OptimizationOptimisers,
     SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()

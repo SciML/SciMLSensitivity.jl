@@ -83,7 +83,7 @@ The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
 ```@example dataparallel
-using DifferentialEquations, Optimization, OptimizationFlux
+using DifferentialEquations, Optimization, OptimizationOptimisers
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]
@@ -198,7 +198,7 @@ using Distributed
 addprocs(4)
 
 @everywhere begin
-    using DifferentialEquations, Optimization, OptimizationFlux
+    using DifferentialEquations, Optimization, OptimizationOptimisers
     function f(u, p, t)
         1.01u .* p
     end
@@ -251,7 +251,7 @@ The following is an example of minibatch ensemble parallelism across
 a GPU:
 
 ```julia
-using DifferentialEquations, Optimization, OptimizationFlux, DiffEqGPU
+using DifferentialEquations, Optimization, OptimizationOptimisers, DiffEqGPU
 function f(du, u, p, t)
     @inbounds begin
         du[1] = 1.01 * u[1] * p[1] * p[2]

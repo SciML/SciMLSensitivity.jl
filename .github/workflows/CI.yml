@@ -26,7 +26,6 @@ jobs:
           - SDE2
           - SDE3
         version:
-          - '1.6'
           - '1'
     steps:
       - uses: actions/checkout@v4
