@@ -86,7 +86,7 @@ end
 We can then use `Optimization.solve` to fit the SDE:
 
 ```@example sde
-using Optimization, Zygote, OptimizationFlux
+using Optimization, Zygote, OptimizationOptimisers
 pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
@@ -121,7 +121,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```@example sde
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizationFlux, Plots
+using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimisers, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u

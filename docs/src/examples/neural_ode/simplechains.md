@@ -8,8 +8,7 @@ First, we'll need data for training the NeuralODE, which can be obtained by solv
 
 ```@example sc_neuralode
 using SimpleChains,
-    StaticArrays, OrdinaryDiffEq, SciMLSensitivity, Optimization,
-    OptimizationFlux, Plots
+    StaticArrays, OrdinaryDiffEq, SciMLSensitivity, OptimizationOptimisers, Plots
 
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30

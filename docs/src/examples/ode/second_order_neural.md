@@ -22,7 +22,7 @@ An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
 using DifferentialEquations,
-    Flux, Optimization, OptimizationFlux, RecursiveArrayTools,
+    Flux, Optimization, OptimizationOptimisers, RecursiveArrayTools,
     Random
 
 u0 = Float32[0.0; 2.0]
