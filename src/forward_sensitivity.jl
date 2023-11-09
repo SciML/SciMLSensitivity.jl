@@ -542,11 +542,8 @@ function extract_local_sensitivities(tmp, sol, t, asmatrix::Bool)
 end
 
 # Get ODE u vector and sensitivity values from all time points
-function extract_local_sensitivities(sol, ::ForwardSensitivity, ::Val{false})
-    ni = sol.prob.f.numindvar
-    u = sol[1:ni, :]
-    du = [sol[(ni * j + 1):(ni * (j + 1)), :] for j in 1:(sol.prob.f.numparams)]
-    return u, du
+function extract_local_sensitivities(sol, sensealg::ForwardSensitivity, ::Val{false})
+    _extract(sol, sensealg, sol, Val{false}())
 end
 
 function extract_local_sensitivities(sol, ::ForwardDiffSensitivity, ::Val{false})
@@ -597,6 +594,14 @@ function _extract(sol, sensealg::ForwardDiffSensitivity, su::AbstractVector,
     asmatrix::Val = Val(false))
     u = ForwardDiff.value.(su)
     du = _extract_du(sol, sensealg, su, asmatrix)
+    return u, du
+end
+
+function _extract(sol, ::ForwardSensitivity, su::AbstractDiffEqArray,
+    ::Val{false})
+    ni = sol.prob.f.numindvar
+    u = @view su[1:ni, :]
+    du = [@view su[(ni * j + 1):(ni * (j + 1)), :] for j in 1:(sol.prob.f.numparams)]
     return u, du
 end
 
