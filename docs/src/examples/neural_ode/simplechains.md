@@ -79,5 +79,5 @@ optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x),
     Optimization.AutoZygote())
 optprob = Optimization.OptimizationProblem(optf, p_nn)
 
-res = Optimization.solve(optprob, ADAM(0.05), callback = callback, maxiters = 300)
+res = Optimization.solve(optprob, Adam(0.05), callback = callback, maxiters = 300)
 ```
