@@ -34,7 +34,7 @@ sc = SimpleChain(static(2),
     TurboDense{true}(tanh, static(50)),
     TurboDense{true}(identity, static(2)))
 
-p_nn = SimpleChains.init_params(sc)
+p_nn = Array(SimpleChains.init_params(sc))
 
 f(u, p, t) = sc(u, p)
 ```
