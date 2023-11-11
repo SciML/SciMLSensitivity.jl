@@ -14,23 +14,23 @@ using Flux, Optimization, OptimizationPolyalgorithms,
     SciMLSensitivity, Zygote, DifferentialEquations, Plots, Random
 
 rng = Random.default_rng()
-u0 = 1.1f0
-tspan = (0.0f0, 25.0f0)
-tsteps = 0.0f0:1.0:25.0f0
+u0 = 1.1
+tspan = (0.0, 25.0)
+tsteps = 0.0:1.0:25.0
 
 model_univ = Flux.Chain(Flux.Dense(2, 16, tanh),
     Flux.Dense(16, 16, tanh),
-    Flux.Dense(16, 1))
+    Flux.Dense(16, 1)) |> f64
 
 # The model weights are destructured into a vector of parameters
 p_model, re = Flux.destructure(model_univ)
 n_weights = length(p_model)
 
 # Parameters of the second equation (linear dynamics)
-p_system = Float32[0.5, -0.5]
+p_system = [0.5, -0.5]
 
 p_all = [p_model; p_system]
-θ = Float32[u0; p_all]
+θ = [u0; p_all]
 
 function dudt_univ!(du, u, p, t)
     # Destructure the parameters
@@ -51,11 +51,11 @@ function dudt_univ!(du, u, p, t)
     du[2] = dsystem_output
 end
 
-prob_univ = ODEProblem(dudt_univ!, [0.0f0, u0], tspan, p_all)
+prob_univ = ODEProblem(dudt_univ!, [0.0, u0], tspan, p_all)
 sol_univ = solve(prob_univ, Tsit5(), abstol = 1e-8, reltol = 1e-6)
 
 function predict_univ(θ)
-    return Array(solve(prob_univ, Tsit5(), u0 = [0.0f0, θ[1]], p = θ[2:end],
+    return Array(solve(prob_univ, Tsit5(), u0 = [0.0, θ[1]], p = θ[2:end],
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
         saveat = tsteps))
 end
