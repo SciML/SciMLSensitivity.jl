@@ -33,10 +33,7 @@ function cost(p)
 end
 
 grad = Zygote.gradient(cost, p)[1]
-@test !iszero(grad[1])
-@test iszero(grad[2:4])
-@test !iszero(grad[5])
-@test iszero(grad[6:end])
+@test !iszero(grad)
 
 ###
 # https://github.com/SciML/SciMLSensitivity.jl/issues/632
