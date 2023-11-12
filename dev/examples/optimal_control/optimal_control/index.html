@@ -58,26 +58,26 @@ res1 = Optimization.solve(optprob, ADAM(0.005), callback = callback, maxiters = 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2,
     NLopt.LD_LBFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 1153-element Vector{Float64}:
- -0.09003928381212112
-  0.8766101701221922
- -3.2454470003898788
- -0.40645119226402265
- -0.10151837716133218
- -1.6793703148961299
-  1.916722338964121
- -0.12098307875794387
-  2.032009228123642
- -0.27568882186744204
+ -3.4666260832685754
+  3.0814663184566395
+ -1.2341060880722479
+ -0.22777615602549284
+ -0.17270995263558198
+  0.9183042719125888
+  0.7470064776495636
+ -0.43177362455317536
+ -0.46056978723543573
+ -3.0149022330761643
   ⋮
- -0.6391327133965558
-  0.8447946649829129
- -0.3555719184992519
- -0.21278906043508672
- -0.6392752162249775
- -0.43388695473287053
-  0.689637890158055
-  0.3232919885943985
-  1.8044199110255024</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
+ -1.4306448714908468
+  0.5306136961965723
+  0.05122600819121742
+  0.1714434009350534
+ -0.6731856169783991
+  0.39655199164048305
+  0.0745209557696283
+ -0.8657048646786476
+  3.5662609047819718</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
     x = predict_adjoint(θ)
     mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
     mean(abs2, [first(re(θ)([t])) for t in ts])
@@ -87,26 +87,26 @@ optf3 = Optimization.OptimizationFunction((x, p) -&gt; loss_adjoint(x), adtype)
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
 res3 = Optimization.solve(optprob3,
     NLopt.LD_LBFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">u: 1153-element Vector{Float64}:
- -0.15605883746586283
-  0.8819173512853865
- -3.2480188180591743
- -0.3964707700550414
- -0.03293070412679356
- -1.6865023651830076
-  1.9184331397110341
- -0.06005303749745871
-  2.0348226642859975
- -0.30237233551884357
+ -3.4671219093677474
+  3.0818102207973803
+ -1.2340655396903033
+ -0.22625711471032564
+ -0.17269310010249234
+  0.9207500567583431
+  0.7484147359811402
+ -0.4310127166387477
+ -0.46025832844666126
+ -3.0148029496030775
   ⋮
- -0.6366293072773002
-  0.8597703223721977
- -0.3477531955168721
- -0.21118131095356438
- -0.6412034607656723
- -0.42517029354372554
-  0.6959526569853405
-  0.3140820453919503
-  1.8127493717733065</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
+ -1.4294364308435863
+  0.5310667011394973
+  0.05181115863835625
+  0.17152309726247625
+ -0.6734868690890187
+  0.39678162947986884
+  0.07493952350160149
+ -0.8654714770725662
+  3.5664987231099627</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
 callback(res3.u, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
-plot!(p, ts, [first(re(res3.u)([t])) for t in ts], label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="8d738321.svg" alt="Example block output"/><p><img src="https://user-images.githubusercontent.com/1814174/81859169-db65b280-9532-11ea-8394-dbb5efcd4036.png" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Sunday 12 November 2023 03:56">Sunday 12 November 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot!(p, ts, [first(re(res3.u)([t])) for t in ts], label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="a96d03c3.svg" alt="Example block output"/><p><img src="https://user-images.githubusercontent.com/1814174/81859169-db65b280-9532-11ea-8394-dbb5efcd4036.png" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.2 on <span class="colophon-date" title="Sunday 12 November 2023 08:18">Sunday 12 November 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
