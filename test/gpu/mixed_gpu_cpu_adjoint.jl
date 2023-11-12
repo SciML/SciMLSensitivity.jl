@@ -1,14 +1,16 @@
 using SciMLSensitivity, OrdinaryDiffEq
-using Flux, CUDA, Test, Zygote, Random, LinearAlgebra
+using Lux, CUDA, Test, Zygote, Random, LinearAlgebra
 
 CUDA.allowscalar(false)
 
 H = CuArray(rand(Float32, 2, 2))
-ann = Chain(Dense(1, 4, tanh))
-p, re = Flux.destructure(ann)
+ann = Lux.Chain(Lux.Dense(1, 4, tanh))
+rng = Random.default_rng()
+p_model, st = Lux.setup(rng, ann)
+const _st = st
 
 function func(x, p, t)
-    (re(p)([t])[1] * H) * x
+   ann([t],p,_st) * H * x
 end
 
 x0 = CuArray(rand(Float32, 2))
