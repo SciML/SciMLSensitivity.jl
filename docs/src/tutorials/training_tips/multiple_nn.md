@@ -8,7 +8,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
 using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt,
-    DifferentialEquations, Random
+    OptimizationOptimisers, DifferentialEquations, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
@@ -80,7 +80,8 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
-res1_uode = Optimization.solve(optprob, ADAM(0.01), callback = callback, maxiters = 500)
+res1_uode = Optimization.solve(optprob, OptimizationOptimisers.Adam(0.01), 
+                        callback = callback, maxiters = 500)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
 res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000,
