@@ -6,7 +6,7 @@ CUDA.allowscalar(false)
 H = CuArray(rand(Float32, 2, 2))
 ann = Lux.Chain(Lux.Dense(1, 4, tanh))
 rng = Random.default_rng()
-p_model, st = Lux.setup(rng, ann)
+p, st = Lux.setup(rng, ann)
 const _st = st
 
 function func(x, p, t)
