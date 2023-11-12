@@ -12,9 +12,9 @@ example of optimizing `u0` and `p`.
 ```@example neuralode1
 using OrdinaryDiffEq, SciMLSensitivity, Flux, Plots
 
-u0 = Float32[2.0; 0.0]
+u0 = [2.0; 0.0]
 datasize = 30
-tspan = (0.0f0, 1.5f0)
+tspan = (0.0, 1.5)
 
 function trueODEfunc(du, u, p, t)
     true_A = [-0.1 2.0; -2.0 -0.1]
@@ -26,7 +26,7 @@ ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -> x .^ 3,
     Flux.Dense(2, 50, tanh),
-    Flux.Dense(50, 2))
+    Flux.Dense(50, 2)) |> f64
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
@@ -86,9 +86,9 @@ and `p` and then in the loss function split to the pieces.
 using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
     OptimizationNLopt, Plots
 
-u0 = Float32[2.0; 0.0]
+u0 = [2.0; 0.0]
 datasize = 30
-tspan = (0.0f0, 1.5f0)
+tspan = (0.0, 1.5)
 
 function trueODEfunc(du, u, p, t)
     true_A = [-0.1 2.0; -2.0 -0.1]
@@ -100,7 +100,7 @@ ode_data = Array(solve(prob, Tsit5(), saveat = t))
 
 dudt2 = Flux.Chain(x -> x .^ 3,
     Flux.Dense(2, 50, tanh),
-    Flux.Dense(50, 2))
+    Flux.Dense(50, 2)) |> f64
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
 dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
 prob = ODEProblem(dudt, u0, tspan)
