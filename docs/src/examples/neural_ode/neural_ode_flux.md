@@ -57,7 +57,7 @@ end
 callback()
 
 data = Iterators.repeated((), 1000)
-res1 = Flux.train!(loss_n_ode, Flux.params(u0, p), data, ADAM(0.05), cb = callback)
+res1 = Flux.train!(loss_n_ode, Flux.params(u0, p), data, Adam(0.05), cb = callback)
 
 callback()
 ```
