@@ -11,7 +11,7 @@ p = ComponentArray(p)
 const _st = st
 
 function func(x, p, t)
-   first(ann([t],p,_st)) * H * x
+   CuArray(reshape(first(ann([t],p,_st)),2,2)) * H * x
 end
 
 x0 = CuArray(rand(Float32, 2))
