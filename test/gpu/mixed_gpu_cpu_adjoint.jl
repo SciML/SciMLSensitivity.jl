@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq
-using Lux, CUDA, Test, Zygote, Random, LinearAlgebra
+using Lux, CUDA, Test, Zygote, Random, LinearAlgebra, ComponentArrays
 
 CUDA.allowscalar(false)
 
@@ -7,6 +7,7 @@ H = CuArray(rand(Float32, 2, 2))
 ann = Lux.Chain(Lux.Dense(1, 4, tanh))
 rng = Random.default_rng()
 p, st = Lux.setup(rng, ann)
+p = ComponentArray(p)
 const _st = st
 
 function func(x, p, t)
