@@ -63,9 +63,9 @@ include("staticarrays.jl")
 export extract_local_sensitivities
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
-    ODEAdjointSensitivityProblem, ODEAdjointProblem, AdjointSensitivityIntegrand,
+    ODEAdjointProblem, AdjointSensitivityIntegrand,
     SDEAdjointProblem, RODEAdjointProblem, SensitivityAlg,
-    adjoint_sensitivities, adjoint_sensitivities_u0,
+    adjoint_sensitivities,
     ForwardLSSProblem, AdjointLSSProblem,
     NILSSProblem, NILSASProblem,
     shadow_forward, shadow_adjoint
