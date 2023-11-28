@@ -121,7 +121,7 @@ Random.seed!(12345)
         # with jac, without param_jac
         f2 = ODEFunction(f!; jac = jac!)
         prob2 = SteadyStateProblem(f2, u0, p)
-        sol2 = solve(prob2, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
+        sol2 = solve(prob2, DynamicSS(Rodas5()),
             reltol = 1e-14, abstol = 1e-14)
         res2a = adjoint_sensitivities(sol2, DynamicSS(Rodas5()),
             sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
@@ -210,7 +210,7 @@ Random.seed!(12345)
             [dx, dy]
         end
         proboop = SteadyStateProblem(foop, u0, p)
-        soloop = solve(proboop, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
+        soloop = solve(proboop, DynamicSS(Rodas5()),
             reltol = 1e-14, abstol = 1e-14)
 
         res4a = adjoint_sensitivities(soloop, DynamicSS(Rodas5()),
