@@ -6,11 +6,11 @@ there are many strategies to avoid local minima:
  1. Insert stochasticity into the loss function through minibatching
  2. Weigh the loss function to allow for fitting earlier portions first
  3. Iteratively grow the fit
- 4. Training the initial conditions and the parameters to start
+ 4. Training both the initial conditions and parameters at first, followed by just the parameters
 
 ## Iterative Growing Of Fits to Reduce Probability of Bad Local Minima
 
-In this example, we will show how to use strategy (4) in order to increase the
+In this example, we will show how to use strategy (3) in order to increase the
 robustness of the fit. Let's start with the same neural ODE example we've used
 before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
@@ -164,7 +164,7 @@ the whole trajectory. We do this by allowing the neural ODE to learn both the
 initial conditions and parameters to start, and then reset the initial conditions
 back and train only the parameters. Note: this strategy is demonstrated for the (0, 5)
 time span and (0, 10), any longer and more iterations will be required. Alternatively,
-one could use a mix of (4) and (5), or breaking up the trajectory into chunks and just (5).
+one could use a mix of (3) and (4), or breaking up the trajectory into chunks and just (4).
 
 ```@example resetic
 using Flux, Plots, DifferentialEquations, SciMLSensitivity
@@ -188,7 +188,7 @@ dudt2 = Chain(Dense(2, 16, tanh),
     Dense(16, 2))
 
 p, re = Flux.destructure(dudt2) # use this p as the initial condition!
-dudt(u, p, t) = re(p)(u) # need to restrcture for backprop!
+dudt(u, p, t) = re(p)(u) # need to restructure for backprop!
 prob = ODEProblem(dudt, u0, tspan)
 
 function predict_n_ode()
@@ -258,4 +258,4 @@ callback()
 ```
 
 And there we go, a set of robust strategies for fitting an equation that would otherwise
-get stuck in a local optima.
+get stuck in local optima.
