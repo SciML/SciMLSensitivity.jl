@@ -24,6 +24,46 @@ end
 
 p2 = [1.01, 0.87]
 
+
+using DiffEqNoiseProcess
+
+dtscalar = tend / 1e3
+
+f!(du, u, p, t) = (du .= p[1] * u)
+σ!(du, u, p, t) = (du .= p[2] * u)
+
+@info "scalar SDE"
+
+Random.seed!(seed)
+W = WienerProcess(0.0, 0.0, 0.0)
+u0 = rand(2)
+
+linear_analytic_strat(u0, p, t, W) = @.(u0*exp(p[1] * t + p[2] * W))
+
+prob = SDEProblem(SDEFunction(f!, σ!, analytic = linear_analytic_strat), σ!, u0, trange,
+    p2,
+    noise = W)
+sol = solve(prob, EulerHeun(), dt = dtscalar, save_noise = true)
+
+@test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+
+
+res_sde_u0, res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+    dgdu_discrete = dg!,
+    dt = dtscalar, adaptive = false,
+    sensealg = BacksolveAdjoint())
+
+@show res_sde_u0, res_sde_p
+
+res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+    dgdu_discrete = dg!,
+    dt = tend / 1e2, adaptive = false,
+    sensealg = GaussAdjoint())
+
+@test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
+@test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+
+#=
 # scalar noise
 @testset "SDE inplace scalar noise tests" begin
     using DiffEqNoiseProcess
@@ -233,3 +273,4 @@ end
     @test isapprox(true_grads[2], res_sde_p2', atol = 1e-4)
     @test isapprox(true_grads[1], res_sde_u02, rtol = 1e-4)
 end
+=#

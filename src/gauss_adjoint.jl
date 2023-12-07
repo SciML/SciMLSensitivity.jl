@@ -872,7 +872,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     corfunc_analytical = false,
     callback = CallbackSet(),
     kwargs...)
-
+    
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValues(Float64, typeof(sol.prob.p))
     cb = IntegratingCallback((out, u, t, integrator) -> integrand(out, t, u), integrand_values, DiffEqCallbacks.allocate_zeros(sol.prob.p))#similar(sol.prob.p))

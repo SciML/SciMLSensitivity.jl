@@ -569,18 +569,22 @@ struct GaussAdjoint{CS, AD, FDT, VJP} <:
        AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
+    abstol::Float64
+    reltol::Float64
 end
 Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
     diff_type = Val{:central},
     autojacvec = nothing,
-    checkpointing=false)
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec, checkpointing)
+    checkpointing=false,
+    abstol = 1e-6,
+    reltol = 1e-3)
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec, checkpointing, abstol, reltol)
 end
 
 TruncatedStacktraces.@truncate_stacktrace GaussAdjoint
 
 function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
-    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
+    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing, sensealg.abstol, sensealg.reltol)
 end
 
 """
