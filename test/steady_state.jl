@@ -1,7 +1,7 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq
-using NonlinearSolve, SciMLNLSolve
+using NonlinearSolve
 using ForwardDiff, Calculus
 using Zygote
 using Random
@@ -415,7 +415,7 @@ end
     dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]
     dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
     dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion()), p)[1]
-    dp8 = Zygote.gradient(p -> test_loss(p, prob2, alg = NLSolveJL()), p)[1]
+    dp8 = Zygote.gradient(p -> test_loss(p, prob2, alg = NLsolveJL()), p)[1]
 
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10

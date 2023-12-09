@@ -5,7 +5,7 @@ using Statistics
 using SciMLSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Zygote
-using Optimization, OptimizationFlux
+using Optimization, OptimizationOptimisers
 
 using Random
 Random.seed!(238248735)
