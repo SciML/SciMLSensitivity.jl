@@ -168,6 +168,9 @@ end
         @time @safetestset "Parameter Handling" begin
             include("parameter_handling.jl")
         end
+        @time @safetestset "Quality Assurance" begin
+            include("aqua.jl")
+        end
     end
 
     if GROUP == "All" || GROUP == "SDE1"
