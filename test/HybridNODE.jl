@@ -1,7 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, DiffEqCallbacks, Lux, ComponentArrays
-using Optimization, OptimizationOptimisers
-using Random, Test
-using Zygote
+using Optimization, OptimizationOptimisers, Random, Test, Zygote
 
 function test_hybridNODE(sensealg)
     Random.seed!(12345)
@@ -11,7 +9,7 @@ function test_hybridNODE(sensealg)
     target = 3.0 * (1:datalength) ./ datalength  # some dummy data to fit to
     cbinput = rand(1, datalength) #some external ODE contribution
     pmodel = Chain(Dense(2, 10, init_weight = zeros32), Dense(10, 2, init_weight = zeros32))
-    ps, st = Lux.setup(Random.default_rng(), pmodel)
+    ps, st = Lux.setup(Xoshiro(0), pmodel)
     ps = ComponentArray{Float64}(ps)
     dudt(u, p, t) = first(pmodel(u, p, st))
 
@@ -24,7 +22,7 @@ function test_hybridNODE(sensealg)
     callback = PresetTimeCallback(collect(1:datalength), (int) -> affect!(int, cbinput))
 
     # ODE with Callback
-    prob = ODEProblem(dudt, [0.0, 1.0], tspan, p)
+    prob = ODEProblem(dudt, [0.0, 1.0], tspan, ps)
 
     function predict_n_ode(p)
         arr = Array(solve(prob, Tsit5(),
@@ -71,7 +69,7 @@ function test_hybridNODE2(sensealg)
 
     ## Make model
     dudt2 = Chain(Dense(4, 50, tanh), Dense(50, 2))
-    ps, st = Lux.setup(Random.default_rng(), dudt2)
+    ps, st = Lux.setup(Xoshiro(0), dudt2)
     ps = ComponentArray{Float32}(ps)
 
     function affect!(integrator)
@@ -139,7 +137,7 @@ function test_hybridNODE3(sensealg)
 
     data = (true_data[:, :, 1], callback_data[:, :, 1])
     dudt2 = Chain(Dense(2, 50, tanh), Dense(50, 2))
-    ps, st = Lux.setup(Random.default_rng(), dudt2)
+    ps, st = Lux.setup(Xoshiro(0), dudt2)
     ps = ComponentArray{Float32}(ps)
 
     function dudt(du, u, p, t)
@@ -176,29 +174,23 @@ function test_hybridNODE3(sensealg)
     @show sensealg
 
     res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps,
-            data), Adam(0.01); maxiters = 200, callback = cba)
+            data), Adam(0.01); maxiters = 1000, callback = cba)
     loss = loss_n_ode(res.u, (true_data, callback_data))
 
     @test loss < 0.5
 end
 
-@testset "PresetTimeCallback" begin
-    test_hybridNODE(ForwardDiffSensitivity())
-    test_hybridNODE(BacksolveAdjoint())
-    test_hybridNODE(InterpolatingAdjoint())
-    test_hybridNODE(QuadratureAdjoint())
+@testset "PresetTimeCallback: $(sensealg)" for sensealg in [ForwardDiffSensitivity(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    test_hybridNODE(sensealg)
 end
 
-@testset "PeriodicCallback" begin
-    test_hybridNODE2(ReverseDiffAdjoint())
-    test_hybridNODE2(BacksolveAdjoint())
-    test_hybridNODE2(InterpolatingAdjoint())
-    test_hybridNODE2(QuadratureAdjoint())
+@testset "PeriodicCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    test_hybridNODE2(sensealg)
 end
 
-@testset "tprevCallback" begin
-    test_hybridNODE3(ReverseDiffAdjoint())
-    test_hybridNODE3(BacksolveAdjoint())
-    test_hybridNODE3(InterpolatingAdjoint())
-    test_hybridNODE3(QuadratureAdjoint())
+@testset "tprevCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    test_hybridNODE3(sensealg)
 end

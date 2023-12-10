@@ -26,13 +26,13 @@ end
 loss = (p, _) -> sum(abs2, 1.0 .- Array(model_distributed(p)))
 
 cb = function (p, l) # callback function to observe training
-    @info alg=alg loss=l
+    @info loss=l
     return false
 end
 
 l1 = loss([1.0, 3.0], nothing)
 @show l1
 res = solve(OptimizationProblem(OptimizationFunction(loss, AutoZygote()),
-        [1.0, 3.0]), Adam(0.1); callback = cb, maxiters = 10)
+        [1.0, 3.0]), Adam(0.1); callback = cb, maxiters = 100)
 l2 = loss(res.u, nothing)
 @test 10l2 < l1
