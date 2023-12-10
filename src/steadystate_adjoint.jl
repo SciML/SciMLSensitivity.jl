@@ -29,6 +29,9 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
         λ, vjp, linsolve)
 end
 
+@inline __needs_concrete_A(l) = LinearSolve.needs_concrete_A(l)
+@inline __needs_concrete_A(::Nothing) = false
+
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
         dgdu::DG1 = nothing, dgdp::DG2 = nothing, g::G = nothing;
         kwargs...) where {DG1, DG2, G}
@@ -41,7 +44,7 @@ end
 
     needs_jac = ifelse(has_adjoint(f), false,
         ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
-            LinearSolve.needs_concrete_A(sensealg.linsolve)))
+            __needs_concrete_A(sensealg.linsolve)))
 
     p === DiffEqBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")

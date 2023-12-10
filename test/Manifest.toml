@@ -2,7 +2,7 @@
 
 julia_version = "1.10.0-rc2"
 manifest_format = "2.0"
-project_hash = "cde57c7ba5a1f34b72fc8b2dcad106159cf4ae32"
+project_hash = "436ede7152444183709e2ecb4d6b0c3415115836"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "332e5d7baeff8497b923b730b994fa480601efc7"
@@ -1437,7 +1437,7 @@ weakdeps = ["OffsetArrays", "StaticArrays"]
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "PrecompileTools", "Random", "StaticArraysCore"]
-git-tree-sha1 = "f903a6cd22540e44f2aefd4b755b52192da44210"
+git-tree-sha1 = "2aded4182a14b19e9b62b063c0ab561809b5af2c"
 repo-rev = "ap/chainrules"
 repo-url = "https://github.com/avik-pal/StaticArrays.jl"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"

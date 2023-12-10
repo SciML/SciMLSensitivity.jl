@@ -1,10 +1,6 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
-using OrdinaryDiffEq
-using NonlinearSolve
-using ForwardDiff, Calculus
-using Zygote
-using Random
+using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Zygote, Random
 Random.seed!(12345)
 
 @testset "Adjoint sensitivities of steady state solver" begin
@@ -73,7 +69,7 @@ Random.seed!(12345)
         @info "Calculate adjoint sensitivities from autodiff & numerical diff"
         function G(p)
             tmp_prob = remake(prob, u0 = convert.(eltype(p), prob.u0), p = p)
-            sol = solve(tmp_prob, DynamicSS(Rodas5()))
+            sol = solve(tmp_prob, DynamicSS(Rodas5()); abstol = 1e-14, reltol = 1e-14)
             A = convert(Array, sol)
             g(A, p, nothing)
         end
@@ -90,8 +86,7 @@ Random.seed!(12345)
         # with jac, param_jac
         f1 = ODEFunction(f!; jac = jac!, paramjac = paramjac!)
         prob1 = SteadyStateProblem(f1, u0, p)
-        sol1 = solve(prob1, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
-            reltol = 1e-14, abstol = 1e-14)
+        sol1 = solve(prob1, DynamicSS(Rodas5()), reltol = 1e-14, abstol = 1e-14)
 
         res1a = adjoint_sensitivities(sol1, DynamicSS(Rodas5()),
             sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
@@ -151,8 +146,7 @@ Random.seed!(12345)
         # without jac, without param_jac
         f3 = ODEFunction(f!)
         prob3 = SteadyStateProblem(f3, u0, p)
-        sol3 = solve(prob3, DynamicSS(Rodas5(), reltol = 1e-14, abstol = 1e-14),
-            reltol = 1e-14, abstol = 1e-14)
+        sol3 = solve(prob3, DynamicSS(Rodas5()), reltol = 1e-14, abstol = 1e-14)
         res3a = adjoint_sensitivities(sol3, DynamicSS(Rodas5()),
             sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
             dgdp = dgdp!, g = g)
