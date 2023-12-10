@@ -1,5 +1,4 @@
-using SciMLSensitivity, OrdinaryDiffEq, StaticArrays, QuadGK, ForwardDiff,
-    Zygote
+using SciMLSensitivity, OrdinaryDiffEq, StaticArrays, QuadGK, ForwardDiff, Zygote
 using Test
 
 ##StaticArrays rrule
@@ -59,20 +58,17 @@ sol = solve(prob, Tsit5(), saveat = tsteps, abstol = 1e-14, reltol = 1e-14)
 dg_disc(u, p, t, i; outtype = nothing) = u
 
 du0, dp = adjoint_sensitivities(sol, Tsit5(); t = tsteps, dgdu_discrete = dg_disc,
-    sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = ZygoteVJP()))
+    sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 
 @test !iszero(du0)
 @test !iszero(dp)
 #
 adj_prob = ODEAdjointProblem(sol,
-    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = SciMLSensitivity.ZygoteVJP()),
+    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()),
     Tsit5(), tsteps, dg_disc)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
-    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = SciMLSensitivity.ZygoteVJP()))
+    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 res, err = quadgk(integrand, 0.0, 5.0, atol = 1e-14, rtol = 1e-14)
 
 @test adj_sol[end]≈du0 rtol=1e-12
@@ -96,9 +92,7 @@ function dg_disc(du, u, p, t, i)
 end
 
 du1, dp1 = adjoint_sensitivities(sol, Tsit5(); t = tsteps, dgdu_discrete = dg_disc,
-    sensealg = QuadratureAdjoint(abstol = 1e-14,
-        reltol = 1e-14,
-        autojacvec = ZygoteVJP()))
+    sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 
 @test du0≈du1 rtol=1e-12
 @test dp≈dp1 rtol=1e-12
@@ -145,20 +139,17 @@ function dg(u, p, t)
 end
 
 du0, dp = adjoint_sensitivities(sol, Tsit5(); dgdu_continuous = dg, g = g,
-    sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = ZygoteVJP()))
+    sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 
 @test !iszero(du0)
 @test !iszero(dp)
 
 adj_prob = ODEAdjointProblem(sol,
-    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = SciMLSensitivity.ZygoteVJP()),
+    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()),
     Tsit5(), nothing, nothing, nothing, dg, nothing, g)
 adj_sol = solve(adj_prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 integrand = AdjointSensitivityIntegrand(sol, adj_sol,
-    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
-        autojacvec = SciMLSensitivity.ZygoteVJP()))
+    QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 res, err = quadgk(integrand, 0.0, 5.0, atol = 1e-14, rtol = 1e-14)
 
 @test adj_sol[end]≈du0 rtol=1e-12
@@ -191,10 +182,8 @@ f_dp = ForwardDiff.gradient(G_p, p)
 ## concrete solve
 
 du0, dp = Zygote.gradient((u0, p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
-        abstol = 1e-10, reltol = 1e-10,
-        saveat = tsteps,
-        sensealg = QuadratureAdjoint(abstol = 1e-14,
-            reltol = 1e-14,
+        abstol = 1e-10, reltol = 1e-10, saveat = tsteps,
+        sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
             autojacvec = ZygoteVJP()))),
     u0, p)
 

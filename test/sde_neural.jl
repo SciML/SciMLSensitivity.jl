@@ -1,10 +1,6 @@
-using SciMLSensitivity, Flux, LinearAlgebra
-using DiffEqNoiseProcess
-using StochasticDiffEq
-using Statistics
-using SciMLSensitivity
+using SciMLSensitivity, Lux, ComponentArrays, LinearAlgebra, DiffEqNoiseProcess, Test
+using StochasticDiffEq, Statistics, SciMLSensitivity, Zygote
 using DiffEqBase.EnsembleAnalysis
-using Zygote
 using Optimization, OptimizationOptimisers
 
 using Random
@@ -48,13 +44,14 @@ Random.seed!(238248735)
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
     ann = Chain(Dense(4, 32, tanh), Dense(32, 32, tanh), Dense(32, 2))
-    α, re = Flux.destructure(ann)
+    α, st = Lux.setup(Random.default_rng(), ann)
+    α = ComponentArray(α)
     α = Float64.(α)
 
     function dudt_(du, u, p, t)
         r, e, μ, h, ph, z, i = p_
 
-        MM = re(p)(u)
+        MM = first(ann(u, p, st))
 
         du[1] = e * 0.5 * (5μ - u[1]) # nutrient input time series
         du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
@@ -66,7 +63,7 @@ Random.seed!(238248735)
     function dudt_op(u, p, t)
         r, e, μ, h, ph, z, i = p_
 
-        MM = re(p)(u)
+        MM = first(ann(u, p, st))
 
         [e * 0.5 * (5μ - u[1]), # nutrient input time series
             e * 0.05 * (10μ - u[2]), # grazer density time series
@@ -132,14 +129,14 @@ Random.seed!(238248735)
 
     optf = Optimization.OptimizationFunction((x, p) -> loss(x), Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, α)
-    res1 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
+    res1 = Optimization.solve(optprob, Adam(0.001), callback = callback, maxiters = 200)
 
     println("Test non-mutating form")
 
     optf = Optimization.OptimizationFunction((x, p) -> loss_op(x),
         Optimization.AutoZygote())
     optprob = Optimization.OptimizationProblem(optf, α)
-    res2 = Optimization.solve(optprob, ADAM(0.001), callback = callback, maxiters = 200)
+    res2 = Optimization.solve(optprob, Adam(0.001), callback = callback, maxiters = 200)
 end
 
 @testset "Adaptive neural SDE" begin
@@ -149,8 +146,9 @@ end
     # Define Neural Network for the control input
     input_size = x_size + 1 # size of the spatial dimensions PLUS one time dimensions
     nn_initial = Chain(Dense(input_size, v_size)) # The actual neural network
-    p_nn, model = Flux.destructure(nn_initial)
-    nn(x, p) = model(p)(x)
+    ps, st = Lux.setup(Random.default_rng(), nn_initial)
+    ps = ComponentArray(ps)
+    nn(x, p) = first(nn_initial(x, p, st)) # The neural network function
 
     # Define the right hand side of the SDE
     const_mat = zeros(Float64, (x_size, v_size))
@@ -171,10 +169,10 @@ end
     u0 = vec(rand(Float64, (x_size, 1)))
     tspan = (0.0, 1.0)
     ts = collect(0:0.1:1)
-    prob = SDEProblem{true}(f!, g!, u0, tspan, p_nn)
+    prob = SDEProblem{true}(f!, g!, u0, tspan, ps)
 
     W = WienerProcess(0.0, 0.0, 0.0)
-    probscalar = SDEProblem{true}(f!, g!, u0, tspan, p_nn, noise = W)
+    probscalar = SDEProblem{true}(f!, g!, u0, tspan, ps, noise = W)
 
     # Defining the loss function
     function loss(pars, prob, alg)
@@ -189,8 +187,7 @@ end
 
         _sol = solve(ensembleprob, alg, EnsembleThreads(),
             sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-            saveat = ts, trajectories = 10,
-            abstol = 1e-1, reltol = 1e-1)
+            saveat = ts, trajectories = 10, abstol = 1e-1, reltol = 1e-1)
         A = convert(Array, _sol)
         sum(abs2, A .- 1), mean(A)
     end
@@ -209,16 +206,16 @@ end
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, LambaEM()),
         Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optf, p_nn)
-    res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
+    optprob = Optimization.OptimizationProblem(optf, ps)
+    res1 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, SOSRI()),
         Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optf, p_nn)
-    res2 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
+    optprob = Optimization.OptimizationProblem(optf, ps)
+    res2 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 
     optf = Optimization.OptimizationFunction((p, _) -> loss(p, prob, LambaEM()),
         Optimization.AutoZygote())
-    optprob = Optimization.OptimizationProblem(optf, p_nn)
-    res1 = Optimization.solve(optprob, ADAM(0.1), callback = callback, maxiters = 5)
+    optprob = Optimization.OptimizationProblem(optf, ps)
+    res1 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 end

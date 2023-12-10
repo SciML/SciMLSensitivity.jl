@@ -9,7 +9,7 @@ using StochasticDiffEq
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
-import ZygoteRules, Zygote, ReverseDiff
+import Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
 import GPUArraysCore
@@ -27,8 +27,7 @@ using FunctionProperties: hasbranching
 using Markdown
 
 using Reexport
-import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ProjectTo,
-    project_type, _eltype_projectto, rrule
+import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 

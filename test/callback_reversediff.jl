@@ -1,4 +1,5 @@
-using OrdinaryDiffEq, Flux, SciMLSensitivity, DiffEqCallbacks, Test
+using OrdinaryDiffEq, Lux, ComponentArrays, SciMLSensitivity, DiffEqCallbacks, Test
+using Optimization, OptimizationOptimisers, Zygote
 using Random
 
 Random.seed!(1234)
@@ -28,13 +29,13 @@ t = range(tspan[1], tspan[2], length = datasize)
 prob = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob, Tsit5(), callback = CallbackSet(cbPreTime, cbFctCall),
     saveat = t))
-dudt2 = Chain(Dense(2, 50, tanh),
-    Dense(50, 2))
-p, re = Flux.destructure(dudt2) # use this p as the initial condition!
+dudt2 = Chain(Dense(2, 50, tanh), Dense(50, 2))
+ps, st = Lux.setup(Random.default_rng(), dudt2)
+ps = ComponentArray(ps)
 
 function dudt(du, u, p, t)
     du[1:2] .= -u[1:2]
-    du[3:end] .= re(p)(u[1:2]) #re(p)(u[3:end])
+    du[3:end] .= first(dudt2(u[1:2], p, st)) #re(p)(u[3:end])
 end
 z0 = Float32[u0; u0]
 prob = ODEProblem(dudt, z0, tspan)
@@ -42,33 +43,24 @@ prob = ODEProblem(dudt, z0, tspan)
 affect!(integrator) = integrator.u[1:2] .= integrator.u[3:end]
 cb = PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
 
-function predict_n_ode()
-    _prob = remake(prob, p = p)
-    Array(solve(_prob, Tsit5(), u0 = z0, p = p, callback = cb, saveat = t,
-        sensealg = ReverseDiffAdjoint()))[1:2,
-        :]
-    #Array(solve(prob,Tsit5(),u0=z0,p=p,saveat=t))[1:2,:]
+function predict_n_ode(ps)
+    Array(solve(prob, Tsit5(), u0 = z0, p = ps, callback = cb, saveat = t,
+        sensealg = ReverseDiffAdjoint()))[1:2, :]
 end
 
-function loss_n_ode()
-    pred = predict_n_ode()
+function loss_n_ode(ps, _)
+    pred = predict_n_ode(ps)
     loss = sum(abs2, ode_data .- pred)
     loss
 end
-loss_n_ode() # n_ode.p stores the initial parameters of the neural ODE
+loss_n_ode(ps, nothing)
 
-cba = function (; doplot = false) #callback function to observe training
-    pred = predict_n_ode()
-    display(sum(abs2, ode_data .- pred))
-    # plot current prediction against data
-    #pl = scatter(t,ode_data[1,:],label="data")
-    #scatter!(pl,t,pred[1,:],label="prediction")
-    #display(plot(pl))
+cb1 = function (p, l)
+    @show l
     return false
 end
-cba()
 
-ps = Flux.params(p)
-data = Iterators.repeated((), 200)
-Flux.train!(loss_n_ode, ps, data, ADAM(0.05), cb = cba)
-@test loss_n_ode() < 0.4
+res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
+    Adam(0.05); callback = cb1, maxiters = 100)
+
+@test loss_n_ode(res.u, nothing) < 0.4

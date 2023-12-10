@@ -1,5 +1,4 @@
-using SciMLSensitivity, ForwardDiff, Distributions, OrdinaryDiffEq,
-    LinearAlgebra, Test
+using SciMLSensitivity, ForwardDiff, Distributions, OrdinaryDiffEq, LinearAlgebra, Test
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]

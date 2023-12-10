@@ -41,7 +41,6 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Tracker = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
-ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 ADTypes = "0.1, 0.2"
@@ -81,5 +80,4 @@ StochasticDiffEq = "6.20"
 Tracker = "0.2"
 TruncatedStacktraces = "1.2"
 Zygote = "0.6"
-ZygoteRules = "0.2"
 julia = "1.9"

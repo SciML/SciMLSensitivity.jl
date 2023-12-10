@@ -2,10 +2,10 @@
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 DiffEqFlux = "aae7a2af-3d4f-5e19-a356-7da93b79d9d0"
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+LuxCUDA = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
 
 [compat]
 CUDA = "3.12, 4, 5"
 DiffEqCallbacks = "2.24"
-DiffEqFlux = "1.52, 2"
-Flux = "0.13, 0.14"
+DiffEqFlux = "3"
+LuxCUDA = "0.3.1"

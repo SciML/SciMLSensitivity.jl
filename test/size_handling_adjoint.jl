@@ -1,4 +1,5 @@
-using SciMLSensitivity, Zygote, Flux, OrdinaryDiffEq, Test # , Plots
+using SciMLSensitivity, Zygote, OrdinaryDiffEq, Test
+using Optimization, OptimizationOptimisers
 
 p = [1.5 1.0; 3.0 1.0]
 function lotka_volterra(du, u, p, t)
@@ -14,28 +15,23 @@ sol = solve(prob, Tsit5())
 
 # plot(sol)
 
-p = [2.2 1.0; 2.0 0.4] # Tweaked Initial Parameter Array
-ps = Flux.params(p)
+ps = [2.2 1.0; 2.0 0.4] # Tweaked Initial Parameter Array
 
-function predict_adjoint() # Our 1-layer neural network
+function predict_adjoint(p) # Our 1-layer neural network
     Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:10.0))
 end
 
-loss_adjoint() = sum(abs2, x - 1 for x in predict_adjoint())
+loss_adjoint(p, _) = sum(abs2, x - 1 for x in predict_adjoint(p))
 
-data = Iterators.repeated((), 100)
-opt = ADAM(0.1)
-cb = function () #callback function to observe training
-    display(loss_adjoint())
+cb = function (p, loss) #callback function to observe training
+    @show loss
+    return false
 end
 
-predict_adjoint()
+res = solve(OptimizationProblem(OptimizationFunction(loss_adjoint, AutoZygote()), ps),
+    Adam(0.1); callback = cb, maxiters = 200)
 
-# Display the ODE with the initial parameter values.
-cb()
-Flux.train!(loss_adjoint, ps, data, opt, cb = cb)
-
-@test loss_adjoint() < 1
+@test loss_adjoint(res.u, nothing) < 1
 
 tspan = (0, 1)
 tran = collect(0:0.1:1)

@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, SparseArrays, Zygote, LinearSolve
-using AlgebraicMultigrid: AlgebraicMultigrid
+using AlgebraicMultigrid
 using Test
 
 foop(u, p, t) = jac(u, p, t) * u
