@@ -14,8 +14,8 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```@example secondorderadjoints
-using Flux, DiffEqFlux, Optimization, OptimizationOptimisers, DifferentialEquations,
-    Plots, Random, OptimizationOptimJL
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimisers,
+    OrdinaryDiffEq, Plots, Random, OptimizationOptimJL
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -30,13 +30,14 @@ end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
-dudt2 = Flux.Chain(x -> x .^ 3,
-    Flux.Dense(2, 50, tanh),
-    Flux.Dense(50, 2))
+dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
 prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
+ps, st = Lux.setup(Random.default_rng(), prob_neuralode)
+ps = ComponentArray(ps)
+prob_neuralode = Lux.Experimental.StatefulLuxLayer(prob_neuralode, ps, st)
 
 function predict_neuralode(p)
-    Array(prob_neuralode(u0, p)[1])
+    Array(prob_neuralode(u0, p))
 end
 
 function loss_neuralode(p)
@@ -72,13 +73,11 @@ end
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
-optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.p)
-pstart = Optimization.solve(optprob1, ADAM(0.01), callback = callback, maxiters = 100).u
+optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.ps)
+pstart = Optimization.solve(optprob1, Adam(0.01), callback = callback, maxiters = 100).u
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback = callback,
-    maxiters = 200)
-pmin = Optimization.solve(optprob2, Optim.KrylovTrustRegion(), callback = callback,
     maxiters = 200)
 ```
 

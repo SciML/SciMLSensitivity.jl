@@ -20,9 +20,7 @@ follow a full explanation of the definition and training process:
 
 ```@example
 # load packages
-using DiffEqFlux
-using SciMLSensitivity
-using Optimization, OptimizationOptimisers
+using DiffEqFlux, SciMLSensitivity, Optimization, OptimizationOptimisers
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Zygote, Statistics, LinearAlgebra, Random
 using Lux, Random, ComponentArrays
@@ -293,7 +291,7 @@ visualization_callback(p_nn, l; doplot = true)
 # training loop
 @info "Start Training.."
 
-# optimize the parameters for a few epochs with ADAM on time span
+# optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
@@ -646,7 +644,7 @@ end
 
 ### Training
 
-We use the `ADAM` optimizer to optimize the parameters of the neural network.
+We use the `Adam` optimizer to optimize the parameters of the neural network.
 In each epoch, we draw new initial quantum states, compute the forward evolution,
 and, subsequently, the gradients of the loss function with respect to the parameters
 of the neural network.
@@ -656,7 +654,7 @@ sensitivity methods. The necessary correction between Ito and Stratonovich integ
 is computed under the hood in the SciMLSensitivity package.
 
 ```@example sdecontrol
-# optimize the parameters for a few epochs with ADAM on time span
+# optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)

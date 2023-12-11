@@ -5,7 +5,7 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 
 ```@example pde
 using DelimitedFiles, Plots
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, Zygote
+using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Zygote
 
 # Problem setup parameters:
 Lx = 10.0
@@ -74,7 +74,7 @@ LOSS = []                              # Loss accumulator
 PRED = []                              # prediction accumulator
 PARS = []                              # parameters accumulator
 
-callback = function (θ, l, pred) #callback function to observe training
+cb = function (θ, l, pred) #callback function to observe training
     display(l)
     append!(PRED, [pred])
     append!(LOSS, l)
@@ -82,7 +82,7 @@ callback = function (θ, l, pred) #callback function to observe training
     false
 end
 
-callback(ps, loss(ps)...) # Testing callback function
+cb(ps, loss(ps)...) # Testing callback function
 
 # Let see prediction vs. Truth
 scatter(sol[:, end], label = "Truth", size = (800, 500))
@@ -92,7 +92,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), callback = callback)
+res = Optimization.solve(optprob, PolyOpt(), callback = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 
@@ -102,8 +102,7 @@ res = Optimization.solve(optprob, PolyOpt(), callback = callback)
 
 ```@example pde2
 using DelimitedFiles, Plots
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms,
-    Zygote
+using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Zygote
 ```
 
 ### Parameters
@@ -233,7 +232,7 @@ size(pred), size(sol), size(t) # Checking sizes
 
 #### Optimizer
 
-The optimizers `ADAM` with a learning rate of 0.01 and `BFGS` are directly passed in
+The optimizers `Adam` with a learning rate of 0.01 and `BFGS` are directly passed in
 training (see below)
 
 #### Callback
@@ -247,7 +246,7 @@ LOSS = []                              # Loss accumulator
 PRED = []                              # prediction accumulator
 PARS = []                              # parameters accumulator
 
-callback = function (θ, l, pred) #callback function to observe training
+cb = function (θ, l, pred) #callback function to observe training
     display(l)
     append!(PRED, [pred])
     append!(LOSS, l)
@@ -255,7 +254,7 @@ callback = function (θ, l, pred) #callback function to observe training
     false
 end
 
-callback(ps, loss(ps)...) # Testing callback function
+cb(ps, loss(ps)...) # Testing callback function
 ```
 
 ### Plotting Prediction vs Ground Truth
@@ -281,7 +280,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), callback = callback)
+res = Optimization.solve(optprob, PolyOpt(), callback = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 

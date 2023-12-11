@@ -41,8 +41,7 @@ Pkg.add("SciMLSensitivity")
 The highest level interface is provided by the function `solve`:
 
 ```julia
-solve(prob, args...; sensealg = InterpolatingAdjoint(),
-    checkpoints = sol.t, kwargs...)
+solve(prob, args...; sensealg = InterpolatingAdjoint(), checkpoints = sol.t, kwargs...)
 ```
 
 `solve` is fully compatible with automatic differentiation libraries
@@ -195,7 +194,7 @@ use and swap out the ODE solver between any common interface compatible library,
   - [… etc. many other choices!](https://docs.sciml.ai/DiffEqDocs/stable/solvers/ode_solve/)
 
 In addition, due to the composability of the system, none of the components are directly
-tied to the Flux.jl machine learning framework. For example, you can [use SciMLSensitivity.jl
+tied to the Lux.jl machine learning framework. For example, you can [use SciMLSensitivity.jl
 to generate TensorFlow graphs and train the neural network with TensorFlow.jl](https://youtu.be/n2MwJ1guGVQ?t=284),
 [use PyTorch arrays via Torch.jl](https://github.com/FluxML/Torch.jl), and more all with
 single line code changes by utilizing the underlying code generation. The tutorials shown here

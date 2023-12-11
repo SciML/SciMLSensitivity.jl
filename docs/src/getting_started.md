@@ -28,7 +28,7 @@ Let's first define a differential equation we wish to solve. We will choose the
 Lotka-Volterra equation. This is done via DifferentialEquations.jl using:
 
 ```@example diffode
-using DifferentialEquations
+using OrdinaryDiffEq
 
 function lotka_volterra!(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]

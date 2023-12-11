@@ -67,7 +67,7 @@ function cb()
     end
 end
 
-opt = ADAM(0.05)
+opt = Adam(0.05)
 Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader, numEpochs), opt,
     cb = Flux.throttle(cb, 10))
 
@@ -176,7 +176,7 @@ function cb()
     end
 end
 
-opt = ADAM(0.05)
+opt = Adam(0.05)
 Flux.train!(loss_adjoint, Flux.params(θ), ncycle(train_loader, numEpochs), opt,
     cb = Flux.throttle(cb, 10))
 ```

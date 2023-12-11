@@ -5,8 +5,8 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```@example dde
-using DifferentialEquations, Optimization, SciMLSensitivity,
-    OptimizationPolyalgorithms
+using OrdinaryDiffEq, Optimization, SciMLSensitivity, OptimizationPolyalgorithms,
+    DelayDiffEq
 
 # Define the same LV equation, but including a delay parameter
 function delay_lotka_volterra!(du, u, h, p, t)
@@ -32,8 +32,7 @@ prob_dde = DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
 
 function predict_dde(p)
     return Array(solve(prob_dde, MethodOfSteps(Tsit5()),
-        u0 = u0, p = p, saveat = 0.1,
-        sensealg = ReverseDiffAdjoint()))
+        u0 = u0, p = p, saveat = 0.1, sensealg = ReverseDiffAdjoint()))
 end
 
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))

@@ -6,7 +6,7 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using DifferentialEquations,
+using OrdinaryDiffEq,
     Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
     Zygote, Plots
 
@@ -62,8 +62,8 @@ result_ode = Optimization.solve(optprob, PolyOpt(),
 
 ## Explanation
 
-First, let's create a Lotka-Volterra ODE using DifferentialEquations.jl. For
-more details, [see the DifferentialEquations.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/). The Lotka-Volterra equations have the form:
+First, let's create a Lotka-Volterra ODE using OrdinaryDiffEq.jl. For
+more details, [see the OrdinaryDiffEq.jl documentation](https://docs.sciml.ai/DiffEqDocs/stable/). The Lotka-Volterra equations have the form:
 
 ```math
 \begin{aligned}
@@ -73,7 +73,7 @@ more details, [see the DifferentialEquations.jl documentation](https://docs.scim
 ```
 
 ```@example optode
-using DifferentialEquations,
+using OrdinaryDiffEq,
     Optimization, OptimizationPolyalgorithms,
     SciMLSensitivity, Zygote, Plots
 
@@ -122,7 +122,7 @@ function loss(p)
 end
 ```
 
-Lastly, we use the `Optimization.solve` function to train the parameters using `ADAM` to
+Lastly, we use the `Optimization.solve` function to train the parameters using `Adam` to
 arrive at parameters which optimize for our goal. `Optimization.solve` allows defining
 a callback that will be called at each step of our training loop. It takes in
 the current parameter vector and the returns of the last call to the loss
