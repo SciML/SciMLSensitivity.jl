@@ -1,4 +1,6 @@
-using SciMLSensitivity, Flux, OrdinaryDiffEq, LinearAlgebra, Test
+using SciMLSensitivity,
+    OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
+    OptimizationOptimisers
 
 GDP = [
     11394358246872.6,
@@ -76,76 +78,35 @@ if false
 else ## false crashes. that is when i am tracking the initial conditions
     prob = ODEProblem(monomial, u0, tspan, p)
 end
-function predict_rd() # Our 1-layer neural network
-    Array(solve(prob, Tsit5(), p = p, saveat = 1.0:1.0:59.0, reltol = 1e-4,
-        sensealg = TrackerAdjoint()))
-end
 
-function loss_rd() ##L2 norm biases the newer times unfairly
-    ##Graph looks better if we minimize relative error squared
-    c = 0.0
-    a = predict_rd()
-    d = 0.0
-    for i in 1:59
-        c += (a[i][1] / GDP[i] - 1)^2 ## L2 of relative error
+@testset "sensealg: $(sensealg)" for sensealg in (TrackerAdjoint(),
+    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
+    function predict_rd(pu0) # Our 1-layer neural network
+        p = pu0[1:6]
+        u0 = pu0[7:7]
+        Array(solve(prob, Tsit5(); p = p, u0 = u0, saveat = 1.0:1.0:59.0, reltol = 1e-4,
+            sensealg))
     end
-    c + 3 * d
-end
 
-data = Iterators.repeated((), 100)
-opt = ADAM(0.01)
-
-peek = function () #callback function to observe training
-    #reduces training speed by a lot
-    println("Loss: ", loss_rd())
-end
-
-peek()
-Flux.train!(loss_rd, Flux.params(p, u0), data, opt, cb = peek)
-peek()
-
-@test loss_rd() < 0.2
-
-function monomial(dcGDP, cGDP, parameters, t)
-    α1, β1, nu1, nu2, δ, δ2 = parameters
-    dcGDP[1] = α1 * ((cGDP[1]))^β1
-end
-
-GDP0 = GDP[1]
-
-tspan = (1.0, 59.0)
-p = [474.8501513113645, 0.7036417845990167, 0.0, 1e-10, 1e-10, 1e-10]
-u0 = [GDP0]
-if false
-    prob = ODEProblem(monomial, [GDP0], tspan, p)
-else ## false crashes. that is when i am tracking the initial conditions
-    prob = ODEProblem(monomial, u0, tspan, p)
-end
-function predict_adjoint() # Our 1-layer neural network
-    Array(solve(prob, Tsit5(), p = p, saveat = 1.0, reltol = 1e-4,
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
-end
-
-function loss_adjoint() ##L2 norm biases the newer times unfairly
-    ##Graph looks better if we minimize relative error squared
-    c = 0.0
-    a = predict_adjoint()
-    d = 0.0
-    for i in 1:59
-        c += (a[i][1] / GDP[i] - 1)^2 ## L2 of relative error
+    function loss_rd(pu0, _) ##L2 norm biases the newer times unfairly
+        ##Graph looks better if we minimize relative error squared
+        c = 0.0
+        a = predict_rd(pu0)
+        d = 0.0
+        for i in 1:59
+            c += (a[i][1] / GDP[i] - 1)^2 ## L2 of relative error
+        end
+        c + 3 * d
     end
-    c + 3 * d
+
+    peek = function (p, l) #callback function to observe training
+        #reduces training speed by a lot
+        println("$(sensealg) Loss: ", l)
+        return false
+    end
+
+    res = solve(OptimizationProblem(OptimizationFunction(loss_rd, AutoZygote()),
+        vcat(p, u0)), Adam(0.01); callback = peek, maxiters = 100)
+
+    @test loss_rd(res.u, nothing) < 0.2
 end
-
-data = Iterators.repeated((), 100)
-opt = ADAM(0.01)
-
-peek = function () #callback function to observe training
-    #reduces training speed by a lot
-    println("Loss: ", loss_adjoint())
-end
-
-peek()
-Flux.train!(loss_adjoint, Flux.params(p, u0), data, opt, cb = peek)
-peek()
-@test loss_adjoint() < 0.2

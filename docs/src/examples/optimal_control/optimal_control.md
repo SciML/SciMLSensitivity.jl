@@ -36,17 +36,23 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
-using Flux, DifferentialEquations, Optimization, OptimizationNLopt, OptimizationOptimisers,
-    SciMLSensitivity, Zygote, Plots, Statistics, Random
+using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationNLopt,
+    OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
 tspan = (0.0f0, 8.0f0)
-ann = Flux.Chain(Flux.Dense(1, 32, tanh), Flux.Dense(32, 32, tanh), Flux.Dense(32, 1))
-θ, re = Flux.destructure(ann)
+
+ann = Chain(Dense(1, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
+ps, st = Lux.setup(rng, ann)
+p = ComponentArray(ps)
+
+θ, ax = getdata(p), getaxes(p)
+
 function dxdt_(dx, x, p, t)
+    ps = ComponentArray(p, ax)
     x1, x2 = x
     dx[1] = x[2]
-    dx[2] = re(p)([t])[1]^3
+    dx[2] = first(ann([t], ps, st))[1]^3
 end
 x0 = [-4.0f0, 0.0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))
@@ -59,17 +65,20 @@ function predict_adjoint(θ)
 end
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
+    ps = ComponentArray(θ, ax)
     mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
-    mean(abs2, [first(re(θ)([t])) for t in ts]) / 10
+    mean(abs2, [first(first(ann([t], ps, st))) for t in ts]) / 10
 end
 
 l = loss_adjoint(θ)
-callback = function (θ, l; doplot = false)
+cb = function (θ, l; doplot = true)
     println(l)
+
+    ps = ComponentArray(θ, ax)
 
     if doplot
         p = plot(solve(remake(prob, p = θ), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
-        plot!(p, ts, [first(re(θ)([t])) for t in ts], label = "u(t)", lw = 3)
+        plot!(p, ts, [first(first(ann([t], ps, st))) for t in ts], label = "u(t)", lw = 3)
         display(p)
     end
 
@@ -78,7 +87,7 @@ end
 
 # Display the ODE with the current parameter values.
 
-callback(θ, l)
+cb(θ, l)
 
 # Setup and run the optimization
 
@@ -87,11 +96,10 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, θ)
-res1 = Optimization.solve(optprob, ADAM(0.005), callback = callback, maxiters = 100)
+res1 = Optimization.solve(optprob, Adam(0.01), callback = cb, maxiters = 100)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
-res2 = Optimization.solve(optprob2,
-    NLopt.LD_LBFGS(), maxiters = 100)
+res2 = Optimization.solve(optprob2, NLopt.LD_LBFGS(), callback = cb, maxiters = 100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
@@ -100,23 +108,23 @@ the original loss function to finish the optimization:
 ```@example neuraloptimalcontrol
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
+    ps = ComponentArray(θ, ax)
     mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
-    mean(abs2, [first(re(θ)([t])) for t in ts])
+    mean(abs2, [first(first(ann([t], ps, st))) for t in ts])
 end
 optf3 = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
-res3 = Optimization.solve(optprob3,
-    NLopt.LD_LBFGS(), maxiters = 100)
+res3 = Optimization.solve(optprob3, NLopt.LD_LBFGS(), maxiters = 100)
 ```
 
 Now let's see what we received:
 
 ```@example neuraloptimalcontrol
 l = loss_adjoint(res3.u)
-callback(res3.u, l)
+cb(res3.u, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
-plot!(p, ts, [first(re(res3.u)([t])) for t in ts], label = "u(t)", lw = 3)
+plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts], label = "u(t)", lw = 3)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/81859169-db65b280-9532-11ea-8394-dbb5efcd4036.png)

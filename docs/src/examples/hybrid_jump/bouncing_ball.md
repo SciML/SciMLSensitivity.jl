@@ -8,7 +8,8 @@ data. Assume we have data for the ball's height after 15 seconds. Let's
 first start by implementing the ODE:
 
 ```@example bouncing_ball
-using Optimization, OptimizationPolyalgorithms, SciMLSensitivity, DifferentialEquations
+using Optimization,
+    OptimizationPolyalgorithms, SciMLSensitivity, OrdinaryDiffEq, DiffEqCallbacks
 
 function f(du, u, p, t)
     du[1] = u[2]

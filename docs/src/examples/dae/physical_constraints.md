@@ -10,7 +10,7 @@ terms must add to one. An example of this is as follows:
 
 ```@example dae
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-    DifferentialEquations, Plots
+    OrdinaryDiffEq, Plots
 
 using Random
 rng = Random.default_rng()
@@ -74,7 +74,7 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 
 ```@example dae2
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-    DifferentialEquations, Plots
+    OrdinaryDiffEq, Plots
 
 using Random
 rng = Random.default_rng()
@@ -133,8 +133,8 @@ Because this is a DAE, we need to make sure to use a **compatible solver**.
 ### Neural Network Layers
 
 Next, we create our layers using `Lux.Chain`. We use this instead of `Flux.Chain` because it
-is more suited to SciML applications (similarly for
-`Lux.Dense`). The input to our network will be the initial conditions fed in as `u₀`.
+is more suited to SciML applications (similarly for `Lux.Dense`). The input to our network
+will be the initial conditions fed in as `u₀`.
 
 ```@example dae2
 nn_dudt2 = Lux.Chain(Lux.Dense(3, 64, tanh),

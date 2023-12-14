@@ -19,7 +19,7 @@ In both of these examples, we may make use of measurements we have of the evolut
 We start by defining a model of the pendulum. The model takes a parameter $L$ corresponding to the length of the pendulum.
 
 ```@example PEM
-using DifferentialEquations, Optimization, OptimizationPolyalgorithms, Plots, Statistics,
+using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Plots, Statistics,
     DataInterpolations, ForwardDiff
 
 tspan = (0.1, 20.0)

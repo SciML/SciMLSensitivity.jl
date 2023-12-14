@@ -11,7 +11,8 @@ recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
 recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
     map(recursive_copyto!, values(y), values(x))
 recursive_copyto!(y::T, x::T) where {T} = fmap(recursive_copyto!, y, x)
-recursive_copyto!(y, x::Nothing) = y
+recursive_copyto!(y, ::Nothing) = y
+recursive_copyto!(::Nothing, ::Nothing) = nothing
 
 """
     neg!(x)
@@ -35,6 +36,7 @@ recursive_sub!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
     NamedTuple{F}(map(recursive_sub!, values(y), values(x)))
 recursive_sub!(y::T, x::T) where {T} = fmap(recursive_sub!, y, x)
 recursive_sub!(y, ::Nothing) = y
+recursive_sub!(::Nothing, ::Nothing) = nothing
 
 """
     recursive_add!(y, x)
@@ -47,6 +49,7 @@ recursive_add!(y::NamedTuple{F}, x::NamedTuple{F}) where {F} =
     NamedTuple{F}(recursive_add!(values(y), values(x)))
 recursive_add!(y::T, x::T) where {T} = fmap(recursive_add!, y, x)
 recursive_add!(y, ::Nothing) = y
+recursive_add!(::Nothing, ::Nothing) = nothing
 
 """
     allocate_vjp(λ, x)

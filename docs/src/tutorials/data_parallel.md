@@ -17,7 +17,10 @@ matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
 
 ```@example dataparallel
-using Lux, DiffEqFlux, DifferentialEquations, CUDA, Random
+using Lux, DiffEqFlux, OrdinaryDiffEq, LuxCUDA, Random
+
+gdev = gpu_device()
+
 rng = Random.default_rng()
 
 dudt = Lux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
@@ -51,7 +54,7 @@ GPU:
 ```@example dataparallel
 xs = Float32.([0 1 2
     0 0 0])
-prob = ODEProblem(f, Lux.gpu(u0), (0.0f0, 1.0f0), Lux.gpu(p))
+prob = ODEProblem(f, gdev(u0), (0.0f0, 1.0f0), gdev(p))
 solve(prob, Tsit5())
 ```
 
@@ -83,7 +86,7 @@ The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
 ```@example dataparallel
-using DifferentialEquations, Optimization, OptimizationOptimisers
+using OrdinaryDiffEq, Optimization, OptimizationOptimisers
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]
@@ -108,7 +111,7 @@ callback = function (θ, l) # callback function to observe training
     false
 end
 
-opt = ADAM(0.1)
+opt = Adam(0.1)
 l1 = loss_serial(θ)
 
 adtype = Optimization.AutoZygote()
@@ -198,7 +201,7 @@ using Distributed
 addprocs(4)
 
 @everywhere begin
-    using DifferentialEquations, Optimization, OptimizationOptimisers
+    using OrdinaryDiffEq, Optimization, OptimizationOptimisers
     function f(u, p, t)
         1.01u .* p
     end
@@ -224,7 +227,7 @@ callback = function (θ, l) # callback function to observe training
     false
 end
 
-opt = ADAM(0.1)
+opt = Adam(0.1)
 loss_distributed(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleDistributed())))
 l1 = loss_distributed(θ)
 
@@ -278,7 +281,7 @@ callback = function (θ, l) # callback function to observe training
     false
 end
 
-opt = ADAM(0.1)
+opt = Adam(0.1)
 loss_gpu(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleGPUArray())))
 l1 = loss_gpu(θ)
 

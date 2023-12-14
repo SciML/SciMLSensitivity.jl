@@ -370,7 +370,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         for (j, u) in enumerate(ures)
             vtmp = @view v[((n0 + j - 2) * numindvar + 1):((n0 + j - 1) * numindvar)]
             #  final gradient result for ith parameter
-            accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, n0 + j - 1)
+            lss_accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, n0 + j - 1)
 
             if dg_val isa Tuple
                 res[i] += dot(dg_val[1], vtmp)
@@ -415,7 +415,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         for (j, u) in enumerate(sol.u)
             vtmp = @view v[((j - 1) * numindvar + 1):(j * numindvar)]
             #  final gradient result for ith parameter
-            accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
+            lss_accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
             if dg_val isa Tuple
                 res[i] += dot(dg_val[1], vtmp) * window[j]
                 res[i] += dg_val[2][i] * window[j]
@@ -449,7 +449,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         for (j, u) in enumerate(sol.u)
             vtmp = @view v[((j - 1) * numindvar + 1):(j * numindvar)]
             #  final gradient result for ith parameter
-            accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
+            lss_accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
             if dg_val isa Tuple
                 res[i] += dot(dg_val[1], vtmp) * window[j]
                 res[i] += dg_val[2][i] * window[j]
@@ -461,7 +461,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     return res
 end
 
-function accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
+function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
     @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, uf = diffcache
 
     if dgdu === nothing

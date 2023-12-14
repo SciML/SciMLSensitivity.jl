@@ -9,11 +9,10 @@ using StochasticDiffEq
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
-import ZygoteRules, Zygote, ReverseDiff
+import Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
 import GPUArraysCore
-using StaticArraysCore
 using ADTypes
 using SparseDiffTools
 using SciMLOperators
@@ -28,8 +27,7 @@ using FunctionProperties: hasbranching
 using Markdown
 
 using Reexport
-import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ProjectTo,
-    project_type, _eltype_projectto, rrule
+import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
@@ -58,7 +56,6 @@ include("concrete_solve.jl")
 include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
-include("staticarrays.jl")
 
 export extract_local_sensitivities
 

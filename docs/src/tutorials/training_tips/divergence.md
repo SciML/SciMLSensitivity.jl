@@ -28,8 +28,7 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
-using DifferentialEquations,
-    SciMLSensitivity, Optimization, OptimizationOptimisers,
+using OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
     OptimizationNLopt, Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -44,14 +43,14 @@ u0 = [1.0, 1.0]
 tspan = (0.0, 10.0)
 p = [1.5, 1.0, 3.0, 1.0]
 prob = ODEProblem(lotka_volterra!, u0, tspan, p)
-sol = solve(prob, saveat = 0.1)
+sol = solve(prob, Tsit5(); saveat = 0.1)
 plot(sol)
 
 dataset = Array(sol)
 scatter!(sol.t, dataset')
 
 tmp_prob = remake(prob, p = [1.2, 0.8, 2.5, 0.8])
-tmp_sol = solve(tmp_prob)
+tmp_sol = solve(tmp_prob, Tsit5())
 plot(tmp_sol)
 scatter!(sol.t, dataset')
 
@@ -70,14 +69,16 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, pinit)
-res = Optimization.solve(optprob, ADAM(), maxiters = 1000)
+res = Optimization.solve(optprob, Adam(), maxiters = 1000)
 
 # res = Optimization.solve(optprob,NLopt.LD_LBFGS(), maxiters = 1000) ### errors!
 ```
 
-You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call with Optim's optimizers, which happens because
-of Zygote's behavior for zero gradients, in which case it returns `nothing`. To avoid such issues, you can just use a different version of the same check which compares the size of the obtained
-solution and the data we have, shown below, which is easier to AD.
+You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call
+with Optim's optimizers, which happens because of Zygote's behavior for zero gradients, in
+which case it returns `nothing`. To avoid such issues, you can just use a different version
+of the same check which compares the size of the obtained solution and the data we have,
+shown below, which is easier to AD.
 
 ```julia
 function loss(p)

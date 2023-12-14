@@ -1010,10 +1010,23 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         SciMLBase.AbstractDDEProblem,
         SciMLBase.AbstractSDEProblem,
         SciMLBase.AbstractSDDEProblem,
-        SciMLBase.AbstractRODEProblem,
-        NonlinearProblem, SteadyStateProblem,
+        SciMLBase.AbstractRODEProblem
     },
     alg, sensealg::ZygoteAdjoint,
+    u0, p, originator::SciMLBase.ADOriginator,
+    args...; kwargs...)
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+    Zygote.pullback((u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
+            sensealg = SensitivityADPassThrough(),
+            kwargs_filtered...), u0,
+        p)
+end
+
+# NOTE: This is needed to prevent a method ambiguity error
+function DiffEqBase._concrete_solve_adjoint(prob::Union{
+    NonlinearProblem,
+        SteadyStateProblem,
+    }, alg, sensealg::ZygoteAdjoint,
     u0, p, originator::SciMLBase.ADOriginator,
     args...; kwargs...)
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))

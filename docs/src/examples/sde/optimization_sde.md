@@ -15,7 +15,7 @@ is a stochastic process. Each time we solve this equation we get a different
 solution, so we need a sensible data source.
 
 ```@example sde
-using DifferentialEquations, SciMLSensitivity, Plots
+using StochasticDiffEq, SciMLSensitivity, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -34,7 +34,7 @@ end
 p = [1.5, 1.0, 3.0, 1.0, 0.3, 0.3]
 
 prob = SDEProblem(lotka_volterra!, multiplicative_noise!, u0, tspan, p)
-sol = solve(prob)
+sol = solve(prob, SOSRI())
 plot(sol)
 ```
 
@@ -91,7 +91,7 @@ pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, pinit)
-@time res = Optimization.solve(optprob, ADAM(0.05), callback = cb2, maxiters = 100)
+@time res = Optimization.solve(optprob, Adam(0.05), callback = cb2, maxiters = 100)
 ```
 
 Notice that **both the parameters of the deterministic drift equations and the
@@ -121,7 +121,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```@example sde
-using DifferentialEquations, DiffEqFlux, Optimization, OptimizationOptimisers, Plots
+using StochasticDiffEq, DiffEqFlux, Optimization, OptimizationOptimisers, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -149,7 +149,7 @@ loss_sde(p) = sum(abs2, x - 1 for x in predict_sde(p))
 ```
 
 For this training process, because the loss function is stochastic, we will use
-the `ADAM` optimizer from Flux.jl. The `Optimization.solve` function is the same as
+the `Adam` optimizer from Flux.jl. The `Optimization.solve` function is the same as
 before. However, to speed up the training process, we will use a global counter
 so that way we only plot the current results every 10 iterations. This looks
 like:
@@ -171,8 +171,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p)
-result_sde = Optimization.solve(optprob, ADAM(0.1),
-    callback = callback, maxiters = 100)
+result_sde = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

@@ -15,7 +15,7 @@ end
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjointSensitivityFunction
 
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
-    colorvec, needs_jac)
+        colorvec, needs_jac)
     @unpack p, u0 = sol.prob
 
     diffcache, y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
@@ -29,27 +29,22 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
         λ, vjp, linsolve)
 end
 
+@inline __needs_concrete_A(l) = LinearSolve.needs_concrete_A(l)
+@inline __needs_concrete_A(::Nothing) = false
+
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
-    dgdu::DG1 = nothing, dgdp::DG2 = nothing,
-    g::G = nothing; kwargs...) where {DG1, DG2, G}
+        dgdu::DG1 = nothing, dgdp::DG2 = nothing, g::G = nothing;
+        kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
 
-    if sol.prob isa NonlinearProblem
-        f = ODEFunction(f)
-    end
+    sol.prob isa NonlinearProblem && (f = ODEFunction(f))
 
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
-    needs_jac = if has_adjoint(f)
-        false
-        # TODO: What is the correct heuristic? Can we afford to compute Jacobian for
-        #       cases where the length(u0) > 50 and if yes till what threshold
-    elseif sensealg.linsolve === nothing
-        length(u0) ≤ 50
-    else
-        LinearSolve.needs_concrete_A(sensealg.linsolve)
-    end
+    needs_jac = ifelse(has_adjoint(f), false,
+        ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
+            __needs_concrete_A(sensealg.linsolve)))
 
     p === DiffEqBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")

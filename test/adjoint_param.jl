@@ -1,9 +1,4 @@
-using Test
-using OrdinaryDiffEq
-using SciMLSensitivity
-using ForwardDiff
-using QuadGK
-using Zygote
+using Test, OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, QuadGK, Zygote
 
 abstol = 1e-12
 reltol = 1e-12
@@ -31,8 +26,7 @@ res_quad = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
     reltol = reltol, sensealg = QuadratureAdjoint())
 res_back = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
     dgdp_continuous = dgdp, abstol = abstol,
-    reltol = reltol,
-    sensealg = BacksolveAdjoint(checkpointing = true)) # it's blowing up
+    reltol = reltol, sensealg = BacksolveAdjoint(checkpointing = true))
 
 function G(p)
     tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))

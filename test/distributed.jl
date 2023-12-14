@@ -1,4 +1,4 @@
-using Distributed, Flux
+using Distributed, Optimization, OptimizationOptimisers
 
 addprocs(2)
 @everywhere begin
@@ -8,7 +8,9 @@ addprocs(2)
     u0 = [3.0]
 end
 
-function model4()
+function model_distributed(pu0)
+    pa = pu0[1:1]
+    u0 = pu0[2:2]
     prob = ODEProblem((u, p, t) -> 1.01u .* p, u0, (0.0, 1.0), pa)
 
     function prob_func(prob, i, repeat)
@@ -21,19 +23,16 @@ function model4()
 end
 
 # loss function
-loss() = sum(abs2, 1.0 .- Array(model4()))
+loss = (p, _) -> sum(abs2, 1.0 .- Array(model_distributed(p)))
 
-data = Iterators.repeated((), 10)
-
-cb = function () # callback function to observe training
-    @show loss()
+cb = function (p, l) # callback function to observe training
+    @info loss=l
+    return false
 end
 
-pa = [1.0]
-u0 = [3.0]
-opt = Flux.ADAM(0.1)
-println("Starting to train")
-l1 = loss()
-Flux.@epochs 10 Flux.train!(loss, Flux.params([pa, u0]), data, opt; cb = cb)
-l2 = loss()
+l1 = loss([1.0, 3.0], nothing)
+@show l1
+res = solve(OptimizationProblem(OptimizationFunction(loss, AutoZygote()),
+        [1.0, 3.0]), Adam(0.1); callback = cb, maxiters = 100)
+l2 = loss(res.u, nothing)
 @test 10l2 < l1

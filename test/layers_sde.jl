@@ -1,4 +1,4 @@
-using SciMLSensitivity, Flux, Zygote, StochasticDiffEq, Test
+using SciMLSensitivity, Zygote, StochasticDiffEq, Test
 
 function lotka_volterra(du, u, p, t)
     x, y = u

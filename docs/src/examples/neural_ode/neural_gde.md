@@ -125,7 +125,7 @@ function train()
     st = st |> device
 
     ## Optimizer
-    opt = Optimisers.ADAM(0.01f0)
+    opt = Optimisers.Adam(0.01f0)
     st_opt = Optimisers.setup(opt, ps)
 
     ## Training Loop
@@ -303,7 +303,7 @@ st = st |> device
 
 ### Optimizer
 
-For this task, we will be using the `ADAM` optimizer with a learning rate of `0.01`.
+For this task, we will be using the `Adam` optimizer with a learning rate of `0.01`.
 
 ```julia
 opt = Optimisers.Adam(0.01f0)

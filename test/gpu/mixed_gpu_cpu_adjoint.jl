@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq
-using Lux, CUDA, Test, Zygote, Random, LinearAlgebra, ComponentArrays
+using Lux, LuxCUDA, Test, Zygote, Random, LinearAlgebra, ComponentArrays
 
 CUDA.allowscalar(false)
 
