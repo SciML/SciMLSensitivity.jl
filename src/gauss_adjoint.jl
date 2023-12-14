@@ -860,7 +860,7 @@ function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
             end
         end
         tmp1, tmp2 = back(λ)
-        out .+= tmp2
+        out .+= tmp2.*sol.W(t)
     end
     
     #=
