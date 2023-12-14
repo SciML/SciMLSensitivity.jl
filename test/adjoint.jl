@@ -168,7 +168,7 @@ integrand = AdjointSensitivityIntegrand(sol, adj_sol,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()))
 res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 
-@test isapprox(res, easy_res, rtol = 1e-10)
+@test isapprox(res, easy_res, rtol= 1e-10)
 @test isapprox(res, easy_res2, rtol = 1e-10)
 @test isapprox(res, easy_res22, rtol = 1e-10)
 @test isapprox(res, easy_res23, rtol = 1e-10)

@@ -793,6 +793,7 @@ end
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
     f = sol.prob.f
+    
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
 
@@ -835,7 +836,76 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
     # TODO: Add tracker?
+    
+    
     return out
+end
+
+function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
+    
+    @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
+    f = sol.prob.f
+    g = sol.prob.g
+    isautojacvec = get_jacvec(sensealg)
+    # y is aliased
+
+    if sensealg.autojacvec isa ZygoteVJP
+        if W === nothing
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(g(u, p, t))
+            end
+        else
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(g(u, p, t, W))
+            end
+        end
+        tmp1, tmp2 = back(λ)
+        out .+= tmp2
+    end
+    
+    #=
+    if !isautojacvec
+        if DiffEqBase.has_paramjac(f)
+            f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
+        else
+            pf.t = t
+            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+        end
+        mul!(out', λ', pJ)
+    elseif sensealg.autojacvec isa ReverseDiffVJP
+        tape = paramjac_config
+        tu, tp, tt = ReverseDiff.input_hook(tape)
+        output = ReverseDiff.output_hook(tape)
+        ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
+        ReverseDiff.unseed!(tp)
+        ReverseDiff.unseed!(tt)
+        ReverseDiff.value!(tu, y)
+        ReverseDiff.value!(tp, p)
+        ReverseDiff.value!(tt, [t])
+        ReverseDiff.forward_pass!(tape)
+        ReverseDiff.increment_deriv!(output, λ)
+        ReverseDiff.reverse_pass!(tape)
+        copyto!(vec(out), ReverseDiff.deriv(tp))
+    elseif sensealg.autojacvec isa ZygoteVJP
+        _dy, back = Zygote.pullback(p) do p
+            vec(f(y, p, t))
+        end
+        tmp = back(λ)
+        #out[:] .= vec(tmp[1])
+        recursive_copyto!(out,tmp[1])
+    elseif sensealg.autojacvec isa EnzymeVJP
+        tmp3, tmp4 = paramjac_config
+        tmp4 .= λ
+        out .= 0
+        Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
+            y, Enzyme.Duplicated(p, out), t)
+    else
+        error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
+    end
+    # TODO: Add tracker?
+    =#
+    return out
+    
 end
 
 function (S::GaussIntegrand)(out, t, λ)
@@ -846,6 +916,9 @@ function (S::GaussIntegrand)(out, t, λ)
         y = sol(t)
     end
     vec_pjac!(out, λ, y, t, S)
+    if typeof(sol.prob) <: Union{SDEProblem, RODEProblem}
+        vec_pjac_diffusion!(out, λ, y, t, S)
+    end
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
         @show typeof(dgdp_cache)

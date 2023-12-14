@@ -364,7 +364,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     f = unwrapped_f(S.f)
-
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Tracker.forward(y, p) do u, p
@@ -422,7 +421,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
-
     if p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
     else
@@ -539,7 +537,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
-
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
@@ -604,7 +601,6 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     @unpack sensealg = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
-
     if W === nothing
         _dy, back = Zygote.pullback(y, p) do u, p
             vec(f(u, p, t))
@@ -639,7 +635,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     W) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     f = unwrapped_f(S.f)
-
     prob = getprob(S)
 
     _tmp1, tmp2, _tmp3, _tmp4, _tmp5 = S.diffcache.paramjac_config
