@@ -87,8 +87,10 @@ end
     end
 
     if !needs_jac
-        __f = y -> f(y, p, nothing)
-        operator = VecJac(__f, y; autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
+        usize = size(y)
+        __f = y -> vec(f(reshape(y, usize), p, nothing))
+        operator = VecJac(__f, vec(y);
+            autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
     else
         linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
