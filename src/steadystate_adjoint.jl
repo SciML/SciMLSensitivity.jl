@@ -92,12 +92,16 @@ end
         operator = VecJac(__f, vec(y);
             autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
+        solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
     else
-        linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
+        if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
+            # For the default case use `\` to avoid any form of unnecessary cache allocation
+            vec(λ) .= diffcache.J' \ vec(dgdu_val)
+        else
+            linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
+            solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
+        end
     end
-
-    # Zygote pullback function won't work with deepcopy
-    solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
 
     try
         vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
