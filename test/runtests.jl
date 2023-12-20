@@ -97,6 +97,11 @@ end
         @time @safetestset "Adjoint Sensitivity" begin
             include("adjoint.jl")
         end
+
+        @time @safetestset "Physical ODE Adjoint Regression Test" begin
+            include("physical_ode_regression.jl")
+        end
+        
         @time @safetestset "Continuous adjoint params" begin
             include("adjoint_param.jl")
         end
