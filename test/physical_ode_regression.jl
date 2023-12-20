@@ -1,6 +1,6 @@
 # testing `solve`-sensitivities with different AD frameworks on the simplest physical ODE: a mass accelerated by gravity
 
-using DifferentialEquations
+using OrdinaryDiffEq
 using ForwardDiff, ReverseDiff, Zygote, FiniteDiff
 using Test, SciMLSensitivity
 
