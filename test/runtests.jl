@@ -94,6 +94,12 @@ end
         end
     end
 
+    if GROUP == "All" || GROUP == "Core6"
+        @time @safetestset "Alternative AD Frontend" begin
+            include("alternative_ad_frontend.jl")
+        end
+    end
+
     if GROUP == "All" || GROUP == "SDE1"
         @testset "SDE 1" begin
             @time @safetestset "SDE Adjoint" include("sde_stratonovich.jl")
