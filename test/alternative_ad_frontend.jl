@@ -2,7 +2,7 @@ using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracke
 using Test
 
 odef(u,p,t) = u .* p
-prob = ODEProblem(f, [2.0], (0.0, 1.0), [3.0])
+const prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
 
 struct senseloss0{T}
     sense::T
