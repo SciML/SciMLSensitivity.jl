@@ -82,6 +82,12 @@ end
         @time @safetestset "Parameter Compatibility Errors" include("parameter_compatibility_errors.jl")
     end
 
+    if GROUP == "All" || GROUP == "Core6"
+        @time @safetestset "Alternative AD Frontend" begin
+            include("alternative_ad_frontend.jl")
+        end
+    end
+
     if GROUP == "All" || GROUP == "SDE1"
         @time @safetestset "SDE Adjoint" include("sde_stratonovich.jl")
         @time @safetestset "SDE Scalar Noise" include("sde_scalar_stratonovich.jl")
