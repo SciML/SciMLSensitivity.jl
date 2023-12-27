@@ -41,6 +41,9 @@ end
         @time @safetestset "Complex Adjoints" begin
             include("complex_adjoints.jl")
         end
+        @time @safetestset "ReverseDiffAdjoint Output Type" begin
+            include("reversediff_output_types.jl")
+        end
         @time @safetestset "Forward Remake" begin
             include("forward_remake.jl")
         end

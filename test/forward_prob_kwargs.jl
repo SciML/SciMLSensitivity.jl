@@ -31,5 +31,5 @@ end
 res4 = Zygote.gradient(cost, p[1])[1] # (7.720368430265481,)
 
 @test res ≈ res2
-@test res ≈ res3
-@test res ≈ res4
+@test res2 ≈ res3
+@test res2 ≈ res4
