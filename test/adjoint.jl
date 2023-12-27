@@ -245,7 +245,7 @@ _, easy_res6 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discre
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true),
     checkpoints = soloop_nodense.t[1:5:end])
-@test_broken _, easy_res62 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
+_, easy_res62 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
     dgdu_discrete = dg, abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(checkpointing = true,
