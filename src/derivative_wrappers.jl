@@ -642,7 +642,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
 
-    _tmp1, tmp2, _tmp3, _tmp4, _tmp5 = S.diffcache.paramjac_config
+    _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
 
     if _tmp1 isa FixedSizeDiffCache
         tmp1 = get_tmp(_tmp1, dλ)
@@ -680,15 +680,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     isautojacvec = get_jacvec(sensealg)
 
-    dup_pf = Enzyme.make_zero(S.diffcache.pf)
     if inplace_sensitivity(S)
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf,dup_pf), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf,dup_pf), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
@@ -699,11 +698,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy !== nothing && recursive_copyto!(dy,tmp3)
     else
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Duplicated(S.diffcache.pf,dup_pf), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Duplicated(S.diffcache.pf,dup_pf), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
         end
