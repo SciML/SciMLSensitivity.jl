@@ -1289,7 +1289,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
     ReverseDiff.forward_pass!(tape)
     function reversediff_adjoint_backpass(ybar)
-        _ybar = if ybar isa VectorOfArray
+        _ybar = if ybar isa AbstractVectorOfArray
             Array(ybar)
         elseif eltype(ybar) <: AbstractArray
             Array(VectorOfArray(ybar))
@@ -1309,7 +1309,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
-    Array(VectorOfArray(u)), reversediff_adjoint_backpass
+    sol, reversediff_adjoint_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
