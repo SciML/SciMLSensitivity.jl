@@ -413,14 +413,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
-                    x = vec(Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1])
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out[_save_idxs] .= adapt(outtype, @view(vx[_save_idxs]))
                     elseif _save_idxs isa Colon
                         vec(_out) .= vec(adapt(outtype, x))
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
-                            x[_save_idxs])
+                            vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
@@ -473,13 +474,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
-                    x = vec(Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1])
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        _out = adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out = adapt(outtype, @view(vx[_save_idxs]))
                     elseif _save_idxs isa Colon
                         _out = adapt(outtype, x)
                     else
-                        _out = adapt(outtype, x[_save_idxs])
+                        _out = adapt(outtype, vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
