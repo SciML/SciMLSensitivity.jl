@@ -133,7 +133,7 @@ end
 function gintegrate(p)
     set_params(nn,p)
     tmpprob = remake(prob,p=p)
-    sol = solve(tmpprob,Tsit5(),abstol=1e-6,reltol=1e-6)
+    sol = solve(tmpprob,Tsit5(),abstol=1e-10,reltol=1e-10)
     integral,error = quadgk((t)->(g(sol(t),p,t)) ,tspan...)
     return integral
 end
