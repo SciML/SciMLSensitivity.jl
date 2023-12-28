@@ -702,7 +702,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
         end
