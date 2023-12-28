@@ -416,7 +416,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
                         vx = vec(x)
-                        _out[_save_idxs] .= adapt(outtype, @view(vx[_save_idxs]))
+                        _out[_save_idxs] .= vx[_save_idxs]
                     elseif _save_idxs isa Colon
                         vec(_out) .= vec(adapt(outtype, x))
                     else
