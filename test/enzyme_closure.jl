@@ -130,7 +130,10 @@ function  g(u,p,t)
     abs(dot(u,target))
 end
 ##cell ajoint sensitivity ,
-du,dp = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
+du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
+du2,dp2 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=GaussAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
+du3,dp3 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=QuadratureAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
+du4,dp4 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=InterpolatingAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
 
 function gintegrate(p)
     set_params(nn,p)
@@ -139,5 +142,8 @@ function gintegrate(p)
     integral,error = quadgk((t)->(g(sol(t),p,t)) ,tspan...)
     return integral
 end
-dp2 = Calculus.gradient(gintegrate,p)
-@test isapprox(dp',dp2,atol=1e-5)
+refdp = Calculus.gradient(gintegrate,p)
+@test isapprox(dp1',refdp,atol=1e-5)
+@test isapprox(dp2',refdp,atol=1e-5)
+@test isapprox(dp3',refdp,atol=1e-5)
+@test isapprox(dp4',refdp,atol=1e-5)
