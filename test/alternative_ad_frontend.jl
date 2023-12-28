@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker
+using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker, FiniteDiff
 using Test
 
 prob = ODEProblem((u, p, t) -> u .* p, [2.0], (0.0, 1.0), [3.0])
