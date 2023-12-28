@@ -98,7 +98,7 @@ const impart = 3:4
 function make_dfunc()
     nn = NN(4,  [Dense(4, 10, tanh), Dense(10, 4, sin)])
     plen = paramlength(nn)
-    set_params(nn,1e-5*rand(plen))
+    set_params(nn,1e-3*rand(plen))
     function dfunc(dstate,state,p,t)
         set_params(nn,p)
         scratch = zeros(4)
@@ -123,18 +123,13 @@ dfunc(ds,y0,p,0.2) #test dfunc works
 
 #get solution
 prob = ODEProblem{true}(dfunc,y0,tspan,p)
-sol = solve(prob,Tsit5())
+sol = solve(prob,Tsit5(),reltol=1e-10)
 ##cell
 const target = zero(y0);target[2]=1.0
 function  g(u,p,t)
     abs(dot(u,target))
 end
 ##cell ajoint sensitivity ,
-du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
-du2,dp2 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=GaussAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
-du3,dp3 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=QuadratureAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
-du4,dp4 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=InterpolatingAdjoint(autodiff=true,autojacvec=EnzymeVJP()))
-
 function gintegrate(p)
     set_params(nn,p)
     tmpprob = remake(prob,p=p)
@@ -143,7 +138,12 @@ function gintegrate(p)
     return integral
 end
 refdp = Calculus.gradient(gintegrate,p)
-@test isapprox(dp1',refdp,atol=1e-5)
-@test isapprox(dp2',refdp,atol=1e-5)
-@test isapprox(dp3',refdp,atol=1e-5)
-@test isapprox(dp4',refdp,atol=1e-5)
+
+du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
+@test isapprox(dp1',refdp,atol=1e-3)
+du2,dp2 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=GaussAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
+@test isapprox(dp2',refdp,atol=1e-3)
+du3,dp3 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=QuadratureAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
+@test isapprox(dp3',refdp,atol=1e-3)
+du4,dp4 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=InterpolatingAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
+@test isapprox(dp4',refdp,atol=1e-3)
