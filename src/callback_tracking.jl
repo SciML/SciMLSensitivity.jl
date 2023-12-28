@@ -457,6 +457,7 @@ function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
                     isinplace = true, isRODE = false,
                     _W = nothing)
                 pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
+                paramjac_config = (paramjac_config...,Enzyme.make_zero(pf))
 
                 diffcache_w = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
                     nothing, nothing, nothing, paramjac_config,
@@ -468,6 +469,7 @@ function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
                     isinplace = true, isRODE = false,
                     _W = nothing)
                 pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
+                paramjac_config = (paramjac_config...,Enzyme.make_zero(pf))
 
                 diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
                     nothing, nothing, nothing, paramjac_config,
