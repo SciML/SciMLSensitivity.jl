@@ -207,7 +207,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        paramjac_config = zero(y), zero(y)
         pf = let f = unwrappedf
             if DiffEqBase.isinplace(prob) && prob isa RODEProblem
                 function (out, u, _p, t, W)
@@ -232,6 +231,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
                 end
             end
         end
+        paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
@@ -282,10 +282,10 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         tmp = back(λ)
         out[:] .= vec(tmp[1])
     elseif sensealg.autojacvec isa EnzymeVJP
-        tmp3, tmp4 = paramjac_config
+        tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ
         out .= 0
-        Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
+        Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Duplicated(tmp3, tmp4),
             y, Enzyme.Duplicated(p, out), t)
     end
 
@@ -331,7 +331,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         callback)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
         save_everystep = true, save_start = true, kwargs...)
-    
+
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
         return adj_sol[end], nothing
