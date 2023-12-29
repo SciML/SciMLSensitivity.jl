@@ -131,7 +131,14 @@ function jacobian(f, x::AbstractArray{<:Number},
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
-        J = FiniteDiff.finite_difference_jacobian(f, x)
+        T = if f isa ParamGradientWrapper
+            promote_type(eltype(f.u),eltype(x))
+        elseif f isa UGradientWrapper
+            promote_type(eltype(f.p),eltype(x))
+        else
+            T = eltype(x)
+        end
+        J = FiniteDiff.finite_difference_jacobian(f, x, Val(:forward), T)
     end
     return J
 end
@@ -259,7 +266,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 else
                     uf.t = t
                     uf.p = p
-                    jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                    if inplace_sensitivity(S)
+                        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                    else
+                        J = jacobian(uf, y, sensealg)
+                    end
                 end
             end
         else
@@ -669,7 +680,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         Enzyme.Const(p)
     end
     #end
- 
+
     #if dy !== nothing
     #      tmp3 = dy
     #else

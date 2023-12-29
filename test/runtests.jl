@@ -170,6 +170,9 @@ end
         @time @safetestset "Enzyme Closures" begin
             include("enzyme_closure.jl")
         end
+        @time @safetestset "Complex Matrix FiniteDiff Adjoint" begin
+            include("complex_matrix_finitediff.jl")
+        end
         @time @safetestset "Null Parameters" begin
             include("null_parameters.jl")
         end
