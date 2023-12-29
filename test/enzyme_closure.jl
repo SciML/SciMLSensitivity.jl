@@ -127,7 +127,7 @@ sol = solve(prob,Tsit5(),reltol=1e-10)
 ##cell
 const target = zero(y0);target[2]=1.0
 function  g(u,p,t)
-    abs(dot(u,target))
+    dot(u,target)^2
 end
 
 function gintegrate(p)
