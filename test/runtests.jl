@@ -79,21 +79,6 @@ end
                 include("autodiff_events.jl")
             end
         end
-        @time @safetestset "Null Parameters" begin
-            include("null_parameters.jl")
-        end
-        @time @safetestset "Forward Mode Prob Kwargs" begin
-            include("forward_prob_kwargs.jl")
-        end
-        @time @safetestset "Steady State Adjoint" begin
-            include("steady_state.jl")
-        end
-        @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin
-            include("second_order_odes.jl")
-        end
-        @time @safetestset "Parameter Compatibility Errors" begin
-            include("parameter_compatibility_errors.jl")
-        end
     end
 
     if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
@@ -104,7 +89,7 @@ end
         @time @safetestset "Physical ODE Adjoint Regression Test" begin
             include("physical_ode_regression.jl")
         end
-        
+
         @time @safetestset "Continuous adjoint params" begin
             include("adjoint_param.jl")
         end
@@ -178,6 +163,27 @@ end
         end
         @time @safetestset "Quality Assurance" begin
             include("aqua.jl")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "Core6"
+        @time @safetestset "Enzyme Closures" begin
+            include("enzyme_closure.jl")
+        end
+        @time @safetestset "Null Parameters" begin
+            include("null_parameters.jl")
+        end
+        @time @safetestset "Forward Mode Prob Kwargs" begin
+            include("forward_prob_kwargs.jl")
+        end
+        @time @safetestset "Steady State Adjoint" begin
+            include("steady_state.jl")
+        end
+        @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" begin
+            include("second_order_odes.jl")
+        end
+        @time @safetestset "Parameter Compatibility Errors" begin
+            include("parameter_compatibility_errors.jl")
         end
     end
 
