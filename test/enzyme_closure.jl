@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq
-using QuadGK, Enzyme, Zygote, Calculus, LinearAlgebra
+using QuadGK, Enzyme, Zygote, ForwardDiff, LinearAlgebra
 
 import Base.zero
 
@@ -41,7 +41,7 @@ function paramlength(nn::NN)
 end
 
 function get_params(nn::NN)
-    ret = Float64[]
+    ret = eltype(layers[1].W)[]
     for l in nn.layers
         append!(ret, l.W)
         append!(ret, l.b)
@@ -137,7 +137,7 @@ function gintegrate(p)
     integral,error = quadgk((t)->(g(sol(t),p,t)) ,tspan...)
     return integral
 end
-refdp = Calculus.gradient(gintegrate,p)
+refdp = ForwardDiff.gradient(gintegrate,p)
 
 du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
 @test isapprox(dp1',refdp,atol=1e-3)
