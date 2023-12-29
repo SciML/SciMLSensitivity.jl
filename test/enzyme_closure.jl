@@ -11,8 +11,8 @@ struct Dense{T,F<:Function}
     activation::F
 end
 
-function Dense(n_inp, n_nodes, f::Function, randfn::Function=rand)
-    Dense(n_inp, n_nodes, randfn(n_nodes, n_inp), randfn(n_nodes), f)
+function Dense(n_inp, n_nodes, f::Function, T, randfn::Function=rand)
+    Dense(n_inp, n_nodes, convert.(T,randfn(n_nodes, n_inp)), convert.(T,randfn(n_nodes)), f)
 end
 
 struct NN{T}
@@ -22,13 +22,13 @@ struct NN{T}
 end
 
 
-function NN(n_inp, layers)
+function NN(n_inp, layers, ::Type{T}) where T
     @assert length(layers) >= 1
     @assert n_inp == layers[1].n_inp
     for i in eachindex(layers)[1:end-1]
         @assert layers[i].n_nodes == layers[i+1].n_inp
     end
-    NN(n_inp, layers, [zeros(layer.n_nodes) for layer in layers])
+    NN(n_inp, layers, [zeros(T, layer.n_nodes) for layer in layers])
 end
 
 function paramlength(nn::NN)
@@ -95,13 +95,13 @@ const impart = 3:4
 
 ##cell
 
-function make_dfunc()
-    nn = NN(4,  [Dense(4, 10, tanh), Dense(10, 4, sin)])
+function make_dfunc(T)
+    nn = NN(4,  [Dense(4, 10, tanh, T), Dense(10, 4, sin, T)], T)
     plen = paramlength(nn)
     set_params(nn,1e-3*rand(plen))
     function dfunc(dstate,state,p,t)
         set_params(nn,p)
-        scratch = zeros(4)
+        scratch = zeros(eltype(dstate),4)
         dstate[impart] .= -1.0 .*(H_0*state[repart] .+ cos(2.0*t).*H_D*state[repart])
         dstate[repart] .= H_0*state[impart] .+ cos(2.0*t).*H_D*state[impart]
         applyNN!(nn,dstate,scratch)
@@ -111,7 +111,7 @@ function make_dfunc()
     return dfunc,nn
 end
 
-dfunc,nn = make_dfunc()
+dfunc,nn = make_dfunc(Float64)
 ##cell initialize and solve
 y0 = [1.0,0.0,0.0,0.0]
 p = get_params(nn)
@@ -129,21 +129,22 @@ const target = zero(y0);target[2]=1.0
 function  g(u,p,t)
     abs(dot(u,target))
 end
-##cell ajoint sensitivity ,
+
 function gintegrate(p)
+    dfunc,nn = make_dfunc(eltype(p))
     set_params(nn,p)
-    tmpprob = remake(prob,p=p)
-    sol = solve(tmpprob,Tsit5(),abstol=1e-10,reltol=1e-10)
+    prob = ODEProblem{true}(dfunc,y0,tspan,p)
+    sol = solve(prob,Tsit5(),abstol=1e-12,reltol=1e-12)
     integral,error = quadgk((t)->(g(sol(t),p,t)) ,tspan...)
     return integral
 end
 refdp = ForwardDiff.gradient(gintegrate,p)
 
-du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
-@test isapprox(dp1',refdp,atol=1e-3)
-du2,dp2 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=GaussAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
-@test isapprox(dp2',refdp,atol=1e-3)
-du3,dp3 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=QuadratureAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
-@test isapprox(dp3',refdp,atol=1e-3)
-du4,dp4 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=InterpolatingAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-10,reltol=1e-10)
-@test isapprox(dp4',refdp,atol=1e-3)
+du1,dp1 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=BacksolveAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-12,reltol=1e-12)
+@test isapprox(dp1',refdp,atol=1e-5)
+du2,dp2 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=GaussAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-12,reltol=1e-12)
+@test isapprox(dp2',refdp,atol=1e-5)
+du3,dp3 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=QuadratureAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-12,reltol=1e-12)
+@test isapprox(dp3',refdp,atol=1e-5)
+du4,dp4 = adjoint_sensitivities(sol,Tsit5(),g=g,sensealg=InterpolatingAdjoint(autodiff=true,autojacvec=EnzymeVJP()),abstol=1e-12,reltol=1e-12)
+@test isapprox(dp4',refdp,atol=1e-5)
