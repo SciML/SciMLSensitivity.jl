@@ -41,7 +41,7 @@ function paramlength(nn::NN)
 end
 
 function get_params(nn::NN)
-    ret = eltype(layers[1].W)[]
+    ret = eltype(nn.layers[1].W)[]
     for l in nn.layers
         append!(ret, l.W)
         append!(ret, l.b)
