@@ -535,7 +535,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
 
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
-            save_start = false, save_end = true, saveat = eltype(sol[1])[], tstops = tstops,
+            save_start = false, save_end = true, saveat = eltype(sol.u[1])[], tstops = tstops,
             callback = CallbackSet(cb,cb2), kwargs...)
     res = integrand_values.integrand
 

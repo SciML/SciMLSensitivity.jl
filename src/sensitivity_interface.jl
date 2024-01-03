@@ -430,7 +430,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
     adj_sol = solve(adj_prob, alg;
-        save_everystep = false, save_start = false, saveat = eltype(sol[1])[],
+        save_everystep = false, save_start = false, saveat = eltype(sol.u[1])[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
     p = sol.prob.p

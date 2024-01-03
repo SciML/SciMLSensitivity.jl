@@ -234,7 +234,7 @@ The solution can be deconstructed into the ODE solution and sensitivities parts 
 
 ```julia
 extract_local_sensitivities(sol, asmatrix::Val=Val(false)) # Decompose the entire time series
-extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) # Decompose sol[i]
+extract_local_sensitivities(sol, i::Integer, asmatrix::Val=Val(false)) # Decompose sol.u[i]
 extract_local_sensitivities(sol, t::Union{Number,AbstractVector}, asmatrix::Val=Val(false)) # Decompose sol(t)
 ```
 
@@ -321,8 +321,8 @@ Here we just checked the derivative at the end point.
 For completeness, we detail the internal representation. When using
 ForwardDiffSensitivity, the representation is with `Dual` numbers under the
 standard interpretation. The values for the ODE's solution at time `i` are the
-`ForwardDiff.value.(sol[i])` portions, and the derivative with respect to
-parameter `j` is given by `ForwardDiff.partials.(sol[i])[j]`.
+`ForwardDiff.value.(sol.u[i])` portions, and the derivative with respect to
+parameter `j` is given by `ForwardDiff.partials.(sol.u[i])[j]`.
 
 When using ForwardSensitivity, the solution to the ODE are the first `n`
 components of the solution. This means we can grab the matrix of solution
@@ -509,7 +509,7 @@ that the ODE was defined via `ODEForwardSensitivityProblem`.
 
 ```julia
 extract_local_sensitivities(sol, asmatrix::Val = Val(false)) # Decompose the entire time series
-extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false)) # Decompose sol[i]
+extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false)) # Decompose sol.u[i]
 extract_local_sensitivities(sol, t::Union{Number, AbstractVector},
                             asmatrix::Val = Val(false)) # Decompose sol(t)
 ```
@@ -521,7 +521,7 @@ function extract_local_sensitivities(sol, asmatrix::Bool)
     extract_local_sensitivities(sol, Val{asmatrix}())
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false))
-    _extract(sol, sol.prob.problem_type.sensealg, sol[i], asmatrix)
+    _extract(sol, sol.prob.problem_type.sensealg, sol.u[i], asmatrix)
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Bool)
     extract_local_sensitivities(sol, i, Val{asmatrix}())

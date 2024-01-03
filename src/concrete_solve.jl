@@ -594,9 +594,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
 
     u = if save_idxs === nothing
-        [reshape(sol[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
+        [reshape(sol.u[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
     else
-        [sol[i][_save_idxs] for i in 1:length(sol)]
+        [sol.u[i][_save_idxs] for i in 1:length(sol)]
     end
     out = DiffEqBase.sensitivity_solution(sol, u, sol.t)
 
@@ -637,7 +637,7 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
     out = DiffEqBase.sensitivity_solution(sol,
-        [ForwardDiff.value.(sol[i][_save_idxs])
+        [ForwardDiff.value.(sol.u[i][_save_idxs])
          for i in 1:length(sol)], sol.t)
     function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
         x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
