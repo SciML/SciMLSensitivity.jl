@@ -9,7 +9,7 @@ struct senseloss0{T}
     sense::T
 end
 function (f::senseloss0)(u0p)
-	prob = ODEProblem{false}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
+	prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
     sum(solve(prob, Tsit5(), abstol = 1e-12, reltol = 1e-12, saveat = 0.1))
 end
 u0p = [2.0, 3.0]
