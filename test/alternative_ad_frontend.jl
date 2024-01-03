@@ -1,7 +1,8 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker, Enzyme
 using Test
+Enzyme.API.typeWarning!(false)
 
-odef(u,p,t) = u .* p
+odef(du,u,p,t) = du .= u .* p
 const prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
 
 struct senseloss0{T}
