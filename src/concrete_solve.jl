@@ -411,16 +411,17 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                       DiffEqBase.parameterless_type(_out)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
-                    # user did sol.u[end] on only_end
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
+                    # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        x = vec(Δ[1])
-                        _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out[_save_idxs] .= vx[_save_idxs]
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(adapt(outtype, Δ[1]))
+                        vec(_out) .= vec(adapt(outtype, x))
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
-                            vec(Δ[1])[_save_idxs])
+                            vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
@@ -437,10 +438,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
-                    x = Δ[i]
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
-                        _out[_save_idxs] = @view(x[_save_idxs])
+                        _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
                         vec(_out) .= vec(x)
                     else
@@ -468,18 +469,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         end
 
         function df_oop(u, p, t, i; outtype = nothing)
+            @show typeof(Δ)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
-                    # user did sol.u[end] on only_end
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
+                    # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        x = vec(Δ[1])
-                        _out = adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out = adapt(outtype, @view(vx[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        _out = adapt(outtype, vec(Δ[1]))
+                        _out = adapt(outtype, x)
                     else
-                        _out = adapt(outtype,
-                            vec(Δ[1])[_save_idxs])
+                        _out = adapt(outtype, vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
@@ -496,8 +498,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
-                    x = Δ[i]
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
                         _out = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
@@ -1220,6 +1222,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     args...; kwargs...)
     if typeof(u0) isa GPUArraysCore.AbstractGPUArray
         throw(ReverseDiffGPUStateCompatibilityError())
+    end
+
+    if !(u0 isa AbstractVector)
+        error("Sensitivity algorithm ReverseDiffAdjoint only supports vector u0")
     end
 
     t = eltype(prob.tspan)[]

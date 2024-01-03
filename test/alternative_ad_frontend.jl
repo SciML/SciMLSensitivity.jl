@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker
+using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker, FiniteDiff
 using Test
 
 prob = ODEProblem((u, p, t) -> u .* p, [2.0], (0.0, 1.0), [3.0])
@@ -163,3 +163,46 @@ end
 const initial_state = ones(2)
 const solution_times = [1.0, 2.0]
 ReverseDiff.gradient(p -> sum(sum(solve_euler(initial_state, solution_times, p))), zeros(2))
+
+# https://github.com/SciML/SciMLSensitivity.jl/issues/943
+
+GRAVITY = 9.81
+MASS = 1.0
+NUM_STATES = 2
+
+t_start = 0.0
+t_step = 0.05
+t_stop = 2.0
+tData = t_start:t_step:t_stop
+u0 = [1.0, 0.0] # start state: ball position (1.0) and velocity (0.0)
+p = [GRAVITY, MASS]
+
+# setup BouncingBallODE
+function fx(u, p, t)
+    g, m = p
+    return [u[2], -g]
+end
+
+ff = ODEFunction{false}(fx)
+prob = ODEProblem{false}(ff, u0, (t_start, t_stop), p)
+
+function loss2(p)
+    solution = solve(prob; p=p, alg=solver, saveat=tData, sensealg=sensealg, abstol=1e-10, reltol=1e-10)
+    # fix for ReverseDiff
+    if !isa(solution, ReverseDiff.TrackedArray) && !isa(solution, Array)
+        sum(abs.(collect(u[1] for u in solution.u)))
+    else
+        sum(abs.(solution[1,:]))
+    end
+end
+
+solver = Rosenbrock23(autodiff=false)
+sensealg = ReverseDiffAdjoint()
+
+grad_fi = FiniteDiff.finite_difference_gradient(loss2, p)
+grad_fd = ForwardDiff.gradient(loss2, p)
+grad_zg = Zygote.gradient(loss2, p)[1]
+grad_rd = ReverseDiff.gradient(loss2, p)
+@test grad_fd ≈ grad_fi atol=1e-2
+@test grad_fd ≈ grad_zg
+@test grad_fd ≈ grad_rd
