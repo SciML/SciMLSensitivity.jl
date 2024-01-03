@@ -78,7 +78,7 @@ sense_res2 = [da[:, end] db[:, end] dc[:, end]]
 
 function test_f(p)
     prob = ODEProblem(f, eltype(p).([1.0, 1.0]), (0.0, 10.0), p)
-    solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, save_everystep = false)[end]
+    solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, save_everystep = false).u[end]
 end
 
 p = [1.5, 1.0, 3.0]

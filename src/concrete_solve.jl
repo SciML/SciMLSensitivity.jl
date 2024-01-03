@@ -365,7 +365,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
@@ -396,7 +396,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
@@ -603,8 +603,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     function forward_sensitivity_backpass(Δ)
         adj = sum(eachindex(du)) do i
             J = du[i]
-            if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
+            if Δ isa AbstractVector
                 v = Δ[i]
+            elseif Δ isa DESolution || Δ isa AbstractVectorOfArray
+                v = Δ.u[i]
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
             else
@@ -810,7 +812,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         J = _du[i]
                         if Δ isa AbstractVector || Δ isa DESolution ||
                            Δ isa AbstractVectorOfArray
-                            v = Δ[i]
+                            v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
                         else
@@ -963,7 +965,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     J = _du[i]
                     if Δ isa AbstractVector || Δ isa DESolution ||
                        Δ isa AbstractVectorOfArray
-                        v = Δ[i]
+                        v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
                     else
