@@ -412,7 +412,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
-                    # user did sol[end] on only_end
+                    # user did sol.u[end] on only_end
                     if _save_idxs isa Number
                         x = vec(Δ[1])
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
@@ -471,7 +471,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
-                    # user did sol[end] on only_end
+                    # user did sol.u[end] on only_end
                     if _save_idxs isa Number
                         x = vec(Δ[1])
                         _out = adapt(outtype, @view(x[_save_idxs]))

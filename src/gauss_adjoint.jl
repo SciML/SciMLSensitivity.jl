@@ -553,7 +553,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         end
     end
 
-    return adj_sol[end], __maybe_adjoint(res)
+    return adj_sol.u[end], __maybe_adjoint(res)
 end
 
 __maybe_adjoint(x::AbstractArray) = x'

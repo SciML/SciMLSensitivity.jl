@@ -186,9 +186,9 @@ u0 = [1.0; 0.0; 0.0]
 tspan = (0.0, 100.0)
 prob = ODEProblem(lorenz, u0, tspan)
 sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-12)
-prob2 = ODEProblem(lorenz, sol[end], (100.0, 0.0))
+prob2 = ODEProblem(lorenz, sol.u[end], (100.0, 0.0))
 sol = solve(prob, Tsit5(), reltol = 1e-12, abstol = 1e-12)
-@show sol[end] - u0 #[-3.22091, -1.49394, 21.3435]
+@show sol.u[end] - u0 #[-3.22091, -1.49394, 21.3435]
 ```
 
 Thus, one should check the stability of the backsolve on their type of problem before
