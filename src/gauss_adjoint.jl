@@ -400,7 +400,6 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        paramjac_config = zero(y), zero(y)
         pf = let f = unwrappedf
             if DiffEqBase.isinplace(prob)
                 function (out, u, _p, t)
@@ -415,6 +414,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
                 end
             end
         end
+        paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
@@ -468,10 +468,10 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         tmp = back(λ)
         recursive_copyto!(out, tmp[1])
     elseif sensealg.autojacvec isa EnzymeVJP
-        tmp3, tmp4 = paramjac_config
+        tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ
         out .= 0
-        Enzyme.autodiff(Enzyme.Reverse, pf, Enzyme.Duplicated(tmp3, tmp4),
+        Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Duplicated(tmp3, tmp4),
             y, Enzyme.Duplicated(p, out), t)
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")

@@ -131,7 +131,14 @@ function jacobian(f, x::AbstractArray{<:Number},
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
-        J = FiniteDiff.finite_difference_jacobian(f, x)
+        T = if f isa ParamGradientWrapper
+            promote_type(eltype(f.u),eltype(x))
+        elseif f isa UGradientWrapper
+            promote_type(eltype(f.p),eltype(x))
+        else
+            T = eltype(x)
+        end
+        J = FiniteDiff.finite_difference_jacobian(f, x, Val(:forward), T)
     end
     return J
 end
@@ -259,7 +266,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 else
                     uf.t = t
                     uf.p = p
-                    jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                    if inplace_sensitivity(S)
+                        jacobian!(J, uf, y, f_cache, sensealg, jac_config)
+                    else
+                        J = jacobian(uf, y, sensealg)
+                    end
                 end
             end
         else
@@ -642,7 +653,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
 
-    _tmp1, tmp2, _tmp3, _tmp4, _tmp5 = S.diffcache.paramjac_config
+    _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
 
     if _tmp1 isa FixedSizeDiffCache
         tmp1 = get_tmp(_tmp1, dλ)
@@ -669,7 +680,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         Enzyme.Const(p)
     end
     #end
- 
+
     #if dy !== nothing
     #      tmp3 = dy
     #else
@@ -682,12 +693,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     if inplace_sensitivity(S)
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
@@ -698,11 +709,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy !== nothing && recursive_copyto!(dy,tmp3)
     else
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, S.diffcache.pf, Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6), Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
         end
