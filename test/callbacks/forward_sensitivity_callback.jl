@@ -52,7 +52,7 @@ function test_discrete_callback(cb, tstops, g)
 end
 
 @testset "ForwardDiffSensitivity: Discrete callbacks" begin
-    g(u) = sum(u .^ 2)
+    g(u) = sum(Array(u) .^ 2)
     @testset "reset to initial condition" begin
         affecttimes = range(0.0, 1.0, length = 6)[2:end]
         u0 = [1.0]

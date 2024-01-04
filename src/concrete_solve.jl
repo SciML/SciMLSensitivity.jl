@@ -1375,7 +1375,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         # only_end
