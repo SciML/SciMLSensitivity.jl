@@ -812,8 +812,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                     _dp = sum(eachindex(_du)) do i
                         J = _du[i]
-                        if Δ isa AbstractVector || Δ isa DESolution ||
-                           Δ isa AbstractVectorOfArray
+                        if Δ isa AbstractVector
+                            v = Δ[i]
+                        elseif Δ isa AbstractVectorOfArray
                             v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
@@ -965,8 +966,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                 _du0 = sum(eachindex(_du)) do i
                     J = _du[i]
-                    if Δ isa AbstractVector || Δ isa DESolution ||
-                       Δ isa AbstractVectorOfArray
+                    if Δ isa AbstractVector
+                        v = Δ[i]
+                    elseif Δ isa AbstractVectorOfArray
                         v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]

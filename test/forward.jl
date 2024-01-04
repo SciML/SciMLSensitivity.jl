@@ -103,7 +103,7 @@ sense_res2 = reduce(hcat, dp)
 
 @test extract_local_sensitivities(sol, sol.t[3]) == extract_local_sensitivities(sol, 3)
 
-tmp = similar(sol[1])
+tmp = similar(sol.u[1])
 @test extract_local_sensitivities(tmp, sol, sol.t[3]) == extract_local_sensitivities(sol, 3)
 
 _, dp_ts = extract_local_sensitivities(sol, sol.t)
@@ -141,7 +141,7 @@ sense_res2 = reduce(hcat, dp)
 
 @test extract_local_sensitivities(sol, sol.t[3]) == extract_local_sensitivities(sol, 3)
 
-tmp = similar(sol[1])
+tmp = similar(sol.u[1])
 @test extract_local_sensitivities(tmp, sol, sol.t[3]) == extract_local_sensitivities(sol, 3)
 
 # asmatrix=true

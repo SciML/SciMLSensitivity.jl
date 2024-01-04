@@ -567,7 +567,7 @@ end
         EulerHeun(), tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end]≈adj_sol[end] rtol=1e-15
+    @test adj_soloop[end]≈adj_sol.u[end] rtol=1e-15
 
     adjprob = SDEAdjointProblem(sol,
         BacksolveAdjoint(autojacvec = ReverseDiffVJP(),
@@ -575,7 +575,7 @@ end
         EulerHeun(), tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end]≈adj_sol[end] rtol=1e-8
+    @test adj_soloop[end]≈adj_sol.u[end] rtol=1e-8
 
     # InterpolatingAdjoint
 
@@ -613,7 +613,7 @@ end
         tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end]≈adj_sol[end] rtol=1e-8
+    @test adj_soloop[end]≈adj_sol.u[end] rtol=1e-8
 
     adjprob = SDEAdjointProblem(sol,
         InterpolatingAdjoint(autojacvec = ReverseDiffVJP(),
@@ -622,7 +622,7 @@ end
         tarray, dg!)
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end]≈adj_sol[end] rtol=1e-8
+    @test adj_soloop[end]≈adj_sol.u[end] rtol=1e-8
 end
 
 @testset "mutating non-diagonal noise" begin
@@ -727,7 +727,7 @@ end
             # noise_rate_prototype = noise_rate_prototype
         )
         sol = solve(_prob, EulerHeun(), dt = dt, sensealg = sensealg)
-        sum(abs2, sol[end])
+        sum(abs2, sol.u[end])
     end
 
     loss(p, Z = Z)

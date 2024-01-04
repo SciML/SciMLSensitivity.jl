@@ -181,7 +181,7 @@ println("Continuous Callbacks")
             cb = ContinuousCallback(condition, affect!, save_positions = (true, true))
             test_continuous_callback(cb, g, dg!; only_backsolve = true)
         end
-        
+
     end
     @testset "MSE loss function bouncing-ball like" begin
         g(u) = sum((1.0 .- u) .^ 2) ./ 2
@@ -265,7 +265,7 @@ println("Continuous Callbacks")
             _sol = solve(_prob, Tsit5(); callback = cb,
                 abstol = 1e-14, reltol = 1e-14,
                 sensealg = sensealg)
-            _sol[end][1]
+            _sol.u[end][1]
         end
 
         gND = FiniteDiff.finite_difference_gradient(p -> loss(p, cb, nothing), p)
@@ -282,5 +282,5 @@ println("Continuous Callbacks")
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD≈gZy rtol=1e-10
     end
-    
+
 end

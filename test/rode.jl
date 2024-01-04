@@ -33,7 +33,7 @@ end
     # check reversion with usage of Noise Grid
     _sol = deepcopy(sol)
     noise_reverse = NoiseGrid(reverse(_sol.t), reverse(_sol.W.W))
-    prob_reverse = RODEProblem(f, _sol[end], reverse(tspan), p, noise = noise_reverse)
+    prob_reverse = RODEProblem(f, _sol.u[end], reverse(tspan), p, noise = noise_reverse)
     sol_reverse = solve(prob_reverse, RandomEM(), dt = dt)
     @test sol.u≈reverse(sol_reverse.u) rtol=1e-3
     @show minimum(sol.u)
@@ -288,7 +288,7 @@ end
     # check reversion with usage of Noise Grid
     _sol = deepcopy(sol)
     noise_reverse = NoiseGrid(reverse(_sol.t), reverse(_sol.W.W))
-    prob_reverse = RODEProblem(f, _sol[end], reverse(tspan), p, noise = noise_reverse)
+    prob_reverse = RODEProblem(f, _sol.u[end], reverse(tspan), p, noise = noise_reverse)
     sol_reverse = solve(prob_reverse, RandomEM(), dt = dt)
     @test sol.u≈reverse(sol_reverse.u) rtol=1e-3
     @show minimum(sol.u)
