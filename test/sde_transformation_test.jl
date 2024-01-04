@@ -194,9 +194,8 @@ transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g
 _dy, back = Zygote.pullback(u0, p) do u, p
     vec(transformed_function(u, p, t))
 end
-@test_broken back(λ)
-# @test isapprox(∇1, (p[1]-p[2]^2)*λ, atol=1e-15)
-# @test isapprox(∇2, (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
+@test isapprox(∇1, (p[1]-p[2]^2)*λ, atol=1e-15)
+@test isapprox(∇2, (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
     (u, p, t) -> p[2]^2 * u)

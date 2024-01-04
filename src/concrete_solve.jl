@@ -1387,13 +1387,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     function adjoint_sensitivity_backpass(Δ)
         function df(_out, u, p, t, i)
-            if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
+            if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                 if _save_idxs isa Number
-                    _out[_save_idxs] = Δ[i][_save_idxs]
+                    _out[_save_idxs] = x[_save_idxs]
                 elseif _save_idxs isa Colon
-                    vec(_out) .= vec(Δ[i])
+                    vec(_out) .= vec(x)
                 else
-                    vec(@view(_out[_save_idxs])) .= vec(Δ[i][_save_idxs])
+                    vec(@view(_out[_save_idxs])) .= vec(x[_save_idxs])
                 end
             else
                 if _save_idxs isa Number
