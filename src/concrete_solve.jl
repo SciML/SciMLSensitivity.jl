@@ -1153,6 +1153,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
+        sol = SciMLBase.sensitivity_solution(sol, sol.u, sol.t)
 
         if sol.u[1] isa Array
             return Array(sol)
@@ -1289,6 +1290,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         else
             u = map(ReverseDiff.value, sol.u)
         end
+        sol = SciMLBase.sensitivity_solution(sol, sol.u, sol.t)
         Array(sol)
     end
 
@@ -1298,6 +1300,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     ReverseDiff.value!(tu, u0)
     p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
     ReverseDiff.forward_pass!(tape)
+
     function reversediff_adjoint_backpass(ybar)
         _ybar = if ybar isa AbstractVectorOfArray
             Array(ybar)
