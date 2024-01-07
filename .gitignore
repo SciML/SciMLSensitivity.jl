@@ -3,5 +3,4 @@
 *.jl.*.cov
 *.jl.mem
 /docs/build/
-test/Manifest.toml
 test/gpu/Manifest.toml
