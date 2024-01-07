@@ -842,25 +842,24 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
 end
 
 function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
-    
     @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
     f = sol.prob.f
     g = sol.prob.g
     isautojacvec = get_jacvec(sensealg)
-    # y is aliased
-
+    dW = sol.W.dW
+    
     if sensealg.autojacvec isa ZygoteVJP
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
-                vec(g(u, p, t))
-            end
+                    vec(g(u, p, t).*dW)
+                end
         else
             _dy, back = Zygote.pullback(y, p) do u, p
                 vec(g(u, p, t, W))
             end
         end
         tmp1, tmp2 = back(λ)
-        out .+= tmp2.*sol.W(t)
+        out .+= tmp2
     end
     
     #=
