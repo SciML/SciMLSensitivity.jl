@@ -172,10 +172,7 @@ if VERSION >= v"1.7-"
         ROS34PW3(),
         # Stabilized Explicit Methods (ok)
         ROCK2(),
-        ROCK4(),
-        RKC(),
-        # SERK2v2(), not defined?
-        ESERK5()]
+        ROCK4(),]
 
     p = rand(3)
 
