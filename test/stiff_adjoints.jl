@@ -236,7 +236,7 @@ if VERSION >= v"1.7-"
     function sum_of_solution_CASA(x; vjp = EnzymeVJP())
         sensealg = QuadratureAdjoint(autodiff = false, autojacvec = vjp)
         _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
-        sum(solve(_prob, Rodas5(), reltol = 1e-8, abstol = 1e-8, saveat = 1,
+        sum(solve(_prob, Rodas5P(), reltol = 1e-12, abstol = 1e-12, saveat = 1,
             sensealg = sensealg))
     end
 
