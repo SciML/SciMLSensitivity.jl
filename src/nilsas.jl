@@ -300,7 +300,7 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
             checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
             tspan = (t1, t2), kwargs...)
         _sol = solve(_prob, alg; save_everystep = false, save_start = false,
-            saveat = eltype(sol[1])[],
+            saveat = eltype(sol.u[1])[],
             dt = dtsave,
             tstops = checkpoints,
             callback = cb,

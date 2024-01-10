@@ -16,7 +16,7 @@ prob = ODEProblem(fiip, u0, (0.0, 10.0), [1.5, 1.0, 3.0, 1.0], reltol = 1e-14,
     abstol = 1e-14)
 function cost(p1)
     _prob = remake(prob, p = vcat(p1, p[2:end]))
-    sol = solve(_prob, Tsit5(), sensealg = ForwardDiffSensitivity(), saveat = 0.1)
+    sol = solve(_prob, Tsit5(), sensealg = ForwardDiffSensitivity(), saveat = 0.1, abstol=1e-12, reltol=1e-12)
     sum(sol)
 end
 res = FiniteDiff.finite_difference_derivative(cost, p[1]) #  8.305557728239275
@@ -25,7 +25,7 @@ res3 = Zygote.gradient(cost, p[1])[1] # (8.305266428305409,) # 4 dual numbers
 
 function cost(p1)
     _prob = remake(prob, p = vcat(p1, p[2:end]))
-    sol = solve(_prob, Tsit5(), sensealg = ForwardSensitivity(), saveat = 0.1)
+    sol = solve(_prob, Tsit5(), sensealg = ForwardSensitivity(), saveat = 0.1, abstol=1e-12, reltol=1e-12)
     sum(sol)
 end
 res4 = Zygote.gradient(cost, p[1])[1] # (7.720368430265481,)

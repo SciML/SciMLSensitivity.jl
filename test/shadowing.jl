@@ -21,7 +21,7 @@ using Zygote
         u0 = rand(3)
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         g(u, p, t) = u[end]
@@ -164,7 +164,7 @@ using Zygote
         u0 = rand(3)
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         g(u, p, t) = u[end] + sum(p)
@@ -242,7 +242,7 @@ using Zygote
         u0 = rand(3)
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14,
             saveat = 0.01)
 
@@ -367,7 +367,7 @@ end
         u0 = rand(3)
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
 
         g(u, p, t) = u[end]
         function dg(out, u, p, t, i = nothing)
@@ -423,7 +423,7 @@ end
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
 
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         g(u, p, t) = u[end]
@@ -441,7 +441,7 @@ end
         prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
         sol_init = solve(prob_init, Tsit5())
 
-        prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+        prob_attractor = ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
         sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
 
         nseg = 50 # number of segments on time interval

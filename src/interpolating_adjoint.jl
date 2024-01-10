@@ -505,7 +505,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W[end] isa Number
+    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else

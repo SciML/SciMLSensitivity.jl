@@ -71,7 +71,7 @@ integrand = AdjointSensitivityIntegrand(sol, adj_sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 res, err = quadgk(integrand, 0.0, 5.0, atol = 1e-14, rtol = 1e-14)
 
-@test adj_sol[end]≈du0 rtol=1e-12
+@test adj_sol.u[end]≈du0 rtol=1e-12
 @test res≈dp rtol=1e-12
 
 ###Comparing with gradients of lotka volterra with normal arrays
@@ -152,7 +152,7 @@ integrand = AdjointSensitivityIntegrand(sol, adj_sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14, autojacvec = ZygoteVJP()))
 res, err = quadgk(integrand, 0.0, 5.0, atol = 1e-14, rtol = 1e-14)
 
-@test adj_sol[end]≈du0 rtol=1e-12
+@test adj_sol.u[end]≈du0 rtol=1e-12
 @test res≈dp rtol=1e-12
 
 ##ForwardDiff

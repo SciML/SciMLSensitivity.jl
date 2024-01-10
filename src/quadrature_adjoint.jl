@@ -98,7 +98,7 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     @unpack p, u0, tspan = sol.prob
- 
+
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
@@ -334,7 +334,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
-        return adj_sol[end], nothing
+        return adj_sol.u[end], nothing
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
         if t === nothing
@@ -415,7 +415,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                 iλ .= zero(eltype(iλ))
             end
         end
-        return adj_sol[end], res
+        return adj_sol.u[end], res
     end
 end
 

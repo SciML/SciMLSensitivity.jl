@@ -306,7 +306,7 @@ end
                 _sol = solve(_prob, Tsit5(); callback=cb,
                     abstol=1e-14, reltol=1e-14, tstops=[tinject],
                     sensealg=BacksolveAdjoint(autojacvec=EnzymeVJP()))
-                _sol[end][1]
+                _sol.u[end][1]
             end
 
             gFD = ForwardDiff.gradient(loss, p)

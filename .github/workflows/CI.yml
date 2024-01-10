@@ -27,7 +27,7 @@ jobs:
           - SDE2
           - SDE3
         version:
-          - '1.9'
+          - '1.10'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1

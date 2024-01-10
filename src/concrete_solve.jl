@@ -365,7 +365,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
@@ -396,7 +396,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
@@ -411,16 +411,17 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                       DiffEqBase.parameterless_type(_out)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        x = vec(Δ[1])
-                        _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out[_save_idxs] .= vx[_save_idxs]
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(adapt(outtype, Δ[1]))
+                        vec(_out) .= vec(adapt(outtype, x))
                     else
                         vec(@view(_out[_save_idxs])) .= adapt(outtype,
-                            vec(Δ[1])[_save_idxs])
+                            vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
@@ -437,10 +438,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
-                    x = Δ[i]
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
-                        _out[_save_idxs] = @view(x[_save_idxs])
+                        _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
                         vec(_out) .= vec(x)
                     else
@@ -468,18 +469,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         end
 
         function df_oop(u, p, t, i; outtype = nothing)
+            @show typeof(Δ)
             if only_end
                 eltype(Δ) <: NoTangent && return
-                if Δ isa AbstractArray{<:AbstractArray} && length(Δ) == 1 && i == 1
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
                     # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
-                        x = vec(Δ[1])
-                        _out = adapt(outtype, @view(x[_save_idxs]))
+                        vx = vec(x)
+                        _out = adapt(outtype, @view(vx[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        _out = adapt(outtype, vec(Δ[1]))
+                        _out = adapt(outtype, x)
                     else
-                        _out = adapt(outtype,
-                            vec(Δ[1])[_save_idxs])
+                        _out = adapt(outtype, vec(x)[_save_idxs])
                     end
                 else
                     Δ isa NoTangent && return
@@ -496,8 +498,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
-                    x = Δ[i]
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
                         _out = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
@@ -594,17 +596,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
 
     u = if save_idxs === nothing
-        [reshape(sol[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
+        [reshape(sol.u[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
     else
-        [sol[i][_save_idxs] for i in 1:length(sol)]
+        [sol.u[i][_save_idxs] for i in 1:length(sol)]
     end
     out = DiffEqBase.sensitivity_solution(sol, u, sol.t)
 
     function forward_sensitivity_backpass(Δ)
         adj = sum(eachindex(du)) do i
             J = du[i]
-            if Δ isa AbstractVector || Δ isa DESolution || Δ isa AbstractVectorOfArray
+            if Δ isa AbstractVector
                 v = Δ[i]
+            elseif Δ isa DESolution || Δ isa AbstractVectorOfArray
+                v = Δ.u[i]
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
             else
@@ -637,7 +641,7 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
     out = DiffEqBase.sensitivity_solution(sol,
-        [ForwardDiff.value.(sol[i][_save_idxs])
+        [ForwardDiff.value.(sol.u[i][_save_idxs])
          for i in 1:length(sol)], sol.t)
     function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
         x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
@@ -808,9 +812,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                     _dp = sum(eachindex(_du)) do i
                         J = _du[i]
-                        if Δ isa AbstractVector || Δ isa DESolution ||
-                           Δ isa AbstractVectorOfArray
+                        if Δ isa AbstractVector
                             v = Δ[i]
+                        elseif Δ isa AbstractVectorOfArray
+                            v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
                         else
@@ -961,9 +966,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
                 _du0 = sum(eachindex(_du)) do i
                     J = _du[i]
-                    if Δ isa AbstractVector || Δ isa DESolution ||
-                       Δ isa AbstractVectorOfArray
+                    if Δ isa AbstractVector
                         v = Δ[i]
+                    elseif Δ isa AbstractVectorOfArray
+                        v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
                     else
@@ -1147,6 +1153,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
+        sol = SciMLBase.sensitivity_solution(sol, sol.u, sol.t)
 
         if sol.u[1] isa Array
             return Array(sol)
@@ -1220,6 +1227,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         throw(ReverseDiffGPUStateCompatibilityError())
     end
 
+    if !(u0 isa AbstractVector)
+        error("Sensitivity algorithm ReverseDiffAdjoint only supports vector u0")
+    end
+
     t = eltype(prob.tspan)[]
     u = typeof(u0)[]
 
@@ -1279,6 +1290,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         else
             u = map(ReverseDiff.value, sol.u)
         end
+        sol = SciMLBase.sensitivity_solution(sol, sol.u, sol.t)
         Array(sol)
     end
 
@@ -1288,6 +1300,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     ReverseDiff.value!(tu, u0)
     p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
     ReverseDiff.forward_pass!(tape)
+
     function reversediff_adjoint_backpass(ybar)
         _ybar = if ybar isa AbstractVectorOfArray
             Array(ybar)
@@ -1365,7 +1378,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
             out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
+                [_out.u[i][save_idxs]
                  for i in 1:length(_out)], ts)
         end
         # only_end
@@ -1377,13 +1390,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     function adjoint_sensitivity_backpass(Δ)
         function df(_out, u, p, t, i)
-            if Δ isa AbstractArray{<:AbstractArray} || Δ isa DESolution
+            if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                 if _save_idxs isa Number
-                    _out[_save_idxs] = Δ[i][_save_idxs]
+                    _out[_save_idxs] = x[_save_idxs]
                 elseif _save_idxs isa Colon
-                    vec(_out) .= vec(Δ[i])
+                    vec(_out) .= vec(x)
                 else
-                    vec(@view(_out[_save_idxs])) .= vec(Δ[i][_save_idxs])
+                    vec(@view(_out[_save_idxs])) .= vec(x[_save_idxs])
                 end
             else
                 if _save_idxs isa Number
