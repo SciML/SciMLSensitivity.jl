@@ -54,7 +54,7 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
         u0, p)
 
     if !only_backsolve
-        @test_broken du02, dp2 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(),
+        du02, dp2 = @time Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(),
                 u0 = u0, p = p,
                 callback = cb,
                 abstol = abstol,
@@ -99,19 +99,19 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
     @test du01c ≈ dstuff[1:2]
     @test dp1c ≈ dstuff[3:4]
     if !only_backsolve
-        @test_broken du01 ≈ du02
+        @test du01 ≈ du02
         @test du01≈du03 rtol=1e-7
         @test du01≈du03c rtol=1e-7
         @test du03 ≈ du03c
         @test du01 ≈ du04
-        @test_broken dp1 ≈ dp2
+        @test dp1 ≈ dp2
         @test dp1 ≈ dp3
         @test dp1 ≈ dp3c
         @test dp3 ≈ dp3c
         @test dp1≈dp4 rtol=1e-7
 
-        @test_broken du02 ≈ dstuff[1:2]
-        @test_broken dp2 ≈ dstuff[3:4]
+        @test du02 ≈ dstuff[1:2]
+        @test dp2 ≈ dstuff[3:4]
     end
 
     cb2 = SciMLSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p,
@@ -132,7 +132,7 @@ end
 println("Continuous Callbacks")
 @testset "Continuous callbacks" begin
     @testset "simple loss function bouncing ball" begin
-        g(sol) = sum(sol)
+        g(sol) = sum(Array(sol))
         function dg!(out, u, p, t, i)
             (out .= 1)
         end
