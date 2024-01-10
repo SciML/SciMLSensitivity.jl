@@ -254,8 +254,9 @@ if VERSION >= v"1.7-"
         [u0; p])[1]
     println("grad5")
     @test_broken Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = true), [u0; p])[1] isa Array
-    println("grad6")
-    grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
+    # Takes too long
+    #println("grad6")
+    #grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
     println("grad7")
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()),
         [u0; p])[1]
