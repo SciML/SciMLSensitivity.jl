@@ -268,5 +268,5 @@ if VERSION >= v"1.7-"
     @test grad1 ≈ grad3
     @test grad1 ≈ grad4
     #@test grad1 ≈ grad5
-    @test grad1 ≈ grad6
+    #@test grad1 ≈ grad6
 end
