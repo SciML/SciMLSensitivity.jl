@@ -243,15 +243,23 @@ if VERSION >= v"1.7-"
     u0 = [1.0, 0.0, 0.0]
     p = ones(8)  # change me, the number of parameters
 
+    println("grad1")
     grad1 = ForwardDiff.gradient(sum_of_solution_fwd, [u0; p])
+    println("grad2")
     grad2 = Zygote.gradient(sum_of_solution_CASA, [u0; p])[1]
+    println("grad3")
     grad3 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP()), [u0; p])[1]
+    println("grad4")
     grad4 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ReverseDiffVJP(true)),
         [u0; p])[1]
+    println("grad5")
     @test_broken Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = true), [u0; p])[1] isa Array
+    println("grad6")
     grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
+    println("grad7")
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()),
         [u0; p])[1]
+    println("grad8")
     @test_throws Any Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = TrackerVJP()),
         [u0; p])[1]
 
