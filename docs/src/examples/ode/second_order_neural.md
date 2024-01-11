@@ -35,7 +35,7 @@ ps = ComponentArray(ps)
 model = Lux.Experimental.StatefulLuxLayer(model, ps, st)
 
 ff(du, u, p, t) = model(u, p)
-prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, p)
+prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
 
 function predict(p)
     Array(solve(prob, Tsit5(), p = p, saveat = t))
