@@ -490,7 +490,6 @@ function (S::GaussIntegrand)(out, t, λ)
     vec_pjac!(out, λ, y, t, S)
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
-        @show typeof(dgdp_cache)
         out .+= dgdp_cache
     end
     out

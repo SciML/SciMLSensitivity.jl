@@ -469,7 +469,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         end
 
         function df_oop(u, p, t, i; outtype = nothing)
-            @show typeof(Δ)
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
