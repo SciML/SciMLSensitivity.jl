@@ -589,7 +589,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     end
     cb = PresetTimeCallback(_t, rlcb)
 
-    # handle duplicates (currently only for double occurances)
+    # handle duplicates (currently only for double occurrences)
     if duplicate_iterator_times !== nothing
         # use same ref for cur_time to cope with concrete_solve
         cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
@@ -603,22 +603,22 @@ end
 function separate_nonunique(t)
     # t is already sorted
     _t = unique(t)
-    ts_with_occurances = [(i, count(==(i), t)) for i in _t]
+    ts_with_occurrences = [(i, count(==(i), t)) for i in _t]
 
     # duplicates (only those values which occur > 1 times)
-    dupl = filter(x -> last(x) > 1, ts_with_occurances)
+    dupl = filter(x -> last(x) > 1, ts_with_occurrences)
 
     ts = first.(dupl)
-    occurances = last.(dupl)
+    occurrences = last.(dupl)
 
-    if isempty(occurances)
+    if isempty(occurrences)
         itrs = nothing
     else
-        maxoc = maximum(occurances)
+        maxoc = maximum(occurrences)
         maxoc > 2 &&
-            error("More than two occurances of the same time point. Please report this.")
-        # handle also more than two occurances
-        itrs = [ts[occurances .>= i] for i in 2:maxoc]
+            error("More than two occurrences of the same time point. Please report this.")
+        # handle also more than two occurrences
+        itrs = [ts[occurrences .>= i] for i in 2:maxoc]
     end
 
     return _t, itrs
@@ -631,11 +631,11 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
     else
         # if callbacks are tracked, there is potentially an event_time that must be considered
         # in the loss function but doesn't occur in saveat/t. So we need to add it.
-        # Note that if it doens't occur in saveat/t we even need to add it twice
+        # Note that if it doesn't occur in saveat/t we even need to add it twice
         # However if the callbacks are not saving in the forward, we don't want to compute a loss
         # value for them. This information is given by sol.t/checkpoints.
         # Additionally we need to store the left and the right limit, respectively.
-        duplicate_times = duplicate_iterator_times[1] # just treat two occurances at the moment (see separate_nonunique above)
+        duplicate_times = duplicate_iterator_times[1] # just treat two occurrences at the moment (see separate_nonunique above)
         _ts = Array(_ts)
         for d in duplicate_times
             (d ∉ _ts) && push!(_ts, d)

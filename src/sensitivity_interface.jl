@@ -1,6 +1,6 @@
 ## Direct calls
 
-const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE = """
+const ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE = """
                                                 Adjoint sensitivity analysis functionality requires being able to solve
                                                 a differential equation defined by the parameter struct `p`. Thus while
                                                 DifferentialEquations.jl can support any parameter struct type, usage
@@ -16,7 +16,7 @@ const ADJOINT_PARAMETER_COMPATABILITY_MESSAGE = """
 struct AdjointSensitivityParameterCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::AdjointSensitivityParameterCompatibilityError)
-    print(io, ADJOINT_PARAMETER_COMPATABILITY_MESSAGE)
+    print(io, ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
 @doc doc"""
