@@ -1,6 +1,6 @@
 using SciMLSensitivity, OrdinaryDiffEq, Lux, DiffEqFlux, LuxCUDA, Zygote, Random
 using ComponentArrays
-CUDA.allowscalar(false) # Makes sure no slow operations are occuring
+CUDA.allowscalar(false) # Makes sure no slow operations are occurring
 
 const gdev = gpu_device()
 const cdev = cpu_device()

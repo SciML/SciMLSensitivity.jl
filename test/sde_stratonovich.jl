@@ -119,7 +119,7 @@ end
 
     @info res_sde_p2
 
-    # test consitency for different switches for the noise Jacobian
+    # test consistency for different switches for the noise Jacobian
     res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
