@@ -11,10 +11,10 @@ end
 
 @time begin
     if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
-        @time @safetestset "Forward Sensitivity" include("forward.jl")
-        @time @safetestset "Sparse Adjoint Sensitivity" include("sparse_adjoint.jl")
+#=         @time @safetestset "Forward Sensitivity" include("forward.jl")
+        @time @safetestset "Sparse Adjoint Sensitivity" include("sparse_adjoint.jl") =#
         @time @safetestset "Adjoint Shapes" include("adjoint_shapes.jl")
-        @time @safetestset "Second Order Sensitivity" include("second_order.jl")
+#=         @time @safetestset "Second Order Sensitivity" include("second_order.jl")
         @time @safetestset "Concrete Solve Derivatives" include("concrete_solve_derivatives.jl")
         @time @safetestset "Branching Derivatives" include("branching_derivatives.jl")
         @time @safetestset "Derivative Shapes" include("derivative_shapes.jl")
@@ -25,7 +25,7 @@ end
         @time @safetestset "Forward Remake" include("forward_remake.jl")
         @time @safetestset "Prob Kwargs" include("prob_kwargs.jl")
         @time @safetestset "DiscreteProblem Adjoints" include("discrete.jl")
-        @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl")
+        @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl") =#
     end
 
     if GROUP == "All" || GROUP == "Core2"

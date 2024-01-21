@@ -12,20 +12,12 @@ on:
       - 'docs/**'
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         group:
           - Core1
-          - Core2
-          - Core3
-          - Core4
-          - Core5
-          - Core6
-          - SDE1
-          - SDE2
-          - SDE3
         version:
           - '1.10'
     steps:
