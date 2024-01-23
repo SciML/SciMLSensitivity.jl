@@ -1,6 +1,7 @@
 # Training a Neural Ordinary Differential Equation with Mini-Batching
 
 ```@example
+using SciMLSensitivity
 using DifferentialEquations, Flux, Random, Plots
 using IterTools: ncycle
 
@@ -95,6 +96,7 @@ When training a neural network, we need to find the gradient with respect to our
 For this example, we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so.
 
 ```@example minibatch
+using SciMLSensitivity
 using DifferentialEquations, Flux, Random, Plots
 using IterTools: ncycle
 

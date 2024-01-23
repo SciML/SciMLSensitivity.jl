@@ -14,6 +14,7 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```@example secondorderadjoints
+using SciMLSensitivity
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimisers,
     OrdinaryDiffEq, Plots, Random, OptimizationOptimJL
 

@@ -28,6 +28,7 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
+using SciMLSensitivity
 using OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
     OptimizationNLopt, Plots
 

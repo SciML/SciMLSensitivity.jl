@@ -86,7 +86,7 @@ The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
 ```@example dataparallel
-using OrdinaryDiffEq, Optimization, OptimizationOptimisers
+using OrdinaryDiffEq, Optimization, OptimizationOptimisers, SciMLSensitivity
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]
