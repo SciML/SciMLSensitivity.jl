@@ -126,5 +126,3 @@ cb(res3.u, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
 plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts], label = "u(t)", lw = 3)
 ```
-
-![](https://user-images.githubusercontent.com/1814174/81859169-db65b280-9532-11ea-8394-dbb5efcd4036.png)

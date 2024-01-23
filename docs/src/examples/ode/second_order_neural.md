@@ -21,6 +21,7 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
+using SciMLSensitivity
 using OrdinaryDiffEq, Lux, Optimization, OptimizationOptimisers, RecursiveArrayTools,
     Random, ComponentArrays
 

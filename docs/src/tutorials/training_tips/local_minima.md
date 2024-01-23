@@ -16,6 +16,7 @@ before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
+using SciMLSensitivity
 using OrdinaryDiffEq,
     ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote
@@ -166,6 +167,7 @@ time span and (0, 10), any longer and more iterations will be required. Alternat
 one could use a mix of (3) and (4), or breaking up the trajectory into chunks and just (4).
 
 ```@example resetic
+using SciMLSensitivity
 using OrdinaryDiffEq,
     ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote

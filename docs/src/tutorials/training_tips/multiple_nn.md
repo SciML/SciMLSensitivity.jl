@@ -7,6 +7,7 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
+using SciMLSensitivity
 using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt,
     OptimizationOptimisers, OrdinaryDiffEq, Random
 
