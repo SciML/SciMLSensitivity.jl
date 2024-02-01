@@ -5,7 +5,7 @@ Pkg.add(&quot;SciMLSensitivity&quot;)</code></pre><h2 id="High-Level-Interface:-
   author={Rackauckas, Christopher and Ma, Yingbo and Martensen, Julius and Warner, Collin and Zubov, Kirill and Supekar, Rohit and Skinner, Dominic and Ramadhan, Ali},
   journal={arXiv preprint arXiv:2001.04385},
   year={2020}
-}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-13/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
+}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-11/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
   <span class="sgr90">[49dc2e85] </span>Calculus v0.5.1
   <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.7
   <span class="sgr90">[82cc6244] </span>DataInterpolations v4.6.0
@@ -16,7 +16,7 @@ Pkg.add(&quot;SciMLSensitivity&quot;)</code></pre><h2 id="High-Level-Interface:-
   <span class="sgr90">[77a26b50] </span>DiffEqNoiseProcess v5.20.0
   <span class="sgr90">[0c46a032] </span>DifferentialEquations v7.12.0
   <span class="sgr90">[e30172f5] </span>Documenter v1.2.1
-  <span class="sgr90">[587475ba] </span>Flux v0.14.10
+  <span class="sgr90">[587475ba] </span>Flux v0.14.11
   <span class="sgr90">[f6369f11] </span>ForwardDiff v0.10.36
   <span class="sgr90">[c8e1da08] </span>IterTools v1.10.0
   <span class="sgr90">[b2108857] </span>Lux v0.5.14
@@ -27,10 +27,10 @@ Pkg.add(&quot;SciMLSensitivity&quot;)</code></pre><h2 id="High-Level-Interface:-
 <span class="sgr33">⌅</span> <span class="sgr90">[36348300] </span>OptimizationOptimJL v0.1.14
 <span class="sgr33">⌅</span> <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.1.6
   <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.1.2
-  <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.69.0
+  <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.70.0
   <span class="sgr90">[91a5bcdd] </span>Plots v1.40.0
   <span class="sgr90">[1fd47b50] </span>QuadGK v2.9.4
-  <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.6.2
+  <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.7.0
   <span class="sgr90">[37e2e3b7] </span>ReverseDiff v1.15.1
   <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.53.0
   <span class="sgr90">[de6bee2f] </span>SimpleChains v0.4.6
@@ -55,7 +55,7 @@ Environment:
   JULIA_DEBUG = Documenter
   JULIA_DEPOT_PATH = /root/.cache/julia-buildkite-plugin/depots/ea52448d-f230-4619-b27a-2d98107bd215
   LD_LIBRARY_PATH = /usr/local/nvidia/lib:/usr/local/nvidia/lib64
-  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-13/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
+  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-11/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
   <span class="sgr90">[47edcb42] </span>ADTypes v0.2.6
   <span class="sgr90">[a4c015fc] </span>ANSIColoredPrinters v0.0.1
   <span class="sgr90">[621f4979] </span>AbstractFFTs v1.5.0
@@ -64,7 +64,7 @@ Environment:
   <span class="sgr90">[dce04be8] </span>ArgCheck v2.3.0
   <span class="sgr90">[ec485272] </span>ArnoldiMethod v0.2.0
   <span class="sgr90">[4fba245c] </span>ArrayInterface v7.7.0
-  <span class="sgr90">[4c555306] </span>ArrayLayouts v1.5.2
+  <span class="sgr90">[4c555306] </span>ArrayLayouts v1.5.3
   <span class="sgr90">[a9b6321e] </span>Atomix v0.1.0
 <span class="sgr33">⌅</span> <span class="sgr90">[ab4f0b2a] </span>BFloat16s v0.4.2
   <span class="sgr90">[aae01518] </span>BandedMatrices v1.4.0
@@ -80,10 +80,10 @@ Environment:
   <span class="sgr90">[1af6417a] </span>CUDA_Runtime_Discovery v0.2.3
   <span class="sgr90">[49dc2e85] </span>Calculus v0.5.1
   <span class="sgr90">[7057c7e9] </span>Cassette v0.3.13
-  <span class="sgr90">[082447d4] </span>ChainRules v1.60.0
+  <span class="sgr90">[082447d4] </span>ChainRules v1.61.0
   <span class="sgr90">[d360d2e6] </span>ChainRulesCore v1.20.1
   <span class="sgr90">[fb6a15b2] </span>CloseOpenIntervals v0.1.12
-  <span class="sgr90">[523fee87] </span>CodecBzip2 v0.8.1
+  <span class="sgr90">[523fee87] </span>CodecBzip2 v0.8.2
   <span class="sgr90">[944b1d66] </span>CodecZlib v0.7.4
   <span class="sgr90">[35d6a980] </span>ColorSchemes v3.24.0
   <span class="sgr90">[3da002f7] </span>ColorTypes v0.11.4
@@ -140,7 +140,7 @@ Environment:
   <span class="sgr90">[1a297f60] </span>FillArrays v1.9.3
   <span class="sgr90">[6a86dc24] </span>FiniteDiff v2.22.0
   <span class="sgr90">[53c48c17] </span>FixedPointNumbers v0.8.4
-  <span class="sgr90">[587475ba] </span>Flux v0.14.10
+  <span class="sgr90">[587475ba] </span>Flux v0.14.11
   <span class="sgr90">[59287772] </span>Formatting v0.4.2
   <span class="sgr90">[f6369f11] </span>ForwardDiff v0.10.36
   <span class="sgr90">[f62d2435] </span>FunctionProperties v0.1.0
@@ -150,7 +150,7 @@ Environment:
 <span class="sgr33">⌅</span> <span class="sgr90">[0c68f7d7] </span>GPUArrays v9.1.0
 <span class="sgr33">⌅</span> <span class="sgr90">[46192b85] </span>GPUArraysCore v0.1.5
   <span class="sgr90">[61eb1bfa] </span>GPUCompiler v0.25.0
-  <span class="sgr90">[28b8d3ca] </span>GR v0.73.1
+  <span class="sgr90">[28b8d3ca] </span>GR v0.73.2
   <span class="sgr90">[c145ed77] </span>GenericSchur v0.5.3
   <span class="sgr90">[d7ba0133] </span>Git v1.3.0
   <span class="sgr90">[86223c79] </span>Graphs v1.9.0
@@ -218,7 +218,7 @@ Environment:
   <span class="sgr90">[5da4648a] </span>NVTX v0.3.4
   <span class="sgr90">[77ba4419] </span>NaNMath v1.0.2
   <span class="sgr90">[71a1bf82] </span>NameResolution v0.1.5
-  <span class="sgr90">[8913a72c] </span>NonlinearSolve v3.5.0
+  <span class="sgr90">[8913a72c] </span>NonlinearSolve v3.5.3
   <span class="sgr90">[d8793406] </span>ObjectFile v0.4.1
   <span class="sgr90">[6fe1bfb0] </span>OffsetArrays v1.13.0
   <span class="sgr90">[0b1bfda6] </span>OneHotArrays v0.2.5
@@ -232,7 +232,7 @@ Environment:
 <span class="sgr33">⌅</span> <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.1.6
   <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.1.2
   <span class="sgr90">[bac558e1] </span>OrderedCollections v1.6.3
-  <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.69.0
+  <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.70.0
   <span class="sgr90">[90014a1f] </span>PDMats v0.11.31
   <span class="sgr90">[65ce6f38] </span>PackageExtensionCompat v1.0.2
   <span class="sgr90">[d96e819e] </span>Parameters v0.12.3
@@ -260,7 +260,7 @@ Environment:
   <span class="sgr90">[c1ae055f] </span>RealDot v0.1.0
   <span class="sgr90">[3cdcf5f2] </span>RecipesBase v1.3.4
   <span class="sgr90">[01d81517] </span>RecipesPipeline v0.6.12
-  <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.6.2
+  <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.7.0
   <span class="sgr90">[f2c3362d] </span>RecursiveFactorization v0.2.21
   <span class="sgr90">[189a3867] </span>Reexport v1.2.2
   <span class="sgr90">[2792f1a3] </span>RegistryInstances v0.1.0
@@ -272,7 +272,7 @@ Environment:
   <span class="sgr90">[7e49a35a] </span>RuntimeGeneratedFunctions v0.5.12
   <span class="sgr90">[94e857df] </span>SIMDTypes v0.1.0
   <span class="sgr90">[476501e8] </span>SLEEFPirates v0.6.42
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.21.1
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.22.0
   <span class="sgr90">[c0aeaf25] </span>SciMLOperators v0.3.7
   <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.53.0
   <span class="sgr90">[6c6a2e73] </span>Scratch v1.2.1
@@ -346,7 +346,7 @@ Environment:
   <span class="sgr90">[d7e528f0] </span>FreeType2_jll v2.13.1+0
   <span class="sgr90">[559328eb] </span>FriBidi_jll v1.0.10+0
   <span class="sgr90">[0656b61e] </span>GLFW_jll v3.3.9+0
-  <span class="sgr90">[d2c73de3] </span>GR_jll v0.73.1+0
+  <span class="sgr90">[d2c73de3] </span>GR_jll v0.73.2+0
   <span class="sgr90">[78b55507] </span>Gettext_jll v0.21.0+0
   <span class="sgr90">[f8c6e375] </span>Git_jll v2.43.0+0
   <span class="sgr90">[7746bdde] </span>Glib_jll v2.76.5+0
@@ -372,7 +372,7 @@ Environment:
   <span class="sgr90">[079eb43e] </span>NLopt_jll v2.7.1+0
   <span class="sgr90">[e98f9f5b] </span>NVTX_jll v3.1.0+2
   <span class="sgr90">[e7412a2a] </span>Ogg_jll v1.3.5+1
-  <span class="sgr90">[458c3c95] </span>OpenSSL_jll v3.0.12+0
+  <span class="sgr90">[458c3c95] </span>OpenSSL_jll v3.0.13+0
   <span class="sgr90">[efe28fd5] </span>OpenSpecFun_jll v0.5.5+0
   <span class="sgr90">[91d4177d] </span>Opus_jll v1.3.2+0
   <span class="sgr90">[30392449] </span>Pixman_jll v0.42.2+0
@@ -473,4 +473,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.8.0+1
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.53.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.53.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Tuesday 30 January 2024 18:52">Tuesday 30 January 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.54.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.54.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Thursday 1 February 2024 16:45">Thursday 1 February 2024</span>. Using Julia version 1.10.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
