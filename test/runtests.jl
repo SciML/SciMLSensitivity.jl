@@ -44,7 +44,7 @@ end
     if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
         @testset "Core 3" begin
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
-
+            @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
             @time @safetestset "Physical ODE Adjoint Regression Test" include("physical_ode_regression.jl")
 
             @time @safetestset "Continuous adjoint params" include("adjoint_param.jl")

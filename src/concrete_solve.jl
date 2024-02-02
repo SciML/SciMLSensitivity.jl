@@ -7,7 +7,7 @@ const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 function inplace_vjp(prob, u0, p, verbose)
-    du = copy(u0)
+    du = zero(u0)
 
     ez = try
         f = unwrapped_f(prob.f)
@@ -16,8 +16,8 @@ function inplace_vjp(prob, u0, p, verbose)
             f(out, u, _p, t)
             nothing
         end
-        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, du),
-            copy(u0), copy(p), prob.tspan[1])
+        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
+            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
         true
     catch e
         if verbose || have_not_warned_vjp[]
