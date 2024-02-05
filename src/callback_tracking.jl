@@ -229,7 +229,7 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
     # if save_positions = [1,1] is true the loss gradient is accumulated correctly before and after callback.
     # if save_positions = [0,0] no extra gradient is added.
     # if save_positions = [0,1] the gradient contribution is added before the callback but no additional gradient is added afterwards.
-    # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Thefore,
+    # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Therefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
     !(sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}) &&

@@ -40,6 +40,7 @@ In the following example, a discrete exogenous input signal `ex` is defined and
 used as an input into the neural network of a neural ODE system.
 
 ```@example exogenous
+using SciMLSensitivity
 using OrdinaryDiffEq, Lux, ComponentArrays, DiffEqFlux, Optimization,
     OptimizationPolyalgorithms, OptimizationOptimisers, Plots, Random
 
@@ -97,5 +98,3 @@ plot(tsteps, sol')
 N = length(sol)
 scatter!(tsteps, y[1:N])
 ```
-
-![](https://aws1.discourse-cdn.com/business5/uploads/julialang/original/3X/f/3/f3c2727af36ac20e114fe3c9798e567cc9d22b9e.png)

@@ -1,5 +1,5 @@
 function SensitivityAlg(args...; kwargs...)
-    @error("The SensitivtyAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
+    @error("The SensitivityAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
 end
 
 """

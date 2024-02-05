@@ -7,7 +7,7 @@ const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 function inplace_vjp(prob, u0, p, verbose)
-    du = copy(u0)
+    du = zero(u0)
 
     ez = try
         f = unwrapped_f(prob.f)
@@ -16,8 +16,8 @@ function inplace_vjp(prob, u0, p, verbose)
             f(out, u, _p, t)
             nothing
         end
-        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, du),
-            copy(u0), copy(p), prob.tspan[1])
+        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
+            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
         true
     catch e
         if verbose || have_not_warned_vjp[]
@@ -469,7 +469,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         end
 
         function df_oop(u, p, t, i; outtype = nothing)
-            @show typeof(Δ)
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) && length(Δ) == 1 && i == 1
@@ -650,7 +649,7 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     out, _concrete_solve_pushforward
 end
 
-const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
+const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
                                                                 ForwardDiffSensitivity assumes the `AbstractArray` interface for `p`. Thus while
                                                                 DifferentialEquations.jl can support any parameter struct type, usage
                                                                 with ForwardDiffSensitivity requires that `p` could be a valid
@@ -665,7 +664,7 @@ const FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
 struct ForwardDiffSensitivityParameterCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityError)
-    print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+    print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
 # Generic Fallback for ForwardDiff
@@ -1201,7 +1200,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     DiffEqBase.sensitivity_solution(sol, u, Tracker.data.(sol.t)), tracker_adjoint_backpass
 end
 
-const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE = """
+const REVERSEDIFF_ADJOINT_GPU_COMPATIBILITY_MESSAGE = """
                                                       ReverseDiffAdjoint is not compatible GPU-based array types. Use a different
                                                       sensitivity analysis method, like InterpolatingAdjoint or TrackerAdjoint,
                                                       in order to combine with GPUs.
@@ -1210,7 +1209,7 @@ const REVERSEDIFF_ADJOINT_GPU_COMPATABILITY_MESSAGE = """
 struct ReverseDiffGPUStateCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::ReverseDiffGPUStateCompatibilityError)
-    print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+    print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,

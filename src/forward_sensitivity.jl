@@ -158,7 +158,7 @@ function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
     ODEForwardSensitivityProblem(prob.f, prob.u0, prob.tspan, prob.p, alg; kwargs...)
 end
 
-const FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
+const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
                                                             ODEForwardSensitivityProblem requires being able to solve
                                                             a differential equation defined by the parameter struct `p`. Even though
                                                             DifferentialEquations.jl can support any parameter struct type, usage
@@ -174,7 +174,7 @@ const FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE = """
 struct ForwardSensitivityParameterCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::ForwardSensitivityParameterCompatibilityError)
-    print(io, FORWARD_SENSITIVITY_PARAMETER_COMPATABILITY_MESSAGE)
+    print(io, FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
 const FORWARD_SENSITIVITY_OUT_OF_PLACE_MESSAGE = """

@@ -338,7 +338,7 @@ du012, dp12 = Zygote.gradient((u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p 
         saveat = 0.1, save_idxs = 1:1,
         sensealg = ForwardDiffSensitivity())),
     u0, p)
-# Redundent to test aliasing
+# Redundant to test aliasing
 du013, dp13 = Zygote.gradient((u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
         abstol = 1e-14, reltol = 1e-14,
         saveat = 0.1, save_idxs = 1:1,

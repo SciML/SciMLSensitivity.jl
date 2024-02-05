@@ -14,6 +14,7 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```@example secondorderadjoints
+using SciMLSensitivity
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimisers,
     OrdinaryDiffEq, Plots, Random, OptimizationOptimJL
 
@@ -74,7 +75,7 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.ps)
-pstart = Optimization.solve(optprob1, Adam(0.01), callback = callback, maxiters = 100).u
+pstart = Optimization.solve(optprob1, Optimisers.Adam(0.01), callback = callback, maxiters = 100).u
 
 optprob2 = Optimization.OptimizationProblem(optf, pstart)
 pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback = callback,

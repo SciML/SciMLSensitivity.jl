@@ -88,7 +88,7 @@ is:
   - `ForwardDiffSensitivity` is the fastest for differential equations with small
     numbers of parameters (<100) and can be used on any differential equation
     solver that is native Julia. If the chosen ODE solver is incompatible
-    with direct automatic differentiation, `ForwardSensitivty` may be used instead.
+    with direct automatic differentiation, `ForwardSensitivity` may be used instead.
   - Adjoint sensitivity analysis is the fastest when the number of parameters is
     sufficiently large. `GaussAdjoint` should be generally preferred. `BacksolveAdjoint`
     uses the least memory but on very stiff problems it may be unstable and
@@ -282,7 +282,7 @@ dramatically reduces the computational cost while being a low-memory
 format. This is the preferred method for highly stiff equations
 when memory is an issue, i.e. stiff PDEs or large neural DAEs.
 
-For forward-mode, the `ForwardSensitivty` is the version that performs
+For forward-mode, the `ForwardSensitivity` is the version that performs
 the optimize-then-discretize approach. In this case, `autojacvec` corresponds
 to the method for computing `J*v` within the forward sensitivity equations,
 which is either `true` or `false` for whether to use Jacobian-free
@@ -302,7 +302,7 @@ differentiation on the solver via
 [Zygote.jl](https://fluxml.ai/Zygote.jl/latest/), and `TrackerAdjoint`
 performs reverse-mode automatic differentiation on the solver via
 [Tracker.jl](https://github.com/FluxML/Tracker.jl). In addition,
-`ForwardDiffSensitivty` performs forward-mode automatic differentiation
+`ForwardDiffSensitivity` performs forward-mode automatic differentiation
 on the solver via [ForwardDiff.jl](https://juliadiff.org/ForwardDiff.jl/stable/).
 
 We note that many studies have suggested that [this approach produces
