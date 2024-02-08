@@ -6,14 +6,14 @@
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
-function inplace_vjp(prob, u0, p, verbose)
+function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
 
     ez = try
         f = unwrapped_f(prob.f)
 
         function adfunc(out, u, _p, t)
-            f(out, u, _p, t)
+            f(out, u, repack(_p), t)
             nothing
         end
         Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
@@ -36,9 +36,9 @@ function inplace_vjp(prob, u0, p, verbose)
     compile = try
         f = unwrapped_f(prob.f)
         if DiffEqBase.isinplace(prob)
-            !hasbranching(f, copy(u0), u0, p, prob.tspan[1])
+            !hasbranching(f, copy(u0), u0, repack(p), prob.tspan[1])
         else
-            !hasbranching(f, u0, p, prob.tspan[1])
+            !hasbranching(f, u0, repack(p), prob.tspan[1])
         end
     catch
         false
@@ -49,13 +49,13 @@ function inplace_vjp(prob, u0, p, verbose)
         if p === nothing || p isa SciMLBase.NullParameters
             ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
                 du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
+                f(du1, u, repack(p), first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u, p, t
                 du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
+                f(du1, u, repack(p), first(t))
                 return vec(du1)
             end
         end
@@ -74,8 +74,7 @@ function inplace_vjp(prob, u0, p, verbose)
 end
 
 function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractSDEProblem}, u0, p,
-    verbose)
+        SciMLBase.AbstractSDEProblem}, u0, p, verbose, repack)
     default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
                           !(eltype(p) <: ForwardDiff.Dual) &&
@@ -91,7 +90,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             if p === nothing || p isa SciMLBase.NullParameters
                 Zygote.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
             else
-                Zygote.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+                Zygote.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
             end
             ZygoteVJP()
         catch e
@@ -108,7 +107,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 if p === nothing || p isa SciMLBase.NullParameters
                     ReverseDiff.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
-                    ReverseDiff.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+                    ReverseDiff.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
                 end
                 ReverseDiffVJP()
             catch e
@@ -126,7 +125,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 if p === nothing || p isa SciMLBase.NullParameters
                     Tracker.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
-                    Tracker.gradient((u, p) -> sum(prob.f(u, p, prob.tspan[1])), u0, p)
+                    Tracker.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
                 end
                 TrackerVJP()
             catch e
@@ -161,7 +160,7 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             end
         end
     else
-        vjp = inplace_vjp(prob, u0, p, verbose)
+        vjp = inplace_vjp(prob, u0, p, verbose, repack)
         if vjp isa Bool
             if verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
@@ -184,14 +183,14 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
 end
 
 function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
-    verbose)
+    verbose, repack)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
         # autodiff = false because forwarddiff fails on many GPU kernels
         # this only effects the Jacobian calculation and is same computation order
         SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
     else
-        vjp = inplace_vjp(prob, u0, p, verbose)
+        vjp = inplace_vjp(prob, u0, p, verbose, repack)
         SteadyStateAdjoint(autojacvec = vjp)
     end
     return default_sensealg
@@ -208,6 +207,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     else
         has_cb = false
     end
+
+    if !SciMLStructures.isscimlstructure(p)
+        error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                In particular, adjoint sensitivities only applies to `Tunable`.")
+    end
+  
+    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
@@ -224,7 +232,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     sensealg::Nothing, u0, p,
     originator::SciMLBase.ADOriginator, args...;
     verbose = true, kwargs...)
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+
+    if !SciMLStructures.isscimlstructure(p)
+        error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                In particular, adjoint sensitivities only applies to `Tunable`.")
+    end
+  
+    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+
+    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
         kwargs...)
