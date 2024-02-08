@@ -356,8 +356,17 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 ```
 """
 function adjoint_sensitivities(sol, args...;
-        sensealg = InterpolatingAdjoint(),
-        verbose = true, kwargs...)
+    sensealg = InterpolatingAdjoint(),
+    verbose = true, kwargs...)
+
+    if !SciMLStructures.isscimlstructure(sol.prob.p)
+      error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+              see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+              In particular, adjoint sensitivities only applies to `Tunable`.")
+    end
+
+    _p, repack, aliases = canonicalize(SciMLStructures.Tunable(), sol.prob.p)
+
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
             has_cb = kwargs[:callback] !== nothing
@@ -366,7 +375,7 @@ function adjoint_sensitivities(sol, args...;
         end
         if !has_cb
             _sensealg = if isinplace(sol.prob)
-                setvjp(sensealg, inplace_vjp(sol.prob, sol.prob.u0, sol.prob.p, verbose))
+                setvjp(sensealg, inplace_vjp(sol.prob, sol.prob.u0, sol.prob.p, verbose, _p, repack))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
