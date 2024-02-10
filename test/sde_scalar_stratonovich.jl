@@ -59,6 +59,7 @@ prob_oop = SDEProblem(SDEFunction(foop, σoop, analytic = linear_analytic_strat)
     p2,
     noise = W)
 sol = solve(prob, EulerHeun(), dt = dtscalar, save_noise = true)
+
 sol_oop = solve(prob_oop, EulerHeun(), dt = dtscalar, save_noise = true)
 
 @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
@@ -80,10 +81,11 @@ res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t = Array(
 @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
 @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
 
-res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t = Array(t),
+res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t=sol_oop.t,
     dgdu_discrete = dg!,
-    dt = tend / 1e2, adaptive = false,
+    tstops=sol_oop.t, adaptive = false,
     sensealg = GaussAdjoint(autojacvec = ZygoteVJP()))
+
 
 @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
 @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)

@@ -847,11 +847,14 @@ function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
     g = sol.prob.g
     isautojacvec = get_jacvec(sensealg)
     dW = sol.W.dW
+    tmp = t-1e-3 >= 0.0 ? collect(sol.W(t-1e-3)) : zeros(length(sol.W(t)))
+    Wtmp = collect(sol.W(t))
+    println(t)
     
     if sensealg.autojacvec isa ZygoteVJP
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
-                    vec(g(u, p, t).*dW)
+                    vec(g(u, p, t).*Wtmp)
                 end
         else
             _dy, back = Zygote.pullback(y, p) do u, p
@@ -984,6 +987,8 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
             callback = CallbackSet(cb,cb2), 
             kwargs...)
     res = compute_dGdp(integrand_values)
+    println("adj_sol.t = ", adj_sol.t)
+    println(tstops)
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         iλ = zero(rcb.λ)
