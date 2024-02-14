@@ -841,15 +841,29 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     return out
 end
 
+function linear_interpolation(xs, ys, x_eval)
+    if x_eval < xs[1] || x_eval > xs[end]
+        return 0.0
+        #error("x_eval" * string(x_eval) * "is outside the range of xs")
+    end
+    
+    for i in 1:length(xs)-1
+        if xs[i] <= x_eval <= xs[i+1]
+            # Linear interpolation formula
+            return ys[i] + (ys[i+1] - ys[i]) * (x_eval - xs[i]) / (xs[i+1] - xs[i])
+        end
+    end
+    
+    return 0.0
+    #error("Failed to interpolate; check inputs.")
+end
+
 function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
     @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
     f = sol.prob.f
     g = sol.prob.g
-    isautojacvec = get_jacvec(sensealg)
-    dW = sol.W.dW
-    tmp = t-1e-3 >= 0.0 ? collect(sol.W(t-1e-3)) : zeros(length(sol.W(t)))
-    Wtmp = collect(sol.W(t))
-    println(t)
+
+    Wtmp = linear_interpolation(sol.W.t[1:end-1], sol.W.u[2:end]-sol.W.u[1:end-1], t)
     
     if sensealg.autojacvec isa ZygoteVJP
         if W === nothing
@@ -987,8 +1001,8 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
             callback = CallbackSet(cb,cb2), 
             kwargs...)
     res = compute_dGdp(integrand_values)
-    println("adj_sol.t = ", adj_sol.t)
-    println(tstops)
+    #println("adj_sol.t = ", adj_sol.t)
+    #println(tstops)
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         iλ = zero(rcb.λ)

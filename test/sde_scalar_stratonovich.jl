@@ -1,6 +1,7 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, StochasticDiffEq
 using Random
+using Interpolations
 
 @info "SDE Adjoints"
 
@@ -81,9 +82,9 @@ res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t = Array(
 @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
 @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
 
-res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t=sol_oop.t,
-    dgdu_discrete = dg!,
-    tstops=sol_oop.t, adaptive = false,
+res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop, EulerHeun(), t=Array(t),
+    dgdu_discrete = dg!, 
+    adaptive = false,
     sensealg = GaussAdjoint(autojacvec = ZygoteVJP()))
 
 
