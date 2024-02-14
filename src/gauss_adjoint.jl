@@ -841,42 +841,25 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     return out
 end
 
-function linear_interpolation(xs, ys, x_eval)
-    if x_eval < xs[1] || x_eval > xs[end]
-        return 0.0
-        #error("x_eval" * string(x_eval) * "is outside the range of xs")
-    end
-    
-    for i in 1:length(xs)-1
-        if xs[i] <= x_eval <= xs[i+1]
-            # Linear interpolation formula
-            return ys[i] + (ys[i+1] - ys[i]) * (x_eval - xs[i]) / (xs[i+1] - xs[i])
-        end
-    end
-    
-    return 0.0
-    #error("Failed to interpolate; check inputs.")
-end
-
 function vec_pjac_diffusion!(out, λ, y, t, S::GaussIntegrand, W = nothing)
     @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
     f = sol.prob.f
     g = sol.prob.g
 
-    Wtmp = linear_interpolation(sol.W.t[1:end-1], sol.W.u[2:end]-sol.W.u[1:end-1], t)
+    Wtmp = sol.W(t)
     
     if sensealg.autojacvec isa ZygoteVJP
         if W === nothing
-            _dy, back = Zygote.pullback(y, p) do u, p
-                    vec(g(u, p, t).*Wtmp)
+            _dy, back = Zygote.pullback(p) do p
+                    vec(g(y, p, t).*Wtmp)
                 end
         else
-            _dy, back = Zygote.pullback(y, p) do u, p
-                vec(g(u, p, t, W))
+            _dy, back = Zygote.pullback(p) do p
+                vec(g(y, p, t, W))
             end
         end
-        tmp1, tmp2 = back(λ)
-        out .+= tmp2
+        tmp, = back(λ)
+        recursive_add!(out, tmp)
     end
     
     #=
