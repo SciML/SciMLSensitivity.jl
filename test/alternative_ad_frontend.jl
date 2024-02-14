@@ -17,7 +17,7 @@ du0p = zeros(2)
 dup = Zygote.gradient(senseloss0(InterpolatingAdjoint()), u0p)[1]
 Enzyme.autodiff(Reverse, senseloss0(InterpolatingAdjoint()), Active, Duplicated(u0p, du0p))
 @test du0p ≈ dup
-@test Enzyme.gradient(Reverse, seenseloss0(InterpolatingAdjoint()), u0p) ≈ dup
+@test Enzyme.gradient(Reverse, senseloss0(InterpolatingAdjoint()), u0p) ≈ dup
 
 struct senseloss{T}
     sense::T
