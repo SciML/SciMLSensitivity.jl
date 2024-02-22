@@ -6,6 +6,6 @@ LuxCUDA = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
 
 [compat]
 CUDA = "3.12, 4, 5"
-DiffEqCallbacks = "2.24"
+DiffEqCallbacks = "2.24, 3"
 DiffEqFlux = "3"
 LuxCUDA = "0.3.1"
