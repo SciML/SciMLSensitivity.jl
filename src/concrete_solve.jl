@@ -143,22 +143,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             if verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
-
-            if p === nothing || p === DiffEqBase.NullParameters()
-                # QuadratureAdjoint skips all p calculations until the end
-                # So it's the fastest when there are no parameters
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
-            else
-                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
-            end
+            GaussAdjoint(autodiff = false, autojacvec = vjp)
         else
-            if p === nothing || p === DiffEqBase.NullParameters()
-                # QuadratureAdjoint skips all p calculations until the end
-                # So it's the fastest when there are no parameters
-                QuadratureAdjoint(autojacvec = vjp)
-            else
-                InterpolatingAdjoint(autojacvec = vjp)
-            end
+            GaussAdjoint(autojacvec = vjp)
         end
     else
         vjp = inplace_vjp(prob, u0, p, verbose)
@@ -167,17 +154,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
-            if p === nothing || p === DiffEqBase.NullParameters()
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
-            else
-                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
-            end
+            GaussAdjoint(autodiff = false, autojacvec = vjp)
         else
-            if p === nothing || p === DiffEqBase.NullParameters()
-                QuadratureAdjoint(autojacvec = vjp)
-            else
-                InterpolatingAdjoint(autojacvec = vjp)
-            end
+            GaussAdjoint(autodiff = false, autojacvec = vjp)
         end
     end
     return default_sensealg
