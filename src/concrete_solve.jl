@@ -16,8 +16,8 @@ function inplace_vjp(prob, u0, p, verbose)
             f(out, u, _p, t)
             nothing
         end
-        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
-            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
+        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, deepcopy(u0)),
+            Enzyme.Duplicated(deepcopy(u0), Enzyme.make_zero(u0)), Enzyme.Duplicated(deepcopy(p), Enzyme.make_zero(p)), Enzyme.Const(prob.tspan[1]))
         true
     catch e
         if verbose || have_not_warned_vjp[]
