@@ -1,5 +1,5 @@
 using OrdinaryDiffEq, ComponentArrays, Random,
-    SciMLSensitivity, LinearAlgebra, Optimization, OptimizationOptimisers, Lux
+      SciMLSensitivity, LinearAlgebra, Optimization, OptimizationOptimisers, Lux
 nn = Chain(Dense(1, 16), Dense(16, 16, tanh), Dense(16, 2)) |> f64
 ps, st = Lux.setup(Random.default_rng(), nn)
 ps = ComponentArray(ps)

@@ -18,7 +18,7 @@ on `(0,5.0)`. Naively, we use the same training strategy as before:
 ```@example iterativefit
 using SciMLSensitivity
 using OrdinaryDiffEq,
-    ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
+      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote
 
 rng = Random.default_rng()
@@ -169,7 +169,7 @@ one could use a mix of (3) and (4), or breaking up the trajectory into chunks an
 ```@example resetic
 using SciMLSensitivity
 using OrdinaryDiffEq,
-    ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
+      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote
 
 #Starting example with tspan (0, 5)

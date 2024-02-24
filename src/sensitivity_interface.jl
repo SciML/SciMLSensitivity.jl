@@ -356,8 +356,8 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 ```
 """
 function adjoint_sensitivities(sol, args...;
-    sensealg = InterpolatingAdjoint(),
-    verbose = true, kwargs...)
+        sensealg = InterpolatingAdjoint(),
+        verbose = true, kwargs...)
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
             has_cb = kwargs[:callback] !== nothing
@@ -388,15 +388,15 @@ function adjoint_sensitivities(sol, args...;
 end
 
 function _adjoint_sensitivities(sol, sensealg, alg;
-    t = nothing,
-    dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing,
-    g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    checkpoints = sol.t,
-    corfunc_analytical = nothing,
-    callback = nothing,
-    kwargs...)
+        t = nothing,
+        dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing,
+        g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        checkpoints = sol.t,
+        corfunc_analytical = nothing,
+        callback = nothing,
+        kwargs...)
     if !(sol.prob.p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
         throw(AdjointSensitivityParameterCompatibilityError())
@@ -464,9 +464,9 @@ function _adjoint_sensitivities(sol, sensealg, alg;
 end
 
 function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
-    dgdu = nothing, dgdp = nothing, g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    kwargs...)
+        dgdu = nothing, dgdp = nothing, g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        kwargs...)
     SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
@@ -520,8 +520,8 @@ double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument
 a first order sensitivity algorithm.
 """
 function second_order_sensitivities(loss, prob, alg, args...;
-    sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-    kwargs...)
+        sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+        kwargs...)
     _second_order_sensitivities(loss, prob, alg, sensealg, args...; kwargs...)
 end
 
@@ -576,7 +576,7 @@ double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument
 a first order sensitivity algorithm.
 """
 function second_order_sensitivity_product(loss, v, prob, alg, args...;
-    sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-    kwargs...)
+        sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+        kwargs...)
     _second_order_sensitivity_product(loss, v, prob, alg, sensealg, args...; kwargs...)
 end

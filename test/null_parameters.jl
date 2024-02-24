@@ -121,14 +121,17 @@ u0 = ones(2)
 Fdu0 = ForwardDiff.gradient(u0 -> loss_oop(u0), u0)
 
 # BacksolveAdjoint
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_oop(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
@@ -137,31 +140,38 @@ du0 = Zygote.gradient(u0 -> loss_oop(u0, sensealg = BacksolveAdjoint(autojacvec 
 @test Fdu0≈du0 rtol=1e-10
 
 # InterpolatingAdjoint
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_oop(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = false)),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 
 # QuadratureAdjoint
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_oop(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_oop(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_oop(u0,
         sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
@@ -191,62 +201,75 @@ u0 = ones(2)
 Fdu0 = ForwardDiff.gradient(u0 -> loss_iip(u0), u0)
 
 # BacksolveAdjoint
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_iip(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = BacksolveAdjoint(autojacvec = false)),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = BacksolveAdjoint(autojacvec = EnzymeVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 
 # InterpolatingAdjoint
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_iip(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = false)),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = EnzymeVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 
 # QuadratureAdjoint
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))),
     u0)[1]
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(u0 -> loss_iip(u0,
+@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
 du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = QuadratureAdjoint(autojacvec = false)),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10
-du0 = Zygote.gradient(u0 -> loss_iip(u0,
+du0 = Zygote.gradient(
+    u0 -> loss_iip(u0,
         sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP())),
     u0)[1]
 @test Fdu0≈du0 rtol=1e-10

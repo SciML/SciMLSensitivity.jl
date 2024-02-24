@@ -6,7 +6,7 @@ like:
 
 ```@example dde
 using OrdinaryDiffEq, Optimization, SciMLSensitivity, OptimizationPolyalgorithms,
-    DelayDiffEq
+      DelayDiffEq
 
 # Define the same LV equation, but including a delay parameter
 function delay_lotka_volterra!(du, u, h, p, t)

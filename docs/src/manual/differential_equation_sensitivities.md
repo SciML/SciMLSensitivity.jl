@@ -268,7 +268,7 @@ can be a significant burden for large parameter problems. The
 `InterpolatingAdjoint` is thus a compromise between memory efficiency
 and compute efficiency, and is in the same spirit as [CVODES](https://computing.llnl.gov/projects/sundials).
 `GaussAdjoint` combines the advantages of both of these approaaches,
-having a small adjoint differential equation while not requiring 
+having a small adjoint differential equation while not requiring
 saving the full continuous solution of the adjoint problem.
 
 However, if the memory cost of the `InterpolatingAdjoint` is too high,

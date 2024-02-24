@@ -49,7 +49,8 @@ function loss(p1)
 end
 
 @test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError grad(p2)
-@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError ODEForwardSensitivityProblem(f!,
+@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError ODEForwardSensitivityProblem(
+    f!,
     u0,
     tspan,
     p)

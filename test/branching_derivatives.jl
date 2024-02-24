@@ -20,22 +20,32 @@ u0 = [1.0; 1.0];
 
 prob = ODEProblem(fiip, u0, (0.0, 4.0), p);
 
-dp1 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+dp1 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
         sensealg = ForwardDiffSensitivity(), saveat = 0.1,
-        abstol = 1e-12, reltol = 1e-12)), p)
-dp2 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+        abstol = 1e-12, reltol = 1e-12)),
+    p)
+dp2 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
         sensealg = ForwardDiffSensitivity(convert_tspan = true),
-        saveat = 0.1, abstol = 1e-12, reltol = 1e-12)), p)
-dp3 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+        saveat = 0.1, abstol = 1e-12, reltol = 1e-12)),
+    p)
+dp3 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
         sensealg = ForwardSensitivity(), saveat = 0.1,
-        abstol = 1e-12, reltol = 1e-12)), p)
-dp4 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
-        abstol = 1e-12, reltol = 1e-12)), p)
-dp5 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+        abstol = 1e-12, reltol = 1e-12)),
+    p)
+dp4 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+        abstol = 1e-12, reltol = 1e-12)),
+    p)
+dp5 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
         abstol = 1e-12, reltol = 1e-12,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))),
     p)
-dp6 = Zygote.gradient(p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+dp6 = Zygote.gradient(
+    p -> sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
         abstol = 1e-12, reltol = 1e-12,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))),
     p)

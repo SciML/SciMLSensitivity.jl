@@ -54,9 +54,9 @@ struct NILSASProblem{A, NILSS, Aprob, Qcache, solType, z0Type, tType, G, T, DG1,
 end
 
 function NILSASProblem(sol, sensealg::NILSAS, alg;
-    t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
-    kwargs...)
+        t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
+        kwargs...)
     @unpack p, u0, tspan, f = sol.prob
     @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
 
@@ -127,7 +127,7 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
 end
 
 function terminate_conditions(alg::BacksolveAdjoint, rng, f, y, p, t, numindvar, numparams,
-    M)
+        M)
     if isinplace(f)
         f_unit = zero(y)
         f(f_unit, y, p, t)

@@ -1,5 +1,5 @@
 function _second_order_sensitivities(loss, prob, alg, sensealg::ForwardDiffOverAdjoint,
-    args...; kwargs...)
+        args...; kwargs...)
     ForwardDiff.jacobian(prob.p) do p
         x = Zygote.gradient(p) do _p
             loss(solve(prob, alg, args...; p = _p, sensealg = sensealg.adjalg, kwargs...))
@@ -9,8 +9,8 @@ function _second_order_sensitivities(loss, prob, alg, sensealg::ForwardDiffOverA
 end
 
 function _second_order_sensitivity_product(loss, v, prob, alg,
-    sensealg::ForwardDiffOverAdjoint,
-    args...; kwargs...)
+        sensealg::ForwardDiffOverAdjoint,
+        args...; kwargs...)
     θ = ForwardDiff.Dual.(prob.p, v)
     _loss = p -> loss(solve(prob, alg, args...; p = p, sensealg = sensealg.adjalg,
         kwargs...))

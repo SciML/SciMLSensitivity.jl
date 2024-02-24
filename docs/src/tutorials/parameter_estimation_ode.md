@@ -7,8 +7,8 @@ follow.
 
 ```@example optode_cp
 using OrdinaryDiffEq,
-    Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
-    Zygote, Plots
+      Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
+      Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -74,8 +74,8 @@ more details, [see the OrdinaryDiffEq.jl documentation](https://docs.sciml.ai/Di
 
 ```@example optode
 using OrdinaryDiffEq,
-    Optimization, OptimizationPolyalgorithms,
-    SciMLSensitivity, Zygote, Plots
+      Optimization, OptimizationPolyalgorithms,
+      SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u

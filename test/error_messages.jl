@@ -19,7 +19,8 @@ proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
 probsteady = SteadyStateProblem(proboop)
 
-@test_throws SciMLSensitivity.AdjointSteadyProblemPairingError Zygote.gradient((u0, p) -> sum(solve(probsteady,
+@test_throws SciMLSensitivity.AdjointSteadyProblemPairingError Zygote.gradient(
+    (u0, p) -> sum(solve(probsteady,
         DynamicSS(Tsit5()),
         u0 = u0,
         p = p,

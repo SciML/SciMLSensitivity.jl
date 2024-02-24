@@ -30,7 +30,8 @@ prob = ODEProblem(lotka_volterra, u0, (0.0, 10.0), p)
     l1 = loss([p; u0], nothing)
     @show l1
     res = solve(OptimizationProblem(OptimizationFunction(loss, AutoZygote()),
-            [p; u0]), Adam(0.1); callback = cb, maxiters = 100)
+            [p; u0]),
+        Adam(0.1); callback = cb, maxiters = 100)
     l2 = loss(res.u, nothing)
     @test 10l2 < l1
 end
