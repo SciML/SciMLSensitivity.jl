@@ -51,7 +51,7 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()), u0p)[1]
 @test ForwardDiff.gradient(senseloss(InterpolatingAdjoint()), u0p) ≈ dup
 
 @test Enzyme.gradient(Reverse, senseloss(InterpolatingAdjoint()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
+@test Enzyme.gradient(Reverse, senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
 @test Enzyme.gradient(Reverse, senseloss(TrackerAdjoint()), u0p) ≈ dup
 @test Enzyme.gradient(Reverse, senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ReverseDiff.gradient(Reverse, senseloss(ForwardSensitivity()),
