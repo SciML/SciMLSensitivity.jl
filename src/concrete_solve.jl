@@ -1041,6 +1041,21 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
         p)
 end
 
+const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
+                                             `Enzyme` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
+                                             Either choose a different adjoint method like `GaussAdjoint`,
+                                             or use a different AD system like `ReverseDiff`.
+                                             For more details, on these methods see
+                                             https://docs.sciml.ai/SciMLSensitivity/stable/.
+                                             """
+
+struct EnzymeTrackedRealError <: Exception
+end
+
+function Base.showerror(io::IO, e::EnzymeTrackedRealError)
+    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE )
+end
+
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
         SciMLBase.AbstractODEProblem,
         SciMLBase.AbstractDAEProblem,
@@ -1053,6 +1068,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     args...;
     kwargs...)
     local sol
+    if originator isa SciMLBase.EnzymeOriginator
+        throw(EnzymeTrackedRealError())
+    end
     function tracker_adjoint_forwardpass(_u0, _p)
         if (convert_tspan(sensealg) === nothing &&
             ((haskey(kwargs, :callback) && has_continuous_callback(kwargs[:callback])))) ||
@@ -1228,6 +1246,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
 
     if !(u0 isa AbstractVector)
         error("Sensitivity algorithm ReverseDiffAdjoint only supports vector u0")
+    end
+
+    if originator isa SciMLBase.EnzymeOriginator
+        throw(EnzymeTrackedRealError())
     end
 
     t = eltype(prob.tspan)[]
