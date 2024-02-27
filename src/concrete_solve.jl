@@ -1075,20 +1075,21 @@ struct EnzymeTrackedRealError <: Exception
 end
 
 function Base.showerror(io::IO, e::EnzymeTrackedRealError)
-    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE )
+    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
-        SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractDAEProblem,
-        SciMLBase.AbstractDDEProblem,
-        SciMLBase.AbstractSDEProblem,
-        SciMLBase.AbstractSDDEProblem,
-        SciMLBase.AbstractRODEProblem},
-    alg, sensealg::TrackerAdjoint,
-    u0, p, originator::SciMLBase.ADOriginator,
-    args...;
-    kwargs...)
+function DiffEqBase._concrete_solve_adjoint(
+        prob::Union{SciMLBase.AbstractDiscreteProblem,
+            SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractDAEProblem,
+            SciMLBase.AbstractDDEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractSDDEProblem,
+            SciMLBase.AbstractRODEProblem},
+        alg, sensealg::TrackerAdjoint,
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...;
+        kwargs...)
     local sol
     if originator isa SciMLBase.EnzymeOriginator
         throw(EnzymeTrackedRealError())
