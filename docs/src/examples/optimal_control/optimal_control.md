@@ -37,7 +37,7 @@ of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
 using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationNLopt,
-    OptimizationOptimisers, SciMLSensitivity, Zygote, Enzyme, Plots, Statistics, Random
+      OptimizationOptimisers, SciMLSensitivity, Zygote, Enzyme, Plots, Statistics, Random
 Enzyme.Compiler.bitcode_replacement!(false) # speeds up some linear algebra in the gradient calculations
 
 rng = Random.default_rng()
@@ -124,5 +124,6 @@ Now let's see what we received:
 l = loss_adjoint(res3.u)
 cb(res3.u, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
-plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts], label = "u(t)", lw = 3)
+plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts],
+    label = "u(t)", lw = 3)
 ```

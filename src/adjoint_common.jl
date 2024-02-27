@@ -29,8 +29,8 @@ TruncatedStacktraces.@truncate_stacktrace AdjointDiffCache
 return (AdjointDiffCache, y)
 """
 function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f, alg;
-    quad = false,
-    noiseterm = false, needs_jac = false) where {G, DG1, DG2}
+        quad = false,
+        noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         @unpack u0, p = prob
@@ -198,7 +198,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
-        paramjac_config = (paramjac_config...,Enzyme.make_zero(pf))
+        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif DiffEqBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -340,8 +340,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
 end
 
 function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
-    numindvar = nothing, alg = nothing, isinplace = true,
-    isRODE = false, _W = nothing)
+        numindvar = nothing, alg = nothing, isinplace = true,
+        isRODE = false, _W = nothing)
     # f = unwrappedf
     if isinplace
         if !isRODE
@@ -381,9 +381,9 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
 end
 
 function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters, f, y, _p,
-    _t;
-    numindvar, alg, isinplace = nothing, isRODE = nothing,
-    _W = nothing)
+        _t;
+        numindvar, alg, isinplace = nothing, isRODE = nothing,
+        _W = nothing)
     if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
         chunk = if autojacvec.chunksize == 0
             ForwardDiff.pickchunksize(numindvar)
@@ -402,8 +402,8 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::DiffEqBase.NullParameters
 end
 
 function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, alg,
-    isinplace = nothing,
-    isRODE = nothing, _W = nothing)
+        isinplace = nothing,
+        isRODE = nothing, _W = nothing)
     if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
         chunk = if autojacvec.chunksize == 0
             ForwardDiff.pickchunksize(numindvar)
@@ -423,7 +423,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
 end
 
 function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
-    isRODE = nothing)
+        isRODE = nothing)
     nothing
 end
 
@@ -561,7 +561,7 @@ end
 
 # handle discrete loss contributions
 function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
-    terminated = false)
+        terminated = false)
     if sensefun isa NILSASSensitivityFunction
         @unpack sensealg = sensefun.S
     else

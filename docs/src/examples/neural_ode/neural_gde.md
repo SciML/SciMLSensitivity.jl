@@ -65,7 +65,7 @@ end
 initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-    init_weight = glorot_normal, init_bias = zeros32)
+        init_weight = glorot_normal, init_bias = zeros32)
     init_Ã = () -> copy(Ã)
     return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight),
         typeof(init_bias)}(first(ch), last(ch), activation,
@@ -229,7 +229,7 @@ function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-    init_weight = glorot_normal, init_bias = zeros32)
+        init_weight = glorot_normal, init_bias = zeros32)
     return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã,
         first(ch),
         last(ch),

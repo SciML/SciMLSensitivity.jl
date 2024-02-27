@@ -96,7 +96,7 @@ function prepare_initial(dt, n_par)
         cos.(theta / 2),
         sin.(theta / 2) .* cos.(phi),
         false * theta,
-        sin.(theta / 2) .* sin.(phi),
+        sin.(theta / 2) .* sin.(phi)
     ]
     return vcat(transpose.(u0)...) # build matrix
 end
@@ -425,7 +425,7 @@ function prepare_initial(dt, n_par)
         cos.(theta / 2),
         sin.(theta / 2) .* cos.(phi),
         false * theta,
-        sin.(theta / 2) .* sin.(phi),
+        sin.(theta / 2) .* sin.(phi)
     ]
     return vcat(transpose.(u0)...) # build matrix
 end

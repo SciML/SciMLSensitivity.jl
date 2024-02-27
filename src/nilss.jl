@@ -1,5 +1,5 @@
 struct NILSSSensitivityFunction{iip, F, Alg,
-    PGPU, PGPP, CONFU, CONGP, DGVAL, DG1, DG2, jType, RefType,
+    PGPU, PGPP, CONFU, CONGP, DGVAL, DG1, DG2, jType, RefType
 } <:
        DiffEqBase.AbstractODEFunction{iip}
     f::F
@@ -18,8 +18,8 @@ struct NILSSSensitivityFunction{iip, F, Alg,
 end
 
 function NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu, dgdp,
-    jevery = nothing,
-    cur_time = nothing)
+        jevery = nothing,
+        cur_time = nothing)
     !(f.mass_matrix isa UniformScaling ||
       f.mass_matrix isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
@@ -100,9 +100,9 @@ struct NILSSProblem{A, CacheType, FSprob, probType, u0Type, vstar0Type, w0Type,
 end
 
 function NILSSProblem(prob, sensealg::NILSS;
-    t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
-    kwargs...)
+        t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
+        kwargs...)
     @unpack f, p, u0, tspan = prob
     @unpack nseg, nstep, nus, rng = sensealg  #number of segments on time interval, number of steps saved on each segment
 
@@ -290,7 +290,8 @@ function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     # push forward
     t1 = forward_prob.tspan[1]
     t2 = forward_prob.tspan[1] + T_seg
-    _prob = ODEForwardSensitivityProblem(S.f, u0, (t1, t2), p, sensealg; nus = nus, w0 = w0,
+    _prob = ODEForwardSensitivityProblem(
+        S.f, u0, (t1, t2), p, sensealg; nus = nus, w0 = w0,
         v0 = vstar0)
 
     for iseg in 1:nseg
@@ -528,7 +529,7 @@ function compute_xi(ξ, v, dudt, nseg)
 end
 
 function accumulate_cost!(_dgdu, u, p, t, sensealg::NILSS,
-    diffcache::NILSSSensitivityFunction, j)
+        diffcache::NILSSSensitivityFunction, j)
     @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config = diffcache
 
     if dgdu === nothing

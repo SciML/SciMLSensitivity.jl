@@ -49,5 +49,6 @@ cba = function (p, l) #callback function to observe training
 end
 
 res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()),
-        ps), Adam(0.05); callback = cba, maxiters = 200)
+        ps),
+    Adam(0.05); callback = cba, maxiters = 200)
 @test loss_n_ode(res.u, nothing) < 0.4

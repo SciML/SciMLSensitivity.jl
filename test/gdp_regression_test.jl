@@ -1,6 +1,6 @@
 using SciMLSensitivity,
-    OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
-    OptimizationOptimisers
+      OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
+      OptimizationOptimisers
 
 GDP = [
     11394358246872.6,
@@ -61,7 +61,7 @@ GDP = [
     75802901433146,
     77752106717302.4,
     80209237761564.8,
-    82643194654568.3,
+    82643194654568.3
 ]
 function monomial(cGDP, parameters, t)
     α1, β1, nu1, nu2, δ, δ2 = parameters
@@ -105,8 +105,10 @@ end
         return false
     end
 
-    res = solve(OptimizationProblem(OptimizationFunction(loss_rd, AutoZygote()),
-        vcat(p, u0)), Adam(0.01); callback = peek, maxiters = 100)
+    res = solve(
+        OptimizationProblem(OptimizationFunction(loss_rd, AutoZygote()),
+            vcat(p, u0)),
+        Adam(0.01); callback = peek, maxiters = 100)
 
     @test loss_rd(res.u, nothing) < 0.2
 end

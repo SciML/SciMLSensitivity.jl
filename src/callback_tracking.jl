@@ -190,8 +190,9 @@ function setup_reverse_callbacks(cb, sensealg, dgdu, dgdp, cur_time, terminated)
     setup_reverse_callbacks(CallbackSet(cb), sensealg, dgdu, dgdp, cur_time, terminated)
 end
 function setup_reverse_callbacks(cb::CallbackSet, sensealg, dgdu, dgdp, cur_time,
-    terminated)
-    cb = CallbackSet(_setup_reverse_callbacks.(cb.continuous_callbacks,
+        terminated)
+    cb = CallbackSet(
+        _setup_reverse_callbacks.(cb.continuous_callbacks,
             (sensealg,),
             (dgdu,),
             (dgdp,),
@@ -203,19 +204,21 @@ function setup_reverse_callbacks(cb::CallbackSet, sensealg, dgdu, dgdp, cur_time
     return cb
 end
 
-function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
-        VectorContinuousCallback}, sensealg,
-    dgdu,
-    dgdp,
-    loss_ref, terminated)
+function _setup_reverse_callbacks(
+        cb::Union{ContinuousCallback, DiscreteCallback,
+            VectorContinuousCallback}, sensealg,
+        dgdu,
+        dgdp,
+        loss_ref, terminated)
     _setup_reverse_callbacks(cb, cb.affect!, sensealg, dgdu, dgdp, loss_ref, terminated)
 end
 
-function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
-        VectorContinuousCallback},
-    affect::TrackedAffect, sensealg, dgdu,
-    dgdp,
-    loss_ref, terminated)
+function _setup_reverse_callbacks(
+        cb::Union{ContinuousCallback, DiscreteCallback,
+            VectorContinuousCallback},
+        affect::TrackedAffect, sensealg, dgdu,
+        dgdp,
+        loss_ref, terminated)
     if cb isa Union{ContinuousCallback, VectorContinuousCallback} && cb.affect! !== nothing
         cb.affect!.correction.cur_time = loss_ref # set cur_time
         cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
@@ -266,7 +269,8 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
-        if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) || (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
+        if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) ||
+           (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
             w(y, y, integrator.p, integrator.t)
         end
 
@@ -358,18 +362,20 @@ function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback
         save_positions = (false, false))
 end
 
-function _setup_reverse_callbacks(cb::Union{ContinuousCallback, DiscreteCallback,
-        VectorContinuousCallback}, affect, sensealg,
-    dgdu,
-    dgdp,
-    loss_ref, terminated)
+function _setup_reverse_callbacks(
+        cb::Union{ContinuousCallback, DiscreteCallback,
+            VectorContinuousCallback},
+        affect, sensealg,
+        dgdu,
+        dgdp,
+        loss_ref, terminated)
     # return cb if affect is not a TrackedAffect
     cb
 end
 
 function setup_w_wp(cb::Union{DiscreteCallback, ContinuousCallback},
-    autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
-    tprev)
+        autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
+        tprev)
     w = let tprev = tprev, pos_neg = pos_neg
         function (du, u, p, t)
             _affect! = get_affect!(cb, pos_neg)
@@ -393,8 +399,8 @@ function setup_w_wp(cb::Union{DiscreteCallback, ContinuousCallback},
 end
 
 function setup_w_wp(cb::VectorContinuousCallback,
-    autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
-    tprev)
+        autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
+        tprev)
     w = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
         function (du, u, p, t)
             _affect! = get_affect!(cb, pos_neg)
@@ -422,8 +428,10 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
-function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
-        VectorContinuousCallback}, autojacvec)
+function get_cb_diffcaches(
+        cb::Union{DiscreteCallback, ContinuousCallback,
+            VectorContinuousCallback},
+        autojacvec)
     _dc = []
     if cb isa DiscreteCallback
         pos_negs = (true,)
@@ -457,7 +465,7 @@ function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
                     _W = nothing)
                 pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
                 if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config...,Enzyme.make_zero(pf))
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
                 end
 
                 diffcache_w = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
@@ -471,7 +479,7 @@ function get_cb_diffcaches(cb::Union{DiscreteCallback, ContinuousCallback,
                     _W = nothing)
                 pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
                 if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config...,Enzyme.make_zero(pf))
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
                 end
 
                 diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
@@ -534,10 +542,10 @@ function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
 end
 
 function copy_to_integrator!(cb::Union{ContinuousCallback, VectorContinuousCallback},
-    y,
-    p,
-    indx,
-    bool)
+        y,
+        p,
+        indx,
+        bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
         update_p = (p != cb.affect!.pleft[indx])
@@ -676,7 +684,7 @@ function (ff::VectorConditionTimeWrapper)(t)
     (out = zeros(typeof(t), length(ff.out_cache));
     ff.f(out, ff.u, t, ff.integrator);
     [
-        out[ff.event_idx],
+        out[ff.event_idx]
     ])
 end
 

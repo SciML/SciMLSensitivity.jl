@@ -30,7 +30,7 @@ A full example making use of this trick is:
 ```@example divergence
 using SciMLSensitivity
 using OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
-    OptimizationNLopt, Plots
+      OptimizationNLopt, Plots
 
 function lotka_volterra!(du, u, p, t)
     rab, wol = u

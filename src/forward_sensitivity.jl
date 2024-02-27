@@ -48,10 +48,11 @@ struct NILSSForwardSensitivityFunction{iip, sensefunType, senseType, MM} <:
     mass_matrix::MM
 end
 
-function ODEForwardSensitivityFunction(f, analytic, tgrad, original_jac, jac, jac_prototype,
-    sparsity, paramjac, Wfact, Wfact_t, uf, pf, u0,
-    jac_config, paramjac_config, alg, p, f_cache, mm,
-    isautojacvec, isautojacmat, colorvec, nus)
+function ODEForwardSensitivityFunction(
+        f, analytic, tgrad, original_jac, jac, jac_prototype,
+        sparsity, paramjac, Wfact, Wfact_t, uf, pf, u0,
+        jac_config, paramjac_config, alg, p, f_cache, mm,
+        isautojacvec, isautojacmat, colorvec, nus)
     numparams = length(p)
     numindvar = length(u0)
     J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef, numindvar, numindvar)
@@ -122,7 +123,8 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     if !S.isautojacvec && !S.isautojacmat
         dp = @view du[reshape((S.numindvar + 1):((length(p) + 1) * S.numindvar),
             S.numindvar, length(p))]
-        Sj = @view u[reshape((S.numindvar + 1):((length(p) + 1) * S.numindvar), S.numindvar,
+        Sj = @view u[reshape(
+            (S.numindvar + 1):((length(p) + 1) * S.numindvar), S.numindvar,
             length(p))]
         mul!(dp, S.J, Sj)
         DiffEqBase.@.. dp += S.pJ
@@ -143,7 +145,8 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     end
     return nothing
 end
-@deprecate ODELocalSensitivityProblem(args...; kwargs...) ODEForwardSensitivityProblem(args...;
+@deprecate ODELocalSensitivityProblem(args...; kwargs...) ODEForwardSensitivityProblem(
+    args...;
     kwargs...)
 
 struct ODEForwardSensitivityProblem{iip, A}
@@ -348,12 +351,12 @@ is available in this case, including interpolations and plot recipes (the recipe
 will plot the expanded system).
 """
 function ODEForwardSensitivityProblem(f::F, u0,
-    tspan, p = nothing,
-    alg::ForwardSensitivity = ForwardSensitivity();
-    nus = nothing, # determine if Nilss is used
-    w0 = nothing,
-    v0 = nothing,
-    kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+        tspan, p = nothing,
+        alg::ForwardSensitivity = ForwardSensitivity();
+        nus = nothing, # determine if Nilss is used
+        w0 = nothing,
+        v0 = nothing,
+        kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
     isinplace = SciMLBase.isinplace(f)
     # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
     isautojacmat = get_jacmat(alg)
@@ -432,8 +435,8 @@ function ODEForwardSensitivityProblem(f::F, u0,
     else
         if w0 === nothing && v0 === nothing
             sense_u0 = [u0;
-                zeros(eltype(u0),
-                (nus + 1) * sense.S.numindvar * sense.S.numparams)]
+                        zeros(eltype(u0),
+                            (nus + 1) * sense.S.numindvar * sense.S.numparams)]
         else
             sense_u0 = [u0; w0; v0]
         end
@@ -445,14 +448,14 @@ function ODEForwardSensitivityProblem(f::F, u0,
 end
 
 function seed_duals(x::AbstractArray{V}, f,
-    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {V,
-    N}
+        ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {V,
+        N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
     duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, eltype(vec(x))))}.(vec(x), seeds)
 end
 
 function seed_duals(x::Number, f,
-    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {N}
+        ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(x, typemax(Int64))) where {N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, typeof(x)})
     duals = ForwardDiff.Dual{typeof(ForwardDiff.Tag(f, typeof(x)))}(x, seeds[1])
 end
@@ -462,10 +465,10 @@ has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
-    tspan, p, alg::ForwardDiffSensitivity;
-    du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
-    dp = I(length(p)), # perturbations of parameters
-    kwargs...)
+        tspan, p, alg::ForwardDiffSensitivity;
+        du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
+        dp = I(length(p)), # perturbations of parameters
+        kwargs...)
     num_sen_par = size(du0, 2)
     if num_sen_par != size(dp, 2)
         error("Same number of perturbations of initial conditions and parameters required")
@@ -478,11 +481,13 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
     end
 
     pdual = ForwardDiff.Dual{
-        typeof(ForwardDiff.Tag(f, eltype(vec(p)))),
+        typeof(ForwardDiff.Tag(
+        f, eltype(vec(p)))),
     }.(p,
         [ntuple(j -> dp[i, j], num_sen_par) for i in eachindex(p)])
     u0dual = ForwardDiff.Dual{
-        typeof(ForwardDiff.Tag(f, eltype(vec(u0)))),
+        typeof(ForwardDiff.Tag(f,
+        eltype(vec(u0)))),
     }.(u0,
         [ntuple(j -> du0[i, j], num_sen_par)
          for i in eachindex(u0)])
@@ -511,7 +516,7 @@ that the ODE was defined via `ODEForwardSensitivityProblem`.
 extract_local_sensitivities(sol, asmatrix::Val = Val(false)) # Decompose the entire time series
 extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false)) # Decompose sol.u[i]
 extract_local_sensitivities(sol, t::Union{Number, AbstractVector},
-                            asmatrix::Val = Val(false)) # Decompose sol(t)
+    asmatrix::Val = Val(false)) # Decompose sol(t)
 ```
 """
 function extract_local_sensitivities(sol, asmatrix::Val = Val(false))
@@ -527,14 +532,14 @@ function extract_local_sensitivities(sol, i::Integer, asmatrix::Bool)
     extract_local_sensitivities(sol, i, Val{asmatrix}())
 end
 function extract_local_sensitivities(sol, t::Union{Number, AbstractVector},
-    asmatrix::Val = Val(false))
+        asmatrix::Val = Val(false))
     _extract(sol, sol.prob.problem_type.sensealg, sol(t), asmatrix)
 end
 function extract_local_sensitivities(sol, t, asmatrix::Bool)
     extract_local_sensitivities(sol, t, Val{asmatrix}())
 end
 function extract_local_sensitivities(tmp, sol, t::Union{Number, AbstractVector},
-    asmatrix::Val = Val(false))
+        asmatrix::Val = Val(false))
     _extract(sol, sol.prob.problem_type.sensealg, sol(tmp, t), asmatrix)
 end
 function extract_local_sensitivities(tmp, sol, t, asmatrix::Bool)
@@ -584,21 +589,21 @@ end
 
 # Get ODE u vector and sensitivity values from sensitivity problem u vector
 function _extract(sol, sensealg::ForwardSensitivity, su::AbstractVector,
-    asmatrix::Val = Val(false))
+        asmatrix::Val = Val(false))
     u = view(su, 1:(sol.prob.f.numindvar))
     du = _extract_du(sol, sensealg, su, asmatrix)
     return u, du
 end
 
 function _extract(sol, sensealg::ForwardDiffSensitivity, su::AbstractVector,
-    asmatrix::Val = Val(false))
+        asmatrix::Val = Val(false))
     u = ForwardDiff.value.(su)
     du = _extract_du(sol, sensealg, su, asmatrix)
     return u, du
 end
 
 function _extract(sol, ::ForwardSensitivity, su::AbstractDiffEqArray,
-    ::Val{false})
+        ::Val{false})
     ni = sol.prob.f.numindvar
     u = @view su[1:ni, :]
     du = [@view su[(ni * j + 1):(ni * (j + 1)), :] for j in 1:(sol.prob.f.numparams)]
@@ -630,11 +635,12 @@ end
 
 ### Bonus Pieces
 
-function SciMLBase.remake(prob::ODEProblem{uType, tType, isinplace, P, F, K,
-        <:ODEForwardSensitivityProblem};
-    f = nothing, tspan = nothing, u0 = nothing, p = nothing,
-    kwargs...) where
-    {uType, tType, isinplace, P, F, K}
+function SciMLBase.remake(
+        prob::ODEProblem{uType, tType, isinplace, P, F, K,
+            <:ODEForwardSensitivityProblem};
+        f = nothing, tspan = nothing, u0 = nothing, p = nothing,
+        kwargs...) where
+        {uType, tType, isinplace, P, F, K}
     _p = p === nothing ? prob.p : p
     _f = f === nothing ? prob.f.f : f
     _u0 = u0 === nothing ? prob.u0[1:(prob.f.numindvar)] : u0[1:(prob.f.numindvar)]
