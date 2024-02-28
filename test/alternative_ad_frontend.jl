@@ -38,22 +38,24 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()), u0p)[1]
 @test ReverseDiff.gradient(senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss(TrackerAdjoint()), u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
-@test_broken ReverseDiff.gradient(senseloss(ForwardSensitivity()), u0p) ≈ dup
+@test_broken ReverseDiff.gradient(senseloss(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test Tracker.gradient(senseloss(InterpolatingAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss(ReverseDiffAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss(TrackerAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss(ForwardDiffSensitivity()), u0p)[1] ≈ dup
-@test_broken Tracker.gradient(senseloss(ForwardSensitivity()), u0p)[1] ≈ dup
+@test_broken Tracker.gradient(senseloss(ForwardSensitivity()), u0p)[1] ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test ForwardDiff.gradient(senseloss(InterpolatingAdjoint()), u0p) ≈ dup
 
 @test Enzyme.gradient(Reverse, senseloss(InterpolatingAdjoint()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss(TrackerAdjoint()), u0p) ≈ dup
+@test_throws SciMLSensitivity.EnzymeTrackedRealError Enzyme.gradient(
+    Reverse, senseloss(ReverseDiffAdjoint()), u0p)≈dup
+@test_throws SciMLSensitivity.EnzymeTrackedRealError Enzyme.gradient(
+    Reverse, senseloss(TrackerAdjoint()), u0p)≈dup
 @test Enzyme.gradient(Reverse, senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken Enzyme.gradient(Reverse, senseloss(ForwardSensitivity()),
-    u0p) ≈ dup
+    u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 struct senseloss2{T}
     sense::T
@@ -73,13 +75,13 @@ dup = Zygote.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1]
 @test ReverseDiff.gradient(senseloss2(ReverseDiffAdjoint()), u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss2(TrackerAdjoint()), u0p) ≈ dup
 @test ReverseDiff.gradient(senseloss2(ForwardDiffSensitivity()), u0p) ≈ dup
-@test_broken ReverseDiff.gradient(senseloss2(ForwardSensitivity()), u0p) ≈ dup
+@test_broken ReverseDiff.gradient(senseloss2(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test Tracker.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss2(ReverseDiffAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss2(TrackerAdjoint()), u0p)[1] ≈ dup
 @test Tracker.gradient(senseloss2(ForwardDiffSensitivity()), u0p)[1] ≈ dup
-@test_broken Tracker.gradient(senseloss2(ForwardSensitivity()), u0p)[1] ≈ dup
+@test_broken Tracker.gradient(senseloss2(ForwardSensitivity()), u0p)[1] ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test ForwardDiff.gradient(senseloss2(InterpolatingAdjoint()), u0p) ≈ dup
 
@@ -87,7 +89,7 @@ dup = Zygote.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1]
 @test_broken Enzyme.gradient(Reverse, senseloss2(ReverseDiffAdjoint()), u0p) ≈ dup
 @test_broken Enzyme.gradient(Reverse, senseloss2(TrackerAdjoint()), u0p) ≈ dup
 @test_broken Enzyme.gradient(Reverse, senseloss2(ForwardDiffSensitivity()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss2(ForwardSensitivity()), u0p) ≈ dup
+@test_broken Enzyme.gradient(Reverse, senseloss2(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 struct senseloss3{T}
     sense::T
@@ -148,8 +150,10 @@ dup = Zygote.gradient(senseloss4(InterpolatingAdjoint()), u0p)[1]
 @test ForwardDiff.gradient(senseloss4(InterpolatingAdjoint()), u0p) ≈ dup
 
 @test Enzyme.gradient(Reverse, senseloss4(InterpolatingAdjoint()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss4(ReverseDiffAdjoint()), u0p) ≈ dup
-@test_broken Enzyme.gradient(Reverse, senseloss4(TrackerAdjoint()), u0p) ≈ dup
+@test_throws SciMLSensitivity.EnzymeTrackedRealError Enzyme.gradient(
+    Reverse, senseloss4(ReverseDiffAdjoint()), u0p)≈dup
+@test_throws SciMLSensitivity.EnzymeTrackedRealError Enzyme.gradient(
+    Reverse, senseloss4(TrackerAdjoint()), u0p)≈dup
 @test Enzyme.gradient(Reverse, senseloss4(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken Enzyme.gradient(Reverse, senseloss4(ForwardSensitivity()), u0p) ≈ dup
 
