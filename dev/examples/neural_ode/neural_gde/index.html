@@ -59,7 +59,7 @@ end
 initialstates(rng::AbstractRNG, d::ExplicitGCNConv) = (Ã = d.init_Ã(),)
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-    init_weight = glorot_normal, init_bias = zeros32)
+        init_weight = glorot_normal, init_bias = zeros32)
     init_Ã = () -&gt; copy(Ã)
     return ExplicitGCNConv{typeof(activation), typeof(init_Ã), typeof(init_weight),
         typeof(init_bias)}(first(ch), last(ch), activation,
@@ -175,7 +175,7 @@ function initialparameters(rng::AbstractRNG, d::ExplicitGCNConv)
 end
 
 function ExplicitGCNConv(Ã, ch::Pair{Int, Int}, activation = identity;
-    init_weight = glorot_normal, init_bias = zeros32)
+        init_weight = glorot_normal, init_bias = zeros32)
     return ExplicitGCNConv{typeof(activation), typeof(init_weight), typeof(init_bias)}(Ã,
         first(ch),
         last(ch),
@@ -224,4 +224,4 @@ st_opt = Optimisers.setup(opt, ps)</code></pre><h2 id="Training-Loop"><a class="
     gs = back((one(l), nothing))[1]
     st_opt, ps = Optimisers.update(st_opt, ps, gs)
     @show eval_loss_accuracy(X, y, val_mask, model, ps, st)
-end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../simplechains/">« Faster Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 23 February 2024 09:21">Friday 23 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../simplechains/">« Faster Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 28 February 2024 14:13">Wednesday 28 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

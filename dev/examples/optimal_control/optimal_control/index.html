@@ -3,7 +3,7 @@
 x^\prime &amp;= v \\
 v^′ &amp;= u^3(t) \\
 \end{aligned}\]</p><p>and thus</p><p class="math-container">\[L(\theta) = \sum_i \Vert 4 - x(t_i) \Vert + 2 \Vert v(t_i) \Vert + \Vert u(t_i) \Vert\]</p><p>is our loss function on the first order system. We thus choose a neural network form for <span>$u$</span> and optimize the equation with respect to this loss. Note that we will first reduce control cost (the last term) by 10x in order to bump the network out of a local minimum. This looks like:</p><pre><code class="language-julia hljs">using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationNLopt,
-    OptimizationOptimisers, SciMLSensitivity, Zygote, Enzyme, Plots, Statistics, Random
+      OptimizationOptimisers, SciMLSensitivity, Zygote, Enzyme, Plots, Statistics, Random
 Enzyme.Compiler.bitcode_replacement!(false) # speeds up some linear algebra in the gradient calculations
 
 rng = Random.default_rng()
@@ -67,26 +67,26 @@ res1 = Optimization.solve(optprob, Adam(0.01), callback = cb, maxiters = 100)
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(optprob2, NLopt.LD_LBFGS(), callback = cb, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: MaxIters
 u: 1153-element Vector{Float64}:
- -0.2614010222420777
- -1.5914471560489125
- -2.157454713455889
-  1.1948530421770232
- -2.662395476101925
- -3.761879365807246
- -1.778687997203038
- -3.12409091152485
-  2.906043692751091
- -0.8708861077949295
+  2.374609040587782
+ -0.08831174933443749
+  0.6154601093524638
+  0.29355001989851087
+ -1.2937889170203625
+ -1.5302847350377702
+ -1.9114327818074535
+  1.9730458133075006
+ -0.09378936822829166
+ -2.032821797244494
   ⋮
-  1.2340403939967886
-  1.1813174198863243
- -0.5133603420094591
- -1.0007561240218443
- -1.340921679519432
- -0.5723449546419618
- -0.04992201537073561
- -0.05515542103111591
-  5.880704526926073</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
+ -0.7951650912002358
+ -0.25556319563165847
+  0.18300091470807112
+  0.5592368830805983
+ -0.08962279145117626
+  0.2951312974910719
+  0.28032256351006324
+  0.40708268506094425
+  3.606014141856041</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = ComponentArray(θ, ax)
     mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
@@ -97,26 +97,27 @@ optf3 = Optimization.OptimizationFunction((x, p) -&gt; loss_adjoint(x), adtype)
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
 res3 = Optimization.solve(optprob3, NLopt.LD_LBFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: MaxIters
 u: 1153-element Vector{Float64}:
- -0.2668288158492061
- -1.5919595321588602
- -2.157111747651571
-  1.1962137865330131
- -2.655561879359533
- -3.765572203960248
- -1.7788710261405638
- -3.126406898503228
-  2.906558421116381
- -0.8851139913642464
+  2.376964495567391
+ -0.09236512583785605
+  0.6203184178062299
+  0.2649249462830386
+ -1.3041559490802994
+ -1.5355955705786455
+ -1.9164638033028785
+  1.9739918291862237
+ -0.09907717352489624
+ -2.0360253242241315
   ⋮
-  1.2197831463557594
-  1.1890391370075388
- -0.4957330384780981
- -0.9937881854501516
- -1.352980267751813
- -0.5793113494919179
- -0.042954792715234606
- -0.048556086785036215
-  5.87373733788996</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
+ -0.8100622614472429
+ -0.24624028249824692
+  0.17190467696605424
+  0.5792820127231896
+ -0.12330080780204886
+  0.3026830003846315
+  0.29069435937979576
+  0.37129821045601663
+  3.615334537853152</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
 cb(res3.u, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
-plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts], label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="0b4bf2b1.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 23 February 2024 09:21">Friday 23 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts],
+    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="46a7efa6.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 28 February 2024 14:14">Wednesday 28 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
