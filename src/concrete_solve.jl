@@ -455,11 +455,7 @@ function DiffEqBase._concrete_solve_adjoint(
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
-                        if x isa Bool
-                            vec(_out) .= x
-                        else
-                            vec(_out) .= vec(x)
-                        end
+                        vec(_out) .= vec(x)
                     else
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
