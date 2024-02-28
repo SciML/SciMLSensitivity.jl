@@ -105,6 +105,8 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     else
         f.affect!(integrator, event_idx)
     end
+    # @show 1, integrator.t, integrator.u_modified
+    # error(1)
     if integrator.u_modified
         if isempty(f.event_times)
             push!(f.event_times, integrator.t)
@@ -115,7 +117,17 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
                 push!(f.event_idx, event_idx)
             end
         else
-            if !maximum(.≈(integrator.t, f.event_times, rtol = 0.0, atol = 1e-14))
+            if last(f.event_times) > integrator.t
+                idx = searchsortedfirst(f.event_times, integrator.t)
+                resize!(f.event_times, idx)
+                resize!(f.tprev, idx)
+                resize!(f.uleft, idx)
+                resize!(f.pleft, idx)
+                f.event_times[idx] = integrator.t
+                f.tprev[idx] = integrator.tprev
+                f.uleft[idx] = uleft
+                f.pleft[idx] = pleft
+            elseif !maximum(.≈(integrator.t, f.event_times, rtol = 0.0, atol = 1e-14))
                 push!(f.event_times, integrator.t)
                 push!(f.tprev, integrator.tprev)
                 push!(f.uleft, uleft)
@@ -126,10 +138,12 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
             end
         end
     end
+    # @show 3, integrator.t
 end
 
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
+    # @show t, u, sensealg
     DiscreteCallback(cb.condition,
         TrackedAffect(t, u, p, cb.affect!, correction),
         cb.initialize,
@@ -250,10 +264,13 @@ function _setup_reverse_callbacks(
         [cb.affect!.event_times; cb.affect_neg!.event_times]
     end
 
+    # @show times
+
     # precompute w and wp to generate a tape
     cb_diffcaches = get_cb_diffcaches(cb, sensealg.autojacvec)
 
     function affect!(integrator)
+        # @show 1, integrator.t
         indx, pos_neg = get_indx(cb, integrator.t)
         tprev = get_tprev(cb, indx, pos_neg)
         event_idx = cb isa VectorContinuousCallback ? get_event_idx(cb, indx, pos_neg) :
@@ -500,6 +517,7 @@ function get_cb_diffcaches(
 end
 
 get_indx(cb::DiscreteCallback, t) = (searchsortedfirst(cb.affect!.event_times, t), true)
+# get_indx(cb::DiscreteCallback, t) = (findfirst(≈(t), cb.affect!.event_times), true)
 function get_indx(cb::Union{ContinuousCallback, VectorContinuousCallback}, t)
     if !isempty(cb.affect!.event_times) || !isempty(cb.affect_neg!.event_times)
         indx = searchsortedfirst(cb.affect!.event_times, t)
