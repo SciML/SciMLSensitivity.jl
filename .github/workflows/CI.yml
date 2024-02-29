@@ -23,6 +23,7 @@ jobs:
           - Core4
           - Core5
           - Core6
+          - Core7
           - SDE1
           - SDE2
           - SDE3
