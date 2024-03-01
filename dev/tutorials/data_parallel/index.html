@@ -11,84 +11,74 @@ f(u, p, t) = dudt(u, p, st)[1]</code></pre><pre class="documenter-example-output
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 11-element Vector{Float32}:
+t: 9-element Vector{Float32}:
  0.0
- 0.0013894291
- 0.00401237
- 0.00931455
- 0.021395747
- 0.04638175
- 0.1006491
- 0.19428697
- 0.3744605
- 0.6980003
+ 0.013289709
+ 0.035500444
+ 0.08179009
+ 0.16386779
+ 0.2841316
+ 0.49354357
+ 0.82835805
  1.0
-u: 11-element Vector{Vector{Float32}}:
+u: 9-element Vector{Vector{Float32}}:
  [2.0, 0.0]
- [2.0009208, -0.0009995279]
- [2.00266, -0.0028865752]
- [2.006181, -0.006701786]
- [2.0142283, -0.015397932]
- [2.0309813, -0.033396468]
- [2.0678754, -0.072549075]
- [2.133167, -0.14029777]
- [2.2645602, -0.27128503]
- [2.5190823, -0.50816786]
- [2.7771697, -0.73044217]</code></pre><p>or we can solve this ODE where the initial condition is a matrix, where each column is an independent system:</p><pre><code class="language-julia hljs">u0 = Float32.([0 1 2
+ [2.0053995, -0.0010029882]
+ [2.0144494, -0.002694894]
+ [2.0334153, -0.0062844437]
+ [2.067392, -0.012863281]
+ [2.1179798, -0.023009766]
+ [2.208342, -0.042173855]
+ [2.3587801, -0.07700449]
+ [2.4387088, -0.09697799]</code></pre><p>or we can solve this ODE where the initial condition is a matrix, where each column is an independent system:</p><pre><code class="language-julia hljs">u0 = Float32.([0 1 2
                0 0 0])
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 11-element Vector{Float32}:
+t: 9-element Vector{Float32}:
  0.0
- 0.001737975
- 0.0048513017
- 0.010847015
- 0.02457228
- 0.051187526
- 0.09744619
- 0.19308162
- 0.3685524
- 0.71075344
+ 0.017531602
+ 0.04753306
+ 0.09156468
+ 0.16673514
+ 0.28096426
+ 0.46218097
+ 0.7501732
  1.0
-u: 11-element Vector{Matrix{Float32}}:
+u: 9-element Vector{Matrix{Float32}}:
  [0.0 1.0 2.0; 0.0 0.0 0.0]
- [0.0 1.0005956 2.0011518; 0.0 -0.0006587868 -0.0012502732]
- [0.0 1.0016634 2.0032167; 0.0 -0.0018391858 -0.0034901765]
- [0.0 1.0037239 2.0072; 0.0 -0.004113432 -0.0078046313]
- [0.0 1.008459 2.0163503; 0.0 -0.00932462 -0.017685128]
- [0.0 1.0177147 2.034221; 0.0 -0.019450039 -0.03686033]
- [0.0 1.034035 2.065679; 0.0 -0.037113205 -0.07023589]
- [0.0 1.0687275 2.1323142; 0.0 -0.07390037 -0.1394242]
- [0.0 1.1358025 2.2601333; 0.0 -0.14240706 -0.2669779]
- [0.0 1.2799301 2.5295906; 0.0 -0.2801786 -0.51753855]
- [0.0 1.4161966 2.77717; 0.0 -0.40138984 -0.7304423]</code></pre><p>On the CPU this will multithread across the system (due to BLAS) and on GPUs this will parallelize the operations across the GPU. To GPU this, you&#39;d simply move the parameters and the initial condition to the GPU:</p><pre><code class="language-julia hljs">xs = Float32.([0 1 2
+ [0.0 1.0037916 2.0071254; 0.0 -0.00051073654 -0.0013245996]
+ [0.0 1.0103115 2.019366; 0.0 -0.0013956511 -0.0036197032]
+ [0.0 1.0199525 2.0374384; 0.0 -0.0027196202 -0.007053485]
+ [0.0 1.0366117 2.0685873; 0.0 -0.0050505474 -0.013098136]
+ [0.0 1.0624155 2.1166353; 0.0 -0.008768451 -0.022734677]
+ [0.0 1.1045843 2.1946254; 0.0 -0.0151227955 -0.039179314]
+ [0.0 1.1748048 2.3229985; 0.0 -0.026460173 -0.06839143]
+ [0.0 1.2390187 2.4387088; 0.0 -0.03764063 -0.09697805]</code></pre><p>On the CPU this will multithread across the system (due to BLAS) and on GPUs this will parallelize the operations across the GPU. To GPU this, you&#39;d simply move the parameters and the initial condition to the GPU:</p><pre><code class="language-julia hljs">xs = Float32.([0 1 2
                0 0 0])
 prob = ODEProblem(f, gdev(u0), (0.0f0, 1.0f0), gdev(p))
 solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 10-element Vector{Float32}:
+t: 9-element Vector{Float32}:
  0.0
- 0.0017379753
- 0.0051132934
- 0.012180502
- 0.02875903
- 0.0622257
- 0.12745199
- 0.26236868
- 0.5458201
+ 0.017531602
+ 0.04753306
+ 0.091564685
+ 0.16673514
+ 0.28096437
+ 0.48734844
+ 0.8437017
  1.0
-u: 10-element Vector{CUDA.CuArray{Float32, 2, CUDA.Mem.DeviceBuffer}}:
+u: 9-element Vector{CUDA.CuArray{Float32, 2, CUDA.Mem.DeviceBuffer}}:
  [0.0 1.0 2.0; 0.0 0.0 0.0]
- [0.0 1.0005956 2.0011518; 0.0 -0.0006587873 -0.0012502742]
- [0.0 1.0017534 2.0033906; 0.0 -0.0019385342 -0.0036786818]
- [0.0 1.0041828 2.008087; 0.0 -0.004619421 -0.008764338]
- [0.0 1.0099086 2.0191503; 0.0 -0.010915649 -0.02070016]
- [0.0 1.0215821 2.0416813; 0.0 -0.0236573 -0.04481888]
- [0.0 1.044781 2.086354; 0.0 -0.04861541 -0.09191711]
- [0.0 1.0946773 2.1819296; 0.0 -0.100790076 -0.18970086]
- [0.0 1.208213 2.396446; 0.0 -0.21305165 -0.39652458]
- [0.0 1.4161968 2.7771695; 0.0 -0.40138954 -0.73044205]</code></pre><p>This method of parallelism is optimal if all the operations are linear algebra operations, such as a neural ODE. Thus this method of parallelism is demonstrated in the <a href="https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/">MNIST tutorial</a>.</p><p>However, this method of parallelism has many limitations. First of all, the ODE function is required to be written in a way that is independent across the columns. Not all ODEs are written like this, so one needs to be careful. But additionally, this method is ineffective if the ODE function has many serial operations, like <code>u[1]*u[2] - u[3]</code>. In such a case, this indexing behavior will dominate the runtime and cause the parallelism to sometimes even be detrimental.</p><h1 id="Out-of-ODE-Parallelism"><a class="docs-heading-anchor" href="#Out-of-ODE-Parallelism">Out of ODE Parallelism</a><a id="Out-of-ODE-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Out-of-ODE-Parallelism" title="Permalink"></a></h1><p>Instead of parallelizing within an ODE solve, one can parallelize the solves to the ODE itself. While this will be less effective on very large ODEs, like big neural ODE image classifiers, this method be effective even if the ODE is small or the <code>f</code> function is not well-parallelized. This kind of parallelism is done via the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">DifferentialEquations.jl ensemble interface</a>. The following examples showcase multithreaded, cluster, and (multi)GPU parallelism through this interface.</p><h2 id="Multithreaded-Batching-At-a-Glance"><a class="docs-heading-anchor" href="#Multithreaded-Batching-At-a-Glance">Multithreaded Batching At a Glance</a><a id="Multithreaded-Batching-At-a-Glance-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-At-a-Glance" title="Permalink"></a></h2><p>The following is a full copy-paste example for the multithreading. Distributed and GPU minibatching are described below.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, Optimization, OptimizationOptimisers, SciMLSensitivity
+ [0.0 1.0037916 2.0071254; 0.0 -0.00051073654 -0.0013245996]
+ [0.0 1.0103115 2.019366; 0.0 -0.0013956511 -0.0036197032]
+ [0.0 1.0199525 2.0374384; 0.0 -0.0027196202 -0.0070534856]
+ [0.0 1.0366117 2.0685873; 0.0 -0.005050547 -0.013098136]
+ [0.0 1.0624155 2.1166353; 0.0 -0.0087684635 -0.02273469]
+ [0.0 1.1105623 2.2056277; 0.0 -0.016051404 -0.04157877]
+ [0.0 1.1984794 2.3658485; 0.0 -0.030492725 -0.078730024]
+ [0.0 1.2390188 2.438709; 0.0 -0.037640713 -0.09697794]</code></pre><p>This method of parallelism is optimal if all the operations are linear algebra operations, such as a neural ODE. Thus this method of parallelism is demonstrated in the <a href="https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/">MNIST tutorial</a>.</p><p>However, this method of parallelism has many limitations. First of all, the ODE function is required to be written in a way that is independent across the columns. Not all ODEs are written like this, so one needs to be careful. But additionally, this method is ineffective if the ODE function has many serial operations, like <code>u[1]*u[2] - u[3]</code>. In such a case, this indexing behavior will dominate the runtime and cause the parallelism to sometimes even be detrimental.</p><h1 id="Out-of-ODE-Parallelism"><a class="docs-heading-anchor" href="#Out-of-ODE-Parallelism">Out of ODE Parallelism</a><a id="Out-of-ODE-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Out-of-ODE-Parallelism" title="Permalink"></a></h1><p>Instead of parallelizing within an ODE solve, one can parallelize the solves to the ODE itself. While this will be less effective on very large ODEs, like big neural ODE image classifiers, this method be effective even if the ODE is small or the <code>f</code> function is not well-parallelized. This kind of parallelism is done via the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">DifferentialEquations.jl ensemble interface</a>. The following examples showcase multithreaded, cluster, and (multi)GPU parallelism through this interface.</p><h2 id="Multithreaded-Batching-At-a-Glance"><a class="docs-heading-anchor" href="#Multithreaded-Batching-At-a-Glance">Multithreaded Batching At a Glance</a><a id="Multithreaded-Batching-At-a-Glance-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-At-a-Glance" title="Permalink"></a></h2><p>The following is a full copy-paste example for the multithreading. Distributed and GPU minibatching are described below.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, Optimization, OptimizationOptimisers, SciMLSensitivity
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]
@@ -209,4 +199,4 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -&gt; loss_gpu(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 
-res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><h2 id="Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Multi-GPU-Batching">Multi-GPU Batching</a><a id="Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-GPU-Batching" title="Permalink"></a></h2><p>DiffEqGPU supports batching across multiple GPUs. See <a href="https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu">its README</a> for details on setting it up.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../adjoint_continuous_functional/">« Adjoint Sensitivity Analysis of Continuous Functionals</a><a class="docs-footer-nextpage" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Wednesday 28 February 2024 14:14">Wednesday 28 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><h2 id="Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Multi-GPU-Batching">Multi-GPU Batching</a><a id="Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-GPU-Batching" title="Permalink"></a></h2><p>DiffEqGPU supports batching across multiple GPUs. See <a href="https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu">its README</a> for details on setting it up.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../adjoint_continuous_functional/">« Adjoint Sensitivity Analysis of Continuous Functionals</a><a class="docs-footer-nextpage" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 1 March 2024 12:26">Friday 1 March 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
