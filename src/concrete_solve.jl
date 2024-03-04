@@ -1309,9 +1309,9 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         else
             # use TrackedArray for efficiency of the tape
-            _f(args...) = reduce(vcat, prob.f(args...))
+            _f(args...) = ArrayInterface.aos_to_soa(prob.f(args...))
             if prob isa SDEProblem
-                _g(args...) = reduce(vcat, prob.g(args...))
+                _g(args...) = ArrayInterface.aos_to_soa(prob.g(args...))
                 _prob = remake(prob,
                     f = DiffEqBase.parameterless_type(prob.f){
                         SciMLBase.isinplace(prob),
