@@ -64,7 +64,7 @@ end
 
 function loss(p)
     prob = ODEProblem(dudt, [3.0], (0.0, 1.0), p)
-    sol = solve(prob, Tsit5(), dt=0.01, sensealg=ReverseDiffAdjoint())
+    sol = solve(prob, Tsit5(), dt = 0.01, sensealg = ReverseDiffAdjoint())
     sum(abs2, Array(sol))
 end
 Zygote.gradient(loss, p)
