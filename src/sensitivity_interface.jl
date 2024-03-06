@@ -402,6 +402,9 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         throw(AdjointSensitivityParameterCompatibilityError())
     end
     rcb = nothing
+    if isnothing(alg) && !haskey(kwargs, :alg)
+        alg = sol.alg
+    end
     if sol.prob isa ODEProblem
         adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
@@ -467,6 +470,9 @@ function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
         dgdu = nothing, dgdp = nothing, g = nothing,
         abstol = 1e-6, reltol = 1e-3,
         kwargs...)
+    if isnothing(alg) && !haskey(kwargs, :alg)
+        alg = sol.alg
+    end
     SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
