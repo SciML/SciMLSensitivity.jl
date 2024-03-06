@@ -514,6 +514,9 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         corfunc_analytical = false,
         callback = CallbackSet(),
         kwargs...)
+    if isnothing(alg) && !haskey(kwargs, :alg)
+        alg = sol.alg
+    end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(sol.prob.p))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),

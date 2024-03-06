@@ -397,14 +397,14 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         corfunc_analytical = nothing,
         callback = nothing,
         kwargs...)
+    if isnothing(alg) && !haskey(kwargs, :alg)
+        alg = sol.alg
+    end
     if !(sol.prob.p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
     rcb = nothing
-    if isnothing(alg) && !haskey(kwargs, :alg)
-        alg = sol.alg
-    end
     if sol.prob isa ODEProblem
         adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,

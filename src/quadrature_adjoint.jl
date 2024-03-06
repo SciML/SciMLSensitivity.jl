@@ -327,6 +327,9 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         abstol = sensealg.abstol, reltol = sensealg.reltol,
         callback = CallbackSet(),
         kwargs...)
+    if isnothing(alg) && !haskey(kwargs, :alg)
+        alg = sol.alg
+    end
     adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback)
