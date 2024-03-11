@@ -104,7 +104,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     if !needs_jac && !issemiexplicitdae && !(autojacvec isa Bool)
         J = nothing
     else
-        if SciMLBase.forwarddiffs_model_time(alg)
+        if alg === nothing || SciMLBase.forwarddiffs_model_time(alg)
             # 1 chunk is fine because it's only t
             J = dualcache(similar(u0, numindvar, numindvar),
                 ForwardDiff.pickchunksize(length(u0)))
