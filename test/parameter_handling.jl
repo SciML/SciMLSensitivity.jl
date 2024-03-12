@@ -1,31 +1,29 @@
 using SciMLSensitivity, Lux, Random, Zygote, NonlinearSolve, OrdinaryDiffEq, Test
 
-@static if VERSION ≥ v"1.9"
-    @info "Testing Nonlinear Solve Adjoint with Nested Parameters"
+@info "Testing Nonlinear Solve Adjoint with Nested Parameters"
 
-    const model_nls = Chain(Dense(2 => 2, tanh), Dense(2 => 2))
-    ps, st = Lux.setup(Random.default_rng(), model_nls)
-    const st_nls = st
+const model_nls = Chain(Dense(2 => 2, tanh), Dense(2 => 2))
+ps, st = Lux.setup(Random.default_rng(), model_nls)
+const st_nls = st
 
-    x = ones(Float32, 2, 3)
+x = ones(Float32, 2, 3)
 
-    nlprob(u, p) = first(model_nls(u, p, st_nls)) .- u
+nlprob(u, p) = first(model_nls(u, p, st_nls)) .- u
 
-    prob = NonlinearProblem(nlprob, zeros(2, 3), ps)
+prob = NonlinearProblem(nlprob, zeros(2, 3), ps)
 
-    @test_nowarn solve(prob, NewtonRaphson())
+@test_nowarn solve(prob, NewtonRaphson())
 
-    gs = only(Zygote.gradient(ps) do ps
-        prob = NonlinearProblem(nlprob, zero.(x), ps)
-        sol = solve(prob, NewtonRaphson())
-        return sum(sol.u)
-    end)
+gs = only(Zygote.gradient(ps) do ps
+    prob = NonlinearProblem(nlprob, zero.(x), ps)
+    sol = solve(prob, NewtonRaphson())
+    return sum(sol.u)
+end)
 
-    @test gs.layer_1.weight !== nothing
-    @test gs.layer_1.bias !== nothing
-    @test gs.layer_2.weight !== nothing
-    @test gs.layer_2.bias !== nothing
-end
+@test gs.layer_1.weight !== nothing
+@test gs.layer_1.bias !== nothing
+@test gs.layer_2.weight !== nothing
+@test gs.layer_2.bias !== nothing
 
 @info "Testing Gauss Adjoint with Nested Parameters"
 
@@ -43,7 +41,7 @@ prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ps)
 
 gs = only(Zygote.gradient(ps) do ps
     prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ps)
-    sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(; autodiff = ZygoteVJP()))
+    sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(; autojacvec = ZygoteVJP()))
     return sum(last(sol.u))
 end)
 
