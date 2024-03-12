@@ -152,7 +152,7 @@ end
 
     if GROUP == "DiffEq"
         @testset "DiffEq" begin
-            activate_gpu_env()
+            activate_diffeq_env()
             @time @safetestset "Default DiffEq Alg" include("diffeq/default_alg_diff.jl")
         end
     end
