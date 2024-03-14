@@ -168,6 +168,11 @@ struct FakeIntegrator{uType, P, tType, tprevType}
     tprev::tprevType
 end
 
+function Base.getproperty(fi::FakeIntegrator, s::Symbol)
+    s === :tdir && return sign(fi.t - fi.tprev)
+    return getfield(fi, s)
+end
+
 struct CallbackSensitivityFunction{fType, Alg <: AbstractOverloadingSensitivityAlgorithm,
     C <: AdjointDiffCache, pType} <: SensitivityFunction
     f::fType

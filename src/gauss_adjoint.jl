@@ -490,7 +490,7 @@ function (S::GaussIntegrand)(out, t, λ)
         y = sol(t)
     end
     vec_pjac!(out, λ, y, t, S)
-    out .*= -1
+    out = recursive_neg!(out)
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
         out .+= dgdp_cache
