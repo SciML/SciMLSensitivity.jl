@@ -387,8 +387,8 @@ end
 
 TruncatedStacktraces.@truncate_stacktrace InterpolatingAdjoint
 
-function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
-        vjp) where {CS, AD, FDT}
+function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, VJP},
+        vjp) where {CS, AD, FDT, VJP}
     InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
         sensealg.noisemixing)
 end
