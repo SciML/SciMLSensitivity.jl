@@ -94,8 +94,8 @@ For this function, notice we have that:
 
 ```math
 \begin{aligned}
-dg_{1}&=1-u_{1} \\
-dg_{2}&=1-u_{2} \\
+dg_{1}&=u_{1}-1 \\
+dg_{2}&=u_{2}-1 \\
 & \quad \vdots
 \end{aligned}
 ```
@@ -103,7 +103,7 @@ dg_{2}&=1-u_{2} \\
 and thus:
 
 ```@example directsense
-dg(out, u, p, t, i) = (out .= 1.0 .- u)
+dg(out, u, p, t, i) = (out .= u .- 1.0)
 ```
 
 Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`.
