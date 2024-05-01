@@ -324,6 +324,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                                              x[1] != :save_end && x[1] != :save_idxs,
         prob.kwargs))
 
+    @show p
     if haskey(kwargs, :callback)
         cb = track_callbacks(CallbackSet(kwargs[:callback]), prob.tspan[1], prob.u0, prob.p,
             sensealg)
