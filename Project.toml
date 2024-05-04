@@ -44,7 +44,7 @@ TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-ADTypes = "0.1, 0.2, 1"
+ADTypes = "1"
 Adapt = "1.0, 2.0, 3.0, 4"
 AlgebraicMultigrid = "0.6.0"
 Aqua = "0.8.4"
