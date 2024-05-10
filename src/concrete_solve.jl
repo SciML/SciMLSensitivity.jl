@@ -9,29 +9,25 @@ const STACKTRACE_WITH_VJPWARN = Ref(false)
 function inplace_vjp(prob, u0, p, verbose)
     du = zero(u0)
 
-    ez = if Sys.iswindows()
-        false
-        else try
-            f = unwrapped_f(prob.f)
+    ez = try
+        f = unwrapped_f(prob.f)
 
-            function adfunc(out, u, _p, t)
-                f(out, u, _p, t)
-                nothing
-            end
-            Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
-                Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
-            true
-        catch e
-            if verbose || have_not_warned_vjp[]
-                @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
-                STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
-                println()
-                have_not_warned_vjp[] = false
-            end
-            false
+        function adfunc(out, u, _p, t)
+            f(out, u, _p, t)
+            nothing
         end
+        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
+            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
+        true
+    catch e
+        if verbose || have_not_warned_vjp[]
+            @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+            STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
+            println()
+            have_not_warned_vjp[] = false
+        end
+        false
     end
-
     if ez
         return EnzymeVJP()
     end
