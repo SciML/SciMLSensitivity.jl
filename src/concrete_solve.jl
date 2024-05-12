@@ -199,7 +199,7 @@ end
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
         SciMLBase.AbstractSDEProblem,
         SciMLBase.AbstractRODEProblem},
-    alg, sensealg::Nothing, u0, p,
+    alg, sensealg::Nothing, u0, _p,
     originator::SciMLBase.ADOriginator, args...;
     verbose = true, kwargs...)
     if haskey(kwargs, :callback)
@@ -208,20 +208,24 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         has_cb = false
     end
 
-    if !SciMLStructures.isscimlstructure(p)
+    if !SciMLStructures.isscimlstructure(_p)
         error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
   
-    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), _p)
+    _, ssback = Zygote.pullback(_p) do p
+	    t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+	    t
+    end
 
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...; verbose,
+    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, _p,
+        originator::SciMLBase.ADOriginator, args...; verbose, ssback,
         kwargs...)
 end
 
@@ -259,6 +263,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     else
         default_sensealg = ForwardDiffSensitivity()
     end
+    error()
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         kwargs...)
@@ -324,7 +329,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                                              x[1] != :save_end && x[1] != :save_idxs,
         prob.kwargs))
 
-    @show p
     if haskey(kwargs, :callback)
         cb = track_callbacks(CallbackSet(kwargs[:callback]), prob.tspan[1], prob.u0, prob.p,
             sensealg)
@@ -696,10 +700,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     u0, p, originator::SciMLBase.ADOriginator,
     args...; saveat = eltype(prob.tspan)[],
     kwargs...) where {CS, CTS}
-    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(ForwardDiffSensitivityParameterCompatibilityError())
-    end
+    # if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    #     throw(ForwardDiffSensitivityParameterCompatibilityError())
+    # end
 
     if saveat isa Number
         _saveat = prob.tspan[1]:saveat:prob.tspan[2]
@@ -716,9 +720,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     ts = sol.t
 
     function forward_sensitivity_backpass(Δ)
+        tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        Δp = Δ.prob.p[1]
+
         if !(p === nothing || p === DiffEqBase.NullParameters())
             dp = @thunk begin
-                chunk_size = if CS === 0 && length(p) < 12
+                # tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+
+                chunk_size = if CS === 0 && length(tunables) < 12
                     length(p)
                 elseif CS !== 0
                     CS
@@ -729,31 +738,37 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 num_chunks = length(p) ÷ chunk_size
                 num_chunks * chunk_size != length(p) && (num_chunks += 1)
 
-                pparts = typeof(p[1:1])[]
+                # pparts = typeof(p[1:1])[]
+                # MTKParameters no longer has a defined uniform element type
+                # as different portions can have different types
+                # MTKParameters actually only defines methods to forward the various portions
+                # so the calculation on the specfic arrays is (hopefully) type stable,
+                # but the overall code execution may not be
+                pparts = []
                 for j in 0:(num_chunks - 1)
                     local chunk
-                    if ((j + 1) * chunk_size) <= length(p)
+                    if ((j + 1) * chunk_size) <= length(tunables)
                         chunk = ((j * chunk_size + 1):((j + 1) * chunk_size))
-                        pchunk = vec(p)[chunk]
+                        pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{chunk_size}())
                     else
-                        chunk = ((j * chunk_size + 1):length(p))
-                        pchunk = vec(p)[chunk]
+                        chunk = ((j * chunk_size + 1):length(tunables))
+                        pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{length(chunk)}())
                     end
 
                     pdualvec = if j == 0
-                        vcat(pdualpart, p[((j + 1) * chunk_size + 1):end])
+                        vcat(pdualpart, tunables[((j + 1) * chunk_size + 1):end])
                     elseif j == num_chunks - 1
-                        vcat(p[1:(j * chunk_size)], pdualpart)
+                        vcat(tunables[1:(j * chunk_size)], pdualpart)
                     else
-                        vcat(p[1:(j * chunk_size)], pdualpart,
-                            p[(((j + 1) * chunk_size) + 1):end])
+                        vcat(tunables[1:(j * chunk_size)], pdualpart,
+                            tunables[(((j + 1) * chunk_size) + 1):end])
                     end
 
-                    pdual = ArrayInterface.restructure(p, pdualvec)
+                    pdual = ArrayInterface.restructure(tunables, pdualvec)
                     u0dual = convert.(eltype(pdualvec), u0)
 
                     if (convert_tspan(sensealg) === nothing &&
@@ -836,8 +851,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
                         else
-                            v = @view Δ[.., i]
+                            # v = @view Δ[.., i]
+                            v = @view Δ.u[.., i]
                         end
+                        v = v[]
                         if !(Δ isa NoTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
@@ -850,7 +867,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     end
                     push!(pparts, vec(_dp))
                 end
-                ArrayInterface.restructure(p, reduce(vcat, pparts))
+                ArrayInterface.restructure(tunables, reduce(vcat, pparts))
             end
         else
             dp = nothing
@@ -904,10 +921,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     u0dual = ArrayInterface.restructure(u0, u0dualvec)
                 end
 
-                if p === nothing || p === DiffEqBase.NullParameters()
-                    pdual = p
+                if tunables === nothing || tunables === DiffEqBase.NullParameters()
+                    pdual = tunables
                 else
-                    pdual = convert.(eltype(u0dual), p)
+                    pdual = convert.(eltype(u0dual), tunables)
                 end
 
                 if (convert_tspan(sensealg) === nothing &&
@@ -990,8 +1007,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
                     else
-                        v = @view Δ[.., i]
+                        v = @view Δ.u[.., i]
                     end
+                    v = v[]
                     if !(Δ isa NoTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
@@ -1020,7 +1038,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             (NoTangent(), NoTangent(), unthunk(du0), unthunk(dp), NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+		(NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:ssback](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
@@ -1053,6 +1071,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     u0, p, originator::SciMLBase.ADOriginator,
     args...; kwargs...)
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+
+    error("ZygoteAdjoint does not currently support the specified problem type. Please open an issue.")
     Zygote.pullback((u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
             sensealg = SensitivityADPassThrough(),
             kwargs_filtered...), u0,
