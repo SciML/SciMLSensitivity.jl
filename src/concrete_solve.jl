@@ -732,20 +732,20 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
         Δp = Δ.prob.p[1]
 
-        if !(p === nothing || p === DiffEqBase.NullParameters())
+        if !(tunables === nothing || p === DiffEqBase.NullParameters())
             dp = @thunk begin
                 # tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 
                 chunk_size = if CS === 0 && length(tunables) < 12
-                    length(p)
+                    length(tunables)
                 elseif CS !== 0
                     CS
                 else
                     12
                 end
 
-                num_chunks = length(p) ÷ chunk_size
-                num_chunks * chunk_size != length(p) && (num_chunks += 1)
+                num_chunks = length(tunables) ÷ chunk_size
+                num_chunks * chunk_size != length(tunables) && (num_chunks += 1)
 
                 # pparts = typeof(p[1:1])[]
                 # MTKParameters no longer has a defined uniform element type
@@ -863,7 +863,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                             # v = @view Δ[.., i]
                             v = @view Δ.u[.., i]
                         end
-                        v = v[]
+                        v = size(v) == () ? v[] : v
                         if !(Δ isa NoTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
@@ -1019,7 +1019,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     else
                         v = @view Δ.u[.., i]
                     end
-                    v = v[]
+                    v = size(v) == () ? v[] : v
                     if !(Δ isa NoTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
