@@ -215,7 +215,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     end
   
     p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), _p)
-    _, ssback = Zygote.pullback(_p) do p
+    _, repack_adjoint = Zygote.pullback(_p) do p
 	    t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 	    t
     end
@@ -225,7 +225,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, _p,
-        originator::SciMLBase.ADOriginator, args...; verbose, ssback,
+        originator::SciMLBase.ADOriginator, args...; verbose, repack_adjoint,
         kwargs...)
 end
 
@@ -721,7 +721,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     function forward_sensitivity_backpass(Δ)
         tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
-        Δp = Δ.prob.p[1]
 
         if !(tunables === nothing || p === DiffEqBase.NullParameters())
             dp = @thunk begin
@@ -1035,10 +1034,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), unthunk(du0), unthunk(dp), NoTangent(),
+            (NoTangent(), NoTangent(), unthunk(du0), kwargs[:repack_adjoint](unthunk(dp))[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-		(NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:ssback](dp)[1], NoTangent(),
+		(NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
