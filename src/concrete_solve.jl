@@ -854,7 +854,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                             v = @view Δ.u[.., i]
                         end
                         v = size(v) == () ? v[] : v
-                        if !(Δ isa NoTangent)
+                        if v isa ZeroTangent
+                            zero(p)
+                        elseif !(Δ isa NoTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
                             else
@@ -1009,7 +1011,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         v = @view Δ.u[.., i]
                     end
                     v = size(v) == () ? v[] : v
-                    if !(Δ isa NoTangent)
+                    if v isa ZeroTangent
+                        zero(u0)
+                    elseif !(Δ isa NoTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
                         else
