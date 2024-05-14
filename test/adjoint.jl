@@ -1065,15 +1065,15 @@ reference_sol = ForwardDiff.gradient(
         sol -> sum(last, sol.u)), vec(p))
 
 for salg in [
-        QuadratureAdjoint(),
-        InterpolatingAdjoint(),
-        BacksolveAdjoint(),
-        GaussAdjoint()
-    ]
+    QuadratureAdjoint(),
+    InterpolatingAdjoint(),
+    BacksolveAdjoint(),
+    GaussAdjoint()
+]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
         reltol = 1e-14, sensealg = salg,
         maxiters = Int(1e6))
-    
+
     @test res'≈reference_sol rtol=1e-7
 end

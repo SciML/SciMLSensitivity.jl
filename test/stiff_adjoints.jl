@@ -207,10 +207,10 @@ if VERSION >= v"1.7-"
         dp1 = Zygote.gradient(p -> loss(p, ForwardDiffSensitivity()), p)[1]
         @test dp≈dp1 rtol=1e-2
         if SciMLBase.forwarddiffs_model(solver)
-            @test_broken Zygote.gradient(
+            @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1] isa Vector
-            @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
-                         Vector
+            @test Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
+                  Vector
         else
             dp1 = Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1]
