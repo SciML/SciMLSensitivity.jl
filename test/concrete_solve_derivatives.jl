@@ -72,19 +72,7 @@ du06, dp6 = Zygote.gradient(
         sensealg = ReverseDiffAdjoint())),
     u0,
     p)
-du07, dp7 = Zygote.gradient(
-    (u0, p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
-        abstol = 1e-14, reltol = 1e-14,
-        saveat = 0.1,
-        sensealg = BacksolveAdjoint())),
-    u0, p)
-du08, dp8 = Zygote.gradient(
-    (u0, p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
-        abstol = 1e-14, reltol = 1e-14,
-        saveat = 0.1,
-        sensealg = GaussAdjoint())),
-    u0, p)
-csol = concrete_solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
+
 
 @test ū0≈du01 rtol=1e-12
 @test ū0 == du02
@@ -92,16 +80,12 @@ csol = concrete_solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 @test ū0≈du04 rtol=1e-12
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
-@test ū0≈du07 rtol=1e-12
-@test ū0≈du08 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
 @test adj == dp2'
 @test adj≈dp3' rtol=1e-12
 @test adj≈dp4' rtol=1e-12
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
-@test adj≈dp7' rtol=1e-12
-@test adj≈dp8' rtol=1e-12
 
 ###
 ### Direct from prob

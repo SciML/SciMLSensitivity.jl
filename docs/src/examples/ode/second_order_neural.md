@@ -51,7 +51,7 @@ end
 
 l1 = loss_n_ode(ps)
 
-callback = function (p, l, pred)
+callback = function (state, l, pred)
     println(l)
     l < 0.01
 end

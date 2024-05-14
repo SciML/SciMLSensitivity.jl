@@ -273,11 +273,11 @@ end
 # burn-in loss
 l = loss(p_nn)
 # callback to visualize training
-visualization_callback = function (p, l; doplot = false)
+visualization_callback = function (state, l; doplot = false)
     println(l)
 
     if doplot
-        pl, _ = visualize(p)
+        pl, _ = visualize(state.u)
         display(pl)
     end
 
@@ -630,11 +630,11 @@ function visualize(p_nn; alg = EM())
     return pl, loss
 end
 # callback to visualize training
-visualization_callback = function (p, l; doplot = false)
+visualization_callback = function (state, l; doplot = false)
     println(l)
 
     if doplot
-        pl, _ = visualize(p)
+        pl, _ = visualize(state.u)
         display(pl)
     end
 

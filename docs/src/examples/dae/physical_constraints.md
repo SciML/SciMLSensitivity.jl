@@ -56,7 +56,7 @@ function loss_stiff_ndae(p)
     return loss, pred
 end
 
-# callback = function (p, l, pred) #callback function to observe training
+# callback = function (state, l, pred) #callback function to observe training
 #   display(l)
 #   return false
 # end
@@ -196,7 +196,7 @@ The optimizer is `BFGS`(see below).
 The callback function displays the loss during training.
 
 ```@example dae2
-callback = function (p, l, pred) #callback function to observe training
+callback = function (state, l, pred) #callback function to observe training
     display(l)
     return false
 end

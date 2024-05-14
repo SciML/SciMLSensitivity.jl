@@ -14,14 +14,14 @@ function f(a)
     _prob = remake(prob, p = [a[1]], saveat = savetimes)
     predicted = solve(_prob, Tsit5(), sensealg = InterpolatingAdjoint(), abstol = 1e-12,
         reltol = 1e-12)
-    sum(predicted[end])
+    sum(predicted.u[end])
 end
 
 function f2(a)
     _prob = remake(prob, p = [a[1]], saveat = savetimes)
     predicted = solve(_prob, Tsit5(), sensealg = ForwardDiffSensitivity(), abstol = 1e-12,
         reltol = 1e-12)
-    sum(predicted[end])
+    sum(predicted.u[end])
 end
 
 using Zygote
