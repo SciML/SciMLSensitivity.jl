@@ -144,9 +144,22 @@ function automatic_sensealg_choice(
             if verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
-            GaussAdjoint(autodiff = false, autojacvec = vjp)
+            if p === nothing || p === DiffEqBase.NullParameters()
+                # QuadratureAdjoint skips all p calculations until the end
+                # So it's the fastest when there are no parameters
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                GaussAdjoint(autodiff = false, autojacvec = vjp)
+            end
         else
-            GaussAdjoint(autojacvec = vjp)
+            if p === nothing || p === DiffEqBase.NullParameters()
+                # QuadratureAdjoint skips all p calculations until the end
+                # So it's the fastest when there are no parameters
+                QuadratureAdjoint(autojacvec = vjp)
+            else
+                GaussAdjoint(autojacvec = vjp)
+            end
+
         end
     else
         vjp = inplace_vjp(prob, u0, p, verbose)
@@ -155,9 +168,17 @@ function automatic_sensealg_choice(
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
-            GaussAdjoint(autodiff = false, autojacvec = vjp)
+            if p === nothing || p === DiffEqBase.NullParameters()
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                GaussAdjoint(autodiff = false, autojacvec = vjp)
+            end
         else
-            GaussAdjoint(autodiff = false, autojacvec = vjp)
+            if p === nothing || p === DiffEqBase.NullParameters()
+                QuadratureAdjoint(autojacvec = vjp)
+            else
+                GaussAdjoint(autojacvec = vjp)
+            end
         end
     end
     return default_sensealg
