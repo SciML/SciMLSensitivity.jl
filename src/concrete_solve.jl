@@ -318,8 +318,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     saveat = eltype(prob.tspan)[],
     save_idxs = nothing,
     kwargs...)
-    if !(sensealg isa GaussAdjoint) && !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    # if !(sensealg isa GaussAdjoint) && !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    #     throw(AdjointSensitivityParameterCompatibilityError())
+    # end
+    if !SciMLStructures.isscimlstructure(p)
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
