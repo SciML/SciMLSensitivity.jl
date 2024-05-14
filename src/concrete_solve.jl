@@ -148,16 +148,20 @@ function automatic_sensealg_choice(
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
-            else
+            elseif prob isa ODEProblem
                 GaussAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
             if p === nothing || p === DiffEqBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autojacvec = vjp)
-            else
+            elseif prob isa ODEProblem
                 GaussAdjoint(autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autojacvec = vjp)
             end
 
         end
@@ -170,14 +174,18 @@ function automatic_sensealg_choice(
             # If reverse-mode isn't working, just fallback to numerical vjps
             if p === nothing || p === DiffEqBase.NullParameters()
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
-            else
+            elseif prob isa ODEProblem
                 GaussAdjoint(autodiff = false, autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
             if p === nothing || p === DiffEqBase.NullParameters()
                 QuadratureAdjoint(autojacvec = vjp)
-            else
+            elseif prob isa ODEProblem
                 GaussAdjoint(autojacvec = vjp)
+            else
+                InterpolatingAdjoint(autojacvec = vjp)
             end
         end
     end
