@@ -473,8 +473,9 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         tmp4 .= λ
         out .= 0
         Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Duplicated(tmp3, tmp4),
-            y, Enzyme.Duplicated(p, out), t)
+            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+            Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
