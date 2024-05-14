@@ -210,7 +210,7 @@ if VERSION >= v"1.7-"
             @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1] isa Vector
             @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
-                  Vector
+                         Vector
         else
             dp1 = Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p)[1]
