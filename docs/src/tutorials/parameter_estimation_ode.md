@@ -42,7 +42,7 @@ function loss(p)
     return loss, sol
 end
 
-callback = function (p, l, pred)
+callback = function (state, l, pred)
     display(l)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
@@ -130,7 +130,7 @@ function. We will display the current loss and make a plot of the current
 situation:
 
 ```@example optode
-callback = function (p, l, pred)
+callback = function (state, l, pred)
     display(l)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
