@@ -11,6 +11,7 @@ requiring the user to do any of the setup.
 Current AD libraries whose calls are captured by the sensitivity
 system are:
 
+  - [Enzyme.jl](https://github.com/EnzymeAD/Enzyme.jl)
   - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
   - [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
   - [ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl)
@@ -267,7 +268,7 @@ can be a significant burden for large parameter problems. The
 `InterpolatingAdjoint` is thus a compromise between memory efficiency
 and compute efficiency, and is in the same spirit as [CVODES](https://computing.llnl.gov/projects/sundials).
 `GaussAdjoint` combines the advantages of both of these approaaches,
-having a small adjoint differential equation while not requiring 
+having a small adjoint differential equation while not requiring
 saving the full continuous solution of the adjoint problem.
 
 However, if the memory cost of the `InterpolatingAdjoint` is too high,

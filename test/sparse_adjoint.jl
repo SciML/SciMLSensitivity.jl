@@ -37,7 +37,8 @@ end
 @test isapprox(exp.(p),
     Zygote.gradient(p -> g(p; alg = ImplicitEuler(linsolve = LUFactorization())),
         p)[1]; atol = 1e-1, rtol = 1e-1)
-@test isapprox(exp.(p), g_helper(p; alg = ImplicitEuler(linsolve = UMFPACKFactorization()));
+@test isapprox(
+    exp.(p), g_helper(p; alg = ImplicitEuler(linsolve = UMFPACKFactorization()));
     atol = 1e-1, rtol = 1e-1)
 @test isapprox(exp.(p),
     Zygote.gradient(p -> g(p;

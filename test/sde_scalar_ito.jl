@@ -54,8 +54,7 @@ u0 = [1 / 6]
 # define problem in Ito sense
 Random.seed!(seed)
 probIto = SDEProblem(fIto,
-    σ, u0, trange, p
-    #noise=NG
+    σ, u0, trange, p    #noise=NG
 )
 
 # solve Ito sense
@@ -64,8 +63,7 @@ solIto = solve(probIto, EM(), dt = dt, adaptive = false, save_noise = true, save
 # define problem in Stratonovich sense
 Random.seed!(seed)
 probStrat = SDEProblem(SDEFunction(fStrat, σ),
-    σ, u0, trange, p
-    #noise=NG
+    σ, u0, trange, p    #noise=NG
 )
 
 # solve Strat sense

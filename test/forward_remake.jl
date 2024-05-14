@@ -20,7 +20,8 @@ u0_dist_extended = vcat(u0_dist, zeros(length(p) * length(u0)))
 function fiip_expe_SciML_forw_sen_SciML()
     prob = ODEForwardSensitivityProblem(fiip, u0, (0.0, 10.0), p, saveat = 0:10)
     prob_func = function (prob, i, repeat)
-        _prob = remake(prob, u0 = [isa(ui, Distribution) ? rand(ui) : ui for ui in u0_dist],
+        _prob = remake(
+            prob, u0 = [isa(ui, Distribution) ? rand(ui) : ui for ui in u0_dist],
             p = [isa(pj, Distribution) ? rand(pj) : pj for pj in p_dist])
         _prob
     end

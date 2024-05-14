@@ -40,18 +40,23 @@ end
 
     # Test if Forward and ReverseMode AD agree.
     Random.seed!(seed)
-    du0ReverseDiff, dpReverseDiff = Zygote.gradient((u0, p) -> sum(Array(solve(prob,
+    du0ReverseDiff, dpReverseDiff = Zygote.gradient(
+        (u0, p) -> sum(Array(solve(prob,
             RandomEM(),
             dt = dt,
             u0 = u0,
             p = p,
             saveat = t,
             sensealg = ReverseDiffAdjoint())) .^
-                                                                   2 / 2), u0, p)
+                       2 / 2),
+        u0,
+        p)
     Random.seed!(seed)
-    dForward = ForwardDiff.gradient((θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
+    dForward = ForwardDiff.gradient(
+        (θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
             u0 = θ[1:2], p = θ[3:4],
-            saveat = t)) .^ 2 / 2), [u0; p])
+            saveat = t)) .^ 2 / 2),
+        [u0; p])
 
     @info dForward
 
@@ -197,7 +202,8 @@ end
     Random.seed!(seed)
     sol = solve(prob, RandomEM(), dt = dt, save_noise = true, dense = true)
     Random.seed!(seed)
-    sol_long = solve(remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
+    sol_long = solve(
+        remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
         save_noise = true, dense = true)
 
     @test sol_long(t)≈sol(t) rtol=1e-12
@@ -295,18 +301,23 @@ end
 
     # Test if Forward and ReverseMode AD agree.
     Random.seed!(seed)
-    du0ReverseDiff, dpReverseDiff = Zygote.gradient((u0, p) -> sum(Array(solve(prob,
+    du0ReverseDiff, dpReverseDiff = Zygote.gradient(
+        (u0, p) -> sum(Array(solve(prob,
             RandomEM(),
             dt = dt,
             u0 = u0,
             p = p,
             saveat = t,
             sensealg = ReverseDiffAdjoint())) .^
-                                                                   2 / 2), u0, p)
+                       2 / 2),
+        u0,
+        p)
     Random.seed!(seed)
-    dForward = ForwardDiff.gradient((θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
+    dForward = ForwardDiff.gradient(
+        (θ) -> sum(Array(solve(prob, RandomEM(), dt = dt,
             u0 = θ[1:2], p = θ[3:4],
-            saveat = t)) .^ 2 / 2), [u0; p])
+            saveat = t)) .^ 2 / 2),
+        [u0; p])
 
     @info dForward
 
@@ -453,7 +464,8 @@ end
     Random.seed!(seed)
     sol = solve(prob, RandomEM(), dt = dt, save_noise = true, dense = true)
     Random.seed!(seed)
-    sol_long = solve(remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
+    sol_long = solve(
+        remake(prob, tspan = (tspan[1], tspan[2] + 10dt)), RandomEM(), dt = dt,
         save_noise = true, dense = true)
 
     @test sol_long(t)≈sol(t) rtol=1e-12

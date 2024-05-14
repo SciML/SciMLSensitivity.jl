@@ -132,19 +132,24 @@ using Zygote
         dp1 = Zygote.gradient((p) -> G(p), p)
         @test res1≈dp1[1] atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.Cos2Windowing())),
             p)
         @test res2≈dp1[1] atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test res3≈dp1[1] atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test res4≈dp1[1] atol=1e-10
 
         @show res1[1] res2[1] res3[1]
@@ -215,14 +220,18 @@ using Zygote
             sum(getindex.(_sol.u, 3)) + sum(p)
         end
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test resfw≈dp1[1] atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test resfw≈dp1[1] atol=1e-10
 
         @show resfw
@@ -271,23 +280,29 @@ using Zygote
 
         res = deepcopy(resfw)
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test res≈dp1[1] atol=1e-10
 
         resfw = shadow_forward(lss_problem,
-            sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+            sensealg = ForwardLSS(
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                     10.0,
                     5.0),
                 g = g))
         resskip = deepcopy(resfw)
 
-        dp1 = Zygote.gradient((p) -> G(p,
-                sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
+                sensealg = ForwardLSS(
+                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                         10.0,
                         5.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test resskip≈dp1[1] atol=1e-10
 
         @show res resskip
@@ -302,7 +317,8 @@ using Zygote
         res2 = shadow_forward(lss_problem)
         @test res≈res2 atol=1e-10
         res2 = shadow_forward(lss_problem,
-            sensealg = ForwardLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+            sensealg = ForwardLSS(
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                     10.0,
                     5.0),
                 g = g))
@@ -316,22 +332,28 @@ using Zygote
         res2 = shadow_adjoint(lss_problem)
         @test res≈res2 atol=1e-10
         res2 = shadow_adjoint(lss_problem,
-            sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+            sensealg = AdjointLSS(
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                     10.0,
                     5.0),
                 g = g))
         @test_broken resskip≈res2 atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
                 sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test res≈dp1[1] atol=1e-10
 
-        dp1 = Zygote.gradient((p) -> G(p,
-                sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+        dp1 = Zygote.gradient(
+            (p) -> G(p,
+                sensealg = AdjointLSS(
+                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                         10.0,
                         5.0),
-                    g = g)), p)
+                    g = g)),
+            p)
         @test res2≈dp1[1] atol=1e-10
 
         ## AdjointLSS with dgdu and dgd
@@ -344,7 +366,8 @@ using Zygote
         res2 = shadow_adjoint(lss_problem)
         @test res≈res2 atol=1e-10
         res2 = shadow_adjoint(lss_problem,
-            sensealg = AdjointLSS(LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
+            sensealg = AdjointLSS(
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0,
                     10.0,
                     5.0),
                 g = g))
@@ -469,9 +492,9 @@ end
 
         C = quadcache.C
         C[:, :, 1] .= [1.0 0.0
-            0.0 1.0]
+                       0.0 1.0]
         C[:, :, 2] .= [4.0 0.0
-            0.0 1.0]
+                       0.0 1.0]
 
         dwv = quadcache.dwv
         dwv[:, 1] .= [1.0, 0.0]
@@ -487,16 +510,16 @@ end
 
         R = quadcache.R
         R[:, :, 1] .= [Inf Inf
-            Inf Inf]
+                       Inf Inf]
         R[:, :, 2] .= [1.0 1.0
-            0.0 2.0]
+                       0.0 2.0]
 
         b = quadcache.b
         b[:, 1] = [Inf, Inf]
         b[:, 2] = [0.0, 1.0]
 
         @test SciMLSensitivity.nilsas_min(quadcache) ≈ [-1.0 0.0
-            -1.0 -1.0]
+                                                        -1.0 -1.0]
     end
     @testset "Lorenz" begin
         function lorenz!(du, u, p, t)

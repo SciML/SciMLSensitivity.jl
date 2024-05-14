@@ -11,7 +11,7 @@ terms must add to one. An example of this is as follows:
 ```@example dae
 using SciMLSensitivity
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-    OrdinaryDiffEq, Plots
+      OrdinaryDiffEq, Plots
 
 using Random
 rng = Random.default_rng()
@@ -27,8 +27,8 @@ end
 
 u₀ = [1.0, 0, 0]
 M = [1.0 0 0
-    0 1.0 0
-    0 0 0]
+     0 1.0 0
+     0 0 0]
 
 tspan = (0.0, 1.0)
 p = [0.04, 3e7, 1e4]
@@ -76,7 +76,7 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 ```@example dae2
 using SciMLSensitivity
 using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
-    OrdinaryDiffEq, Plots
+      OrdinaryDiffEq, Plots
 
 using Random
 rng = Random.default_rng()
@@ -104,8 +104,8 @@ end
 u₀ = [1.0, 0, 0]
 
 M = [1.0 0 0
-    0 1.0 0
-    0 0 0]
+     0 1.0 0
+     0 0 0]
 
 tspan = (0.0, 1.0)
 

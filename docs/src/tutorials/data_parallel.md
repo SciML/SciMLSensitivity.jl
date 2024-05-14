@@ -41,7 +41,7 @@ each column is an independent system:
 
 ```@example dataparallel
 u0 = Float32.([0 1 2
-    0 0 0])
+               0 0 0])
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())
 ```
@@ -53,7 +53,7 @@ GPU:
 
 ```@example dataparallel
 xs = Float32.([0 1 2
-    0 0 0])
+               0 0 0])
 prob = ODEProblem(f, gdev(u0), (0.0f0, 1.0f0), gdev(p))
 solve(prob, Tsit5())
 ```

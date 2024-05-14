@@ -21,7 +21,8 @@ function test_discrete_callback(cb, tstops, g)
     @show g(solve(prob, Tsit5(), callback = cb, tstops = tstops, abstol = abstol,
         reltol = reltol, saveat = savingtimes))
 
-    du01, dp1 = Zygote.gradient((u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du01, dp1 = Zygote.gradient(
+        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
@@ -29,13 +30,15 @@ function test_discrete_callback(cb, tstops, g)
                 convert_tspan = true))),
         u0, p)
 
-    dstuff1 = ForwardDiff.gradient((θ) -> g(solve(prob, Tsit5(), u0 = θ[1:1], p = θ[2:2],
+    dstuff1 = ForwardDiff.gradient(
+        (θ) -> g(solve(prob, Tsit5(), u0 = θ[1:1], p = θ[2:2],
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes)),
         [u0; p])
 
-    dstuff2 = FiniteDiff.finite_difference_gradient((θ) -> g(solve(prob, Tsit5(),
+    dstuff2 = FiniteDiff.finite_difference_gradient(
+        (θ) -> g(solve(prob, Tsit5(),
             u0 = θ[1:1], p = θ[2:2],
             callback = cb,
             tstops = tstops,

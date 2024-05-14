@@ -36,7 +36,8 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 
 @show length(sol_oop)
 
-res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
+res_u0, res_p = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 
@@ -67,7 +68,8 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 
 @show length(sol_oop)
 
-res_u0, res_p = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
+res_u0, res_p = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
 

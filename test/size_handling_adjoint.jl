@@ -49,7 +49,8 @@ end
 
 function loss(p; vjp)
     prob = ODEProblem(rhs!, f0, tspan, p)
-    sol = solve(prob, Midpoint(), saveat = tran, sensealg=InterpolatingAdjoint(autojacvec=vjp)) |> Array
+    sol = solve(prob, Midpoint(), saveat = tran,
+        sensealg = InterpolatingAdjoint(autojacvec = vjp)) |> Array
     l = sum(abs2, sol)
 
     return l

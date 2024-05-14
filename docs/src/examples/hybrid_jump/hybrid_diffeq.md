@@ -9,7 +9,7 @@ dynamical equations.
 
 ```@example
 using DiffEqFlux, ComponentArrays, Random,
-    Lux, OrdinaryDiffEq, Plots, Optimization, OptimizationOptimisers, DiffEqCallbacks
+      Lux, OrdinaryDiffEq, Plots, Optimization, OptimizationOptimisers, DiffEqCallbacks
 
 u0 = Float32[2.0; 0.0]
 datasize = 100
@@ -65,8 +65,10 @@ cba = function (p, l; doplot = false) #callback function to observe training
     return false
 end
 
-res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()),
-    ComponentArray(ps)), Adam(0.05); callback = cba, maxiters = 1000)
+res = solve(
+    OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()),
+        ComponentArray(ps)),
+    Adam(0.05); callback = cba, maxiters = 1000)
 ```
 
 ![Hybrid Universal Differential Equation](https://user-images.githubusercontent.com/1814174/91687561-08fc5900-eb2e-11ea-9f26-6b794e1e1248.gif)

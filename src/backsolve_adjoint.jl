@@ -14,7 +14,7 @@ end
 TruncatedStacktraces.@truncate_stacktrace ODEBacksolveSensitivityFunction
 
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-    noiseterm = false)
+        noiseterm = false)
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
 
@@ -114,20 +114,20 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing,
-    ::Val{RetCB} = Val(false);
-    checkpoints = sol.t,
-    callback = CallbackSet(),
-    z0 = nothing,
-    M = nothing,
-    nilss = nothing,
-    tspan = sol.prob.tspan,
-    kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing,
+        ::Val{RetCB} = Val(false);
+        checkpoints = sol.t,
+        callback = CallbackSet(),
+        z0 = nothing,
+        M = nothing,
+        nilss = nothing,
+        tspan = sol.prob.tspan,
+        kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
     # add homogeneous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
@@ -210,8 +210,8 @@ end
         Z1 = zzz(original_mm, numstates, numstates + numparams)
         Z2 = zzz(original_mm, numparams, numstates)
         mm = [copy(original_mm') Z1
-            Z2 II Z2
-            Z1 original_mm]
+              Z2 II Z2
+              Z1 original_mm]
     end
     jac_prototype = sol.prob.f.jac_prototype
     if !sense.discrete || jac_prototype === nothing
@@ -223,8 +223,8 @@ end
         Z1 = zzz(J, numstates, numstates + numparams)
         Z2 = zzz(J, numparams, numstates)
         adjoint_jac_prototype = [Ja Z1
-            Z2 II Z2
-            Z1 J]
+                                 Z2 II Z2
+                                 Z1 J]
     end
     odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
         jac_prototype = adjoint_jac_prototype)
@@ -236,17 +236,17 @@ end
 end
 
 @noinline function SDEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing;
-    checkpoints = sol.t,
-    callback = CallbackSet(),
-    corfunc_analytical = nothing, diffusion_jac = nothing,
-    diffusion_paramjac = nothing,
-    kwargs...) where {DG1, DG2, DG3, DG4, G}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing;
+        checkpoints = sol.t,
+        callback = CallbackSet(),
+        corfunc_analytical = nothing, diffusion_jac = nothing,
+        diffusion_paramjac = nothing,
+        kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -355,15 +355,15 @@ end
 end
 
 @noinline function RODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing;
-    checkpoints = sol.t,
-    callback = CallbackSet(),
-    kwargs...) where {DG1, DG2, DG3, DG4, G}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing;
+        checkpoints = sol.t,
+        callback = CallbackSet(),
+        kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -439,7 +439,7 @@ end
 end
 
 function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback,
-    duplicate_iterator_times = nothing)
+        duplicate_iterator_times = nothing)
     prob = sol.prob
     if duplicate_iterator_times !== nothing
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)
@@ -462,8 +462,8 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback,
 end
 
 function backsolve_checkpoint_callbacks(sensefun::NILSASSensitivityFunction, sol,
-    checkpoints, callback,
-    duplicate_iterator_times = nothing)
+        checkpoints, callback,
+        duplicate_iterator_times = nothing)
     prob = sol.prob
     if duplicate_iterator_times !== nothing
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)
