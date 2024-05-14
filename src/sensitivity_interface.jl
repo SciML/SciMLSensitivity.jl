@@ -356,13 +356,12 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 ```
 """
 function adjoint_sensitivities(sol, args...;
-    sensealg = InterpolatingAdjoint(),
-    verbose = true, kwargs...)
-
+        sensealg = InterpolatingAdjoint(),
+        verbose = true, kwargs...)
     if !SciMLStructures.isscimlstructure(sol.prob.p)
-      error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-              see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-              In particular, adjoint sensitivities only applies to `Tunable`.")
+        error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                In particular, adjoint sensitivities only applies to `Tunable`.")
     end
 
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
@@ -376,7 +375,8 @@ function adjoint_sensitivities(sol, args...;
         end
         if !has_cb
             _sensealg = if isinplace(sol.prob)
-                setvjp(sensealg, inplace_vjp(sol.prob, sol.prob.u0, mtkp, verbose, _p, repack))
+                setvjp(
+                    sensealg, inplace_vjp(sol.prob, sol.prob.u0, mtkp, verbose, _p, repack))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
@@ -398,15 +398,15 @@ function adjoint_sensitivities(sol, args...;
 end
 
 function _adjoint_sensitivities(sol, sensealg, alg;
-    t = nothing,
-    dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing,
-    g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    checkpoints = sol.t,
-    corfunc_analytical = nothing,
-    callback = nothing,
-    kwargs...)
+        t = nothing,
+        dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing,
+        g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        checkpoints = sol.t,
+        corfunc_analytical = nothing,
+        callback = nothing,
+        kwargs...)
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
     if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))

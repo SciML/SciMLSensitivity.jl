@@ -73,8 +73,10 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     return vjp
 end
 
-function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractSDEProblem}, u0, p, verbose, repack)
+function automatic_sensealg_choice(
+        prob::Union{SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractSDEProblem},
+        u0, p, verbose, repack)
     default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
                           !(eltype(p) <: ForwardDiff.Dual) &&
@@ -107,7 +109,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 if p === nothing || p isa SciMLBase.NullParameters
                     ReverseDiff.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
-                    ReverseDiff.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
+                    ReverseDiff.gradient(
+                        (u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
                 end
                 ReverseDiffVJP()
             catch e
@@ -125,7 +128,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 if p === nothing || p isa SciMLBase.NullParameters
                     Tracker.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
-                    Tracker.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
+                    Tracker.gradient(
+                        (u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
                 end
                 TrackerVJP()
             catch e
@@ -182,8 +186,9 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
     return default_sensealg
 end
 
-function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
-    verbose, repack)
+function automatic_sensealg_choice(
+        prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
+        verbose, repack)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
         # autodiff = false because forwarddiff fails on many GPU kernels
@@ -196,12 +201,13 @@ function automatic_sensealg_choice(prob::Union{NonlinearProblem, SteadyStateProb
     return default_sensealg
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractSDEProblem,
-        SciMLBase.AbstractRODEProblem},
-    alg, sensealg::Nothing, u0, _p,
-    originator::SciMLBase.ADOriginator, args...;
-    verbose = true, kwargs...)
+function DiffEqBase._concrete_solve_adjoint(
+        prob::Union{SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractRODEProblem},
+        alg, sensealg::Nothing, u0, _p,
+        originator::SciMLBase.ADOriginator, args...;
+        verbose = true, kwargs...)
     if haskey(kwargs, :callback)
         has_cb = kwargs[:callback] !== nothing
     else
@@ -213,11 +219,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
-  
+
     p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), _p)
     _, repack_adjoint = Zygote.pullback(_p) do p
-	    t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
-	    t
+        t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        t
     end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
@@ -229,20 +235,20 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::Union{
-        NonlinearProblem,
-        SteadyStateProblem,
-    }, alg,
-    sensealg::Nothing, u0, p,
-    originator::SciMLBase.ADOriginator, args...;
-    verbose = true, kwargs...)
-
+function DiffEqBase._concrete_solve_adjoint(
+        prob::Union{
+            NonlinearProblem,
+            SteadyStateProblem
+        }, alg,
+        sensealg::Nothing, u0, p,
+        originator::SciMLBase.ADOriginator, args...;
+        verbose = true, kwargs...)
     if !SciMLStructures.isscimlstructure(p)
         error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
-  
+
     p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
 
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
@@ -699,16 +705,18 @@ function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityE
 end
 
 # Generic Fallback for ForwardDiff
-function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEProblem,
-        SciMLBase.AbstractDAEProblem,
-        SciMLBase.AbstractDDEProblem,
-        SciMLBase.AbstractSDEProblem,
-        SciMLBase.AbstractSDDEProblem,
-        SciMLBase.AbstractRODEProblem}, alg,
-    sensealg::ForwardDiffSensitivity{CS, CTS},
-    u0, p, originator::SciMLBase.ADOriginator,
-    args...; saveat = eltype(prob.tspan)[],
-    kwargs...) where {CS, CTS}
+function DiffEqBase._concrete_solve_adjoint(
+        prob::Union{SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractDAEProblem,
+            SciMLBase.AbstractDDEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractSDDEProblem,
+            SciMLBase.AbstractRODEProblem},
+        alg,
+        sensealg::ForwardDiffSensitivity{CS, CTS},
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; saveat = eltype(prob.tspan)[],
+        kwargs...) where {CS, CTS}
     # if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
     #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     #     throw(ForwardDiffSensitivityParameterCompatibilityError())
@@ -1048,10 +1056,12 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), unthunk(du0), kwargs[:repack_adjoint](unthunk(dp))[1], NoTangent(),
+            (NoTangent(), NoTangent(), unthunk(du0),
+                kwargs[:repack_adjoint](unthunk(dp))[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-		(NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), du0,
+                kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
@@ -1090,7 +1100,8 @@ function DiffEqBase._concrete_solve_adjoint(
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
 
     error("ZygoteAdjoint does not currently support the specified problem type. Please open an issue.")
-    Zygote.pullback((u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
+    Zygote.pullback(
+        (u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
             sensealg = SensitivityADPassThrough(),
             kwargs_filtered...),
         u0,
