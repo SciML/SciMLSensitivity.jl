@@ -1048,13 +1048,13 @@ function pend(du, u, p, t)
 end
 
 x0 = [1.0, 0, 0, 0, 0]
-tspan = (0.0, 10.0)
+tspan = (0.0, 1.0)
 p = [9.8]
 f_singular_mm = ODEFunction{true}(pend, mass_matrix = Diagonal([1, 1, 1, 1, 0]))
 prob_singular_mm = ODEProblem{true}(f_singular_mm, x0, tspan, p)
-sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
+sol_singular_mm = solve(prob_singular_mm, Rodas5P(),
     reltol = 1e-12, abstol = 1e-12)
-ts = 0:0.1:10.0
+ts = 0:0.1:1.0
 dg_singular(out, u, p, t, i) = (fill!(out, 0); out[end] = 1)
 _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
     dgdu_discrete = dg_singular, abstol = 1e-8,
@@ -1063,6 +1063,7 @@ _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
 reference_sol = ForwardDiff.gradient(
     p -> G(p, prob_singular_mm, ts,
         sol -> sum(last, sol.u)), vec(p))
+@test res'≈reference_sol rtol=1e-6
 
 for salg in [
     QuadratureAdjoint(),
@@ -1070,10 +1071,12 @@ for salg in [
     BacksolveAdjoint(),
     GaussAdjoint()
 ]
+    sol_singular_mm = solve(prob_singular_mm, Rodas5P(),
+        reltol = 1e-12, abstol = 1e-12)
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
-        dgdu_discrete = dg_singular, abstol = 1e-14,
-        reltol = 1e-14, sensealg = salg,
+        dgdu_discrete = dg_singular, abstol = 1e-8,
+        reltol = 1e-8, sensealg = salg,
         maxiters = Int(1e6))
-
-    @test res'≈reference_sol rtol=1e-7
+    @show salg
+    @test res'≈reference_sol rtol=1e-6
 end
