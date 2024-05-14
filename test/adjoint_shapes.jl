@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, Zygote
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, ForwardDiff
 
 tspan = (0.0, 1.0)
 X = randn(3, 4)
@@ -67,4 +67,4 @@ function loss(p)
     sol = solve(prob, Tsit5(), dt = 0.01, sensealg = ReverseDiffAdjoint())
     sum(abs2, Array(sol))
 end
-Zygote.gradient(loss, p)
+Zygote.gradient(loss, p)[1][1] ≈ ForwardDiff.gradient(loss, p)[1]
