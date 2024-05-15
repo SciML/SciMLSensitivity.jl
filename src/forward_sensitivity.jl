@@ -158,7 +158,7 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
 end
 
 function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
-    ODEForwardSensitivityProblem(prob.f, prob.u0, prob.tspan, prob.p, alg; kwargs...)
+    ODEForwardSensitivityProblem(symbolic_container(prob), prob.u0, prob.tspan, parameter_values(prob), alg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
@@ -642,7 +642,7 @@ function SciMLBase.remake(
         f = nothing, tspan = nothing, u0 = nothing, p = nothing,
         kwargs...) where
         {uType, tType, isinplace, P, F, K}
-    _p = p === nothing ? prob.p : p
+    _p = p === nothing ? parameter_values(prob) : p
     _f = f === nothing ? prob.f.f : f
     _u0 = u0 === nothing ? prob.u0[1:(prob.f.numindvar)] : u0[1:(prob.f.numindvar)]
     _tspan = tspan === nothing ? prob.tspan : tspan
