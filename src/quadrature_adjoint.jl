@@ -241,6 +241,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     else
         pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
+        pJ .= false
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
@@ -316,6 +317,7 @@ end
 
 function (S::AdjointSensitivityIntegrand)(t)
     out = similar(S.p)
+    out .= false
     S(out, t)
 end
 
@@ -408,6 +410,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             iλ = zero(rcb.λ)
             out = zero(res')
             yy = similar(rcb.y)
+            yy .= false
             for (Δλa, tt) in rcb.Δλas
                 @unpack algevar_idxs = rcb.diffcache
                 iλ[algevar_idxs] .= Δλa
@@ -467,6 +470,7 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
     end
 
     _p = similar(integrand.p, size(integrand.p))
+    _p .= false
     wp(_p, integrand.p, integrand.y, t)
 
     if _p != integrand.p
