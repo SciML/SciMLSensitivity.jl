@@ -8,7 +8,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
 using SciMLSensitivity
-using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationNLopt,
+using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationOptimJL,
       OptimizationOptimisers, OrdinaryDiffEq, Random
 
 rng = Random.default_rng()
@@ -85,7 +85,7 @@ res1_uode = Optimization.solve(optprob, OptimizationOptimisers.Adam(0.01),
     callback = callback, maxiters = 500)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
-res2_uode = Optimization.solve(optprob2, NLopt.LD_LBFGS(), maxiters = 10000,
+res2_uode = Optimization.solve(optprob2, OptimizationOptimJL.BFGS(), maxiters = 10000,
     callback = callback)
 ```
 
