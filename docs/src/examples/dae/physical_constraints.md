@@ -10,7 +10,7 @@ terms must add to one. An example of this is as follows:
 
 ```@example dae
 using SciMLSensitivity
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimJL,
       OrdinaryDiffEq, Plots
 
 using Random
@@ -44,7 +44,6 @@ pinit, st = Lux.setup(rng, nn_dudt2)
 
 model_stiff_ndae = NeuralODEMM(nn_dudt2, (u, p, t) -> [u[1] + u[2] + u[3] - 1],
     tspan, M, Rodas5(autodiff = false), saveat = 0.1)
-model_stiff_ndae(u₀, ComponentArray(pinit), st)
 
 function predict_stiff_ndae(p)
     return model_stiff_ndae(u₀, p, st)[1]
@@ -66,7 +65,7 @@ l1 = first(loss_stiff_ndae(ComponentArray(pinit)))
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
+result_stiff = Optimization.solve(optprob, OptimizationOptimJL.BFGS(), maxiters = 100)
 ```
 
 ## Step-by-Step Description
@@ -75,7 +74,7 @@ result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
 
 ```@example dae2
 using SciMLSensitivity
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationNLopt,
+using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimJL,
       OrdinaryDiffEq, Plots
 
 using Random
@@ -211,5 +210,5 @@ Finally, training with `Optimization.solve` by passing: *loss function*, *model 
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_stiff_ndae(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, ComponentArray(pinit))
-result_stiff = Optimization.solve(optprob, NLopt.LD_LBFGS(), maxiters = 100)
+result_stiff = Optimization.solve(optprob, OptimizationOptimJL.BFGS(), maxiters = 100)
 ```

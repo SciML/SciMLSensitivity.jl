@@ -285,7 +285,7 @@ visualization_callback = function (state, l; doplot = false)
 end
 
 # Display the ODE with the initial parameter values.
-visualization_callback(p_nn, l; doplot = true)
+visualization_callback((;u=p_nn), l; doplot = true)
 
 ###################################
 # training loop
@@ -665,7 +665,7 @@ res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
     maxiters = 100)
 
 # plot optimized control
-visualization_callback(res.u, loss(res.u); doplot = true)
+visualization_callback((;u=res.u), loss(res.u); doplot = true)
 ```
 
 ![Evolution of the fidelity as a function of time](https://user-images.githubusercontent.com/42201748/107991039-10c59200-6fd6-11eb-8a97-a1c8d18a266b.png)
