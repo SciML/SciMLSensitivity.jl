@@ -32,13 +32,15 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         quad = false,
         noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
+    u0 = prob.u0
+    p = parameter_values(prob)
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
-        @unpack u0, p = prob
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
         #  @unpack tspan, u0, p = prob
     else
-        @unpack u0, p, tspan = prob
+        tspan = prob.tspan
     end
 
     isinplace = DiffEqBase.isinplace(prob)
@@ -60,7 +62,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     if prob.p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
     else
-        _p = prob.p
+        _p = tunables
     end
 
     _t = tspan[2]
@@ -68,7 +70,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     # Remove any function wrappers: it breaks autodiff
     unwrappedf = unwrapped_f(f)
 
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : sum(length, tunables)
     numindvar = length(u0)
     isautojacvec = get_jacvec(sensealg)
 
@@ -126,10 +128,10 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 dg_val .= false
             end
         else
-            pgpu = UGradientWrapper(g, _t, p)
-            pgpu_config = build_grad_config(sensealg, pgpu, u0, p)
+            pgpu = UGradientWrapper(g, _t, tunables)
+            pgpu_config = build_grad_config(sensealg, pgpu, u0, tunables)
             pgpp = ParamGradientWrapper(g, _t, u0)
-            pgpp_config = build_grad_config(sensealg, pgpp, p, p)
+            pgpp_config = build_grad_config(sensealg, pgpp, tunables, tunables)
             pg = (pgpu, pgpp)
             pg_config = (pgpu_config, pgpp_config)
             dg_val = (similar(u0, numindvar), similar(u0, numparams))
@@ -148,16 +150,16 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         if isinplace
             if !isRODE
-                uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, p)
+                uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, tunables)
             else
-                uf = RODEUJacobianWrapper(unwrappedf, _t, p, _W)
+                uf = RODEUJacobianWrapper(unwrappedf, _t, tunables, _W)
             end
             jac_config = build_jac_config(sensealg, uf, u0)
         else
             if !isRODE
-                uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, p)
+                uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, tunables)
             else
-                uf = RODEUDerivativeWrapper(unwrappedf, _t, p, _W)
+                uf = RODEUDerivativeWrapper(unwrappedf, _t, tunables, _W)
             end
             jac_config = nothing
         end
@@ -189,14 +191,14 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             tape = nothing
             paramjac_config = tape
         else
-            paramjac_config = get_paramjac_config(autojacvec, p, unwrappedf, y, _p, _t;
+            paramjac_config = get_paramjac_config(autojacvec, tunables, unwrappedf, y, _p, _t;
                 isinplace = isinplace,
                 isRODE = isRODE, _W = _W)
         end
 
         pf = nothing
     elseif autojacvec isa EnzymeVJP
-        paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
+        paramjac_config = get_paramjac_config(autojacvec, tunables, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif DiffEqBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
@@ -211,7 +213,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             else
                 pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
             end
-            paramjac_config = build_param_jac_config(sensealg, pf, y, p)
+            paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
         else
             if !isRODE
                 pf = ParamGradientWrapper(unwrappedf, _t, y)
@@ -285,7 +287,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
-                        uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, p)
+                        uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, tunables)
                         jac_noise_config = build_jac_config(sensealg, uf, u0)
                     else
                         jac_noise_config = nothing
@@ -293,20 +295,20 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 else
                     pf = ParamNonDiagNoiseJacobianWrapper(unwrappedf, _t, y,
                         prob.noise_rate_prototype)
-                    uf = UNonDiagNoiseJacobianWrapper(unwrappedf, _t, p,
+                    uf = UNonDiagNoiseJacobianWrapper(unwrappedf, _t, tunables,
                         prob.noise_rate_prototype)
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
                 end
-                paramjac_noise_config = build_param_jac_config(sensealg, pf, y, p)
+                paramjac_noise_config = build_param_jac_config(sensealg, pf, y, tunables)
             else
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = ParamGradientWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
-                        uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, p)
+                        uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, tunables)
                     end
                 else
                     pf = ParamNonDiagNoiseGradientWrapper(unwrappedf, _t, y)
-                    uf = UNonDiagNoiseGradientWrapper(unwrappedf, _t, p)
+                    uf = UNonDiagNoiseGradientWrapper(unwrappedf, _t, tunables)
                 end
                 paramjac_noise_config = nothing
                 jac_noise_config = nothing
