@@ -106,8 +106,7 @@ end
 @test_broken Zygote.gradient(loss7, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss9, zeros(123))[1] == zeros(123)
-@test_throws SciMLSensitivity.ZygoteVJPNothingError Zygote.gradient(loss10,
-    zeros(123))[1]==zeros(123)
+@test Zygote.gradient(loss10, zeros(123))[1] == zeros(123)
 
 ## OOP tests for initial condition
 function loss_oop(u0; sensealg = nothing)

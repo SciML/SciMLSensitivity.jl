@@ -73,7 +73,6 @@ du06, dp6 = Zygote.gradient(
     u0,
     p)
 
-
 @test ū0≈du01 rtol=1e-12
 @test ū0 == du02
 @test ū0≈du03 rtol=1e-12
