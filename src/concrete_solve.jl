@@ -328,11 +328,16 @@ function DiffEqBase._concrete_solve_adjoint(
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
         kwargs...)
-    if !(sensealg isa GaussAdjoint) &&
-       !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    # if !(sensealg isa GaussAdjoint) &&
+    #    !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    #     throw(AdjointSensitivityParameterCompatibilityError())
+    # end
+    if !isscimlstructure(p)
         throw(AdjointSensitivityParameterCompatibilityError())
     end
+
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 
     # Remove saveat, etc. from kwargs since it's handled separately
     # and letting it jump back in there can break the adjoint
@@ -587,7 +592,7 @@ function DiffEqBase._concrete_solve_adjoint(
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
-             dp isa AbstractArray ? reshape(dp', size(p)) : dp
+             dp isa AbstractArray ? reshape(dp', size(first(tunables))) : dp
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
@@ -1329,6 +1334,9 @@ function DiffEqBase._concrete_solve_adjoint(
     local sol
 
     function reversediff_adjoint_forwardpass(_u0, _p)
+        if _p isa AbstractArray
+            _p = replace!(Tunable(), parameter_values(prob), _p)
+        end
         if (convert_tspan(sensealg) === nothing &&
             ((haskey(kwargs, :callback) && has_continuous_callback(kwargs[:callback])))) ||
            (convert_tspan(sensealg) !== nothing && convert_tspan(sensealg))

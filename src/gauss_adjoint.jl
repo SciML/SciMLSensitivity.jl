@@ -467,7 +467,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        recursive_copyto!(out, tmp[1])
+        recursive_copyto!(out, ArrayPartition(tmp[1]))
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ
