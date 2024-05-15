@@ -163,7 +163,6 @@ function automatic_sensealg_choice(
             else
                 InterpolatingAdjoint(autojacvec = vjp)
             end
-
         end
     else
         vjp = inplace_vjp(prob, u0, p, verbose)
