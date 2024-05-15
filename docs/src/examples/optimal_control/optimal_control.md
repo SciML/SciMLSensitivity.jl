@@ -36,7 +36,7 @@ will first reduce control cost (the last term) by 10x in order to bump the netwo
 of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
-using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationNLopt,
+using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationOptimJL,
       OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
@@ -95,7 +95,7 @@ optprob = Optimization.OptimizationProblem(optf, θ)
 res1 = Optimization.solve(optprob, OptimizationOptimisers.Adam(0.01), callback = cb, maxiters = 100)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
-res2 = Optimization.solve(optprob2, NLopt.LD_LBFGS(), callback = cb, maxiters = 100)
+res2 = Optimization.solve(optprob2, OptimizationOptimJL.BFGS(), callback = cb, maxiters = 100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
@@ -111,7 +111,7 @@ end
 optf3 = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
-res3 = Optimization.solve(optprob3, NLopt.LD_LBFGS(), maxiters = 100)
+res3 = Optimization.solve(optprob3, OptimizationOptimJL.BFGS(), maxiters = 100)
 ```
 
 Now let's see what we received:
