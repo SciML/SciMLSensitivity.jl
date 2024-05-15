@@ -210,7 +210,7 @@ _, easy_res22 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg
     reltol = 1e-14,
     sensealg = QuadratureAdjoint(autojacvec = false,
         abstol = 1e-14,
-        reltol = 1e-14))[1]
+        reltol = 1e-14))
 _, easy_res2 = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
