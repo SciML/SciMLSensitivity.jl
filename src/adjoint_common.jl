@@ -52,9 +52,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     end
 
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
-        y = copy(sol.u)
+        y = copy(state_values(sol))
     else
-        y = copy(sol.u[end])
+        y = copy(state_values(sol)[end])
     end
 
     if prob.p isa DiffEqBase.NullParameters

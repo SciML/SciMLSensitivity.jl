@@ -539,7 +539,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     adj_sol = solve(
         adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
-        save_start = false, save_end = true, saveat = eltype(sol.u[1])[], tstops = tstops,
+        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
         callback = CallbackSet(cb, cb2), kwargs...)
     res = integrand_values.integrand
 
@@ -557,7 +557,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         end
     end
 
-    return adj_sol.u[end], __maybe_adjoint(res)
+    return state_values(adj_sol)[end], __maybe_adjoint(res)
 end
 
 __maybe_adjoint(x::AbstractArray) = x'

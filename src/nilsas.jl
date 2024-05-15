@@ -93,7 +93,7 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
 
     # homogeneous + inhomogeneous adjoint sensitivity problem
     # assign initial values to y, vstar, w
-    y = copy(sol.u[end])
+    y = copy(state_values(sol)[end])
     z0 = terminate_conditions(adjoint_sensealg, rng, f, y, p, tspan[2], numindvar,
         numparams, M)
     nilss = NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu_continuous,
@@ -300,7 +300,7 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
             checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
             tspan = (t1, t2), kwargs...)
         _sol = solve(_prob, alg; save_everystep = false, save_start = false,
-            saveat = eltype(sol.u[1])[],
+            saveat = eltype(state_values(sol, 1))[],
             dt = dtsave,
             tstops = checkpoints,
             callback = cb,
@@ -319,7 +319,7 @@ function renormalize!(prob::NILSASProblem, sol, z0, iseg)
     @unpack numparams, numindvar = nilss
     @unpack R, b = quadcache
 
-    x = sol.u[end].x
+    x = state_values(sol)[end].x
     # vstar_right (inhomogeneous adjoint on the rhs of the interface)
     vstar = @view x[1][1:numindvar]
     # homogeneous adjoint on the rhs of the interface

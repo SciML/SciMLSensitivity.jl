@@ -460,7 +460,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         S = adj_prob.f.f
-        iλ = similar(rcb.λ, length(first(sol.u)))
+        iλ = similar(rcb.λ, length(state_values(sol, 1)))
         out = zero(dp')
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas
