@@ -317,6 +317,7 @@ end
 
 function (S::AdjointSensitivityIntegrand)(t)
     out = similar(S.p)
+    out .= false
     S(out, t)
 end
 
