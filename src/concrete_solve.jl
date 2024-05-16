@@ -333,7 +333,7 @@ function DiffEqBase._concrete_solve_adjoint(
     #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
     #     throw(AdjointSensitivityParameterCompatibilityError())
     # end
-    if !isscimlstructure(p)
+    if !SciMLStructures.isscimlstructure(p)
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
@@ -416,8 +416,9 @@ function DiffEqBase._concrete_solve_adjoint(
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
-        uf_idx = getu(sol, sol_idxs)
-        _u = uf_idx(sol)
+        # uf_idx = getu(sol, sol_idxs)
+        # _u = uf_idx(sol)
+	_u = state_values(sol, sol_idxs)
         u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
         ts = sol.t[sol_idxs]
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
