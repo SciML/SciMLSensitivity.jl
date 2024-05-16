@@ -285,7 +285,7 @@ visualization_callback = function (state, l; doplot = false)
 end
 
 # Display the ODE with the initial parameter values.
-visualization_callback((;u=p_nn), l; doplot = true)
+visualization_callback((; u = p_nn), l; doplot = true)
 
 ###################################
 # training loop

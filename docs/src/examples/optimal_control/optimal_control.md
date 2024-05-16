@@ -66,7 +66,7 @@ end
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = ComponentArray(θ, ax)
-    mean(abs2, 4f0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
+    mean(abs2, 4.0f0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
     mean(abs2, [first(first(ann([t], ps, st))) for t in ts]) / 10
 end
 
@@ -77,7 +77,8 @@ cb = function (state, l; doplot = true)
     ps = ComponentArray(state.u, ax)
 
     if doplot
-        p = plot(solve(remake(prob, p = state.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
+        p = plot(solve(remake(prob, p = state.u), Tsit5(), saveat = 0.01),
+            ylim = (-6, 6), lw = 3)
         plot!(p, ts, [first(first(ann([t], ps, st))) for t in ts], label = "u(t)", lw = 3)
         display(p)
     end
@@ -92,10 +93,12 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, θ)
-res1 = Optimization.solve(optprob, OptimizationOptimisers.Adam(0.01), callback = cb, maxiters = 100)
+res1 = Optimization.solve(
+    optprob, OptimizationOptimisers.Adam(0.01), callback = cb, maxiters = 100)
 
 optprob2 = Optimization.OptimizationProblem(optf, res1.u)
-res2 = Optimization.solve(optprob2, OptimizationOptimJL.BFGS(), callback = cb, maxiters = 100)
+res2 = Optimization.solve(
+    optprob2, OptimizationOptimJL.BFGS(), callback = cb, maxiters = 100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
