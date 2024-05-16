@@ -1519,6 +1519,9 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     function steadystatebackpass(Δ)
+	if originator isa SciMLBase.TrackerOriginator
+            Δ = Tracker.data(Δ)
+	end
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
