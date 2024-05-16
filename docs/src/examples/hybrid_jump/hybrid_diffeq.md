@@ -55,8 +55,8 @@ function loss_n_ode(p, _)
 end
 loss_n_ode(ps, nothing)
 
-cba = function (p, l; doplot = false) #callback function to observe training
-    pred = predict_n_ode(p)
+cba = function (state, l; doplot = false) #callback function to observe training
+    pred = predict_n_ode(state.u)
     display(sum(abs2, ode_data .- pred))
     # plot current prediction against data
     pl = scatter(t, ode_data[1, :], label = "data")
@@ -68,7 +68,7 @@ end
 res = solve(
     OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()),
         ComponentArray(ps)),
-    Adam(0.05); callback = cba, maxiters = 1000)
+    OptimizationOptimisers.Adam(0.05); callback = cba, maxiters = 1000)
 ```
 
 ![Hybrid Universal Differential Equation](https://user-images.githubusercontent.com/1814174/91687561-08fc5900-eb2e-11ea-9f26-6b794e1e1248.gif)

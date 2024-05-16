@@ -206,8 +206,8 @@ function loss_n_ode(pu0, _)
     loss
 end
 
-function callback(p, l; doplot = true) #callback function to observe training
-    pred = predict_n_ode(p)
+function callback(state, l; doplot = true) #callback function to observe training
+    pred = predict_n_ode(state.u)
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data
@@ -237,8 +237,8 @@ function loss_n_ode2(p, _)
     loss
 end
 
-function callback2(p, l; doplot = true) #callback function to observe training
-    pred = predict_n_ode2(p)
+function callback2(state, l; doplot = true) #callback function to observe training
+    pred = predict_n_ode2(state.u)
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data
