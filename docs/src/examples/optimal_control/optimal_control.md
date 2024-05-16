@@ -118,7 +118,7 @@ Now let's see what we received:
 
 ```@example neuraloptimalcontrol
 l = loss_adjoint(res3.u)
-cb(res, l)
+cb(res3, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
 plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts],
     label = "u(t)", lw = 3)
