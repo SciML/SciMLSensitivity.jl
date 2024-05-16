@@ -175,10 +175,11 @@ end
 
 function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     prob = sol.prob
+    adj_prob = adj_sol.prob
     @unpack f, p, tspan, u0 = prob
     numparams = length(p)
-    y = zero(sol.prob.u0)
-    λ = zero(adj_sol.prob.u0)
+    y = zero(state_values(prob))
+    λ = zero(state_values(adj_prob))
     # we need to alias `y`
     f_cache = zero(y)
     isautojacvec = get_jacvec(sensealg)

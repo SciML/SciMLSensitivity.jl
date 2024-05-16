@@ -440,8 +440,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         _p = p
     end
 
+    u0 = state_values(prob)
     if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
-       (eltype(λ) <: eltype(prob.u0) && t isa eltype(prob.u0) &&
+       (eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
         compile_tape(sensealg.autojacvec))
         tape = S.diffcache.paramjac_config
 

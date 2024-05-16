@@ -32,7 +32,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         quad = false,
         noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
-    u0 = prob.u0
+    u0 = state_values(prob)
     p = parameter_values(prob)
     tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
@@ -486,7 +486,7 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
 
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
-    idx = length(prob.u0)
+    idx = length(state_values(prob))
     Δλas = Tuple{typeof(λ), eltype(t)}[]
     if ArrayInterface.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,

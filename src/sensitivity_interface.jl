@@ -366,6 +366,7 @@ function adjoint_sensitivities(sol, args...;
     end
 
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
+    prob = sol.prob
     _p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
@@ -377,7 +378,7 @@ function adjoint_sensitivities(sol, args...;
         if !has_cb
             _sensealg = if isinplace(sol.prob)
                 setvjp(
-                    sensealg, inplace_vjp(sol.prob, sol.prob.u0, mtkp, verbose, _p, repack))
+                    sensealg, inplace_vjp(prob, state_values(prob), mtkp, verbose, _p, repack))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
@@ -446,16 +447,17 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
     tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtpk)
+    prob = sol.prob
     # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
     l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
-    du0 = state_values(adj_sol)[end][1:length(sol.prob.u0)]
+    du0 = state_values(adj_sol)[end][1:length(state_values(prob))]
 
     if eltype(mtkp) <: real(eltype(state_values(adj_sol)[end]))
-        dp = real.(state_values(adj_sol)[end][(1:l) .+ length(sol.prob.u0)])'
+        dp = real.(state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))])'
     elseif mtkp === nothing || mtkp === DiffEqBase.NullParameters()
         dp = nothing
     else
-        dp = state_values(adj_sol)[end][(1:l) .+ length(sol.prob.u0)]'
+        dp = state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))]'
     end
 
     if rcb !== nothing && !isempty(rcb.Δλas)
