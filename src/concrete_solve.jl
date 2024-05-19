@@ -250,10 +250,14 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    _, repack_adjoint = Zygote.pullback(_p) do p
+        t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        t
+    end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...; verbose,
+        originator::SciMLBase.ADOriginator, args...; verbose, repack_adjoint,
         kwargs...)
 end
 
@@ -270,9 +274,12 @@ function DiffEqBase._concrete_solve_adjoint(
     else
         default_sensealg = ForwardDiffSensitivity()
     end
-    error()
+    _, repack_adjoint = Zygote.pullback(_p) do p
+        t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        t
+    end
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...;
+        originator::SciMLBase.ADOriginator, args...; repack_adjoint,
         kwargs...)
 end
 
@@ -597,10 +604,10 @@ function DiffEqBase._concrete_solve_adjoint(
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+	    (NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+	    (NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
