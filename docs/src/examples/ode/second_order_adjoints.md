@@ -38,7 +38,7 @@ function neuralodefunc(u, p, t)
 end
 function prob_neuralode(u0, p)
     prob = ODEProblem(neuralodefunc, u0, tspan, p)
-    sol = solve(prob)
+    sol = solve(prob, Tsit5(), saveat = tsteps)
 end
 ps = ComponentArray(ps)
 
