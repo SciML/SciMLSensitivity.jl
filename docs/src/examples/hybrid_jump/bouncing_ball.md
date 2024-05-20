@@ -2,7 +2,7 @@
 
 The bouncing ball is a classic hybrid ODE which can be represented in
 the [DifferentialEquations.jl event handling system](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/). This can be applied to ODEs, SDEs, DAEs, DDEs,
-and more. Let's now add the DiffEqFlux machinery to this
+and more. Let's now add the SciMLSensitivity machinery to this
 problem in order to optimize the friction that's required to match
 data. Assume we have data for the ball's height after 15 seconds. Let's
 first start by implementing the ODE:

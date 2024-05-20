@@ -1,6 +1,6 @@
 # Controlling Stochastic Differential Equations
 
-In this tutorial, we show how to use DiffEqFlux to control the time evolution of a system
+In this tutorial, we show how to use SciMLSensitivity to control the time evolution of a system
 described by a stochastic differential equation (SDE). Specifically, we consider a
 continuously monitored qubit described by an SDE in the Ito sense with multiplicative
 scalar noise (see [1] for a reference):
@@ -20,7 +20,7 @@ follow a full explanation of the definition and training process:
 
 ```@example
 # load packages
-using DiffEqFlux, SciMLSensitivity, Optimization, OptimizationOptimisers
+using SciMLSensitivity, Optimization, OptimizationOptimisers
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Zygote, Statistics, LinearAlgebra, Random
 using Lux, Random, ComponentArrays
@@ -310,7 +310,6 @@ visualization_callback(res, loss(res.u); doplot = true)
 ### Load packages
 
 ```@example sdecontrol
-using DiffEqFlux
 using SciMLSensitivity
 using Optimization, OptimizationOptimisers, Zygote
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess

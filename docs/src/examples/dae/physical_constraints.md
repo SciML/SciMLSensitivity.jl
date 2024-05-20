@@ -10,7 +10,7 @@ terms must add to one. An example of this is as follows:
 
 ```@example dae
 using SciMLSensitivity
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimJL,
+using Lux, ComponentArrays, Optimization, OptimizationOptimJL,
       OrdinaryDiffEq, Plots
 
 using Random
@@ -74,7 +74,7 @@ result_stiff = Optimization.solve(optprob, OptimizationOptimJL.BFGS(), maxiters 
 
 ```@example dae2
 using SciMLSensitivity
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimJL,
+using Lux, ComponentArrays, Optimization, OptimizationOptimJL,
       OrdinaryDiffEq, Plots
 
 using Random

@@ -121,7 +121,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```@example sde
-using StochasticDiffEq, DiffEqFlux, Optimization, OptimizationOptimisers, Plots
+using StochasticDiffEq, Optimization, OptimizationOptimisers, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u

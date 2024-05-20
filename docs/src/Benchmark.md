@@ -37,8 +37,7 @@ Quick summary:
   - `ReverseDiffVJP(compile = true)` works well for small Lux neural networks
 
 ```julia
-using DiffEqFlux,
-      OrdinaryDiffEq, Lux, SciMLSensitivity, Zygote, BenchmarkTools, Random, ComponentArrays
+using OrdinaryDiffEq, Lux, SciMLSensitivity, Zygote, BenchmarkTools, Random, ComponentArrays
 
 u0 = Float32[2.0; 0.0]
 datasize = 30

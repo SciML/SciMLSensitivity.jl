@@ -73,7 +73,7 @@ differentiation). Generally:
 
   - Continuous sensitivity analysis methods only support a subset of
     equations, which currently includes:
-    
+
       + ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
       + SDEProblem
       + SteadyStateProblem / NonlinearProblem
@@ -110,7 +110,7 @@ is:
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
 !!! note
-    
+
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
     `ReverseDiffAdjoint`, etc.) can be queried using the
     `SciMLBase.isautodifferentiable(::SciMLAlgorithm)` trait function.
@@ -236,7 +236,7 @@ if it is sufficiently accurate on their problem. More details on this
 topic can be found in
 [Stiff Neural Ordinary Differential Equations](https://aip.scitation.org/doi/10.1063/5.0060697)
 
-Note that DiffEqFlux's implementation of `BacksolveAdjoint` includes
+Note that SciMLSensitivity's implementation of `BacksolveAdjoint` includes
 an extra feature `BacksolveAdjoint(checkpointing=true)` which mixes
 checkpointing with `BacksolveAdjoint`. What this method does is that,
 at `saveat` points, values from the forward pass are saved. Since the

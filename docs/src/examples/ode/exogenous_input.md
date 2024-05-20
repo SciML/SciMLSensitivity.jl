@@ -41,7 +41,7 @@ used as an input into the neural network of a neural ODE system.
 
 ```@example exogenous
 using SciMLSensitivity
-using OrdinaryDiffEq, Lux, ComponentArrays, DiffEqFlux, Optimization,
+using OrdinaryDiffEq, Lux, ComponentArrays, Optimization,
       OptimizationPolyalgorithms, OptimizationOptimisers, Plots, Random
 
 rng = Random.default_rng()

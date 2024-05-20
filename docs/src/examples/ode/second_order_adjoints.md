@@ -15,7 +15,7 @@ optimizations.
 
 ```@example secondorderadjoints
 using SciMLSensitivity
-using Lux, ComponentArrays, DiffEqFlux, Optimization, OptimizationOptimisers,
+using Lux, ComponentArrays, Optimization, OptimizationOptimisers,
       OrdinaryDiffEq, Plots, Random, OptimizationOptimJL
 
 u0 = Float32[2.0; 0.0]
@@ -32,10 +32,15 @@ prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
-prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(), saveat = tsteps)
-ps, st = Lux.setup(Random.default_rng(), prob_neuralode)
+ps, st = Lux.setup(Random.default_rng(), dudt2)
+function neuralodefunc(u,p,t)
+    dudt2(u, p, st)[1]
+end
+function prob_neuralode(u0, p)
+    prob = ODEProblem(neuralodefunc, u0, tspan, p)
+    sol = solve(prob)
+end
 ps = ComponentArray(ps)
-prob_neuralode = Lux.Experimental.StatefulLuxLayer(prob_neuralode, ps, st)
 
 function predict_neuralode(p)
     Array(prob_neuralode(u0, p))
@@ -74,7 +79,7 @@ end
 adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
-optprob1 = Optimization.OptimizationProblem(optf, prob_neuralode.ps)
+optprob1 = Optimization.OptimizationProblem(optf, ps)
 pstart = Optimization.solve(
     optprob1, Optimisers.Adam(0.01), callback = callback, maxiters = 100).u
 
