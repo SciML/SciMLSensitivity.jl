@@ -33,7 +33,7 @@ ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
 
 dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
 ps, st = Lux.setup(Random.default_rng(), dudt2)
-function neuralodefunc(u,p,t)
+function neuralodefunc(u, p, t)
     dudt2(u, p, st)[1]
 end
 function prob_neuralode(u0, p)

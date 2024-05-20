@@ -73,7 +73,7 @@ differentiation). Generally:
 
   - Continuous sensitivity analysis methods only support a subset of
     equations, which currently includes:
-
+    
       + ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
       + SDEProblem
       + SteadyStateProblem / NonlinearProblem
@@ -110,7 +110,7 @@ is:
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
 !!! note
-
+    
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
     `ReverseDiffAdjoint`, etc.) can be queried using the
     `SciMLBase.isautodifferentiable(::SciMLAlgorithm)` trait function.
