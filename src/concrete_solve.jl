@@ -240,20 +240,24 @@ function DiffEqBase._concrete_solve_adjoint(
             NonlinearProblem,
             SteadyStateProblem
         }, alg,
-        sensealg::Nothing, u0, p,
+        sensealg::Nothing, u0, _p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
-    if !SciMLStructures.isscimlstructure(p)
+    if !SciMLStructures.isscimlstructure(_p)
         error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
 
-    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), _p)
+    _, repack_adjoint = Zygote.pullback(_p) do p
+        t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        t
+    end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...; verbose,
+    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, _p,
+        originator::SciMLBase.ADOriginator, args...; verbose, repack_adjoint,
         kwargs...)
 end
 
@@ -263,16 +267,20 @@ function DiffEqBase._concrete_solve_adjoint(
             SciMLBase.AbstractSDDEProblem,
             SciMLBase.AbstractDAEProblem},
         alg, sensealg::Nothing,
-        u0, p, originator::SciMLBase.ADOriginator,
+        u0, _p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
-    if length(u0) + length(p) > 100
+    tunables, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), _p)
+    if length(u0) + length(tunables) > 100
         default_sensealg = ReverseDiffAdjoint()
     else
         default_sensealg = ForwardDiffSensitivity()
     end
-    error()
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...;
+    _, repack_adjoint = Zygote.pullback(_p) do p
+        t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+        t
+    end
+    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, _p,
+        originator::SciMLBase.ADOriginator, args...; repack_adjoint,
         kwargs...)
 end
 
@@ -479,10 +487,11 @@ function DiffEqBase._concrete_solve_adjoint(
                     end
                 end
             else
+		Δu = Δ isa Tangent ? Δ.u : Δ
                 !Base.isconcretetype(eltype(Δ)) &&
-                    (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+                    (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray || Δ isa Tangent
+		    x = (Δ isa AbstractVectorOfArray  || Δ isa Tangent) ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
@@ -597,10 +606,10 @@ function DiffEqBase._concrete_solve_adjoint(
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+	    (NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+	    (NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end

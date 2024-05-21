@@ -446,7 +446,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
-    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtpk)
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
     prob = sol.prob
     # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
     l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)
