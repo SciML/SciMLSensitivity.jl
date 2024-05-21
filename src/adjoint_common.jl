@@ -651,3 +651,13 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
     end
     return out, ts
 end
+
+Zygote.@adjoint function Zygote.literal_getproperty(sol::AbstractTimeseriesSolution,
+        ::Val{:u})
+    function solu_adjoint(Δ)
+        zerou = zero(sol.prob.u0)
+        _Δ = @. ifelse(Δ === nothing, (zerou,), Δ)
+        (build_solution(sol.prob, sol.alg, sol.t, _Δ),)
+    end
+    sol.u, solu_adjoint
+end
