@@ -515,10 +515,17 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         corfunc_analytical = false,
         callback = CallbackSet(),
         kwargs...)
+
+    params = SymbolicIndexingInterface.parameter_values(sol)
+    if !SciMLStructures.isscimlstructure(params)
+        throw(error("p not MTKParams error"))
+    end
+
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), params)
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(allocate_zeros(sol.prob.p))
+    integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
-        integrand_values, allocate_vjp(sol.prob.p))
+        integrand_values, allocate_vjp(tunables))
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
