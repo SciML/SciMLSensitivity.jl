@@ -31,7 +31,7 @@ using SciMLStructures
 using Markdown
 
 using Reexport
-import ChainRulesCore: unthunk, @thunk, ZeroTangent, NoTangent, @not_implemented
+import ChainRulesCore: unthunk, @thunk, ZeroTangent, NoTangent, @not_implemented, Tangent
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
