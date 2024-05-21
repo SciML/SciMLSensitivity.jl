@@ -657,7 +657,7 @@ Zygote.@adjoint function Zygote.literal_getproperty(sol::AbstractTimeseriesSolut
     function solu_adjoint(Δ)
         zerou = zero(sol.prob.u0)
         _Δ = @. ifelse(Δ === nothing, (zerou,), Δ)
-        (build_solution(sol.prob, sol.alg, sol.t, _Δ),)
+        (SciMLBase.build_solution(sol.prob, sol.alg, sol.t, _Δ),)
     end
     sol.u, solu_adjoint
 end
