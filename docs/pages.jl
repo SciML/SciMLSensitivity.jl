@@ -16,13 +16,11 @@ pages = ["index.md",
         "Neural Ordinary Differential Equations (Neural ODE)" => Any[
             "examples/neural_ode/neural_ode_flux.md",
             "examples/neural_ode/simplechains.md",
-            "examples/neural_ode/neural_gde.md",
             "examples/neural_ode/minibatch.md"],
         "Stochastic Differential Equations (SDEs)" => Any[
             "examples/sde/optimization_sde.md",
             "examples/sde/SDE_control.md"],
         "Delay Differential Equations (DDEs)" => Any["examples/dde/delay_diffeq.md"],
-        "Differential-Algebraic Equations (DAEs)" => Any["examples/dae/physical_constraints.md"],
         "Partial Differential Equations (PDEs)" => Any["examples/pde/pde_constrained.md"],
         "Hybrid and Jump Equations" => Any["examples/hybrid_jump/hybrid_diffeq.md",
             "examples/hybrid_jump/bouncing_ball.md"],

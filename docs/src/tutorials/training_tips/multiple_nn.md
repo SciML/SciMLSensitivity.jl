@@ -8,7 +8,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
 using SciMLSensitivity
-using Lux, DiffEqFlux, ComponentArrays, Optimization, OptimizationOptimJL,
+using Lux, ComponentArrays, Optimization, OptimizationOptimJL,
       OptimizationOptimisers, OrdinaryDiffEq, Random
 
 rng = Random.default_rng()

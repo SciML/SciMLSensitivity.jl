@@ -8,7 +8,7 @@ model and the universal differential equation is trained to uncover the missing
 dynamical equations.
 
 ```@example
-using DiffEqFlux, ComponentArrays, Random,
+using ComponentArrays, Random, SciMLSensitivity,
       Lux, OrdinaryDiffEq, Plots, Optimization, OptimizationOptimisers, DiffEqCallbacks
 
 u0 = Float32[2.0; 0.0]
