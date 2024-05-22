@@ -336,12 +336,15 @@ function DiffEqBase._concrete_solve_adjoint(
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
         kwargs...)
-    # if !(sensealg isa GaussAdjoint) &&
-    #    !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-    #     throw(AdjointSensitivityParameterCompatibilityError())
-    # end
     if !SciMLStructures.isscimlstructure(p)
+        error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                In particular, adjoint sensitivities only applies to `Tunable`.")
+    end
+
+    if !(sensealg isa GaussAdjoint) &&
+       !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
@@ -602,7 +605,7 @@ function DiffEqBase._concrete_solve_adjoint(
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
-             dp isa AbstractArray ? reshape(dp', size(first(tunables))) : dp
+             dp isa AbstractArray ? reshape(dp', size(tunables, 1)) : dp
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
