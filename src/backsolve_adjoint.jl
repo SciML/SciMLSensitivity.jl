@@ -121,7 +121,7 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false);
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         callback = CallbackSet(),
         z0 = nothing,
         M = nothing,
@@ -136,7 +136,9 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack p, u0 = sol.prob
+    p = parameter_values(sol)
+    u0 = state_values(sol)
+    tunables, repack, _ = canonicalize(Tunable(), p)
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
@@ -150,7 +152,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], current_time(sol)[end])
             terminated = true
         end
     end
@@ -162,13 +164,13 @@ end
                  g !== nothing))
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
 
     if z0 === nothing
         λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
-            one(eltype(u0)) .* similar(p, len)
+            one(eltype(u0)) .* similar(tunables, len)
         λ .= false
     else
         λ = nothing
@@ -242,7 +244,7 @@ end
         dgdu_continuous::DG3 = nothing,
         dgdp_continuous::DG4 = nothing,
         g::G = nothing;
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         callback = CallbackSet(),
         corfunc_analytical = nothing, diffusion_jac = nothing,
         diffusion_paramjac = nothing,
@@ -254,12 +256,16 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    @unpack f, tspan = sol.prob
+    p = parameter_values(sol)
+    u0 = state_values(sol.prob)
+    tunables, repack, _ = canonicalize(Tunable(), p)
+
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], current_time(sol)[end])
             terminated = true
         end
     end
@@ -273,10 +279,10 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
-    numparams = length(p)
+    numparams = length(tunables)
 
     len = length(u0) + numparams
-    λ = one(eltype(u0)) .* similar(p, len)
+    λ = one(eltype(u0)) .* similar(tunables, len)
 
     if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
@@ -361,7 +367,7 @@ end
         dgdu_continuous::DG3 = nothing,
         dgdp_continuous::DG4 = nothing,
         g::G = nothing;
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         callback = CallbackSet(),
         kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
@@ -371,12 +377,15 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    @unpack f, tspan = sol.prob
+    p = parameter_values(sol)
+    u0 = state_values(sol.prob)
+    tunables, repack, _ = canonicalize(Tunable(), p)
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], current_time(sol)[end])
             terminated = true
         end
     end
@@ -389,10 +398,10 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
-    numparams = length(p)
+    numparams = length(tunables)
 
     len = length(u0) + numparams
-    λ = one(eltype(u0)) .* similar(p, len)
+    λ = one(eltype(u0)) .* similar(tunables, len)
 
     sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
         dgdp_continuous, f, alg;
