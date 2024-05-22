@@ -37,9 +37,9 @@ struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc,
 end
 
 function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, sparsity,
-    paramjac, u0,
-    alg, p, f_cache, mm,
-    colorvec, tspan, g, dgdu, dgdp)
+        paramjac, u0,
+        alg, p, f_cache, mm,
+        colorvec, tspan, g, dgdu, dgdp)
     !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
     uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
@@ -131,12 +131,12 @@ struct ForwardLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, Ftype
 end
 
 function ForwardLSSProblem(sol, sensealg::ForwardLSS;
-    t = nothing, dgdu_discrete = nothing,
-    dgdp_discrete = nothing,
-    dgdu_continuous = nothing,
-    dgdp_continuous = nothing,
-    g = sensealg.g,
-    kwargs...)
+        t = nothing, dgdu_discrete = nothing,
+        dgdp_discrete = nothing,
+        dgdu_continuous = nothing,
+        dgdp_continuous = nothing,
+        g = sensealg.g,
+        kwargs...)
     @unpack p, u0, tspan = sol.prob
 
     isinplace = DiffEqBase.isinplace(sol.prob.f)
@@ -146,7 +146,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
 
     p === nothing &&
         error("You must have parameters to use parameter sensitivity calculations!")
-    !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
+    !(state_values(sol) isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
     # assert that all ts are hit if concrete solve interface/discrete costs are used
     if t !== nothing
@@ -240,8 +240,8 @@ function discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
     for i in 1:Ndt
         tr = sol.t[i + 1]
         tl = sol.t[i]
-        ur = sol.u[i + 1]
-        ul = sol.u[i]
+        ur = state_values(sol, i + 1)
+        ul = state_values(sol, i)
         dt[i] = tr - tl
         copyto!((@view umid[:, i]), (ur + ul) / 2)
         copyto!((@view dudt[:, i]), (ur - ul) / dt[i])
@@ -340,7 +340,7 @@ function shadow_forward(prob::ForwardLSSProblem; sensealg = prob.sensealg)
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-    LSSregularizer::TimeDilation)
+        LSSregularizer::TimeDilation)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
     @unpack wBinv, wEinv, B, E = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -351,7 +351,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 
     b!(b, prob)
 
-    ures = @view sol.u[n0:n1]
+    ures = state_values(sol, n0:n1)
     umidres = @view umid[:, n0:(n1 - 1)]
 
     # reset
@@ -394,7 +394,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-    LSSregularizer::CosWindowing)
+        LSSregularizer::CosWindowing)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -412,7 +412,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         bpar = @view b[:, i]
         w .= F \ bpar
         v .= Diagonal(wBinv) * (B' * w)
-        for (j, u) in enumerate(sol.u)
+        for (j, u) in enumerate(state_values(sol))
             vtmp = @view v[((j - 1) * numindvar + 1):(j * numindvar)]
             #  final gradient result for ith parameter
             lss_accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
@@ -428,7 +428,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-    LSSregularizer::Cos2Windowing)
+        LSSregularizer::Cos2Windowing)
     @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
     @unpack wBinv, B = S
     @unpack dg_val, numparams, numindvar, uf = diffcache
@@ -446,7 +446,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         bpar = @view b[:, i]
         w .= F \ bpar
         v .= Diagonal(wBinv) * (B' * w)
-        for (j, u) in enumerate(sol.u)
+        for (j, u) in enumerate(state_values(sol))
             vtmp = @view v[((j - 1) * numindvar + 1):(j * numindvar)]
             #  final gradient result for ith parameter
             lss_accumulate_cost!(u, uf.p, uf.t, sensealg, diffcache, j)
@@ -504,10 +504,10 @@ struct AdjointLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, FType
 end
 
 function AdjointLSSProblem(sol, sensealg::AdjointLSS;
-    t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing,
-    g = sensealg.g,
-    kwargs...)
+        t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing,
+        g = sensealg.g,
+        kwargs...)
     @unpack f, p, u0, tspan = sol.prob
 
     isinplace = DiffEqBase.isinplace(f)
@@ -517,7 +517,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
 
     p === nothing &&
         error("You must have parameters to use parameter sensitivity calculations!")
-    !(sol.u isa AbstractVector) && error("`u` has to be an AbstractVector.")
+    !(state_values(sol) isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
     # assert that all ts are hit if concrete solve interface/discrete costs are used
     if t !== nothing
@@ -602,7 +602,7 @@ function wBcorrect!(S, sol, g, Nt, sense, sensealg)
     @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, numparams, numindvar, uf = sense
     @unpack wBinv = S
 
-    for (i, u) in enumerate(sol.u)
+    for (i, u) in enumerate(state_values(sol))
         _wBinv = @view wBinv[((i - 1) * numindvar + 1):(i * numindvar)]
         if dgdu === nothing
             if dg_val isa Tuple
@@ -630,7 +630,7 @@ function shadow_adjoint(prob::AdjointLSSProblem; sensealg = prob.sensealg)
 end
 
 function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
-    LSSregularizer::TimeDilation)
+        LSSregularizer::TimeDilation)
     @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
     @unpack wBinv, B, E = S
     @unpack dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache

@@ -365,7 +365,9 @@ function adjoint_sensitivities(sol, args...;
               In particular, adjoint sensitivities only applies to `Tunable`.")
     end
 
-    _p, repack, aliases = canonicalize(SciMLStructures.Tunable(), sol.prob.p)
+    mtkp = SymbolicIndexingInterface.parameter_values(sol)
+    prob = sol.prob
+    _p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
@@ -375,7 +377,8 @@ function adjoint_sensitivities(sol, args...;
         end
         if !has_cb
             _sensealg = if isinplace(sol.prob)
-                setvjp(sensealg, inplace_vjp(sol.prob, sol.prob.u0, sol.prob.p, verbose, _p, repack))
+                setvjp(
+                    sensealg, inplace_vjp(prob, state_values(prob), mtkp, verbose, _p, repack))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
@@ -397,17 +400,18 @@ function adjoint_sensitivities(sol, args...;
 end
 
 function _adjoint_sensitivities(sol, sensealg, alg;
-    t = nothing,
-    dgdu_discrete = nothing, dgdp_discrete = nothing,
-    dgdu_continuous = nothing, dgdp_continuous = nothing,
-    g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    checkpoints = sol.t,
-    corfunc_analytical = nothing,
-    callback = nothing,
-    kwargs...)
-    if !(sol.prob.p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (sol.prob.p isa AbstractArray && !Base.isconcretetype(eltype(sol.prob.p)))
+        t = nothing,
+        dgdu_discrete = nothing, dgdp_discrete = nothing,
+        dgdu_continuous = nothing, dgdp_continuous = nothing,
+        g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        checkpoints = sol.t,
+        corfunc_analytical = nothing,
+        callback = nothing,
+        kwargs...)
+    mtkp = SymbolicIndexingInterface.parameter_values(sol)
+    if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+       (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
     rcb = nothing
@@ -439,24 +443,26 @@ function _adjoint_sensitivities(sol, sensealg, alg;
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
     adj_sol = solve(adj_prob, alg;
-        save_everystep = false, save_start = false, saveat = eltype(sol.u[1])[],
+        save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
-    p = sol.prob.p
-    l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p)
-    du0 = adj_sol.u[end][1:length(sol.prob.u0)]
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
+    prob = sol.prob
+    # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
+    l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    du0 = state_values(adj_sol)[end][1:length(state_values(prob))]
 
-    if eltype(sol.prob.p) <: real(eltype(adj_sol.u[end]))
-        dp = real.(adj_sol.u[end][(1:l) .+ length(sol.prob.u0)])'
-    elseif p === nothing || p === DiffEqBase.NullParameters()
+    if eltype(mtkp) <: real(eltype(state_values(adj_sol)[end]))
+        dp = real.(state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))])'
+    elseif mtkp === nothing || mtkp === DiffEqBase.NullParameters()
         dp = nothing
     else
-        dp = adj_sol.u[end][(1:l) .+ length(sol.prob.u0)]'
+        dp = state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))]'
     end
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         S = adj_prob.f.f
-        iλ = similar(rcb.λ, length(first(sol.u)))
+        iλ = similar(rcb.λ, length(state_values(sol, 1)))
         out = zero(dp')
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas
@@ -464,7 +470,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
             @unpack algevar_idxs = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
-            vecjacobian!(nothing, yy, iλ, sol.prob.p, tt, S, dgrad = out)
+            vecjacobian!(nothing, yy, iλ, mtkp, tt, S, dgrad = out)
             dp .+= out'
         end
     end
@@ -473,9 +479,9 @@ function _adjoint_sensitivities(sol, sensealg, alg;
 end
 
 function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
-    dgdu = nothing, dgdp = nothing, g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    kwargs...)
+        dgdu = nothing, dgdp = nothing, g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        kwargs...)
     SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
@@ -529,8 +535,8 @@ double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument
 a first order sensitivity algorithm.
 """
 function second_order_sensitivities(loss, prob, alg, args...;
-    sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-    kwargs...)
+        sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+        kwargs...)
     _second_order_sensitivities(loss, prob, alg, sensealg, args...; kwargs...)
 end
 
@@ -585,7 +591,7 @@ double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument
 a first order sensitivity algorithm.
 """
 function second_order_sensitivity_product(loss, v, prob, alg, args...;
-    sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-    kwargs...)
+        sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
+        kwargs...)
     _second_order_sensitivity_product(loss, v, prob, alg, sensealg, args...; kwargs...)
 end
