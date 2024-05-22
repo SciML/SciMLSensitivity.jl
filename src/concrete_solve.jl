@@ -348,7 +348,10 @@ function DiffEqBase._concrete_solve_adjoint(
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
-    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack_adjoint = Zygote.pullback(p) do p
+	    t, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+	    t
+    end
 
     # Remove saveat, etc. from kwargs since it's handled separately
     # and letting it jump back in there can break the adjoint
@@ -609,10 +612,10 @@ function DiffEqBase._concrete_solve_adjoint(
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-	    (NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
+	    (NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-	    (NoTangent(), NoTangent(), NoTangent(), du0, kwargs[:repack_adjoint](dp)[1], NoTangent(),
+	    (NoTangent(), NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
