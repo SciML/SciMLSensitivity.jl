@@ -38,11 +38,11 @@ mutable struct GaussCheckpointSolution{S, I, T, T2}
     tstops::T2 # for callbacks
 end
 
-function ODEGaussAdjointSensitivityFunction(g, sensealg, gaussint, discrete, sol, dgdu, dgdp,
-    f, alg,
-    checkpoints, tols, tstops = nothing;
-    tspan = reverse(sol.prob.tspan))
-
+function ODEGaussAdjointSensitivityFunction(
+        g, sensealg, gaussint, discrete, sol, dgdu, dgdp,
+        f, alg,
+        checkpoints, tols, tstops = nothing;
+        tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
@@ -54,7 +54,7 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, gaussint, discrete, sol
         interval = intervals[cursor]
         if tstops === nothing
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                sol.alg; dense=true, tols...)
+                sol.alg; dense = true, tols...)
             gaussint.sol = cpsol
         else
             if maximum(interval[1] .< tstops .< interval[2])
@@ -65,14 +65,14 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, gaussint, discrete, sol
                 #    p = _p, sol.alg; tols...)
 
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    dense=true,
+                    dense = true,
                     p = _p, sol.alg; tols...)
                 gaussint.sol = cpsol
             else
                 #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                 #    tstops = tstops, sol.alg; tols...)
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    sol.alg; dense=true, tols...)
+                    sol.alg; dense = true, tols...)
                 gaussint.sol = cpsol
             end
         end
@@ -80,7 +80,8 @@ function ODEGaussAdjointSensitivityFunction(g, sensealg, gaussint, discrete, sol
     else
         nothing
     end
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
+    diffcache, y = adjointdiffcache(
+        g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
         quad = true)
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
         y, sol, checkpoint_sol, sol.prob, f, gaussint)
@@ -106,7 +107,6 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
-
     @unpack sol, checkpoint_sol, discrete, prob, f = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
@@ -120,7 +120,6 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
 end
 
 function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
-
     @unpack sol, checkpoint_sol, discrete, prob = S
     f = sol.prob.f
 
@@ -202,20 +201,19 @@ function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true
     λ, nothing, y, nothing, nothing
 end
 
-
 @noinline function ODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
-    GaussInt::GaussIntegrand,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing,
-    ::Val{RetCB} = Val(false);
-    checkpoints = sol.t,
-    callback = CallbackSet(),
-    reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
-    RetCB}
+        GaussInt::GaussIntegrand,
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing,
+        ::Val{RetCB} = Val(false);
+        checkpoints = sol.t,
+        callback = CallbackSet(),
+        reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
+        RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -269,7 +267,6 @@ end
         tstops = nothing
     end
 
-
     if ArrayInterface.ismutable(u0)
         len = length(u0)
         λ = similar(u0, len)
@@ -278,7 +275,8 @@ end
         λ = zero(u0)
     end
     sense = ODEGaussAdjointSensitivityFunction(g, sensealg, GaussInt, discrete, sol,
-        dgdu_continuous, dgdp_continuous, f, alg, checkpoints, (reltol = reltol, abstol = abstol), tstops, tspan = tspan)
+        dgdu_continuous, dgdp_continuous, f, alg, checkpoints,
+        (reltol = reltol, abstol = abstol), tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
@@ -342,7 +340,8 @@ function Gaussreset_p(CBS, interval)
             if ts2[perm2][3] == 0
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
             else
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
+                    ts2,
                     1)[perm2]])
             end
         else
@@ -350,10 +349,12 @@ function Gaussreset_p(CBS, interval)
                 p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
             else
                 if ts2[perm2][3] == 0
-                    p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2,
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(
+                        ts2,
                         1)[perm2]])
                 else
-                    p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
+                        ts2,
                         1)[perm2]])
                 end
             end
@@ -369,8 +370,8 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
     @unpack f, p, tspan, u0 = prob
     numparams = length(p)
-    y = zero(sol.prob.u0)
-    λ = zero(sol.prob.u0)
+    y = zero(state_values(prob))
+    λ = zero(state_values(prob))
     # we need to alias `y`
     f_cache = zero(y)
     isautojacvec = get_jacvec(sensealg)
@@ -471,8 +472,10 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ
         out .= 0
-        Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Duplicated(tmp3, tmp4),
-            y, Enzyme.Duplicated(p, out), t)
+        Enzyme.autodiff(
+            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+            Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
@@ -488,6 +491,7 @@ function (S::GaussIntegrand)(out, t, λ)
         y = sol(t)
     end
     vec_pjac!(out, λ, y, t, S)
+    out = recursive_neg!(out)
     if S.dgdp !== nothing
         S.dgdp(dgdp_cache, y, p, t)
         out .+= dgdp_cache
@@ -501,27 +505,34 @@ function (S::GaussIntegrand)(t, λ)
 end
 
 function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
-    dgdu_discrete = nothing,
-    dgdp_discrete = nothing,
-    dgdu_continuous = nothing,
-    dgdp_continuous = nothing,
-    g = nothing,
-    abstol = 1e-6, reltol = 1e-3,
-    checkpoints = sol.t,
-    corfunc_analytical = false,
-    callback = CallbackSet(),
-    kwargs...)
+        dgdu_discrete = nothing,
+        dgdp_discrete = nothing,
+        dgdu_continuous = nothing,
+        dgdp_continuous = nothing,
+        g = nothing,
+        abstol = 1e-6, reltol = 1e-3,
+        checkpoints = sol.t,
+        corfunc_analytical = false,
+        callback = CallbackSet(),
+        kwargs...)
 
+    params = SymbolicIndexingInterface.parameter_values(sol)
+    if !SciMLStructures.isscimlstructure(params)
+        throw(error("p not MTKParams error"))
+    end
+
+    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), params)
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(allocate_zeros(sol.prob.p))
+    integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
-        integrand_values, allocate_vjp(sol.prob.p))
+        integrand_values, allocate_vjp(tunables))
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
 
     if sol.prob isa ODEProblem
-        adj_prob, cb2, rcb = ODEAdjointProblem(sol, sensealg, alg, integrand, t, dgdu_discrete,
+        adj_prob, cb2, rcb = ODEAdjointProblem(
+            sol, sensealg, alg, integrand, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,
@@ -533,9 +544,10 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
 
-    adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
-            save_start = false, save_end = true, saveat = eltype(sol.u[1])[], tstops = tstops,
-            callback = CallbackSet(cb,cb2), kwargs...)
+    adj_sol = solve(
+        adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
+        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
+        callback = CallbackSet(cb, cb2), kwargs...)
     res = integrand_values.integrand
 
     if rcb !== nothing && !isempty(rcb.Δλas)
@@ -552,7 +564,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         end
     end
 
-    return adj_sol.u[end], __maybe_adjoint(res)
+    return state_values(adj_sol)[end], __maybe_adjoint(res)
 end
 
 __maybe_adjoint(x::AbstractArray) = x'
@@ -565,8 +577,8 @@ function update_p_integrand(integrand::GaussIntegrand, p)
 end
 
 function update_integrand_and_dgrad(res, sensealg::GaussAdjoint, callbacks, integrand,
-    adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
-    ti, cur_time)
+        adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
+        ti, cur_time)
     for cb in callbacks.discrete_callbacks
         if ti ∈ cb.affect!.event_times
             integrand = _update_integrand_and_dgrad(res, sensealg, cb,
@@ -590,7 +602,7 @@ function update_integrand_and_dgrad(res, sensealg::GaussAdjoint, callbacks, inte
 end
 
 function _update_integrand_and_dgrad(res, sensealg::GaussAdjoint, cb, integrand,
-    adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
+        adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
