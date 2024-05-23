@@ -11,7 +11,7 @@ equation to stay close to 1.
 
 ```@example udeneuralcontrol
 using Lux, Optimization, OptimizationPolyalgorithms, ComponentArrays,
-    SciMLSensitivity, Zygote, OrdinaryDiffEq, Plots, Random
+      SciMLSensitivity, Zygote, OrdinaryDiffEq, Plots, Random
 
 rng = Random.default_rng()
 u0 = [1.1]
@@ -61,7 +61,7 @@ l = loss_univ(θ)
 ```@example udeneuralcontrol
 list_plots = []
 iter = 0
-cb = function (θ, l)
+cb = function (state, l)
     global list_plots, iter
 
     if iter == 0
@@ -71,7 +71,7 @@ cb = function (θ, l)
 
     println(l)
 
-    plt = plot(predict_univ(θ)', ylim = (0, 6))
+    plt = plot(predict_univ(state.u)', ylim = (0, 6))
     push!(list_plots, plt)
     display(plt)
     return false

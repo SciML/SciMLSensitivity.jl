@@ -173,24 +173,26 @@ function test_hybridNODE3(sensealg)
 
     @show sensealg
 
-    res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps,
-            data), Adam(0.01); maxiters = 1000, callback = cba)
+    res = solve(
+        OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps,
+            data),
+        Adam(0.01); maxiters = 1000, callback = cba)
     loss = loss_n_ode(res.u, (true_data, callback_data))
 
     @test loss < 0.5
 end
 
 @testset "PresetTimeCallback: $(sensealg)" for sensealg in [ForwardDiffSensitivity(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
     test_hybridNODE(sensealg)
 end
 
 @testset "PeriodicCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
     test_hybridNODE2(sensealg)
 end
 
 @testset "tprevCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
     test_hybridNODE3(sensealg)
 end

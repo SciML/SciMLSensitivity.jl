@@ -16,10 +16,10 @@ within the reverse-mode automatic differentiation environment.
 
 ```julia
 ForwardSensitivity(;
-                   chunk_size = 0, autodiff = true,
-                   diff_type = Val{:central},
-                   autojacvec = autodiff,
-                   autojacmat = false)
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    autojacvec = autodiff,
+    autojacmat = false)
 ```
 
 ## Keyword Arguments
@@ -56,10 +56,10 @@ struct ForwardSensitivity{CS, AD, FDT} <: AbstractForwardSensitivityAlgorithm{CS
     autojacmat::Bool
 end
 function ForwardSensitivity(;
-    chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = autodiff,
-    autojacmat = false)
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central},
+        autojacvec = autodiff,
+        autojacmat = false)
     autojacvec && autojacmat &&
         error("Choose either Jacobian matrix products or Jacobian vector products,
                 autojacmat and autojacvec cannot both be true")
@@ -120,9 +120,9 @@ stabilization is included for additional numerical stability over the naive impl
 
 ```julia
 BacksolveAdjoint(; chunk_size = 0, autodiff = true,
-                 diff_type = Val{:central},
-                 autojacvec = nothing,
-                 checkpointing = true, noisemixing = false)
+    diff_type = Val{:central},
+    autojacvec = nothing,
+    checkpointing = true, noisemixing = false)
 ```
 
 ## Keyword Arguments
@@ -259,9 +259,9 @@ struct BacksolveAdjoint{CS, AD, FDT, VJP} <:
     noisemixing::Bool
 end
 Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing,
-    checkpointing = true, noisemixing = false)
+        diff_type = Val{:central},
+        autojacvec = nothing,
+        checkpointing = true, noisemixing = false)
     BacksolveAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
         checkpointing,
         noisemixing)
@@ -289,9 +289,9 @@ enabled, it will only require the memory to interpolate between checkpoints.
 
 ```julia
 InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
-                     diff_type = Val{:central},
-                     autojacvec = nothing,
-                     checkpointing = false, noisemixing = false)
+    diff_type = Val{:central},
+    autojacvec = nothing,
+    checkpointing = false, noisemixing = false)
 ```
 
 ## Keyword Arguments
@@ -377,9 +377,9 @@ struct InterpolatingAdjoint{CS, AD, FDT, VJP} <:
     noisemixing::Bool
 end
 Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing,
-    checkpointing = false, noisemixing = false)
+        diff_type = Val{:central},
+        autojacvec = nothing,
+        checkpointing = false, noisemixing = false)
     InterpolatingAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
         checkpointing,
         noisemixing)
@@ -388,7 +388,7 @@ end
 TruncatedStacktraces.@truncate_stacktrace InterpolatingAdjoint
 
 function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
-    vjp) where {CS, AD, FDT}
+        vjp) where {CS, AD, FDT}
     InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
         sensealg.noisemixing)
 end
@@ -413,9 +413,9 @@ pass and is thus memory intensive.
 
 ```julia
 QuadratureAdjoint(; chunk_size = 0, autodiff = true,
-                  diff_type = Val{:central},
-                  autojacvec = nothing, abstol = 1e-6,
-                  reltol = 1e-3)
+    diff_type = Val{:central},
+    autojacvec = nothing, abstol = 1e-6,
+    reltol = 1e-3)
 ```
 
 ## Keyword Arguments
@@ -477,9 +477,9 @@ struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
     reltol::Float64
 end
 Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing, abstol = 1e-6,
-    reltol = 1e-3)
+        diff_type = Val{:central},
+        autojacvec = nothing, abstol = 1e-6,
+        reltol = 1e-3)
     QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
         abstol, reltol)
 end
@@ -511,8 +511,8 @@ pass and is thus memory efficient.
 
 ```julia
 GaussAdjoint(; chunk_size = 0, autodiff = true,
-                  diff_type = Val{:central},
-                  autojacvec = nothing)
+    diff_type = Val{:central},
+    autojacvec = nothing)
 ```
 
 ## Keyword Arguments
@@ -571,10 +571,11 @@ struct GaussAdjoint{CS, AD, FDT, VJP} <:
     checkpointing::Bool
 end
 Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = nothing,
-    checkpointing=false)
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec, checkpointing)
+        diff_type = Val{:central},
+        autojacvec = nothing,
+        checkpointing = false)
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+        autojacvec, checkpointing)
 end
 
 TruncatedStacktraces.@truncate_stacktrace GaussAdjoint
@@ -674,10 +675,10 @@ See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ```julia
 ForwardLSS(;
-           chunk_size = 0, autodiff = true,
-           diff_type = Val{:central},
-           LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-           g = nothing)
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+    g = nothing)
 ```
 
 ## Keyword Arguments
@@ -726,11 +727,12 @@ struct ForwardLSS{CS, AD, FDT, RType, gType} <:
     g::gType
 end
 Base.@pure function ForwardLSS(;
-    chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-    g = nothing)
-    ForwardLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(LSSregularizer,
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central},
+        LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+        g = nothing)
+    ForwardLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
+        LSSregularizer,
         g)
 end
 
@@ -752,10 +754,10 @@ See `NILSS()` and `NILSAS()` for a more efficient non-intrusive formulation.
 
 ```julia
 AdjointLSS(;
-           chunk_size = 0, autodiff = true,
-           diff_type = Val{:central},
-           LSSRegularizer = TimeDilation(10.0, 0.0, 0.0),
-           g = nothing)
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    LSSRegularizer = TimeDilation(10.0, 0.0, 0.0),
+    g = nothing)
 ```
 
 ## Keyword Arguments
@@ -796,11 +798,12 @@ struct AdjointLSS{CS, AD, FDT, RType, gType} <:
     g::gType
 end
 Base.@pure function AdjointLSS(;
-    chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-    g = nothing)
-    AdjointLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(LSSregularizer,
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central},
+        LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
+        g = nothing)
+    AdjointLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
+        LSSregularizer,
         g)
 end
 
@@ -821,8 +824,8 @@ additional information and other methods.
 
 ```julia
 TimeDilation(alpha;
-             t0skip = zero(alpha),
-             t1skip = zero(alpha))
+    t0skip = zero(alpha),
+    t1skip = zero(alpha))
 ```
 """
 struct TimeDilation{T1 <: Number} <: AbstractLSSregularizer
@@ -854,11 +857,11 @@ step, and thus should generally be preferred (for large system sizes) over `Forw
 
 ```julia
 NILSS(nseg, nstep; nus = nothing,
-      rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-      chunk_size = 0, autodiff = true,
-      diff_type = Val{:central},
-      autojacvec = autodiff,
-      g = nothing)
+    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    autojacvec = autodiff,
+    g = nothing)
 ```
 
 ## Arguments
@@ -912,11 +915,11 @@ struct NILSS{CS, AD, FDT, RNG, nType, gType} <:
     g::gType
 end
 Base.@pure function NILSS(nseg, nstep; nus = nothing,
-    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-    chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    autojacvec = autodiff,
-    g = nothing)
+        rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central},
+        autojacvec = autodiff,
+        g = nothing)
     NILSS{chunk_size, autodiff, diff_type, typeof(rng), typeof(nus), typeof(g)}(rng, nseg,
         nstep, nus,
         autojacvec,
@@ -946,10 +949,10 @@ with respect to multiple parameters with negligible additional cost.
 
 ```julia
 NILSAS(nseg, nstep, M = nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-       adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-       chunk_size = 0, autodiff = true,
-       diff_type = Val{:central},
-       g = nothing)
+    adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+    chunk_size = 0, autodiff = true,
+    diff_type = Val{:central},
+    g = nothing)
 ```
 
 ## Arguments
@@ -1012,11 +1015,11 @@ struct NILSAS{CS, AD, FDT, RNG, SENSE, gType} <:
     g::gType
 end
 Base.@pure function NILSAS(nseg, nstep, M = nothing;
-    rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
-    adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-    chunk_size = 0, autodiff = true,
-    diff_type = Val{:central},
-    g = nothing)
+        rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
+        adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central},
+        g = nothing)
 
     # integer dimension of the unstable subspace
     M === nothing &&
@@ -1028,7 +1031,7 @@ Base.@pure function NILSAS(nseg, nstep, M = nothing;
         diff_type,
         typeof(rng),
         typeof(adjoint_sensealg),
-        typeof(g),
+        typeof(g)
     }(rng, adjoint_sensealg, M,
         nseg, nstep, g)
 end
@@ -1046,8 +1049,8 @@ implicit function theorem to directly compute the derivative of the solution to
 
 ```julia
 SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-                   diff_type = Val{:central},
-                   autojacvec = autodiff, linsolve = nothing)
+    diff_type = Val{:central},
+    autojacvec = autodiff, linsolve = nothing)
 ```
 
 ## Keyword Arguments
@@ -1096,13 +1099,13 @@ end
 TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
 
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
-    diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-    linsolve_kwargs=(;))
+        diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
+        linsolve_kwargs = (;))
     return SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs)}(autojacvec, linsolve, linsolve_kwargs)
 end
 function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
-    vjp) where {CS, AD, FDT, VJP, LS, LK}
+        vjp) where {CS, AD, FDT, VJP, LS, LK}
     return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(vjp, sensealg.linsolve,
         sensealg.linsolve_kwargs)
 end
@@ -1240,35 +1243,35 @@ end
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
 @inline function alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }) where {
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }
     AD
 end
 @inline function get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }) where {
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }
     CS
 end
 @inline function diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }) where {
-    CS,
-    AD,
-    FDT,
+        CS,
+        AD,
+        FDT
 }
     FDT
 end
@@ -1322,7 +1325,9 @@ struct ForwardDiffOverAdjoint{A} <:
     adjalg::A
 end
 
-get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where{compile} = AutoReverseDiff(; compile)
+function get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where {compile}
+    AutoReverseDiff(; compile)
+end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()

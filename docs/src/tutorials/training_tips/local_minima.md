@@ -18,7 +18,7 @@ on `(0,5.0)`. Naively, we use the same training strategy as before:
 ```@example iterativefit
 using SciMLSensitivity
 using OrdinaryDiffEq,
-    ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
+      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote
 
 rng = Random.default_rng()
@@ -59,7 +59,7 @@ function loss_neuralode(p)
 end
 
 iter = 0
-callback = function (p, l, pred; doplot = false)
+callback = function (state, l, pred; doplot = false)
     global iter
     iter += 1
 
@@ -169,7 +169,7 @@ one could use a mix of (3) and (4), or breaking up the trajectory into chunks an
 ```@example resetic
 using SciMLSensitivity
 using OrdinaryDiffEq,
-    ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
+      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
 using Lux, Plots, Random, Zygote
 
 #Starting example with tspan (0, 5)
@@ -206,8 +206,8 @@ function loss_n_ode(pu0, _)
     loss
 end
 
-function callback(p, l; doplot = true) #callback function to observe training
-    pred = predict_n_ode(p)
+function callback(state, l; doplot = true) #callback function to observe training
+    pred = predict_n_ode(state.u)
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data
@@ -237,8 +237,8 @@ function loss_n_ode2(p, _)
     loss
 end
 
-function callback2(p, l; doplot = true) #callback function to observe training
-    pred = predict_n_ode2(p)
+function callback2(state, l; doplot = true) #callback function to observe training
+    pred = predict_n_ode2(state.u)
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data

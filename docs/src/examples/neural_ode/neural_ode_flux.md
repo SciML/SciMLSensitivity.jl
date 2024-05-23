@@ -84,7 +84,7 @@ and `p` and then in the loss function split to the pieces.
 
 ```@example neuralode2
 using Flux, OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers,
-    OptimizationNLopt, Plots
+      Plots
 
 u0 = [2.0; 0.0]
 datasize = 30

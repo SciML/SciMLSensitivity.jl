@@ -1,15 +1,16 @@
 import OrdinaryDiffEq
 import DiffEqBase: DynamicalODEProblem
 import SciMLSensitivity:
-    solve,
-    ODEProblem,
-    ODEAdjointProblem,
-    InterpolatingAdjoint,
-    ZygoteVJP,
-    ReverseDiffVJP
+                         solve,
+                         ODEProblem,
+                         ODEAdjointProblem,
+                         InterpolatingAdjoint,
+                         ZygoteVJP,
+                         ReverseDiffVJP
 import RecursiveArrayTools: ArrayPartition
 
-sol = solve(DynamicalODEProblem((v, x, p, t) -> [0.0, 0.0],
+sol = solve(
+    DynamicalODEProblem((v, x, p, t) -> [0.0, 0.0],
 
         # ERROR: LoadError: type Nothing has no field x
         # (v, x, p, t) -> [0.0, 0.0],
@@ -17,13 +18,16 @@ sol = solve(DynamicalODEProblem((v, x, p, t) -> [0.0, 0.0],
         # ERROR: LoadError: MethodError: no method matching ndims(::Type{Nothing})
         (v, x, p, t) -> v, [0.0, 0.0],
         [0.0, 0.0],
-        (0.0, 1.0)), OrdinaryDiffEq.Tsit5())
+        (0.0, 1.0)),
+    OrdinaryDiffEq.Tsit5())
 
-solve(ODEAdjointProblem(sol,
+solve(
+    ODEAdjointProblem(sol,
         InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true)),
         OrdinaryDiffEq.Tsit5(),
         [sol.t[end]],
-        (out, x, p, t, i) -> (out .= 0)), OrdinaryDiffEq.Tsit5())
+        (out, x, p, t, i) -> (out .= 0)),
+    OrdinaryDiffEq.Tsit5())
 
 dyn_v(v_ap, x_ap, p, t) = ArrayPartition(zeros(), [0.0])
 # Originally, I imagined that this may be a bug in Zygote, and it still may be, but I tried doing a pullback on this
@@ -41,17 +45,20 @@ end
 v0 = [-1.0]
 x0 = [0.75]
 
-sol = solve(DynamicalODEProblem(dyn_v,
+sol = solve(
+    DynamicalODEProblem(dyn_v,
         dyn_x,
         ArrayPartition(zeros(), v0),
         ArrayPartition(zeros(), x0),
         (0.0, 1.0),
-        zeros()), OrdinaryDiffEq.Tsit5(),
+        zeros()),
+    OrdinaryDiffEq.Tsit5(),
     # Without setting parameters, we end up with https://github.com/SciML/DifferentialEquations.jl/issues/679 again.
     p = zeros())
 
 g = ArrayPartition(ArrayPartition(zeros(), zero(v0)), ArrayPartition(zeros(), zero(x0)))
-bwd_sol = solve(ODEAdjointProblem(sol,
+bwd_sol = solve(
+    ODEAdjointProblem(sol,
         InterpolatingAdjoint(autojacvec = ZygoteVJP(allow_nothing = true)),
         OrdinaryDiffEq.Tsit5(),
         # Also fails, but due to a different bug:

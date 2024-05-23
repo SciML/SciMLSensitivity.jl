@@ -17,7 +17,7 @@ matrix multiplication). Thus for example, with `Chain` we can
 define an ODE:
 
 ```@example dataparallel
-using Lux, DiffEqFlux, OrdinaryDiffEq, LuxCUDA, Random
+using Lux, OrdinaryDiffEq, LuxCUDA, Random
 
 gdev = gpu_device()
 
@@ -41,7 +41,7 @@ each column is an independent system:
 
 ```@example dataparallel
 u0 = Float32.([0 1 2
-    0 0 0])
+               0 0 0])
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
 solve(prob, Tsit5())
 ```
@@ -53,14 +53,15 @@ GPU:
 
 ```@example dataparallel
 xs = Float32.([0 1 2
-    0 0 0])
+               0 0 0])
 prob = ODEProblem(f, gdev(u0), (0.0f0, 1.0f0), gdev(p))
 solve(prob, Tsit5())
 ```
 
 This method of parallelism is optimal if all the operations are
 linear algebra operations, such as a neural ODE. Thus this method of
-parallelism is demonstrated in the [MNIST tutorial](https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/).
+parallelism is demonstrated in the
+[MNIST tutorial](https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/).
 
 However, this method of parallelism has many limitations. First of all,
 the ODE function is required to be written in a way that is independent

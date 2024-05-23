@@ -120,7 +120,8 @@ end
     @info res_sde_p2
 
     # test consistency for different switches for the noise Jacobian
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = false))
@@ -130,7 +131,8 @@ end
 
     @info res_sde_p2a
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
@@ -140,7 +142,8 @@ end
 
     @info res_sde_p2a
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = tend / dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
@@ -153,8 +156,7 @@ end
     function GSDE2(p)
         Random.seed!(seed)
         tmp_prob = remake(prob_oop_sde2, u0 = eltype(p).(prob_oop_sde2.u0), p = p,
-            tspan = eltype(p).(prob_oop_sde2.tspan)
-            #,abstol=abstol, reltol=reltol
+            tspan = eltype(p).(prob_oop_sde2.tspan)            #,abstol=abstol, reltol=reltol
         )
         sol = solve(tmp_prob, RKMil(interpretation = :Stratonovich), dt = dt1,
             adaptive = false, sensealg = DiffEqBase.SensitivityADPassThrough(),
@@ -181,7 +183,8 @@ end
     # InterpolatingAdjoint
     @info "InterpolatingAdjoint SDE"
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint())
@@ -244,7 +247,8 @@ end
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint())
@@ -252,7 +256,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = false))
@@ -260,7 +265,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
@@ -268,7 +274,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
@@ -276,7 +283,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = false))
@@ -284,7 +292,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-7)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-7)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
@@ -292,7 +301,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-7)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-7)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+        sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
@@ -544,7 +554,8 @@ end
     res_sde_forward = ForwardDiff.gradient(GSDE1, p2)
 
     Random.seed!(seed)
-    res_sde_trackeru0, res_sde_trackerp = Zygote.gradient((u0, p) -> sum(Array(solve(prob_oop_sde,
+    res_sde_trackeru0, res_sde_trackerp = Zygote.gradient(
+        (u0, p) -> sum(Array(solve(prob_oop_sde,
             RKMil(interpretation = :Stratonovich),
             dt = 5e-4,
             adaptive = false,
@@ -552,7 +563,9 @@ end
             p = p,
             saveat = tarray,
             sensealg = TrackerAdjoint())) .^
-                                                                         2.0 / 2.0), u₀, p2)
+                       2.0 / 2.0),
+        u₀,
+        p2)
 
     @test isapprox(res_sde_forward, res_sde_trackerp, rtol = 1e-5)
 end

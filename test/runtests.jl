@@ -9,6 +9,12 @@ function activate_gpu_env()
     Pkg.instantiate()
 end
 
+function activate_diffeq_env()
+    Pkg.activate("diffeq")
+    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+end
+
 @time @testset "SciMLSensitivity" begin
     if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
         @testset "Core1" begin
@@ -45,12 +51,6 @@ end
         @testset "Core 3" begin
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
             @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
-            @time @safetestset "Physical ODE Adjoint Regression Test" include("physical_ode_regression.jl")
-
-            @time @safetestset "Continuous adjoint params" include("adjoint_param.jl")
-            @time @safetestset "Continuous and discrete costs" include("mixed_costs.jl")
-            @time @safetestset "Fully Out of Place adjoint sensitivity" include("adjoint_oop.jl")
-            @time @safetestset "Differentiate LazyBuffer with ReverseDiff" include("lazybuffer.jl")
         end
     end
 
@@ -91,6 +91,17 @@ end
             @time @safetestset "Steady State Adjoint" include("steady_state.jl")
             @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" include("second_order_odes.jl")
             @time @safetestset "Parameter Compatibility Errors" include("parameter_compatibility_errors.jl")
+        end
+    end
+
+    if GROUP == "All" || GROUP == "Core7"
+        @testset "Core 7" begin
+            @time @safetestset "Physical ODE Adjoint Regression Test" include("physical_ode_regression.jl")
+            @time @safetestset "Continuous adjoint params" include("adjoint_param.jl")
+            @time @safetestset "Continuous and discrete costs" include("mixed_costs.jl")
+            @time @safetestset "Fully Out of Place adjoint sensitivity" include("adjoint_oop.jl")
+            @time @safetestset "Differentiate LazyBuffer with ReverseDiff" include("lazybuffer.jl")
+            # Core 7 was split off from Core 3 due to leaks in the testsets described here https://github.com/SciML/SciMLSensitivity.jl/pull/1024
         end
     end
 
@@ -136,6 +147,13 @@ end
     if GROUP == "Shadowing"
         @testset "Shadowing" begin
             @time @safetestset "Shadowing Tests" include("shadowing.jl")
+        end
+    end
+
+    if GROUP == "DiffEq"
+        @testset "DiffEq" begin
+            activate_diffeq_env()
+            @time @safetestset "Default DiffEq Alg" include("diffeq/default_alg_diff.jl")
         end
     end
 

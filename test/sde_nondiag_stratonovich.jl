@@ -61,7 +61,7 @@ end
         du22 = p[4] * u[1] + p[3] * u[2]
 
         [du11 du12
-            du21 du22]
+         du21 du22]
     end
 
     function f_nondiag_analytic(u0, p, t, W)
@@ -636,7 +636,7 @@ end
         KR, KI = _p[1:2]
 
         [KR zero(KR)
-            KI zero(KR)]
+         KI zero(KR)]
     end
 
     p = [1.0, 0.0]
@@ -677,7 +677,7 @@ end
     _dp1 = compute_dp(p, prob!, ForwardDiffSensitivity())
     _dp2 = compute_dp(p, prob!, BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     _dp3 = compute_dp(p, prob!, InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
-    @test_broken !any(isnan,compute_dp(p, prob!, InterpolatingAdjoint()))
+    @test_broken !any(isnan, compute_dp(p, prob!, InterpolatingAdjoint()))
 
     @test dp1≈_dp1 rtol=1e-8
     @test dp2≈_dp2 rtol=1e-8
@@ -719,8 +719,7 @@ end
         _prob = remake(prob,
             u0 = convert.(eltype(p), prob.u0),
             p = p,
-            noise = Z
-            # noise_rate_prototype = noise_rate_prototype
+            noise = Z            # noise_rate_prototype = noise_rate_prototype
         )
         sol = solve(_prob, EulerHeun(), dt = dt, sensealg = sensealg)
         sum(abs2, sol.u[end])
@@ -739,11 +738,13 @@ end
     @show gFinD - gZy
 
     # ReverseDiffVJP(), ZygoteVJP()
-    gZy = Zygote.gradient(p -> loss(p, Z = Z,
+    gZy = Zygote.gradient(
+        p -> loss(p, Z = Z,
             sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP())),
         p)[1]
     @test gFinD≈gZy rtol=1e-4
-    gZy = Zygote.gradient(p -> loss(p, Z = Z,
+    gZy = Zygote.gradient(
+        p -> loss(p, Z = Z,
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
         p)[1]
     @test gFinD≈gZy rtol=1e-4
@@ -753,10 +754,10 @@ end
 
 @testset "Diagonal forward SDE and Non-Diagonal Reverse SDE with Non-Square input" begin
     u = Float32.([0.0f0 1.0f0 2.0f0;
-        0.0f0 0.0f0 1.0f0])
+                  0.0f0 0.0f0 1.0f0])
 
     p = Float32.([-1.5 0.05 0.2;
-        0.01 0.4 1.9])
+                  0.01 0.4 1.9])
 
     tspan = (0.0f0, 1.0f0)
 

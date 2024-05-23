@@ -121,7 +121,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```@example sde
-using StochasticDiffEq, DiffEqFlux, Optimization, OptimizationOptimisers, Plots
+using StochasticDiffEq, Optimization, OptimizationOptimisers, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -155,9 +155,9 @@ so that way we only plot the current results every 10 iterations. This looks
 like:
 
 ```@example sde
-callback = function (p, l)
+callback = function (state, l)
     display(l)
-    remade_solution = solve(remake(prob_sde, p = p), SOSRI(), saveat = 0.1)
+    remade_solution = solve(remake(prob_sde, p = state.u), SOSRI(), saveat = 0.1)
     plt = plot(remade_solution, ylim = (0, 6))
     display(plt)
     return false

@@ -151,7 +151,8 @@ function discrete_cost_forward(input, sensealg = nothing)
     p = input[3:end]
 
     prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
-    sol = Array(solve(prob, Tsit5(), abstol = abstol, reltol = reltol, saveat = savingtimes,
+    sol = Array(solve(
+        prob, Tsit5(), abstol = abstol, reltol = reltol, saveat = savingtimes,
         sensealg = sensealg, save_start = false, save_end = false))
     cost = zero(eltype(p))
     for u in eachcol(sol)

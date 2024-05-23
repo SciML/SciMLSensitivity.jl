@@ -225,7 +225,8 @@ end
 
 u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0, 1.0]
-@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(lotka_volterra_oop,
+@test_throws SciMLSensitivity.ForwardSensitivityOutOfPlaceError ODEForwardSensitivityProblem(
+    lotka_volterra_oop,
     u0,
     (0.0,
         10.0),

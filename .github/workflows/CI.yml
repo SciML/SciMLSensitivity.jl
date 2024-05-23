@@ -23,6 +23,8 @@ jobs:
           - Core4
           - Core5
           - Core6
+          - Core7
+          - DiffEq
           - SDE1
           - SDE2
           - SDE3
@@ -30,7 +32,7 @@ jobs:
           - '1.10'
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
       - uses: actions/cache@v4
@@ -48,6 +50,8 @@ jobs:
         env:
           GROUP: ${{ matrix.group }}
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v3
+      - uses: codecov/codecov-action@v4
         with:
           file: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
