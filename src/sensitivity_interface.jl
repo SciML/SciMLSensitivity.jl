@@ -405,7 +405,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         dgdu_continuous = nothing, dgdp_continuous = nothing,
         g = nothing,
         abstol = 1e-6, reltol = 1e-3,
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         corfunc_analytical = nothing,
         callback = nothing,
         kwargs...)
@@ -441,7 +441,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         error("Continuous adjoint sensitivities are only supported for ODE/SDE/RODE problems.")
     end
 
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
+    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
     adj_sol = solve(adj_prob, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)

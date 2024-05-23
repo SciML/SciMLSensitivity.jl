@@ -150,7 +150,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
 
     # assert that all ts are hit if concrete solve interface/discrete costs are used
     if t !== nothing
-        @assert sol.t == t
+        @assert current_time(sol) == t
         @assert dgdu_continuous === nothing && dgdp_continuous === nothing
         dgdu = dgdu_discrete
         dgdp = dgdp_discrete
@@ -170,11 +170,11 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
         tspan, g, dgdu, dgdp)
 
     @unpack numparams, numindvar = sense
-    Nt = length(sol.t)
+    Nt = length(current_time(sol))
     Ndt = Nt - one(Nt)
 
     # pre-allocate variables
-    dt = similar(sol.t, Ndt)
+    dt = similar(current_time(sol), Ndt)
     umid = Matrix{eltype(u0)}(undef, numindvar, Ndt)
     dudt = Matrix{eltype(u0)}(undef, numindvar, Ndt)
     # compute their values
@@ -238,8 +238,8 @@ end
 # compute discretized reference trajectory
 function discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
     for i in 1:Ndt
-        tr = sol.t[i + 1]
-        tl = sol.t[i]
+        tr = current_time(sol, i + 1)
+        tl = current_time(sol, i)
         ur = state_values(sol, i + 1)
         ul = state_values(sol, i)
         dt[i] = tr - tl
@@ -346,8 +346,9 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     @unpack dg_val, numparams, numindvar, uf = diffcache
     @unpack t0skip, t1skip = LSSregularizer
 
-    n0 = searchsortedfirst(sol.t, sol.t[1] + t0skip)
-    n1 = searchsortedfirst(sol.t, sol.t[end] - t1skip)
+    time = current_time(sol)
+    n0 = searchsortedfirst(time, first(time) + t0skip)
+    n1 = searchsortedfirst(time, last(time) - t1skip)
 
     b!(b, prob)
 
@@ -402,7 +403,8 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     b!(b, prob)
 
     # windowing (cos)
-    @. window = (sol.t - sol.t[1]) * convert(eltype(Δt), 2 * pi / Δt)
+    time = current_time(sol)
+    @. window = (time - first(time)) * convert(eltype(Δt), 2 * pi / Δt)
     @. window = one(eltype(window)) - cos(window)
     window ./= sum(window)
 
@@ -438,7 +440,8 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     res .*= false
 
     # windowing cos2
-    @. window = (sol.t - sol.t[1]) * convert(eltype(Δt), 2 * pi / Δt)
+    time = current_time(sol)
+    @. window = (time - first(time)) * convert(eltype(Δt), 2 * pi / Δt)
     @. window = (one(eltype(window)) - cos(window))^2
     window ./= sum(window)
 
@@ -519,9 +522,10 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
         error("You must have parameters to use parameter sensitivity calculations!")
     !(state_values(sol) isa AbstractVector) && error("`u` has to be an AbstractVector.")
 
+    time = current_time(sol)
     # assert that all ts are hit if concrete solve interface/discrete costs are used
     if t !== nothing
-        @assert sol.t == t
+        @assert time == t
         @assert dgdu_continuous === nothing && dgdp_continuous === nothing
         dgdu = dgdu_discrete
         dgdp = dgdp_discrete
@@ -541,11 +545,11 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
         tspan, g, dgdu, dgdp)
 
     @unpack numparams, numindvar = sense
-    Nt = length(sol.t)
+    Nt = length(time)
     Ndt = Nt - one(Nt)
 
     # pre-allocate variables
-    dt = similar(sol.t, Ndt)
+    dt = similar(time, Ndt)
     umid = Matrix{eltype(u0)}(undef, numindvar, Ndt)
     dudt = Matrix{eltype(u0)}(undef, numindvar, Ndt)
     # compute their values
@@ -639,8 +643,9 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
     b .= E * h + B * wBinv
     wa .= F \ b
 
-    n0 = searchsortedfirst(sol.t, sol.t[1] + t0skip)
-    n1 = searchsortedfirst(sol.t, sol.t[end] - t1skip)
+    time = current_time(sol)
+    n0 = searchsortedfirst(time, first(time) + t0skip)
+    n1 = searchsortedfirst(time, last(time) - t1skip)
 
     umidres = @view umid[:, n0:(n1 - 1)]
     wares = @view wa[((n0 - 1) * numindvar + 1):((n1 - 1) * numindvar)]

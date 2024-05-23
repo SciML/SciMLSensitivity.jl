@@ -111,7 +111,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], last(current_time(sol)))
             terminated = true
         end
     end

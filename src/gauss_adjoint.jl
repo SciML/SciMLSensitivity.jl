@@ -149,7 +149,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
             if !(interval[1] <= t <= interval[2])
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
-                cpsol_t = checkpoint_sol.cpsol.t
+                cpsol_t = current_time(checkpoint_sol.cpsol)
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                     y = sol(interval[1])
                 else
@@ -210,7 +210,7 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false);
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         callback = CallbackSet(),
         reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
         RetCB}
@@ -234,7 +234,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], last(current_time(sol)))
             terminated = true
         end
     end
@@ -511,7 +511,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         dgdp_continuous = nothing,
         g = nothing,
         abstol = 1e-6, reltol = 1e-3,
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         corfunc_analytical = false,
         callback = CallbackSet(),
         kwargs...)
@@ -542,7 +542,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         error("Continuous adjoint sensitivities are only supported for ODE problems.")
     end
 
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
+    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
     adj_sol = solve(
         adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
