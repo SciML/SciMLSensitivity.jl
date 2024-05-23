@@ -20,7 +20,7 @@ We start by defining a model of the pendulum. The model takes a parameter $L$ co
 
 ```@example PEM
 using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Plots, Statistics,
-    DataInterpolations, ForwardDiff
+      DataInterpolations, ForwardDiff
 
 tspan = (0.1, 20.0)
 tsteps = range(tspan[1], tspan[2], length = 1000)

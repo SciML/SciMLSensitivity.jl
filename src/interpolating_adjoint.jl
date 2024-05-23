@@ -26,10 +26,10 @@ mutable struct CheckpointSolution{S, I, T, T2}
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-    f, alg,
-    checkpoints, tols, tstops = nothing;
-    noiseterm = false,
-    tspan = reverse(sol.prob.tspan))
+        f, alg,
+        checkpoints, tols, tstops = nothing;
+        noiseterm = false,
+        tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
         error("checkpoints must be passed when checkpointing is enabled.")
@@ -71,11 +71,13 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
                 if maximum(interval[1] .< tstops .< interval[2])
                     # callback might have changed p
                     _p = reset_p(sol.prob.kwargs[:callback], interval)
-                    cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    cpsol = solve(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                         tstops = tstops,
                         p = _p, sol.alg; tols...)
                 else
-                    cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    cpsol = solve(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                         tstops = tstops, sol.alg; tols...)
                 end
             end
@@ -87,7 +89,6 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
 
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
-
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
         discrete, y, sol,
@@ -158,8 +159,8 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t, W)
 end
 
 function split_states(du, u, t, S::TS;
-    update = true) where {TS <:
-         ODEInterpolatingAdjointSensitivityFunction}
+        update = true) where {TS <:
+                              ODEInterpolatingAdjointSensitivityFunction}
     @unpack sol, y, checkpoint_sol, discrete, prob, f = S
     idx = length(y)
     if update
@@ -194,7 +195,8 @@ function split_states(du, u, t, S::TS;
                         forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W,
                             indx = idx_noise)
                     elseif sol.W isa DiffEqNoiseProcess.NoiseGrid
-                        forwardnoise = DiffEqNoiseProcess.NoiseGrid(_sol.W.t[idx_noise:end],
+                        forwardnoise = DiffEqNoiseProcess.NoiseGrid(
+                            _sol.W.t[idx_noise:end],
                             _sol.W.W[idx_noise:end])
                     else
                         error("NoiseProcess type not implemented.")
@@ -358,7 +360,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-            copy(zzz') II]
+              copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -370,7 +372,7 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-            copy(zzz') II]
+                                 copy(zzz') II]
     end
 
     odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
@@ -459,7 +461,8 @@ end
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
         jac = diffusion_jac,
         paramjac = diffusion_paramjac)
-    sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
+    sense_diffusion = ODEInterpolatingAdjointSensitivityFunction(
+        g, sensealg, discrete, sol,
         dgdu_continuous,
         dgdp_continuous,
         diffusion_function,
@@ -485,7 +488,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-            copy(zzz') II]
+              copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -497,7 +500,7 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-            copy(zzz') II]
+                                 copy(zzz') II]
     end
 
     sdefun = SDEFunction(sense_drift, sense_diffusion, mass_matrix = mm,
@@ -611,7 +614,7 @@ end
         # using concrate I is slightly more efficient
         II = Diagonal(I, numparams)
         mm = [adjmm zzz
-            copy(zzz') II]
+              copy(zzz') II]
     end
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -623,7 +626,7 @@ end
         fill!(zzz, zero(eltype(zzz)))
         II = Diagonal(I, numparams)
         adjoint_jac_prototype = [_adjoint_jac_prototype zzz
-            copy(zzz') II]
+                                 copy(zzz') II]
     end
 
     rodefun = RODEFunction(sense, mass_matrix = mm, jac_prototype = adjoint_jac_prototype)
@@ -675,7 +678,8 @@ function reset_p(CBS, interval)
             if ts2[perm2][3] == 0
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
             else
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
+                    ts2,
                     1)[perm2]])
             end
         else
@@ -683,10 +687,12 @@ function reset_p(CBS, interval)
                 p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
             else
                 if ts2[perm2][3] == 0
-                    p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2,
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(
+                        ts2,
                         1)[perm2]])
                 else
-                    p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(ts2,
+                    p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
+                        ts2,
                         1)[perm2]])
                 end
             end

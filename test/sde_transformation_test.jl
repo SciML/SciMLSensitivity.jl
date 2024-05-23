@@ -37,15 +37,24 @@ du2 = transformed_function(u, p, tspan[2])
 
 linear_analytic_strat(u0, p, t, W) = @.(u0*exp((p[1]) * t + p[2] * W))
 
-prob_strat = SDEProblem{false}(SDEFunction((u, p, t) -> p[1] * u - 1 // 2 * p[2]^2 * u, σ,
-        analytic = linear_analytic_strat), σ, u0, tspan,
+prob_strat = SDEProblem{false}(
+    SDEFunction((u, p, t) -> p[1] * u - 1 // 2 * p[2]^2 * u, σ,
+        analytic = linear_analytic_strat),
+    σ,
+    u0,
+    tspan,
     p)
 Random.seed!(seed)
 sol_strat = solve(prob_strat, RKMil(interpretation = :Stratonovich), adaptive = false,
     dt = 0.0001, save_noise = true)
-prob_strat1 = SDEProblem{false}(SDEFunction((u, p, t) -> transformed_function(u, p, t) .+
-                                                         1 // 2 * p[2]^2 * u[1], σ,
-        analytic = linear_analytic), σ, u0, tspan, p)
+prob_strat1 = SDEProblem{false}(
+    SDEFunction((u, p, t) -> transformed_function(u, p, t) .+
+                             1 // 2 * p[2]^2 * u[1], σ,
+        analytic = linear_analytic),
+    σ,
+    u0,
+    tspan,
+    p)
 Random.seed!(seed)
 sol_strat1 = solve(prob_strat1, RKMil(interpretation = :Stratonovich), adaptive = false,
     dt = 0.0001, save_noise = true)
@@ -117,7 +126,7 @@ p = rand(1)
 fnd(u, p, t) = 0 * u
 function σnd(u, p, t)
     du = [cos(p[1])*sin(u[1]) cos(p[1])*cos(u[1]) -sin(p[1])*sin(u[2]) -sin(p[1])*cos(u[2])
-        sin(p[1])*sin(u[1]) sin(p[1])*cos(u[1]) cos(p[1])*sin(u[2]) cos(p[1])*cos(u[2])]
+          sin(p[1])*sin(u[1]) sin(p[1])*cos(u[1]) cos(p[1])*sin(u[2]) cos(p[1])*cos(u[2])]
     return du
 end
 
@@ -194,8 +203,8 @@ transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g
 _dy, back = Zygote.pullback(u0, p) do u, p
     vec(transformed_function(u, p, t))
 end
-@test isapprox(∇1, (p[1]-p[2]^2)*λ, atol=1e-15)
-@test isapprox(∇2, (@. [1,-2*p[2]]*u0*λ[1]), atol=1e-15)
+@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1e-15)
+@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
     (u, p, t) -> p[2]^2 * u)

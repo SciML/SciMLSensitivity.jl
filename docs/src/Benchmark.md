@@ -37,8 +37,7 @@ Quick summary:
   - `ReverseDiffVJP(compile = true)` works well for small Lux neural networks
 
 ```julia
-using DiffEqFlux,
-    OrdinaryDiffEq, Lux, SciMLSensitivity, Zygote, BenchmarkTools, Random, ComponentArrays
+using OrdinaryDiffEq, Lux, SciMLSensitivity, Zygote, BenchmarkTools, Random, ComponentArrays
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -57,13 +56,13 @@ dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
 Random.seed!(100)
 
 for sensealg in (InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
-        BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
-        BacksolveAdjoint(autojacvec = ZygoteVJP()),
-        BacksolveAdjoint(autojacvec = ReverseDiffVJP(false)),
-        BacksolveAdjoint(autojacvec = TrackerVJP()),
-        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
-        TrackerAdjoint())
+    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+    BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
+    BacksolveAdjoint(autojacvec = ZygoteVJP()),
+    BacksolveAdjoint(autojacvec = ReverseDiffVJP(false)),
+    BacksolveAdjoint(autojacvec = TrackerVJP()),
+    QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    TrackerAdjoint())
     prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(); saveat = tsteps,
         sensealg = sensealg)
     ps, st = Lux.setup(Random.default_rng(), prob_neuralode)
@@ -87,5 +86,4 @@ end
 # BacksolveAdjoint{0, true, Val{:central}, TrackerVJP}(TrackerVJP(false), true, false) took 0.044568018s
 # QuadratureAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}(ReverseDiffVJP{true}(), 1.0e-6, 0.001) took 0.002489559s
 # TrackerAdjoint() took 0.003759097s
-
 ```

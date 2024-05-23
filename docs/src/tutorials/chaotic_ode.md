@@ -36,13 +36,14 @@ prob = ODEProblem(lorenz!, u0, tspan, p)
 sol = solve(prob, Vern9(), abstol = 1e-14, reltol = 1e-14)
 sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
 pl1 = plot(sol, vars = (1, 2, 3), legend = true,
-  label = "sol",
-  labelfontsize = 20,
-  lw = 2,
-  xlabel = "x", ylabel = "y", zlabel = "z",
-  margin = 4Plots.mm
+    label = "sol",
+    labelfontsize = 20,
+    lw = 2,
+    xlabel = "x", ylabel = "y", zlabel = "z",
+    margin = 4Plots.mm
 )
-plot!(pl1, sol2, vars = (1, 2, 3), label = "sol2", xlims = (-25, 30), ylims = (-30, 30), zlims = (5, 49)
+plot!(pl1, sol2, vars = (1, 2, 3), label = "sol2",
+    xlims = (-25, 30), ylims = (-30, 30), zlims = (5, 49)
 )
 ```
 

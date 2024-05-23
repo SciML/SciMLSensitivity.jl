@@ -37,8 +37,9 @@ function d2dx(u, dx)
     2nd order Central difference for 2nd degree derivative
     """
     return [zero(eltype(u));
-        (@view(u[3:end]) .- 2.0 .* @view(u[2:(end - 1)]) .+ @view(u[1:(end - 2)])) ./ (dx^2);
-        zero(eltype(u))]
+            (@view(u[3:end]) .- 2.0 .* @view(u[2:(end - 1)]) .+ @view(u[1:(end - 2)])) ./
+            (dx^2)
+            zero(eltype(u))]
 end
 
 ## ODE description of the Physics:
@@ -163,8 +164,9 @@ function d2dx(u, dx)
     2nd order Central difference for 2nd degree derivative
     """
     return [zero(eltype(u));
-        (@view(u[3:end]) .- 2.0 .* @view(u[2:(end - 1)]) .+ @view(u[1:(end - 2)])) ./ (dx^2);
-        zero(eltype(u))]
+            (@view(u[3:end]) .- 2.0 .* @view(u[2:(end - 1)]) .+ @view(u[1:(end - 2)])) ./
+            (dx^2)
+            zero(eltype(u))]
 end
 ```
 

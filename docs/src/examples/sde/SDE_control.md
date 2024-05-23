@@ -1,6 +1,6 @@
 # Controlling Stochastic Differential Equations
 
-In this tutorial, we show how to use DiffEqFlux to control the time evolution of a system
+In this tutorial, we show how to use SciMLSensitivity to control the time evolution of a system
 described by a stochastic differential equation (SDE). Specifically, we consider a
 continuously monitored qubit described by an SDE in the Ito sense with multiplicative
 scalar noise (see [1] for a reference):
@@ -20,7 +20,7 @@ follow a full explanation of the definition and training process:
 
 ```@example
 # load packages
-using DiffEqFlux, SciMLSensitivity, Optimization, OptimizationOptimisers
+using SciMLSensitivity, Optimization, OptimizationOptimisers
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
 using Zygote, Statistics, LinearAlgebra, Random
 using Lux, Random, ComponentArrays
@@ -96,7 +96,7 @@ function prepare_initial(dt, n_par)
         cos.(theta / 2),
         sin.(theta / 2) .* cos.(phi),
         false * theta,
-        sin.(theta / 2) .* sin.(phi),
+        sin.(theta / 2) .* sin.(phi)
     ]
     return vcat(transpose.(u0)...) # build matrix
 end
@@ -273,11 +273,11 @@ end
 # burn-in loss
 l = loss(p_nn)
 # callback to visualize training
-visualization_callback = function (p, l; doplot = false)
+visualization_callback = function (state, l; doplot = false)
     println(l)
 
     if doplot
-        pl, _ = visualize(p)
+        pl, _ = visualize(state.u)
         display(pl)
     end
 
@@ -285,7 +285,7 @@ visualization_callback = function (p, l; doplot = false)
 end
 
 # Display the ODE with the initial parameter values.
-visualization_callback(p_nn, l; doplot = true)
+visualization_callback((; u = p_nn), l; doplot = true)
 
 ###################################
 # training loop
@@ -302,7 +302,7 @@ res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
     maxiters = 100)
 
 # plot optimized control
-visualization_callback(res.u, loss(res.u); doplot = true)
+visualization_callback(res, loss(res.u); doplot = true)
 ```
 
 ## Step-by-step description
@@ -310,7 +310,6 @@ visualization_callback(res.u, loss(res.u); doplot = true)
 ### Load packages
 
 ```@example sdecontrol
-using DiffEqFlux
 using SciMLSensitivity
 using Optimization, OptimizationOptimisers, Zygote
 using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
@@ -425,7 +424,7 @@ function prepare_initial(dt, n_par)
         cos.(theta / 2),
         sin.(theta / 2) .* cos.(phi),
         false * theta,
-        sin.(theta / 2) .* sin.(phi),
+        sin.(theta / 2) .* sin.(phi)
     ]
     return vcat(transpose.(u0)...) # build matrix
 end
@@ -630,11 +629,11 @@ function visualize(p_nn; alg = EM())
     return pl, loss
 end
 # callback to visualize training
-visualization_callback = function (p, l; doplot = false)
+visualization_callback = function (state, l; doplot = false)
     println(l)
 
     if doplot
-        pl, _ = visualize(p)
+        pl, _ = visualize(state.u)
         display(pl)
     end
 
@@ -665,7 +664,7 @@ res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
     maxiters = 100)
 
 # plot optimized control
-visualization_callback(res.u, loss(res.u); doplot = true)
+visualization_callback(res, loss(res.u); doplot = true)
 ```
 
 ![Evolution of the fidelity as a function of time](https://user-images.githubusercontent.com/42201748/107991039-10c59200-6fd6-11eb-8a97-a1c8d18a266b.png)

@@ -147,6 +147,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            elseif prob isa ODEProblem
+                GaussAdjoint(autodiff = false, autojacvec = vjp)
             else
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
@@ -155,6 +157,8 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autojacvec = vjp)
+            elseif prob isa ODEProblem
+                GaussAdjoint(autojacvec = vjp)
             else
                 InterpolatingAdjoint(autojacvec = vjp)
             end
@@ -168,12 +172,16 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
             # If reverse-mode isn't working, just fallback to numerical vjps
             if p === nothing || p === DiffEqBase.NullParameters()
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+            elseif prob isa ODEProblem
+                GaussAdjoint(autodiff = false, autojacvec = vjp)
             else
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
             if p === nothing || p === DiffEqBase.NullParameters()
                 QuadratureAdjoint(autojacvec = vjp)
+            elseif prob isa ODEProblem
+                GaussAdjoint(autojacvec = vjp)
             else
                 InterpolatingAdjoint(autojacvec = vjp)
             end
@@ -812,7 +820,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         # in the primal are left. This is for example necessary when `terminate!`
                         # is used.
                         indxs = findall(t -> t ∈ ts, current_time(_sol))
-                        _ts = _sol.t[indxs]
+                        _ts = current_time(_sol, indxs)
                         # after this filtering step, we might end up with a too large amount of indices.
                         # For example, if a callback saved values in the primal, then we now potentially
                         # save it by `saveat` and by `save_positions` of the callback.

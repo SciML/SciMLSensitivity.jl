@@ -8,7 +8,7 @@ First, we'll need data for training the NeuralODE, which can be obtained by solv
 
 ```@example sc_neuralode
 using SimpleChains,
-    StaticArrays, OrdinaryDiffEq, SciMLSensitivity, OptimizationOptimisers, Plots
+      StaticArrays, OrdinaryDiffEq, SciMLSensitivity, OptimizationOptimisers, Plots
 
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
@@ -65,7 +65,7 @@ The next step is to minimize the loss, so that the NeuralODE gets trained. But i
 The adjoint of a neural ODE can be calculated through the various AD algorithms available in SciMLSensitivity.jl. But working with [StaticArrays](https://docs.sciml.ai/StaticArrays/stable/) in SimpleChains.jl requires a special adjoint method as StaticArrays do not allow any mutation. All the adjoint methods make heavy use of in-place mutation to be performant with the heap allocated normal arrays. For our statically sized, stack allocated StaticArrays, in order to be able to compute the ODE adjoint we need to do everything out of place. Hence, we have specifically used `QuadratureAdjoint(autojacvec=ZygoteVJP())` adjoint algorithm in the solve call inside `predict_neuralode(p)` which computes everything out-of-place when u0 is a StaticArray. Hence, we can move forward with the training of the NeuralODE
 
 ```@example sc_neuralode
-callback = function (p, l, pred; doplot = true)
+callback = function (state, l, pred; doplot = true)
     display(l)
     plt = scatter(tsteps, data[1, :], label = "data")
     scatter!(plt, tsteps, pred[1, :], label = "prediction")

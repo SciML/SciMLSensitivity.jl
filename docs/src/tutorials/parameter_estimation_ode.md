@@ -7,8 +7,8 @@ follow.
 
 ```@example optode_cp
 using OrdinaryDiffEq,
-    Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
-    Zygote, Plots
+      Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
+      Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -42,7 +42,7 @@ function loss(p)
     return loss, sol
 end
 
-callback = function (p, l, pred)
+callback = function (state, l, pred)
     display(l)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
@@ -74,8 +74,8 @@ more details, [see the OrdinaryDiffEq.jl documentation](https://docs.sciml.ai/Di
 
 ```@example optode
 using OrdinaryDiffEq,
-    Optimization, OptimizationPolyalgorithms,
-    SciMLSensitivity, Zygote, Plots
+      Optimization, OptimizationPolyalgorithms,
+      SciMLSensitivity, Zygote, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -130,7 +130,7 @@ function. We will display the current loss and make a plot of the current
 situation:
 
 ```@example optode
-callback = function (p, l, pred)
+callback = function (state, l, pred)
     display(l)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
