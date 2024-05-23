@@ -397,7 +397,7 @@ function DiffEqBase._concrete_solve_adjoint(
     # implementation and makes `save_start` and `save_end` arg safe.
     if sensealg isa BacksolveAdjoint
         # Saving behavior unchanged
-        ts = sol.t
+        ts = current_time(sol)
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
         out = DiffEqBase.sensitivity_solution(sol, state_values(sol), ts)
     elseif saveat isa Number
@@ -407,7 +407,7 @@ function DiffEqBase._concrete_solve_adjoint(
             ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[1]
         end
         # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
-        sol.t[end] !== ts[end] && (ts = fix_endpoints(sensealg, sol, ts))
+        last(current_time(sol)) !== ts[end] && (ts = fix_endpoints(sensealg, sol, ts))
         if cb === nothing
             _out = sol(ts)
         else
@@ -432,9 +432,9 @@ function DiffEqBase._concrete_solve_adjoint(
         only_end = length(sol_idxs) <= 1
         # uf_idx = getu(sol, sol_idxs)
         # _u = uf_idx(sol)
-	_u = state_values(sol, sol_idxs)
-        u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
-        ts = sol.t[sol_idxs]
+	_u = state_values(sol, save_idxs)
+        u = save_idxs === nothing ? _u : [x[sol_idxs] for x in _u]
+        ts = current_time(sol, sol_idxs)
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
     else
         _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
