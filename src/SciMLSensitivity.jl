@@ -24,6 +24,9 @@ import FunctionWrappersWrappers
 using EllipsisNotation
 using FunctionProperties: hasbranching
 
+using SymbolicIndexingInterface
+using SciMLStructures
+
 using Markdown
 
 using Reexport
