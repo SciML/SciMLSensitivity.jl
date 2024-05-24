@@ -158,7 +158,7 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
 end
 
 function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
-    ODEForwardSensitivityProblem(symbolic_container(prob), state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
+    ODEForwardSensitivityProblem(prob.f, state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
