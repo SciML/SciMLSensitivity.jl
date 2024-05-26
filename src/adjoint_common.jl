@@ -660,7 +660,6 @@ if !hasmethod(Zygote.adjoint, Tuple{Zygote.AContext, typeof(Zygote.literal_getpr
             _Δ = @. ifelse(Δ === nothing, (zerou,), Δ)
             (SciMLBase.build_solution(sol.prob, sol.alg, sol.t, _Δ),)
         end
-        @show "here"
         sol.u, solu_adjoint
     end
 end
