@@ -517,11 +517,13 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         kwargs...)
 
     params = SymbolicIndexingInterface.parameter_values(sol)
-    if !SciMLStructures.isscimlstructure(params)
-        throw(error("p not MTKParams error"))
+    if !isscimlstructure(params)
+        throw(error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+              see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+              In particular, adjoint sensitivities only applies to `Tunable`."))
     end
 
-    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), params)
+    tunables, _, _ = canonicalize(Tunable(), params)
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),

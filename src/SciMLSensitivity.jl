@@ -26,7 +26,7 @@ using EllipsisNotation
 using FunctionProperties: hasbranching
 
 using SymbolicIndexingInterface
-using SciMLStructures
+using SciMLStructures: canonicalize, Tunable, isscimlstructure
 
 using Markdown
 

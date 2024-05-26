@@ -34,7 +34,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     prob = sol.prob
     u0 = state_values(prob)
     p = parameter_values(prob)
-    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+    tunables, _, _ = canonicalize(Tunable(), p)
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem

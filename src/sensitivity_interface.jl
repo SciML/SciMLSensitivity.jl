@@ -359,7 +359,7 @@ function adjoint_sensitivities(sol, args...;
     sensealg = InterpolatingAdjoint(),
     verbose = true, kwargs...)
 
-    if !SciMLStructures.isscimlstructure(sol.prob.p)
+    if !isscimlstructure(sol.prob.p)
       error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
               see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
               In particular, adjoint sensitivities only applies to `Tunable`.")
@@ -367,7 +367,7 @@ function adjoint_sensitivities(sol, args...;
 
     p = SymbolicIndexingInterface.parameter_values(sol)
     prob = sol.prob
-    tunables, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack, aliases = canonicalize(Tunable(), p)
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
@@ -446,7 +446,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
-    tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
+    tunables, _, _ = canonicalize(Tunable(), mtkp)
     prob = sol.prob
     # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
     l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)

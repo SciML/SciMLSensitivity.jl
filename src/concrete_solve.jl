@@ -216,13 +216,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         has_cb = false
     end
 
-    if !SciMLStructures.isscimlstructure(p)
+    if !isscimlstructure(p)
         error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
   
-    tunables, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack, aliases = canonicalize(Tunable(), p)
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
@@ -241,13 +241,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     originator::SciMLBase.ADOriginator, args...;
     verbose = true, kwargs...)
 
-    if !SciMLStructures.isscimlstructure(p)
+    if !isscimlstructure(p)
         error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
   
-    tunables, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack, aliases = canonicalize(Tunable(), p)
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
