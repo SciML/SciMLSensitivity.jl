@@ -652,12 +652,16 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
     return out, ts
 end
 
-Zygote.@adjoint function Zygote.literal_getproperty(sol::AbstractTimeseriesSolution,
-        ::Val{:u})
-    function solu_adjoint(Δ)
-        zerou = zero(sol.prob.u0)
-        _Δ = @. ifelse(Δ === nothing, (zerou,), Δ)
-        (SciMLBase.build_solution(sol.prob, sol.alg, sol.t, _Δ),)
+if !hasmethod(Zygote.adjoint,
+    Tuple{Zygote.AContext, typeof(Zygote.literal_getproperty),
+        SciMLBase.AbstractTimeseriesSolution, Val{:u}})
+    Zygote.@adjoint function Zygote.literal_getproperty(sol::AbstractTimeseriesSolution,
+            ::Val{:u})
+        function solu_adjoint(Δ)
+            zerou = zero(sol.prob.u0)
+            _Δ = @. ifelse(Δ === nothing, (zerou,), Δ)
+            (SciMLBase.build_solution(sol.prob, sol.alg, sol.t, _Δ),)
+        end
+        sol.u, solu_adjoint
     end
-    sol.u, solu_adjoint
 end
