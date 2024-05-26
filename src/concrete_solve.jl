@@ -224,7 +224,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
   
     p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
 
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose)
+    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end

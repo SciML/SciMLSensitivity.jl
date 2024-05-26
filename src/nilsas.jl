@@ -57,18 +57,21 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
         kwargs...)
-    @unpack p, u0, tspan, f = sol.prob
+    @unpack tspan, f = sol.prob
+    p = parameter_values(sol)
+    u0 = state_values(sol)
+    tunables, repack, aliases = canonicalize(Tunable(), p)
     @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
 
     numindvar = length(u0)
-    numparams = length(p)
+    numparams = length(tunables)
 
     # some shadowing sensealgs require knowledge of g
     check_for_g(sensealg, g)
 
     # sensealg choice
     adjoint_sensealg === nothing &&
-        (adjoint_sensealg = automatic_sensealg_choice(sol.prob, u0, p, false))
+        (adjoint_sensealg = automatic_sensealg_choice(sol.prob, u0, tunables, false, repack))
 
     p === nothing &&
         error("You must have parameters to use parameter sensitivity calculations!")
@@ -93,10 +96,10 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
 
     # homogeneous + inhomogeneous adjoint sensitivity problem
     # assign initial values to y, vstar, w
-    y = copy(state_values(sol)[end])
-    z0 = terminate_conditions(adjoint_sensealg, rng, f, y, p, tspan[2], numindvar,
+    y = copy(last(state_values(sol)))
+    z0 = terminate_conditions(adjoint_sensealg, rng, f, y, tunables, tspan[2], numindvar,
         numparams, M)
-    nilss = NILSSSensitivityFunction(sensealg, f, u0, p, tspan, g, dgdu_continuous,
+    nilss = NILSSSensitivityFunction(sensealg, f, u0, tunables, tspan, g, dgdu_continuous,
         dgdp_continuous)
     tspan = (tspan[2] - T_seg, tspan[2])
     checkpoints = tspan[1]:dtsave:tspan[2]
