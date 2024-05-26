@@ -222,9 +222,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
   
-    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
 
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
+    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
@@ -247,9 +247,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
                 In particular, adjoint sensitivities only applies to `Tunable`.")
     end
   
-    p, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
+    tunables, repack, aliases = canonicalize(SciMLStructures.Tunable(), p)
 
-    default_sensealg = automatic_sensealg_choice(prob, u0, p, verbose, repack)
+    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
         kwargs...)
