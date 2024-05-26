@@ -137,7 +137,7 @@ end
                Please use the higher level `solve` interface or specify these two contributions.")
 
     p = parameter_values(sol)
-    u0 = state_values(sol)
+    u0 = state_values(sol, 1)
     tunables, repack, _ = canonicalize(Tunable(), p)
 
     ## Force recompile mode until vjps are specialized to handle this!!!
@@ -152,7 +152,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], current_time(sol)[end])
+            tspan = (tspan[1], last(current_time(sol)))
             terminated = true
         end
     end
