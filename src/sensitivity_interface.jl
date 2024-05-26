@@ -365,9 +365,9 @@ function adjoint_sensitivities(sol, args...;
               In particular, adjoint sensitivities only applies to `Tunable`.")
     end
 
-    mtkp = SymbolicIndexingInterface.parameter_values(sol)
+    p = SymbolicIndexingInterface.parameter_values(sol)
     prob = sol.prob
-    _p, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), mtkp)
+    tunables, repack, aliases = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
@@ -378,7 +378,7 @@ function adjoint_sensitivities(sol, args...;
         if !has_cb
             _sensealg = if isinplace(sol.prob)
                 setvjp(
-                    sensealg, inplace_vjp(prob, state_values(prob), mtkp, verbose, _p, repack))
+                    sensealg, inplace_vjp(prob, state_values(prob), p, verbose, repack))
             else
                 setvjp(sensealg, ZygoteVJP())
             end
