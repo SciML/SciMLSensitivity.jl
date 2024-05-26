@@ -37,7 +37,8 @@ import SciMLBase: unwrapped_f, _unwrap_val
 import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAlgorithm,
                   AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,
                   AbstractSecondOrderSensitivityAlgorithm,
-                  AbstractShadowingSensitivityAlgorithm
+                  AbstractShadowingSensitivityAlgorithm,
+                  AbstractTimeseriesSolution
 
 include("parameters_handling.jl")
 include("sensitivity_algorithms.jl")
