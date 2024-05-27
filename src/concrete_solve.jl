@@ -388,11 +388,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         end
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
+            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
         else
-            out = DiffEqBase.sensitivity_solution(sol,
-                [_out.u[i][save_idxs]
-                 for i in 1:length(_out)], ts)
+            _outf = getu(_out, save_idxs)
+            out = DiffEqBase.sensitivity_solution(sol, _outf(_out), ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     elseif isempty(saveat)
@@ -402,8 +401,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
-        _u = sol.u[sol_idxs]
-        u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
+        _uf = getu(sol, save_idxs)
+        u = save_idxs === nothing ? _uf(sol) : _uf(sol, sol_idxs)
         ts = current_time(sol, sol_idxs)
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
     else
@@ -421,9 +420,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         out = if save_idxs === nothing
             out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
         else
-            out = DiffEqBase.sensitivity_solution(sol,
-                [_out.u[i][save_idxs]
-                 for i in 1:length(_out)], ts)
+            _outf = getu(_out, save_idxs)
+            out = DiffEqBase.sensitivity_solution(sol, _outf(_out), ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     end
