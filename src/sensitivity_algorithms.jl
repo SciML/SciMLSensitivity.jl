@@ -1041,9 +1041,11 @@ end
 SteadyStateAdjoint{CS, AD, FDT, VJP, LS} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
-An implementation of the adjoint differentiation of a nonlinear solve. Uses the
+An implementation of the adjoint differentiation of a steady state problem. Uses the
 implicit function theorem to directly compute the derivative of the solution to
-``f(u,p) = 0`` with respect to `p`.
+``f(u,p) = u`` with respect to `p`.
+
+Nonlinear Solve adjoint can also be reduced to this form.
 
 ## Constructor
 
@@ -1107,6 +1109,29 @@ end
 function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
         vjp) where {CS, AD, FDT, VJP, LS, LK}
     return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs)
+end
+
+struct ImplicitFunctionAdjoint{CS, AD, FDT, VJP, LS, LK} <:
+       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    autojacvec::VJP
+    linsolve::LS
+    linsolve_kwargs::LK
+end
+
+TruncatedStacktraces.@truncate_stacktrace ImplicitFunctionAdjoint
+
+Base.@pure function ImplicitFunctionAdjoint(; chunk_size = 0, autodiff = true,
+        diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
+        linsolve_kwargs = (;))
+    return ImplicitFunctionAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs)}(autojacvec, linsolve, linsolve_kwargs)
+end
+
+function setvjp(sensealg::ImplicitFunctionAdjoint{CS, AD, FDT, VJP, LS, LK},
+        vjp) where {CS, AD, FDT, VJP, LS, LK}
+    return ImplicitFunctionAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
+        vjp, sensealg.linsolve,
         sensealg.linsolve_kwargs)
 end
 

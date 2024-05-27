@@ -57,6 +57,7 @@ include("callback_tracking.jl")
 include("concrete_solve.jl")
 include("second_order.jl")
 include("steadystate_adjoint.jl")
+include("implicit_function_adjoint.jl")
 include("sde_tools.jl")
 
 export extract_local_sensitivities
@@ -73,7 +74,7 @@ export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
-       SteadyStateAdjoint,
+       SteadyStateAdjoint, ImplicitFunctionAdjoint,
        ForwardLSS, AdjointLSS, NILSS, NILSAS
 
 export second_order_sensitivities, second_order_sensitivity_product
