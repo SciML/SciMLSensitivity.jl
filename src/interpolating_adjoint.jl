@@ -58,10 +58,10 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
             end
             dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
 
-            time = current_time(_sol)
+            _ts = current_time(_sol)
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
                     noise = forwardnoise),
-                sol.alg, save_noise = false; dt = dt, tstops = current_time(_sol, idx1:length(time)),
+                sol.alg, save_noise = false; dt = dt, tstops = _ts[idx1:end],
                 tols...)
         else
             if tstops === nothing
@@ -185,9 +185,9 @@ function split_states(du, u, t, S::TS;
                 if sol.prob isa Union{SDEProblem, RODEProblem}
                     #idx1 = searchsortedfirst(sol.t, interval[1])
                     _sol = deepcopy(sol)
-                    _time = current_time(_sol)
-                    idx1 = searchsortedfirst(_time, interval[1] - 100eps(interval[1]))
-                    idx2 = searchsortedfirst(_time, interval[2] + 100eps(interval[2]))
+                    _ts = current_time(_sol)
+                    idx1 = searchsortedfirst(_ts, interval[1] - 100eps(interval[1]))
+                    idx2 = searchsortedfirst(_ts, interval[2] + 100eps(interval[2]))
                     idx_noise = searchsortedfirst(_sol.W.t,
                         interval[1] - 100eps(interval[1]))
                     if sol.W isa DiffEqNoiseProcess.NoiseProcess
@@ -205,7 +205,7 @@ function split_states(du, u, t, S::TS;
                         noise = forwardnoise)
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
                     cpsol′ = solve(prob′, sol.alg, save_noise = false; dt = dt,
-                        tstops = current_time(_sol, idx1:idx2), checkpoint_sol.tols...)
+                        tstops = _ts[idx1:idx2], checkpoint_sol.tols...)
                 else
                     if checkpoint_sol.tstops === nothing
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
