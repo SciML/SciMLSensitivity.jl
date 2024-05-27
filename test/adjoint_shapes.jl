@@ -22,10 +22,11 @@ policy_params = ones(2, 2)
 z0 = zeros(3)
 fwd_sol = solve(ODEProblem(aug_dynamics!, z0, (0.0, 1.0), policy_params),
     Tsit5(), u0 = z0, p = policy_params)
+_, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), policy_params)
 
 sensealg = InterpolatingAdjoint()
 sensealg = SciMLSensitivity.setvjp(sensealg,
-    SciMLSensitivity.inplace_vjp(fwd_sol.prob, fwd_sol.prob.u0, fwd_sol.prob.p, true))
+    SciMLSensitivity.inplace_vjp(fwd_sol.prob, fwd_sol.prob.u0, fwd_sol.prob.p, true, repack))
 
 solve(
     ODEAdjointProblem(fwd_sol, sensealg, Tsit5(),
