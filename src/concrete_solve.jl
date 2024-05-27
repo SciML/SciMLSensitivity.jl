@@ -361,7 +361,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         sol = solve(_prob, alg, args...; save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
-    time = current_time(sol)
 
     # Force `save_start` and `save_end` in the forward pass This forces the
     # solver to do the backsolve all the way back to `u0` Since the start aliases
@@ -369,9 +368,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     # implementation and makes `save_start` and `save_end` arg safe.
     if sensealg isa BacksolveAdjoint
         # Saving behavior unchanged
-        ts = time
+        ts = current_time(sol)
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
-        out = DiffEqBase.sensitivity_solution(sol, sol.u, ts)
+        out = DiffEqBase.sensitivity_solution(sol, state_values(sol), ts)
     elseif saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
             ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[2]
@@ -379,11 +378,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[1]
         end
         # if _prob.tspan[2]-_prob.tspan[1] is not a multiple of saveat, one looses the last ts value
-        last(time) !== ts[end] && (ts = fix_endpoints(sensealg, sol, ts))
+        last(current_time(sol)) !== ts[end] && (ts = fix_endpoints(sensealg, sol, ts))
         if cb === nothing
             _out = sol(ts)
         else
-            _, duplicate_iterator_times = separate_nonunique(time)
+            _, duplicate_iterator_times = separate_nonunique(current_time(sol))
             _out, ts = out_and_ts(ts, duplicate_iterator_times, sol)
         end
 
@@ -413,12 +412,12 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
             ts = _saveat
             _out = sol(ts)
         else
-            _ts, duplicate_iterator_times = separate_nonunique(time)
+            _ts, duplicate_iterator_times = separate_nonunique(current_time(sol))
             _out, ts = out_and_ts(_saveat, duplicate_iterator_times, sol)
         end
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
+            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
         else
             _outf = getu(_out, save_idxs)
             out = DiffEqBase.sensitivity_solution(sol, _outf(_out), ts)
@@ -617,14 +616,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     _prob = ODEForwardSensitivityProblem(_f, u0, prob.tspan, p, sensealg)
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
-    time = current_time(sol)
+    ts = current_time(sol)
 
     u = if save_idxs === nothing
-        [reshape(sol.u[i][1:length(u0)], size(u0)) for i in 1:length(sol)]
+        uf = getu(sol, 1:length(u0))
+        reshape.(uf(sol), Ref(size(u0)))
     else
-        [sol.u[i][_save_idxs] for i in 1:length(sol)]
+        uf = getu(sol, _save_idxs)
+        uf(sol)
     end
-    out = DiffEqBase.sensitivity_solution(sol, u, time)
+    out = DiffEqBase.sensitivity_solution(sol, u, ts)
 
     function forward_sensitivity_backpass(Δ)
         adj = sum(eachindex(du)) do i
@@ -664,10 +665,10 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     sol = solve(_prob, args...; kwargs...)
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
-    time = current_time(sol)
+    ts = current_time(sol)
+    uf = getu(sol, _save_idxs)
     out = DiffEqBase.sensitivity_solution(sol,
-        [ForwardDiff.value.(sol.u[i][_save_idxs])
-         for i in 1:length(sol)], time)
+        ForwardDiff.value.(uf(sol, 1:length(sol))), ts)
     function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
         x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
         du * Δp
@@ -971,7 +972,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     # First step: filter all values, so that only time steps that actually occur
                     # in the primal are left. This is for example necessary when `terminate!`
                     # is used.
-                    _time = current_time(_sol)
                     indxs = findall(t -> t ∈ ts, current_time(_sol))
                     _ts = current_time(_sol, indxs)
                     # after this filtering step, we might end up with a too large amount of indices.
@@ -1366,7 +1366,6 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     sol = solve(_prob, alg, args...; save_start = save_start, save_end = save_end,
         saveat = saveat, kwargs...)
-    time = current_time(sol)
 
     if saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
@@ -1376,11 +1375,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         end
         _out = sol(ts)
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, _out.u, time)
+            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), current_time(sol))
         else
-            out = DiffEqBase.sensitivity_solution(sol,
-                [_out[i][save_idxs]
-                 for i in 1:length(_out)], ts)
+            outuf = getu(_out, save_idxs)
+            out = DiffEqBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
@@ -1392,7 +1390,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
-        _u = sol.u[sol_idxs]
+        _u = state_values(sol, sol_idxs)
         u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
         ts = current_time(sol, sol_idxs)
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
@@ -1402,11 +1400,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         _out = sol(ts)
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, _out.u, ts)
+            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
         else
-            out = DiffEqBase.sensitivity_solution(sol,
-                [_out.u[i][save_idxs]
-                 for i in 1:length(_out)], ts)
+            outuf = getu(_out, save_idxs)
+            out = DiffEqBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
