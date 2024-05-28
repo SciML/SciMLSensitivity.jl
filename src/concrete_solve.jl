@@ -333,7 +333,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         prob.kwargs))
 
     if haskey(kwargs, :callback)
-        cb = track_callbacks(CallbackSet(kwargs[:callback]), prob.tspan[1], prob.u0, prob.p,
+        cb = track_callbacks(CallbackSet(kwargs[:callback]), prob.tspan[1], state_values(prob), parameter_values(prob),
             sensealg)
         _prob = remake(prob; u0 = u0, p = p, kwargs = merge(kwargs_prob, (; callback = cb)))
     else
@@ -555,7 +555,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         else
             cb2 = cb
         end
-        if ArrayInterface.ismutable(eltype(sol.u))
+        if ArrayInterface.ismutable(eltype(state_values(sol)))
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
                 dgdu_discrete = df_iip,
                 sensealg = sensealg,
@@ -1179,16 +1179,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
-        sol = SciMLBase.sensitivity_solution(sol, sol.u, current_time(sol))
+        sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
 
-        if sol.u[1] isa Array
+        if state_values(sol, 1) isa Array
             return Array(sol)
         else
-            tmp = vec(sol.u[1])
-            for i in 2:length(sol.u)
-                tmp = hcat(tmp, vec(sol.u[i]))
-            end
-            return reshape(tmp, size(sol.u[1])..., length(sol.u))
+            tmp = reduce(hcat, vec.(state_values(sol)))
+            return reshape(tmp, size(state_values(sol, 1))..., length(state_values(sol)))
         end
         #adapt(typeof(u0),arr)
         sol
@@ -1222,8 +1219,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         end
     end
 
-    u = u0 isa Tracker.TrackedArray ? Tracker.data.(sol.u) :
-        Tracker.data.(Tracker.data.(sol.u))
+    u = u0 isa Tracker.TrackedArray ? Tracker.data.(state_values(sol)) :
+        Tracker.data.(Tracker.data.(state_values(sol)))
     DiffEqBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))), tracker_adjoint_backpass
 end
 
@@ -1312,11 +1309,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             kwargs_filtered...)
         t = current_time(sol)
         if DiffEqBase.isinplace(prob)
-            u = map.(ReverseDiff.value, sol.u)
+            u = map.(ReverseDiff.value, state_values(sol))
         else
-            u = map(ReverseDiff.value, sol.u)
+            u = map(ReverseDiff.value, state_values(sol))
         end
-        sol = SciMLBase.sensitivity_solution(sol, sol.u, t)
+        sol = SciMLBase.sensitivity_solution(sol, state_values(sol), t)
         Array(sol)
     end
 
