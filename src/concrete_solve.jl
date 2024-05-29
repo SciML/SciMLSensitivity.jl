@@ -247,13 +247,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     originator::SciMLBase.ADOriginator, args...;
     verbose = true, kwargs...)
 
-    if !isscimlstructure(p)
-        error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-                In particular, adjoint sensitivities only applies to `Tunable`.")
+    if !(p === nothing || p isa SciMLBase.NullParameters)
+        if !isscimlstructure(p)
+            error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                    see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                    In particular, adjoint sensitivities only applies to `Tunable`.")
+        end
     end
-  
-    tunables, repack, aliases = canonicalize(Tunable(), p)
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else  
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
