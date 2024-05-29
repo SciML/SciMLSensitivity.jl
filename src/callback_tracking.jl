@@ -358,7 +358,7 @@ function _setup_reverse_callbacks(
 
         λ .= dλ
 
-        if !(sensealg isa QuadratureAdjoint)
+        if !(sensealg isa QuadratureAdjoint) && !(sensealg isa GaussAdjoint)
             grad .-= dgrad
         end
     end

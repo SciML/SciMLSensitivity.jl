@@ -162,6 +162,13 @@ function test_continuous_wrt_discrete_callback()
             saveat = tspan[2], save_start = false)),
         u0, p)
 
+    du03, dp3 = Zygote.gradient(
+        (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+            callback = cb,
+            sensealg = GaussAdjoint(),
+            saveat = tspan[2], save_start = false)),
+        u0, p)
+    
     dstuff = ForwardDiff.gradient(
         (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
             callback = cb, saveat = tspan[2],
@@ -173,8 +180,12 @@ function test_continuous_wrt_discrete_callback()
     @test dp1 ≈ dstuff[3:4]
     @test du02 ≈ dstuff[1:2]
     @test dp2 ≈ dstuff[3:4]
+    @test du03 ≈ dstuff[1:2]
+    @test dp3 ≈ dstuff[3:4]
     @test du01 ≈ du02
     @test dp1 ≈ dp2
+    @test du01 ≈ du03
+    @test dp1 ≈ dp3
 end
 
 @testset "Compare continuous with discrete callbacks" begin
