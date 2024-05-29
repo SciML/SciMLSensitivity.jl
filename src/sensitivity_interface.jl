@@ -386,7 +386,7 @@ function adjoint_sensitivities(sol, args...;
                 setvjp(sensealg, ZygoteVJP())
             end
         else
-            _sensealg = setvjp(sensealg, ReverseDiffVJP())
+            setvjp(sensealg, ZygoteVJP())
         end
 
         return try
