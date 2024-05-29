@@ -1086,6 +1086,21 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     args...;
     kwargs...)
     local sol
+
+    if !(p === nothing || p isa SciMLBase.NullParameters)
+        if !isscimlstructure(p)
+            error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                In particular, adjoint sensitivities only applies to `Tunable`.")
+        end
+    end
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    end
+
     function tracker_adjoint_forwardpass(_u0, _p)
         if (convert_tspan(sensealg) === nothing &&
             ((haskey(kwargs, :callback) && has_continuous_callback(kwargs[:callback])))) ||
@@ -1197,7 +1212,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         sol
     end
 
-    out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, p)
+    out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, tunables)
     function tracker_adjoint_backpass(ybar)
         tmp = if eltype(ybar) <: Number && u0 isa Array
             Array(ybar)
