@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, Zygote, ForwardDiff
+using SciMLStructures
 
 tspan = (0.0, 1.0)
 X = randn(3, 4)
