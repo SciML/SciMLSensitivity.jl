@@ -138,7 +138,11 @@ end
 
     p = parameter_values(sol)
     u0 = state_values(sol, 1)
-    tunables, repack, _ = canonicalize(Tunable(), p)
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&

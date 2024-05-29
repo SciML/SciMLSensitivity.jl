@@ -359,15 +359,21 @@ function adjoint_sensitivities(sol, args...;
     sensealg = InterpolatingAdjoint(),
     verbose = true, kwargs...)
 
-    if !isscimlstructure(sol.prob.p)
-      error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-              see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-              In particular, adjoint sensitivities only applies to `Tunable`.")
+    p = SymbolicIndexingInterface.parameter_values(sol)
+    if !(p === nothing || p isa SciMLBase.NullParameters)
+        if !isscimlstructure(sol.prob.p)
+          error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                  see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                  In particular, adjoint sensitivities only applies to `Tunable`.")
+        end
     end
 
-    p = SymbolicIndexingInterface.parameter_values(sol)
     prob = sol.prob
-    tunables, repack, aliases = canonicalize(Tunable(), p)
+    if isscimlstructure(sol.prob.p)
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+        tunables, repack, aliases = p, identity, false
+    end
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
         if haskey(kwargs, :callback)
@@ -446,7 +452,11 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
-    tunables, _, _ = canonicalize(Tunable(), mtkp)
+    if mtkp === nothing || mtkp isa SciMLBase.NullParameters
+        tunables, repack = mtkp, identity
+    else
+        tunables, _, _ = canonicalize(Tunable(), mtkp)
+    end
     prob = sol.prob
     # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
     l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)
