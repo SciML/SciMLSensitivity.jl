@@ -1227,10 +1227,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         elseif ybar[1] isa Array
             return Array(ybar)
         else
-            tmp = vec(ybar.u[1])
-            for i in 2:length(ybar.u)
-                tmp = hcat(tmp, vec(ybar.u[i]))
-            end
+            tmp = reduce(hcat, vec.(ybar.u))
             return reshape(tmp, size(ybar.u[1])..., length(ybar.u))
         end
         u0bar, pbar = pullback(tmp)
