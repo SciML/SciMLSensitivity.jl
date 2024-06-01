@@ -10,6 +10,10 @@ using Plots
 
 include("pages.jl")
 
+deploy_config = Documenter.auto_detect_deploy_system()
+deploy_decision = Documenter.deploy_folder(deploy_config; repo="github.com/SciML/SciMLSensitivity.jl",
+    devbranch="master", devurl="dev", push_preview=true)
+
 makedocs(sitename = "SciMLSensitivity.jl",
     authors = "Chris Rackauckas et al.",
     modules = [SciMLSensitivity],
@@ -17,6 +21,8 @@ makedocs(sitename = "SciMLSensitivity.jl",
     warnonly = true,
     format = DocumenterVitepress.MarkdownVitepress(
             repo="https://github.com/SciML/SciMLSensitivity.jl",
+            devbranch="master", devurl="dev",
+            deploy_url="https://docs.sciml.ai/SciMLSensitivity/", deploy_decision
         ),
     pages = pages)
 
