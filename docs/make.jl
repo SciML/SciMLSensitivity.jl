@@ -19,7 +19,7 @@ makedocs(sitename = "SciMLSensitivity.jl",
     modules = [SciMLSensitivity],
     clean = true, doctest = false, linkcheck = true,
     warnonly = true,
-    format = DocumenterVitepress.MarkdownVitepress(
+    format = DocumenterVitepress.MarkdownVitepress(;
             repo="https://github.com/SciML/SciMLSensitivity.jl",
             devbranch="master", devurl="dev",
             deploy_url="https://docs.sciml.ai/SciMLSensitivity/", deploy_decision
