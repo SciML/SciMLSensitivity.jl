@@ -440,6 +440,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         _p = p
     end
 
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    end
+
     u0 = state_values(prob)
     if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
        (eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
@@ -450,18 +456,18 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     elseif inplace_sensitivity(S)
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
+            tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
                 du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
+                f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
                  convert.(promote_type(eltype(W), eltype(λ)), W)
-            tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
-                du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
-                      similar(p, size(u)) : similar(u)
-                f(du1, u, p, first(t), Wloc)
+            tape = ReverseDiff.GradientTape((_y, tunables, [t], _W)) do u, tunables, t, Wloc
+                du1 = tunables !== nothing && tunables !== DiffEqBase.NullParameters() ?
+                      similar(tunables, size(u)) : similar(u)
+                f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t), Wloc)
                 return vec(du1)
             end
         end
@@ -497,7 +503,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     end
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
-    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
+    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, tunables)
     if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
         ReverseDiff.value!(tt, [t])
     end
@@ -653,6 +659,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     f = unwrapped_f(S.f)
 
     prob = getprob(S)
+    _p = parameter_values(prob)
+    if _p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), _p)
+    end
 
     _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
 
@@ -676,6 +688,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #else
     dup = if !(tmp2 isa DiffEqBase.NullParameters)
         tmp2 .= 0
+        tmp2 = Enzyme.make_zero(p)
         Enzyme.Duplicated(p, tmp2)
     else
         Enzyme.Const(p)

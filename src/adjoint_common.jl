@@ -35,9 +35,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     u0 = state_values(prob)
     p = parameter_values(prob)
     if p === nothing || p isa SciMLBase.NullParameters
-        tunables = p
+        tunables, repack = p, identity
     else
-        tunables, _, _ = canonicalize(Tunable(), p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
     end
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         tspan = (nothing, nothing)
@@ -132,7 +132,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 dg_val .= false
             end
         else
-            pgpu = UGradientWrapper(g, _t, tunables)
+            pgpu = UGradientWrapper(g, _t, p)
             pgpu_config = build_grad_config(sensealg, pgpu, u0, tunables)
             pgpp = ParamGradientWrapper(g, _t, u0)
             pgpp_config = build_grad_config(sensealg, pgpp, tunables, tunables)
@@ -154,16 +154,16 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         if isinplace
             if !isRODE
-                uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, tunables)
+                uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, p)
             else
-                uf = RODEUJacobianWrapper(unwrappedf, _t, tunables, _W)
+                uf = RODEUJacobianWrapper(unwrappedf, _t, p, _W)
             end
             jac_config = build_jac_config(sensealg, uf, u0)
         else
             if !isRODE
-                uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, tunables)
+                uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, p)
             else
-                uf = RODEUDerivativeWrapper(unwrappedf, _t, tunables, _W)
+                uf = RODEUDerivativeWrapper(unwrappedf, _t, p, _W)
             end
             jac_config = nothing
         end
@@ -291,7 +291,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
-                        uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, tunables)
+                        uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, p)
                         jac_noise_config = build_jac_config(sensealg, uf, u0)
                     else
                         jac_noise_config = nothing
@@ -299,7 +299,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 else
                     pf = ParamNonDiagNoiseJacobianWrapper(unwrappedf, _t, y,
                         prob.noise_rate_prototype)
-                    uf = UNonDiagNoiseJacobianWrapper(unwrappedf, _t, tunables,
+                    uf = UNonDiagNoiseJacobianWrapper(unwrappedf, _t, p,
                         prob.noise_rate_prototype)
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
                 end
@@ -308,11 +308,11 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = ParamGradientWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
-                        uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, tunables)
+                        uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, p)
                     end
                 else
                     pf = ParamNonDiagNoiseGradientWrapper(unwrappedf, _t, y)
-                    uf = UNonDiagNoiseGradientWrapper(unwrappedf, _t, tunables)
+                    uf = UNonDiagNoiseGradientWrapper(unwrappedf, _t, p)
                 end
                 paramjac_noise_config = nothing
                 jac_noise_config = nothing
@@ -349,30 +349,35 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
         numindvar = nothing, alg = nothing, isinplace = true,
         isRODE = false, _W = nothing)
     # f = unwrappedf
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    end
     if isinplace
         if !isRODE
-            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
+            tape = ReverseDiff.GradientTape((y, tunables, [_t])) do u, tunables, t
                 du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ?
-                      similar(p, size(u)) : similar(u)
-                f(du1, u, p, first(t))
+                      similar(tunables, size(u)) : similar(u)
+                f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
-            tape = ReverseDiff.GradientTape((y, _p, [_t], _W)) do u, p, t, W
-                du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
-                      similar(p, size(u)) : similar(u)
-                f(du1, u, p, first(t), W)
+            tape = ReverseDiff.GradientTape((y, tunables, [_t], _W)) do u, tunables, t, W
+                du1 = tunables !== nothing && tunables !== DiffEqBase.NullParameters() ?
+                      similar(tunables, size(u)) : similar(u)
+                      f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t), W)
                 return vec(du1)
             end
         end
     else
         if !isRODE
-            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
-                vec(f(u, p, first(t)))
+            tape = ReverseDiff.GradientTape((y, tunables, [_t])) do u, tunables, t
+                vec(f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
             end
         else
-            tape = ReverseDiff.GradientTape((y, _p, [_t], _W)) do u, p, t, W
-                return f(u, p, first(t), W)
+            tape = ReverseDiff.GradientTape((y, tunables, [_t], _W)) do u, tunables, t, W
+                return f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t), W)
             end
         end
     end
