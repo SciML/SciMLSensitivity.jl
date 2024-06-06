@@ -350,7 +350,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         prob.kwargs))
 
     if haskey(kwargs, :callback)
-        cb = track_callbacks(CallbackSet(kwargs[:callback]), prob.tspan[1], state_values(prob), parameter_values(prob),
+        cb = track_callbacks(CallbackSet(kwargs[:callback]), current_time(prob), state_values(prob), parameter_values(prob),
             sensealg)
         _prob = remake(prob; u0 = u0, p = p, kwargs = merge(kwargs_prob, (; callback = cb)))
     else
