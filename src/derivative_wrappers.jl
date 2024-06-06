@@ -265,7 +265,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                     jacobian!(J, _uf, y, _f_cache, sensealg, _jac_config)
                 else
                     uf.t = t
-                    uf.p = p
+		    # @show size(uf.p)
+		    # @show size(p)
+		    uf.p = p
                     if inplace_sensitivity(S)
                         jacobian!(J, uf, y, f_cache, sensealg, jac_config)
                     else
@@ -441,9 +443,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     end
 
     if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+	    tunables, repack = p, identity
     else
-        tunables, repack, _ = canonicalize(Tunable(), p)
+	    tunables, repack, aliases = canonicalize(Tunable(), p)
     end
 
     u0 = state_values(prob)
@@ -474,14 +476,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     else
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
-                vec(f(u, p, first(t)))
+            tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
+                vec(f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
                  convert.(promote_type(eltype(W), eltype(λ)), W)
-            tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
-                vec(f(u, p, first(t), Wloc))
+            tape = ReverseDiff.GradientTape((_y, tunables, [t], _W)) do u, tunables, t, Wloc
+                vec(f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t), Wloc))
             end
         end
     end
@@ -660,8 +662,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
     _p = parameter_values(prob)
-    if _p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+    if _p === nothing || _p isa SciMLBase.NullParameters
+        tunables, repack = _p, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), _p)
     end
@@ -687,9 +689,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #  tmp2 = dgrad
     #else
     dup = if !(tmp2 isa DiffEqBase.NullParameters)
-        tmp2 .= 0
-        tmp2 = Enzyme.make_zero(p)
-        Enzyme.Duplicated(p, tmp2)
+        # tmp2 .= 0
+        tmp2 = Enzyme.make_zero(tmp2)
+        Enzyme.Duplicated(p, repack(tmp2))
     else
         Enzyme.Const(p)
     end
@@ -896,6 +898,13 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         dy) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
+    p_ = parameter_values(prob)
+
+    if p_ === nothing || p_ isa SciMLBase.NullParameters
+        tunables, repack = p_, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), p_)
+    end
     f = unwrapped_f(S.f)
 
     # number of Wiener processes
@@ -908,12 +917,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                 if inplace_sensitivity(S)
                     _dy, back = Zygote.pullback(y, p) do u, p
                         out_ = Zygote.Buffer(similar(u))
-                        f(out_, u, p, t)
+                        f(out_, u, repack(p), t)
                         copy(out_[i])
                     end
                 else
                     _dy, back = Zygote.pullback(y, p) do u, p
-                        f(u, p, t)[i]
+                        f(u, repack(p), t)[i]
                     end
                 end
                 tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
@@ -929,12 +938,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             if inplace_sensitivity(S)
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(similar(u))
-                    f(out_, u, p, t)
+                    f(out_, u, repack(p), t)
                     copy(out_)
                 end
             else
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)
+                    f(u, repack(p), t)
                 end
             end
             out = [back(x) for x in eachcol(Diagonal(λ))]
@@ -952,7 +961,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(similar(prob.noise_rate_prototype))
-                    f(out_, u, p, t)
+                        f(out_, u, repack(p), t)
                     copy(out_[:, i])
                 end
                 tmp1, tmp2 = back(λ)#issue with Zygote.Buffer
@@ -967,7 +976,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         else
             for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)[:, i]
+                    f(u, repack(p), t)[:, i]
                 end
                 tmp1, tmp2 = back(λ)
                 if dgrad !== nothing
