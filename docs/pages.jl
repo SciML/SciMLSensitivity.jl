@@ -8,6 +8,7 @@ pages = ["index.md",
         "Training Techniques and Tips" => Any["tutorials/training_tips/local_minima.md",
             "tutorials/training_tips/divergence.md",
             "tutorials/training_tips/multiple_nn.md"]],
+    "Frequently Asked Questions (FAQ)" => "faq.md",
     "Examples" => Any[
         "Ordinary Differential Equations (ODEs)" => Any["examples/ode/exogenous_input.md",
             "examples/ode/prediction_error_method.md",
@@ -28,7 +29,8 @@ pages = ["index.md",
         "Optimal and Model Predictive Control" => Any[
             "examples/optimal_control/optimal_control.md",
             "examples/optimal_control/feedback_control.md"]],
-    "Manual and APIs" => Any["manual/differential_equation_sensitivities.md",
+    "Manual and APIs" => Any[
+        "manual/differential_equation_sensitivities.md",
         "manual/nonlinear_solve_sensitivities.md",
         "manual/direct_forward_sensitivity.md",
         "manual/direct_adjoint_sensitivities.md"],
