@@ -424,7 +424,6 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     else
         pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
-        pJ .= 0
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
 
