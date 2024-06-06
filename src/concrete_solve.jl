@@ -338,6 +338,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
+    if p === nothing || p isa SciMLBase.NullParameters
+	    tunables, repack = p, identity
+    else
+	    tunables, repack, aliases = canonicalize(Tunable(), p)
+    end
     # Remove saveat, etc. from kwargs since it's handled separately
     # and letting it jump back in there can break the adjoint
     kwargs_prob = NamedTuple(filter(x -> x[1] != :saveat && x[1] != :save_start &&
@@ -584,7 +589,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
-             dp isa AbstractArray ? reshape(dp', size(p)) : dp
+            dp isa AbstractArray ? reshape(dp', size(p)) : dp
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
@@ -1125,9 +1130,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                (prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                 SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize)
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
-                _prob = remake(prob, f = f, u0 = map(identity, _u0), p = repack(_p), tspan = _tspan)
+                _prob = remake(prob, f = f, u0 = map(identity, _u0), p = _p, tspan = _tspan)
             else
-                _prob = remake(prob, u0 = map(identity, _u0), p = repack(_p), tspan = _tspan)
+                _prob = remake(prob, u0 = map(identity, _u0), p = _p, tspan = _tspan)
             end
         else
             # use TrackedArray for efficiency of the tape
@@ -1190,13 +1195,13 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                             SciMLBase.FullSpecialize,
                         }(_f,
                             _g),
-                        u0 = _u0, p = repack(_p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize,
                         }(_f),
-                        u0 = _u0, p = repack(_p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
                 end
             else
                 error("TrackerAdjont does not currently support the specified problem type. Please open an issue.")
@@ -1221,7 +1226,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, tunables)
     function tracker_adjoint_backpass(ybar)
         tmp = if eltype(ybar) <: Number && u0 isa Array
-            Array(ybar)
+            Array(ybar) # can also be a ODESolution
         elseif eltype(ybar) <: Number # CuArray{Floats}
             ybar
         elseif ybar[1] isa Array
@@ -1238,7 +1243,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             (NoTangent(), NoTangent(), _u0bar, Tracker.data(pbar), NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-	     (NoTangent(), NoTangent(), NoTangent(), _u0bar, Tracker.data(pbar), NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), _u0bar, Tracker.data(pbar), NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
