@@ -80,6 +80,22 @@ end
 function loss10(params)
     u0 = zeros(2)
     problem = ODEProblem(dynamics, u0, (0.0, 1.0))
+    rollout = solve(problem, Tsit5(), u0 = u0, p = params,
+                sensealg = GaussAdjoint(autojacvec = EnzymeVJP()))
+    sum(Array(rollout)[:, end])
+end
+
+function loss11(params)
+    u0 = zeros(2)
+    problem = ODEProblem(dynamics, u0, (0.0, 1.0))
+    rollout = solve(problem, Tsit5(), u0 = u0, p = params,
+                sensealg = GaussAdjoint(autojacvec = ZygoteVJP()))
+    sum(Array(rollout)[:, end])
+end
+
+function loss12(params)
+    u0 = zeros(2)
+    problem = ODEProblem(dynamics, u0, (0.0, 1.0))
     rollout = solve(problem, Tsit5(), u0 = u0, p = params)
     sum(Array(rollout)[:, end])
 end
@@ -107,6 +123,8 @@ end
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss9, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss10, zeros(123))[1] == zeros(123)
+@test Zygote.gradient(loss11, zeros(123))[1] == zeros(123)
+@test Zygote.gradient(loss12, zeros(123))[1] == zeros(123)
 
 ## OOP tests for initial condition
 function loss_oop(u0; sensealg = nothing)

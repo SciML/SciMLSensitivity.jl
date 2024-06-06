@@ -424,6 +424,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     else
         pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
+        pJ .= 0
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
 
@@ -467,7 +468,11 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        recursive_copyto!(out, tmp[1])
+        if tmp[1] === nothing
+            recursive_copyto!(out, 0)
+        else
+            recursive_copyto!(out, tmp[1])
+        end
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ
@@ -547,6 +552,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         iλ = zero(rcb.λ)
         out = zero(res)
         yy = similar(rcb.y)
+        yy .= 0
         for (Δλa, tt) in rcb.Δλas
             @unpack algevar_idxs = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
@@ -609,6 +615,7 @@ function _update_integrand_and_dgrad(res, sensealg::GaussAdjoint, cb, integrand,
     end
 
     _p = similar(integrand.p, size(integrand.p))
+    _p .= 0
     wp(_p, integrand.p, integrand.y, t)
 
     if _p != integrand.p
