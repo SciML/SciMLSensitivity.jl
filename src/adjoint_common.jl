@@ -174,7 +174,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 tape = ReverseDiff.GradientTape((y, _p)) do u, p
                     du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
                           similar(p, size(u)) : similar(u)
-                    copyto!(du1, false)
+                    du1 .= false
                     unwrappedf(du1, u, p, nothing)
                     return vec(du1)
                 end
