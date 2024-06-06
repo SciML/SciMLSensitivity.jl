@@ -368,8 +368,17 @@ end
 
 function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
-    @unpack f, p, tspan, u0 = prob
-    numparams = length(p)
+    @unpack f, tspan = prob
+    u0 = state_values(prob)
+    p = parameter_values(prob)
+
+    if p === nothing || p isa DiffEqBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, _=  canonicalize(Tunable(), p)
+    end
+    
+    numparams = length(tunables)
     y = zero(state_values(prob))
     λ = zero(state_values(prob))
     # we need to alias `y`
@@ -382,15 +391,15 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                du1 = similar(p, size(u))
+		ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(du1, u, p, first(t))
+                unwrappedf(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                vec(unwrappedf(u, p, first(t)))
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                vec(unwrappedf(u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -439,6 +448,11 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
+    if p === nothing || p isa SciMLBase.NullParameters
+	    tunables, repack = p, identity
+    else
+	    tunables, repack, _ = canonicalize(Tunable(), p)
+    end
 
     if !isautojacvec
         if DiffEqBase.has_paramjac(f)
@@ -456,7 +470,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.unseed!(tp)
         ReverseDiff.unseed!(tt)
         ReverseDiff.value!(tu, y)
-        ReverseDiff.value!(tp, p)
+        ReverseDiff.value!(tp, tunables)
         ReverseDiff.value!(tt, [t])
         ReverseDiff.forward_pass!(tape)
         ReverseDiff.increment_deriv!(output, λ)
@@ -467,7 +481,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        recursive_copyto!(out, tmp[1])
+        recursive_copyto!(out, ArrayPartition(tmp[1]))
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ

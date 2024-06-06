@@ -282,7 +282,16 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack p, u0, tspan = sol.prob
+    @unpack tspan = sol.prob
+    p = parameter_values(sol.prob)
+    u0 = state_values(sol.prob)
+
+    if p === nothing || p isa SciMLBase.NullParameters
+	    tunables, repack = p, identity
+    else
+	    tunables, repack, _ = canonicalize(Tunable(), p)
+    end
+
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
@@ -330,12 +339,12 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
 
     len = numstates + numparams
 
     λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
-        one(eltype(u0)) .* similar(p, len)
+        one(eltype(u0)) .* similar(tunables, len)
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol,
