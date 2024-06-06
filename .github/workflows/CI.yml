@@ -24,7 +24,6 @@ jobs:
           - Core5
           - Core6
           - Core7
-          - DiffEq
           - SDE1
           - SDE2
           - SDE3
