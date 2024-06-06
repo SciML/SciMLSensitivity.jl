@@ -6,3 +6,7 @@ Manifest.toml
 /docs/build/
 test/Manifest.toml
 test/gpu/Manifest.toml
+node_modules
+package-lock.json
+docs/src/assets/Manifest.toml
+docs/src/assets/Project.toml
