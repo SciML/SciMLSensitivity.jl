@@ -168,7 +168,7 @@ function test_continuous_wrt_discrete_callback()
             sensealg = GaussAdjoint(),
             saveat = tspan[2], save_start = false)),
         u0, p)
-    
+
     dstuff = ForwardDiff.gradient(
         (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
             callback = cb, saveat = tspan[2],
