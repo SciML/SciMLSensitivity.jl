@@ -4,7 +4,7 @@
 
 If you see the warnings:
 
-```julia
+```
 ┌ Warning: Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs
 └ @ SciMLSensitivity C:\Users\accou\.julia\dev\SciMLSensitivity\src\concrete_solve.jl:145
 ┌ Warning: Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.
@@ -29,7 +29,7 @@ du = zero(u0)
 if DiffEqBase.isinplace(prob)
     _f = prob.f
 else
-    _f = (du,u,p,t) -> (du .= prob.f(u,p,t); nothing)
+    _f = (du, u, p, t) -> (du .= prob.f(u, p, t); nothing)
 end
 
 _tmp6 = Enzyme.make_zero(_f)
@@ -39,10 +39,10 @@ ytmp = zero(u0)
 tmp1 = zero(u0)
 
 Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(_f, _tmp6),
-                Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Duplicated(ytmp, tmp1),
-                Enzyme.Duplicated(p, tmp2),
-                Enzyme.Const(t))
+    Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+    Enzyme.Duplicated(ytmp, tmp1),
+    Enzyme.Duplicated(p, tmp2),
+    Enzyme.Const(t))
 ```
 
 This is exactly the inner core Enzyme call and if this fails, that is the issue that

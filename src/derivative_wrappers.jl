@@ -35,6 +35,7 @@ end
 
 function (ff::ParamNonDiagNoiseJacobianWrapper)(p)
     du1 = similar(p, size(ff.du))
+    du1 .= 0
     ff.f(du1, ff.u, p, ff.t)
     return vec(du1)
 end
@@ -893,7 +894,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             for i in 1:m
                 if inplace_sensitivity(S)
                     _dy, back = Zygote.pullback(y, p) do u, p
-                        out_ = Zygote.Buffer(similar(u))
+                        out_ = Zygote.Buffer(zero(u))
                         f(out_, u, p, t)
                         copy(out_[i])
                     end
@@ -914,7 +915,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         else
             if inplace_sensitivity(S)
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    out_ = Zygote.Buffer(similar(u))
+                    out_ = Zygote.Buffer(zero(u))
                     f(out_, u, p, t)
                     copy(out_)
                 end
@@ -937,7 +938,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         if inplace_sensitivity(S)
             for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    out_ = Zygote.Buffer(similar(prob.noise_rate_prototype))
+                    out_ = Zygote.Buffer(zero(prob.noise_rate_prototype))
                     f(out_, u, p, t)
                     copy(out_[:, i])
                 end

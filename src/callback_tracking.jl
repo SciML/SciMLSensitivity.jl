@@ -31,7 +31,8 @@ function ImplicitCorrection(cb, t, u, p, sensealg)
     condition = cb.condition
 
     gt_val = similar(u, 1)
-    gu_val = similar(u)
+    gt_val .= 0
+    gu_val = zero(u)
 
     fakeinteg = FakeIntegrator(u, p, t, t)
     gt, gu = build_condition_wrappers(cb, condition, u, t, fakeinteg)
@@ -39,11 +40,11 @@ function ImplicitCorrection(cb, t, u, p, sensealg)
     gt_conf = build_deriv_config(sensealg, gt, gt_val, t)
     gu_conf = build_grad_config(sensealg, gu, u, p)
 
-    dy_left = similar(u)
-    dy_right = similar(u)
+    dy_left = zero(u)
+    dy_right = zero(u)
 
-    Lu_left = similar(u)
-    Lu_right = similar(u)
+    Lu_left = zero(u)
+    Lu_right = zero(u)
 
     cur_time = Ref(1) # initialize the Ref, set to Ref of loss below
     terminated = false
@@ -662,6 +663,7 @@ function build_condition_wrappers(cb::ContinuousCallback, condition, u, t, fakei
 end
 function build_condition_wrappers(cb::VectorContinuousCallback, condition, u, t, fakeinteg)
     out = similar(u, cb.len) # create a cache for condition function (out,u,t,integrator)
+    out .= 0
     gt = VectorConditionTimeWrapper(condition, u, fakeinteg, 1, out)
     gu = VectorConditionUWrapper(condition, t, fakeinteg, 1, out)
     return gt, gu
