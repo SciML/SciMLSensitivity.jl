@@ -87,10 +87,22 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
         # so if out-of-place, try Zygote
 
         vjp = try
+            p = prob.p
+            y = prob.u0
+            f = prob.f
+            t = prob.tspan[1]
+            λ = zero(prob.u0)
+
             if p === nothing || p isa SciMLBase.NullParameters
-                Zygote.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
+                _dy, back = Zygote.pullback(y) do u
+                    vec(f(u, p, t))
+                end
+                tmp1 = back(λ)
             else
-                Zygote.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    vec(f(u, p, t))
+                end
+                tmp1, tmp2 = back(λ)
             end
             ZygoteVJP()
         catch e
@@ -122,10 +134,22 @@ function automatic_sensealg_choice(prob::Union{SciMLBase.AbstractODEProblem,
 
         if vjp == false
             vjp = try
+                p = prob.p
+                y = prob.u0
+                f = prob.f
+                t = prob.tspan[1]
+                λ = zero(prob.u0)
+
                 if p === nothing || p isa SciMLBase.NullParameters
-                    Tracker.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
+                    _dy, back = Tracker.forward(y) do u
+                        vec(f(u, p, t))
+                    end
+                    tmp1 = back(λ)
                 else
-                    Tracker.gradient((u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
+                    _dy, back = Tracker.forward(y, p) do u, p
+                        vec(f(u, p, t))
+                    end
+                    tmp1, tmp2 = back(λ)
                 end
                 TrackerVJP()
             catch e

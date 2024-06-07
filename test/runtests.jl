@@ -9,12 +9,6 @@ function activate_gpu_env()
     Pkg.instantiate()
 end
 
-function activate_diffeq_env()
-    Pkg.activate("diffeq")
-    Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
-    Pkg.instantiate()
-end
-
 @time @testset "SciMLSensitivity" begin
     if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
         @testset "Core1" begin
@@ -49,6 +43,7 @@ end
 
     if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
         @testset "Core 3" begin
+            @time @safetestset "Default DiffEq Alg" include("default_alg_diff.jl")
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
             @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
         end
@@ -147,13 +142,6 @@ end
     if GROUP == "Shadowing"
         @testset "Shadowing" begin
             @time @safetestset "Shadowing Tests" include("shadowing.jl")
-        end
-    end
-
-    if GROUP == "DiffEq"
-        @testset "DiffEq" begin
-            activate_diffeq_env()
-            @time @safetestset "Default DiffEq Alg" include("diffeq/default_alg_diff.jl")
         end
     end
 
