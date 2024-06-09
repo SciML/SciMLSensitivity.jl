@@ -501,6 +501,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         vtmp4 = vec(tmp4)
         vtmp4 .= λ
         out .= 0
+        Enzyme.make_zero!(tmp6)
         Enzyme.autodiff(
             Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
             Enzyme.Duplicated(tmp3, tmp4),
