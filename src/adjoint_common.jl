@@ -378,10 +378,7 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             # because hasportion(Tunable(), NullParameters) == false
             __p = p isa SciMLBase.NullParameters ? _p : SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
-                du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
-                    similar(p, size(u)) : similar(u)
-                f(u, p, first(t))
-                vec(du1)
+                vec(f(u, p, first(t)))
             end
         else
             tape = ReverseDiff.GradientTape((y, _p, [_t], _W)) do u, p, t, W
