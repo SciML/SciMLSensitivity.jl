@@ -1240,8 +1240,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         if state_values(sol, 1) isa Array
             return Array(sol)
         else
-            tmp = reduce(hcat, vec.(state_values(sol)))
-            return reshape(tmp, size(state_values(sol, 1))..., length(state_values(sol)))
+            tmp = vec(state_values(sol, 1))
+            for i in 2:length(sol)
+                tmp = hcat(tmp, vec(state_values(sol, i)))
+            end
+            return reshape(tmp, size(sol))
         end
         #adapt(typeof(u0),arr)
         sol
