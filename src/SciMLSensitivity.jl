@@ -18,6 +18,7 @@ using SparseDiffTools
 using SciMLOperators
 using Functors
 import TruncatedStacktraces
+import SciMLStructures
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache,
                            FixedSizeDiffCache
@@ -26,7 +27,7 @@ using EllipsisNotation
 using FunctionProperties: hasbranching
 
 using SymbolicIndexingInterface
-using SciMLStructures: SciMLStructures, canonicalize, Tunable, isscimlstructure
+using SciMLStructures: canonicalize, Tunable, isscimlstructure
 
 using Markdown
 
