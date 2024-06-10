@@ -1,5 +1,5 @@
 using Test, LinearAlgebra
-using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
+using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve, Enzyme
 using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Zygote, Random
 Random.seed!(12345)
 
@@ -413,52 +413,51 @@ end
     solve4 = solve(prob4, DynamicSS(Rodas5()))
     @test solve3.u≈solve4.u rtol=1e-10
 
-    function test_loss(p, prob; alg = NewtonRaphson())
+    function test_loss(p, prob, alg)  
         _prob = remake(prob, p = p)
         sol = sum(solve(_prob, alg,
             sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())))
         return sol
     end
 
-    test_loss(p, prob)
+    test_loss(p, prob, NewtonRaphson())
+    test_loss(p, prob2, NewtonRaphson())
+    test_loss(p, prob3, DynamicSS(Rodas5()))
+    test_loss(p, prob4, DynamicSS(Rodas5()))
+    test_loss(p, prob2, SimpleNewtonRaphson())
 
-    test_loss(p, prob2)
-    test_loss(p, prob3, alg = DynamicSS(Rodas5()))
-    test_loss(p, prob4, alg = DynamicSS(Rodas5()))
-    test_loss(p, prob2, alg = SimpleNewtonRaphson())
-
-    function enzyme_gradient(p, prob; alg = NewtonRaphson())
+    function enzyme_gradient(p, prob, alg)
         dp = Enzyme.make_zero(p)
         dprob = Enzyme.make_zero(prob)
-        Enzyme.autodiff(Reverse, (p, prob) -> test_loss(p, prob, alg=alg), Active, Duplicated(p,dp), Duplicated(prob,dprob))
+        Enzyme.autodiff(Reverse, test_loss, Active, Duplicated(p,dp), Duplicated(prob,dprob), Const(alg))
         return dp
     end 
-    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
-    dp1_enzyme = enzyme_gradient(p, prob)
+    dp1 = Zygote.gradient(p -> test_loss(p, prob, NewtonRaphson()), p)[1]
+    dp1_enzyme = enzyme_gradient(p, prob, NewtonRaphson())
     @test dp1≈dp1_enzyme rtol=1e-10
-    dp2 = Zygote.gradient(p -> test_loss(p, prob2), p)[1]
-    dp2_enzyme = enzyme_gradient(p, prob2)
+    dp2 = Zygote.gradient(p -> test_loss(p, prob2, NewtonRaphson()), p)[1]
+    dp2_enzyme = enzyme_gradient(p, prob2, NewtonRaphson())
     @test dp2≈dp2_enzyme rtol=1e-10
-    dp3 = Zygote.gradient(p -> test_loss(p, prob3, alg = DynamicSS(Rodas5())), p)[1]
-    #dp3_enzyme = enzyme_gradient(p, prob3, alg = DynamicSS(Rodas5()))
+    dp3 = Zygote.gradient(p -> test_loss(p, prob3, DynamicSS(Rodas5())), p)[1]
+    #dp3_enzyme = enzyme_gradient(p, prob3, DynamicSS(Rodas5()))
     #@test dp3≈dp3_enzyme rtol=1e-10
-    dp4 = Zygote.gradient(p -> test_loss(p, prob4, alg = DynamicSS(Rodas5())), p)[1]
-    #dp4_enzyme = enzyme_gradient(p, prob4, alg = DynamicSS(Rodas5()))
+    dp4 = Zygote.gradient(p -> test_loss(p, prob4, DynamicSS(Rodas5())), p)[1]
+    #dp4_enzyme = enzyme_gradient(p, prob4, DynamicSS(Rodas5()))
     #@test dp4≈dp4_enzyme rtol=1e-10
-    dp5 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleNewtonRaphson()), p)[1]  #need new version?  Doesn't hit Enzyme rule... ?
-    #dp5_enzyme = enzyme_gradient(p, prob2, alg = SimpleNewtonRaphson())
+    dp5 = Zygote.gradient(p -> test_loss(p, prob2, SimpleNewtonRaphson()), p)[1]  
+    #dp5_enzyme = enzyme_gradient(p, prob2, SimpleNewtonRaphson())
     #@test dp5≈dp5_enzyme rtol=1e-10
-    dp6 = Zygote.gradient(p -> test_loss(p, prob2, alg = Klement()), p)[1]
-    dp6_enzyme = enzyme_gradient(p, prob2, alg = Klement())
+    dp6 = Zygote.gradient(p -> test_loss(p, prob2, Klement()), p)[1]
+    dp6_enzyme = enzyme_gradient(p, prob2, Klement())
     @test dp6≈dp6_enzyme rtol=1e-10
-    dp7 = Zygote.gradient(p -> test_loss(p, prob2, alg = SimpleTrustRegion()), p)[1]   #need new version?  Doesn't hit Enzyme rule... ?
-    #dp7_enzyme = enzyme_gradient(p, prob2, alg = SimpleTrustRegion())
+    dp7 = Zygote.gradient(p -> test_loss(p, prob2, SimpleTrustRegion()), p)[1] 
+    #dp7_enzyme = enzyme_gradient(p, prob2, SimpleTrustRegion())
     #@test dp7≈dp7_enzyme rtol=1e-10
-    dp8 = Zygote.gradient(p -> test_loss(p, prob2, alg = NLsolveJL()), p)[1]
-    #dp8_enzyme = enzyme_gradient(p, prob2, alg = NLsolveJL())
+    dp8 = Zygote.gradient(p -> test_loss(p, prob2, NLsolveJL()), p)[1]
+    #dp8_enzyme = enzyme_gradient(p, prob2, NLsolveJL())
     #@test dp8≈dp8_enzyme rtol=1e-10
-    dp9 = Zygote.gradient(p -> test_loss(p, prob, alg = TrustRegion()), p)[1]
-    dp9_enzyme = enzyme_gradient(p, prob, alg = TrustRegion())
+    dp9 = Zygote.gradient(p -> test_loss(p, prob, TrustRegion()), p)[1]
+    dp9_enzyme = enzyme_gradient(p, prob, TrustRegion())
     @test dp9≈dp9_enzyme rtol=1e-10
 
     @test dp1≈dp2 rtol=1e-10
@@ -477,17 +476,23 @@ end
     prob = NonlinearProblem((u, p) -> u .- p[1] .+ p[2], u0, p)
     solve1 = solve(remake(prob, p = p), NewtonRaphson())
 
-    function test_loss(p, prob; alg = NewtonRaphson())
+    function test_loss2(p, prob, alg) 
         _prob = remake(prob, p = p)
         sol = sum(solve(_prob, alg,
             sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP())))
         return sol
     end
+    function enzyme_gradient2(p, prob, alg)
+        dp = Enzyme.make_zero(p)
+        dprob = Enzyme.make_zero(prob)
+        Enzyme.autodiff(Reverse, test_loss2, Active, Duplicated(p,dp), Duplicated(prob,dprob), Const(alg))
+        return dp
+    end 
 
-    test_loss(p, prob)
+    test_loss2(p, prob, NewtonRaphson())
 
-    dp1 = Zygote.gradient(p -> test_loss(p, prob), p)[1]
-    dp1_enzyme = enzyme_gradient(p, prob)
+    dp1 = Zygote.gradient(p -> test_loss2(p, prob, NewtonRaphson()), p)[1]
+    dp1_enzyme = enzyme_gradient2(p, prob, NewtonRaphson())
     @test dp1[1] ≈ 128
     @test dp1_enzyme[1] ≈ 128
     @test dp1[2] ≈ -128
