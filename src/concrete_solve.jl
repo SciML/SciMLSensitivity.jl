@@ -49,7 +49,7 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         if p === nothing || p isa SciMLBase.NullParameters
             ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
                 du1 = similar(u, size(u))
-                f(du1, u, repack(p), first(t))
+                f(du1, u, p, first(t))
                 return vec(du1)
             end
         else
