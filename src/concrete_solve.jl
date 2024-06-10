@@ -500,10 +500,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     end
                 end
             else
+                Δu = Δ isa Tangent ? Δ.u : Δ
                 !Base.isconcretetype(eltype(Δ)) &&
-                    (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+                    (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray || Δ isa Tangent
+                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
