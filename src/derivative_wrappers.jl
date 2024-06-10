@@ -689,7 +689,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         ytmp = _tmp5
     end
 
-    tmp1 .= 0 # should be removed for dλ
+    Enzyme.make_zero!(tmp1) # should be removed for dλ
     vec(ytmp) .= vec(y)
 
     #if dgrad !== nothing
@@ -707,7 +707,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #if dy !== nothing
     #      tmp3 = dy
     #else
-    tmp3 .= 0
+    Enzyme.make_zero!(tmp3)
     #end
 
     vec(tmp4) .= vec(λ)
