@@ -458,32 +458,32 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     elseif inplace_sensitivity(S)
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
+            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
                 du1 = similar(u, size(u))
-                f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
+                f(du1, u, p, first(t))
                 return vec(du1)
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
                  convert.(promote_type(eltype(W), eltype(λ)), W)
-            tape = ReverseDiff.GradientTape((_y, tunables, [t], _W)) do u, tunables, t, Wloc
-                du1 = tunables !== nothing && tunables !== DiffEqBase.NullParameters() ?
-                      similar(tunables, size(u)) : similar(u)
-                f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t), Wloc)
+            tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
+                du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
+                      similar(p, size(u)) : similar(u)
+                f(du1, u, p, first(t), Wloc)
                 return vec(du1)
             end
         end
     else
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
-                vec(f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
+            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
+                vec(f(u, p, first(t)))
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
                  convert.(promote_type(eltype(W), eltype(λ)), W)
-            tape = ReverseDiff.GradientTape((_y, tunables, [t], _W)) do u, tunables, t, Wloc
-                vec(f(u, SciMLStructures.replace(Tunable(), p, tunables), first(t), Wloc))
+            tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
+                vec(f(u, p, first(t), Wloc))
             end
         end
     end
