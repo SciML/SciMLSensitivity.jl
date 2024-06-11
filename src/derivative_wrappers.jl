@@ -461,7 +461,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         if W === nothing
             tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
                 du1 = similar(u, size(u))
-                f(du1, u, tunables, first(t))
+		f(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
