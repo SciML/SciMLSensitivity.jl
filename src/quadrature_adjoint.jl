@@ -283,7 +283,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        out[:] .= vec(tmp[1])
+        if tmp[1] === nothing
+            out[:] .= 0
+        else
+            out[:] .= vec(tmp[1])
+        end
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ

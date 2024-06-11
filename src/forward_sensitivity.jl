@@ -423,7 +423,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
         nothing, nothing,
         uf, pf, u0, jac_config,
         paramjac_config, alg,
-        p, similar(u0), mm,
+        p, zero(u0), mm,
         isautojacvec, isautojacmat, f.colorvec, nus)
 
     if !SciMLBase.isinplace(sense)

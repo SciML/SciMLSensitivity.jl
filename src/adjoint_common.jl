@@ -65,6 +65,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
 
     if prob.p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
+        _p .= false
     else
         _p = tunables
     end
@@ -112,10 +113,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         if alg === nothing || SciMLBase.forwarddiffs_model_time(alg)
             # 1 chunk is fine because it's only t
-            J = dualcache(similar(u0, numindvar, numindvar),
-                ForwardDiff.pickchunksize(length(u0)))
+            _J = similar(u0, numindvar, numindvar)
+            _J .= 0
+            J = dualcache(_J, ForwardDiff.pickchunksize(length(u0)))
         else
             J = similar(u0, numindvar, numindvar)
+            J .= 0
         end
     end
 
@@ -177,6 +180,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 tape = ReverseDiff.GradientTape((y, _p)) do u, p
                     du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
                           similar(p, size(u)) : similar(u)
+                    du1 .= false
                     unwrappedf(du1, u, p, nothing)
                     return vec(du1)
                 end
@@ -228,7 +232,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         end
     end
 
-    pJ = (quad || !(autojacvec isa Bool)) ? nothing : similar(u0, numindvar, numparams)
+    pJ = if (quad || !(autojacvec isa Bool))
+        nothing
+    else
+        _pJ = similar(u0, numindvar, numparams)
+        _pJ .= false
+    end
 
     f_cache = isinplace ? deepcopy(u0) : nothing
 
@@ -246,6 +255,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                                 du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
                                       similar(p, size(u)) : similar(u)
+                                copyto!(du1, false)
                                 unwrappedf(du1, u, p, first(t))
                                 return du1[indx]
                             end
@@ -322,9 +332,13 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 if isnoisemixing(sensealg)
                     J = similar(u0, numindvar, numindvar)
                 end
+                pJ .= false
+                J .= false
             else
                 pJ = similar(u0, numindvar * numindvar, numparams)
                 J = similar(u0, numindvar * numindvar, numindvar)
+                pJ .= false
+                J .= false
             end
 
         else
@@ -360,6 +374,7 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ?
                       similar(p, size(u)) : similar(u)
+                du1 .= false
                 f(du1, u, p, first(t))
                 return vec(du1)
             end
@@ -367,6 +382,7 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             tape = ReverseDiff.GradientTape((y, _p, [_t], _W)) do u, p, t, W
                 du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
                       similar(p, size(u)) : similar(u)
+                du1 .= false
                 f(du1, u, p, first(t), W)
                 return vec(du1)
             end

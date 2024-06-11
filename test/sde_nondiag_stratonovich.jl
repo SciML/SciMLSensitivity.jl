@@ -677,7 +677,7 @@ end
     _dp1 = compute_dp(p, prob!, ForwardDiffSensitivity())
     _dp2 = compute_dp(p, prob!, BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
     _dp3 = compute_dp(p, prob!, InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
-    @test_broken !any(isnan, compute_dp(p, prob!, InterpolatingAdjoint()))
+    @test !any(isnan, compute_dp(p, prob!, InterpolatingAdjoint()))
 
     @test dp1≈_dp1 rtol=1e-8
     @test dp2≈_dp2 rtol=1e-8
