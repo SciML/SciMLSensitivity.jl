@@ -459,9 +459,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     elseif inplace_sensitivity(S)
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
+            tape = ReverseDiff.GradientTape((_y, tunables, [t])) do u, tunables, t
                 du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
+                f(du1, u, tunables, first(t))
                 return vec(du1)
             end
         else
