@@ -510,7 +510,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(x)
+                        vec(_out) .= (x isa NoTangent || x isa ZeroTangent) ? vec(zero(u)) : vec(x)
                     else
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
@@ -884,14 +884,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         J = _du[i]
                         if Δ isa AbstractVector
                             v = Δ[i]
-                        elseif Δ isa AbstractVectorOfArray
+                        elseif Δ isa AbstractVectorOfArray || Δ isa Tangent
                             v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
                         else
                             v = @view Δ[.., i]
                         end
-                        if !(Δ isa NoTangent)
+                        if !(Δ isa NoTangent || v isa ZeroTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
                             else
@@ -1038,14 +1038,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     J = _du[i]
                     if Δ isa AbstractVector
                         v = Δ[i]
-                    elseif Δ isa AbstractVectorOfArray
+                    elseif Δ isa AbstractVectorOfArray || Δ isa Tangent
                         v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
                     else
                         v = @view Δ[.., i]
                     end
-                    if !(Δ isa NoTangent)
+                    if !(Δ isa NoTangent || v isa ZeroTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
                         else
