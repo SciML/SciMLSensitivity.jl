@@ -484,7 +484,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         if tmp[1] === nothing
             recursive_copyto!(out, 0)
         else
-            recursive_copyto!(out, ArrayPartition(tmp[1]))
+            recursive_copyto!(out, tmp[1])
         end
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
