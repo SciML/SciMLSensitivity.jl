@@ -258,7 +258,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 if typeof(t) !== typeof(uf.t)
                     # Handle the case of ForwardDiff.Dual from Rosenbrock
                     _uf = DiffEqBase.UJacobianWrapper(f, t, p)
-
                     # This is really slow and allocates, but it's a fallback only for a
                     # rare case so it can be optimized in the future
                     _f_cache = DiffEqBase.isinplace(prob) ? deepcopy(y) : nothing
@@ -266,9 +265,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                     jacobian!(J, _uf, y, _f_cache, sensealg, _jac_config)
                 else
                     uf.t = t
-		    # @show size(uf.p)
-		    # @show size(p)
-		    uf.p = p
+                    uf.p = p
                     if inplace_sensitivity(S)
                         jacobian!(J, uf, y, f_cache, sensealg, jac_config)
                     else
