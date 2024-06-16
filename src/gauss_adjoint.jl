@@ -459,6 +459,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
+            pf.u = y
             jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)
