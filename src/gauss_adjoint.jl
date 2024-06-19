@@ -374,8 +374,11 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     if p === nothing || p isa DiffEqBase.NullParameters
         tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
         tunables, repack, _=  canonicalize(Tunable(), p)
+    else
+	tunables, repack = Functors.functor(p)
+
     end
 
     numparams = length(tunables)
@@ -450,8 +453,10 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     # y is aliased
     if p === nothing || p isa SciMLBase.NullParameters
 	    tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
 	    tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+	    tunables, repack = Functors.functor(p)
     end
 
     if !isautojacvec
@@ -536,14 +541,20 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         callback = CallbackSet(),
         kwargs...)
 
-    params = SymbolicIndexingInterface.parameter_values(sol)
-    if !isscimlstructure(params)
+    p = SymbolicIndexingInterface.parameter_values(sol)
+    if !isscimlstructure(p) && !isfunctor(p)
         throw(error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
               see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
               In particular, adjoint sensitivities only applies to `Tunable`."))
     end
 
-    tunables, _, _ = canonicalize(Tunable(), params)
+    if p === nothing || p isa SciMLBase.NullParameters
+	tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+	tunables, repack = Functors.functor(p)
+    end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),

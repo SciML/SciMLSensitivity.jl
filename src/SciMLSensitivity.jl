@@ -44,6 +44,7 @@ import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAl
                   AbstractShadowingSensitivityAlgorithm,
                   AbstractTimeseriesSolution
 
+include("utils.jl")
 include("parameters_handling.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")

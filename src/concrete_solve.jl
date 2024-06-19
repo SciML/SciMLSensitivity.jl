@@ -274,7 +274,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     verbose = true, kwargs...)
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
-        if !isscimlstructure(p)
+        if !isscimlstructure(p) && !isfunctor(p)
             error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                     see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                     In particular, adjoint sensitivities only applies to `Tunable`.")
@@ -283,8 +283,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else  
+    elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+	tunables, repack = Functors.functor(p)
     end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
@@ -366,8 +368,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     if p === nothing || p isa SciMLBase.NullParameters
 	    tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
 	    tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+	    tunables, repack = Functors.functor(p)
     end
     # Remove saveat, etc. from kwargs since it's handled separately
     # and letting it jump back in there can break the adjoint
