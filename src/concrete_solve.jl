@@ -1367,7 +1367,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
             end
         else
             # use TrackedArray for efficiency of the tape
-            _f(args...) = reduce(vcat, prob.f(args...))
+            _f(args...) = begin
+                res = prob.f(args...)
+                # reduce(vcat, vector_of_length_1) returns a Real
+                # this preserves the type of the returned vector
+                if length(res) == 1
+                    res
+                else
+                    reduce(vcat, res)
+                end
+            end
             if prob isa SDEProblem
                 _g(args...) = reduce(vcat, prob.g(args...))
                 _prob = remake(prob,
