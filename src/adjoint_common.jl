@@ -36,8 +36,10 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     p = parameter_values(prob)
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
     end
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         tspan = (nothing, nothing)

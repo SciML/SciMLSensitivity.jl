@@ -176,7 +176,9 @@ end
 function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     prob = sol.prob
     adj_prob = adj_sol.prob
-    @unpack f, p, tspan, u0 = prob
+    @unpack f, tspan = prob
+    p = parameter_values(prob)
+    u0 = state_values(prob)
     numparams = length(p)
     y = zero(state_values(prob))
     λ = zero(state_values(adj_prob))
@@ -255,12 +257,12 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
-
     if !isautojacvec
         if DiffEqBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
+            pf.u = y
             jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)

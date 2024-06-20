@@ -274,7 +274,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
     verbose = true, kwargs...)
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
-        if !isscimlstructure(p)
+        if !isscimlstructure(p) && !isfunctor(p)
             error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
                     see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
                     In particular, adjoint sensitivities only applies to `Tunable`.")
@@ -283,8 +283,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else  
+    elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+	tunables, repack = Functors.functor(p)
     end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
@@ -366,8 +368,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     if p === nothing || p isa SciMLBase.NullParameters
 	    tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
 	    tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+	    tunables, repack = Functors.functor(p)
     end
     # Remove saveat, etc. from kwargs since it's handled separately
     # and letting it jump back in there can break the adjoint
@@ -510,7 +514,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(x)
+                        vec(_out) .= (x isa NoTangent || x isa ZeroTangent) ? vec(zero(u)) : vec(x)
                     else
                         vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
                     end
@@ -884,14 +888,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                         J = _du[i]
                         if Δ isa AbstractVector
                             v = Δ[i]
-                        elseif Δ isa AbstractVectorOfArray
+                        elseif Δ isa AbstractVectorOfArray || Δ isa Tangent
                             v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
                         else
                             v = @view Δ[.., i]
                         end
-                        if !(Δ isa NoTangent)
+                        if !(Δ isa NoTangent || v isa ZeroTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
                             else
@@ -1038,14 +1042,14 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
                     J = _du[i]
                     if Δ isa AbstractVector
                         v = Δ[i]
-                    elseif Δ isa AbstractVectorOfArray
+                    elseif Δ isa AbstractVectorOfArray || Δ isa Tangent
                         v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
                     else
                         v = @view Δ[.., i]
                     end
-                    if !(Δ isa NoTangent)
+                    if !(Δ isa NoTangent || v isa ZeroTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
                         else
@@ -1124,6 +1128,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
     args...;
     kwargs...)
     local sol
+    if originator isa SciMLBase.EnzymeOriginator
+        throw(EnzymeTrackedRealError())
+    end
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p)
@@ -1293,6 +1300,21 @@ struct ReverseDiffGPUStateCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::ReverseDiffGPUStateCompatibilityError)
     print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
+end
+
+const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
+                                             `Enzyme` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
+                                             Either choose a different adjoint method like `GaussAdjoint`,
+                                             or use a different AD system like `ReverseDiff`.
+                                             For more details, on these methods see
+                                             https://docs.sciml.ai/SciMLSensitivity/stable/.
+                                             """
+
+struct EnzymeTrackedRealError <: Exception
+end
+
+function Base.showerror(io::IO, e::EnzymeTrackedRealError)
+    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
