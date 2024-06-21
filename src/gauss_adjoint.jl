@@ -543,9 +543,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p)
-        throw(error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-              see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-              In particular, adjoint sensitivities only applies to `Tunable`."))
+        throw(SciMLStructuresCompatiblityError())
     end
 
     if p === nothing || p isa SciMLBase.NullParameters
