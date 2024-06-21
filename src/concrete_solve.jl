@@ -244,9 +244,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p)
-          error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-                  see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-                  In particular, adjoint sensitivities only applies to `Tunable`.")
+            throw(SciMLStructuresCompatiblityError())
         end
     end
  
@@ -275,9 +273,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
-            error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-                    see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-                    In particular, adjoint sensitivities only applies to `Tunable`.")
+            throw(SciMLStructuresCompatiblityError())
         end
     end
 
@@ -1134,9 +1130,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p)
-            error("`p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
-                see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
-                In particular, adjoint sensitivities only applies to `Tunable`.")
+            throw(SciMLStructuresCompatiblityError())
         end
     end
 
@@ -1315,6 +1309,19 @@ end
 
 function Base.showerror(io::IO, e::EnzymeTrackedRealError)
     println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
+end
+
+const SCIMLSTRUCTURES_ERROR_MESSAGE = """
+                                         `p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
+                                         see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
+                                         In particular, adjoint sensitivities only applies to `Tunable`.
+                                         """
+
+struct SciMLStructuresCompatiblityError <: Exception
+end
+
+function Base.showerror(io::IO, e::SciMLStructuresCompatiblityError)
+    println(io, SCIMLSTRUCTURES_ERROR_MESSAGE)
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscreteProblem,
