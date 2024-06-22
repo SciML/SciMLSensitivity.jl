@@ -1342,6 +1342,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
         error("Sensitivity algorithm ReverseDiffAdjoint only supports vector u0")
     end
 
+    if originator isa SciMLBase.EnzymeOriginator
+        throw(EnzymeTrackedRealError())
+    end
+
     t = eltype(prob.tspan)[]
     u = typeof(u0)[]
 
