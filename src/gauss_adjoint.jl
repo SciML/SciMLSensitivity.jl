@@ -550,8 +550,10 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 	tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    else
+    elseif isfunctor(p)
 	tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatiblityError())
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
