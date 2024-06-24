@@ -688,7 +688,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #else
     dup = if !(tmp2 isa DiffEqBase.NullParameters)
         # tmp2 .= 0
-        tmp2 = Enzyme.make_zero(tmp2)
+        Enzyme.make_zero!(tmp2)
         Enzyme.Duplicated(p, repack(tmp2))
     else
         Enzyme.Const(p)
