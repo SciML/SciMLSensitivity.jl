@@ -158,7 +158,8 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
 end
 
 function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
-    ODEForwardSensitivityProblem(prob.f, state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
+    ODEForwardSensitivityProblem(
+        prob.f, state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
@@ -526,7 +527,6 @@ function extract_local_sensitivities(sol, asmatrix::Bool)
     extract_local_sensitivities(sol, Val{asmatrix}())
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false))
-
     _extract(sol, sol.prob.problem_type.sensealg, state_values(sol, i), asmatrix)
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Bool)
@@ -644,7 +644,8 @@ function SciMLBase.remake(
         {uType, tType, isinplace, P, F, K}
     _p = p === nothing ? parameter_values(prob) : p
     _f = f === nothing ? prob.f.f : f
-    _u0 = u0 === nothing ? state_values(prob, 1:(prob.f.numindvar)) : u0[1:(prob.f.numindvar)]
+    _u0 = u0 === nothing ? state_values(prob, 1:(prob.f.numindvar)) :
+          u0[1:(prob.f.numindvar)]
     _tspan = tspan === nothing ? prob.tspan : tspan
     ODEForwardSensitivityProblem(_f, _u0,
         _tspan, _p, prob.problem_type.sensealg;

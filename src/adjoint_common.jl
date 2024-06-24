@@ -223,7 +223,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             else
                 pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
             end
-            paramjac_config = build_param_jac_config(sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
+            paramjac_config = build_param_jac_config(
+                sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
         else
             if !isRODE
                 pf = ParamGradientWrapper(unwrappedf, _t, y)
@@ -315,7 +316,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                         prob.noise_rate_prototype)
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
                 end
-                paramjac_noise_config = build_param_jac_config(sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
+                paramjac_noise_config = build_param_jac_config(
+                    sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
             else
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = ParamGradientWrapper(unwrappedf, _t, y)
@@ -372,7 +374,8 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
     end
     if isinplace
         if !isRODE
-            __p = p isa SciMLBase.NullParameters ? _p : SciMLStructures.replace(Tunable(), p, _p)
+            __p = p isa SciMLBase.NullParameters ? _p :
+                  SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ?
                       similar(p, size(u)) : similar(u)
@@ -394,7 +397,8 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             # GradientTape doesn't handle NullParameters; hence _p isa zeros(...)
             # Cannot define replace(Tunable(), ::NullParameters, ::Vector)
             # because hasportion(Tunable(), NullParameters) == false
-            __p = p isa SciMLBase.NullParameters ? _p : SciMLStructures.replace(Tunable(), p, _p)
+            __p = p isa SciMLBase.NullParameters ? _p :
+                  SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 vec(f(u, p, first(t)))
             end

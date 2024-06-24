@@ -375,10 +375,9 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     if p === nothing || p isa DiffEqBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
-        tunables, repack, _=  canonicalize(Tunable(), p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
     else
-	tunables, repack = Functors.functor(p)
-
+        tunables, repack = Functors.functor(p)
     end
 
     numparams = length(tunables)
@@ -394,15 +393,17 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-		ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
                 du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
+                unwrappedf(
+                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                vec(unwrappedf(u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
+                vec(unwrappedf(
+                    u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -452,11 +453,11 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if p === nothing || p isa SciMLBase.NullParameters
-	    tunables, repack = p, identity
+        tunables, repack = p, identity
     elseif isscimlstructure(p)
-	    tunables, repack, _ = canonicalize(Tunable(), p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
     else
-	    tunables, repack = Functors.functor(p)
+        tunables, repack = Functors.functor(p)
     end
 
     if !isautojacvec
@@ -540,18 +541,17 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         corfunc_analytical = false,
         callback = CallbackSet(),
         kwargs...)
-
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p)
         throw(SciMLStructuresCompatibilityError())
     end
 
     if p === nothing || p isa SciMLBase.NullParameters
-	tunables, repack = p, identity
+        tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-	tunables, repack = Functors.functor(p)
+        tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
     end

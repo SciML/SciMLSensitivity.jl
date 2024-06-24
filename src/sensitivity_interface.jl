@@ -356,9 +356,8 @@ res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 ```
 """
 function adjoint_sensitivities(sol, args...;
-    sensealg = InterpolatingAdjoint(),
-    verbose = true, kwargs...)
-
+        sensealg = InterpolatingAdjoint(),
+        verbose = true, kwargs...)
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)

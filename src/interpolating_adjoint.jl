@@ -59,7 +59,8 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
             dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
 
             _ts = current_time(_sol)
-            cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
+            cpsol = solve(
+                remake(sol.prob, tspan = interval, u0 = sol(interval[1]),
                     noise = forwardnoise),
                 sol.alg, save_noise = false; dt = dt, tstops = _ts[idx1:end],
                 tols...)
@@ -264,17 +265,17 @@ end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
 @noinline function ODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing,
-    ::Val{RetCB} = Val(false);
-    checkpoints = current_time(sol),
-    callback = CallbackSet(),
-    reltol = nothing, abstol = nothing,
-    kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing,
+        ::Val{RetCB} = Val(false);
+        checkpoints = current_time(sol),
+        callback = CallbackSet(),
+        reltol = nothing, abstol = nothing,
+        kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -287,11 +288,10 @@ end
     u0 = state_values(sol.prob)
 
     if p === nothing || p isa SciMLBase.NullParameters
-	    tunables, repack = p, identity
+        tunables, repack = p, identity
     else
-	    tunables, repack, _ = canonicalize(Tunable(), p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
     end
-
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
@@ -394,17 +394,17 @@ end
 end
 
 @noinline function SDEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing;
-    checkpoints = current_time(sol),
-    callback = CallbackSet(),
-    reltol = nothing, abstol = nothing,
-    diffusion_jac = nothing, diffusion_paramjac = nothing,
-    kwargs...) where {DG1, DG2, DG3, DG4, G}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing;
+        checkpoints = current_time(sol),
+        callback = CallbackSet(),
+        reltol = nothing, abstol = nothing,
+        diffusion_jac = nothing, diffusion_paramjac = nothing,
+        kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -536,16 +536,16 @@ end
 end
 
 @noinline function RODEAdjointProblem(sol, sensealg::InterpolatingAdjoint, alg,
-    t = nothing,
-    dgdu_discrete::DG1 = nothing,
-    dgdp_discrete::DG2 = nothing,
-    dgdu_continuous::DG3 = nothing,
-    dgdp_continuous::DG4 = nothing,
-    g::G = nothing;
-    checkpoints = current_time(sol),
-    callback = CallbackSet(),
-    reltol = nothing, abstol = nothing,
-    kwargs...) where {DG1, DG2, DG3, DG4, G}
+        t = nothing,
+        dgdu_discrete::DG1 = nothing,
+        dgdp_discrete::DG2 = nothing,
+        dgdu_continuous::DG3 = nothing,
+        dgdp_continuous::DG4 = nothing,
+        g::G = nothing;
+        checkpoints = current_time(sol),
+        callback = CallbackSet(),
+        reltol = nothing, abstol = nothing,
+        kwargs...) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
