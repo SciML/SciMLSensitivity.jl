@@ -243,15 +243,19 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
     end
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
-        if !isscimlstructure(p)
+        if !isscimlstructure(p) && !isfunctor(p)
             throw(SciMLStructuresCompatibilityError())
         end
     end
  
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
@@ -259,7 +263,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractODEPro
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
-        originator::SciMLBase.ADOriginator, args...; verbose,
+        originator, args...; verbose,
         kwargs...)
 end
 
@@ -1203,6 +1207,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::Union{SciMLBase.AbstractDiscre
                 end
             elseif prob isa
                    Union{SciMLBase.AbstractODEProblem, SciMLBase.AbstractSDEProblem}
+                @show typeof(_p)
+                @show typeof(repack(_p))
+                @show SciMLStructures.replace(Tunable(), p, _p) |> typeof
                 _f = function (u, p, t)
                     out = prob.f(u, p, t)
                     if out isa TrackedArray
