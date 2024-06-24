@@ -361,7 +361,7 @@ function adjoint_sensitivities(sol, args...;
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
-            throw(SciMLStructuresCompatiblityError())
+            throw(SciMLStructuresCompatibilityError())
         end
     end
 
