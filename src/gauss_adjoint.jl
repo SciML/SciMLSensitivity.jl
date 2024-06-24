@@ -543,7 +543,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p)
-        throw(SciMLStructuresCompatiblityError())
+        throw(SciMLStructuresCompatibilityError())
     end
 
     if p === nothing || p isa SciMLBase.NullParameters
@@ -553,7 +553,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     elseif isfunctor(p)
 	tunables, repack = Functors.functor(p)
     else
-        throw(SciMLStructuresCompatiblityError())
+        throw(SciMLStructuresCompatibilityError())
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
