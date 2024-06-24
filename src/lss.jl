@@ -353,7 +353,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 
     b!(b, prob)
 
-    ures = state_values(sol, n0:n1)
+    ures = @view sol.u[n0:n1]
     umidres = @view umid[:, n0:(n1 - 1)]
 
     # reset
