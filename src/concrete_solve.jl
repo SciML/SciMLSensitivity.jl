@@ -1417,16 +1417,7 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         else
             # use TrackedArray for efficiency of the tape
-            _f(args...) = begin
-                res = prob.f(args...)
-                # reduce(vcat, vector_of_length_1) returns a Real
-                # this preserves the type of the returned vector
-                if length(res) == 1
-                    res
-                else
-                    reduce(vcat, res)
-                end
-            end
+            _f(args...) = ArrayInterface.aos_to_soa(prob.f(args...))
             if prob isa SDEProblem
                 _g(args...) = reduce(vcat, prob.g(args...))
                 _prob = remake(prob,
