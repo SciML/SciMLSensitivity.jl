@@ -455,7 +455,6 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         tunables, _, _ = canonicalize(Tunable(), mtkp)
     end
     prob = sol.prob
-    # l = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(sol.prob.p) # should this overload length, or adjust how number of params are queried
     l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)
     du0 = state_values(adj_sol)[end][1:length(state_values(prob))]
 
