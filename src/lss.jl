@@ -405,7 +405,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 
     # windowing (cos)
     ts = current_time(sol)
-    @. window = (ts - first(ts)) * convert(eltype(Δt), 2 * pi / Δt)
+    @. window = (ts - ts[1]) * convert(eltype(Δt), 2 * pi / Δt)
     @. window = one(eltype(window)) - cos(window)
     window ./= sum(window)
 
@@ -442,7 +442,7 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 
     # windowing cos2
     ts = current_time(sol)
-    @. window = (ts - first(ts)) * convert(eltype(Δt), 2 * pi / Δt)
+    @. window = (ts - ts[1]) * convert(eltype(Δt), 2 * pi / Δt)
     @. window = (one(eltype(window)) - cos(window))^2
     window ./= sum(window)
 

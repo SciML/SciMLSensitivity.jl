@@ -57,9 +57,10 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
         kwargs...)
+
     @unpack tspan, f = sol.prob
-    p = parameter_values(sol)
-    u0 = state_values(sol)
+    p = parameter_values(sol.prob)
+    u0 = state_values(sol.prob)
     tunables, repack, aliases = canonicalize(Tunable(), p)
     @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
 
@@ -303,7 +304,7 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
             checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
             tspan = (t1, t2), kwargs...)
         _sol = solve(_prob, alg; save_everystep = false, save_start = false,
-            saveat = eltype(state_values(sol, 1))[],
+            saveat = eltype(state_values(sol.prob))[],
             dt = dtsave,
             tstops = checkpoints,
             callback = cb,
