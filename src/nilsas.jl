@@ -57,7 +57,6 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
         kwargs...)
-
     @unpack tspan, f = sol.prob
     p = parameter_values(sol.prob)
     u0 = state_values(sol.prob)

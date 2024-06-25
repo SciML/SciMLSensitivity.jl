@@ -27,7 +27,8 @@ _, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), policy_pa
 
 sensealg = InterpolatingAdjoint()
 sensealg = SciMLSensitivity.setvjp(sensealg,
-    SciMLSensitivity.inplace_vjp(fwd_sol.prob, fwd_sol.prob.u0, fwd_sol.prob.p, true, repack))
+    SciMLSensitivity.inplace_vjp(
+        fwd_sol.prob, fwd_sol.prob.u0, fwd_sol.prob.p, true, repack))
 
 solve(
     ODEAdjointProblem(fwd_sol, sensealg, Tsit5(),

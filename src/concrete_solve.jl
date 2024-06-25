@@ -1120,7 +1120,6 @@ function Base.showerror(io::IO, e::EnzymeTrackedRealError)
     println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
-
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
