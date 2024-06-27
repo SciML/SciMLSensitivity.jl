@@ -38,8 +38,10 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    else
+    elseif isfunctor(p)
         tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
         tspan = (nothing, nothing)
