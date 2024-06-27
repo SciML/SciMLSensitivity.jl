@@ -440,7 +440,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         _p = p
     end
 
-    if p === nothing || p isa SciMLBase.NullParameters
+    if p === nothing || p === DiffEqBase.NullParameters()
         tunables, repack = p, identity
     else
         tunables, repack, aliases = canonicalize(Tunable(), p)
@@ -660,7 +660,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     prob = getprob(S)
     _p = parameter_values(prob)
-    if _p === nothing || _p isa SciMLBase.NullParameters
+    if _p === nothing || _p === DiffEqBase.NullParameters()
         tunables, repack = _p, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), _p)
@@ -898,7 +898,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     prob = getprob(S)
     p_ = parameter_values(prob)
 
-    if p_ === nothing || p_ isa SciMLBase.NullParameters
+    if p_ === nothing || p_ === DiffEqBase.NullParameters()
         tunables, repack = p_, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), p_)

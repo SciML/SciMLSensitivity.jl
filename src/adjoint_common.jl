@@ -34,7 +34,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     prob = sol.prob
     u0 = state_values(prob)
     p = parameter_values(prob)
-    if p === nothing || p isa SciMLBase.NullParameters
+    if p === nothing || p === DiffEqBase.NullParameters()
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
@@ -367,14 +367,14 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
         numindvar = nothing, alg = nothing, isinplace = true,
         isRODE = false, _W = nothing)
     # f = unwrappedf
-    if p === nothing || p isa SciMLBase.NullParameters
+    if p === nothing || p === DiffEqBase.NullParameters()
         tunables, repack = p, identity
     else
         tunables, repack, aliases = canonicalize(Tunable(), p)
     end
     if isinplace
         if !isRODE
-            __p = p isa SciMLBase.NullParameters ? _p :
+            __p = p === DiffEqBase.NullParameters() ? _p :
                   SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ?
@@ -397,7 +397,7 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             # GradientTape doesn't handle NullParameters; hence _p isa zeros(...)
             # Cannot define replace(Tunable(), ::NullParameters, ::Vector)
             # because hasportion(Tunable(), NullParameters) == false
-            __p = p isa SciMLBase.NullParameters ? _p :
+            __p = p === DiffEqBase.NullParameters() ? _p :
                   SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 vec(f(u, p, first(t)))
