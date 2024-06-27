@@ -359,7 +359,7 @@ function adjoint_sensitivities(sol, args...;
         sensealg = InterpolatingAdjoint(),
         verbose = true, kwargs...)
     p = SymbolicIndexingInterface.parameter_values(sol)
-    if !(p === nothing || p === DiffEqBase.NullParameters())
+    if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
             throw(SciMLStructuresCompatibilityError())
         end
@@ -449,7 +449,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
         tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
 
-    if mtkp === nothing || mtkp === DiffEqBase.NullParameters()
+    if mtkp === nothing || mtkp isa SciMLBase.NullParameters
         tunables, repack = mtkp, identity
     else
         tunables, _, _ = canonicalize(Tunable(), mtkp)

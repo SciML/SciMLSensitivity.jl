@@ -138,7 +138,7 @@ end
 
     p = parameter_values(sol.prob)
     u0 = state_values(sol.prob)
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), p)

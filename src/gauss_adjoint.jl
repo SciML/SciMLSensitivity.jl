@@ -452,7 +452,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
@@ -546,7 +546,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         throw(SciMLStructuresCompatibilityError())
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)

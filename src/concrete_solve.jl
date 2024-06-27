@@ -46,7 +46,7 @@ function inplace_vjp(prob, u0, p, verbose, repack)
 
     vjp = try
         f = unwrapped_f(prob.f)
-        if p === nothing || p === DiffEqBase.NullParameters()
+        if p === nothing || p isa SciMLBase.NullParameters
             ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
                 du1 = similar(u, size(u))
                 du1 .= 0
@@ -97,7 +97,7 @@ function automatic_sensealg_choice(
             t = prob.tspan[1]
             λ = zero(prob.u0)
 
-            if p === nothing || p === DiffEqBase.NullParameters()
+            if p === nothing || p isa SciMLBase.NullParameters
                 _dy, back = Zygote.pullback(y) do u
                     vec(f(u, p, t))
                 end
@@ -120,7 +120,7 @@ function automatic_sensealg_choice(
 
         if vjp == false
             vjp = try
-                if p === nothing || p === DiffEqBase.NullParameters()
+                if p === nothing || p isa SciMLBase.NullParameters
                     ReverseDiff.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
                     ReverseDiff.gradient(
@@ -145,7 +145,7 @@ function automatic_sensealg_choice(
                 t = prob.tspan[1]
                 λ = zero(prob.u0)
 
-                if p === nothing || p === DiffEqBase.NullParameters()
+                if p === nothing || p isa SciMLBase.NullParameters
                     _dy, back = Tracker.forward(y) do u
                         vec(f(u, p, t))
                     end
@@ -247,13 +247,13 @@ function DiffEqBase._concrete_solve_adjoint(
         has_cb = false
     end
 
-    if !(p === nothing || p === DiffEqBase.NullParameters())
+    if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
             throw(SciMLStructuresCompatibilityError())
         end
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
@@ -280,13 +280,13 @@ function DiffEqBase._concrete_solve_adjoint(
         sensealg::Nothing, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
-    if !(p === nothing || p === DiffEqBase.NullParameters())
+    if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
             throw(SciMLStructuresCompatibilityError())
         end
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
@@ -376,7 +376,7 @@ function DiffEqBase._concrete_solve_adjoint(
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
@@ -1175,13 +1175,13 @@ function DiffEqBase._concrete_solve_adjoint(
         throw(EnzymeTrackedRealError())
     end
 
-    if !(p === nothing || p === DiffEqBase.NullParameters())
+    if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p)
             throw(SciMLStructuresCompatibilityError())
         end
     end
 
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), p)
