@@ -1238,13 +1238,13 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
-                        u0 = _u0, p = repack(_p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        u0 = _u0, p = repack(_p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
                 end
             elseif prob isa
                    Union{SciMLBase.AbstractODEProblem, SciMLBase.AbstractSDEProblem}
