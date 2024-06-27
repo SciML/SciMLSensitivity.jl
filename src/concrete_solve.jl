@@ -1105,21 +1105,6 @@ function DiffEqBase._concrete_solve_adjoint(
     sol, forward_sensitivity_backpass
 end
 
-const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
-                                             `Enzyme` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
-                                             Either choose a different adjoint method like `GaussAdjoint`,
-                                             or use a different AD system like `ReverseDiff`.
-                                             For more details, on these methods see
-                                             https://docs.sciml.ai/SciMLSensitivity/stable/.
-                                             """
-
-struct EnzymeTrackedRealError <: Exception
-end
-
-function Base.showerror(io::IO, e::EnzymeTrackedRealError)
-    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
-end
-
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
@@ -1156,6 +1141,21 @@ function DiffEqBase._concrete_solve_adjoint(
             kwargs_filtered...),
         u0,
         p)
+end
+
+const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
+                                             `Enzyme` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
+                                             Either choose a different adjoint method like `GaussAdjoint`,
+                                             or use a different AD system like `ReverseDiff`.
+                                             For more details, on these methods see
+                                             https://docs.sciml.ai/SciMLSensitivity/stable/.
+                                             """
+
+struct EnzymeTrackedRealError <: Exception
+end
+
+function Base.showerror(io::IO, e::EnzymeTrackedRealError)
+    println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
 function DiffEqBase._concrete_solve_adjoint(
