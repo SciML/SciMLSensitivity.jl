@@ -32,13 +32,23 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         quad = false,
         noiseterm = false, needs_jac = false) where {G, DG1, DG2}
     prob = sol.prob
+    u0 = state_values(prob)
+    p = parameter_values(prob)
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
-        @unpack u0, p = prob
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
         #  @unpack tspan, u0, p = prob
     else
-        @unpack u0, p, tspan = prob
+        tspan = prob.tspan
     end
 
     isinplace = DiffEqBase.isinplace(prob)
@@ -52,16 +62,16 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     end
 
     if prob isa Union{SteadyStateProblem, NonlinearProblem}
-        y = copy(sol.u)
+        y = copy(state_values(sol))
     else
-        y = copy(sol.u[end])
+        y = copy(state_values(sol)[end])
     end
 
     if prob.p isa DiffEqBase.NullParameters
         _p = similar(y, (0,))
         _p .= false
     else
-        _p = prob.p
+        _p = tunables
     end
 
     _t = tspan[2]
@@ -69,7 +79,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     # Remove any function wrappers: it breaks autodiff
     unwrappedf = unwrapped_f(f)
 
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
     numindvar = length(u0)
     isautojacvec = get_jacvec(sensealg)
 
@@ -130,9 +140,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             end
         else
             pgpu = UGradientWrapper(g, _t, p)
-            pgpu_config = build_grad_config(sensealg, pgpu, u0, p)
+            pgpu_config = build_grad_config(sensealg, pgpu, u0, tunables)
             pgpp = ParamGradientWrapper(g, _t, u0)
-            pgpp_config = build_grad_config(sensealg, pgpp, p, p)
+            pgpp_config = build_grad_config(sensealg, pgpp, tunables, tunables)
             pg = (pgpu, pgpp)
             pg_config = (pgpu_config, pgpp_config)
             dg_val = (similar(u0, numindvar), similar(u0, numparams))
@@ -215,7 +225,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             else
                 pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
             end
-            paramjac_config = build_param_jac_config(sensealg, pf, y, p)
+            paramjac_config = build_param_jac_config(
+                sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
         else
             if !isRODE
                 pf = ParamGradientWrapper(unwrappedf, _t, y)
@@ -307,7 +318,8 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                         prob.noise_rate_prototype)
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
                 end
-                paramjac_noise_config = build_param_jac_config(sensealg, pf, y, p)
+                paramjac_noise_config = build_param_jac_config(
+                    sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
             else
                 if StochasticDiffEq.is_diagonal_noise(prob)
                     pf = ParamGradientWrapper(unwrappedf, _t, y)
@@ -357,9 +369,16 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
         numindvar = nothing, alg = nothing, isinplace = true,
         isRODE = false, _W = nothing)
     # f = unwrappedf
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    end
     if isinplace
         if !isRODE
-            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
+            __p = p isa SciMLBase.NullParameters ? _p :
+                  SciMLStructures.replace(Tunable(), p, _p)
+            tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== DiffEqBase.NullParameters()) ?
                       similar(p, size(u)) : similar(u)
                 du1 .= false
@@ -377,7 +396,12 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
         end
     else
         if !isRODE
-            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
+            # GradientTape doesn't handle NullParameters; hence _p isa zeros(...)
+            # Cannot define replace(Tunable(), ::NullParameters, ::Vector)
+            # because hasportion(Tunable(), NullParameters) == false
+            __p = p isa SciMLBase.NullParameters ? _p :
+                  SciMLStructures.replace(Tunable(), p, _p)
+            tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
                 vec(f(u, p, first(t)))
             end
         else
@@ -500,7 +524,7 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
 
     @unpack factorized_mass_matrix = sensefun.diffcache
     prob = getprob(sensefun)
-    idx = length(prob.u0)
+    idx = length(state_values(prob))
     Δλas = Tuple{typeof(λ), eltype(t)}[]
     if ArrayInterface.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,

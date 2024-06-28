@@ -258,7 +258,6 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 if typeof(t) !== typeof(uf.t)
                     # Handle the case of ForwardDiff.Dual from Rosenbrock
                     _uf = DiffEqBase.UJacobianWrapper(f, t, p)
-
                     # This is really slow and allocates, but it's a fallback only for a
                     # rare case so it can be optimized in the future
                     _f_cache = DiffEqBase.isinplace(prob) ? deepcopy(y) : nothing
@@ -441,8 +440,15 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         _p = p
     end
 
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    end
+
+    u0 = state_values(prob)
     if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
-       (eltype(λ) <: eltype(prob.u0) && t isa eltype(prob.u0) &&
+       (eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
         compile_tape(sensealg.autojacvec))
         tape = S.diffcache.paramjac_config
 
@@ -497,7 +503,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     end
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
-    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
+    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, tunables)
     if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
         ReverseDiff.value!(tt, [t])
     end
@@ -653,6 +659,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     f = unwrapped_f(S.f)
 
     prob = getprob(S)
+    _p = parameter_values(prob)
+    if _p === nothing || _p isa SciMLBase.NullParameters
+        tunables, repack = _p, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), _p)
+    end
 
     _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
 
@@ -675,8 +687,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #  tmp2 = dgrad
     #else
     dup = if !(tmp2 isa DiffEqBase.NullParameters)
-        tmp2 .= 0
-        Enzyme.Duplicated(p, tmp2)
+        # tmp2 .= 0
+        Enzyme.make_zero!(tmp2)
+        Enzyme.Duplicated(p, repack(tmp2))
     else
         Enzyme.Const(p)
     end
@@ -883,6 +896,13 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         dy) where {TS <: SensitivityFunction}
     @unpack sensealg = S
     prob = getprob(S)
+    p_ = parameter_values(prob)
+
+    if p_ === nothing || p_ isa SciMLBase.NullParameters
+        tunables, repack = p_, identity
+    else
+        tunables, repack, _ = canonicalize(Tunable(), p_)
+    end
     f = unwrapped_f(S.f)
 
     # number of Wiener processes
@@ -895,12 +915,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                 if inplace_sensitivity(S)
                     _dy, back = Zygote.pullback(y, p) do u, p
                         out_ = Zygote.Buffer(zero(u))
-                        f(out_, u, p, t)
+                        f(out_, u, repack(p), t)
                         copy(out_[i])
                     end
                 else
                     _dy, back = Zygote.pullback(y, p) do u, p
-                        f(u, p, t)[i]
+                        f(u, repack(p), t)[i]
                     end
                 end
                 tmp1, tmp2 = back(λ[i]) #issue: tmp2 = zeros(p)
@@ -916,12 +936,12 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             if inplace_sensitivity(S)
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(zero(u))
-                    f(out_, u, p, t)
+                    f(out_, u, repack(p), t)
                     copy(out_)
                 end
             else
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)
+                    f(u, repack(p), t)
                 end
             end
             out = [back(x) for x in eachcol(Diagonal(λ))]
@@ -939,7 +959,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
             for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
                     out_ = Zygote.Buffer(zero(prob.noise_rate_prototype))
-                    f(out_, u, p, t)
+                    f(out_, u, repack(p), t)
                     copy(out_[:, i])
                 end
                 tmp1, tmp2 = back(λ)#issue with Zygote.Buffer
@@ -954,7 +974,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         else
             for i in 1:m
                 _dy, back = Zygote.pullback(y, p) do u, p
-                    f(u, p, t)[:, i]
+                    f(u, repack(p), t)[:, i]
                 end
                 tmp1, tmp2 = back(λ)
                 if dgrad !== nothing

@@ -18,6 +18,7 @@ using SparseDiffTools
 using SciMLOperators
 using Functors
 import TruncatedStacktraces
+import SciMLStructures
 
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache,
                            FixedSizeDiffCache
@@ -25,10 +26,13 @@ import FunctionWrappersWrappers
 using EllipsisNotation
 using FunctionProperties: hasbranching
 
+using SymbolicIndexingInterface
+using SciMLStructures: canonicalize, Tunable, isscimlstructure
+
 using Markdown
 
 using Reexport
-import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented
+import ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
 
@@ -40,6 +44,7 @@ import SciMLBase: AbstractOverloadingSensitivityAlgorithm, AbstractSensitivityAl
                   AbstractShadowingSensitivityAlgorithm,
                   AbstractTimeseriesSolution
 
+include("utils.jl")
 include("parameters_handling.jl")
 include("sensitivity_algorithms.jl")
 include("derivative_wrappers.jl")

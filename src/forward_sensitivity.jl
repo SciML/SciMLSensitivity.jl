@@ -158,7 +158,8 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
 end
 
 function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
-    ODEForwardSensitivityProblem(prob.f, prob.u0, prob.tspan, prob.p, alg; kwargs...)
+    ODEForwardSensitivityProblem(
+        prob.f, state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
@@ -526,7 +527,7 @@ function extract_local_sensitivities(sol, asmatrix::Bool)
     extract_local_sensitivities(sol, Val{asmatrix}())
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Val = Val(false))
-    _extract(sol, sol.prob.problem_type.sensealg, sol.u[i], asmatrix)
+    _extract(sol, sol.prob.problem_type.sensealg, state_values(sol, i), asmatrix)
 end
 function extract_local_sensitivities(sol, i::Integer, asmatrix::Bool)
     extract_local_sensitivities(sol, i, Val{asmatrix}())
@@ -569,15 +570,15 @@ function extract_local_sensitivities(sol, ::ForwardSensitivity, ::Val{true})
     ni = prob.f.numindvar
     pn = prob.f.numparams
     jsize = (ni, pn)
-    sol[1:ni, :], map(sol.u) do u
+    sol[1:ni, :], map(state_values(sol)) do u
         collect(reshape((@view u[(ni + 1):end]), jsize))
     end
 end
 
 function extract_local_sensitivities(sol, ::ForwardDiffSensitivity, ::Val{true})
     retu = ForwardDiff.value.(sol)
-    jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
-    du = map(sol.u) do u
+    jsize = length(state_values(sol, 1)), ForwardDiff.npartials(state_values(sol, 1)[1])
+    du = map(state_values(sol)) do u
         du_i = similar(retu, jsize)
         for i in eachindex(u)
             du_i[i, :] = ForwardDiff.partials(u[i])
@@ -641,9 +642,10 @@ function SciMLBase.remake(
         f = nothing, tspan = nothing, u0 = nothing, p = nothing,
         kwargs...) where
         {uType, tType, isinplace, P, F, K}
-    _p = p === nothing ? prob.p : p
+    _p = p === nothing ? parameter_values(prob) : p
     _f = f === nothing ? prob.f.f : f
-    _u0 = u0 === nothing ? prob.u0[1:(prob.f.numindvar)] : u0[1:(prob.f.numindvar)]
+    _u0 = u0 === nothing ? state_values(prob, 1:(prob.f.numindvar)) :
+          u0[1:(prob.f.numindvar)]
     _tspan = tspan === nothing ? prob.tspan : tspan
     ODEForwardSensitivityProblem(_f, _u0,
         _tspan, _p, prob.problem_type.sensealg;
