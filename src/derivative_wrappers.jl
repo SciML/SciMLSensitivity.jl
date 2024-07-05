@@ -707,7 +707,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #if dy !== nothing
     #      tmp3 = dy
     #else
-    Enzyme.make_zero!(tmp3)
+    tmp3 .= 0
+    #Enzyme.make_zero!(tmp3)
     #end
 
     vec(tmp4) .= vec(λ)
