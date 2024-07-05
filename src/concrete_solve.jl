@@ -461,7 +461,9 @@ function DiffEqBase._concrete_solve_adjoint(
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
-        uf = save_idxs === nothing ? getu(sol, :) : getu(sol, save_idxs)
+        uf = save_idxs === nothing ?
+             getu(sol, eachindex(IndexCartesian(), first(state_values(sol)))) :
+             getu(sol, save_idxs)
         u = uf(sol, sol_idxs)
         ts = current_time(sol, sol_idxs)
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
