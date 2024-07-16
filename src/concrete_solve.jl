@@ -220,7 +220,7 @@ function automatic_sensealg_choice(
 end
 
 function automatic_sensealg_choice(
-        prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
+        prob::Union{ImmutableNonlinearProblem, SteadyStateProblem}, u0, p,
         verbose, repack)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
@@ -274,7 +274,7 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{
-            NonlinearProblem,
+            ImmutableNonlinearProblem,
             SteadyStateProblem
         }, alg,
         sensealg::Nothing, u0, p,
@@ -319,7 +319,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 const ADJOINT_STEADY_PROBLEM_ERROR_MESSAGE = """
-                                             Chosen adjoint method is not compatible with the chosen problem. NonlinearProblem
+                                             Chosen adjoint method is not compatible with the chosen problem. ImmutableNonlinearProblem
                                              and SteadyStateProblem require specific adjoint choices (like SteadyStateAdjoint)
                                              and will not work with adjoints designed for time series models. For more details,
                                              see https://docs.sciml.ai/SciMLSensitivity/stable/.
@@ -341,7 +341,7 @@ end
 # Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{
-            NonlinearProblem,
+            ImmutableNonlinearProblem,
             SteadyStateProblem
         }, alg,
         sensealg::Union{
@@ -1129,7 +1129,7 @@ end
 # NOTE: This is needed to prevent a method ambiguity error
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{
-            NonlinearProblem,
+            ImmutableNonlinearProblem,
             SteadyStateProblem
         }, alg, sensealg::ZygoteAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
@@ -1601,7 +1601,7 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{
-            NonlinearProblem,
+            ImmutableNonlinearProblem,
             SteadyStateProblem
         },
         alg, sensealg::SteadyStateAdjoint,

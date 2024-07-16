@@ -43,7 +43,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         throw(SciMLStructuresCompatibilityError())
     end
-    if prob isa Union{SteadyStateProblem, NonlinearProblem}
+    if prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
         #  @unpack tspan, u0, p = prob
@@ -61,7 +61,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         _W = nothing
     end
 
-    if prob isa Union{SteadyStateProblem, NonlinearProblem}
+    if prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}
         y = copy(state_values(sol))
     else
         y = copy(state_values(sol)[end])
@@ -179,7 +179,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     @assert autojacvec !== nothing
 
     if autojacvec isa ReverseDiffVJP
-        if prob isa Union{SteadyStateProblem, NonlinearProblem}
+        if prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}
             if isinplace
                 tape = ReverseDiff.GradientTape((y, _p)) do u, p
                     du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
