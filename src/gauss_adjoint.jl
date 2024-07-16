@@ -149,7 +149,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
             if !(interval[1] <= t <= interval[2])
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
-                cpsol_t = checkpoint_sol.cpsol.t
+                cpsol_t = current_time(checkpoint_sol.cpsol)
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                     y = sol(interval[1])
                 else
@@ -210,7 +210,7 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false);
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         callback = CallbackSet(),
         reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
         RetCB}
@@ -234,7 +234,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], last(current_time(sol)))
             terminated = true
         end
     end
@@ -368,10 +368,21 @@ end
 
 function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
-    @unpack f, p, tspan, u0 = prob
-    numparams = length(p)
-    y = zero(sol.prob.u0)
-    λ = zero(sol.prob.u0)
+    @unpack f, tspan = prob
+    u0 = state_values(prob)
+    p = parameter_values(prob)
+
+    if p === nothing || p isa DiffEqBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
+    end
+
+    numparams = length(tunables)
+    y = zero(state_values(prob))
+    λ = zero(state_values(prob))
     # we need to alias `y`
     f_cache = zero(y)
     isautojacvec = get_jacvec(sensealg)
@@ -382,15 +393,17 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                du1 = similar(p, size(u))
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(du1, u, p, first(t))
+                unwrappedf(
+                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
                 return vec(du1)
             end
         else
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                vec(unwrappedf(u, p, first(t)))
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                vec(unwrappedf(
+                    u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -439,12 +452,20 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
+    end
 
     if !isautojacvec
         if DiffEqBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
+            pf.u = y
             jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)
@@ -456,7 +477,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.unseed!(tp)
         ReverseDiff.unseed!(tt)
         ReverseDiff.value!(tu, y)
-        ReverseDiff.value!(tp, p)
+        ReverseDiff.value!(tp, tunables)
         ReverseDiff.value!(tt, [t])
         ReverseDiff.forward_pass!(tape)
         ReverseDiff.increment_deriv!(output, λ)
@@ -474,7 +495,8 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         end
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
-        tmp4 .= λ
+        vtmp4 = vec(tmp4)
+        vtmp4 .= λ
         out .= 0
         Enzyme.autodiff(
             Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
@@ -515,14 +537,28 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         dgdp_continuous = nothing,
         g = nothing,
         abstol = 1e-6, reltol = 1e-3,
-        checkpoints = sol.t,
+        checkpoints = current_time(sol),
         corfunc_analytical = false,
         callback = CallbackSet(),
         kwargs...)
+    p = SymbolicIndexingInterface.parameter_values(sol)
+    if !isscimlstructure(p) && !isfunctor(p)
+        throw(SciMLStructuresCompatibilityError())
+    end
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(allocate_zeros(sol.prob.p))
+    integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
-        integrand_values, allocate_vjp(sol.prob.p))
+        integrand_values, allocate_vjp(tunables))
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
@@ -539,11 +575,11 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         error("Continuous adjoint sensitivities are only supported for ODE problems.")
     end
 
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(sol.t, 0)
+    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
     adj_sol = solve(
         adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
-        save_start = false, save_end = true, saveat = eltype(sol.u[1])[], tstops = tstops,
+        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
         callback = CallbackSet(cb, cb2), kwargs...)
     res = integrand_values.integrand
 
@@ -562,7 +598,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         end
     end
 
-    return adj_sol.u[end], __maybe_adjoint(res)
+    return state_values(adj_sol)[end], __maybe_adjoint(res)
 end
 
 __maybe_adjoint(x::AbstractArray) = x'

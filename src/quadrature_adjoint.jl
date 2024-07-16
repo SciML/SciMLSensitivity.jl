@@ -111,7 +111,7 @@ end
     terminated = false
     if hasfield(typeof(sol), :retcode)
         if sol.retcode == ReturnCode.Terminated
-            tspan = (tspan[1], sol.t[end])
+            tspan = (tspan[1], last(current_time(sol)))
             terminated = true
         end
     end
@@ -175,10 +175,13 @@ end
 
 function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     prob = sol.prob
-    @unpack f, p, tspan, u0 = prob
+    adj_prob = adj_sol.prob
+    @unpack f, tspan = prob
+    p = parameter_values(prob)
+    u0 = state_values(prob)
     numparams = length(p)
-    y = zero(sol.prob.u0)
-    λ = zero(adj_sol.prob.u0)
+    y = zero(state_values(prob))
+    λ = zero(state_values(adj_prob))
     # we need to alias `y`
     f_cache = zero(y)
     isautojacvec = get_jacvec(sensealg)
@@ -254,12 +257,12 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
-
     if !isautojacvec
         if DiffEqBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
+            pf.u = y
             jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)
@@ -342,7 +345,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
     p = sol.prob.p
     if p === nothing || p === DiffEqBase.NullParameters()
-        return adj_sol.u[end], nothing
+        return state_values(adj_sol)[end], nothing
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
         if t === nothing
@@ -424,7 +427,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                 iλ .= zero(eltype(iλ))
             end
         end
-        return adj_sol.u[end], res
+        return state_values(adj_sol)[end], res
     end
 end
 
