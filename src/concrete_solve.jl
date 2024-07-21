@@ -220,7 +220,7 @@ function automatic_sensealg_choice(
 end
 
 function automatic_sensealg_choice(
-        prob::Union{ImmutableNonlinearProblem, SteadyStateProblem}, u0, p,
+        prob::AbstractNonlinearProblem, u0, p,
         verbose, repack)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
@@ -273,10 +273,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            ImmutableNonlinearProblem,
-            SteadyStateProblem
-        }, alg,
+        prob::AbstractNonlinearProblem, alg,
         sensealg::Nothing, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
@@ -340,10 +337,7 @@ end
 
 # Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            ImmutableNonlinearProblem,
-            SteadyStateProblem
-        }, alg,
+        prob::AbstractNonlinearProblem, alg,
         sensealg::Union{
             AbstractAdjointSensitivityAlgorithm,
             AbstractForwardSensitivityAlgorithm,
@@ -1128,10 +1122,7 @@ end
 
 # NOTE: This is needed to prevent a method ambiguity error
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            ImmutableNonlinearProblem,
-            SteadyStateProblem
-        }, alg, sensealg::ZygoteAdjoint,
+        prob::AbstractNonlinearProblem, alg, sensealg::ZygoteAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
@@ -1600,10 +1591,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 end
 
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            ImmutableNonlinearProblem,
-            SteadyStateProblem
-        },
+        prob::AbstractNonlinearProblem,
         alg, sensealg::SteadyStateAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...)
