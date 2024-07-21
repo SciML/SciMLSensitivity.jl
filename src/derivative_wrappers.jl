@@ -486,7 +486,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         end
     end
 
-    if prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}
+    if prob isa AbstractNonlinearProblem
         tu, tp = ReverseDiff.input_hook(tape)
     else
         if W === nothing
