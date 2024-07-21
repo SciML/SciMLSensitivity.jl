@@ -504,7 +504,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
     p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, tunables)
-    if !(prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem})
+    if !(prob isa AbstractNonlinearProblem)
         ReverseDiff.value!(tt, [t])
     end
     W !== nothing && ReverseDiff.value!(tW, W)
