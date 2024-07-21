@@ -498,7 +498,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     output = ReverseDiff.output_hook(tape)
     ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
     ReverseDiff.unseed!(tp)
-    if !(prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem})
+    if !(prob isa AbstractNonlinearProblem)
         ReverseDiff.unseed!(tt)
     end
     W !== nothing && ReverseDiff.unseed!(tW)
