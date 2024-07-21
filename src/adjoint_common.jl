@@ -43,7 +43,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         throw(SciMLStructuresCompatibilityError())
     end
-    if prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}
+    if prob isa Union{SteadyStateProblem, NonlinearProblem, NonlinearLeastSquaresProblem, ImmutableNonlinearProblem}
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
         #  @unpack tspan, u0, p = prob
