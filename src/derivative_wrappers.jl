@@ -250,7 +250,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         J = get_tmp(J, dλ)
     end
 
-    if !(prob isa Union{SteadyStateProblem, NonlinearProblem}) && dλ !== nothing
+    if !(prob isa AbstractNonlinearProblem) && dλ !== nothing
         if W === nothing
             if DiffEqBase.has_jac(f)
                 f.jac(J, y, p, t) # Calculate the Jacobian into J
@@ -447,7 +447,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     end
 
     u0 = state_values(prob)
-    if prob isa Union{SteadyStateProblem, NonlinearProblem} ||
+    if prob isa AbstractNonlinearProblem ||
        (eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
         compile_tape(sensealg.autojacvec))
         tape = S.diffcache.paramjac_config
@@ -486,7 +486,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         end
     end
 
-    if prob isa Union{SteadyStateProblem, NonlinearProblem}
+    if prob isa AbstractNonlinearProblem
         tu, tp = ReverseDiff.input_hook(tape)
     else
         if W === nothing
@@ -498,13 +498,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     output = ReverseDiff.output_hook(tape)
     ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
     ReverseDiff.unseed!(tp)
-    if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
+    if !(prob isa AbstractNonlinearProblem)
         ReverseDiff.unseed!(tt)
     end
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
     p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, tunables)
-    if !(prob isa Union{SteadyStateProblem, NonlinearProblem})
+    if !(prob isa AbstractNonlinearProblem)
         ReverseDiff.value!(tt, [t])
     end
     W !== nothing && ReverseDiff.value!(tW, W)
