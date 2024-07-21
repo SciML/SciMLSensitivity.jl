@@ -250,7 +250,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         J = get_tmp(J, dλ)
     end
 
-    if !(prob isa Union{SteadyStateProblem, ImmutableNonlinearProblem}) && dλ !== nothing
+    if !(prob isa AbstractNonlinearProblem) && dλ !== nothing
         if W === nothing
             if DiffEqBase.has_jac(f)
                 f.jac(J, y, p, t) # Calculate the Jacobian into J
