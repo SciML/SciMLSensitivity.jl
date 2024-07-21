@@ -61,7 +61,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         _W = nothing
     end
 
-    if prob isa Union{SteadyStateProblem, NonlinearProblem, NonlinearLeastSquaresProblem, ImmutableNonlinearProblem}
+    if prob isa AbstractNonlinearProblem
         y = copy(state_values(sol))
     else
         y = copy(state_values(sol)[end])
