@@ -37,7 +37,7 @@ end
         kwargs...) where {DG1, DG2, G}
     @unpack f, p, u0 = sol.prob
 
-    sol.prob isa ImmutableNonlinearProblem && (f = ODEFunction(f))
+    sol.prob isa AbstractNonlinearProblem && (f = ODEFunction(f))
 
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
