@@ -19,7 +19,6 @@ using SciMLOperators
 using Functors
 import TruncatedStacktraces
 import SciMLStructures
-import SimpleNonlinearSolve: ImmutableNonlinearProblem
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache,
                            FixedSizeDiffCache
 import FunctionWrappersWrappers
