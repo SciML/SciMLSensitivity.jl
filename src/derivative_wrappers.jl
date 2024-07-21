@@ -715,16 +715,11 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     isautojacvec = get_jacvec(sensealg)
 
-    if Core.Compiler.isconstType(_tmp6)
-        Enzyme.make_zero!(_tmp6)
-        _f = Enzyme.Duplicated(S.diffcache.pf, _tmp6)
-    else
-        _f = S.diffcache.pf
-    end
+    Enzyme.make_zero!(_tmp6)
 
     if inplace_sensitivity(S)
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, _f,
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
