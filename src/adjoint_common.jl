@@ -179,7 +179,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     @assert autojacvec !== nothing
 
     if autojacvec isa ReverseDiffVJP
-        if prob isa Union{SteadyStateProblem, NonlinearProblem, NonlinearLeastSquaresProblem, ImmutableNonlinearProblem}
+        if prob isa AbstractNonlinearProblem
             if isinplace
                 tape = ReverseDiff.GradientTape((y, _p)) do u, p
                     du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
