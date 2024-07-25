@@ -803,15 +803,15 @@ function DiffEqBase._concrete_solve_adjoint(
     function forward_sensitivity_backpass(Δ)
         if !(p === nothing || p === DiffEqBase.NullParameters())
             dp = @thunk begin
-                chunk_size = if CS === 0 && length(p) < 12
-                    length(p)
+                chunk_size = if CS === 0 && length(tunables) < 12
+                    length(tunables)
                 elseif CS !== 0
                     CS
                 else
                     12
                 end
 
-                num_chunks = length(p) ÷ chunk_size
+                num_chunks = length(tunables) ÷ chunk_size
                 num_chunks * chunk_size != length(tunables) && (num_chunks += 1)
 
                 pparts = typeof(tunables[1:1])[]
