@@ -812,7 +812,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 end
 
                 num_chunks = length(p) ÷ chunk_size
-                num_chunks * chunk_size != length(p) && (num_chunks += 1)
+                num_chunks * chunk_size != length(tunables) && (num_chunks += 1)
 
                 pparts = typeof(tunables[1:1])[]
                 for j in 0:(num_chunks - 1)
@@ -823,8 +823,8 @@ function DiffEqBase._concrete_solve_adjoint(
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{chunk_size}())
                     else
-                        chunk = ((j * chunk_size + 1):length(p))
-                        pchunk = vec(p)[chunk]
+                        chunk = ((j * chunk_size + 1):length(tunables))
+                        pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{length(chunk)}())
                     end
@@ -832,10 +832,10 @@ function DiffEqBase._concrete_solve_adjoint(
                     pdualvec = if j == 0
                         vcat(pdualpart, tunables[((j + 1) * chunk_size + 1):end])
                     elseif j == num_chunks - 1
-                        vcat(p[1:(j * chunk_size)], pdualpart)
+                        vcat(tunables[1:(j * chunk_size)], pdualpart)
                     else
-                        vcat(p[1:(j * chunk_size)], pdualpart,
-                            p[(((j + 1) * chunk_size) + 1):end])
+                        vcat(tunables[1:(j * chunk_size)], pdualpart,
+                            tunables[(((j + 1) * chunk_size) + 1):end])
                     end
 
                     pdual = ArrayInterface.restructure(tunables, pdualvec)
