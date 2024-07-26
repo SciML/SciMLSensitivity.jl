@@ -834,7 +834,8 @@ function DiffEqBase._concrete_solve_adjoint(
                             tunables[(((j + 1) * chunk_size) + 1):end])
                     end
 
-                    pdual = ArrayInterface.restructure(tunables, pdualvec)
+                    # pdual = ArrayInterface.restructure(tunables, pdualvec)
+                    pdual = SciMLStructures.replace(Tunable(), p, pdualvec)
                     u0dual = convert.(eltype(pdualvec), u0)
 
                     if (convert_tspan(sensealg) === nothing &&
@@ -931,7 +932,8 @@ function DiffEqBase._concrete_solve_adjoint(
                     end
                     push!(pparts, vec(_dp))
                 end
-                ArrayInterface.restructure(tunables, reduce(vcat, pparts))
+                # ArrayInterface.restructure(tunables, reduce(vcat, pparts))
+                SciMLStructures.replace(Tunable(), p, reduce(vcat, pparts))
             end
         else
             dp = nothing
