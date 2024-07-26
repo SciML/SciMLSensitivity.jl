@@ -773,10 +773,6 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; saveat = eltype(prob.tspan)[],
         kwargs...) where {CS, CTS}
-    # if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-    #     throw(ForwardDiffSensitivityParameterCompatibilityError())
-    # end
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
