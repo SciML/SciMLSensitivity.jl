@@ -79,12 +79,20 @@ function automatic_sensealg_choice(
         prob::Union{SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractSDEProblem},
         u0, p, verbose, repack)
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
+
     default_sensealg = if p !== DiffEqBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
                           !(eltype(p) <: ForwardDiff.Dual) &&
                           !(eltype(u0) <: Complex) &&
                           !(eltype(p) <: Complex) &&
-                          length(u0) + length(p) <= 100
+                          length(u0) + length(tunables) <= 100
         ForwardDiffSensitivity()
     elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
         # only Zygote is GPU compatible and fast
@@ -124,7 +132,7 @@ function automatic_sensealg_choice(
                     ReverseDiff.gradient((u) -> sum(prob.f(u, p, prob.tspan[1])), u0)
                 else
                     ReverseDiff.gradient(
-                        (u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, p)
+                        (u, _p) -> sum(prob.f(u, repack(_p), prob.tspan[1])), u0, tunables)
                 end
                 ReverseDiffVJP()
             catch e
@@ -151,8 +159,8 @@ function automatic_sensealg_choice(
                     end
                     tmp1 = back(λ)
                 else
-                    _dy, back = Tracker.forward(y, p) do u, p
-                        vec(f(u, p, t))
+                    _dy, back = Tracker.forward(y, tunables) do u, tunables
+                        vec(f(u, repack(tunables), t))
                     end
                     tmp1, tmp2 = back(λ)
                 end
@@ -220,7 +228,7 @@ function automatic_sensealg_choice(
 end
 
 function automatic_sensealg_choice(
-        prob::Union{NonlinearProblem, SteadyStateProblem}, u0, p,
+        prob::AbstractNonlinearProblem, u0, p,
         verbose, repack)
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
                           !DiffEqBase.isinplace(prob)
@@ -273,10 +281,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            NonlinearProblem,
-            SteadyStateProblem
-        }, alg,
+        prob::AbstractNonlinearProblem, alg,
         sensealg::Nothing, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
@@ -340,10 +345,7 @@ end
 
 # Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            NonlinearProblem,
-            SteadyStateProblem
-        }, alg,
+        prob::AbstractNonlinearProblem, alg,
         sensealg::Union{
             AbstractAdjointSensitivityAlgorithm,
             AbstractForwardSensitivityAlgorithm,
@@ -461,8 +463,8 @@ function DiffEqBase._concrete_solve_adjoint(
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
-        uf = save_idxs === nothing ? getu(sol, :) : getu(sol, save_idxs)
-        u = uf(sol, sol_idxs)
+        _u = sol.u[sol_idxs]
+        u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
         ts = current_time(sol, sol_idxs)
         out = DiffEqBase.sensitivity_solution(sol, u, ts)
     else
@@ -1132,10 +1134,7 @@ end
 
 # NOTE: This is needed to prevent a method ambiguity error
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            NonlinearProblem,
-            SteadyStateProblem
-        }, alg, sensealg::ZygoteAdjoint,
+        prob::AbstractNonlinearProblem, alg, sensealg::ZygoteAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
@@ -1604,10 +1603,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 end
 
 function DiffEqBase._concrete_solve_adjoint(
-        prob::Union{
-            NonlinearProblem,
-            SteadyStateProblem
-        },
+        prob::AbstractNonlinearProblem,
         alg, sensealg::SteadyStateAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...)
