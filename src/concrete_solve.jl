@@ -775,6 +775,7 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; saveat = eltype(prob.tspan)[],
         kwargs...) where {CS, CTS}
+    
     if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(ForwardDiffSensitivityParameterCompatibilityError())
@@ -785,8 +786,9 @@ function DiffEqBase._concrete_solve_adjoint(
     else
         _saveat = saveat
     end
-
-    sol = solve(remake(prob, p = p, u0 = u0), alg, args...; saveat = _saveat, kwargs...)
+    
+    # use the callback in kwargs, not prob
+    sol = solve(remake(prob, p = p, u0 = u0, callback = nothing), alg, args...; saveat = _saveat, kwargs...)
 
     # saveat values
     # need all values here. Not only unique ones.
@@ -864,7 +866,10 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-                    _prob = remake(prob, f = _f, u0 = u0dual, p = pdual, tspan = tspandual)
+
+                    # use the callback from kwargs, not prob
+                    _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
+                            tspan = tspandual, callback = nothing)
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1019,7 +1024,10 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
-                _prob = remake(prob, f = _f, u0 = u0dual, p = pdual, tspan = tspandual)
+                # use the callback from kwargs, not prob
+                _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
+                        tspan = tspandual, callback = nothing)
+
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1036,7 +1044,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
-                if haskey(kwargs, :callback)
+                if haskey(kwargs, :callback) 
                     # handle bounds errors: ForwardDiffSensitivity uses dual numbers, so there
                     # can be more or less time points in the primal solution
                     # than in the solution using dual numbers when adaptive solvers are used.
@@ -1408,7 +1416,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                 _prob = remake(prob, f = f, u0 = reshape([x for x in _u0], size(_u0)),
                     p = _p,
-                    tspan = _tspan)
+                    tspan = _tspan,
+                    callback = nothing)
             else
                 _prob = remake(prob, u0 = reshape([x for x in _u0], size(_u0)), p = _p,
                     tspan = _tspan)
@@ -1423,13 +1432,13 @@ function DiffEqBase._concrete_solve_adjoint(
                         SciMLBase.isinplace(prob),
                         true}(_f,
                         _g),
-                    u0 = _u0, p = _p, tspan = _tspan)
+                    u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             else
                 _prob = remake(prob,
                     f = DiffEqBase.parameterless_type(prob.f){
                         SciMLBase.isinplace(prob),
                         true}(_f),
-                    u0 = _u0, p = _p, tspan = _tspan)
+                    u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             end
         end
 
