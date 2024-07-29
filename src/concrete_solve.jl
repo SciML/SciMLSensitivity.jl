@@ -682,7 +682,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     end
 
     # callback = nothing ensures only the callback in kwargs is used
-    _prob = ODEForwardSensitivityProblem(_f, u0, prob.tspan, p, sensealg, callback = nothing)
+    _prob = ODEForwardSensitivityProblem(
+        _f, u0, prob.tspan, p, sensealg, callback = nothing)
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
     ts = current_time(sol)
@@ -730,7 +731,8 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing,
         kwargs...)
-    _prob = ODEForwardSensitivityProblem(prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
+    _prob = ODEForwardSensitivityProblem(
+        prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
     sol = solve(_prob, args...; kwargs...)
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
