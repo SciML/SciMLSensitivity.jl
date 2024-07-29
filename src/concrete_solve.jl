@@ -661,12 +661,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         args...;
         save_idxs = nothing,
         kwargs...)
-    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(ForwardSensitivityParameterCompatibilityError())
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
-    if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual &&
+    if tunables isa AbstractArray && eltype(tunables) <: ForwardDiff.Dual &&
        !(eltype(u0) <: ForwardDiff.Dual)
         # Handle double differentiation case
         u0 = eltype(p).(u0)
