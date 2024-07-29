@@ -775,7 +775,6 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; saveat = eltype(prob.tspan)[],
         kwargs...) where {CS, CTS}
-    
     if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(ForwardDiffSensitivityParameterCompatibilityError())
@@ -786,9 +785,10 @@ function DiffEqBase._concrete_solve_adjoint(
     else
         _saveat = saveat
     end
-    
+
     # use the callback in kwargs, not prob
-    sol = solve(remake(prob, p = p, u0 = u0, callback = nothing), alg, args...; saveat = _saveat, kwargs...)
+    sol = solve(remake(prob, p = p, u0 = u0, callback = nothing),
+        alg, args...; saveat = _saveat, kwargs...)
 
     # saveat values
     # need all values here. Not only unique ones.
@@ -869,7 +869,7 @@ function DiffEqBase._concrete_solve_adjoint(
 
                     # use the callback from kwargs, not prob
                     _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
-                            tspan = tspandual, callback = nothing)
+                        tspan = tspandual, callback = nothing)
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1026,8 +1026,7 @@ function DiffEqBase._concrete_solve_adjoint(
 
                 # use the callback from kwargs, not prob
                 _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
-                        tspan = tspandual, callback = nothing)
-
+                    tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1044,7 +1043,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
-                if haskey(kwargs, :callback) 
+                if haskey(kwargs, :callback)
                     # handle bounds errors: ForwardDiffSensitivity uses dual numbers, so there
                     # can be more or less time points in the primal solution
                     # than in the solution using dual numbers when adaptive solvers are used.
