@@ -54,4 +54,3 @@ u0p = [2.0, 3.0]
 
 @test f1(u0p) == f2(u0p)
 @test Zygote.gradient(f1, u0p)[1] == Zygote.gradient(f2, u0p)[1]
-
