@@ -1214,9 +1214,9 @@ function DiffEqBase._concrete_solve_adjoint(
                (prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                 SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize)
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
-                _prob = remake(prob, f = f, u0 = map(identity, _u0), p = _p, tspan = _tspan)
+                _prob = remake(prob, f = f, u0 = map(identity, _u0), p = _p, tspan = _tspan, callback = nothing)
             else
-                _prob = remake(prob, u0 = map(identity, _u0), p = _p, tspan = _tspan)
+                _prob = remake(prob, u0 = map(identity, _u0), p = _p, tspan = _tspan, callback = nothing)
             end
         else
             # use TrackedArray for efficiency of the tape
@@ -1247,13 +1247,13 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan, callback = nothing)
                 end
             elseif prob isa
                    Union{SciMLBase.AbstractODEProblem, SciMLBase.AbstractSDEProblem}
@@ -1279,13 +1279,13 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan, callback = nothing)
                 end
             else
                 error("TrackerAdjont does not currently support the specified problem type. Please open an issue.")

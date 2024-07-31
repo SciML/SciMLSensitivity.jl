@@ -35,23 +35,29 @@ a = ones(3)
 odef(du, u, p, t) = du .= u .* p
 prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
 
-function f1(u0p)
-    condition(u, t, integrator) = t == 0.5
-    affect!(integrator) = integrator.p[1] += 0.1
-    cb = DiscreteCallback(condition, affect!)
-    prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2]; callback = cb)
-    sum(solve(prob, Tsit5(), tstops = [0.5], sensealg = ForwardDiffSensitivity()))
-end
+let callback_count1 = 0, callback_count2 = 0
+    function f1(u0p, adjoint_type)
+        condition(u, t, integrator) = t == 0.5
+        affect!(integrator) = callback_count1 += 1
+        cb = DiscreteCallback(condition, affect!)
+        prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2]; callback = cb)
+        sum(solve(prob, Tsit5(), tstops = [0.5], sensealg = adjoint_type))
+    end
 
-function f2(u0p)
-    condition(u, t, integrator) = t == 0.5
-    affect!(integrator) = integrator.p[1] += 0.1
-    cb = DiscreteCallback(condition, affect!)
-    prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
-    sum(solve(
-        prob, Tsit5(), tstops = [0.5], callback = cb, sensealg = ForwardDiffSensitivity()))
-end
-u0p = [2.0, 3.0]
+    function f2(u0p, adjoint_type)
+        condition(u, t, integrator) = t == 0.5
+        affect!(integrator) = callback_count2 += 1
+        cb = DiscreteCallback(condition, affect!)
+        prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
+        sum(solve(prob, Tsit5(), tstops = [0.5], callback = cb, sensealg = adjoint_type))
+    end
 
-@test f1(u0p) == f2(u0p)
-@test Zygote.gradient(f1, u0p)[1] == Zygote.gradient(f2, u0p)[1]
+    adjoint_list = [ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint()]
+    @testset for adjoint_type in adjoint_list
+        u0p = [2.0, 3.0]
+        Zygote.gradient(x -> f1(x, adjoint_type), u0p)
+        Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+
+        @test callback_count1 == callback_count2
+    end
+end
