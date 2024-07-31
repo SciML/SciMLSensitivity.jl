@@ -52,12 +52,14 @@ let callback_count1 = 0, callback_count2 = 0
         sum(solve(prob, Tsit5(), tstops = [0.5], callback = cb, sensealg = adjoint_type))
     end
 
-    adjoint_list = [ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint()]
-    @testset for adjoint_type in adjoint_list
-        u0p = [2.0, 3.0]
-        Zygote.gradient(x -> f1(x, adjoint_type), u0p)
-        Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+    @testset "Callback duplication check" begin
+        for adjoint_type in [
+            ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint()]
+            u0p = [2.0, 3.0]
+            Zygote.gradient(x -> f1(x, adjoint_type), u0p)
+            Zygote.gradient(x -> f2(x, adjoint_type), u0p)
 
-        @test callback_count1 == callback_count2
+            @test callback_count1 == callback_count2
+        end
     end
 end
