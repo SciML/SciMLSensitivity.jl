@@ -31,6 +31,7 @@ a = ones(3)
 @test Zygote.gradient(f, a)[1][3] == Zygote.gradient(f2, a)[1][3] == 0
 
 # callback in problem construction or in solve call should give same result
+# https://github.com/SciML/SciMLSensitivity.jl/issues/1081
 odef(du, u, p, t) = du .= u .* p
 prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
 
