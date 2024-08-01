@@ -53,16 +53,18 @@ let callback_count1 = 0, callback_count2 = 0
     end
 
     @testset "Callback duplication check" begin
+        u0p = [2.0, 3.0]
         for adjoint_type in [
             ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint(),
-            BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+            BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
             count1 = 0
             count2 = 0
-            u0p = [2.0, 3.0]
-            Zygote.gradient(x -> f1(x, adjoint_type), u0p)
-            Zygote.gradient(x -> f2(x, adjoint_type), u0p)
-
-            @test callback_count1 == callback_count2
+            if adjoint_type == GaussAdjoint()
+                @test_broken Zygote.gradient(x -> f1(x, adjoint_type), u0p) == Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+            else
+                @test Zygote.gradient(x -> f1(x, adjoint_type), u0p) == Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+                @test callback_count1 == callback_count2
+            end
         end
     end
 end
