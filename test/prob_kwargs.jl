@@ -19,7 +19,7 @@ end
 
 function f2(a)
     _prob = remake(prob, p = [a[1]], saveat = savetimes)
-    predicted = solve(_prob, Tsit5(), sensealg = ForwardDiffSensitivity(), abstol = 1e-12,
+    predicted = solve(_prob, Tsit5(), sensealg = InterpolatingAdjoint(), abstol = 1e-12,
         reltol = 1e-12)
     sum(predicted.u[end])
 end
@@ -54,7 +54,10 @@ let callback_count1 = 0, callback_count2 = 0
 
     @testset "Callback duplication check" begin
         for adjoint_type in [
-            ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint()]
+            ForwardDiffSensitivity(), ReverseDiffAdjoint(), TrackerAdjoint(),
+            BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+            count1 = 0
+            count2 = 0
             u0p = [2.0, 3.0]
             Zygote.gradient(x -> f1(x, adjoint_type), u0p)
             Zygote.gradient(x -> f2(x, adjoint_type), u0p)
