@@ -681,7 +681,9 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         prob.f
     end
 
-    _prob = ODEForwardSensitivityProblem(_f, u0, prob.tspan, p, sensealg)
+    # callback = nothing ensures only the callback in kwargs is used
+    _prob = ODEForwardSensitivityProblem(
+        _f, u0, prob.tspan, p, sensealg, callback = nothing)
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
     ts = current_time(sol)
@@ -729,7 +731,8 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing,
         kwargs...)
-    _prob = ODEForwardSensitivityProblem(prob.f, u0, prob.tspan, p, sensealg)
+    _prob = ODEForwardSensitivityProblem(
+        prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
     sol = solve(_prob, args...; kwargs...)
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
@@ -786,7 +789,9 @@ function DiffEqBase._concrete_solve_adjoint(
         _saveat = saveat
     end
 
-    sol = solve(remake(prob, p = p, u0 = u0), alg, args...; saveat = _saveat, kwargs...)
+    # use the callback in kwargs, not prob
+    sol = solve(remake(prob, p = p, u0 = u0, callback = nothing),
+        alg, args...; saveat = _saveat, kwargs...)
 
     # saveat values
     # need all values here. Not only unique ones.
@@ -864,7 +869,10 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-                    _prob = remake(prob, f = _f, u0 = u0dual, p = pdual, tspan = tspandual)
+
+                    # use the callback from kwargs, not prob
+                    _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
+                        tspan = tspandual, callback = nothing)
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1019,7 +1027,9 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
-                _prob = remake(prob, f = _f, u0 = u0dual, p = pdual, tspan = tspandual)
+                # use the callback from kwargs, not prob
+                _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
+                    tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1204,9 +1214,11 @@ function DiffEqBase._concrete_solve_adjoint(
                (prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                 SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize)
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
-                _prob = remake(prob, f = f, u0 = map(identity, _u0), p = _p, tspan = _tspan)
+                _prob = remake(prob, f = f, u0 = map(identity, _u0),
+                    p = _p, tspan = _tspan, callback = nothing)
             else
-                _prob = remake(prob, u0 = map(identity, _u0), p = _p, tspan = _tspan)
+                _prob = remake(prob, u0 = map(identity, _u0), p = _p,
+                    tspan = _tspan, callback = nothing)
             end
         else
             # use TrackedArray for efficiency of the tape
@@ -1237,13 +1249,15 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        tspan = _tspan, callback = nothing)
                 end
             elseif prob isa
                    Union{SciMLBase.AbstractODEProblem, SciMLBase.AbstractSDEProblem}
@@ -1269,13 +1283,15 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
                         f = DiffEqBase.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p), tspan = _tspan)
+                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        tspan = _tspan, callback = nothing)
                 end
             else
                 error("TrackerAdjont does not currently support the specified problem type. Please open an issue.")
@@ -1408,7 +1424,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                 _prob = remake(prob, f = f, u0 = reshape([x for x in _u0], size(_u0)),
                     p = _p,
-                    tspan = _tspan)
+                    tspan = _tspan,
+                    callback = nothing)
             else
                 _prob = remake(prob, u0 = reshape([x for x in _u0], size(_u0)), p = _p,
                     tspan = _tspan)
@@ -1423,13 +1440,13 @@ function DiffEqBase._concrete_solve_adjoint(
                         SciMLBase.isinplace(prob),
                         true}(_f,
                         _g),
-                    u0 = _u0, p = _p, tspan = _tspan)
+                    u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             else
                 _prob = remake(prob,
                     f = DiffEqBase.parameterless_type(prob.f){
                         SciMLBase.isinplace(prob),
                         true}(_f),
-                    u0 = _u0, p = _p, tspan = _tspan)
+                    u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             end
         end
 
