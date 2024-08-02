@@ -871,7 +871,6 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-                    pdual_structure = SciMLStructures.replace(Tunable(), p, pdual)
                     _prob = remake(prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
 
                     if _prob isa SDEProblem
@@ -1027,7 +1026,6 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
-                pdual_structure = SciMLStructures.replace(Tunable(), p, pdual)
                 _prob = remake(prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
 
                 if _prob isa SDEProblem
