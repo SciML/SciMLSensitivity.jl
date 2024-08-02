@@ -29,6 +29,14 @@ function test_vector_continuous_callback(cb, g)
             sensealg = BacksolveAdjoint())),
         u0, p)
 
+    du02, dp2 = @time Zygote.gradient(
+        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+            callback = cb, abstol = abstol,
+            reltol = reltol,
+            saveat = savingtimes,
+            sensealg = GaussAdjoint())),
+        u0, p)
+
     dstuff = @time ForwardDiff.gradient(
         (θ) -> g(solve(prob, Tsit5(), u0 = θ[1:4],
             p = θ[5:6], callback = cb,
@@ -38,6 +46,8 @@ function test_vector_continuous_callback(cb, g)
 
     @test du01 ≈ dstuff[1:4]
     @test dp1 ≈ dstuff[5:6]
+    @test du02 ≈ dstuff[1:4]
+    @test dp2 ≈ dstuff[5:6]
 end
 
 @testset "VectorContinuous callbacks" begin
