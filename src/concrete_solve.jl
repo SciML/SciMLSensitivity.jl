@@ -778,7 +778,6 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; saveat = eltype(prob.tspan)[],
         kwargs...) where {CS, CTS}
-
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
@@ -871,7 +870,8 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-                    _prob = remake(prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
+                    _prob = remake(
+                        prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
@@ -1026,7 +1026,8 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
-                _prob = remake(prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
+                _prob = remake(
+                    prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual)
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
