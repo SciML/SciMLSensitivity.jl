@@ -40,7 +40,7 @@ function loss(p1)
     return sum(abs2, sol)
 end
 
-@test_throws SciMLSensitivity.SciMLStructuresCompatibilityError grad(p2)
+@test_throws SciMLSensitivity.AdjointSensitivityParameterCompatibilityError grad(p2)
 
 function loss(p1)
     sol = solve(prob, Tsit5(), p = [p1, mystruct(-1, -2), control],
