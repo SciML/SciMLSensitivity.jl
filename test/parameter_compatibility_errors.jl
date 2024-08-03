@@ -48,8 +48,8 @@ function loss(p1)
     return sum(abs2, sol)
 end
 
-@test_throws SciMLSensitivity.SciMLStructuresCompatibilityError grad(p2)
-@test_throws SciMLSensitivity.SciMLStructuresCompatibilityError ODEForwardSensitivityProblem(
+@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError grad(p2)
+@test_throws SciMLSensitivity.ForwardSensitivityParameterCompatibilityError ODEForwardSensitivityProblem(
     f!,
     u0,
     tspan,
