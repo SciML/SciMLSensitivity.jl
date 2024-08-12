@@ -3,6 +3,7 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
 using SciMLSensitivity
 using ForwardDiff
+using Zygote
 
 @parameters σ ρ β A[1:3]
 @variables x(t) y(t) z(t) w(t) w2(t)
@@ -30,7 +31,7 @@ prob = ODEProblem(sys, u0, tspan, p, jac = true)
 sol = solve(prob, Tsit5())
 
 gt = rand(5501)
-dmtk, = gradient(mtkparams) do p
+dmtk, = Zygote.gradient(mtkparams) do p
     new_sol = solve(prob, Rosenbrock23(), p = p)
     mean(abs.(new_sol[sys.x] .- gt))
 end
