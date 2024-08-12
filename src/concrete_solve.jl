@@ -1033,7 +1033,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 end
 
                 # use the callback from kwargs, not prob
-                _prob = remake(prob, f = _f, u0 = u0dual, p = SciMLStructures.replace(Tunable(), p, pdual),
+                _prob = remake(prob, f = _f, u0 = u0dual,
+                    p = SciMLStructures.replace(Tunable(), p, pdual),
                     tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
