@@ -13,6 +13,7 @@ end
     if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
         @testset "Core1" begin
             @time @safetestset "Forward Sensitivity" include("forward.jl")
+            @time @safetestset "MTK Forward Mode" include("mtk.jl")
             @time @safetestset "Sparse Adjoint Sensitivity" include("sparse_adjoint.jl")
             @time @safetestset "Adjoint Shapes" include("adjoint_shapes.jl")
             @time @safetestset "Second Order Sensitivity" include("second_order.jl")
