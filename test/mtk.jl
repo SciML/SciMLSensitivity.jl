@@ -29,6 +29,7 @@ p = [σ => 28.0,
 tspan = (0.0, 100.0)
 prob = ODEProblem(sys, u0, tspan, p, jac = true)
 sol = solve(prob, Tsit5())
+mtkparams = SciMLSensitivity.parameter_values(sol)
 
 gt = rand(5501)
 dmtk, = Zygote.gradient(mtkparams) do p
