@@ -4,6 +4,7 @@ using OrdinaryDiffEq
 using SciMLSensitivity
 using ForwardDiff
 using Zygote
+using Statistics
 
 @parameters σ ρ β A[1:3]
 @variables x(t) y(t) z(t) w(t) w2(t)
