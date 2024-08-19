@@ -661,12 +661,15 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         args...;
         save_idxs = nothing,
         kwargs...)
-    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(ForwardSensitivityParameterCompatibilityError())
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
-    if p isa AbstractArray && eltype(p) <: ForwardDiff.Dual &&
+    if tunables isa AbstractArray && eltype(tunables) <: ForwardDiff.Dual &&
        !(eltype(u0) <: ForwardDiff.Dual)
         # Handle double differentiation case
         u0 = eltype(p).(u0)
@@ -778,9 +781,12 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; saveat = eltype(prob.tspan)[],
         kwargs...) where {CS, CTS}
-    if !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(ForwardDiffSensitivityParameterCompatibilityError())
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
     if saveat isa Number
@@ -802,42 +808,42 @@ function DiffEqBase._concrete_solve_adjoint(
     function forward_sensitivity_backpass(Δ)
         if !(p === nothing || p === DiffEqBase.NullParameters())
             dp = @thunk begin
-                chunk_size = if CS === 0 && length(p) < 12
-                    length(p)
+                chunk_size = if CS === 0 && length(tunables) < 12
+                    length(tunables)
                 elseif CS !== 0
                     CS
                 else
                     12
                 end
 
-                num_chunks = length(p) ÷ chunk_size
-                num_chunks * chunk_size != length(p) && (num_chunks += 1)
+                num_chunks = length(tunables) ÷ chunk_size
+                num_chunks * chunk_size != length(tunables) && (num_chunks += 1)
 
-                pparts = typeof(p[1:1])[]
+                pparts = typeof(tunables[1:1])[]
                 for j in 0:(num_chunks - 1)
                     local chunk
                     if ((j + 1) * chunk_size) <= length(p)
                         chunk = ((j * chunk_size + 1):((j + 1) * chunk_size))
-                        pchunk = vec(p)[chunk]
+                        pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{chunk_size}())
                     else
-                        chunk = ((j * chunk_size + 1):length(p))
-                        pchunk = vec(p)[chunk]
+                        chunk = ((j * chunk_size + 1):length(tunables))
+                        pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
                             ForwardDiff.Chunk{length(chunk)}())
                     end
 
                     pdualvec = if j == 0
-                        vcat(pdualpart, p[((j + 1) * chunk_size + 1):end])
+                        vcat(pdualpart, tunables[((j + 1) * chunk_size + 1):end])
                     elseif j == num_chunks - 1
-                        vcat(p[1:(j * chunk_size)], pdualpart)
+                        vcat(tunables[1:(j * chunk_size)], pdualpart)
                     else
-                        vcat(p[1:(j * chunk_size)], pdualpart,
-                            p[(((j + 1) * chunk_size) + 1):end])
+                        vcat(tunables[1:(j * chunk_size)], pdualpart,
+                            tunables[(((j + 1) * chunk_size) + 1):end])
                     end
 
-                    pdual = ArrayInterface.restructure(p, pdualvec)
+                    pdual = SciMLStructures.replace(Tunable(), p, pdualvec)
                     u0dual = convert.(eltype(pdualvec), u0)
 
                     if (convert_tspan(sensealg) === nothing &&
@@ -869,7 +875,6 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-
                     # use the callback from kwargs, not prob
                     _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
                         tspan = tspandual, callback = nothing)
@@ -937,7 +942,7 @@ function DiffEqBase._concrete_solve_adjoint(
                     end
                     push!(pparts, vec(_dp))
                 end
-                ArrayInterface.restructure(p, reduce(vcat, pparts))
+                SciMLStructures.replace(Tunable(), p, reduce(vcat, pparts))
             end
         else
             dp = nothing
@@ -992,9 +997,9 @@ function DiffEqBase._concrete_solve_adjoint(
                 end
 
                 if p === nothing || p === DiffEqBase.NullParameters()
-                    pdual = p
+                    pdual = tunables
                 else
-                    pdual = convert.(eltype(u0dual), p)
+                    pdual = convert.(eltype(u0dual), tunables)
                 end
 
                 if (convert_tspan(sensealg) === nothing &&
@@ -1028,7 +1033,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 end
 
                 # use the callback from kwargs, not prob
-                _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
+                _prob = remake(prob, f = _f, u0 = u0dual,
+                    p = SciMLStructures.replace(Tunable(), p, pdual),
                     tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
