@@ -1,0 +1,40 @@
+name: "Tests"
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'release-'
+    paths-ignore:
+      - 'docs/**'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_name != github.event.repository.default_branch || github.ref != 'refs/tags/v*' }}
+
+jobs:
+  tests:
+    name: "Tests"
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - Core1
+          - Core2
+          - Core3
+          - Core4
+          - Core5
+          - Core6
+          - Core7
+          - SDE1
+          - SDE2
+          - SDE3
+    uses: "SciML/.github/.github/workflows/tests.yml@v1"
+    with:
+      group: "${{ matrix.group }}"
+    secrets: "inherit"
