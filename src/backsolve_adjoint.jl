@@ -36,7 +36,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
     if S.noiseterm
         if length(u) == length(du)
             vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
-        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+        elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S, dy = dy)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad)
@@ -82,7 +82,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx)]
         dy = @view du[(end - idx + 1):end]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            !isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, length(du) =  u*m
         idx1 = [length(u) * (i - 1) + i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
@@ -92,7 +92,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx), 1:idx]
         dy = @view du[idx2]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, (as above but can handle mixing noise terms)
         idx2 = [(length(u) + 1) * i - idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
@@ -344,7 +344,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
+    if SciMLBase.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else

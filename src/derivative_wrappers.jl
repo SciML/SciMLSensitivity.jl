@@ -779,7 +779,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
             end
         end
 
-        if StochasticDiffEq.is_diagonal_noise(prob)
+        if SciMLBase.is_diagonal_noise(prob)
             pJt = transpose(λ) .* transpose(pJ)
             recursive_copyto!(dgrad, pJt)
         else
@@ -796,7 +796,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
     end
 
     if dλ !== nothing &&
-       (isnoisemixing(sensealg) || !StochasticDiffEq.is_diagonal_noise(prob))
+       (isnoisemixing(sensealg) || !SciMLBase.is_diagonal_noise(prob))
         @unpack J, uf, f_cache, jac_noise_config = S.diffcache
         if dy !== nothing
             if inplace_sensitivity(S)
@@ -813,7 +813,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
                 if dy !== nothing
                     ForwardDiff.jacobian!(J, uf, dy, y)
                 else
-                    if StochasticDiffEq.is_diagonal_noise(prob)
+                    if SciMLBase.is_diagonal_noise(prob)
                         dy = similar(y)
                     else
                         dy = similar(prob.noise_rate_prototype)
@@ -832,7 +832,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
             #  jacobian!(J, uf, y, nothing, sensealg, nothing)
         end
 
-        if StochasticDiffEq.is_diagonal_noise(prob)
+        if SciMLBase.is_diagonal_noise(prob)
             Jt = transpose(λ) .* transpose(J)
             recursive_copyto!(dλ, Jt)
         else
@@ -866,7 +866,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
         ReverseDiff.value!(tp, p)
         ReverseDiff.value!(tt, [t])
         ReverseDiff.forward_pass!(tapei)
-        if StochasticDiffEq.is_diagonal_noise(prob)
+        if SciMLBase.is_diagonal_noise(prob)
             ReverseDiff.increment_deriv!(output, λ[i])
         else
             ReverseDiff.increment_deriv!(output, λ)
@@ -881,7 +881,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
         end
         ReverseDiff.pull_value!(output)
 
-        if StochasticDiffEq.is_diagonal_noise(prob)
+        if SciMLBase.is_diagonal_noise(prob)
             dλ !== nothing && (dλ[:, i] .= vec(ReverseDiff.deriv(tu)))
             dy !== nothing && (dy[i] = ReverseDiff.value(output))
         else
@@ -909,7 +909,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     noise_rate_prototype = prob.noise_rate_prototype
     m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype)[2]
 
-    if StochasticDiffEq.is_diagonal_noise(prob)
+    if SciMLBase.is_diagonal_noise(prob)
         if VERSION < v"1.9" # pre "stack" function
             for i in 1:m
                 if inplace_sensitivity(S)

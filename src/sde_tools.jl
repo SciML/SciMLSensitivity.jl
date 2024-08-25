@@ -12,7 +12,7 @@ end
 function StochasticTransformedFunction(sol, f, g, corfunc_analytical = nothing)
     @unpack prob = sol
 
-    if StochasticDiffEq.is_diagonal_noise(prob)
+    if SciMLBase.is_diagonal_noise(prob)
         gtmp = copy(sol.u[end])
     else
         gtmp = similar(prob.p, size(prob.noise_rate_prototype))

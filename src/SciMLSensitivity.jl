@@ -6,7 +6,6 @@ import SciMLBase: AbstractNonlinearProblem
 using Adapt
 using LinearSolve
 using Parameters: @unpack
-using StochasticDiffEq
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
