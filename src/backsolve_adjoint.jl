@@ -288,7 +288,7 @@ end
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(tunables, len)
 
-    if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
+    if SciMLBase.alg_interpretation(sol.alg) == :Stratonovich
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
             dgdu_continuous, dgdp_continuous,
             sol.prob.f, alg)
