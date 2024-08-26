@@ -640,7 +640,7 @@ function DiffEqBase._concrete_solve_adjoint(
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
-             dp isa AbstractArray ? reshape(dp', size(p)) : dp
+             dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
