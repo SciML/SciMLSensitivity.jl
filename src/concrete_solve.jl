@@ -701,7 +701,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     out = DiffEqBase.sensitivity_solution(sol, u, ts)
 
     if originator isa SciMLBase.EnzymeOriginator
-        @set out.prob = prob
+        @reset out.prob = prob
     end
 
     function forward_sensitivity_backpass(Δ)
@@ -743,7 +743,7 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     sol = solve(_prob, args...; kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
-        @set sol.prob = prob
+        @reset sol.prob = prob
     end
 
     u, du = extract_local_sensitivities(sol, Val(true))
@@ -809,7 +809,7 @@ function DiffEqBase._concrete_solve_adjoint(
         alg, args...; saveat = _saveat, kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
-        @set sol.prob = prob
+        @reset sol.prob = prob
     end
 
     # saveat values
@@ -1323,7 +1323,7 @@ function DiffEqBase._concrete_solve_adjoint(
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
 
         if originator isa SciMLBase.EnzymeOriginator
-            @set sol.prob = prob
+            @reset sol.prob = prob
         end
 
         if state_values(sol, 1) isa Array
