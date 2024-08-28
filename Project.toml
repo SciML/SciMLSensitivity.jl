@@ -4,6 +4,7 @@ authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <
 version = "7.65.0"
 
 [deps]
+Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
@@ -44,6 +45,7 @@ TruncatedStacktraces = "781d530d-4396-4725-bb49-402e4bee1e77"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
+Accessors = "0.1.36"
 ADTypes = "0.1, 0.2, 1"
 Adapt = "1.0, 2.0, 3.0, 4"
 AlgebraicMultigrid = "0.6.0"
