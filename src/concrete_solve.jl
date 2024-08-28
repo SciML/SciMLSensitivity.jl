@@ -700,6 +700,10 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     end
     out = DiffEqBase.sensitivity_solution(sol, u, ts)
 
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset out.prob = prob
+    end
+
     function forward_sensitivity_backpass(Δ)
         adj = sum(eachindex(du)) do i
             J = du[i]
@@ -737,6 +741,11 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
     _prob = ODEForwardSensitivityProblem(
         prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
     sol = solve(_prob, args...; kwargs...)
+
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset sol.prob = prob
+    end
+
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
     ts = current_time(sol)
@@ -798,6 +807,10 @@ function DiffEqBase._concrete_solve_adjoint(
     # use the callback in kwargs, not prob
     sol = solve(remake(prob, p = p, u0 = u0, callback = nothing),
         alg, args...; saveat = _saveat, kwargs...)
+
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset sol.prob = prob
+    end
 
     # saveat values
     # need all values here. Not only unique ones.
@@ -1308,6 +1321,10 @@ function DiffEqBase._concrete_solve_adjoint(
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
+
+        if originator isa SciMLBase.EnzymeOriginator
+            @reset sol.prob = prob
+        end
 
         if state_values(sol, 1) isa Array
             return Array(sol)
