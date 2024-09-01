@@ -1520,7 +1520,9 @@ function DiffEqBase._concrete_solve_adjoint(
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
-    sol, reversediff_adjoint_backpass
+    u = u0 isa ReverseDiff.TrackedArray ? ReverseDiff.value(state_values(sol)) :
+            ReverseDiff.value.(state_values(sol))
+    DiffEqBase.sensitivity_solution(sol, u, ReverseDiff.value.(current_time(sol))), reversediff_adjoint_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
