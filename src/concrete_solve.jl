@@ -1327,10 +1327,7 @@ function DiffEqBase._concrete_solve_adjoint(
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
-
-        if originator isa SciMLBase.EnzymeOriginator
-            @reset sol.prob = prob
-        end
+        @reset sol.prob = prob
 
         if state_values(sol, 1) isa Array
             return Array(sol)
