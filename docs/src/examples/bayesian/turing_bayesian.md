@@ -2,4 +2,4 @@
 
 For a good overview of how to use the tools of SciML in conjunction with the
 Turing.jl probabilistic programming language, see the
-[Bayesian Differential Equation Tutorial](https://turinglang.org/stable/tutorials/10-bayesian-differential-equations/).
+[Bayesian Differential Equation Tutorial](https://turinglang.org/docs/tutorials/10-bayesian-differential-equations/).
