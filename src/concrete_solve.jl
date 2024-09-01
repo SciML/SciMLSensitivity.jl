@@ -1045,9 +1045,15 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
+                _p = if p isa SciMLBase.NullParameters
+                    p
+                else
+                    SciMLStructures.replace(Tunable(), p, pdual)
+                end
+
                 # use the callback from kwargs, not prob
                 _prob = remake(prob, f = _f, u0 = u0dual,
-                    p = SciMLStructures.replace(Tunable(), p, pdual),
+                    p = _p,
                     tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
@@ -1321,10 +1327,7 @@ function DiffEqBase._concrete_solve_adjoint(
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
-
-        if originator isa SciMLBase.EnzymeOriginator
-            @reset sol.prob = prob
-        end
+        @reset sol.prob = prob
 
         if state_values(sol, 1) isa Array
             return Array(sol)
@@ -1514,7 +1517,10 @@ function DiffEqBase._concrete_solve_adjoint(
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
-    sol, reversediff_adjoint_backpass
+    u = u0 isa ReverseDiff.TrackedArray ? ReverseDiff.value(state_values(sol)) :
+        ReverseDiff.value.(state_values(sol))
+    DiffEqBase.sensitivity_solution(sol, u, ReverseDiff.value.(current_time(sol))),
+    reversediff_adjoint_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
