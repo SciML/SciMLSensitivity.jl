@@ -372,11 +372,11 @@ function DiffEqBase._concrete_solve_adjoint(
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
         kwargs...)
-    if !isscimlstructure(p) || !(sensealg isa GaussAdjoint) &&
-       !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(AdjointSensitivityParameterCompatibilityError())
-    end
+    # if !(sensealg isa GaussAdjoint) &&
+    #    !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    #     throw(AdjointSensitivityParameterCompatibilityError())
+    # end
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
