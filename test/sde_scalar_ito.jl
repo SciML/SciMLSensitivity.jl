@@ -67,7 +67,8 @@ probStrat = SDEProblem(SDEFunction(fStrat, σ),
 )
 
 # solve Strat sense
-solStrat = solve(probStrat, RKMil(interpretation = :Stratonovich), dt = dt,
+solStrat = solve(probStrat,
+    RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich), dt = dt,
     adaptive = false, save_noise = true, saveat = dt)
 
 # check that forward solution agrees

@@ -199,7 +199,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 paramjac_config = tape
             end
         elseif noiseterm &&
-               (!StochasticDiffEq.is_diagonal_noise(prob) || isnoisemixing(sensealg))
+               (!SciMLBase.is_diagonal_noise(prob) || isnoisemixing(sensealg))
             tape = nothing
             paramjac_config = tape
         else
@@ -256,7 +256,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             if isinplace
                 for i in 1:m
                     function noisetape(indx)
-                        if StochasticDiffEq.is_diagonal_noise(prob)
+                        if SciMLBase.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                                 du1 = p !== nothing && p !== DiffEqBase.NullParameters() ?
                                       similar(p, size(u)) : similar(u)
@@ -283,7 +283,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             else
                 for i in 1:m
                     function noisetapeoop(indx)
-                        if StochasticDiffEq.is_diagonal_noise(prob)
+                        if SciMLBase.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                                 unwrappedf(u, p, first(t))[indx]
                             end
@@ -303,7 +303,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
             end
         elseif autojacvec isa Bool
             if isinplace
-                if StochasticDiffEq.is_diagonal_noise(prob)
+                if SciMLBase.is_diagonal_noise(prob)
                     pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
                         uf = DiffEqBase.UJacobianWrapper(unwrappedf, _t, p)
@@ -321,7 +321,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 paramjac_noise_config = build_param_jac_config(
                     sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables))
             else
-                if StochasticDiffEq.is_diagonal_noise(prob)
+                if SciMLBase.is_diagonal_noise(prob)
                     pf = ParamGradientWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
                         uf = DiffEqBase.UDerivativeWrapper(unwrappedf, _t, p)
@@ -333,7 +333,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 paramjac_noise_config = nothing
                 jac_noise_config = nothing
             end
-            if StochasticDiffEq.is_diagonal_noise(prob)
+            if SciMLBase.is_diagonal_noise(prob)
                 pJ = similar(u0, numindvar, numparams)
                 if isnoisemixing(sensealg)
                     J = similar(u0, numindvar, numindvar)

@@ -127,7 +127,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
     if S.noiseterm
         if length(u) == length(du)
             vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
-        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+        elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad)
@@ -245,7 +245,7 @@ function split_states(du, u, t, S::TS;
         dλ = @view du[1:idx]
         dgrad = @view du[(idx + 1):end]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            !isnoisemixing(S.sensealg)
         idx1 = [length(u) * (i - 1) + i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
 
@@ -519,7 +519,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
+    if SciMLBase.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else
