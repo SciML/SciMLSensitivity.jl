@@ -147,15 +147,42 @@ end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+    @show x
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
             ForwardDiff.jacobian!(J, uf, x)
         else
+            global guf = uf
             ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
         end
     else
         FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
+    end
+    nothing
+end
+
+function paramjacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number}, repack,
+        fx::Union{Nothing, AbstractArray{<:Number}},
+        alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+    if alg_autodiff(alg)
+        uf = unwrapped_f(f)
+        if fx === nothing
+            ForwardDiff.jacobian!(J, (buf, arg) -> begin
+                p = repack(arg)
+                uf(buf, p)
+            end, x)
+        else
+            ForwardDiff.jacobian!(J, (buf, arg) -> begin
+                p = repack(arg)
+                uf(buf, p)
+            end, fx, x)
+        end
+    else
+        FiniteDiff.finite_difference_jacobian!(J, (buf, arg) -> begin
+            p = repack(arg)
+            f(buf, p)
+        end, x, jac_config)
     end
     nothing
 end

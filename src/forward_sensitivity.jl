@@ -126,7 +126,7 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     else
         S.pf.t = t
         copyto!(S.pf.u, y)
-        jacobian!(S.pJ, S.pf, tunables, S.f_cache, S.alg, S.paramjac_config)
+        paramjacobian!(S.pJ, S.pf, tunables, repack, S.f_cache, S.alg, S.paramjac_config)
     end
 
     # Compute the parameter derivatives
