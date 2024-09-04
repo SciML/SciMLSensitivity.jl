@@ -147,13 +147,11 @@ end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
-    @show x
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
             ForwardDiff.jacobian!(J, uf, x)
         else
-            global guf = uf
             ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
         end
     else
