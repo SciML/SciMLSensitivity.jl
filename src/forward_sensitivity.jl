@@ -53,7 +53,18 @@ function ODEForwardSensitivityFunction(
         sparsity, paramjac, Wfact, Wfact_t, uf, pf, u0,
         jac_config, paramjac_config, alg, p, f_cache, mm,
         isautojacvec, isautojacmat, colorvec, nus)
-    numparams = length(p)
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    elseif sensealg isa Union{QuadratureAdjoint, GaussAdjoint}
+        tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
+
+    numparams = length(tunables)
     numindvar = length(u0)
     J = isautojacvec ? nothing : Matrix{eltype(u0)}(undef, numindvar, numindvar)
     pJ = Matrix{eltype(u0)}(undef, numindvar, numparams) # number of funcs size
