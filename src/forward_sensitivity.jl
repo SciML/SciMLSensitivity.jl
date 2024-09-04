@@ -107,7 +107,7 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]
-    S.f(dy, y, p, t) # Make the first part be the ODE
+    S.f(dy, y, p..., t) # Make the first part be the ODE
 
     # Now do sensitivities
     # Compute the Jacobian
