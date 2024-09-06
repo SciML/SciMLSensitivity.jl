@@ -157,9 +157,9 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
     ODEForwardSensitivityProblem(ODEFunction(f), args...; kwargs...)
 end
 
-function ODEForwardSensitivityProblem(prob::ODEProblem, alg; kwargs...)
-    ODEForwardSensitivityProblem(
-        prob.f, state_values(prob), prob.tspan, parameter_values(prob), alg; kwargs...)
+function ODEForwardSensitivityProblem(prob::ODEProblem; sense_alg = ForwardSensitivity(), kwargs...)
+    _ODEForwardSensitivityProblem(
+        prob.f, state_values(prob), prob.tspan, parameter_values(prob), sense_alg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
@@ -351,7 +351,25 @@ at time `sol.t[i]`. Note that all the functionality available to ODE solutions
 is available in this case, including interpolations and plot recipes (the recipes
 will plot the expanded system).
 """
+function ODEForwardSensitivityProblem(f::F, u0, tspan, p = nothing; 
+    sense_alg = ForwardSensitivity(),
+    kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+
+    _ODEForwardSensitivityProblem(f,u0,tspan,p,sense_alg; kwargs...)
+end
+
 function ODEForwardSensitivityProblem(f::F, u0,
+        tspan, p = nothing,
+        alg::ForwardSensitivity = ForwardSensitivity();
+        nus = nothing, # determine if Nilss is used
+        w0 = nothing,
+        v0 = nothing,
+        kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sense_alg` keyword argument instead.", :ODEForwardSensitivityProblem)
+    _ODEForwardSensitivityProblem(f,u0,tspan,p,alg; nus,w0,v0,kwargs...)    
+end
+
+function _ODEForwardSensitivityProblem(f::F, u0,
         tspan, p = nothing,
         alg::ForwardSensitivity = ForwardSensitivity();
         nus = nothing, # determine if Nilss is used
@@ -465,7 +483,17 @@ has_continuous_callback(cb::DiscreteCallback) = false
 has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
+
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
+        tspan, p, alg::ForwardDiffSensitivity;
+        du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
+        dp = I(length(p)), # perturbations of parameters
+        kwargs...)
+    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sense_alg` keyword argument instead.", :ODEForwardSensitivity)
+    _ODEForwardSensitivityProblem(f, u0, tspan, p, alg, du0, dp, kwargs...)
+end
+
+function _ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
         tspan, p, alg::ForwardDiffSensitivity;
         du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
         dp = I(length(p)), # perturbations of parameters
