@@ -26,15 +26,19 @@ p = [1.5, 1.0, 3.0]
 prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 probInpl = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p)
 probnoad = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autodiff = false))
+    sense_alg = ForwardSensitivity(autodiff = false))
 probnoadjacvec = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autodiff = false,
+    sense_alg = ForwardSensitivity(autodiff = false,
         autojacvec = true))
 probnoad2 = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autodiff = false))
+    sense_alg = ForwardSensitivity(autodiff = false))
 probvecmat = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autojacvec = false,
+    sense_alg = ForwardSensitivity(autojacvec = false,
         autojacmat = true))
+
+# tests that the deprecated version still works
+dep_prob_const = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p, ForwardSensitivity())
+
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 @test_broken solve(probInpl, KenCarp4(), abstol = 1e-14, reltol = 1e-14).retcode == :Success
 solInpl = solve(probInpl, KenCarp4(autodiff = false), abstol = 1e-14, reltol = 1e-14)

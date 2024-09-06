@@ -157,9 +157,9 @@ function ODEForwardSensitivityProblem(f::F, args...; kwargs...) where {F}
     ODEForwardSensitivityProblem(ODEFunction(f), args...; kwargs...)
 end
 
-function ODEForwardSensitivityProblem(prob::ODEProblem; sense_alg = ForwardSensitivity(), kwargs...)
+function ODEForwardSensitivityProblem(prob::ODEProblem; sensealg = ForwardSensitivity(), kwargs...)
     _ODEForwardSensitivityProblem(
-        prob.f, state_values(prob), prob.tspan, parameter_values(prob), sense_alg; kwargs...)
+        prob.f, state_values(prob), prob.tspan, parameter_values(prob), sensealg; kwargs...)
 end
 
 const FORWARD_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE = """
@@ -352,10 +352,10 @@ is available in this case, including interpolations and plot recipes (the recipe
 will plot the expanded system).
 """
 function ODEForwardSensitivityProblem(f::F, u0, tspan, p = nothing; 
-    sense_alg = ForwardSensitivity(),
+    sensealg = ForwardSensitivity(),
     kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
 
-    _ODEForwardSensitivityProblem(f,u0,tspan,p,sense_alg; kwargs...)
+    _ODEForwardSensitivityProblem(f,u0,tspan,p,sensealg; kwargs...)
 end
 
 function ODEForwardSensitivityProblem(f::F, u0,
@@ -365,7 +365,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
         w0 = nothing,
         v0 = nothing,
         kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
-    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sense_alg` keyword argument instead.", :ODEForwardSensitivityProblem)
+    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sensealg` keyword argument instead.", :ODEForwardSensitivityProblem)
     _ODEForwardSensitivityProblem(f,u0,tspan,p,alg; nus,w0,v0,kwargs...)    
 end
 
@@ -489,7 +489,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
         du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
         dp = I(length(p)), # perturbations of parameters
         kwargs...)
-    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sense_alg` keyword argument instead.", :ODEForwardSensitivity)
+    Base.depwarn("The form of this function with `alg` as a positional argument is deprecated. Please use the `sensealg` keyword argument instead.", :ODEForwardSensitivity)
     _ODEForwardSensitivityProblem(f, u0, tspan, p, alg, du0, dp, kwargs...)
 end
 
