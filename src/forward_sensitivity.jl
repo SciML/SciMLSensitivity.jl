@@ -358,6 +358,7 @@ function ODEForwardSensitivityProblem(f::F, u0, tspan, p = nothing;
     _ODEForwardSensitivityProblem(f,u0,tspan,p,sensealg; kwargs...)
 end
 
+# deprecated
 function ODEForwardSensitivityProblem(f::F, u0,
         tspan, p,
         alg::ForwardSensitivity;
@@ -370,8 +371,8 @@ function ODEForwardSensitivityProblem(f::F, u0,
 end
 
 function _ODEForwardSensitivityProblem(f::F, u0,
-        tspan, p = nothing,
-        alg::ForwardSensitivity = ForwardSensitivity();
+        tspan, p,
+        alg::ForwardSensitivity;
         nus = nothing, # determine if Nilss is used
         w0 = nothing,
         v0 = nothing,
@@ -483,7 +484,7 @@ has_continuous_callback(cb::DiscreteCallback) = false
 has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
-
+# deprecated
 function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
         tspan, p, alg::ForwardDiffSensitivity;
         du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
