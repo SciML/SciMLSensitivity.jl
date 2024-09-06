@@ -48,6 +48,7 @@ solnoadjacvec = solve(probnoadjacvec, KenCarp4(autodiff = false), abstol = 1e-14
     reltol = 1e-14)
 solnoad2 = solve(probnoad, KenCarp4(autodiff = false), abstol = 1e-14, reltol = 1e-14)
 solvecmat = solve(probvecmat, Tsit5(), abstol = 1e-14, reltol = 1e-14)
+solve_dep_prob_const = solve(probvecmat, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 
 x = sol[1:(sol.prob.f.numindvar), :]
 
@@ -129,7 +130,7 @@ _, dp_ts = extract_local_sensitivities(sol, sol.t)
 ### ForwardDiff version
 
 prob = ODEForwardSensitivityProblem(f.f, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardDiffSensitivity())
+    sensealg = ForwardDiffSensitivity())
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01)
 
 xall, dpall = extract_local_sensitivities(sol)
@@ -188,17 +189,17 @@ f_MM = ODEFunction(rober_MM, mass_matrix = M)
 f_no_MM = ODEFunction(rober_no_MM)
 
 prob_MM_ForwardSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p,
-    ForwardSensitivity())
+    sensealg = ForwardSensitivity())
 sol_MM_ForwardSensitivity = solve(prob_MM_ForwardSensitivity, Rodas4(autodiff = false),
     reltol = 1e-14, abstol = 1e-14)
 
 prob_MM_ForwardDiffSensitivity = ODEForwardSensitivityProblem(f_MM, u0, tspan, p,
-    ForwardDiffSensitivity())
+    sensealg = ForwardDiffSensitivity())
 sol_MM_ForwardDiffSensitivity = solve(prob_MM_ForwardDiffSensitivity,
     Rodas4(autodiff = false), reltol = 1e-14,
     abstol = 1e-14)
 
-prob_no_MM = ODEForwardSensitivityProblem(f_no_MM, u0, tspan, p, ForwardSensitivity())
+prob_no_MM = ODEForwardSensitivityProblem(f_no_MM, u0, tspan, p, sensealg = ForwardSensitivity())
 sol_no_MM = solve(prob_no_MM, Rodas4(autodiff = false), reltol = 1e-14, abstol = 1e-14)
 
 sen_MM_ForwardSensitivity = extract_local_sensitivities(sol_MM_ForwardSensitivity, 10.0,
