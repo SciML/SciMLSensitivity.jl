@@ -26,14 +26,14 @@ p = [1.5, 1.0, 3.0]
 prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 probInpl = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p)
 probnoad = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    sense_alg = ForwardSensitivity(autodiff = false))
+    sensealg = ForwardSensitivity(autodiff = false))
 probnoadjacvec = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    sense_alg = ForwardSensitivity(autodiff = false,
+    sensealg = ForwardSensitivity(autodiff = false,
         autojacvec = true))
 probnoad2 = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p,
-    sense_alg = ForwardSensitivity(autodiff = false))
+    sensealg = ForwardSensitivity(autodiff = false))
 probvecmat = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
-    sense_alg = ForwardSensitivity(autojacvec = false,
+    sensealg = ForwardSensitivity(autojacvec = false,
         autojacmat = true))
 
 # tests that the deprecated version still works
