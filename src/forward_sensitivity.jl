@@ -359,8 +359,8 @@ function ODEForwardSensitivityProblem(f::F, u0, tspan, p = nothing;
 end
 
 function ODEForwardSensitivityProblem(f::F, u0,
-        tspan, p = nothing,
-        alg::ForwardSensitivity = ForwardSensitivity();
+        tspan, p,
+        alg::ForwardSensitivity;
         nus = nothing, # determine if Nilss is used
         w0 = nothing,
         v0 = nothing,
