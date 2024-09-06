@@ -258,7 +258,7 @@ prob = ODEForwardSensitivityProblem(f,
     [1.0; 1.0],
     (0.0, 10.0),
     p,
-    absolutely_no_ad_sensealg)
+    sensealg = absolutely_no_ad_sensealg)
 @test SciMLSensitivity.has_original_jac(prob.f)
 @assert jac_call_count == 0
 solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
