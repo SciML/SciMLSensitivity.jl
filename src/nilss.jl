@@ -291,7 +291,7 @@ function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     t1 = forward_prob.tspan[1]
     t2 = forward_prob.tspan[1] + T_seg
     _prob = ODEForwardSensitivityProblem(
-        S.f, u0, (t1, t2), p, sensealg; nus = nus, w0 = w0,
+        S.f, u0, (t1, t2), p; sensealg = sensealg, nus = nus, w0 = w0,
         v0 = vstar0)
 
     for iseg in 1:nseg
@@ -315,8 +315,8 @@ function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
             renormalize!(R, b, w_perp, vstar_perp, y, vstar, w, iseg, numparams, nus)
             t1 = forward_prob.tspan[1] + iseg * T_seg
             t2 = forward_prob.tspan[1] + (iseg + 1) * T_seg
-            _prob = ODEForwardSensitivityProblem(S.f, y[:, 1, iseg + 1], (t1, t2), p,
-                sensealg; nus = nus,
+            _prob = ODEForwardSensitivityProblem(S.f, y[:, 1, iseg + 1], (t1, t2), p;
+                sensealg = sensealg, nus = nus,
                 w0 = vec(w[:, 1, iseg + 1, :]),
                 v0 = vec(vstar[:, :, 1, iseg + 1]))
         end

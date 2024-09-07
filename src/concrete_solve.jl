@@ -686,7 +686,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     # callback = nothing ensures only the callback in kwargs is used
     _prob = ODEForwardSensitivityProblem(
-        _f, u0, prob.tspan, p, sensealg, callback = nothing)
+        _f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing)
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
     ts = current_time(sol)
@@ -739,7 +739,7 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
         args...; save_idxs = nothing,
         kwargs...)
     _prob = ODEForwardSensitivityProblem(
-        prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
+        prob.f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing)
     sol = solve(_prob, args...; kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
