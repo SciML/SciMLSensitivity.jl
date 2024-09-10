@@ -37,7 +37,8 @@ probvecmat = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p,
         autojacmat = true))
 
 # tests that the deprecated version still works
-dep_prob_const = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p, ForwardSensitivity())
+dep_prob_const = ODEForwardSensitivityProblem(
+    fb, [1.0; 1.0], (0.0, 10.0), p, ForwardSensitivity())
 
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14)
 @test_broken solve(probInpl, KenCarp4(), abstol = 1e-14, reltol = 1e-14).retcode == :Success
@@ -199,7 +200,8 @@ sol_MM_ForwardDiffSensitivity = solve(prob_MM_ForwardDiffSensitivity,
     Rodas4(autodiff = false), reltol = 1e-14,
     abstol = 1e-14)
 
-prob_no_MM = ODEForwardSensitivityProblem(f_no_MM, u0, tspan, p, sensealg = ForwardSensitivity())
+prob_no_MM = ODEForwardSensitivityProblem(
+    f_no_MM, u0, tspan, p, sensealg = ForwardSensitivity())
 sol_no_MM = solve(prob_no_MM, Rodas4(autodiff = false), reltol = 1e-14, abstol = 1e-14)
 
 sen_MM_ForwardSensitivity = extract_local_sensitivities(sol_MM_ForwardSensitivity, 10.0,
