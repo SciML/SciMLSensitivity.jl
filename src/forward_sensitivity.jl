@@ -227,7 +227,7 @@ of the solution with respect to parameters.
 
 ```julia
 ODEForwardSensitivityProblem(f::SciMLBase.AbstractODEFunction,u0,
-                             tspan,p=nothing,
+                             tspan,p=nothing;
                              sensealg::AbstractForwardSensitivityAlgorithm = ForwardSensitivity();
                              kwargs...)
 ```
