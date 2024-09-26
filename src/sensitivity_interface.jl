@@ -473,7 +473,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas
             iλ .= zero(eltype(iλ))
-            @unpack algevar_idxs = rcb.diffcache
+            (; algevar_idxs) = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
             vecjacobian!(nothing, yy, iλ, mtkp, tt, S, dgrad = out)

@@ -103,8 +103,8 @@ function NILSSProblem(prob, sensealg::NILSS;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
         kwargs...)
-    @unpack f, p, u0, tspan = prob
-    @unpack nseg, nstep, nus, rng = sensealg  #number of segments on time interval, number of steps saved on each segment
+    (; f, p, u0, tspan) = prob
+    (; nseg, nstep, nus, rng) = sensealg  #number of segments on time interval, number of steps saved on each segment
 
     numindvar = length(u0)
     numparams = length(p)
@@ -231,7 +231,7 @@ function NILSSProblem(prob, sensealg::NILSS;
 end
 
 function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
-    @unpack S, nus = NS
+    (; S, nus) = NS
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]
 
@@ -281,11 +281,11 @@ end
 
 function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     #TODO determine a good dtsave (ΔT in paper, see Sec.4.2)
-    @unpack nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y, dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0 = prob
-    @unpack p, f = forward_prob
-    @unpack S, sensealg = f
-    @unpack nseg, nstep = nilss
-    @unpack numindvar, numparams = S
+    (; nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y, dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0) = prob
+    (; p, f) = forward_prob
+    (; S, sensealg) = f
+    (; nseg, nstep) = nilss
+    (; numindvar, numparams) = S
 
     # push forward
     t1 = forward_prob.tspan[1]
@@ -350,9 +350,9 @@ function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
 end
 
 function dudt_g_dgdu!(dudt, dgdu_val, gsave, nilssprob::NILSSProblem, y, p, iseg)
-    @unpack sensealg, diffcache, g, prob = nilssprob
-    @unpack prob = nilssprob
-    @unpack dgdu, jevery, cur_time = diffcache # akin to ``discrete"
+    (; sensealg, diffcache, g, prob) = nilssprob
+    (; prob) = nilssprob
+    (; dgdu, jevery, cur_time) = diff
 
     _y = @view y[:, :, iseg]
 
@@ -530,7 +530,7 @@ end
 
 function accumulate_cost!(_dgdu, u, p, t, sensealg::NILSS,
         diffcache::NILSSSensitivityFunction, j)
-    @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config = diffcache
+    (; dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config) = diffcache
 
     if dgdu === nothing
         if dg_val isa Tuple
@@ -558,13 +558,13 @@ function shadow_forward(prob::NILSSProblem, alg; sensealg = prob.sensealg)
 end
 
 function shadow_forward(prob::NILSSProblem, sensealg::NILSS, alg)
-    @unpack nseg, nstep = sensealg
-    @unpack res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
-    gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ = prob
-    @unpack numindvar, numparams = forward_prob.f.S
+    (; nseg, nstep) = sensealg
+    (; res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
+    gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ) = prob
+    (; numindvar, numparams) = forward_prob.f.S
 
     # reset dg pointer
-    @unpack jevery, cur_time = prob.diffcache
+    (; jevery, cur_time) = prob.diffcache
     jevery !== nothing && (cur_time[] = one(jevery))
 
     # compute vstar, w

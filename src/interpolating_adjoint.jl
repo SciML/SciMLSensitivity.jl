@@ -118,7 +118,7 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -144,7 +144,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t, W)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -160,7 +160,7 @@ end
 function split_states(du, u, t, S::TS;
         update = true) where {TS <:
                               ODEInterpolatingAdjointSensitivityFunction}
-    @unpack sol, y, checkpoint_sol, discrete, prob, f = S
+    (; sol, y, checkpoint_sol, discrete, prob, f) = S
     idx = length(y)
     if update
         if checkpoint_sol === nothing
@@ -281,7 +281,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack tspan = sol.prob
+    (; tspan) = sol.prob
     p = parameter_values(sol.prob)
     u0 = state_values(sol.prob)
 
@@ -410,7 +410,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    (; f, p, u0, tspan) = sol.prob
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -551,7 +551,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    (; f, p, u0, tspan) = sol.prob
 
     # check if solution was terminated, then use reduced time span
     terminated = false

@@ -241,10 +241,10 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    (; sensealg, f) = S
     prob = getprob(S)
 
-    @unpack J, uf, f_cache, jac_config = S.diffcache
+    (; J, uf, f_cache, jac_config) = S.diffcache
 
     if J isa DiffCache && dλ !== nothing
         J = get_tmp(J, dλ)
@@ -286,7 +286,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         mul!(dλ', λ', J)
     end
     if dgrad !== nothing && !isempty(dgrad)
-        @unpack pJ, pf, paramjac_config = S.diffcache
+        (; pJ, pf, paramjac_config) = S.diffcache
         if W === nothing
             if DiffEqBase.has_paramjac(f)
                 # Calculate the parameter Jacobian into pJ
@@ -373,7 +373,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     f = unwrapped_f(S.f)
 
     if inplace_sensitivity(S)
@@ -430,7 +430,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
@@ -554,7 +554,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
@@ -619,7 +619,7 @@ end
 
 function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
@@ -655,7 +655,7 @@ end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     f = unwrapped_f(S.f)
 
     prob = getprob(S)
@@ -759,11 +759,11 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
         dy) where {TS <: SensitivityFunction}
-    @unpack sensealg, f = S
+    (; sensealg, f) = S
     prob = getprob(S)
 
     if dgrad !== nothing
-        @unpack pJ, pf, f_cache, paramjac_noise_config = S.diffcache
+        (; pJ, pf, f_cache, paramjac_noise_config) = S.diffcache
         if DiffEqBase.has_paramjac(f)
             # Calculate the parameter Jacobian into pJ
             f.paramjac(pJ, y, p, t)
@@ -797,7 +797,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
 
     if dλ !== nothing &&
        (isnoisemixing(sensealg) || !SciMLBase.is_diagonal_noise(prob))
-        @unpack J, uf, f_cache, jac_noise_config = S.diffcache
+        (; J, uf, f_cache, jac_noise_config) = S.diffcache
         if dy !== nothing
             if inplace_sensitivity(S)
                 f(dy, y, p, t)
@@ -847,7 +847,7 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
         dy) where {TS <: SensitivityFunction}
-    @unpack sensealg, = S
+    (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
@@ -894,7 +894,7 @@ end
 
 function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
         dy) where {TS <: SensitivityFunction}
-    @unpack sensealg = S
+    (; sensealg) = S
     prob = getprob(S)
     p_ = parameter_values(prob)
 
@@ -997,7 +997,7 @@ end
 
 function accumulate_cost!(dλ, y, p, t, S::TS,
         dgrad = nothing) where {TS <: SensitivityFunction}
-    @unpack dgdu, dgdp, dg_val, g, g_grad_config = S.diffcache
+    (; dgdu, dgdp, dg_val, g, g_grad_config) = S.diffcache
 
     if dgdu !== nothing
         if dgdp === nothing
@@ -1028,7 +1028,7 @@ end
 
 function accumulate_cost(dλ, y, p, t, S::TS,
         dgrad = nothing) where {TS <: SensitivityFunction}
-    @unpack dgdu, dgdp = S.diffcache
+    (; dgdu, dgdp) = S.diffcache
 
     dλ -= dgdu(y, p, t)
     if dgdp !== nothing

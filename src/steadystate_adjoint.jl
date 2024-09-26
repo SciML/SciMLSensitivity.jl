@@ -14,7 +14,7 @@ end
 
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
         colorvec, needs_jac)
-    @unpack p, u0 = sol.prob
+    (; p, u0) = sol.prob
 
     diffcache, y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
         quad = false, needs_jac)
@@ -33,7 +33,7 @@ end
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
         dgdu::DG1 = nothing, dgdp::DG2 = nothing, g::G = nothing;
         kwargs...) where {DG1, DG2, G}
-    @unpack f, p, u0 = sol.prob
+    (; f, p, u0) = sol.prob
 
     sol.prob isa AbstractNonlinearProblem && (f = ODEFunction(f))
 
@@ -49,7 +49,7 @@ end
 
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
         f, f.colorvec, needs_jac)
-    @unpack diffcache, y, sol, λ, vjp, linsolve = sense
+    (; diffcache, y, sol, λ, vjp, linsolve) = sense
 
     if needs_jac
         if DiffEqBase.has_jac(f)
@@ -118,7 +118,7 @@ end
         if dgdp !== nothing
             dgdp(dgdp_val, y, p, nothing, nothing)
         else
-            @unpack g_grad_config = diffcache
+            (; g_grad_config) = diffcache
             gradient!(dgdp_val, diffcache.g[2], p, sensealg, g_grad_config[2])
         end
         recursive_sub!(dgdp_val, vjp)

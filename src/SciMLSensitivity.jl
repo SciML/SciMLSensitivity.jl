@@ -1,12 +1,14 @@
 module SciMLSensitivity
 
+using ADTypes
+using Accessors: @reset
+
+
 using DiffEqBase, ForwardDiff, Tracker, FiniteDiff, Statistics
 using DiffEqCallbacks, QuadGK, RecursiveArrayTools, LinearAlgebra
 import SciMLBase: AbstractNonlinearProblem
 using Adapt
 using LinearSolve
-using Parameters: @unpack
-import Accessors: @reset
 import DiffEqNoiseProcess
 import RandomNumbers: Xorshifts
 using Random
@@ -14,19 +16,17 @@ import Zygote, ReverseDiff
 import ArrayInterface
 import Enzyme
 import GPUArraysCore
-using ADTypes
-using SparseDiffTools
-using SciMLOperators
 using Functors
 import SciMLStructures
 import PreallocationTools: dualcache, get_tmp, DiffCache, LazyBufferCache,
                            FixedSizeDiffCache
 import FunctionWrappersWrappers
-using EllipsisNotation
 using FunctionProperties: hasbranching
 
 using SymbolicIndexingInterface
 using SciMLStructures: canonicalize, Tunable, isscimlstructure
+
+# using SciMLJacobianOperators: VecJacOperator
 
 using Markdown
 

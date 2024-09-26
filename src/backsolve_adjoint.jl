@@ -21,7 +21,7 @@ function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
 end
 
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -53,7 +53,7 @@ end
 
 # u = λ' # for the RODE case
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
     copyto!(vec(y), _y)
@@ -67,7 +67,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
 end
 
 function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = true)
-    @unpack y, prob = S
+    (; y, prob) = S
     idx = length(y)
 
     λ = @view u[1:idx]
@@ -258,7 +258,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)
@@ -380,7 +380,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)

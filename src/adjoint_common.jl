@@ -44,7 +44,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     if prob isa AbstractNonlinearProblem
         tspan = (nothing, nothing)
         #elseif prob isa SDEProblem
-        #  @unpack tspan, u0, p = prob
+        #  (; tspan, u0, p) = prob
     else
         tspan = prob.tspan
     end
@@ -517,10 +517,10 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg
 end
 
 function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
-    @unpack sensealg, y = sensefun
+    (; sensealg, y) = sensefun
     isq = (sensealg isa QuadratureAdjoint)
 
-    @unpack factorized_mass_matrix = sensefun.diffcache
+    (; factorized_mass_matrix) = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(state_values(prob))
     Δλas = Tuple{typeof(λ), eltype(t)}[]
@@ -536,8 +536,8 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
 end
 
 function (f::ReverseLossCallback)(integrator)
-    @unpack isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol = f
-    @unpack diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config = f.diffcache
+    (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol) = f
+    (; diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config) = f.diffcache
 
     p, u = integrator.p, integrator.u
 
@@ -601,9 +601,9 @@ end
 function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
         terminated = false)
     if sensefun isa NILSASSensitivityFunction
-        @unpack sensealg = sensefun.S
+        (; sensealg) = sensefun.S
     else
-        @unpack sensealg = sensefun
+        (; sensealg) = sensefun
     end
 
     if !init_cb
