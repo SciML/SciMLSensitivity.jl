@@ -15,8 +15,6 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
     noiseterm::Bool
 end
 
-TruncatedStacktraces.@truncate_stacktrace ODEInterpolatingAdjointSensitivityFunction
-
 mutable struct CheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals

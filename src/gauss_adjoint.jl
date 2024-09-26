@@ -28,8 +28,6 @@ struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     GaussInt::GaussIntegrand
 end
 
-TruncatedStacktraces.@truncate_stacktrace ODEGaussAdjointSensitivityFunction
-
 mutable struct GaussCheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals

@@ -12,8 +12,6 @@ struct SteadyStateAdjointSensitivityFunction{C <: AdjointDiffCache,
     linsolve::LS
 end
 
-TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjointSensitivityFunction
-
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
         colorvec, needs_jac)
     @unpack p, u0 = sol.prob

@@ -11,8 +11,6 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     noiseterm::Bool
 end
 
-TruncatedStacktraces.@truncate_stacktrace ODEBacksolveSensitivityFunction
-
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         noiseterm = false)
     diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;

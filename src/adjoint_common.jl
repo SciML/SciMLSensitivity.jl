@@ -21,8 +21,6 @@ struct AdjointDiffCache{UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateT
     issemiexplicitdae::Bool
 end
 
-TruncatedStacktraces.@truncate_stacktrace AdjointDiffCache
-
 """
     adjointdiffcache(g,sensealg,discrete,sol,dg,alg;quad=false)
 

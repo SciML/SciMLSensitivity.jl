@@ -36,8 +36,6 @@ struct ODEForwardSensitivityFunction{iip, F, A, Tt, OJ, J, JP, S, PJ, TW, TWt, U
     colorvec::CV
 end
 
-TruncatedStacktraces.@truncate_stacktrace ODEForwardSensitivityFunction
-
 has_original_jac(S) = isdefined(S, :original_jac) && S.original_jac !== nothing
 
 struct NILSSForwardSensitivityFunction{iip, sensefunType, senseType, MM} <:

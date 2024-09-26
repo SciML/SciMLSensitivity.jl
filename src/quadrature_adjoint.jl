@@ -11,8 +11,6 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
 end
 
-TruncatedStacktraces.@truncate_stacktrace ODEQuadratureAdjointSensitivityFunction
-
 function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
         alg)
     diffcache, y = adjointdiffcache(
