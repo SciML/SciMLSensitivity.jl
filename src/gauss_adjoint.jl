@@ -16,7 +16,7 @@ end
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: GaussAdjoint,
     uType, SType, CPS, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
+    fType <: AbstractDiffEqFunction} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -370,7 +370,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     u0 = state_values(prob)
     p = parameter_values(prob)
 
-    if p === nothing || p isa DiffEqBase.NullParameters
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
@@ -433,7 +433,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
@@ -459,7 +459,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     end
 
     if !isautojacvec
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t

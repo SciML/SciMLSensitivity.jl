@@ -2,7 +2,7 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: InterpolatingAdjoint,
     uType, SType, CPS, pType,
     fType <:
-    DiffEqBase.AbstractDiffEqFunction} <:
+    AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -337,11 +337,11 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = numstates + numparams
 
-    λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+    λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
         one(eltype(u0)) .* similar(tunables, len)
     λ .= false
 
@@ -450,7 +450,7 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
 
     len = numstates + numparams
 
@@ -591,11 +591,11 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
 
     len = numstates + numparams
 
-    λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+    λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
         one(eltype(u0)) .* similar(p, len)
     λ .= false
 

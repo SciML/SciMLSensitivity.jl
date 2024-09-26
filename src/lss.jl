@@ -8,7 +8,7 @@ end
 struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc, JM, pJM,
     MM, CV,
     DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     f::F
     analytic::A
     jac::J
@@ -42,16 +42,16 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
         colorvec, tspan, g, dgdu, dgdp)
     !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
-    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
+    uf = SciMLBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = SciMLBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
 
-    if DiffEqBase.has_jac(f)
+    if SciMLBase.has_jac(f)
         jac_config = nothing
     else
         jac_config = build_jac_config(sensealg, uf, u0)
     end
 
-    if DiffEqBase.has_paramjac(f)
+    if SciMLBase.has_paramjac(f)
         paramjac_config = nothing
     else
         paramjac_config = build_param_jac_config(sensealg, pf, u0, p)
@@ -283,7 +283,7 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
     fill!(B, zero(eltype(J)))
 
     for (i, u) in enumerate(eachcol(umid))
-        if DiffEqBase.has_jac(f)
+        if SciMLBase.has_jac(f)
             f.jac(J, u, uf.p, uf.t) # Calculate the Jacobian into J
         else
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
@@ -324,7 +324,7 @@ function b!(b, prob::ForwardLSSProblem)
     (; f, f_cache, pJ, pf, paramjac_config, uf, numindvar) = diffcache
 
     for (i, u) in enumerate(eachcol(umid))
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, u, uf.p, pf.t)
         else
             pf.u = u
@@ -470,10 +470,10 @@ function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
 
     if dgdu === nothing
         if dg_val isa Tuple
-            SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
-            SciMLSensitivity.gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
+            gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
         else
-            SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
         end
     else
         if dg_val isa Tuple
@@ -611,10 +611,10 @@ function wBcorrect!(S, sol, g, Nt, sense, sensealg)
         _wBinv = @view wBinv[((i - 1) * numindvar + 1):(i * numindvar)]
         if dgdu === nothing
             if dg_val isa Tuple
-                SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+                gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
                 @. _wBinv = _wBinv * dg_val[1] / Nt
             else
-                SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+                gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
                 @. _wBinv = _wBinv * dg_val / Nt
             end
         else
@@ -657,7 +657,7 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
     if dg_val isa Tuple
         for (j, u) in enumerate(eachcol(umidres))
             if dgdp === nothing
-                SciMLSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
+                gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
                 @. res += dg_val[2]
             else
                 dgdp(dg_val[2], u, uf.p, nothing, n0 + j - 1)
@@ -669,7 +669,7 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
 
     for (j, u) in enumerate(eachcol(umidres))
         _wares = @view wares[((j - 1) * numindvar + 1):(j * numindvar)]
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, u, uf.p, pf.t)
         else
             pf.u = u

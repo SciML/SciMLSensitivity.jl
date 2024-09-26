@@ -1,5 +1,5 @@
 struct NILSASSensitivityFunction{iip, NILSS, ASF, Mtype} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     nilss::NILSS
     S::ASF # Adjoint sensitivity function
     M::Mtype
@@ -263,10 +263,10 @@ function accumulate_cost!(y, p, t, nilss::NILSSSensitivityFunction)
 
     if dgdu === nothing
         if dg_val isa Tuple
-            SciMLSensitivity.gradient!(dg_val[1], pgpu, y, alg, pgpu_config)
-            SciMLSensitivity.gradient!(dg_val[2], pgpp, y, alg, pgpp_config)
+            gradient!(dg_val[1], pgpu, y, alg, pgpu_config)
+            gradient!(dg_val[2], pgpp, y, alg, pgpp_config)
         else
-            SciMLSensitivity.gradient!(dg_val, pgpu, y, alg, pgpu_config)
+            gradient!(dg_val, pgpu, y, alg, pgpu_config)
         end
     else
         if dg_val isa Tuple

@@ -1228,7 +1228,7 @@ end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
-@inline function alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function alg_autodiff(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1239,7 +1239,7 @@ end
 }
     AD
 end
-@inline function get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function get_chunksize(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1250,7 +1250,7 @@ end
 }
     CS
 end
-@inline function diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function diff_type(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1261,20 +1261,20 @@ end
 }
     FDT
 end
-@inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)
+@inline function get_jacvec(alg::AbstractSensitivityAlgorithm)
     alg.autojacvec isa Bool ? alg.autojacvec : true
 end
-@inline function get_jacmat(alg::DiffEqBase.AbstractSensitivityAlgorithm)
+@inline function get_jacmat(alg::AbstractSensitivityAlgorithm)
     alg.autojacmat isa Bool ? alg.autojacmat : true
 end
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol = nothing) = false
+@inline ischeckpointing(alg::AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
-@inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
+@inline isnoisemixing(alg::AbstractSensitivityAlgorithm) = false
 @inline isnoisemixing(alg::InterpolatingAdjoint) = alg.noisemixing
 @inline isnoisemixing(alg::BacksolveAdjoint) = alg.noisemixing
 

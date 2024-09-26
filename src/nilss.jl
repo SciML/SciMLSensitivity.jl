@@ -1,7 +1,7 @@
 struct NILSSSensitivityFunction{iip, F, Alg,
     PGPU, PGPP, CONFU, CONGP, DGVAL, DG1, DG2, jType, RefType
 } <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     f::F
     alg::Alg
     numparams::Int
@@ -250,7 +250,7 @@ function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
         end
     end
 
-    if DiffEqBase.has_paramjac(S.f)
+    if SciMLBase.has_paramjac(S.f)
         S.paramjac(S.pJ, y, p, t) # Calculate the parameter Jacobian into pJ
     else
         S.pf.t = t
@@ -534,10 +534,10 @@ function accumulate_cost!(_dgdu, u, p, t, sensealg::NILSS,
 
     if dgdu === nothing
         if dg_val isa Tuple
-            SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
             copyto!(_dgdu, dg_val[1])
         else
-            SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
             copyto!(_dgdu, dg_val)
         end
     else

@@ -1,6 +1,6 @@
 struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAdjoint,
     uType, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction} <:
+    fType <: AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -166,12 +166,12 @@ end
                  g !== nothing))
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
 
     if z0 === nothing
-        λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+        λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
             one(eltype(u0)) .* similar(tunables, len)
         λ .= false
     else
@@ -277,7 +277,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
@@ -397,7 +397,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)

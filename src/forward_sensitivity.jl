@@ -1,5 +1,5 @@
 """
-ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: DiffEqBase.AbstractODEFunction{iip}
+ODEForwardSensitivityFunction{iip,F,A,Tt,OJ,J,JP,S,PJ,TW,TWt,UF,PF,JC,PJC,Alg,fc,JM,pJM,MM,CV} <: AbstractODEFunction{iip}
 
 ODEForwardSensitivityFunction is an internal to the ODEForwardSensitivityProblem which extends the AbstractODEFunction
 to be used in an ODEProblem, but defines the tools requires for calculating the extra differential equations associated
@@ -9,7 +9,7 @@ ODEForwardSensitivityFunction is not intended to be part of the public API.
 """
 struct ODEForwardSensitivityFunction{iip, F, A, Tt, OJ, J, JP, S, PJ, TW, TWt, UF, PF, JC,
     PJC, Alg, fc, JM, pJM, MM, CV} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     f::F
     analytic::A
     tgrad::Tt
@@ -39,7 +39,7 @@ end
 has_original_jac(S) = isdefined(S, :original_jac) && S.original_jac !== nothing
 
 struct NILSSForwardSensitivityFunction{iip, sensefunType, senseType, MM} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     S::sensefunType
     sensealg::senseType
     nus::Int
@@ -109,7 +109,7 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
         end
     end
 
-    if DiffEqBase.has_paramjac(S.f)
+    if SciMLBase.has_paramjac(S.f)
         S.paramjac(S.pJ, y, p, t) # Calculate the parameter Jacobian into pJ
     else
         S.pf.t = t
@@ -125,13 +125,13 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
             (S.numindvar + 1):((length(p) + 1) * S.numindvar), S.numindvar,
             length(p))]
         mul!(dp, S.J, Sj)
-        DiffEqBase.@.. dp += S.pJ
+        @.. dp += S.pJ
     elseif S.isautojacmat
         S.uf.t = t
         Sj = @view u[reshape((S.numindvar + 1):end, S.numindvar, S.numparams)]
         dp = @view du[reshape((S.numindvar + 1):end, S.numindvar, S.numparams)]
         jacobianmat!(dp, S.uf, y, Sj, S.alg, S.jac_config)
-        DiffEqBase.@.. dp += S.pJ
+        @.. dp += S.pJ
     else
         S.uf.t = t
         for i in eachindex(p)
@@ -194,7 +194,7 @@ function Base.showerror(io::IO, e::ForwardSensitivityOutOfPlaceError)
 end
 
 @doc doc"""
-function ODEForwardSensitivityProblem(f::Union{Function,DiffEqBase.AbstractODEFunction},
+function ODEForwardSensitivityProblem(f::Union{Function,AbstractODEFunction},
                                       u0,tspan,p=nothing,
                                       alg::AbstractForwardSensitivityAlgorithm = ForwardSensitivity();
                                       kwargs...)
@@ -352,7 +352,7 @@ will plot the expanded system).
 """
 function ODEForwardSensitivityProblem(f::F, u0, tspan, p = nothing;
         sensealg = ForwardSensitivity(),
-        kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+        kwargs...) where {F <: AbstractODEFunction}
     _ODEForwardSensitivityProblem(f, u0, tspan, p, sensealg; kwargs...)
 end
 
@@ -363,7 +363,7 @@ function ODEForwardSensitivityProblem(f::F, u0,
         nus = nothing, # determine if Nilss is used
         w0 = nothing,
         v0 = nothing,
-        kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+        kwargs...) where {F <: AbstractODEFunction}
     Base.depwarn(
         "The form of this function with `alg` as a positional argument is deprecated. Please use the `sensealg` keyword argument instead.",
         :ODEForwardSensitivityProblem)
@@ -376,7 +376,7 @@ function _ODEForwardSensitivityProblem(f::F, u0,
         nus = nothing, # determine if Nilss is used
         w0 = nothing,
         v0 = nothing,
-        kwargs...) where {F <: DiffEqBase.AbstractODEFunction}
+        kwargs...) where {F <: AbstractODEFunction}
     isinplace = SciMLBase.isinplace(f)
     # if there is an analytical Jacobian provided, we are not going to do automatic `jac*vec`
     isautojacmat = get_jacmat(alg)
@@ -389,8 +389,8 @@ function _ODEForwardSensitivityProblem(f::F, u0,
         throw(ForwardSensitivityParameterCompatibilityError())
     end
 
-    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
+    uf = SciMLBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = SciMLBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
     if isautojacmat
         if alg_autodiff(alg)
             jac_config_seed = ForwardDiff.Dual{
@@ -413,13 +413,13 @@ function _ODEForwardSensitivityProblem(f::F, u0,
         else
             jac_config = (similar(u0), similar(u0))
         end
-    elseif DiffEqBase.has_jac(f)
+    elseif SciMLBase.has_jac(f)
         jac_config = nothing
     else
         jac_config = build_jac_config(alg, uf, u0)
     end
 
-    if DiffEqBase.has_paramjac(f)
+    if SciMLBase.has_paramjac(f)
         paramjac_config = nothing
     else
         paramjac_config = build_param_jac_config(alg, pf, u0, p)
@@ -485,7 +485,7 @@ has_continuous_callback(cb::ContinuousCallback) = true
 has_continuous_callback(cb::CallbackSet) = !isempty(cb.continuous_callbacks)
 
 # deprecated
-function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
+function ODEForwardSensitivityProblem(f::AbstractODEFunction, u0,
         tspan, p, alg::ForwardDiffSensitivity;
         du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
         dp = I(length(p)), # perturbations of parameters
@@ -496,7 +496,7 @@ function ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
     _ODEForwardSensitivityProblem(f, u0, tspan, p, alg, du0, dp, kwargs...)
 end
 
-function _ODEForwardSensitivityProblem(f::DiffEqBase.AbstractODEFunction, u0,
+function _ODEForwardSensitivityProblem(f::AbstractODEFunction, u0,
         tspan, p, alg::ForwardDiffSensitivity;
         du0 = zeros(eltype(u0), length(u0), length(p)), # perturbations of initial condition
         dp = I(length(p)), # perturbations of parameters

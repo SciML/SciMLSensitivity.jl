@@ -1,7 +1,7 @@
 struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: QuadratureAdjoint,
     uType, SType,
-    fType <: DiffEqBase.AbstractDiffEqFunction
+    fType <: AbstractDiffEqFunction
 } <: SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -240,7 +240,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         pJ .= false
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
@@ -256,7 +256,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if !isautojacvec
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
@@ -342,7 +342,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         save_everystep = true, save_start = true, kwargs...)
 
     p = sol.prob.p
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p === SciMLBase.NullParameters()
         return state_values(adj_sol)[end], nothing
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)

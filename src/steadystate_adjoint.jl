@@ -44,7 +44,7 @@ end
         ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
             __needs_concrete_A(sensealg.linsolve)))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
@@ -52,7 +52,7 @@ end
     (; diffcache, y, sol, λ, vjp, linsolve) = sense
 
     if needs_jac
-        if DiffEqBase.has_jac(f)
+        if SciMLBase.has_jac(f)
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)

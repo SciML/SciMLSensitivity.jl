@@ -1,5 +1,5 @@
 # for Ito / Stratonovich conversion
-struct StochasticTransformedFunction{pType, fType <: DiffEqBase.AbstractDiffEqFunction,
+struct StochasticTransformedFunction{pType, fType <: AbstractDiffEqFunction,
     gType, noiseType, cfType} <: TransformedFunction
     prob::pType
     f::fType
