@@ -85,12 +85,21 @@ end
     end
 
     if !needs_jac
+        # Current SciMLJacobianOperators requires specifying the problem as a NonlinearProblem
         usize = size(y)
-        __f = y -> vec(f(reshape(y, usize), p, nothing))
-        operator = VecJac(__f, vec(y);
-            autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
-        linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
-        solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
+        if SciMLBase.isinplace(f)
+            nlfunc = NonlinearFunction{true}((du, u, p) -> unwrapped_f(f)(
+                reshape(u, usize), reshape(u, usize), p, nothing))
+        else
+            nlfunc = NonlinearFunction{false}((u, p) -> unwrapped_f(f)(
+                reshape(u, usize), p, nothing))
+        end
+        nlprob = NonlinearProblem(nlfunc, vec(λ), p)
+        operator = VecJacOperator(
+            nlprob, vec(y), (λ); autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
+        soperator = StatefulJacobianOperator(operator, vec(λ), p)
+        linear_problem = LinearProblem(soperator, vec(dgdu_val); u0 = vec(λ))
+        solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...)
     else
         if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
             # For the default case use `\` to avoid any form of unnecessary cache allocation

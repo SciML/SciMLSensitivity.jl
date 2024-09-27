@@ -1311,8 +1311,8 @@ struct ForwardDiffOverAdjoint{A} <:
     adjalg::A
 end
 
-function get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where {compile}
-    AutoReverseDiff(; compile)
+function get_autodiff_from_vjp(::ReverseDiffVJP{compile}) where {compile}
+    return AutoReverseDiff(; compile)
 end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()

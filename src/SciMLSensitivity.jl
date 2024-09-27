@@ -21,7 +21,7 @@ using RandomNumbers: Xorshifts
 using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
                            AbstractVectorOfArray, ArrayPartition, DiffEqArray,
                            VectorOfArray
-# using SciMLJacobianOperators: VecJacOperator  # TODO: Replace uses of VecJac
+using SciMLJacobianOperators: VecJacOperator, StatefulJacobianOperator
 using SciMLStructures: SciMLStructures, canonicalize, Tunable, isscimlstructure
 using SymbolicIndexingInterface: SymbolicIndexingInterface, current_time, getu,
                                  parameter_values, state_values
@@ -32,7 +32,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  AbstractShadowingSensitivityAlgorithm, AbstractTimeseriesSolution,
                  AbstractNonlinearProblem, AbstractSensitivityAlgorithm,
                  AbstractDiffEqFunction, AbstractODEFunction, unwrapped_f, CallbackSet,
-                 ContinuousCallback, DESolution,
+                 ContinuousCallback, DESolution, NonlinearFunction, NonlinearProblem,
                  DiscreteCallback, LinearProblem, ODEFunction, ODEProblem,
                  RODEFunction, RODEProblem, ReturnCode, SDEFunction,
                  SDEProblem, VectorContinuousCallback, deleteat!,
