@@ -59,18 +59,27 @@ moment equations and use these as our loss against the original series. We
 then plot the evolution of the means and variances to verify the fit. For example:
 
 ```@example sde
-function loss(p)
+arrsol = sol
+currp = rand(length(p))
+function predict(p)
+    if p == currp
+        return arrsol
+    end
+    global currp = p
     tmp_prob = remake(prob, p = p)
     ensembleprob = EnsembleProblem(tmp_prob)
     tmp_sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 1000)
-    arrsol = Array(tmp_sol)
-    sum(abs2, truemean - mean(arrsol, dims = 3)) +
-    0.1sum(abs2, truevar - var(arrsol, dims = 3)),
-    arrsol
+    global arrsol = Array(tmp_sol)
+    return arrsol
 end
 
-function cb2(p, l, arrsol)
-    @show p, l
+function loss(p)
+    sum(abs2, truemean - mean(arrsol, dims = 3)) +
+    0.1sum(abs2, truevar - var(arrsol, dims = 3))
+end
+
+function cb2(st, l)
+    @show st.u, l
     means = mean(arrsol, dims = 3)[:, :]
     vars = var(arrsol, dims = 3)[:, :]
     p1 = plot(sol[1].t, means', lw = 5)
