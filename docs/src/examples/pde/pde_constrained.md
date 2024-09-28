@@ -86,7 +86,7 @@ cb = function (st, l) #callback function to observe training
     false
 end
 
-cb(ps, loss(ps)) # Testing callback function
+cb((; u = ps), loss(ps)) # Testing callback function
 
 # Let see prediction vs. Truth
 scatter(sol[:, end], label = "Truth", size = (800, 500))
