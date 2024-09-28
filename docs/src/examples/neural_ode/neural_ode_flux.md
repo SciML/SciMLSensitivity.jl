@@ -130,7 +130,7 @@ callback = function (state, l; doplot = false) #callback function to observe tra
 end
 
 # Display the ODE with the initial parameter values.
-callback(θ, loss_n_ode(θ)...)
+callback((; u = θ), loss_n_ode(θ)...)
 
 # use Optimization.jl to solve the problem
 adtype = Optimization.AutoZygote()
