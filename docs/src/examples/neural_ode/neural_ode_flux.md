@@ -114,14 +114,15 @@ end
 function loss_n_ode(θ)
     pred = predict_n_ode(θ)
     loss = sum(abs2, ode_data .- pred)
-    loss, pred
+    return loss
 end
 
 loss_n_ode(θ)
 
-callback = function (θ, l, pred; doplot = false) #callback function to observe training
+callback = function (state, l; doplot = false) #callback function to observe training
     display(l)
     # plot current prediction against data
+    pred = predict_n_ode(state.u)
     pl = scatter(t, ode_data[1, :], label = "data")
     scatter!(pl, t, pred[1, :], label = "prediction")
     display(plot(pl))
@@ -143,7 +144,7 @@ result_neuralode = Optimization.solve(optprob,
     maxiters = 300)
 ```
 
-Notice that the advantage of this format is that we can use Optim's optimizers, like
+Notice that the advantage of this format is that we can use other optimizers, like
 `LBFGS` with a full `Chain` object, for all of Flux's neural networks, like
 convolutional neural networks.
 
