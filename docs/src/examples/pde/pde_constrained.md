@@ -71,7 +71,7 @@ function loss(θ)
 end
 
 l = loss(ps)
-size(pred), size(sol), size(t) # Checking sizes
+size(sol), size(t) # Checking sizes
 
 LOSS = []                              # Loss accumulator
 PRED = []                              # prediction accumulator
@@ -232,8 +232,8 @@ function loss(θ)
     return sum(abs2.(predict(θ) .- arr_sol)) # Mean squared error
 end
 
-l, pred = loss(ps)
-size(pred), size(sol), size(t) # Checking sizes
+l = loss(ps)
+size(sol), size(t) # Checking sizes
 ```
 
 #### Optimizer
