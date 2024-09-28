@@ -55,6 +55,7 @@ function loss_neuralode(p)
     pred = predict_neuralode(p)
     loss = sum(abs2, data .- pred)
     return loss
+end
 ```
 
 ## Training
