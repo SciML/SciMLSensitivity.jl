@@ -33,7 +33,7 @@ t = range(tspan[1], tspan[2], length = 20)
 model = Chain(Dense(2, 50, tanh), Dense(50, 2))
 ps, st = Lux.setup(Random.default_rng(), model)
 ps = ComponentArray(ps)
-model = Lux.Experimental.StatefulLuxLayer(model, ps, st)
+model = Lux.StatefulLuxLayer(model, ps, st)
 
 ff(du, u, p, t) = model(u, p)
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
