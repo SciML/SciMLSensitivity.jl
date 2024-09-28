@@ -49,13 +49,13 @@ end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
     loss = sum(abs2, ode_data .- pred)
-    return loss, pred
+    return loss
 end
 
 # Callback function to observe training
 list_plots = []
 iter = 0
-callback = function (state, l, pred; doplot = false)
+callback = function (state, l; doplot = false)
     global list_plots, iter
 
     if iter == 0
@@ -66,6 +66,7 @@ callback = function (state, l, pred; doplot = false)
     display(l)
 
     # plot current prediction against data
+    pred = predict_neuralode(state.u)
     plt = scatter(tsteps, ode_data[1, :], label = "data")
     scatter!(plt, tsteps, pred[1, :], label = "prediction")
     push!(list_plots, plt)

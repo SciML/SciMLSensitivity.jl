@@ -46,12 +46,12 @@ correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:
 
 function loss_n_ode(p)
     pred = predict(p)
-    sum(abs2, correct_pos .- pred[1:2, :]), pred
+    sum(abs2, correct_pos .- pred[1:2, :])
 end
 
 l1 = loss_n_ode(ps)
 
-callback = function (state, l, pred)
+callback = function (state, l)
     println(l)
     l < 0.01
 end
