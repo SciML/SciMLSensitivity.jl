@@ -261,7 +261,7 @@ cb = function (st, l) #callback function to observe training
     false
 end
 
-cb(ps, loss(ps)) # Testing callback function
+cb((; u = ps), loss(ps)) # Testing callback function
 ```
 
 ### Plotting Prediction vs Ground Truth
