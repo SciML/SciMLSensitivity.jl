@@ -55,7 +55,11 @@ end
 
     if needs_jac
         if DiffEqBase.has_jac(f)
-            f.jac(diffcache.J, y, p, nothing)
+            if DiffEqBase.isinplace(sol.prob)
+                f.jac(diffcache.J, y, p, nothing)
+            else
+                copyto!(diffcache.J, f.jac(y, p, nothing))
+            end
         else
             if DiffEqBase.isinplace(sol.prob)
                 jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache,
