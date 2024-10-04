@@ -61,6 +61,6 @@ cb1 = function (p, l)
 end
 
 res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
-    Adam(0.05); callback = cb1, maxiters = 100)
+    Adam(0.005); callback = cb1, maxiters = 250)
 
 @test loss_n_ode(res.u, nothing) < 0.4
