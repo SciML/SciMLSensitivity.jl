@@ -352,7 +352,7 @@ end
 function dudt_g_dgdu!(dudt, dgdu_val, gsave, nilssprob::NILSSProblem, y, p, iseg)
     (; sensealg, diffcache, g, prob) = nilssprob
     (; prob) = nilssprob
-    (; dgdu, jevery, cur_time) = diff
+    (; jevery, cur_time) = diffcache
 
     _y = @view y[:, :, iseg]
 
