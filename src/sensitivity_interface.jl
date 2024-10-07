@@ -413,10 +413,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         callback = nothing,
         kwargs...)
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
-    if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
-        throw(AdjointSensitivityParameterCompatibilityError())
-    end
+
     rcb = nothing
     if sol.prob isa ODEProblem
         adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,

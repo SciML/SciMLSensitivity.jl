@@ -372,11 +372,11 @@ function DiffEqBase._concrete_solve_adjoint(
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
         kwargs...)
-    if !(sensealg isa GaussAdjoint) &&
-       !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
-        throw(AdjointSensitivityParameterCompatibilityError())
-    end
+    # if !(sensealg isa GaussAdjoint) &&
+    #    !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    #    (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
+    #     throw(AdjointSensitivityParameterCompatibilityError())
+    # end
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
@@ -640,7 +640,7 @@ function DiffEqBase._concrete_solve_adjoint(
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === SciMLBase.NullParameters() ? nothing :
-             dp isa AbstractArray ? reshape(dp', size(p)) : dp
+             dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
