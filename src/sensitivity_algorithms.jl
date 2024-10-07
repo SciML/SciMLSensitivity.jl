@@ -66,8 +66,6 @@ function ForwardSensitivity(;
     ForwardSensitivity{chunk_size, autodiff, diff_type}(autojacvec, autojacmat)
 end
 
-TruncatedStacktraces.@truncate_stacktrace ForwardSensitivity
-
 """
 ```julia
 ForwardDiffSensitivity{CS, CTS} <: AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing}
@@ -103,8 +101,6 @@ struct ForwardDiffSensitivity{CS, CTS} <:
 function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
     ForwardDiffSensitivity{chunk_size, convert_tspan}()
 end
-
-TruncatedStacktraces.@truncate_stacktrace ForwardDiffSensitivity
 
 """
 ```julia
@@ -267,8 +263,6 @@ Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
         noisemixing)
 end
 
-TruncatedStacktraces.@truncate_stacktrace BacksolveAdjoint
-
 function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
         sensealg.noisemixing)
@@ -385,8 +379,6 @@ Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
         noisemixing)
 end
 
-TruncatedStacktraces.@truncate_stacktrace InterpolatingAdjoint
-
 function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
         vjp) where {CS, AD, FDT}
     InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
@@ -484,8 +476,6 @@ Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
         abstol, reltol)
 end
 
-TruncatedStacktraces.@truncate_stacktrace QuadratureAdjoint
-
 function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.abstol,
         sensealg.reltol)
@@ -577,8 +567,6 @@ Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
     GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
         autojacvec, checkpointing)
 end
-
-TruncatedStacktraces.@truncate_stacktrace GaussAdjoint
 
 function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
     GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
@@ -1096,8 +1084,6 @@ struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
     linsolve_kwargs::LK
 end
 
-TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjoint
-
 Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;))
@@ -1242,7 +1228,7 @@ end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
-@inline function alg_autodiff(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function alg_autodiff(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1253,7 +1239,7 @@ end
 }
     AD
 end
-@inline function get_chunksize(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function get_chunksize(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1264,7 +1250,7 @@ end
 }
     CS
 end
-@inline function diff_type(alg::DiffEqBase.AbstractSensitivityAlgorithm{
+@inline function diff_type(alg::AbstractSensitivityAlgorithm{
         CS,
         AD,
         FDT
@@ -1275,20 +1261,20 @@ end
 }
     FDT
 end
-@inline function get_jacvec(alg::DiffEqBase.AbstractSensitivityAlgorithm)
+@inline function get_jacvec(alg::AbstractSensitivityAlgorithm)
     alg.autojacvec isa Bool ? alg.autojacvec : true
 end
-@inline function get_jacmat(alg::DiffEqBase.AbstractSensitivityAlgorithm)
+@inline function get_jacmat(alg::AbstractSensitivityAlgorithm)
     alg.autojacmat isa Bool ? alg.autojacmat : true
 end
-@inline ischeckpointing(alg::DiffEqBase.AbstractSensitivityAlgorithm, sol = nothing) = false
+@inline ischeckpointing(alg::AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
-@inline isnoisemixing(alg::DiffEqBase.AbstractSensitivityAlgorithm) = false
+@inline isnoisemixing(alg::AbstractSensitivityAlgorithm) = false
 @inline isnoisemixing(alg::InterpolatingAdjoint) = alg.noisemixing
 @inline isnoisemixing(alg::BacksolveAdjoint) = alg.noisemixing
 
@@ -1325,8 +1311,8 @@ struct ForwardDiffOverAdjoint{A} <:
     adjalg::A
 end
 
-function get_autodiff_from_vjp(vjp::ReverseDiffVJP{compile}) where {compile}
-    AutoReverseDiff(; compile)
+function get_autodiff_from_vjp(::ReverseDiffVJP{compile}) where {compile}
+    return AutoReverseDiff(; compile)
 end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()

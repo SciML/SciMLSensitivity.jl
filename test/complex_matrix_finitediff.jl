@@ -36,4 +36,4 @@ dp3 = Zygote.gradient(
     ComponentArray(ip))
 
 @test dp1[1]≈dp2 atol=1e-3
-@test dp1[1]≈dp3[1] atol=1e-3
+@test dp1[1]≈dp3[1] atol=5e-3

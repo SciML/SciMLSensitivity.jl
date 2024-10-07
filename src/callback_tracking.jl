@@ -285,8 +285,8 @@ function _setup_reverse_callbacks(
             # wrt dependence of event time t on parameters and initial state.
             # Must be handled here because otherwise it is unclear if continuous or
             # discrete callback was triggered.
-            @unpack correction = cb.affect!
-            @unpack dy_right, Lu_right = correction
+            (; correction) = cb.affect!
+            (; dy_right, Lu_right) = correction
             # compute #f(xτ_right,p_right,τ(x₀,p))
             compute_f!(dy_right, S, y, integrator)
             # if callback did not terminate the time evolution, we have to compute one more correction term.
@@ -313,7 +313,7 @@ function _setup_reverse_callbacks(
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # compute the correction of the right limit (with left state limit inserted into dgdt)
-            @unpack dy_left, cur_time = correction
+            (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
             dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idx)
             if !correction.terminated
@@ -342,7 +342,7 @@ function _setup_reverse_callbacks(
         dgrad !== nothing && (dgrad .*= -1)
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # second correction to correct for left limit
-            @unpack Lu_left = correction
+            (; Lu_left) = correction
             implicit_correction!(Lu_left, dλ, dy_left, correction)
             dλ .+= Lu_left - Lu_right
 
@@ -577,7 +577,7 @@ end
 
 function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
     # dy refers to f evaluated on left limit
-    @unpack gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition = correction
+    (; gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition) = correction
 
     p, t = integrator.p, integrator.t
 
@@ -621,7 +621,7 @@ function loss_correction!(Lu, y, integrator, dgdu, dgdp, indx)
 end
 
 function implicit_correction!(Lu, dλ, λ, dy, correction)
-    @unpack gu_val = correction
+    (; gu_val) = correction
 
     # remove gradients from adjoint state to compute correction factor
     @. dλ = λ - Lu
@@ -631,7 +631,7 @@ function implicit_correction!(Lu, dλ, λ, dy, correction)
 end
 
 function implicit_correction!(Lu, λ, dy, correction)
-    @unpack gu_val = correction
+    (; gu_val) = correction
 
     Lu .= dot(λ, dy) * gu_val
 
@@ -639,7 +639,7 @@ function implicit_correction!(Lu, λ, dy, correction)
 end
 
 function implicit_correction!(Lu, dy, correction, y, integrator, dgdu, dgdp, indx)
-    @unpack gu_val = correction
+    (; gu_val) = correction
 
     p, t = integrator.p, integrator.t
 

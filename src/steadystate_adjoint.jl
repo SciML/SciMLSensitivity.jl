@@ -12,11 +12,9 @@ struct SteadyStateAdjointSensitivityFunction{C <: AdjointDiffCache,
     linsolve::LS
 end
 
-TruncatedStacktraces.@truncate_stacktrace SteadyStateAdjointSensitivityFunction
-
 function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp, f,
         colorvec, needs_jac)
-    @unpack p, u0 = sol.prob
+    (; p, u0) = sol.prob
 
     diffcache, y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
         quad = false, needs_jac)
@@ -35,7 +33,7 @@ end
 @noinline function SteadyStateAdjointProblem(sol, sensealg::SteadyStateAdjoint, alg,
         dgdu::DG1 = nothing, dgdp::DG2 = nothing, g::G = nothing;
         kwargs...) where {DG1, DG2, G}
-    @unpack f, p, u0 = sol.prob
+    (; f, p, u0) = sol.prob
 
     sol.prob isa AbstractNonlinearProblem && (f = ODEFunction(f))
 
@@ -46,15 +44,15 @@ end
         ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
             __needs_concrete_A(sensealg.linsolve)))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
         f, f.colorvec, needs_jac)
-    @unpack diffcache, y, sol, λ, vjp, linsolve = sense
+    (; diffcache, y, sol, λ, vjp, linsolve) = sense
 
     if needs_jac
-        if DiffEqBase.has_jac(f)
+        if SciMLBase.has_jac(f)
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)
@@ -87,12 +85,21 @@ end
     end
 
     if !needs_jac
+        # Current SciMLJacobianOperators requires specifying the problem as a NonlinearProblem
         usize = size(y)
-        __f = y -> vec(f(reshape(y, usize), p, nothing))
-        operator = VecJac(__f, vec(y);
-            autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
-        linear_problem = LinearProblem(operator, vec(dgdu_val); u0 = vec(λ))
-        solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...) # u is vec(λ)
+        if SciMLBase.isinplace(f)
+            nlfunc = NonlinearFunction{true}((du, u, p) -> unwrapped_f(f)(
+                reshape(u, usize), reshape(u, usize), p, nothing))
+        else
+            nlfunc = NonlinearFunction{false}((u, p) -> unwrapped_f(f)(
+                reshape(u, usize), p, nothing))
+        end
+        nlprob = NonlinearProblem(nlfunc, vec(λ), p)
+        operator = VecJacOperator(
+            nlprob, vec(y), (λ); autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
+        soperator = StatefulJacobianOperator(operator, vec(λ), p)
+        linear_problem = LinearProblem(soperator, vec(dgdu_val); u0 = vec(λ))
+        solve(linear_problem, linsolve; alias_A = true, sensealg.linsolve_kwargs...)
     else
         if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
             # For the default case use `\` to avoid any form of unnecessary cache allocation
@@ -120,7 +127,7 @@ end
         if dgdp !== nothing
             dgdp(dgdp_val, y, p, nothing, nothing)
         else
-            @unpack g_grad_config = diffcache
+            (; g_grad_config) = diffcache
             gradient!(dgdp_val, diffcache.g[2], p, sensealg, g_grad_config[2])
         end
         recursive_sub!(dgdp_val, vjp)
