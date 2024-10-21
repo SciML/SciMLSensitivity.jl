@@ -28,6 +28,7 @@ end
             @time @safetestset "Prob Kwargs" include("prob_kwargs.jl")
             @time @safetestset "DiscreteProblem Adjoints" include("discrete.jl")
             @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl")
+            @time @safetestset "SciMLStructures Interface" include("scimlstructures_interface.jl")
         end
     end
 
