@@ -45,7 +45,9 @@ prob_strat = SDEProblem{false}(
     tspan,
     p)
 Random.seed!(seed)
-sol_strat = solve(prob_strat, RKMil(interpretation = :Stratonovich), adaptive = false,
+sol_strat = solve(
+    prob_strat, RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+    adaptive = false,
     dt = 0.0001, save_noise = true)
 prob_strat1 = SDEProblem{false}(
     SDEFunction((u, p, t) -> transformed_function(u, p, t) .+
@@ -56,7 +58,9 @@ prob_strat1 = SDEProblem{false}(
     tspan,
     p)
 Random.seed!(seed)
-sol_strat1 = solve(prob_strat1, RKMil(interpretation = :Stratonovich), adaptive = false,
+sol_strat1 = solve(
+    prob_strat1, RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+    adaptive = false,
     dt = 0.0001, save_noise = true)
 
 # Test if we recover Ito solution in Stratonovich sense

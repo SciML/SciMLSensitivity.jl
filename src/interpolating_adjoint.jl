@@ -2,7 +2,7 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: InterpolatingAdjoint,
     uType, SType, CPS, pType,
     fType <:
-    DiffEqBase.AbstractDiffEqFunction} <:
+    AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -14,8 +14,6 @@ struct ODEInterpolatingAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
     noiseterm::Bool
 end
-
-TruncatedStacktraces.@truncate_stacktrace ODEInterpolatingAdjointSensitivityFunction
 
 mutable struct CheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
@@ -120,14 +118,14 @@ end
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
     if S.noiseterm
         if length(u) == length(du)
             vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
-        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+        elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad)
@@ -146,7 +144,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t, W)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -162,7 +160,7 @@ end
 function split_states(du, u, t, S::TS;
         update = true) where {TS <:
                               ODEInterpolatingAdjointSensitivityFunction}
-    @unpack sol, y, checkpoint_sol, discrete, prob, f = S
+    (; sol, y, checkpoint_sol, discrete, prob, f) = S
     idx = length(y)
     if update
         if checkpoint_sol === nothing
@@ -245,7 +243,7 @@ function split_states(du, u, t, S::TS;
         dλ = @view du[1:idx]
         dgrad = @view du[(idx + 1):end]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            !isnoisemixing(S.sensealg)
         idx1 = [length(u) * (i - 1) + i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
 
@@ -283,7 +281,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack tspan = sol.prob
+    (; tspan) = sol.prob
     p = parameter_values(sol.prob)
     u0 = state_values(sol.prob)
 
@@ -339,11 +337,11 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = numstates + numparams
 
-    λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+    λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
         one(eltype(u0)) .* similar(tunables, len)
     λ .= false
 
@@ -412,7 +410,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    (; f, p, u0, tspan) = sol.prob
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -452,7 +450,7 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
 
     len = numstates + numparams
 
@@ -519,7 +517,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
+    if SciMLBase.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else
@@ -553,7 +551,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, p, u0, tspan = sol.prob
+    (; f, p, u0, tspan) = sol.prob
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -593,11 +591,11 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(p)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
 
     len = numstates + numparams
 
-    λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+    λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
         one(eltype(u0)) .* similar(p, len)
     λ .= false
 

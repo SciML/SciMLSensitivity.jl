@@ -16,7 +16,7 @@ end
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: GaussAdjoint,
     uType, SType, CPS, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction} <: SensitivityFunction
+    fType <: AbstractDiffEqFunction} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -27,8 +27,6 @@ struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
     GaussInt::GaussIntegrand
 end
-
-TruncatedStacktraces.@truncate_stacktrace ODEGaussAdjointSensitivityFunction
 
 mutable struct GaussCheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
@@ -95,7 +93,7 @@ end
 
 # u = λ'
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
     #f = sol.prob.f
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -107,7 +105,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
-    @unpack sol, checkpoint_sol, discrete, prob, f = S
+    (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -120,7 +118,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
 end
 
 function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
-    @unpack sol, checkpoint_sol, discrete, prob = S
+    (; sol, checkpoint_sol, discrete, prob) = S
     f = sol.prob.f
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
@@ -135,7 +133,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
 end
 
 function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
-    @unpack sol, y, checkpoint_sol, discrete, prob, f, GaussInt = S
+    (; sol, y, checkpoint_sol, discrete, prob, f, GaussInt) = S
     if update
         if checkpoint_sol === nothing
             if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -190,7 +188,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
 end
 
 function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
-    @unpack y, sol = S
+    (; y, sol) = S
 
     if update
         y = sol(t, continuity = :right)
@@ -221,7 +219,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack p, u0, tspan = sol.prob
+    (; p, u0, tspan) = sol.prob
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
@@ -368,11 +366,11 @@ end
 
 function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
-    @unpack f, tspan = prob
+    (; f, tspan) = prob
     u0 = state_values(prob)
     p = parameter_values(prob)
 
-    if p === nothing || p isa DiffEqBase.NullParameters
+    if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
@@ -435,7 +433,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
@@ -448,7 +446,7 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
-    @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
+    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
@@ -461,7 +459,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     end
 
     if !isautojacvec
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
@@ -510,7 +508,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
 end
 
 function (S::GaussIntegrand)(out, t, λ)
-    @unpack y, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol = S
+    (; y, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     if ArrayInterface.ismutable(y)
         sol(y, t)
     else
@@ -589,7 +587,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         yy = similar(rcb.y)
         yy .= 0
         for (Δλa, tt) in rcb.Δλas
-            @unpack algevar_idxs = rcb.diffcache
+            (; algevar_idxs) = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
             vec_pjac!(out, iλ, yy, tt, integrand)
@@ -605,7 +603,7 @@ __maybe_adjoint(x::AbstractArray) = x'
 __maybe_adjoint(x) = x
 
 function update_p_integrand(integrand::GaussIntegrand, p)
-    @unpack sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp = integrand
+    (; sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp) = integrand
     GaussIntegrand(sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end

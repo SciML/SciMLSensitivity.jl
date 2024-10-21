@@ -87,7 +87,7 @@ function automatic_sensealg_choice(
         throw(SciMLStructuresCompatibilityError())
     end
 
-    default_sensealg = if p !== DiffEqBase.NullParameters() &&
+    default_sensealg = if p !== SciMLBase.NullParameters() &&
                           !(eltype(u0) <: ForwardDiff.Dual) &&
                           !(eltype(p) <: ForwardDiff.Dual) &&
                           !(eltype(u0) <: Complex) &&
@@ -180,7 +180,7 @@ function automatic_sensealg_choice(
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
 
-            if p === nothing || p === DiffEqBase.NullParameters()
+            if p === nothing || p === SciMLBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
@@ -190,7 +190,7 @@ function automatic_sensealg_choice(
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
-            if p === nothing || p === DiffEqBase.NullParameters()
+            if p === nothing || p === SciMLBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
                 QuadratureAdjoint(autojacvec = vjp)
@@ -207,7 +207,7 @@ function automatic_sensealg_choice(
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
-            if p === nothing || p === DiffEqBase.NullParameters()
+            if p === nothing || p === SciMLBase.NullParameters()
                 QuadratureAdjoint(autodiff = false, autojacvec = vjp)
             elseif prob isa ODEProblem
                 GaussAdjoint(autodiff = false, autojacvec = vjp)
@@ -215,7 +215,7 @@ function automatic_sensealg_choice(
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
-            if p === nothing || p === DiffEqBase.NullParameters()
+            if p === nothing || p === SciMLBase.NullParameters()
                 QuadratureAdjoint(autojacvec = vjp)
             elseif prob isa ODEProblem
                 GaussAdjoint(autojacvec = vjp)
@@ -433,7 +433,7 @@ function DiffEqBase._concrete_solve_adjoint(
         # Saving behavior unchanged
         ts = current_time(sol)
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
-        out = DiffEqBase.sensitivity_solution(sol, state_values(sol), ts)
+        out = SciMLBase.sensitivity_solution(sol, state_values(sol), ts)
     elseif saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
             ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[2]
@@ -450,10 +450,10 @@ function DiffEqBase._concrete_solve_adjoint(
         end
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
+            out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
         else
             _outf = getu(_out, save_idxs)
-            out = DiffEqBase.sensitivity_solution(sol, _outf(_out), ts)
+            out = SciMLBase.sensitivity_solution(sol, _outf(_out), ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     elseif isempty(saveat)
@@ -466,7 +466,7 @@ function DiffEqBase._concrete_solve_adjoint(
         _u = sol.u[sol_idxs]
         u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
         ts = current_time(sol, sol_idxs)
-        out = DiffEqBase.sensitivity_solution(sol, u, ts)
+        out = SciMLBase.sensitivity_solution(sol, u, ts)
     else
         _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
         if cb === nothing
@@ -480,10 +480,10 @@ function DiffEqBase._concrete_solve_adjoint(
         end
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
+            out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
         else
             _outf = getu(_out, save_idxs)
-            out = DiffEqBase.sensitivity_solution(sol, _outf(_out), ts)
+            out = SciMLBase.sensitivity_solution(sol, _outf(_out), ts)
         end
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     end
@@ -493,8 +493,8 @@ function DiffEqBase._concrete_solve_adjoint(
     function adjoint_sensitivity_backpass(Δ)
         function df_iip(_out, u, p, t, i)
             outtype = _out isa SubArray ?
-                      DiffEqBase.parameterless_type(_out.parent) :
-                      DiffEqBase.parameterless_type(_out)
+                      ArrayInterface.parameterless_type(_out.parent) :
+                      ArrayInterface.parameterless_type(_out)
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
@@ -691,7 +691,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     # callback = nothing ensures only the callback in kwargs is used
     _prob = ODEForwardSensitivityProblem(
-        _f, u0, prob.tspan, p, sensealg, callback = nothing)
+        _f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing)
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
     ts = current_time(sol)
@@ -703,7 +703,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         uf = getu(sol, _save_idxs)
         uf(sol)
     end
-    out = DiffEqBase.sensitivity_solution(sol, u, ts)
+    out = SciMLBase.sensitivity_solution(sol, u, ts)
+
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset out.prob = prob
+    end
 
     function forward_sensitivity_backpass(Δ)
         adj = sum(eachindex(du)) do i
@@ -740,13 +744,18 @@ function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, 
         args...; save_idxs = nothing,
         kwargs...)
     _prob = ODEForwardSensitivityProblem(
-        prob.f, u0, prob.tspan, p, sensealg, callback = nothing)
+        prob.f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing)
     sol = solve(_prob, args...; kwargs...)
+
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset sol.prob = prob
+    end
+
     u, du = extract_local_sensitivities(sol, Val(true))
     _save_idxs = save_idxs === nothing ? (1:length(u0)) : save_idxs
     ts = current_time(sol)
     uf = getu(sol, _save_idxs)
-    out = DiffEqBase.sensitivity_solution(sol,
+    out = SciMLBase.sensitivity_solution(sol,
         ForwardDiff.value.(uf(sol, 1:length(sol))), ts)
     function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
         x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
@@ -804,6 +813,10 @@ function DiffEqBase._concrete_solve_adjoint(
     sol = solve(remake(prob, p = p, u0 = u0, callback = nothing),
         alg, args...; saveat = _saveat, kwargs...)
 
+    if originator isa SciMLBase.EnzymeOriginator
+        @reset sol.prob = prob
+    end
+
     # saveat values
     # need all values here. Not only unique ones.
     # if a callback is saving two times in primal solution, we also need to get it at least
@@ -811,7 +824,7 @@ function DiffEqBase._concrete_solve_adjoint(
     ts = current_time(sol)
 
     function forward_sensitivity_backpass(Δ)
-        if !(p === nothing || p === DiffEqBase.NullParameters())
+        if !(p === nothing || p === SciMLBase.NullParameters())
             dp = @thunk begin
                 chunk_size = if CS === 0 && length(tunables) < 12
                     length(tunables)
@@ -938,6 +951,8 @@ function DiffEqBase._concrete_solve_adjoint(
                         if !(Δ isa NoTangent || v isa ZeroTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
+                            elseif v isa Tangent
+                                ForwardDiff.value.(J'vec(v.x))
                             else
                                 ForwardDiff.value.(J'vec(v))
                             end
@@ -1001,7 +1016,7 @@ function DiffEqBase._concrete_solve_adjoint(
                     u0dual = ArrayInterface.restructure(u0, u0dualvec)
                 end
 
-                if p === nothing || p === DiffEqBase.NullParameters()
+                if p === nothing || p === SciMLBase.NullParameters()
                     pdual = tunables
                 else
                     pdual = convert.(eltype(u0dual), tunables)
@@ -1037,9 +1052,15 @@ function DiffEqBase._concrete_solve_adjoint(
                     _f = prob.f
                 end
 
+                _p = if p isa SciMLBase.NullParameters
+                    p
+                else
+                    SciMLStructures.replace(Tunable(), p, pdual)
+                end
+
                 # use the callback from kwargs, not prob
                 _prob = remake(prob, f = _f, u0 = u0dual,
-                    p = SciMLStructures.replace(Tunable(), p, pdual),
+                    p = _p,
                     tspan = tspandual, callback = nothing)
 
                 if _prob isa SDEProblem
@@ -1096,6 +1117,8 @@ function DiffEqBase._concrete_solve_adjoint(
                     if !(Δ isa NoTangent || v isa ZeroTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
+                        elseif v isa Tangent
+                            ForwardDiff.value.(J'vec(v.x))
                         else
                             ForwardDiff.value.(J'vec(v))
                         end
@@ -1261,7 +1284,7 @@ function DiffEqBase._concrete_solve_adjoint(
                         end
                     end
                     _prob = remake(prob,
-                        f = DiffEqBase.parameterless_type(prob.f){false,
+                        f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
@@ -1269,7 +1292,7 @@ function DiffEqBase._concrete_solve_adjoint(
                         tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
-                        f = DiffEqBase.parameterless_type(prob.f){false,
+                        f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
@@ -1295,7 +1318,7 @@ function DiffEqBase._concrete_solve_adjoint(
                         end
                     end
                     _prob = remake(prob,
-                        f = DiffEqBase.parameterless_type(prob.f){false,
+                        f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
@@ -1303,7 +1326,7 @@ function DiffEqBase._concrete_solve_adjoint(
                         tspan = _tspan, callback = nothing)
                 else
                     _prob = remake(prob,
-                        f = DiffEqBase.parameterless_type(prob.f){false,
+                        f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
@@ -1318,6 +1341,7 @@ function DiffEqBase._concrete_solve_adjoint(
         sol = solve(_prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...)
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
+        @reset sol.prob = prob
 
         if state_values(sol, 1) isa Array
             return Array(sol)
@@ -1363,7 +1387,7 @@ function DiffEqBase._concrete_solve_adjoint(
 
     u = u0 isa Tracker.TrackedArray ? Tracker.data.(state_values(sol)) :
         Tracker.data.(Tracker.data.(state_values(sol)))
-    DiffEqBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
+    SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
     tracker_adjoint_backpass
 end
 
@@ -1452,14 +1476,14 @@ function DiffEqBase._concrete_solve_adjoint(
             if prob isa SDEProblem
                 _g(args...) = ArrayInterface.aos_to_soa(prob.g(args...))
                 _prob = remake(prob,
-                    f = DiffEqBase.parameterless_type(prob.f){
+                    f = ArrayInterface.parameterless_type(prob.f){
                         SciMLBase.isinplace(prob),
                         true}(_f,
                         _g),
                     u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             else
                 _prob = remake(prob,
-                    f = DiffEqBase.parameterless_type(prob.f){
+                    f = ArrayInterface.parameterless_type(prob.f){
                         SciMLBase.isinplace(prob),
                         true}(_f),
                     u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
@@ -1483,7 +1507,7 @@ function DiffEqBase._concrete_solve_adjoint(
     tu, tp = ReverseDiff.input_hook(tape)
     output = ReverseDiff.output_hook(tape)
     ReverseDiff.value!(tu, u0)
-    p isa DiffEqBase.NullParameters || ReverseDiff.value!(tp, p)
+    p isa SciMLBase.NullParameters || ReverseDiff.value!(tp, p)
     ReverseDiff.forward_pass!(tape)
 
     function reversediff_adjoint_backpass(ybar)
@@ -1507,7 +1531,10 @@ function DiffEqBase._concrete_solve_adjoint(
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
-    sol, reversediff_adjoint_backpass
+    u = u0 isa ReverseDiff.TrackedArray ? ReverseDiff.value(state_values(sol)) :
+        ReverseDiff.value.(state_values(sol))
+    SciMLBase.sensitivity_solution(sol, u, ReverseDiff.value.(current_time(sol))),
+    reversediff_adjoint_backpass
 end
 
 function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
@@ -1534,11 +1561,11 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         end
         _out = sol(ts)
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(
+            out = SciMLBase.sensitivity_solution(
                 sol, state_values(_out), current_time(sol))
         else
             outuf = getu(_out, save_idxs)
-            out = DiffEqBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
+            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
@@ -1553,17 +1580,17 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
         _u = state_values(sol, sol_idxs)
         u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
         ts = current_time(sol, sol_idxs)
-        out = DiffEqBase.sensitivity_solution(sol, u, ts)
+        out = SciMLBase.sensitivity_solution(sol, u, ts)
     else
         _saveat = saveat isa Array ? sort(saveat) : saveat # for minibatching
         ts = _saveat
         _out = sol(ts)
 
         out = if save_idxs === nothing
-            out = DiffEqBase.sensitivity_solution(sol, state_values(_out), ts)
+            out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
         else
             outuf = getu(_out, save_idxs)
-            out = DiffEqBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
+            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
@@ -1585,16 +1612,16 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
                 end
             else
                 if _save_idxs isa Number
-                    _out[_save_idxs] = adapt(DiffEqBase.parameterless_type(u0),
+                    _out[_save_idxs] = adapt(ArrayInterface.parameterless_type(u0),
                         reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                             size(Δ)[end])[_save_idxs, i])
                 elseif _save_idxs isa Colon
-                    vec(_out) .= vec(adapt(DiffEqBase.parameterless_type(u0),
+                    vec(_out) .= vec(adapt(ArrayInterface.parameterless_type(u0),
                         reshape(Δ, prod(size(Δ)[1:(end - 1)]),
                             size(Δ)[end])[:, i]))
                 else
                     vec(@view(_out[_save_idxs])) .= vec(adapt(
-                        DiffEqBase.parameterless_type(u0),
+                        ArrayInterface.parameterless_type(u0),
                         reshape(Δ,
                             prod(size(Δ)[1:(end - 1)]),
                             size(Δ)[end])[:, i]))
@@ -1643,7 +1670,7 @@ function DiffEqBase._concrete_solve_adjoint(
     if save_idxs === nothing
         out = sol
     else
-        out = DiffEqBase.sensitivity_solution(sol, sol[_save_idxs])
+        out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
     end
 
     function steadystatebackpass(Δ)

@@ -5,7 +5,7 @@ DiffEqFlux = "aae7a2af-3d4f-5e19-a356-7da93b79d9d0"
 LuxCUDA = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
 
 [compat]
-CUDA = "3.12, 4, 5"
-DiffEqCallbacks = "2.24, 3"
-DiffEqFlux = "3"
+CUDA = "5"
+DiffEqCallbacks = "4"
+DiffEqFlux = "4"
 LuxCUDA = "0.3.1"

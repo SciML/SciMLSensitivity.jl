@@ -1,6 +1,6 @@
 struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAdjoint,
     uType, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction} <:
+    fType <: AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -10,8 +10,6 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     f::fType
     noiseterm::Bool
 end
-
-TruncatedStacktraces.@truncate_stacktrace ODEBacksolveSensitivityFunction
 
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         noiseterm = false)
@@ -23,7 +21,7 @@ function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
 end
 
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -36,7 +34,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
     if S.noiseterm
         if length(u) == length(du)
             vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
-        elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+        elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S, dy = dy)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad)
@@ -55,7 +53,7 @@ end
 
 # u = λ' # for the RODE case
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
     copyto!(vec(y), _y)
@@ -69,7 +67,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
 end
 
 function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = true)
-    @unpack y, prob = S
+    (; y, prob) = S
     idx = length(y)
 
     λ = @view u[1:idx]
@@ -82,7 +80,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx)]
         dy = @view du[(end - idx + 1):end]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            !isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, length(du) =  u*m
         idx1 = [length(u) * (i - 1) + i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
@@ -92,7 +90,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx), 1:idx]
         dy = @view du[idx2]
 
-    elseif length(u) != length(du) && StochasticDiffEq.is_diagonal_noise(prob) &&
+    elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
            isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, (as above but can handle mixing noise terms)
         idx2 = [(length(u) + 1) * i - idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
@@ -168,12 +166,12 @@ end
                  g !== nothing))
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
 
     if z0 === nothing
-        λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+        λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
             one(eltype(u0)) .* similar(tunables, len)
         λ .= false
     else
@@ -260,7 +258,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)
@@ -279,7 +277,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
@@ -288,7 +286,8 @@ end
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(tunables, len)
 
-    if StochasticDiffEq.alg_interpretation(sol.alg) == :Stratonovich
+    if SciMLBase.alg_interpretation(sol.alg) ==
+       SciMLBase.AlgorithmInterpretation.Stratonovich
         sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
             dgdu_continuous, dgdp_continuous,
             sol.prob.f, alg)
@@ -344,7 +343,7 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    if StochasticDiffEq.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
+    if SciMLBase.is_diagonal_noise(sol.prob) && sol.W.u[end] isa Number
         # scalar noise case
         noise_matrix = nothing
     else
@@ -381,7 +380,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)
@@ -398,7 +397,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)

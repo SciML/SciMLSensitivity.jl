@@ -75,7 +75,6 @@ end
             @time @safetestset "ForwardDiff Sparsity Components" include("forwarddiffsensitivity_sparsity_components.jl")
             @time @safetestset "Complex No u" include("complex_no_u.jl")
             @time @safetestset "Parameter Handling" include("parameter_handling.jl")
-            @time @safetestset "Quality Assurance" include("aqua.jl")
         end
     end
 
@@ -100,6 +99,10 @@ end
             @time @safetestset "Differentiate LazyBuffer with ReverseDiff" include("lazybuffer.jl")
             # Core 7 was split off from Core 3 due to leaks in the testsets described here https://github.com/SciML/SciMLSensitivity.jl/pull/1024
         end
+    end
+
+    if GROUP == "All" || GROUP == "QA"
+        @time @safetestset "Quality Assurance" include("aqua.jl")
     end
 
     if GROUP == "All" || GROUP == "SDE1"

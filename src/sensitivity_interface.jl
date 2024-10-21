@@ -455,12 +455,12 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         tunables, _, _ = canonicalize(Tunable(), mtkp)
     end
     prob = sol.prob
-    l = mtkp === nothing || mtkp === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    l = mtkp === nothing || mtkp === SciMLBase.NullParameters() ? 0 : length(tunables)
     du0 = state_values(adj_sol)[end][1:length(state_values(prob))]
 
     if eltype(mtkp) <: real(eltype(state_values(adj_sol)[end]))
         dp = real.(state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))])'
-    elseif mtkp === nothing || mtkp === DiffEqBase.NullParameters()
+    elseif mtkp === nothing || mtkp === SciMLBase.NullParameters()
         dp = nothing
     else
         dp = state_values(adj_sol)[end][(1:l) .+ length(state_values(prob))]'
@@ -473,7 +473,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas
             iλ .= zero(eltype(iλ))
-            @unpack algevar_idxs = rcb.diffcache
+            (; algevar_idxs) = rcb.diffcache
             iλ[algevar_idxs] .= Δλa
             sol(yy, tt)
             vecjacobian!(nothing, yy, iλ, mtkp, tt, S, dgrad = out)

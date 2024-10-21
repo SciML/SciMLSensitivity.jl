@@ -1,5 +1,5 @@
 struct NILSASSensitivityFunction{iip, NILSS, ASF, Mtype} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     nilss::NILSS
     S::ASF # Adjoint sensitivity function
     M::Mtype
@@ -57,11 +57,11 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing, g = sensealg.g,
         kwargs...)
-    @unpack tspan, f = sol.prob
+    (; tspan, f) = sol.prob
     p = parameter_values(sol.prob)
     u0 = state_values(sol.prob)
     tunables, repack, aliases = canonicalize(Tunable(), p)
-    @unpack nseg, nstep, rng, adjoint_sensealg, M = sensealg  #number of segments on time interval, number of steps saved on each segment
+    (; nseg, nstep, rng, adjoint_sensealg, M) = sensealg  #number of segments on time interval, number of steps saved on each segment
 
     numindvar = length(u0)
     numparams = length(tunables)
@@ -163,8 +163,8 @@ function terminate_conditions(alg::BacksolveAdjoint, rng, f, y, p, t, numindvar,
 end
 
 function split_states(du, u, t, NS::NILSASSensitivityFunction, j; update = true)
-    @unpack nilss, S = NS
-    @unpack numindvar, numparams = nilss
+    (; nilss, S) = NS
+    (; numindvar, numparams) = nilss
 
     indx1 = (j - 1) * (numindvar) + 1
     indx2 = indx1 + (numindvar - 1)
@@ -184,8 +184,8 @@ function split_states(du, u, t, NS::NILSASSensitivityFunction, j; update = true)
 end
 
 function split_quadratures(du, u, t, NS::NILSASSensitivityFunction; update = true)
-    @unpack nilss, S = NS
-    @unpack numindvar, numparams = nilss
+    (; nilss, S) = NS
+    (; numindvar, numparams) = nilss
 
     C = u.x[4]
     dwv = u.x[5]
@@ -203,9 +203,9 @@ function split_quadratures(du, u, t, NS::NILSASSensitivityFunction; update = tru
 end
 
 function (NS::NILSASSensitivityFunction)(du, u, p, t)
-    @unpack nilss, S, M = NS
-    @unpack f, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, alg = nilss
-    @unpack y, discrete = S
+    (; nilss, S, M) = NS
+    (; f, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, numparams, numindvar, alg) = nilss
+    (; y, discrete) = S
 
     λ, _, _y, dλ, dgrad, dy = split_states(du, u, t, NS, 1)
     copyto!(vec(y), _y)
@@ -259,14 +259,14 @@ function (NS::NILSASSensitivityFunction)(du, u, p, t)
 end
 
 function accumulate_cost!(y, p, t, nilss::NILSSSensitivityFunction)
-    @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg = nilss
+    (; dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, alg) = nilss
 
     if dgdu === nothing
         if dg_val isa Tuple
-            SciMLSensitivity.gradient!(dg_val[1], pgpu, y, alg, pgpu_config)
-            SciMLSensitivity.gradient!(dg_val[2], pgpp, y, alg, pgpp_config)
+            gradient!(dg_val[1], pgpu, y, alg, pgpu_config)
+            gradient!(dg_val[2], pgpp, y, alg, pgpp_config)
         else
-            SciMLSensitivity.gradient!(dg_val, pgpu, y, alg, pgpu_config)
+            gradient!(dg_val, pgpu, y, alg, pgpu_config)
         end
     else
         if dg_val isa Tuple
@@ -281,10 +281,10 @@ function accumulate_cost!(y, p, t, nilss::NILSSSensitivityFunction)
 end
 
 function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
-    @unpack M, nseg, nstep, adjoint_sensealg = nilsas
-    @unpack sol, nilss, z0, t, dgdu_discrete, dgdp_discrete, g, T_seg, dtsave, adjoint_prob = prob
-    @unpack u0, tspan = adjoint_prob
-    @unpack dgdu, dgdp = nilss
+    (; M, nseg, nstep, adjoint_sensealg) = nilsas
+    (; sol, nilss, z0, t, dgdu_discrete, dgdp_discrete, g, T_seg, dtsave, adjoint_prob) = prob
+    (; u0, tspan) = adjoint_prob
+    (; dgdu, dgdp) = nilss
 
     copyto!(z0, u0)
 
@@ -317,10 +317,10 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
 end
 
 function renormalize!(prob::NILSASProblem, sol, z0, iseg)
-    @unpack quadcache, nilss, sensealg = prob
-    @unpack M = sensealg
-    @unpack numparams, numindvar = nilss
-    @unpack R, b = quadcache
+    (; quadcache, nilss, sensealg) = prob
+    (; M) = sensealg
+    (; numparams, numindvar) = nilss
+    (; R, b) = quadcache
 
     x = state_values(sol)[end].x
     # vstar_right (inhomogeneous adjoint on the rhs of the interface)
@@ -347,7 +347,7 @@ function renormalize!(prob::NILSASProblem, sol, z0, iseg)
 end
 
 function store_quad(quadcache, x, numparams, iseg)
-    @unpack dwv, dwf, dwfs, dvf, dvfs, dJs, C = quadcache
+    (; dwv, dwf, dwfs, dvf, dvfs, dJs, C) = quadcache
 
     grad_vfs = @view x[2][1:numparams]
     copyto!((@view dvfs[:, iseg]), grad_vfs)
@@ -391,7 +391,7 @@ function reset!(z0, numindvar, vstar, b, Q)
 end
 
 function nilsas_min(cache::QuadratureCache)
-    @unpack dwv, dwf, dvf, C, R, b = cache
+    (; dwv, dwf, dvf, C, R, b) = cache
 
     # Construct Schur complement of the Lagrange multiplier method of the NILSAS problem.
 
@@ -458,8 +458,8 @@ function shadow_adjoint(prob::NILSASProblem, sensealg::NILSAS, alg; kwargs...)
     a = nilsas_min(prob.quadcache)
 
     # compute gradient, Eq. (28) -- second part to avoid explicit construction of vbar
-    @unpack M, nseg = sensealg
-    @unpack dvfs, dJs, dwfs = prob.quadcache
+    (; M, nseg) = sensealg
+    (; dvfs, dJs, dwfs) = prob.quadcache
 
     res = vec(sum(dvfs, dims = 2)) + vec(sum(dJs, dims = 2))
     NP = length(res) # number of parameters

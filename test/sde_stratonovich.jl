@@ -83,7 +83,9 @@ p2 = [1.01, 0.87]
         Random.seed!(seed)
         tmp_prob = remake(prob_oop_sde, u0 = eltype(p).(prob_oop_sde.u0), p = p,
             tspan = eltype(p).(prob_oop_sde.tspan))
-        sol = solve(tmp_prob, RKMil(interpretation = :Stratonovich), dt = tend / 10000,
+        sol = solve(tmp_prob,
+            RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+            dt = tend / 10000,
             adaptive = false, sensealg = DiffEqBase.SensitivityADPassThrough(),
             saveat = tarray)
         A = convert(Array, sol)
@@ -109,7 +111,8 @@ end
 
     Random.seed!(seed)
     prob_oop_sde2 = SDEProblem(f_oop_linear, σ_oop_linear, u₀, trange, p2)
-    sol_oop_sde2 = solve(prob_oop_sde2, RKMil(interpretation = :Stratonovich), dt = dt1,
+    sol_oop_sde2 = solve(prob_oop_sde2,
+        RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich), dt = dt1,
         adaptive = false, save_noise = true)
 
     res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
@@ -158,7 +161,9 @@ end
         tmp_prob = remake(prob_oop_sde2, u0 = eltype(p).(prob_oop_sde2.u0), p = p,
             tspan = eltype(p).(prob_oop_sde2.tspan)            #,abstol=abstol, reltol=reltol
         )
-        sol = solve(tmp_prob, RKMil(interpretation = :Stratonovich), dt = dt1,
+        sol = solve(tmp_prob,
+            RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+            dt = dt1,
             adaptive = false, sensealg = DiffEqBase.SensitivityADPassThrough(),
             saveat = tarray)
         A = convert(Array, sol)
@@ -326,7 +331,9 @@ end
     function GSDE3(u)
         Random.seed!(seed)
         tmp_prob = remake(prob_oop_sde2, u0 = u)
-        sol = solve(tmp_prob, RKMil(interpretation = :Stratonovich), dt = dt1,
+        sol = solve(tmp_prob,
+            RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+            dt = dt1,
             adaptive = false, saveat = tarray)
         A = convert(Array, sol)
         res = g(A, nothing, nothing)
@@ -545,7 +552,9 @@ end
         Random.seed!(seed)
         tmp_prob = remake(prob_oop_sde, u0 = eltype(p).(prob_oop_sde.u0), p = p,
             tspan = eltype(p).(prob_oop_sde.tspan))
-        sol = solve(tmp_prob, RKMil(interpretation = :Stratonovich), dt = 5e-4,
+        sol = solve(tmp_prob,
+            RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+            dt = 5e-4,
             adaptive = false, sensealg = DiffEqBase.SensitivityADPassThrough(),
             saveat = tarray)
         A = convert(Array, sol)
@@ -556,7 +565,7 @@ end
     Random.seed!(seed)
     res_sde_trackeru0, res_sde_trackerp = Zygote.gradient(
         (u0, p) -> sum(Array(solve(prob_oop_sde,
-            RKMil(interpretation = :Stratonovich),
+            RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
             dt = 5e-4,
             adaptive = false,
             u0 = u0,

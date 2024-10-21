@@ -8,7 +8,7 @@ end
 struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc, JM, pJM,
     MM, CV,
     DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG} <:
-       DiffEqBase.AbstractODEFunction{iip}
+       AbstractODEFunction{iip}
     f::F
     analytic::A
     jac::J
@@ -42,16 +42,16 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
         colorvec, tspan, g, dgdu, dgdp)
     !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
-    uf = DiffEqBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
-    pf = DiffEqBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
+    uf = SciMLBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
+    pf = SciMLBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
 
-    if DiffEqBase.has_jac(f)
+    if SciMLBase.has_jac(f)
         jac_config = nothing
     else
         jac_config = build_jac_config(sensealg, uf, u0)
     end
 
-    if DiffEqBase.has_paramjac(f)
+    if SciMLBase.has_paramjac(f)
         paramjac_config = nothing
     else
         paramjac_config = build_param_jac_config(sensealg, pf, u0, p)
@@ -137,7 +137,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
         dgdp_continuous = nothing,
         g = sensealg.g,
         kwargs...)
-    @unpack p, u0, tspan = sol.prob
+    (; p, u0, tspan) = sol.prob
 
     isinplace = DiffEqBase.isinplace(sol.prob.f)
 
@@ -170,7 +170,7 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
         f.colorvec,
         tspan, g, dgdu, dgdp)
 
-    @unpack numparams, numindvar = sense
+    (; numparams, numindvar) = sense
     Nt = length(ts)
     Ndt = Nt - one(Nt)
 
@@ -251,7 +251,7 @@ function discretize_ref_trajectory!(dt, umid, dudt, sol, Ndt)
 end
 
 function wB!(S::LSSSchur, Δt, Nt, numindvar, dt)
-    @unpack wBinv = S
+    (; wBinv) = S
     fill!(wBinv, one(Δt))
     dim = numindvar * Nt
     tmp = @view wBinv[1:numindvar]
@@ -270,20 +270,20 @@ end
 wE!(S::LSSSchur, Δt, dt, LSSregularizer::AbstractCosWindowing) = nothing
 
 function wE!(S::LSSSchur, Δt, dt, LSSregularizer::TimeDilation)
-    @unpack wEinv = S
-    @unpack alpha = LSSregularizer
+    (; wEinv) = S
+    (; alpha) = LSSregularizer
     @. wEinv = Δt / (alpha^2 * dt)
     return nothing
 end
 
 function B!(S::LSSSchur, dt, umid, sense, sensealg)
-    @unpack B = S
-    @unpack f, J, uf, numindvar, f_cache, jac_config = sense
+    (; B) = S
+    (; f, J, uf, numindvar, f_cache, jac_config) = sense
 
     fill!(B, zero(eltype(J)))
 
     for (i, u) in enumerate(eachcol(umid))
-        if DiffEqBase.has_jac(f)
+        if SciMLBase.has_jac(f)
             f.jac(J, u, uf.p, uf.t) # Calculate the Jacobian into J
         else
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
@@ -301,7 +301,7 @@ end
 E!(S::LSSSchur, dudt, LSSregularizer::AbstractCosWindowing) = nothing
 
 function E!(S::LSSSchur, dudt, LSSregularizer::TimeDilation)
-    @unpack E = S
+    (; E) = S
     numindvar, Ndt = size(dudt)
     for i in 1:Ndt
         tmp = @view E[((i - 1) * numindvar + 1):(i * numindvar), i]
@@ -312,7 +312,7 @@ end
 
 # compute Schur
 function SchurLU(S::LSSSchur)
-    @unpack B, E, wBinv, wEinv = S
+    (; B, E, wBinv, wEinv) = S
     Smat = B * Diagonal(wBinv) * B'
     (wEinv !== nothing) && (Smat .+= E * Diagonal(wEinv) * E')
     F = lu!(Smat)
@@ -320,11 +320,11 @@ function SchurLU(S::LSSSchur)
 end
 
 function b!(b, prob::ForwardLSSProblem)
-    @unpack diffcache, umid, sensealg = prob
-    @unpack f, f_cache, pJ, pf, paramjac_config, uf, numindvar = diffcache
+    (; diffcache, umid, sensealg) = prob
+    (; f, f_cache, pJ, pf, paramjac_config, uf, numindvar) = diffcache
 
     for (i, u) in enumerate(eachcol(umid))
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, u, uf.p, pf.t)
         else
             pf.u = u
@@ -342,10 +342,10 @@ end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         LSSregularizer::TimeDilation)
-    @unpack sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid = prob
-    @unpack wBinv, wEinv, B, E = S
-    @unpack dg_val, numparams, numindvar, uf = diffcache
-    @unpack t0skip, t1skip = LSSregularizer
+    (; sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid) = prob
+    (; wBinv, wEinv, B, E) = S
+    (; dg_val, numparams, numindvar, uf) = diffcache
+    (; t0skip, t1skip) = LSSregularizer
 
     ts = current_time(sol)
     n0 = searchsortedfirst(ts, first(ts) + t0skip)
@@ -397,9 +397,9 @@ end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         LSSregularizer::CosWindowing)
-    @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
-    @unpack wBinv, B = S
-    @unpack dg_val, numparams, numindvar, uf = diffcache
+    (; sol, S, F, window, Δt, diffcache, b, w, v, res) = prob
+    (; wBinv, B) = S
+    (; dg_val, numparams, numindvar, uf) = diffcache
 
     b!(b, prob)
 
@@ -432,9 +432,9 @@ end
 
 function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
         LSSregularizer::Cos2Windowing)
-    @unpack sol, S, F, window, Δt, diffcache, b, w, v, res = prob
-    @unpack wBinv, B = S
-    @unpack dg_val, numparams, numindvar, uf = diffcache
+    (; sol, S, F, window, Δt, diffcache, b, w, v, res) = prob
+    (; wBinv, B) = S
+    (; dg_val, numparams, numindvar, uf) = diffcache
 
     b!(b, prob)
 
@@ -466,14 +466,14 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
 end
 
 function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
-    @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, uf = diffcache
+    (; dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, uf) = diffcache
 
     if dgdu === nothing
         if dg_val isa Tuple
-            SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
-            SciMLSensitivity.gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
+            gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val[2], pgpp, p, sensealg, pgpp_config)
         else
-            SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+            gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
         end
     else
         if dg_val isa Tuple
@@ -512,7 +512,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
         dgdu_continuous = nothing, dgdp_continuous = nothing,
         g = sensealg.g,
         kwargs...)
-    @unpack f, p, u0, tspan = sol.prob
+    (; f, p, u0, tspan) = sol.prob
 
     isinplace = DiffEqBase.isinplace(f)
 
@@ -545,7 +545,7 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
         f.colorvec,
         tspan, g, dgdu, dgdp)
 
-    @unpack numparams, numindvar = sense
+    (; numparams, numindvar) = sense
     Nt = length(ts)
     Ndt = Nt - one(Nt)
 
@@ -604,17 +604,17 @@ function h!(h, g0, g, u, p, wEinv)
 end
 
 function wBcorrect!(S, sol, g, Nt, sense, sensealg)
-    @unpack dgdu, dgdp, dg_val, pgpu, pgpu_config, numparams, numindvar, uf = sense
-    @unpack wBinv = S
+    (; dgdu, dgdp, dg_val, pgpu, pgpu_config, numparams, numindvar, uf) = sense
+    (; wBinv) = S
 
     for (i, u) in enumerate(state_values(sol))
         _wBinv = @view wBinv[((i - 1) * numindvar + 1):(i * numindvar)]
         if dgdu === nothing
             if dg_val isa Tuple
-                SciMLSensitivity.gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
+                gradient!(dg_val[1], pgpu, u, sensealg, pgpu_config)
                 @. _wBinv = _wBinv * dg_val[1] / Nt
             else
-                SciMLSensitivity.gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
+                gradient!(dg_val, pgpu, u, sensealg, pgpu_config)
                 @. _wBinv = _wBinv * dg_val / Nt
             end
         else
@@ -636,10 +636,10 @@ end
 
 function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
         LSSregularizer::TimeDilation)
-    @unpack sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid = prob
-    @unpack wBinv, B, E = S
-    @unpack dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config = diffcache
-    @unpack t0skip, t1skip = LSSregularizer
+    (; sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid) = prob
+    (; wBinv, B, E) = S
+    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
+    (; t0skip, t1skip) = LSSregularizer
 
     b .= E * h + B * wBinv
     wa .= F \ b
@@ -657,7 +657,7 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
     if dg_val isa Tuple
         for (j, u) in enumerate(eachcol(umidres))
             if dgdp === nothing
-                SciMLSensitivity.gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
+                gradient!(dg_val[2], pgpp, uf.p, sensealg, pgpp_config)
                 @. res += dg_val[2]
             else
                 dgdp(dg_val[2], u, uf.p, nothing, n0 + j - 1)
@@ -669,7 +669,7 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
 
     for (j, u) in enumerate(eachcol(umidres))
         _wares = @view wares[((j - 1) * numindvar + 1):(j * numindvar)]
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, u, uf.p, pf.t)
         else
             pf.u = u
