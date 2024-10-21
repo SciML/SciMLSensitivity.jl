@@ -827,7 +827,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 pparts = typeof(tunables[1:1])[]
                 for j in 0:(num_chunks - 1)
                     local chunk
-                    if ((j + 1) * chunk_size) <= length(p)
+                    if ((j + 1) * chunk_size) <= length(tunables)
                         chunk = ((j * chunk_size + 1):((j + 1) * chunk_size))
                         pchunk = vec(tunables)[chunk]
                         pdualpart = seed_duals(pchunk, prob.f,
@@ -947,7 +947,7 @@ function DiffEqBase._concrete_solve_adjoint(
                     end
                     push!(pparts, vec(_dp))
                 end
-                SciMLStructures.replace(Tunable(), p, reduce(vcat, pparts))
+                reduce(vcat, pparts)
             end
         else
             dp = nothing
@@ -1116,12 +1116,17 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
 
+        _, repack_adjoint = Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), unthunk(du0), unthunk(dp), NoTangent(),
+            (NoTangent(), NoTangent(), unthunk(du0), repack_adjoint(unthunk(dp))[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
