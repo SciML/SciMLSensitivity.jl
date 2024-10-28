@@ -189,7 +189,6 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = CreateGrid(myparameters.ts, W1)
-
         remake(prob,
             p = pars,
             u0 = u0tmp,

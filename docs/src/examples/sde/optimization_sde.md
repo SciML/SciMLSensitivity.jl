@@ -74,14 +74,16 @@ function predict(p)
 end
 
 function loss(p)
+    pred = predict(p)
     sum(abs2, truemean - mean(arrsol, dims = 3)) +
     0.1sum(abs2, truevar - var(arrsol, dims = 3))
 end
 
 function cb2(st, l)
     @show st.u, l
-    means = mean(arrsol, dims = 3)[:, :]
-    vars = var(arrsol, dims = 3)[:, :]
+    arrsol1 = predict(st.u)
+    means = mean(arrsol1, dims = 3)[:, :]
+    vars = var(arrsol1, dims = 3)[:, :]
     p1 = plot(sol[1].t, means', lw = 5)
     scatter!(p1, sol[1].t, truemean')
     p2 = plot(sol[1].t, vars', lw = 5)
