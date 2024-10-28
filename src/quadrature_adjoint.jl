@@ -1,7 +1,7 @@
 struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: QuadratureAdjoint,
     uType, SType,
-    fType <: DiffEqBase.AbstractDiffEqFunction
+    fType <: AbstractDiffEqFunction
 } <: SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -10,8 +10,6 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     sol::SType
     f::fType
 end
-
-TruncatedStacktraces.@truncate_stacktrace ODEQuadratureAdjointSensitivityFunction
 
 function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
         alg)
@@ -24,7 +22,7 @@ end
 
 # u = λ'
 function (S::ODEQuadratureAdjointSensitivityFunction)(du, u, p, t)
-    @unpack sol, discrete = S
+    (; sol, discrete) = S
     f = sol.prob.f
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
@@ -37,7 +35,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(du, u, p, t)
 end
 
 function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
-    @unpack sol, discrete = S
+    (; sol, discrete) = S
     f = sol.prob.f
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
@@ -52,7 +50,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
 end
 
 function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
-    @unpack y, sol = S
+    (; y, sol) = S
 
     if update
         if t isa ForwardDiff.Dual && eltype(y) <: AbstractFloat
@@ -69,7 +67,7 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
 end
 
 function split_states(u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
-    @unpack y, sol = S
+    (; y, sol) = S
 
     if update
         y = sol(t, continuity = :right)
@@ -98,7 +96,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack p, u0, tspan = sol.prob
+    (; p, u0, tspan) = sol.prob
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
@@ -176,7 +174,7 @@ end
 function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     prob = sol.prob
     adj_prob = adj_sol.prob
-    @unpack f, tspan = prob
+    (; f, tspan) = prob
     p = parameter_values(prob)
     u0 = state_values(prob)
     numparams = length(p)
@@ -242,7 +240,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = DiffEqBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         pJ .= false
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
@@ -253,12 +251,12 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
-    @unpack pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
+    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol) = S
     f = sol.prob.f
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if !isautojacvec
-        if DiffEqBase.has_paramjac(f)
+        if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
             pf.t = t
@@ -305,7 +303,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
 end
 
 function (S::AdjointSensitivityIntegrand)(out, t)
-    @unpack y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol = S
+    (; y, λ, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol) = S
     if ArrayInterface.ismutable(y)
         sol(y, t)
         adj_sol(λ, t)
@@ -344,7 +342,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         save_everystep = true, save_start = true, kwargs...)
 
     p = sol.prob.p
-    if p === nothing || p === DiffEqBase.NullParameters()
+    if p === nothing || p === SciMLBase.NullParameters()
         return state_values(adj_sol)[end], nothing
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
@@ -356,7 +354,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
             # handle discrete dgdp contributions
             if dgdp_discrete !== nothing
-                @unpack y = integrand
+                (; y) = integrand
                 cur_time = length(t)
                 dgdp_cache = copy(res)
                 dgdp_discrete(dgdp_cache, y, p, t[cur_time], cur_time)
@@ -400,7 +398,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
                         cur_time)
                 end
                 if dgdp_discrete !== nothing
-                    @unpack y = integrand
+                    (; y) = integrand
                     dgdp_discrete(dgdp_cache, y, p, t[cur_time], cur_time)
                     res .+= dgdp_cache
                 end
@@ -419,7 +417,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             yy = similar(rcb.y)
             yy .= false
             for (Δλa, tt) in rcb.Δλas
-                @unpack algevar_idxs = rcb.diffcache
+                (; algevar_idxs) = rcb.diffcache
                 iλ[algevar_idxs] .= Δλa
                 sol(yy, tt)
                 vec_pjac!(out, iλ, yy, tt, integrand)
@@ -432,7 +430,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 end
 
 function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
-    @unpack sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp = integrand
+    (; sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp) = integrand
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end

@@ -1,6 +1,6 @@
 struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAdjoint,
     uType, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction} <:
+    fType <: AbstractDiffEqFunction} <:
        SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -10,8 +10,6 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     f::fType
     noiseterm::Bool
 end
-
-TruncatedStacktraces.@truncate_stacktrace ODEBacksolveSensitivityFunction
 
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         noiseterm = false)
@@ -23,7 +21,7 @@ function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
 end
 
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
 
@@ -55,7 +53,7 @@ end
 
 # u = λ' # for the RODE case
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
-    @unpack y, prob, discrete = S
+    (; y, prob, discrete) = S
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
     copyto!(vec(y), _y)
@@ -69,7 +67,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
 end
 
 function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = true)
-    @unpack y, prob = S
+    (; y, prob) = S
     idx = length(y)
 
     λ = @view u[1:idx]
@@ -168,12 +166,12 @@ end
                  g !== nothing))
 
     numstates = length(u0)
-    numparams = p === nothing || p === DiffEqBase.NullParameters() ? 0 : length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
 
     if z0 === nothing
-        λ = p === nothing || p === DiffEqBase.NullParameters() ? similar(u0) :
+        λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
             one(eltype(u0)) .* similar(tunables, len)
         λ .= false
     else
@@ -260,7 +258,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)
@@ -279,7 +277,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
@@ -382,7 +380,7 @@ end
                with a discrete cost function but no specified `dgdu_discrete` or `dgdp_discrete`.
                Please use the higher level `solve` interface or specify these two contributions.")
 
-    @unpack f, tspan = sol.prob
+    (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
     tunables, repack, _ = canonicalize(Tunable(), p)
@@ -399,7 +397,7 @@ end
                 (dgdu_continuous === nothing && dgdp_continuous === nothing ||
                  g !== nothing))
 
-    p === DiffEqBase.NullParameters() &&
+    p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
