@@ -1,4 +1,4 @@
-# Frequently Asked Qestuions (FAQ)
+# Frequently Asked Questions (FAQ)
 
 ## How do I isolate potential gradient issues and improve performance?
 
@@ -60,3 +60,22 @@ _dy, back = Zygote.pullback(y, p) do u, p
 end
 tmp1, tmp2 = back(λ)
 ```
+
+## When fitting a differential equation how do I visualize the fit during the optimization iterations?
+
+The `Optimization.jl` package has a callback function that can be used to visualize the
+progress of the optimization. This is done as follows (pseudo-code):
+
+```julia
+callback = function (state, l)
+    println(l)
+    pl = visualize(state.u)
+    display(pl)
+    return false
+end
+```
+
+Earlier we used to allow extra returns from the objective function in addition to the loss value and you could use that in the callback, but this is no longer supported. 
+This was done to allow support for combined evaluation of the primal (loss value) and the backward pass (gradient) thus making it more efficient by a factor. So now, to 
+create a plot in the callback, you need to solve the differential equation again (forward pass) inside the callback, this is less expensive than allowing the extra 
+returns, but it is more expensive than a simple callback that just prints the loss value, and can result in slower optimization.
