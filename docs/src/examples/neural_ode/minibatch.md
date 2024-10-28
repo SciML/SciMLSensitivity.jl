@@ -2,7 +2,7 @@
 
 ```@example
 using SciMLSensitivity
-using DifferentialEquations, Flux, Random, Plots
+using DifferentialEquations, Flux, Random, Plots, MLUtils
 using IterTools: ncycle
 
 rng = Random.default_rng()
@@ -46,7 +46,7 @@ ode_data = Array(solve(true_prob, Tsit5(), saveat = t))
 prob = ODEProblem{false}(dudt_, u0, tspan, θ)
 
 k = 10
-train_loader = Flux.Data.DataLoader((ode_data, t), batchsize = k)
+train_loader = DataLoader((ode_data, t), batchsize = k)
 
 for (x, y) in train_loader
     @show x
