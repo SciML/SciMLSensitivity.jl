@@ -75,7 +75,7 @@ callback = function (state, l)
 end
 ```
 
-Earlier we used to allow extra returns from the objective function in addition to the loss value and you could use that in the callback, but this is no longer supported. 
-This was done to allow support for combined evaluation of the primal (loss value) and the backward pass (gradient) thus making it more efficient by a factor. So now, to 
-create a plot in the callback, you need to solve the differential equation again (forward pass) inside the callback, this is less expensive than allowing the extra 
+Earlier we used to allow extra returns from the objective function in addition to the loss value and you could use that in the callback, but this is no longer supported.
+This was done to allow support for combined evaluation of the primal (loss value) and the backward pass (gradient) thus making it more efficient by a factor. So now, to
+create a plot in the callback, you need to solve the differential equation again (forward pass) inside the callback, this is less expensive than allowing the extra
 returns, but it is more expensive than a simple callback that just prints the loss value, and can result in slower optimization.
