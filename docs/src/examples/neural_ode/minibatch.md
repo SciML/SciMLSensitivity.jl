@@ -96,7 +96,7 @@ When training a neural network, we need to find the gradient with respect to our
 For this example, we will use a very simple ordinary differential equation, newtons law of cooling. We can represent this in Julia like so.
 
 ```@example minibatch
-using SciMLSensitivity
+using SciMLSensitivity, MLUtils
 using DifferentialEquations, Flux, Random, Plots
 using IterTools: ncycle
 
@@ -152,7 +152,7 @@ ode_data = Array(solve(true_prob, Tsit5(), saveat = t))
 prob = ODEProblem{false}(dudt_, u0, tspan, θ)
 
 k = 10
-train_loader = Flux.Data.DataLoader((ode_data, t), batchsize = k)
+train_loader = DataLoader((ode_data, t), batchsize = k)
 
 for (x, y) in train_loader
     @show x
