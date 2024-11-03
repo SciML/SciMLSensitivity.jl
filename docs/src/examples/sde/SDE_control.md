@@ -190,17 +190,17 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = CreateGrid(myparameters.ts, W1)
         remake(prob,
-            p = pars,
             u0 = u0tmp,
             callback = callback,
             noise = NG)
     end
+    _prob = remake(prob, p = pars)
 
-    ensembleprob = EnsembleProblem(prob,
+    ensembleprob = EnsembleProblem(_prob,
         prob_func = prob_func,
         safetycopy = true)
 
-    _sol = solve(ensembleprob, alg, EnsembleThreads(),
+    _sol = solve(ensembleprob, alg, EnsembleSerial(),
         sensealg = sensealg,
         saveat = myparameters.tinterval,
         dt = myparameters.dt,
@@ -292,7 +292,7 @@ visualization_callback((; u = p_nn), l; doplot = true)
 
 # optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
-adtype = Optimization.AutoZygote()
+adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
@@ -654,7 +654,7 @@ is computed under the hood in the SciMLSensitivity package.
 ```@example sdecontrol
 # optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
-adtype = Optimization.AutoZygote()
+adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, p_nn)
