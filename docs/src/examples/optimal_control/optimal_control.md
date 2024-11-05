@@ -37,7 +37,8 @@ of a local minimum. This looks like:
 
 ```@example neuraloptimalcontrol
 using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationOptimJL,
-      OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random
+      OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random,
+      ForwardDiff
 
 rng = Random.default_rng()
 tspan = (0.0f0, 8.0f0)
@@ -89,7 +90,7 @@ end
 # Setup and run the optimization
 
 loss1 = loss_adjoint(θ)
-adtype = Optimization.AutoZygote()
+adtype = Optimization.AutoForwardDiff()
 optf = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, θ)

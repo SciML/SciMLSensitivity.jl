@@ -39,11 +39,12 @@ savefig("LV_ode.png")
 function loss(p)
     sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
-    return loss, sol
+    return loss
 end
 
-callback = function (state, l, pred)
+callback = function (state, l)
     display(l)
+    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
     # Tell Optimization.solve to not halt the optimization. If return true, then
@@ -118,7 +119,7 @@ define our loss as the squared distance from 1.
 function loss(p)
     sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
-    return loss, sol
+    return loss
 end
 ```
 
@@ -130,8 +131,9 @@ function. We will display the current loss and make a plot of the current
 situation:
 
 ```@example optode
-callback = function (state, l, pred)
+callback = function (state, l)
     display(l)
+    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
     plt = plot(pred, ylim = (0, 6))
     display(plt)
     # Tell Optimization.solve to not halt the optimization. If return true, then
