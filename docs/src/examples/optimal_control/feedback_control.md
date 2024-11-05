@@ -88,5 +88,5 @@ result_univ = Optimization.solve(optprob, PolyOpt(), callback = cb)
 ```
 
 ```@example udeneuralcontrol
-cb(result_univ, result_univ.minimum; makeplot=true)
+cb(result_univ, result_univ.minimum; makeplot = true)
 ```
