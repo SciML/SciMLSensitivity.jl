@@ -40,7 +40,6 @@ using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationOptimJL,
       OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
-Random.seed!(rng, 0)
 tspan = (0.0f0, 8.0f0)
 
 ann = Chain(Dense(1, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
@@ -72,7 +71,7 @@ function loss_adjoint(θ)
 end
 
 l = loss_adjoint(θ)
-cb = function (state, l; doplot = false)
+cb = function (state, l; doplot = true)
     println(l)
 
     ps = ComponentArray(state.u, ax)
@@ -90,12 +89,16 @@ end
 # Setup and run the optimization
 
 loss1 = loss_adjoint(θ)
-adtype = Optimization.AutoZygote()
+adtype = Optimization.AutoForward()
 optf = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
 optprob = Optimization.OptimizationProblem(optf, θ)
 res1 = Optimization.solve(
-    optprob, OptimizationOptimisers.Adam(0.01), callback = cb, maxiters = 300)
+    optprob, OptimizationOptimisers.Adam(0.01), callback = cb, maxiters = 100)
+
+optprob2 = Optimization.OptimizationProblem(optf, res1.u)
+res2 = Optimization.solve(
+    optprob2, OptimizationOptimJL.BFGS(), callback = cb, maxiters = 100)
 ```
 
 Now that the system is in a better behaved part of parameter space, we return to
@@ -110,8 +113,8 @@ function loss_adjoint(θ)
 end
 optf3 = Optimization.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
-optprob3 = Optimization.OptimizationProblem(optf3, res1.u)
-res3 = Optimization.solve(optprob3, OptimizationOptimisers.Adam(0.01), maxiters = 100)
+optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
+res3 = Optimization.solve(optprob3, OptimizationOptimJL.BFGS(), maxiters = 100)
 ```
 
 Now let's see what we received:
