@@ -72,7 +72,7 @@ function loss_adjoint(θ)
 end
 
 l = loss_adjoint(θ)
-cb = function (state, l; doplot = true)
+cb = function (state, l; doplot = false)
     println(l)
 
     ps = ComponentArray(state.u, ax)
