@@ -40,6 +40,7 @@ using Lux, ComponentArrays, OrdinaryDiffEq, Optimization, OptimizationOptimJL,
       OptimizationOptimisers, SciMLSensitivity, Zygote, Plots, Statistics, Random
 
 rng = Random.default_rng()
+Random.seed!(rng, 0)
 tspan = (0.0f0, 8.0f0)
 
 ann = Chain(Dense(1, 32, tanh), Dense(32, 32, tanh), Dense(32, 1))
