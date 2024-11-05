@@ -27,6 +27,7 @@ pages = ["index.md",
             "examples/hybrid_jump/bouncing_ball.md"],
         "Bayesian Estimation" => Any["examples/bayesian/turing_bayesian.md"],
         "Optimal and Model Predictive Control" => Any[
+            "examples/optimal_control/optimal_control.md",
             "examples/optimal_control/feedback_control.md"]],
     "Manual and APIs" => Any[
         "manual/differential_equation_sensitivities.md",
