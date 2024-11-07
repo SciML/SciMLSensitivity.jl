@@ -642,8 +642,8 @@ function DiffEqBase._concrete_solve_adjoint(
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters()
-            nothing, x -> (nothing, x)
+        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() || !isscimlstructure(p)
+            nothing, x -> (x,)
         else
             Zygote.pullback(p) do p
                 t, _, _ = canonicalize(Tunable(), p)
