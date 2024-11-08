@@ -642,7 +642,8 @@ function DiffEqBase._concrete_solve_adjoint(
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() || !isscimlstructure(p)
+        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
+                               !isscimlstructure(p)
             nothing, x -> (x,)
         else
             Zygote.pullback(p) do p
@@ -656,7 +657,8 @@ function DiffEqBase._concrete_solve_adjoint(
             (NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(),
+                du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
@@ -1154,10 +1156,12 @@ function DiffEqBase._concrete_solve_adjoint(
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), unthunk(du0), repack_adjoint(unthunk(dp))[1], NoTangent(),
+            (NoTangent(), NoTangent(), unthunk(du0),
+                repack_adjoint(unthunk(dp))[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(),
+                du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
