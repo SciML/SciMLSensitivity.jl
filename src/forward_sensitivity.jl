@@ -675,8 +675,14 @@ function SciMLBase.remake(
         {uType, tType, isinplace, P, F, K}
     _p = p === nothing ? parameter_values(prob) : p
     _f = f === nothing ? prob.f.f : f
-    _u0 = u0 === nothing ? state_values(prob, 1:(prob.f.numindvar)) :
-          u0[1:(prob.f.numindvar)]
+
+    if typeof(_f) <: ODEForwardSensitivityFunction
+        _u0 = u0 === nothing ? state_values(prob, 1:(_f.numindvar)) :
+            u0[1:(_f.numindvar)]
+    else
+        _u0 = u0 === nothing ? state_values(prob) : u0
+    end
+    
     _tspan = tspan === nothing ? prob.tspan : tspan
     ODEForwardSensitivityProblem(_f, _u0,
         _tspan, _p; sensealg = prob.problem_type.sensealg,
