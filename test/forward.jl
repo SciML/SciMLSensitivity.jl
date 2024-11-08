@@ -274,12 +274,12 @@ f = prob.f
 
 # `remake`: https://github.com/SciML/SciMLSensitivity.jl/issues/1137
 
-function f(du, u, p, t)
+function ff3(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
     du[2] = dy = -p[3] * u[2] + u[1] * u[2]
 end
 
 p = [1.5, 1.0, 3.0]
 ts = (0, 10)
-prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], ts, p, sensealg=ForwardDiffSensitivity())
+prob = ODEForwardSensitivityProblem(ff3, [1.0; 1.0], ts, p, sensealg=ForwardDiffSensitivity())
 sol = solve(prob, Tsit5())
