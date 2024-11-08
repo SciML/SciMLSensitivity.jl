@@ -1162,7 +1162,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 ntuple(_ -> NoTangent(), length(args))...)
         else
             (NoTangent(), NoTangent(), NoTangent(),
-                du0, repack_adjoint(dp)[1], NoTangent(),
+                du0, repack_adjoint(unthunk(dp))[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
