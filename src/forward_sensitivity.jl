@@ -674,7 +674,7 @@ function SciMLBase.remake(
         kwargs...) where
         {uType, tType, isinplace, P, F, K}
     _p = p === nothing ? parameter_values(prob) : p
-    _f = f === nothing ? prob.f.f : f
+    _f = f === nothing ? prob.f : f
 
     if typeof(_f) <: ODEForwardSensitivityFunction
         _u0 = u0 === nothing ? state_values(prob, 1:(_f.numindvar)) :
@@ -684,7 +684,7 @@ function SciMLBase.remake(
     end
     
     _tspan = tspan === nothing ? prob.tspan : tspan
-    ODEForwardSensitivityProblem(_f, _u0,
+    ODEForwardSensitivityProblem(_f.f, _u0,
         _tspan, _p; sensealg = prob.problem_type.sensealg,
         prob.kwargs..., kwargs...)
 end
