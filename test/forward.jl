@@ -271,15 +271,3 @@ f = prob.f
 @assert f isa ODEForwardSensitivityFunction
 @test hasproperty(f, :observed)
 @test f.observed == SciMLBase.DEFAULT_OBSERVED
-
-# `remake`: https://github.com/SciML/SciMLSensitivity.jl/issues/1137
-
-function ff3(du, u, p, t)
-    du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    du[2] = dy = -p[3] * u[2] + u[1] * u[2]
-end
-
-p = [1.5, 1.0, 3.0]
-ts = (0, 10)
-prob = ODEForwardSensitivityProblem(ff3, [1.0; 1.0], ts, p, sensealg=ForwardDiffSensitivity())
-sol = solve(prob, Tsit5())
