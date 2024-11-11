@@ -61,7 +61,7 @@ l = loss_univ(θ)
 ```@example udeneuralcontrol
 list_plots = []
 iter = 0
-cb = function (state, l)
+cb = function (state, l; makeplot = false)
     global list_plots, iter
 
     if iter == 0
@@ -71,9 +71,11 @@ cb = function (state, l)
 
     println(l)
 
-    plt = plot(predict_univ(state.u)', ylim = (0, 6))
-    push!(list_plots, plt)
-    display(plt)
+    if makeplot
+        plt = plot(predict_univ(state.u)', ylim = (0, 6))
+        push!(list_plots, plt)
+        display(plt)
+    end
     return false
 end
 ```
@@ -83,4 +85,8 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_univ(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 result_univ = Optimization.solve(optprob, PolyOpt(), callback = cb)
+```
+
+```@example udeneuralcontrol
+cb(result_univ, result_univ.minimum; makeplot = true)
 ```

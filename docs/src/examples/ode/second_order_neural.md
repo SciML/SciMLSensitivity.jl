@@ -33,7 +33,7 @@ t = range(tspan[1], tspan[2], length = 20)
 model = Chain(Dense(2, 50, tanh), Dense(50, 2))
 ps, st = Lux.setup(Random.default_rng(), model)
 ps = ComponentArray(ps)
-model = StatefulLuxLayer{true}(model, ps, st)
+model = Lux.StatefulLuxLayer{true}(model, ps, st)
 
 ff(du, u, p, t) = model(u, p)
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
@@ -46,12 +46,12 @@ correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:
 
 function loss_n_ode(p)
     pred = predict(p)
-    sum(abs2, correct_pos .- pred[1:2, :]), pred
+    sum(abs2, correct_pos .- pred[1:2, :])
 end
 
 l1 = loss_n_ode(ps)
 
-callback = function (state, l, pred)
+callback = function (state, l)
     println(l)
     l < 0.01
 end

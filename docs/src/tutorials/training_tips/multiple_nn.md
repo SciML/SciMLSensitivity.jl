@@ -66,11 +66,11 @@ end
 # No regularisation right now
 function loss(θ)
     pred = predict(θ)
-    sum(abs2, Xₙ .- pred), pred
+    sum(abs2, Xₙ .- pred)
 end
 loss(p)
 const losses = []
-callback(θ, l, pred) = begin
+callback(θ, l) = begin
     push!(losses, l)
     if length(losses) % 50 == 0
         println(losses[end])

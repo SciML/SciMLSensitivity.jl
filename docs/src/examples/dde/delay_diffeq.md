@@ -38,7 +38,7 @@ end
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))
 
 using Plots
-callback = function (state, l...; doplot = false)
+callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
         display(plot(
@@ -60,7 +60,7 @@ We define a callback to display the solution at the current parameters for each 
 
 ```@example dde
 using Plots
-callback = function (state, l...; doplot = false)
+callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
         display(plot(

@@ -67,25 +67,26 @@ end
 ## Defining Loss function
 function loss(θ)
     pred = predict(θ)
-    return sum(abs2.(predict(θ) .- arr_sol)), pred # Mean squared error
+    return sum(abs2.(predict(θ) .- arr_sol)) # Mean squared error
 end
 
-l, pred = loss(ps)
-size(pred), size(sol), size(t) # Checking sizes
+l = loss(ps)
+size(sol), size(t) # Checking sizes
 
 LOSS = []                              # Loss accumulator
 PRED = []                              # prediction accumulator
 PARS = []                              # parameters accumulator
 
-cb = function (θ, l, pred) #callback function to observe training
+cb = function (st, l) #callback function to observe training
     display(l)
+    pred = predict(st.u)
     append!(PRED, [pred])
     append!(LOSS, l)
-    append!(PARS, [θ])
+    append!(PARS, [st.u])
     false
 end
 
-cb(ps, loss(ps)...) # Testing callback function
+cb((; u = ps), loss(ps)) # Testing callback function
 
 # Let see prediction vs. Truth
 scatter(sol[:, end], label = "Truth", size = (800, 500))
@@ -228,11 +229,11 @@ use the **mean squared error**.
 ## Defining Loss function
 function loss(θ)
     pred = predict(θ)
-    return sum(abs2.(predict(θ) .- arr_sol)), pred # Mean squared error
+    return sum(abs2.(predict(θ) .- arr_sol)) # Mean squared error
 end
 
-l, pred = loss(ps)
-size(pred), size(sol), size(t) # Checking sizes
+l = loss(ps)
+size(sol), size(t) # Checking sizes
 ```
 
 #### Optimizer
@@ -251,15 +252,16 @@ LOSS = []                              # Loss accumulator
 PRED = []                              # prediction accumulator
 PARS = []                              # parameters accumulator
 
-cb = function (θ, l, pred) #callback function to observe training
+cb = function (st, l) #callback function to observe training
     display(l)
+    pred = predict(st.u)
     append!(PRED, [pred])
     append!(LOSS, l)
-    append!(PARS, [θ])
+    append!(PARS, [st.u])
     false
 end
 
-cb(ps, loss(ps)...) # Testing callback function
+cb((; u = ps), loss(ps)) # Testing callback function
 ```
 
 ### Plotting Prediction vs Ground Truth
