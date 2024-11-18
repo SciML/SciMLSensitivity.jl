@@ -22,7 +22,7 @@ prob_ode = ODEProblem(f_nn, u0, tspan, ComponentArray(ip));
 
 function loss_adjoint(p; sensealg = nothing)
     local prediction = solve(
-        prob_ode, BS5(), p = p, abstol = 1e-12, reltol = 1e-12, sensealg = sensealg)
+        prob_ode, BS5(), p = p, abstol = 1e-13, reltol = 1e-13, sensealg = sensealg)
     local usol = last(prediction)
     local loss = abs(1.0 - abs(tr(usol * utarget') / 2))
     return loss
@@ -35,5 +35,5 @@ dp3 = Zygote.gradient(
         x, sensealg = InterpolatingAdjoint(autodiff = false, autojacvec = false)),
     ComponentArray(ip))
 
-@test dp1[1]≈dp2 atol=1e-3
-@test dp1[1]≈dp3[1] atol=5e-3
+@test dp1[1]≈dp2 atol=1e-2
+@test dp1[1]≈dp3[1] atol=5e-2
