@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Parameter Estimation of Ordinary Differential Equations · SciMLSensitivity.jl</title><meta name="title" content="Parameter Estimation of Ordinary Differential Equations · SciMLSensitivity.jl"/><meta property="og:title" content="Parameter Estimation of Ordinary Differential Equations · SciMLSensitivity.jl"/><meta property="twitter:title" content="Parameter Estimation of Ordinary Differential Equations · SciMLSensitivity.jl"/><meta name="description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:description" content="Documentation for SciMLSensitivity.jl."/><meta property="twitter:description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/parameter_estimation_ode/"/><meta property="twitter:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/parameter_estimation_ode/"/><link rel="canonical" href="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/parameter_estimation_ode/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="SciMLSensitivity.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">SciMLSensitivity.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions</a></li><li><span class="tocitem">Tutorials</span><ul><li class="is-active"><a class="tocitem" href>Parameter Estimation of Ordinary Differential Equations</a><ul class="internal"><li><a class="tocitem" href="#Copy-Paste-Code"><span>Copy-Paste Code</span></a></li><li><a class="tocitem" href="#Explanation"><span>Explanation</span></a></li></ul></li><li><a class="tocitem" href="../direct_sensitivity/">Direct Sensitivity Analysis Functionality</a></li><li><a class="tocitem" href="../adjoint_continuous_functional/">Adjoint Sensitivity Analysis of Continuous Functionals</a></li><li><a class="tocitem" href="../data_parallel/">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a></li><li><a class="tocitem" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods)</a></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">Training Techniques and Tips</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../training_tips/local_minima/">Strategies to Avoid Local Minima</a></li><li><a class="tocitem" href="../training_tips/divergence/">Handling Divergent and Unstable Trajectories</a></li><li><a class="tocitem" href="../training_tips/multiple_nn/">Simultaneous Fitting of Multiple Neural Networks</a></li></ul></li></ul></li><li><a class="tocitem" href="../../faq/">Frequently Asked Questions (FAQ)</a></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-5-1" type="checkbox"/><label class="tocitem" for="menuitem-5-1"><span class="docs-label">Ordinary Differential Equations (ODEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/ode/exogenous_input/">Handling Exogenous Input Signals</a></li><li><a class="tocitem" href="../../examples/ode/prediction_error_method/">Prediction error method (PEM)</a></li><li><a class="tocitem" href="../../examples/ode/second_order_adjoints/">Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a></li><li><a class="tocitem" href="../../examples/ode/second_order_neural/">Neural Second Order Ordinary Differential Equation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><label class="tocitem" for="menuitem-5-2"><span class="docs-label">Neural Ordinary Differential Equations (Neural ODE)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/neural_ode/neural_ode_flux/">Neural Ordinary Differential Equations with Flux</a></li><li><a class="tocitem" href="../../examples/neural_ode/simplechains/">Faster Neural Ordinary Differential Equations with SimpleChains</a></li><li><a class="tocitem" href="../../examples/neural_ode/minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-3" type="checkbox"/><label class="tocitem" for="menuitem-5-3"><span class="docs-label">Stochastic Differential Equations (SDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/sde/optimization_sde/">Optimization of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../../examples/sde/SDE_control/">Controlling Stochastic Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-4" type="checkbox"/><label class="tocitem" for="menuitem-5-4"><span class="docs-label">Delay Differential Equations (DDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/dde/delay_diffeq/">Delay Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-5" type="checkbox"/><label class="tocitem" for="menuitem-5-5"><span class="docs-label">Partial Differential Equations (PDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/pde/pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-6" type="checkbox"/><label class="tocitem" for="menuitem-5-6"><span class="docs-label">Hybrid and Jump Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/hybrid_jump/hybrid_diffeq/">Training Neural Networks in Hybrid Differential Equations</a></li><li><a class="tocitem" href="../../examples/hybrid_jump/bouncing_ball/">Bouncing Ball Hybrid ODE Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-7" type="checkbox"/><label class="tocitem" for="menuitem-5-7"><span class="docs-label">Bayesian Estimation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-8" type="checkbox"/><label class="tocitem" for="menuitem-5-8"><span class="docs-label">Optimal and Model Predictive Control</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/optimal_control/optimal_control/">Solving Optimal Control Problems with Universal Differential Equations</a></li><li><a class="tocitem" href="../../examples/optimal_control/feedback_control/">Universal Differential Equations for Neural Feedback Control</a></li></ul></li></ul></li><li><span class="tocitem">Manual and APIs</span><ul><li><a class="tocitem" href="../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../manual/nonlinear_solve_sensitivities/">Sensitivity Algorithms for Nonlinear Problems with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../manual/direct_forward_sensitivity/">Direct Forward Sensitivity Analysis of ODEs</a></li><li><a class="tocitem" href="../../manual/direct_adjoint_sensitivities/">Direct Adjoint Sensitivities of Differential Equations</a></li></ul></li><li><a class="tocitem" href="../../Benchmark/">Benchmarks</a></li><li><a class="tocitem" href="../../sensitivity_math/">Sensitivity Math Details</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Parameter Estimation of Ordinary Differential Equations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Parameter Estimation of Ordinary Differential Equations</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl/blob/master/docs/src/tutorials/parameter_estimation_ode.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="odeparamestim"><a class="docs-heading-anchor" href="#odeparamestim">Parameter Estimation of Ordinary Differential Equations</a><a id="odeparamestim-1"></a><a class="docs-heading-anchor-permalink" href="#odeparamestim" title="Permalink"></a></h1><h2 id="Copy-Paste-Code"><a class="docs-heading-anchor" href="#Copy-Paste-Code">Copy-Paste Code</a><a id="Copy-Paste-Code-1"></a><a class="docs-heading-anchor-permalink" href="#Copy-Paste-Code" title="Permalink"></a></h2><p>If you want to just get things running, try the following! Explanation will follow.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq,
+      Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
+      Zygote, Plots
+
+function lotka_volterra!(du, u, p, t)
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = -δ * y + γ * x * y
+end
+
+# Initial condition
+u0 = [1.0, 1.0]
+
+# Simulation interval and intermediary points
+tspan = (0.0, 10.0)
+tsteps = 0.0:0.1:10.0
+
+# LV equation parameter. p = [α, β, δ, γ]
+p = [1.5, 1.0, 3.0, 1.0]
+
+# Setup the ODE problem, then solve
+prob = ODEProblem(lotka_volterra!, u0, tspan, p)
+sol = solve(prob, Tsit5())
+
+# Plot the solution
+using Plots
+plot(sol)
+savefig(&quot;LV_ode.png&quot;)
+
+function loss(p)
+    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    loss = sum(abs2, sol .- 1)
+    return loss
+end
+
+callback = function (state, l)
+    display(l)
+    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
+    plt = plot(pred, ylim = (0, 6))
+    display(plt)
+    # Tell Optimization.solve to not halt the optimization. If return true, then
+    # optimization stops.
+    return false
+end
+
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
+
+result_ode = Optimization.solve(optprob, PolyOpt(),
+    callback = callback,
+    maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Failure
+u: 4-element Vector{Float64}:
+ 1.5264763885002706
+ 1.526501230305985
+ 2.03536651362284
+ 2.035484670242187</code></pre><h2 id="Explanation"><a class="docs-heading-anchor" href="#Explanation">Explanation</a><a id="Explanation-1"></a><a class="docs-heading-anchor-permalink" href="#Explanation" title="Permalink"></a></h2><p>First, let&#39;s create a Lotka-Volterra ODE using OrdinaryDiffEq.jl. For more details, <a href="https://docs.sciml.ai/DiffEqDocs/stable/">see the OrdinaryDiffEq.jl documentation</a>. The Lotka-Volterra equations have the form:</p><p class="math-container">\[\begin{aligned}
+\frac{dx}{dt} &amp;= \alpha x - \beta x y      \\
+\frac{dy}{dt} &amp;= -\delta y + \gamma x y    \\
+\end{aligned}\]</p><pre><code class="language-julia hljs">using OrdinaryDiffEq,
+      Optimization, OptimizationPolyalgorithms,
+      SciMLSensitivity, Zygote, Plots
+
+function lotka_volterra!(du, u, p, t)
+    x, y = u
+    α, β, δ, γ = p
+    du[1] = dx = α * x - β * x * y
+    du[2] = dy = -δ * y + γ * x * y
+end
+
+# Initial condition
+u0 = [1.0, 1.0]
+
+# Simulation interval and intermediary points
+tspan = (0.0, 10.0)
+tsteps = 0.0:0.1:10.0
+
+# LV equation parameter. p = [α, β, δ, γ]
+p = [1.5, 1.0, 3.0, 1.0]
+
+# Setup the ODE problem, then solve
+prob = ODEProblem(lotka_volterra!, u0, tspan, p)
+sol = solve(prob, Tsit5())
+
+# Plot the solution
+using Plots
+plot(sol)
+savefig(&quot;LV_ode.png&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">&quot;/var/lib/buildkite-agent/builds/gpuci-4/julialang/scimlsensitivity-dot-jl/docs/build/tutorials/LV_ode.png&quot;</code></pre><p><img src="https://user-images.githubusercontent.com/1814174/51388169-9a07f300-1af6-11e9-8c6c-83c41e81d11c.png" alt="LV Solution Plot"/></p><p>For this first example, we do not yet include a neural network. We take <a href="https://docs.sciml.ai/SciMLSensitivity/stable/manual/differential_equation_sensitivities/">an AD-compatible <code>solve</code> function</a> that takes the parameters and an initial condition and returns the solution of the differential equation. Next, we choose a loss function. Our goal will be to find parameters that make the Lotka-Volterra solution constant <code>x(t)=1</code>, so we define our loss as the squared distance from 1.</p><pre><code class="language-julia hljs">function loss(p)
+    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    loss = sum(abs2, sol .- 1)
+    return loss
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">loss (generic function with 1 method)</code></pre><p>Lastly, we use the <code>Optimization.solve</code> function to train the parameters using <code>Adam</code> to arrive at parameters which optimize for our goal. <code>Optimization.solve</code> allows defining a callback that will be called at each step of our training loop. It takes in the current parameter vector and the returns of the last call to the loss function. We will display the current loss and make a plot of the current situation:</p><pre><code class="language-julia hljs">callback = function (state, l)
+    display(l)
+    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
+    plt = plot(pred, ylim = (0, 6))
+    display(plt)
+    # Tell Optimization.solve to not halt the optimization. If return true, then
+    # optimization stops.
+    return false
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">#1 (generic function with 1 method)</code></pre><p>Let&#39;s optimize the model.</p><pre><code class="language-julia hljs">adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, p)
+
+result_ode = Optimization.solve(optprob, PolyOpt(),
+    callback = callback,
+    maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Failure
+u: 4-element Vector{Float64}:
+ 1.5264763885002706
+ 1.526501230305985
+ 2.03536651362284
+ 2.035484670242187</code></pre><p>In just seconds we found parameters which give a relative loss of <code>1e-16</code>! We can get the final loss with <code>result_ode.minimum</code>, and get the optimal parameters with <code>result_ode.u</code>. For example, we can plot the final outcome and show that we solved the control problem and successfully found parameters to make the ODE solution constant:</p><pre><code class="language-julia hljs">remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),
+    saveat = tsteps)
+plot(remade_solution, ylim = (0, 6))</code></pre><img src="c90d89cb.svg" alt="Example block output"/><p><img src="https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif" alt="Final plot"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../getting_started/">« Getting Started with SciMLSensitivity: Differentiating ODE Solutions</a><a class="docs-footer-nextpage" href="../direct_sensitivity/">Direct Sensitivity Analysis Functionality »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Monday 18 November 2024 15:23">Monday 18 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching · SciMLSensitivity.jl</title><meta name="title" content="Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching · SciMLSensitivity.jl"/><meta property="og:title" content="Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching · SciMLSensitivity.jl"/><meta property="twitter:title" content="Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching · SciMLSensitivity.jl"/><meta name="description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:description" content="Documentation for SciMLSensitivity.jl."/><meta property="twitter:description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/data_parallel/"/><meta property="twitter:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/data_parallel/"/><link rel="canonical" href="https://docs.sciml.ai/SciMLSensitivity/stable/tutorials/data_parallel/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="SciMLSensitivity.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">SciMLSensitivity.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../parameter_estimation_ode/">Parameter Estimation of Ordinary Differential Equations</a></li><li><a class="tocitem" href="../direct_sensitivity/">Direct Sensitivity Analysis Functionality</a></li><li><a class="tocitem" href="../adjoint_continuous_functional/">Adjoint Sensitivity Analysis of Continuous Functionals</a></li><li class="is-active"><a class="tocitem" href>Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a><ul class="internal"><li><a class="tocitem" href="#Within-ODE-Multithreaded-and-GPU-Batching"><span>Within-ODE Multithreaded and GPU Batching</span></a></li><li class="toplevel"><a class="tocitem" href="#Out-of-ODE-Parallelism"><span>Out of ODE Parallelism</span></a></li><li><a class="tocitem" href="#Multithreaded-Batching-At-a-Glance"><span>Multithreaded Batching At a Glance</span></a></li><li><a class="tocitem" href="#Multithreaded-Batching-In-Depth"><span>Multithreaded Batching In-Depth</span></a></li><li><a class="tocitem" href="#Distributed-Batching-Across-a-Cluster"><span>Distributed Batching Across a Cluster</span></a></li><li><a class="tocitem" href="#Minibatching-Across-GPUs-with-DiffEqGPU"><span>Minibatching Across GPUs with DiffEqGPU</span></a></li><li><a class="tocitem" href="#Multi-GPU-Batching"><span>Multi-GPU Batching</span></a></li></ul></li><li><a class="tocitem" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods)</a></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">Training Techniques and Tips</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../training_tips/local_minima/">Strategies to Avoid Local Minima</a></li><li><a class="tocitem" href="../training_tips/divergence/">Handling Divergent and Unstable Trajectories</a></li><li><a class="tocitem" href="../training_tips/multiple_nn/">Simultaneous Fitting of Multiple Neural Networks</a></li></ul></li></ul></li><li><a class="tocitem" href="../../faq/">Frequently Asked Questions (FAQ)</a></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-5-1" type="checkbox"/><label class="tocitem" for="menuitem-5-1"><span class="docs-label">Ordinary Differential Equations (ODEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/ode/exogenous_input/">Handling Exogenous Input Signals</a></li><li><a class="tocitem" href="../../examples/ode/prediction_error_method/">Prediction error method (PEM)</a></li><li><a class="tocitem" href="../../examples/ode/second_order_adjoints/">Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a></li><li><a class="tocitem" href="../../examples/ode/second_order_neural/">Neural Second Order Ordinary Differential Equation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><label class="tocitem" for="menuitem-5-2"><span class="docs-label">Neural Ordinary Differential Equations (Neural ODE)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/neural_ode/neural_ode_flux/">Neural Ordinary Differential Equations with Flux</a></li><li><a class="tocitem" href="../../examples/neural_ode/simplechains/">Faster Neural Ordinary Differential Equations with SimpleChains</a></li><li><a class="tocitem" href="../../examples/neural_ode/minibatch/">Training a Neural Ordinary Differential Equation with Mini-Batching</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-3" type="checkbox"/><label class="tocitem" for="menuitem-5-3"><span class="docs-label">Stochastic Differential Equations (SDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/sde/optimization_sde/">Optimization of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../../examples/sde/SDE_control/">Controlling Stochastic Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-4" type="checkbox"/><label class="tocitem" for="menuitem-5-4"><span class="docs-label">Delay Differential Equations (DDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/dde/delay_diffeq/">Delay Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-5" type="checkbox"/><label class="tocitem" for="menuitem-5-5"><span class="docs-label">Partial Differential Equations (PDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/pde/pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-6" type="checkbox"/><label class="tocitem" for="menuitem-5-6"><span class="docs-label">Hybrid and Jump Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/hybrid_jump/hybrid_diffeq/">Training Neural Networks in Hybrid Differential Equations</a></li><li><a class="tocitem" href="../../examples/hybrid_jump/bouncing_ball/">Bouncing Ball Hybrid ODE Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-7" type="checkbox"/><label class="tocitem" for="menuitem-5-7"><span class="docs-label">Bayesian Estimation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-8" type="checkbox"/><label class="tocitem" for="menuitem-5-8"><span class="docs-label">Optimal and Model Predictive Control</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/optimal_control/optimal_control/">Solving Optimal Control Problems with Universal Differential Equations</a></li><li><a class="tocitem" href="../../examples/optimal_control/feedback_control/">Universal Differential Equations for Neural Feedback Control</a></li></ul></li></ul></li><li><span class="tocitem">Manual and APIs</span><ul><li><a class="tocitem" href="../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../manual/nonlinear_solve_sensitivities/">Sensitivity Algorithms for Nonlinear Problems with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../manual/direct_forward_sensitivity/">Direct Forward Sensitivity Analysis of ODEs</a></li><li><a class="tocitem" href="../../manual/direct_adjoint_sensitivities/">Direct Adjoint Sensitivities of Differential Equations</a></li></ul></li><li><a class="tocitem" href="../../Benchmark/">Benchmarks</a></li><li><a class="tocitem" href="../../sensitivity_math/">Sensitivity Math Details</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl/blob/master/docs/src/tutorials/data_parallel.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Data-Parallel-Multithreaded,-Distributed,-and-Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Data-Parallel-Multithreaded,-Distributed,-and-Multi-GPU-Batching">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a><a id="Data-Parallel-Multithreaded,-Distributed,-and-Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Data-Parallel-Multithreaded,-Distributed,-and-Multi-GPU-Batching" title="Permalink"></a></h1><p>SciMLSensitivity.jl allows for data-parallel batching optimally on one computer, across an entire compute cluster, and batching along GPUs by performing differentiation of SciML <code>EnsembleProblem</code>s. This can be done by parallelizing within an ODE solve or between the ODE solves. The automatic differentiation tooling is compatible with the parallelism. The following examples demonstrate training over a few different modes of parallelism. These examples are not exhaustive.</p><h2 id="Within-ODE-Multithreaded-and-GPU-Batching"><a class="docs-heading-anchor" href="#Within-ODE-Multithreaded-and-GPU-Batching">Within-ODE Multithreaded and GPU Batching</a><a id="Within-ODE-Multithreaded-and-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Within-ODE-Multithreaded-and-GPU-Batching" title="Permalink"></a></h2><p>We end by noting that there is an alternative way of batching which can be more efficient in some cases, like neural ODEs. With neural networks, columns are treated independently (by the properties of matrix multiplication). Thus for example, with <code>Chain</code> we can define an ODE:</p><pre><code class="language-julia hljs">using Lux, OrdinaryDiffEq, LuxCUDA, Random
+
+gdev = gpu_device()
+
+rng = Random.default_rng()
+
+dudt = Lux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
+p, st = Lux.setup(rng, dudt)
+f(u, p, t) = dudt(u, p, st)[1]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">f (generic function with 1 method)</code></pre><p>and we can solve this ODE where the initial condition is a vector:</p><pre><code class="language-julia hljs">u0 = Float32[2.0; 0.0]
+prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
+solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 4th order &quot;free&quot; interpolation
+t: 11-element Vector{Float32}:
+ 0.0
+ 0.0019580016
+ 0.0057375217
+ 0.012008848
+ 0.02437574
+ 0.047442265
+ 0.09651393
+ 0.18607457
+ 0.3567384
+ 0.63593435
+ 1.0
+u: 11-element Vector{Vector{Float32}}:
+ [2.0, 0.0]
+ [2.0005665, 0.0009996447]
+ [2.0016632, 0.0029300672]
+ [2.0034928, 0.0061355806]
+ [2.0071363, 0.012465463]
+ [2.0140572, 0.024302714]
+ [2.0293133, 0.049619205]
+ [2.0589678, 0.096295714]
+ [2.1215703, 0.1869427]
+ [2.2395356, 0.34021786]
+ [2.4186819, 0.55041677]</code></pre><p>or we can solve this ODE where the initial condition is a matrix, where each column is an independent system:</p><pre><code class="language-julia hljs">u0 = Float32.([0 1 2
+               0 0 0])
+prob = ODEProblem(f, u0, (0.0f0, 1.0f0), p)
+solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 4th order &quot;free&quot; interpolation
+t: 12-element Vector{Float32}:
+ 0.0
+ 0.001504602
+ 0.00399717
+ 0.008778272
+ 0.017531913
+ 0.03417383
+ 0.06202752
+ 0.11427973
+ 0.21731502
+ 0.4062301
+ 0.68807846
+ 1.0
+u: 12-element Vector{Matrix{Float32}}:
+ [0.0 1.0 2.0; 0.0 0.0 0.0]
+ [0.00056237966 1.0005591 2.000435; 0.0004478931 0.0009441312 0.0007681389]
+ [0.0014958973 1.0014877 2.0011575; 0.0011915138 0.0025090547 0.002041036]
+ [0.0032930388 1.0032778 2.0025487; 0.0026235813 0.0055137547 0.0044839447]
+ [0.0066057043 1.0065851 2.005114; 0.0052650105 0.01102511 0.008961091]
+ [0.012983772 1.0129784 2.010056; 0.010356767 0.021539286 0.017488725]
+ [0.023897314 1.0239842 2.018516; 0.019086964 0.039244488 0.031808317]
+ [0.0451955 1.0456346 2.0350118; 0.036184233 0.072828725 0.058829732]
+ [0.09047407 1.0919671 2.0698438; 0.07277606 0.14050832 0.11272125]
+ [0.18542151 1.1882141 2.1411312; 0.15063244 0.26976955 0.21365358]
+ [0.35621154 1.3545192 2.2635224; 0.29595625 0.4749288 0.3695675]
+ [0.58041286 1.5638719 2.4186816; 0.50112784 0.71723026 0.5504166]</code></pre><p>On the CPU this will multithread across the system (due to BLAS) and on GPUs this will parallelize the operations across the GPU. To GPU this, you&#39;d simply move the parameters and the initial condition to the GPU:</p><pre><code class="language-julia hljs">xs = Float32.([0 1 2
+               0 0 0])
+prob = ODEProblem(f, gdev(u0), (0.0f0, 1.0f0), gdev(p))
+solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: specialized 4th order &quot;free&quot; interpolation
+t: 12-element Vector{Float32}:
+ 0.0
+ 0.0015046021
+ 0.004351397
+ 0.009287545
+ 0.019136533
+ 0.036436766
+ 0.068245694
+ 0.12702945
+ 0.23359999
+ 0.42974663
+ 0.7046697
+ 1.0
+u: 12-element Vector{CUDA.CuArray{Float32, 2, CUDA.DeviceMemory}}:
+ [0.0 1.0 2.0; 0.0 0.0 0.0]
+ [0.00056237954 1.0005591 2.000435; 0.0004478928 0.00094413274 0.0007681386]
+ [0.0016287512 1.0016199 2.0012603; 0.0012973567 0.0027315365 0.0022219704]
+ [0.0034849728 1.0034691 2.0026972; 0.0027765625 0.0058340398 0.00474426]
+ [0.0072160857 1.0071955 2.0055869; 0.00575195 0.012036817 0.009782415]
+ [0.013859231 1.0138583 2.0107346; 0.01105627 0.02297267 0.01864991]
+ [0.026375 1.0264926 2.0204368; 0.021071944 0.043215636 0.035013102]
+ [0.050559167 1.051111 2.0391583; 0.040501855 0.08109784 0.06545451]
+ [0.09804173 1.0997099 2.0756195; 0.07892373 0.1513856 0.12131318]
+ [0.19835025 1.2011199 2.1506374; 0.16136993 0.28633228 0.22641356]
+ [0.3672936 1.3650379 2.2712767; 0.3056839 0.48744106 0.37895653]
+ [0.58041286 1.5638716 2.4186816; 0.5011278 0.71723044 0.5504167]</code></pre><p>This method of parallelism is optimal if all the operations are linear algebra operations, such as a neural ODE. Thus this method of parallelism is demonstrated in the <a href="https://docs.sciml.ai/DiffEqFlux/stable/examples/mnist_neural_ode/">MNIST tutorial</a>.</p><p>However, this method of parallelism has many limitations. First of all, the ODE function is required to be written in a way that is independent across the columns. Not all ODEs are written like this, so one needs to be careful. But additionally, this method is ineffective if the ODE function has many serial operations, like <code>u[1]*u[2] - u[3]</code>. In such a case, this indexing behavior will dominate the runtime and cause the parallelism to sometimes even be detrimental.</p><h1 id="Out-of-ODE-Parallelism"><a class="docs-heading-anchor" href="#Out-of-ODE-Parallelism">Out of ODE Parallelism</a><a id="Out-of-ODE-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Out-of-ODE-Parallelism" title="Permalink"></a></h1><p>Instead of parallelizing within an ODE solve, one can parallelize the solves to the ODE itself. While this will be less effective on very large ODEs, like big neural ODE image classifiers, this method be effective even if the ODE is small or the <code>f</code> function is not well-parallelized. This kind of parallelism is done via the <a href="https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/">DifferentialEquations.jl ensemble interface</a>. The following examples showcase multithreaded, cluster, and (multi)GPU parallelism through this interface.</p><h2 id="Multithreaded-Batching-At-a-Glance"><a class="docs-heading-anchor" href="#Multithreaded-Batching-At-a-Glance">Multithreaded Batching At a Glance</a><a id="Multithreaded-Batching-At-a-Glance-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-At-a-Glance" title="Permalink"></a></h2><p>The following is a full copy-paste example for the multithreading. Distributed and GPU minibatching are described below.</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, Optimization, OptimizationOptimisers, SciMLSensitivity
+pa = [1.0]
+u0 = [3.0]
+θ = [u0; pa]
+
+function model1(θ, ensemble)
+    prob = ODEProblem((u, p, t) -&gt; 1.01u .* p, [θ[1]], (0.0, 1.0), [θ[2]])
+
+    function prob_func(prob, i, repeat)
+        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    end
+
+    ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+    sim = solve(ensemble_prob, Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
+end
+
+# loss function
+loss_serial(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleSerial())))
+loss_threaded(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleThreads())))
+
+callback = function (θ, l) # callback function to observe training
+    @show l
+    false
+end
+
+opt = Adam(0.1)
+l1 = loss_serial(θ)
+
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss_serial(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
+
+res_serial = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)
+
+optf2 = Optimization.OptimizationFunction((x, p) -&gt; loss_threaded(x), adtype)
+optprob2 = Optimization.OptimizationProblem(optf2, θ)
+
+res_threads = Optimization.solve(optprob2, opt; callback = callback, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
+u: 2-element Vector{Float64}:
+  1.0931363394597198
+ -0.40775830814102637</code></pre><h2 id="Multithreaded-Batching-In-Depth"><a class="docs-heading-anchor" href="#Multithreaded-Batching-In-Depth">Multithreaded Batching In-Depth</a><a id="Multithreaded-Batching-In-Depth-1"></a><a class="docs-heading-anchor-permalink" href="#Multithreaded-Batching-In-Depth" title="Permalink"></a></h2><p>In order to make use of the ensemble interface, we need to build an <code>EnsembleProblem</code>. The <code>prob_func</code> is the function for determining the different <code>DEProblem</code>s to solve. This is the place where we can randomly sample initial conditions or pull initial conditions from an array of batches in order to perform our study. To do this, we first define a prototype <code>DEProblem</code>. Here, we use the following <code>ODEProblem</code> as our base:</p><pre><code class="language-julia hljs">prob = ODEProblem((u, p, t) -&gt; 1.01u .* p, [θ[1]], (0.0, 1.0), [θ[2]])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr38_2" style="color:#56b6c2">ODEProblem</span> with uType <span class="sgr38_2" style="color:#56b6c2">Vector{Float64}</span> and tType <span class="sgr38_2" style="color:#56b6c2">Float64</span>. In-place: <span class="sgr38_2" style="color:#56b6c2">false</span>
+timespan: (0.0, 1.0)
+u0: 1-element Vector{Float64}:
+ 3.0</code></pre><p>In the <code>prob_func</code> we define how to build a new problem based on the base problem. In this case, we want to change <code>u0</code> by a constant, i.e. <code>0.5 .+ i/100 .* prob.u0</code> for different trajectories labelled by <code>i</code>. Thus we use the <a href="https://docs.sciml.ai/DiffEqDocs/stable/basics/problem/#Modification-of-problem-types">remake function from the problem interface</a> to do so:</p><pre><code class="language-julia hljs">function prob_func(prob, i, repeat)
+    remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">prob_func (generic function with 1 method)</code></pre><p>We now build the <code>EnsembleProblem</code> with this basis:</p><pre><code class="language-julia hljs">ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleProblem with problem ODEProblem</code></pre><p>Now, to solve an ensemble problem, we need to choose an ensembling algorithm and choose the number of trajectories to solve. Here let&#39;s solve this in serial with 100 trajectories. Note that <code>i</code> will thus run from <code>1:100</code>.</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleSerial(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, @NamedTuple{}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEqTsit5.Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, OrdinaryDiffEqCore.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, OrdinaryDiffEqTsit5.Tsit5ConstantCache, Nothing}, SciMLBase.DEStats, Nothing, Nothing, Nothing, Nothing}</code></pre><p>and thus running in multithreading would be:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleThreads(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, @NamedTuple{}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEqTsit5.Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, OrdinaryDiffEqCore.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, OrdinaryDiffEqTsit5.Tsit5ConstantCache, Nothing}, SciMLBase.DEStats, Nothing, Nothing, Nothing, Nothing}</code></pre><p>This whole mechanism is differentiable, so we then put it in a training loop and it soars. Note that you need to make sure that <a href="https://docs.julialang.org/en/v1/manual/multi-threading/">Julia&#39;s multithreading</a> is enabled, which you can do via:</p><pre><code class="language-julia hljs">Threads.nthreads()</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1</code></pre><h2 id="Distributed-Batching-Across-a-Cluster"><a class="docs-heading-anchor" href="#Distributed-Batching-Across-a-Cluster">Distributed Batching Across a Cluster</a><a id="Distributed-Batching-Across-a-Cluster-1"></a><a class="docs-heading-anchor-permalink" href="#Distributed-Batching-Across-a-Cluster" title="Permalink"></a></h2><p>Changing to distributed computing is very simple as well. The setup is all the same, except you utilize <code>EnsembleDistributed</code> as the ensembler:</p><pre><code class="language-julia hljs">sim = solve(ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1, trajectories = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 100 with uType:
+SciMLBase.ODESolution{Float64, 2, Vector{Vector{Float64}}, Nothing, Nothing, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, SciMLBase.ODEProblem{Vector{Float64}, Tuple{Float64, Float64}, false, Vector{Float64}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Tuple{}, @NamedTuple{}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEqTsit5.Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), Static.False}, OrdinaryDiffEqCore.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, Main.var&quot;#10#11&quot;, LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Vector{Vector{Float64}}, Vector{Float64}, Vector{Vector{Vector{Float64}}}, Nothing, OrdinaryDiffEqTsit5.Tsit5ConstantCache, Nothing}, SciMLBase.DEStats, Nothing, Nothing, Nothing, Nothing}</code></pre><p>Note that for this to work, you need to ensure that your processes are already started. For more information on setting up processes and utilizing a compute cluster, see <a href="https://docs.julialang.org/en/v1/manual/distributed-computing/">the official distributed documentation</a>. The key feature to recognize is that, due to the message passing required for cluster compute, one must ensure that all the required functions are defined on the worker processes. The following is a full example of a distributed batching setup:</p><pre><code class="language-julia hljs">using Distributed
+addprocs(4)
+
+@everywhere begin
+    using OrdinaryDiffEq, Optimization, OptimizationOptimisers
+    function f(u, p, t)
+        1.01u .* p
+    end
+end
+
+pa = [1.0]
+u0 = [3.0]
+θ = [u0; pa]
+
+function model1(θ, ensemble)
+    prob = ODEProblem(f, [θ[1]], (0.0, 1.0), [θ[2]])
+
+    function prob_func(prob, i, repeat)
+        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    end
+
+    ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+    sim = solve(ensemble_prob, Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
+end
+
+callback = function (θ, l) # callback function to observe training
+    @show l
+    false
+end
+
+opt = Adam(0.1)
+loss_distributed(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleDistributed())))
+l1 = loss_distributed(θ)
+
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss_distributed(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
+
+res_distributed = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><p>And note that only <code>addprocs(4)</code> needs to be changed in order to make this demo run across a cluster. For more information on adding processes to a cluster, check out <a href="https://github.com/JuliaParallel/ClusterManagers.jl">ClusterManagers.jl</a>.</p><h2 id="Minibatching-Across-GPUs-with-DiffEqGPU"><a class="docs-heading-anchor" href="#Minibatching-Across-GPUs-with-DiffEqGPU">Minibatching Across GPUs with DiffEqGPU</a><a id="Minibatching-Across-GPUs-with-DiffEqGPU-1"></a><a class="docs-heading-anchor-permalink" href="#Minibatching-Across-GPUs-with-DiffEqGPU" title="Permalink"></a></h2><p>DiffEqGPU.jl allows for generating code parallelizes an ensemble on generated CUDA kernels. This method is efficient for sufficiently small (&lt;100 ODE) problems, where the significant computational cost is due to the large number of batch trajectories that need to be solved. This kernel-building process adds a few restrictions to the function, such as requiring it has no boundschecking or allocations. The following is an example of minibatch ensemble parallelism across a GPU:</p><pre><code class="language-julia hljs">using DifferentialEquations, Optimization, OptimizationOptimisers, DiffEqGPU
+function f(du, u, p, t)
+    @inbounds begin
+        du[1] = 1.01 * u[1] * p[1] * p[2]
+    end
+end
+
+pa = [1.0]
+u0 = [3.0]
+θ = [u0; pa]
+
+function model1(θ, ensemble)
+    prob = ODEProblem(f, [θ[1]], (0.0, 1.0), [θ[2]])
+
+    function prob_func(prob, i, repeat)
+        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    end
+
+    ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+    sim = solve(ensemble_prob, Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
+end
+
+callback = function (θ, l) # callback function to observe training
+    @show l
+    false
+end
+
+opt = Adam(0.1)
+loss_gpu(θ) = sum(abs2, 1.0 .- Array(model1(θ, EnsembleGPUArray())))
+l1 = loss_gpu(θ)
+
+adtype = Optimization.AutoZygote()
+optf = Optimization.OptimizationFunction((x, p) -&gt; loss_gpu(x), adtype)
+optprob = Optimization.OptimizationProblem(optf, θ)
+
+res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)</code></pre><h2 id="Multi-GPU-Batching"><a class="docs-heading-anchor" href="#Multi-GPU-Batching">Multi-GPU Batching</a><a id="Multi-GPU-Batching-1"></a><a class="docs-heading-anchor-permalink" href="#Multi-GPU-Batching" title="Permalink"></a></h2><p>DiffEqGPU supports batching across multiple GPUs. See <a href="https://github.com/SciML/DiffEqGPU.jl#setting-up-multi-gpu">its README</a> for details on setting it up.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../adjoint_continuous_functional/">« Adjoint Sensitivity Analysis of Continuous Functionals</a><a class="docs-footer-nextpage" href="../chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.8.0 on <span class="colophon-date" title="Monday 18 November 2024 15:24">Monday 18 November 2024</span>. Using Julia version 1.11.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
