@@ -135,6 +135,14 @@ _, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint())
+_, easy_res15 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = InterpolatingAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
+_, easy_res16 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = QuadratureAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
 _, easy_res142 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -158,6 +166,10 @@ _, easy_res146 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discret
     sensealg = GaussAdjoint(checkpointing = true,
         autojacvec = false),
     checkpoints = sol.t[1:500:end])
+_, easy_res147 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -189,11 +201,14 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res13, rtol = 1e-9)
 @test isapprox(res, easy_res14, rtol = 1e-9)
+@test isapprox(res, easy_res15, rtol = 1e-9)
+@test isapprox(res, easy_res16, rtol = 1e-9)
 @test isapprox(res, easy_res142, rtol = 1e-9)
 @test isapprox(res, easy_res143, rtol = 1e-9)
 @test isapprox(res, easy_res144, rtol = 1e-9)
 @test isapprox(res, easy_res145, rtol = 1e-9)
 @test isapprox(res, easy_res146, rtol = 1e-9)
+@test isapprox(res, easy_res147, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 

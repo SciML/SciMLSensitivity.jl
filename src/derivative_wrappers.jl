@@ -751,6 +751,68 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     return
 end
 
+function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::MooncakeVJP, dgrad, dy,
+        W) where {TS <: SensitivityFunction}
+    (; sensealg) = S
+    prob = getprob(S)
+    f = unwrapped_f(S.f)
+
+    if inplace_sensitivity(S)
+        rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem  = S.diffcache.paramjac_config
+        λ_mem .= λ
+        coduals = (
+            Mooncake.CoDual(pf, Mooncake.set_to_zero!!(pf_grad)),
+            Mooncake.CoDual(dy_mem, dy_mem_grad),
+            Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad)),
+            Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad)),
+            Mooncake.zero_codual(t), # t is a Float64, so zero_codual is basically free.
+        )
+        __dy, pb!! = rule(map(Mooncake.to_fwds, coduals)...)
+        dy !== nothing && recursive_copyto!(dy, __dy) # grab a copy of the final value.
+
+        # Copy fdata across and run the reverse-pass.
+        Mooncake.increment!!(__dy.dx, Mooncake.fdata(λ_mem))
+        rdata_out = pb!!(Mooncake.rdata(λ_mem))
+        (_, _, grad_y, grad_p, _) = map(
+            (f, r) -> Mooncake.tangent(Mooncake.fdata(f.dx), r), coduals, rdata_out
+        )
+
+        # Copy values to target memory.
+        dλ !== nothing && recursive_copyto!(dλ, grad_y)
+        dgrad !== nothing && recursive_copyto!(dgrad, grad_p)
+    else
+        @show "out-of-place"
+        if W === nothing
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(f(u, p, t))
+            end
+        else
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(f(u, p, t, W))
+            end
+        end
+
+        # Grab values from `_dy` before `back` in case mutated
+        dy !== nothing && recursive_copyto!(dy, _dy)
+
+        tmp1, tmp2 = back(λ)
+        if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
+            throw(ZygoteVJPNothingError())
+        elseif tmp1 !== nothing
+            dλ !== nothing && recursive_copyto!(dλ, tmp1)
+        end
+
+        if dgrad !== nothing
+            if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
+                throw(ZygoteVJPNothingError())
+            elseif tmp2 !== nothing
+                !isempty(dgrad) && recursive_copyto!(dgrad, tmp2)
+            end
+        end
+    end
+    return
+end
+
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
         dgrad = nothing, dλ = nothing, dy = nothing)
     _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)

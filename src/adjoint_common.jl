@@ -211,6 +211,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+    elseif autojacvec isa MooncakeVJP
+        pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
+        paramjac_config = get_paramjac_config(autojacvec, pf, p, f, y, _p, _t; numindvar, alg)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -460,6 +463,20 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
     return paramjac_config
 end
 
+function get_paramjac_config(
+    ::MooncakeVJP, pf, p, f, y, _p, _t;
+    numindvar, alg, isinplace = nothing, isRODE = nothing, _W = nothing,
+)
+    dy_mem = zero(y)
+    dy_mem_grad = Mooncake.zero_tangent(dy_mem)
+    pf_grad = Mooncake.zero_tangent(pf)
+    y_grad = Mooncake.zero_tangent(y)
+    p_grad = Mooncake.zero_tangent(p)
+    λ_mem = zero(y)
+    rule = Mooncake.build_rrule(pf, dy_mem, y, p, _t)
+    return rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem
+end
+
 function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
         isRODE = nothing)
     nothing
@@ -487,6 +504,33 @@ function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
             function (out, u, _p, t)
                 out .= f(u, _p, t)
                 nothing
+            end
+        end
+    end
+end
+
+function get_pf(autojacvec::MooncakeVJP; _f, isinplace, isRODE)
+    pf = let f = _f
+        if isinplace && isRODE
+            function (out, u, _p, t, W)
+                f(out, u, _p, t, W)
+                return out
+            end
+        elseif isinplace
+            function (out, u, _p, t)
+                f(out, u, _p, t)
+                return out
+            end
+        elseif !isinplace && isRODE
+            function (out, u, _p, t, W)
+                out .= f(u, _p, t, W)
+                return out
+            end
+        else
+            # !isinplace
+            function (out, u, _p, t)
+                out .= f(u, _p, t)
+                return out
             end
         end
     end

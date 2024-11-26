@@ -428,6 +428,31 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         end
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
+    elseif sensealg.autojacvec isa MooncakeVJP
+        pf = let f = unwrappedf
+            if DiffEqBase.isinplace(prob)
+                function (out, u, _p, t)
+                    f(out, u, _p, t)
+                    return out
+                end
+            else
+                !DiffEqBase.isinplace(prob)
+                function (out, u, _p, t)
+                    out .= f(u, _p, t)
+                    return out
+                end
+            end
+        end
+        pf_grad_mem = Mooncake.zero_tangent(pf)
+        dy_mem = zero(y)
+        dy_grad_mem = zero(y)
+        y_grad_mem = zero(y)
+        p_grad_mem = Mooncake.zero_tangent(p)
+        rule = Mooncake.build_rrule(pf, dy_mem, y, p, tspan[2])
+        paramjac_config = (
+            pf_grad_mem, dy_mem, dy_grad_mem, y_grad_mem, p_grad_mem, rule
+        )
+        pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
         pf = nothing
@@ -500,6 +525,18 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
             Enzyme.Duplicated(tmp3, tmp4),
             Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+    elseif sensealg.autojacvec isa MooncakeVJP
+        pf_grad_mem, dy_mem, dy_grad_mem, y_grad_mem, p_grad_mem, rule = paramjac_config
+        _, (_, _, _, _out, _) = Mooncake.__value_and_pullback!!(
+            rule,
+            λ,
+            Mooncake.CoDual(pf, pf_grad_mem),
+            Mooncake.CoDual(dy_mem, dy_grad_mem),
+            Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad_mem)),
+            Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad_mem)),
+            Mooncake.zero_codual(t),
+        )
+        out .= _out
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
