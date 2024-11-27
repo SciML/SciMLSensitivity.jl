@@ -510,16 +510,13 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
     elseif sensealg.autojacvec isa MooncakeVJP
         rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, _ = paramjac_config
-        _, (_, _, _, _out, _) = Mooncake.__value_and_pullback!!(
-            rule,
-            λ,
-            Mooncake.CoDual(pf, pf_grad),
-            Mooncake.CoDual(dy_mem, dy_mem_grad),
-            Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad)),
-            Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad)),
-            Mooncake.zero_codual(t),
-        )
-        out .= _out
+        _pf = Mooncake.CoDual(pf, pf_grad)
+        _dy_mem = Mooncake.CoDual(dy_mem, dy_mem_grad)
+        _y = Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad))
+        _p = Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad))
+        _t = Mooncake.zero_codual(t)
+        Mooncake.__value_and_pullback!!(rule, λ, _pf, _dy_mem, _y, _p, _t)
+        out .= p_grad
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end

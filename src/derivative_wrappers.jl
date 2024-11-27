@@ -758,7 +758,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::MooncakeVJP, dgrad
     f = unwrapped_f(S.f)
 
     if inplace_sensitivity(S)
-        rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem  = S.diffcache.paramjac_config
+        paramjac_config = S.diffcache.paramjac_config
+        rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem = paramjac_config
         λ_mem .= λ
         coduals = (
             Mooncake.CoDual(pf, Mooncake.set_to_zero!!(pf_grad)),
