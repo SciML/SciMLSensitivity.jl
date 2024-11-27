@@ -213,7 +213,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif autojacvec isa MooncakeVJP
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
-        paramjac_config = get_paramjac_config(autojacvec, pf, p, f, y, _t; numindvar, alg)
+        paramjac_config = get_paramjac_config(autojacvec, pf, p, f, y, _t)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -463,10 +463,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
     return paramjac_config
 end
 
-function get_paramjac_config(
-    ::MooncakeVJP, pf, p, f, y, _t;
-    numindvar, alg, isinplace = nothing, isRODE = nothing, _W = nothing,
-)
+function get_paramjac_config(::MooncakeVJP, pf, p, f, y, _t)
     dy_mem = zero(y)
     dy_mem_grad = Mooncake.zero_tangent(dy_mem)
     pf_grad = Mooncake.zero_tangent(pf)

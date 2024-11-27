@@ -239,9 +239,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         isinplace = DiffEqBase.isinplace(prob)
         isRODE = isa(prob, RODEProblem)
         pf = get_pf(sensealg.autojacvec; _f=f, isinplace, isRODE)
-        paramjac_config = get_paramjac_config(
-            sensealg.autojacvec, pf, p, f, y, tspan[2]; numindvar=length(y), alg=nothing
-        )
+        paramjac_config = get_paramjac_config(sensealg.autojacvec, pf, p, f, y, tspan[2])
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
