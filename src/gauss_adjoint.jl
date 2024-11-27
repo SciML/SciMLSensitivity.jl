@@ -429,28 +429,11 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
-        pf = let f = unwrappedf
-            if DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    f(out, u, _p, t)
-                    return out
-                end
-            else
-                !DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    out .= f(u, _p, t)
-                    return out
-                end
-            end
-        end
-        pf_grad_mem = Mooncake.zero_tangent(pf)
-        dy_mem = zero(y)
-        dy_grad_mem = zero(y)
-        y_grad_mem = zero(y)
-        p_grad_mem = Mooncake.zero_tangent(p)
-        rule = Mooncake.build_rrule(pf, dy_mem, y, p, tspan[2])
-        paramjac_config = (
-            pf_grad_mem, dy_mem, dy_grad_mem, y_grad_mem, p_grad_mem, rule
+        isinplace = DiffEqBase.isinplace(prob)
+        isRODE = isa(prob, RODEProblem)
+        pf = get_pf(sensealg.autojacvec; _f=f, isinplace, isRODE)
+        paramjac_config = get_paramjac_config(
+            sensealg.autojacvec, pf, p, f, y, tspan[2]; numindvar=length(y), alg=nothing
         )
         pJ = nothing
     elseif isautojacvec # Zygote
@@ -526,14 +509,14 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.Duplicated(tmp3, tmp4),
             Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
     elseif sensealg.autojacvec isa MooncakeVJP
-        pf_grad_mem, dy_mem, dy_grad_mem, y_grad_mem, p_grad_mem, rule = paramjac_config
+        rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, _ = paramjac_config
         _, (_, _, _, _out, _) = Mooncake.__value_and_pullback!!(
             rule,
             λ,
-            Mooncake.CoDual(pf, pf_grad_mem),
-            Mooncake.CoDual(dy_mem, dy_grad_mem),
-            Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad_mem)),
-            Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad_mem)),
+            Mooncake.CoDual(pf, pf_grad),
+            Mooncake.CoDual(dy_mem, dy_mem_grad),
+            Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad)),
+            Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad)),
             Mooncake.zero_codual(t),
         )
         out .= _out
