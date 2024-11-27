@@ -212,7 +212,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif autojacvec isa MooncakeVJP
-        pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
+        pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(autojacvec, pf, p, f, y, _t)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
@@ -506,7 +506,9 @@ function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
     end
 end
 
-function get_pf(autojacvec::MooncakeVJP; _f, isinplace, isRODE)
+function get_pf(::MooncakeVJP, prob, _f)
+    isinplace = DiffEqBase.isinplace(prob)
+    isRODE = isa(prob, RODEProblem)
     pf = let f = _f
         if isinplace && isRODE
             function (out, u, _p, t, W)
