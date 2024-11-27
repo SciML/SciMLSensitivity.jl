@@ -239,13 +239,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         isinplace = DiffEqBase.isinplace(prob)
         isRODE = isa(prob, RODEProblem)
         pf = get_pf(sensealg.autojacvec; _f=f, isinplace, isRODE)
-        # pf_grad_mem = Mooncake.zero_tangent(pf)
-        # dy_mem = zero(y)
-        # dy_grad_mem = zero(y)
-        # y_grad_mem = zero(y)
-        # p_grad_mem = Mooncake.zero_tangent(p)
-        # rule = Mooncake.build_rrule(pf, dy_mem, y, p, tspan[2])
-        # paramjac_config = (pf_grad_mem, dy_mem, dy_grad_mem, y_grad_mem, p_grad_mem, rule)
         paramjac_config = get_paramjac_config(
             sensealg.autojacvec, pf, p, f, y, tspan[2]; numindvar=length(y), alg=nothing
         )
