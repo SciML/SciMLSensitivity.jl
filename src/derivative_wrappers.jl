@@ -751,8 +751,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, ::MooncakeVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, dgrad, dy, W)
 
     # Compute gradients.
     paramjac_config = S.diffcache.paramjac_config
