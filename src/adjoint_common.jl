@@ -535,6 +535,18 @@ function get_pf(::MooncakeVJP, prob, _f)
     end
 end
 
+function mooncake_run_ad(paramjac_config, y, p, t, λ)
+    rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem = paramjac_config
+    _pf = Mooncake.CoDual(pf, pf_grad)
+    _dy_mem = Mooncake.CoDual(dy_mem, dy_mem_grad)
+    _y = Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad))
+    _p = Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad))
+    _t = Mooncake.zero_codual(t)
+    λ_mem .= λ
+    dy, _ = Mooncake.__value_and_pullback!!(rule, λ_mem, _pf, _dy_mem, _y, _p, _t)
+    return dy, y_grad, p_grad
+end
+
 function getprob(S::SensitivityFunction)
     (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 end

@@ -752,23 +752,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, dgrad, dy, W)
-
-    # Compute gradients.
-    paramjac_config = S.diffcache.paramjac_config
-    rule, pf, pf_grad, dy_mem, dy_mem_grad, y_grad, p_grad, λ_mem = paramjac_config
-    _pf = Mooncake.CoDual(pf, pf_grad)
-    _dy_mem = Mooncake.CoDual(dy_mem, dy_mem_grad)
-    _y = Mooncake.CoDual(y, Mooncake.set_to_zero!!(y_grad))
-    _p = Mooncake.CoDual(p, Mooncake.set_to_zero!!(p_grad))
-    _t = Mooncake.zero_codual(t)
-    λ_mem .= λ
-    _dy, _ = Mooncake.__value_and_pullback!!(rule, λ_mem, _pf, _dy_mem, _y, _p, _t)
-
-    # Copy values to target memory.
+    _dy, y_grad, p_grad = mooncake_run_ad(S.diffcache.paramjac_config, y, p, t, λ)
     dy !== nothing && recursive_copyto!(dy, _dy)
     dλ !== nothing && recursive_copyto!(dλ, y_grad)
     dgrad !== nothing && recursive_copyto!(dgrad, p_grad)
-
     return
 end
 
