@@ -431,7 +431,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     elseif sensealg.autojacvec isa MooncakeVJP
         isinplace = DiffEqBase.isinplace(prob)
         isRODE = isa(prob, RODEProblem)
-        pf = get_pf(sensealg.autojacvec; _f=f, isinplace, isRODE)
+        pf = get_pf(sensealg.autojacvec; _f = f, isinplace, isRODE)
         paramjac_config = get_paramjac_config(sensealg.autojacvec, pf, p, f, y, tspan[2])
         pJ = nothing
     elseif isautojacvec # Zygote
