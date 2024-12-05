@@ -430,7 +430,8 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
         pf = get_pf(sensealg.autojacvec, prob, f)
-        paramjac_config = get_paramjac_config(sensealg.autojacvec, pf, p, f, y, tspan[2])
+        paramjac_config = get_paramjac_config(
+            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2])
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing

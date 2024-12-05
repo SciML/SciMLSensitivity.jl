@@ -213,7 +213,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif autojacvec isa MooncakeVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
-        paramjac_config = get_paramjac_config(autojacvec, pf, p, f, y, _t)
+        paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -463,11 +463,13 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
     return paramjac_config
 end
 
-function get_paramjac_config(::MooncakeVJP, pf, p, f, y, _t)
-    dy_mem = zero(y)
-    λ_mem = zero(y)
-    cache = Mooncake.prepare_pullback_cache(pf, dy_mem, y, p, _t)
-    return cache, pf, λ_mem, dy_mem
+# Dispatched on inside extension.
+struct MooncakeLoaded end
+
+function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+          "`using Mooncake` to use this functionality"
+    error(msg)
 end
 
 function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
@@ -532,12 +534,9 @@ function get_pf(::MooncakeVJP, prob, _f)
 end
 
 function mooncake_run_ad(paramjac_config, y, p, t, λ)
-    cache, pf, λ_mem, dy_mem = paramjac_config
-    λ_mem .= λ
-    dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, p, t)
-    y_grad = cache.tangents[3]
-    p_grad = cache.tangents[4]
-    return dy, y_grad, p_grad
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+          "`using Mooncake` to use this functionality"
+    error(msg)
 end
 
 function getprob(S::SensitivityFunction)
