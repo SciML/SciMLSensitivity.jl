@@ -1226,6 +1226,23 @@ struct ReverseDiffVJP{compile} <: VJPChoice
     ReverseDiffVJP(compile = false) = new{compile}()
 end
 
+"""
+```julia
+MooncakeVJP <: VJPChoice
+```
+
+Uses Mooncake.jl to compute the vector-Jacobian products.
+
+Does not support GPUs (CuArrays).
+
+## Constructor
+
+```julia
+MooncakeVJP()
+```
+"""
+struct MooncakeVJP <: VJPChoice end
+
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
 @inline function alg_autodiff(alg::AbstractSensitivityAlgorithm{

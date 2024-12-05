@@ -751,6 +751,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     return
 end
 
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, dgrad, dy, W)
+    _dy, y_grad, p_grad = mooncake_run_ad(S.diffcache.paramjac_config, y, p, t, λ)
+    dy !== nothing && recursive_copyto!(dy, _dy)
+    dλ !== nothing && recursive_copyto!(dλ, y_grad)
+    dgrad !== nothing && recursive_copyto!(dgrad, p_grad)
+    return
+end
+
 function jacNoise!(λ, y, p, t, S::SensitivityFunction;
         dgrad = nothing, dλ = nothing, dy = nothing)
     _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)

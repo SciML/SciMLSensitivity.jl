@@ -211,6 +211,9 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+    elseif autojacvec isa MooncakeVJP
+        pf = get_pf(autojacvec, prob, unwrappedf)
+        paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
            autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -460,6 +463,15 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
     return paramjac_config
 end
 
+# Dispatched on inside extension.
+struct MooncakeLoaded end
+
+function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+          "`using Mooncake` to use this functionality"
+    error(msg)
+end
+
 function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
         isRODE = nothing)
     nothing
@@ -490,6 +502,41 @@ function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
             end
         end
     end
+end
+
+function get_pf(::MooncakeVJP, prob, _f)
+    isinplace = DiffEqBase.isinplace(prob)
+    isRODE = isa(prob, RODEProblem)
+    pf = let f = _f
+        if isinplace && isRODE
+            function (out, u, _p, t, W)
+                f(out, u, _p, t, W)
+                return out
+            end
+        elseif isinplace
+            function (out, u, _p, t)
+                f(out, u, _p, t)
+                return out
+            end
+        elseif !isinplace && isRODE
+            function (out, u, _p, t, W)
+                out .= f(u, _p, t, W)
+                return out
+            end
+        else
+            # !isinplace
+            function (out, u, _p, t)
+                out .= f(u, _p, t)
+                return out
+            end
+        end
+    end
+end
+
+function mooncake_run_ad(paramjac_config, y, p, t, λ)
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+          "`using Mooncake` to use this functionality"
+    error(msg)
 end
 
 function getprob(S::SensitivityFunction)

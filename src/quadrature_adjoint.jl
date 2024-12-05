@@ -235,6 +235,11 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         end
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
+    elseif sensealg.autojacvec isa MooncakeVJP
+        pf = get_pf(sensealg.autojacvec, prob, f)
+        paramjac_config = get_paramjac_config(
+            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2])
+        pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
         pf = nothing
@@ -288,6 +293,9 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         else
             out[:] .= vec(tmp[1])
         end
+    elseif sensealg.autojacvec isa MooncakeVJP
+        _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
+        out .= p_grad
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         tmp4 .= λ

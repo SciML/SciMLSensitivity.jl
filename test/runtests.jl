@@ -1,5 +1,6 @@
 using SciMLSensitivity, SafeTestsets
 using Test, Pkg
+import Mooncake
 
 const GROUP = get(ENV, "GROUP", "All")
 

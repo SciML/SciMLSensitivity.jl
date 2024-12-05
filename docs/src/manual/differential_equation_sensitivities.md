@@ -212,6 +212,7 @@ ZygoteVJP
 EnzymeVJP
 TrackerVJP
 ReverseDiffVJP
+MooncakeVJP
 ```
 
 ## More Details on Sensitivity Algorithm Choices
