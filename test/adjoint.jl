@@ -351,12 +351,12 @@ _, easy_res6_mc_back = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res122, rtol = 1e-9)
 @test isapprox(res, easy_res123, rtol = 1e-4)
-@test isapprox(res, easy_res2_mc_quad, rtol=1e-9)
-@test isapprox(res, easy_res2_mc_interp, rtol=1e-9)
-@test isapprox(res, easy_res2_mc_back, rtol=1e-9)
-@test isapprox(res, easy_res6_mc_quad, rtol=1e-4)
-@test isapprox(res, easy_res6_mc_interp, rtol=1e-9)
-@test isapprox(res, easy_res6_mc_back, rtol=1e-9)
+@test isapprox(res, easy_res2_mc_quad, rtol = 1e-9)
+@test isapprox(res, easy_res2_mc_interp, rtol = 1e-9)
+@test isapprox(res, easy_res2_mc_back, rtol = 1e-9)
+@test isapprox(res, easy_res6_mc_quad, rtol = 1e-4)
+@test isapprox(res, easy_res6_mc_interp, rtol = 1e-9)
+@test isapprox(res, easy_res6_mc_back, rtol = 1e-9)
 
 println("Calculate adjoint sensitivities ")
 
