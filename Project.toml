@@ -105,7 +105,7 @@ StochasticDiffEq = "6.69"
 SymbolicIndexingInterface = "0.3.26"
 Test = "1.10"
 Tracker = "0.2.30"
-Zygote = "0.6.67"
+Zygote = "0.6.67, 0.7"
 julia = "1.10"
 
 [extras]
