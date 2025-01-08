@@ -36,7 +36,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 Calculus = "0.5"
 ComponentArrays = "0.15"
-DataInterpolations = "3.10, 4, 5, 6"
+DataInterpolations = "3.10, 4, 5, 6, 7"
 DelayDiffEq = "5"
 DelimitedFiles = "1"
 DiffEqCallbacks = "2.24, 3, 4"
