@@ -534,7 +534,7 @@ end
 
         # parameter passing to NILSAS
         M = 2
-        nseg = 40
+        nseg = 50
         nstep = 101
 
         tspan_transient = (0.0, 30.0)
@@ -561,16 +561,16 @@ end
 
         @info resfw
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5())
-        res = shadow_adjoint(nilsas_prob, Tsit5())
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Vern7())
+        res = shadow_adjoint(nilsas_prob, Vern7())
 
         @info res
 
         @test resfw≈res atol=1e-1
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5(),
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Vern7(),
             dgdu_continuous = dg)
-        res = shadow_adjoint(nilsas_prob, Tsit5())
+        res = shadow_adjoint(nilsas_prob, Vern7())
 
         @info res
 
