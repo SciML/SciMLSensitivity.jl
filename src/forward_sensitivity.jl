@@ -608,7 +608,7 @@ end
 
 function extract_local_sensitivities(sol, ::ForwardDiffSensitivity, ::Val{true})
     retu = ForwardDiff.value.(sol)
-    jsize = length(state_values(sol, 1)), ForwardDiff.npartials(state_values(sol, 1)[1])
+    jsize = length(sol.u[1]), ForwardDiff.npartials(sol.u[1][1])
     du = map(state_values(sol)) do u
         du_i = similar(retu, jsize)
         for i in eachindex(u)
