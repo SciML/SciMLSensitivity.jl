@@ -15,7 +15,6 @@ pages = ["index.md",
             "examples/ode/second_order_adjoints.md",
             "examples/ode/second_order_neural.md"],
         "Neural Ordinary Differential Equations (Neural ODE)" => Any[
-            "examples/neural_ode/neural_ode_flux.md",
             "examples/neural_ode/simplechains.md",
             "examples/neural_ode/minibatch.md"],
         "Stochastic Differential Equations (SDEs)" => Any[
