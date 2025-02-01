@@ -212,7 +212,7 @@ ZygoteVJP
 EnzymeVJP
 TrackerVJP
 ReverseDiffVJP
-MooncakeVJP
+SciMLSensitivity.MooncakeVJP
 ```
 
 ## More Details on Sensitivity Algorithm Choices
