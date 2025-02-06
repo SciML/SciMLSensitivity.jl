@@ -174,6 +174,7 @@ function split_states(du, u, t, S::TS;
             interval = intervals[checkpoint_sol.cursor]
             if !(interval[1] <= t <= interval[2])
                 cursor′ = findcursor(intervals, t)
+                cursor′ = cursor′ > length(intervals) ? length(intervals) : cursor′
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
