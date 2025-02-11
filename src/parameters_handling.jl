@@ -9,6 +9,7 @@
 recursive_copyto!(y::AbstractArray, x::AbstractArray) = copyto!(y, x)
 recursive_copyto!(y::AbstractArray, x::Number) = y .= x
 recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
+recursive_copyto!(y::AbstractArray, x::Tuple) = recursive_copyto!(y, only(x))
 function recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F}
     map(recursive_copyto!, values(y), values(x))
 end
