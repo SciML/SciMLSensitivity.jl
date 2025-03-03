@@ -1508,11 +1508,11 @@ function DiffEqBase._concrete_solve_adjoint(
             kwargs_filtered...)
         t = current_time(sol)
         if DiffEqBase.isinplace(prob)
-            u = map.(ReverseDiff.value, state_values(sol))
+            u = map.(ReverseDiff.value, sol.u)
         else
-            u = map(ReverseDiff.value, state_values(sol))
+            u = map(ReverseDiff.value, sol.u)
         end
-        sol = SciMLBase.sensitivity_solution(sol, state_values(sol), t)
+        sol = SciMLBase.sensitivity_solution(sol, u, t)
         Array(sol)
     end
 
