@@ -113,7 +113,6 @@ end
     try
         tunables, repack, aliases = canonicalize(Tunable(), p)
         vjp_tunables, vjp_repack, vjp_aliases = canonicalize(Tunable(), vjp)
-        @show vjp
         vecjacobian!(vec(dgdu_val), y, λ, tunables, nothing, sense; dgrad = vjp_tunables, dy = nothing)
     catch e
         if sense.sensealg.autojacvec === nothing
