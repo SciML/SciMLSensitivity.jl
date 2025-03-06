@@ -425,6 +425,21 @@ function DiffEqBase._concrete_solve_adjoint(
             save_end = true, kwargs_fwd...)
     end
 
+    # Get gradients for the initialization problem if it exists
+    igs = if _prob.f.initialization_data.initializeprob != nothing
+        iprob = _prob.f.initialization_data.initializeprob
+        ip = parameter_values(iprob)
+        itunables, irepack, ialiases = canonicalize(Tunable(), ip)
+        igs, = Zygote.gradient(ip) do ip
+            iprob2 = remake(iprob, p = ip)
+            sol = solve(iprob2)
+            sum(Array(sol))
+        end
+        igs
+    else
+        nothing
+    end
+
     # Force `save_start` and `save_end` in the forward pass This forces the
     # solver to do the backsolve all the way back to `u0` Since the start aliases
     # `_prob.u0`, this doesn't actually use more memory But it cleans up the

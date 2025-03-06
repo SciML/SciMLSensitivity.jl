@@ -50,13 +50,12 @@ end
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
         f, f.colorvec, needs_jac)
     (; diffcache, y, sol, λ, vjp, linsolve) = sense
-
     if needs_jac
         if SciMLBase.has_jac(f)
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)
-                jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache,
+                jacobian!(diffcache.J.du, diffcache.uf, y, diffcache.f_cache,
                     sensealg, diffcache.jac_config)
             else
                 diffcache.J .= jacobian(diffcache.uf, y, sensealg)
@@ -103,7 +102,8 @@ end
     else
         if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
             # For the default case use `\` to avoid any form of unnecessary cache allocation
-            vec(λ) .= diffcache.J' \ vec(dgdu_val)
+            linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
+            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
         else
             linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
             solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
