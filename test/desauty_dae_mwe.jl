@@ -2,6 +2,9 @@ using ModelingToolkit, OrdinaryDiffEq
 using ModelingToolkitStandardLibrary.Electrical
 using ModelingToolkitStandardLibrary.Blocks: Sine
 using NonlinearSolve
+import SciMLStructures as SS
+import SciMLSensitivity
+using Zygote
 
 function create_model(; C₁ = 3e-5, C₂ = 1e-6)
     @variables t
@@ -30,20 +33,16 @@ end
 desauty_model = create_model()
 sys = structural_simplify(desauty_model)
 
-observed(isys)
-unknowns(sys)
 
 prob = ODEProblem(sys, [], (0.0, 0.1), guesses = [sys.resistor1.v => 1.])
 iprob = prob.f.initialization_data.initializeprob
 isys = iprob.f.sys
 
-mtkp = SII.parameter_values(iprob)
-
-tunables, repack, aliases = SS.canonicalize(SS.Tunable(), mtkp)
+tunables, repack, aliases = SS.canonicalize(SS.Tunable(), parameter_values(iprob))
 
 linsolve = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.QRFactorization)
 sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP(), linsolve = linsolve)
-igs, = gradient(tunables) do p
+igs, = Zygote.gradient(tunables) do p
     iprob2 = remake(iprob, p = repack(p))
     sol = solve(iprob2,
                 sensealg = sensealg
