@@ -1068,9 +1068,10 @@ end
 
 function build_param_jac_config(alg, pf, u, p)
     if alg_autodiff(alg)
-        jac_config = ForwardDiff.JacobianConfig(pf, u, p,
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+        jac_config = ForwardDiff.JacobianConfig(pf, u, tunables,
             ForwardDiff.Chunk{
-                determine_chunksize(p,
+                determine_chunksize(tunables,
                 alg)}())
     else
         if diff_type(alg) != Val{:complex}
