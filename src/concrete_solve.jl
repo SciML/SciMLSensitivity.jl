@@ -430,9 +430,10 @@ function DiffEqBase._concrete_solve_adjoint(
     igs = if _prob.f.initialization_data != nothing
         Zygote.gradient(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true))
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true); abstol = 1e-6, reltol = 1e-6)
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            sum(new_u0) + sum(new_tunables)
+            # sum(new_u0) + sum(new_tunables)
+            sum(new_tunables)
         end[1]
     else
         nothing
@@ -1706,9 +1707,10 @@ function DiffEqBase._concrete_solve_adjoint(
     igs = if _prob.f.initialization_data != nothing
         Zygote.gradient(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true))
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true); abstol = 1e-6, reltol = 1e-6)
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            sum(new_u0) + sum(new_tunables)
+            # sum(new_u0) + sum(new_tunables)
+            sum(new_tunables)
         end[1]
     else
         nothing
