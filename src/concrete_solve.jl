@@ -430,11 +430,17 @@ function DiffEqBase._concrete_solve_adjoint(
     igs = if _prob.f.initialization_data != nothing
         Zygote.gradient(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true); abstol = 1e-6, reltol = 1e-6)
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
+                                                            abstol = 1e-6,
+                                                            reltol = 1e-6,
+                                                            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            # sum(new_u0) + sum(new_tunables)
-            sum(new_tunables)
-        end[1]
+            if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
+                sum(new_tunables)
+            else
+                sum(new_u0) + sum(new_tunables)
+            end
+        end[1] .- one(eltype(tunables))
     else
         nothing
     end
@@ -1694,7 +1700,6 @@ function DiffEqBase._concrete_solve_adjoint(
         args...; save_idxs = nothing, kwargs...)
     _prob = remake(prob, u0 = u0, p = p)
     sol = solve(_prob, alg, args...; kwargs...)
-    @show sol
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     if save_idxs === nothing
@@ -1707,11 +1712,17 @@ function DiffEqBase._concrete_solve_adjoint(
     igs = if _prob.f.initialization_data != nothing
         Zygote.gradient(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true); abstol = 1e-6, reltol = 1e-6)
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
+                                                            abstol = 1e-6,
+                                                            reltol = 1e-6,
+                                                            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            # sum(new_u0) + sum(new_tunables)
-            sum(new_tunables)
-        end[1]
+            if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
+                sum(new_tunables)
+            else
+                sum(new_u0) + sum(new_tunables)
+            end
+        end[1] .- one(eltype(tunables))
     else
         nothing
     end
