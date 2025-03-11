@@ -100,14 +100,8 @@ end
         linear_problem = LinearProblem(soperator, vec(dgdu_val); u0 = vec(λ))
         solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...)
     else
-        if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
-            # For the default case use `\` to avoid any form of unnecessary cache allocation
-            linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
-            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
-        else
-            linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
-            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
-        end
+        linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
+        solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
     end
 
     try

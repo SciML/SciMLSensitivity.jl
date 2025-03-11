@@ -299,6 +299,7 @@ function DiffEqBase._concrete_solve_adjoint(
         tunables, repack = Functors.functor(p)
     end
 
+    u0 = state_values(prob) === nothing ? Float64[] : u0
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
@@ -426,16 +427,13 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     # Get gradients for the initialization problem if it exists
-    igs = if _prob.f.initialization_data.initializeprob != nothing
-        iprob = _prob.f.initialization_data.initializeprob
-        ip = parameter_values(iprob)
-        itunables, irepack, ialiases = canonicalize(Tunable(), ip)
-        igs, = Zygote.gradient(ip) do ip
-            iprob2 = remake(iprob, p = ip)
-            sol = solve(iprob2)
-            sum(Array(sol))
-        end
-        igs
+    igs = if _prob.f.initialization_data != nothing
+        Zygote.gradient(tunables) do tunables
+            new_prob = remake(_prob, p = repack(tunables))
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true))
+            new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
+            sum(new_u0) + sum(new_tunables)
+        end[1]
     else
         nothing
     end
@@ -656,6 +654,8 @@ function DiffEqBase._concrete_solve_adjoint(
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
+
+        dp = Zygote.accum(dp, igs)
 
         _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
                                !isscimlstructure(p)
@@ -1693,12 +1693,25 @@ function DiffEqBase._concrete_solve_adjoint(
         args...; save_idxs = nothing, kwargs...)
     _prob = remake(prob, u0 = u0, p = p)
     sol = solve(_prob, alg, args...; kwargs...)
+    @show sol
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     if save_idxs === nothing
         out = sol
     else
         out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
+    end
+
+    # Get gradients for the initialization problem if it exists
+    igs = if _prob.f.initialization_data != nothing
+        Zygote.gradient(tunables) do tunables
+            new_prob = remake(_prob, p = repack(tunables))
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true))
+            new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
+            sum(new_u0) + sum(new_tunables)
+        end[1]
+    else
+        nothing
     end
 
     function steadystatebackpass(Δ)
@@ -1709,11 +1722,15 @@ function DiffEqBase._concrete_solve_adjoint(
                 _out[_save_idxs] = Δ[_save_idxs]
             elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
-            else
+            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
                 @. _out[_save_idxs] = Δ[_save_idxs]
+            else
+                @. _out[_save_idxs] = Δ.u[_save_idxs]
             end
         end
+        # dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, dgdp = dp)
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
+        dp = Zygote.accum(dp, SciMLStructures.replace(SciMLStructures.Tunable(), dp, igs))
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
