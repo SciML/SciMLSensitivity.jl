@@ -436,15 +436,15 @@ function DiffEqBase._concrete_solve_adjoint(
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
@@ -1724,7 +1724,7 @@ function DiffEqBase._concrete_solve_adjoint(
         nothing
     end
 
-    sol = solve(remake(_prob, u0 = new_u0, p = new_p), alg, args...; initializealg = NoInit(), kwargs...)
+    sol = solve(remake(_prob, u0 = new_u0, p = new_p), alg, args...; initializealg = SciMLBase.NoInit(), kwargs...)
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     if save_idxs === nothing
