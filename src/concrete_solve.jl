@@ -299,7 +299,7 @@ function DiffEqBase._concrete_solve_adjoint(
         tunables, repack = Functors.functor(p)
     end
 
-    u0 = state_values(prob) === nothing ? Float64[] : u0
+    # u0 = state_values(prob) === nothing ? Float64[] : u0
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
@@ -1735,7 +1735,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 _out[_save_idxs] = Δ[_save_idxs]
             elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
-            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray || Δ isa AbstractArray
                 @. _out[_save_idxs] = Δ[_save_idxs]
             else
                 @. _out[_save_idxs] = Δ.u[_save_idxs]
