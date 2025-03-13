@@ -413,27 +413,16 @@ function DiffEqBase._concrete_solve_adjoint(
         Base.diff_names(Base._nt_names(values(kwargs)),
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
-    if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; save_noise = true,
-            save_start = save_start, save_end = save_end,
-            saveat = saveat, kwargs_fwd...)
-    elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; save_noise = true,
-            save_start = true, save_end = true,
-            saveat = saveat, kwargs_fwd...)
-    else
-        sol = solve(_prob, alg, args...; save_noise = true, save_start = true,
-            save_end = true, kwargs_fwd...)
-    end
 
-    # Get gradients for the initialization problem if it exists
     igs = if _prob.f.initialization_data != nothing
         Zygote.gradient(tunables) do tunables
-            new_prob = remake(_prob, p = repack(tunables))
+            new_prob = remake(_prob, u0 = u0, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
                                                             abstol = 1e-6,
                                                             reltol = 1e-6,
                                                             sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec))
+            global new_u0
+            global new_p
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
@@ -443,6 +432,20 @@ function DiffEqBase._concrete_solve_adjoint(
         end[1] .- one(eltype(tunables))
     else
         nothing
+    end
+    _prob = remake(_prob, u0 = new_u0, p = new_p)
+
+    if sensealg isa BacksolveAdjoint
+        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true,
+            save_start = save_start, save_end = save_end,
+            saveat = saveat, kwargs_fwd...)
+    elseif ischeckpointing(sensealg)
+        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true,
+            save_start = true, save_end = true,
+            saveat = saveat, kwargs_fwd...)
+    else
+        sol = solve(_prob, alg, args...; initializealg = NoInit(), save_noise = true, save_start = true,
+            save_end = true, kwargs_fwd...)
     end
 
     # Force `save_start` and `save_end` in the forward pass This forces the
