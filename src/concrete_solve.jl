@@ -433,7 +433,7 @@ function DiffEqBase._concrete_solve_adjoint(
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
                                                             abstol = 1e-6,
                                                             reltol = 1e-6,
-                                                            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
+                                                            sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec))
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
@@ -1715,7 +1715,7 @@ function DiffEqBase._concrete_solve_adjoint(
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
                                                             abstol = 1e-6,
                                                             reltol = 1e-6,
-                                                            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
+                                                            sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec))
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
