@@ -492,9 +492,11 @@ function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
 end
 
 @doc doc"""
+```julia
 H = second_order_sensitivities(loss,prob,alg,args...;
                                sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                kwargs...)
+```
 
 Second order sensitivity analysis is used for the fast calculation of Hessian
 matrices.
@@ -547,9 +549,11 @@ function second_order_sensitivities(loss, prob, alg, args...;
 end
 
 @doc doc"""
+```julia
 Hv = second_order_sensitivity_product(loss,v,prob,alg,args...;
                                sensealg=ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec=ReverseDiffVJP())),
                                kwargs...)
+```
 
 Second order sensitivity analysis product is used for the fast calculation of
 Hessian-vector products ``Hv`` without requiring the construction of the Hessian
