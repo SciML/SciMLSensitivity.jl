@@ -415,7 +415,7 @@ function DiffEqBase._concrete_solve_adjoint(
     isq = sensealg isa QuadratureAdjoint
 
     igs = if _prob.f.initialization_data != nothing
-        Zygote.gradient(tunables) do tunables
+        iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
                                                             abstol = 1e-6,
@@ -429,7 +429,9 @@ function DiffEqBase._concrete_solve_adjoint(
             else
                 sum(new_u0) + sum(new_tunables)
             end
-        end[1] .- one(eltype(tunables))
+        end 
+
+        back(one(iy))[1] .- ones(eltype(tunables), length(tunables))
     else
         nothing
     end
@@ -1733,12 +1735,13 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
+        dp = Zygote.accum(Δ.prob.p.tunable, dp)
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp.tunable)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp.tunable)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
