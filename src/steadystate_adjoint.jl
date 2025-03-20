@@ -41,7 +41,7 @@ end
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
     needs_jac = ifelse(has_adjoint(f), false,
-        ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
+        ifelse(sensealg.linsolve === nothing, isnothing(u0) || length(u0) ≤ 50,
             __needs_concrete_A(sensealg.linsolve)))
 
     p === SciMLBase.NullParameters() &&
@@ -83,7 +83,7 @@ end
         end
     end
 
-    if !needs_jac
+    if !needs_jac && !isempty(y)
         # Current SciMLJacobianOperators requires specifying the problem as a NonlinearProblem
         usize = size(y)
         if SciMLBase.isinplace(f)
@@ -105,9 +105,11 @@ end
     end
 
     try
-        tunables, repack, aliases = canonicalize(Tunable(), p)
-        vjp_tunables, vjp_repack, vjp_aliases = canonicalize(Tunable(), vjp)
-        vecjacobian!(vec(dgdu_val), y, λ, tunables, nothing, sense; dgrad = vjp_tunables, dy = nothing)
+        if !isempty(y)
+            tunables, repack, aliases = canonicalize(Tunable(), p)
+            vjp_tunables, vjp_repack, vjp_aliases = canonicalize(Tunable(), vjp)
+            vecjacobian!(vec(dgdu_val), y, λ, tunables, nothing, sense; dgrad = vjp_tunables, dy = nothing)
+        end
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
