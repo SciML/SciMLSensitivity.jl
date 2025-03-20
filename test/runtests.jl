@@ -104,7 +104,7 @@ end
 
     if GROUP == "All" || GROUP == "Core8"
         @testset "Core 8" begin
-            @time @safetestset "Adjoints through NonlinearProblem" include("initialization.jl")
+            @time @safetestset "Adjoints through NonlinearProblem" include("parameter_initialization.jl")
             @time @safetestset "Initialization with MTK" include("desauty_dae_mwe.jl")
         end
     end
