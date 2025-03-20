@@ -1734,14 +1734,15 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
+        dp_tunables, _, _ = canonicalize(Tunable(), dp)
 
-        dp = Zygote.accum(Δ.prob.p.tunable, dp)
+        dp_tunables = Zygote.accum(Δ.prob.p.tunable, dp_tunables)
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp_tunables)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp_tunables)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
