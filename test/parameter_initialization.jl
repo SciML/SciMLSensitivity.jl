@@ -79,16 +79,17 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     end
 
     @testset "Adjoint through Prob" begin
+        sensealg = SciMLSensitivity.GaussAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP())
         gs_prob, = Zygote.gradient(tunables) do tunables
             new_prob = remake(prob; p = repack(tunables))
-            sol = solve(prob; sensealg)
+            sol = solve(new_prob; sensealg)
             sum(sol)
         end
         @test any(!iszero, gs_prob)
 
         gs_prob, = Zygote.gradient(tunables) do tunables
             new_prob = remake(prob; p = repack(tunables))
-            sol = solve(new_prob, sensealg = sensealg)
+            sol = solve(new_prob; sensealg)
             o = sol[w]
             o[1]
         end
