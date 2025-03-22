@@ -379,11 +379,11 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
         if !isRODE
             __p = p isa SciMLBase.NullParameters ? _p :
                   SciMLStructures.replace(Tunable(), p, _p)
-            tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
+            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== SciMLBase.NullParameters()) ?
                       similar(p, size(u)) : similar(u)
                 du1 .= false
-                f(du1, u, p, first(t))
+                f(du1, u, repack(p), first(t))
                 return vec(du1)
             end
         else
