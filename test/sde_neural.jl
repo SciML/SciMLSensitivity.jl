@@ -116,7 +116,7 @@ Random.seed!(238248735)
     end
 
     losses = []
-    function callback(θ, state)
+    function callback(state, l)
         begin
             push!(losses, state.u)
             if length(losses) % 50 == 0
