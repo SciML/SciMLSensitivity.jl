@@ -194,7 +194,7 @@ end
 
     # Actually training/fitting the model
     losses = []
-    function callback(θ, state)
+    function callback(state, l)
         begin
             push!(losses, l)
             if length(losses) % 1 == 0
