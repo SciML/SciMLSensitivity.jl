@@ -196,7 +196,7 @@ end
     losses = []
     function callback(θ, state)
         begin
-            push!(losses, state.u)
+            push!(losses, l)
             if length(losses) % 1 == 0
                 println("Current loss after $(length(losses)) iterations: $(losses[end])")
             end
