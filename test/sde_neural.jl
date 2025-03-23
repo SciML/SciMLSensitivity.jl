@@ -118,7 +118,7 @@ Random.seed!(238248735)
     losses = []
     function callback(state, l)
         begin
-            push!(losses, state.u)
+            push!(losses, l)
             if length(losses) % 50 == 0
                 println("Current loss after $(length(losses)) iterations: $(losses[end])")
             end
