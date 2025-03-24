@@ -46,15 +46,16 @@ function inplace_vjp(prob, u0, p, verbose, repack)
 
     vjp = try
         f = unwrapped_f(prob.f)
+        tspan_ = prob isa AbstractNonlinearProblem ? nothing : [prob.tspan[1]]
         if p === nothing || p isa SciMLBase.NullParameters
-            ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
+            ReverseDiff.GradientTape((copy(u0), tspan_)) do u, t
                 du1 = similar(u, size(u))
                 du1 .= 0
                 f(du1, u, p, first(t))
                 return vec(du1)
             end
         else
-            ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u, p, t
+            ReverseDiff.GradientTape((copy(u0), p, tspan_)) do u, p, t
                 du1 = similar(u, size(u))
                 du1 .= 0
                 f(du1, u, repack(p), first(t))
@@ -414,7 +415,7 @@ function DiffEqBase._concrete_solve_adjoint(
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
 
-    igs = if _prob.f.initialization_data != nothing
+    igs, new_u0, new_p = if _prob.f.initialization_data != nothing
         iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
@@ -431,9 +432,9 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end 
 
-        back(one(iy))[1] .- ones(eltype(tunables), length(tunables))
+        back(one(iy))[1] .- ones(eltype(tunables), length(tunables)), new_u0, new_p
     else
-        nothing
+        nothing, nothing, nothing
     end
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
