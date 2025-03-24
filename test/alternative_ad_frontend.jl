@@ -247,5 +247,5 @@ grad_fd = ForwardDiff.gradient(loss2, p)
 grad_zg = Zygote.gradient(loss2, p)[1]
 grad_rd = ReverseDiff.gradient(loss2, p)
 @test grad_fd≈grad_fi atol=1e-2
-@test grad_fd ≈ grad_zg atol=1e-4
-@test grad_fd ≈ grad_rd atol=1e-4
+@test grad_fd≈grad_zg atol=1e-4
+@test grad_fd≈grad_rd atol=1e-4

@@ -99,14 +99,16 @@ end
             nlprob, vec(y), (λ); autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
         soperator = StatefulJacobianOperator(operator, vec(λ), p)
         linear_problem = LinearProblem(soperator, vec(dgdu_val); u0 = vec(λ))
-        solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...)
+        solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
+            sensealg.linsolve_kwargs...)
     else
         if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
             # For the default case use `\` to avoid any form of unnecessary cache allocation
             vec(λ) .= diffcache.J' \ vec(dgdu_val)
         else
             linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
-            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
+            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
+                sensealg.linsolve_kwargs...) # u is vec(λ)
         end
     end
 
