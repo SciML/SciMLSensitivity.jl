@@ -1309,7 +1309,6 @@ function DiffEqBase._concrete_solve_adjoint(
                         f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        g = _g,
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
                         tspan = _tspan, callback = nothing)
                 end
@@ -1345,7 +1344,6 @@ function DiffEqBase._concrete_solve_adjoint(
                         f = ArrayInterface.parameterless_type(prob.f){false,
                             SciMLBase.FullSpecialize
                         }(_f),
-                        g = _g,
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
                         tspan = _tspan, callback = nothing)
                 end
