@@ -99,7 +99,7 @@ Random.seed!(238248735)
             sensealg = ReverseDiffAdjoint()))
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
-        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
+        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var)
     end
 
     function loss_op(θ)
@@ -112,11 +112,11 @@ Random.seed!(238248735)
             sensealg = ReverseDiffAdjoint()))
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
-        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var), tmp_mean
+        sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var)
     end
 
     losses = []
-    function callback(θ, l, pred)
+    function callback(state, l)
         begin
             push!(losses, l)
             if length(losses) % 50 == 0
@@ -189,12 +189,12 @@ end
             sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
             saveat = ts, trajectories = 10, abstol = 1e-1, reltol = 1e-1)
         A = convert(Array, _sol)
-        sum(abs2, A .- 1), mean(A)
+        sum(abs2, A .- 1)
     end
 
     # Actually training/fitting the model
     losses = []
-    function callback(θ, l, pred)
+    function callback(state, l)
         begin
             push!(losses, l)
             if length(losses) % 1 == 0

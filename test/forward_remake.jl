@@ -44,12 +44,13 @@ end
 
 p = [1.5, 1.0, 3.0]
 ts = (0, 10)
-prob = ODEForwardSensitivityProblem(ff3, [1.0; 1.0], ts, p, sensealg=ForwardDiffSensitivity())
+prob = ODEForwardSensitivityProblem(
+    ff3, [1.0; 1.0], ts, p, sensealg = ForwardDiffSensitivity())
 sol = solve(prob, Tsit5())
 
 # https://github.com/SciML/SciMLSensitivity.jl/issues/1143
 
-prob1 = ODEForwardSensitivityProblem(ff3, [1.0, 1.0], (0.0,10.0), p,
-                                     sensealg = ForwardSensitivity())
+prob1 = ODEForwardSensitivityProblem(ff3, [1.0, 1.0], (0.0, 10.0), p,
+    sensealg = ForwardSensitivity())
 prob2 = remake(prob1, tspan = (0.0, 10.0))
 @test length(prob1.u0) == length(prob2.u0) == 8

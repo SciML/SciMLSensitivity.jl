@@ -298,7 +298,8 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         out .= p_grad
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
-        tmp4 .= λ
+        vtmp4 = vec(tmp4)
+        vtmp4 .= λ
         out .= 0
         Enzyme.autodiff(
             Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
