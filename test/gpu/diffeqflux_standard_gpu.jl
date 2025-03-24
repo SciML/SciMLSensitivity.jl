@@ -16,7 +16,7 @@ function trueODEfunc(du, u, p, t)
 end
 prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
 # Make the data into a GPU-based array if the user has a GPU
-ode_data = gdev(solve(prob_trueode, Tsit5(), saveat = tsteps))
+ode_data = gdev(Array(solve(prob_trueode, Tsit5(), saveat = tsteps)))
 
 dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
 u0 = Float32[2.0; 0.0] |> gdev
@@ -26,7 +26,7 @@ ps, st = Lux.setup(Random.default_rng(), dudt2)
 ps = ComponentArray(ps) |> gdev
 
 function predict_neuralode(p)
-    gdev(first(prob_neuralode(u0, p, st)))
+    first(prob_neuralode(u0, p, st))
 end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
