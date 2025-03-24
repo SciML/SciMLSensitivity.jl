@@ -1,7 +1,9 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker, Enzyme,
-      FiniteDiff
+      FiniteDiff, Mooncake
 using Test
 Enzyme.API.typeWarning!(false)
+
+mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(build_rrule(f, x), f, x)[2][2]
 
 odef(du, u, p, t) = du .= u .* p
 const prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
@@ -17,7 +19,9 @@ u0p = [2.0, 3.0]
 du0p = zeros(2)
 dup = Zygote.gradient(senseloss0(InterpolatingAdjoint()), u0p)[1]
 Enzyme.autodiff(Reverse, senseloss0(InterpolatingAdjoint()), Active, Duplicated(u0p, du0p))
+dup_mc = mooncake_gradient(senseloss0(InterpolatingAdjoint()), u0p)
 @test du0p ≈ dup
+@test dup_mc ≈ dup
 
 struct senseloss{T}
     sense::T
@@ -56,6 +60,12 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()), u0p)[1]
 @test only(Enzyme.gradient(Reverse, senseloss(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
+@test mooncake_gradient(senseloss(InterpolatingAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss(TrackerAdjoint()), u0p) ≈ dup
+@test mooncake_gradient(senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
+
 struct senseloss2{T}
     sense::T
 end
@@ -90,6 +100,12 @@ dup = Zygote.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
+@test mooncake_gradient(senseloss2(InterpolatingAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss2(ReverseDiffAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss2(TrackerAdjoint()), u0p) ≈ dup
+@test mooncake_gradient(senseloss2(ForwardDiffSensitivity()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss2(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
+
 struct senseloss3{T}
     sense::T
 end
@@ -121,6 +137,12 @@ dup = Zygote.gradient(senseloss3(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(TrackerAdjoint()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardSensitivity()), u0p)) ≈ dup
+
+@test mooncake_gradient(senseloss3(InterpolatingAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss3(ReverseDiffAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss3(TrackerAdjoint()), u0p) ≈ dup
+@test mooncake_gradient(senseloss3(ForwardDiffSensitivity()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss3(ForwardSensitivity()), u0p) ≈ dup
 
 struct senseloss4{T}
     sense::T
@@ -156,6 +178,12 @@ dup = Zygote.gradient(senseloss4(InterpolatingAdjoint()), u0p)[1]
 @test only(Enzyme.gradient(Reverse, senseloss4(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss4(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
+@test mooncake_gradient(senseloss4(InterpolatingAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss4(ReverseDiffAdjoint()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss4(TrackerAdjoint()), u0p) ≈ dup
+@test mooncake_gradient(senseloss4(ForwardDiffSensitivity()), u0p) ≈ dup
+@test_broken mooncake_gradient(senseloss4(ForwardSensitivity()), u0p) ≈ dup
+
 solvealg_test = Tsit5()
 sensealg_test = InterpolatingAdjoint()
 tspan = (0.0, 1.0)
@@ -186,6 +214,10 @@ res4 = ReverseDiff.gradient(loss2, p0)
 @test_broken res2≈Enzyme.gradient(Reverse, loss, p0) atol=1e-14
 @test_broken res4≈Enzyme.gradient(Reverse, loss2, p0) atol=1e-14
 
+# I think we're just not successfully hitting the rrule here.
+@test_broken res2 ≈ mooncake_gradient(loss, p0)
+res4 ≈ mooncake_gradient(loss2, p0)
+
 # Test for recursion https://discourse.julialang.org/t/diffeqsensitivity-jl-issues-with-reversediffadjoint-sensealg/88774
 function ode!(derivative, state, parameters, t)
     derivative .= parameters
@@ -205,6 +237,7 @@ const initial_state = ones(2)
 const solution_times = [1.0, 2.0]
 ReverseDiff.gradient(p -> sum(sum(solve_euler(initial_state, solution_times, p))), zeros(2))
 # Enzyme.gradient(Reverse, p -> sum(sum(solve_euler(initial_state, solution_times, p))), zeros(2))
+# mooncake_gradient(p -> sum(sum(solve_euler(initial_state, solution_times, p))), zeros(2))
 
 # https://github.com/SciML/SciMLSensitivity.jl/issues/943
 
@@ -249,3 +282,4 @@ grad_rd = ReverseDiff.gradient(loss2, p)
 @test grad_fd≈grad_fi atol=1e-2
 @test grad_fd ≈ grad_zg atol=1e-4
 @test grad_fd ≈ grad_rd atol=1e-4
+@test_broken mooncake_gradient(loss2, p) ≈ grad_rd atol=1e-4 # appears to not be hitting the rule
