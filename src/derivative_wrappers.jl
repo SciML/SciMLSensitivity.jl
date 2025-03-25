@@ -475,8 +475,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     else
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
-                vec(f(u, p, first(t)))
+            _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
+                vec(f(u, _repack(p), first(t)))
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
