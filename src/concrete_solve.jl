@@ -415,24 +415,25 @@ function DiffEqBase._concrete_solve_adjoint(
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
 
-    igs, new_u0, new_p = if _prob.f.initialization_data != nothing
+    igs, new_u0, new_p = if _prob.f.initialization_data !== nothing
+        local new_u0
+        local new_p
         iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
                                                             abstol = 1e-6,
                                                             reltol = 1e-6,
                                                             sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec))
-            global new_u0
-            global new_p
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
             else
                 sum(new_u0) + sum(new_tunables)
             end
-        end 
+        end
+        igs = back(one(iy))[1] .- one(eltype(tunables))
 
-        back(one(iy))[1] .- ones(eltype(tunables), length(tunables)), new_u0, new_p
+        igs, new_u0, new_p
     else
         nothing, nothing, nothing
     end
