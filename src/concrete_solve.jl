@@ -435,7 +435,7 @@ function DiffEqBase._concrete_solve_adjoint(
 
         igs, new_u0, new_p
     else
-        nothing, nothing, nothing
+        nothing, u0, p
     end
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
