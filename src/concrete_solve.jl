@@ -1330,6 +1330,7 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
+                        g = _g,
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
                         tspan = _tspan, callback = nothing)
                 else
@@ -1364,6 +1365,7 @@ function DiffEqBase._concrete_solve_adjoint(
                             SciMLBase.FullSpecialize
                         }(_f,
                             _g),
+                        g = _g,
                         u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
                         tspan = _tspan, callback = nothing)
                 else

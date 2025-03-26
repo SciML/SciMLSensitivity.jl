@@ -388,7 +388,8 @@ In plain terms, the quantities that were defined are:
 ### Controller
 
 We use a neural network to control the parameter Ω(t). Alternatively, one could
-also, e.g., use [tensor layers](https://docs.sciml.ai/DiffEqFlux/stable/layers/TensorLayer/), Flux.jl, or Lux.jl.
+also, e.g., use polynomials, interpolations, etc. but we use a neural network to demonstrate
+coolness factor and complexity.
 
 ```@example sdecontrol
 # state-aware

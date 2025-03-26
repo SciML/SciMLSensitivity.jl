@@ -15,7 +15,7 @@ p = collect(1.0:n)
 u0 = ones(n)
 tspan = [0.0, 1]
 odef = ODEFunction(foop; jac = jac, jac_prototype = jac(u0, p, 0.0), paramjac = paramjac)
-function g_helper(p; alg = Rosenbrock23(linsolve = LUFactorization()))
+function g_helper(p; alg = Rosenbrock23(linsolve = QRFactorization()))
     prob = ODEProblem(odef, u0, tspan, p)
     soln = Array(solve(prob, alg; u0 = prob.u0, p = prob.p, abstol = 1e-4, reltol = 1e-4,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())))[:, end]
@@ -35,7 +35,7 @@ end
 @test isapprox(exp.(p), g_helper(p; alg = ImplicitEuler(linsolve = LUFactorization()));
     atol = 1e-1, rtol = 1e-1)
 @test isapprox(exp.(p),
-    Zygote.gradient(p -> g(p; alg = ImplicitEuler(linsolve = LUFactorization())),
+    Zygote.gradient(p -> g(p; alg = ImplicitEuler(linsolve = QRFactorization())),
         p)[1]; atol = 1e-1, rtol = 1e-1)
 @test isapprox(
     exp.(p), g_helper(p; alg = ImplicitEuler(linsolve = UMFPACKFactorization()));
