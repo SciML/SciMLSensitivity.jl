@@ -24,6 +24,7 @@ jobs:
           - Core5
           - Core6
           - Core7
+          - Core8
           - QA
           - SDE1
           - SDE2
