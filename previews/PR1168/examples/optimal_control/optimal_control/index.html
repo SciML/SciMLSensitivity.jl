@@ -67,26 +67,26 @@ optprob2 = Optimization.OptimizationProblem(optf, res1.u)
 res2 = Optimization.solve(
     optprob2, OptimizationOptimJL.BFGS(), callback = cb, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 1153-element Vector{Float32}:
- -1.011813
- -1.0002528
-  1.1354064
-  2.6330945
-  0.37193725
-  0.020027695
- -0.71579516
- -1.10963
-  1.7192143
- -0.28963223
+ -0.12459021
+ -3.1520898
+  0.77818096
+ -1.7863266
+  2.1300893
+  0.7428999
+ -2.7125053
+ -0.96187526
+ -1.6951271
+ -1.332665
   ⋮
- -0.7580937
-  0.31767154
-  1.274352
-  0.009181681
- -0.22200799
- -0.063344
- -0.077392034
- -0.52464753
-  0.55574876</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
+  0.7539434
+ -0.6469256
+  0.7439038
+  0.33521092
+  0.1964805
+  1.2139856
+  1.1045412
+ -0.09146301
+  0.86362845</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = ComponentArray(θ, ax)
     mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
@@ -95,29 +95,29 @@ end
 optf3 = Optimization.OptimizationFunction((x, p) -&gt; loss_adjoint(x), adtype)
 
 optprob3 = Optimization.OptimizationProblem(optf3, res2.u)
-res3 = Optimization.solve(optprob3, OptimizationOptimJL.BFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Failure
+res3 = Optimization.solve(optprob3, OptimizationOptimJL.BFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 1153-element Vector{Float32}:
- -1.4253753
- -0.5257404
-  1.6032102
-  3.3262749
-  0.34114435
- -0.25860584
- -0.7400669
- -1.6620448
-  2.4283638
- -1.1484632
+ -0.13752903
+ -3.152161
+  0.7786427
+ -1.7859104
+  2.1310494
+  0.7425466
+ -2.712433
+ -0.962022
+ -1.695059
+ -1.3330204
   ⋮
- -0.4852815
-  0.008933291
-  2.9945283
-  1.0390302
- -0.49187538
- -0.3736127
- -0.4177637
- -1.3881226
-  1.0062983</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
+  0.7555454
+ -0.64977795
+  0.7414819
+  0.337396
+  0.19408938
+  1.2119601
+  1.1026917
+ -0.08912093
+  0.8694804</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
 cb(res3, l)
 p = plot(solve(remake(prob, p = res3.u), Tsit5(), saveat = 0.01), ylim = (-6, 6), lw = 3)
 plot!(p, ts, [first(first(ann([t], ComponentArray(res3.u, ax), st))) for t in ts],
-    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="520c17b5.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.9.0 on <span class="colophon-date" title="Monday 24 March 2025 22:50">Monday 24 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="8073331b.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.9.0 on <span class="colophon-date" title="Wednesday 26 March 2025 14:33">Wednesday 26 March 2025</span>. Using Julia version 1.11.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
