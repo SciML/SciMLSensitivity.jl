@@ -144,6 +144,12 @@ function jacobian(f, x::AbstractArray{<:Number},
     return J
 end
 
+function jacobian!(J::Nothing, f, x::AbstractArray{<:Number},
+    fx::Union{Nothing, AbstractArray{<:Number}},
+    alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing)
+    @assert isempty(x)
+    J
+end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
@@ -1049,6 +1055,7 @@ function accumulate_cost(dλ, y, p, t, S::TS,
     return dλ, dgrad
 end
 
+build_jac_config(alg, uf, u::Nothing) = nothing
 function build_jac_config(alg, uf, u)
     if alg_autodiff(alg)
         jac_config = ForwardDiff.JacobianConfig(uf, u, u,

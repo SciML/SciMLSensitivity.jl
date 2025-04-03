@@ -101,8 +101,10 @@ end
         solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
             sensealg.linsolve_kwargs...)
     else
-        linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
-        solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
+        if !isempty(y)
+            linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
+            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
+        end
     end
 
     try

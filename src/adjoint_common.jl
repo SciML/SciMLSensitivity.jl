@@ -78,7 +78,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     unwrappedf = unwrapped_f(f)
 
     numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
-    numindvar = length(u0)
+    numindvar = isnothing(u0) ? nothing : length(u0)
     isautojacvec = get_jacvec(sensealg)
 
     issemiexplicitdae = false
@@ -106,7 +106,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         isempty(algevar_idxs) || (issemiexplicitdae = true)
     end
     if !issemiexplicitdae
-        diffvar_idxs = eachindex(u0)
+        diffvar_idxs = isnothing(u0) ? nothing : eachindex(u0)
         algevar_idxs = 1:0
     end
 
@@ -114,10 +114,14 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         J = nothing
     else
         if alg === nothing || SciMLBase.forwarddiffs_model_time(alg)
-            # 1 chunk is fine because it's only t
-            _J = similar(u0, numindvar, numindvar)
-            _J .= 0
-            J = dualcache(_J, ForwardDiff.pickchunksize(length(u0)))
+            if !isnothing(u0)
+                # 1 chunk is fine because it's only t
+                _J = similar(u0, numindvar, numindvar)
+                _J .= 0
+                J = dualcache(_J, ForwardDiff.pickchunksize(length(u0)))
+            else
+                J = (du = nothing,)
+            end
         else
             J = similar(u0, numindvar, numindvar)
             J .= 0
@@ -133,8 +137,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 dg_val[1] .= false
                 dg_val[2] .= false
             else
-                dg_val = similar(u0, numindvar) # number of funcs size
-                dg_val .= false
+                if !isnothing(u0)
+                    dg_val = similar(u0, numindvar) # number of funcs size
+                    dg_val .= false
+                else
+                    dg_val = nothing
+                end
             end
         else
             pgpu = UGradientWrapper(g, _t, p)
@@ -241,8 +249,12 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     pJ = if (quad || !(autojacvec isa Bool))
         nothing
     else
-        _pJ = similar(u0, numindvar, numparams)
-        _pJ .= false
+        if !isnothing(u0)
+            _pJ = similar(u0, numindvar, numparams)
+            _pJ .= false
+        else
+            _pJ = nothing
+        end
     end
 
     f_cache = isinplace ? deepcopy(u0) : nothing
@@ -402,8 +414,8 @@ function get_paramjac_config(autojacvec::ReverseDiffVJP, p, f, y, _p, _t;
             # because hasportion(Tunable(), NullParameters) == false
             __p = p isa SciMLBase.NullParameters ? _p :
                   SciMLStructures.replace(Tunable(), p, _p)
-            tape = ReverseDiff.GradientTape((y, __p, [_t])) do u, p, t
-                vec(f(u, p, first(t)))
+            tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
+                vec(f(u, repack(p), first(t)))
             end
         else
             tape = ReverseDiff.GradientTape((y, _p, [_t], _W)) do u, p, t, W
