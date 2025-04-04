@@ -40,7 +40,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  solve, u_modified!, LinearAliasSpecifier
 
 # AD Backends
-using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent
+using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent, AbstractThunk
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
@@ -55,6 +55,8 @@ using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
 using Markdown: Markdown, @doc_str
 using Random: Random, rand!
 using Statistics: Statistics, mean
+
+using LinearAlgebra: diag
 
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
