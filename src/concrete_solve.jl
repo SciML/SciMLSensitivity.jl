@@ -1724,6 +1724,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     function steadystatebackpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
