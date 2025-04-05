@@ -21,8 +21,7 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
 
     λ = zero(y)
     linsolve = needs_jac ? nothing : sensealg.linsolve
-    tunables, repack, aliases = canonicalize(Tunable(), p)
-    vjp = allocate_vjp(λ, tunables)
+    vjp = allocate_vjp(λ, p)
 
     return SteadyStateAdjointSensitivityFunction(diffcache, sensealg, y, sol, f, colorvec,
         λ, vjp, linsolve)
@@ -110,9 +109,7 @@ end
 
     try
         if !isempty(y)
-            tunables, repack, aliases = canonicalize(Tunable(), p)
-            vjp_tunables, vjp_repack, vjp_aliases = canonicalize(Tunable(), vjp)
-            vecjacobian!(vec(dgdu_val), y, λ, tunables, nothing, sense; dgrad = vjp_tunables, dy = nothing)
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
         end
     catch e
         if sense.sensealg.autojacvec === nothing

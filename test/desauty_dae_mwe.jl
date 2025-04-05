@@ -4,6 +4,7 @@ using ModelingToolkitStandardLibrary.Blocks: Sine
 using NonlinearSolve
 import SciMLStructures as SS
 import SciMLSensitivity
+using SymbolicIndexingInterface
 using Zygote
 
 function create_model(; C₁ = 3e-5, C₂ = 1e-6)
