@@ -297,9 +297,9 @@ version = "0.2.6"
 
 [[deps.CUDA]]
 deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CUDA_Driver_jll", "CUDA_Runtime_Discovery", "CUDA_Runtime_jll", "Crayons", "DataFrames", "ExprTools", "GPUArrays", "GPUCompiler", "GPUToolbox", "KernelAbstractions", "LLVM", "LLVMLoopInfo", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "NVTX", "Preferences", "PrettyTables", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "StaticArrays", "Statistics", "demumble_jll"]
-git-tree-sha1 = "049d804a037ed39300722bcad4b7a538eabe1e47"
+git-tree-sha1 = "acfe6dc14594afba70c002e3b4bfc2f1f8273347"
 uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
-version = "5.7.1"
+version = "5.7.2"
 weakdeps = ["ChainRulesCore", "EnzymeCore", "SpecialFunctions"]
 
     [deps.CUDA.extensions]
@@ -578,9 +578,9 @@ version = "1.11.0"
 
 [[deps.Dbus_jll]]
 deps = ["Artifacts", "Expat_jll", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "fc173b380865f70627d7dd1190dc2fce6cc105af"
+git-tree-sha1 = "473e9afc9cf30814eb67ffa5f2db7df82c3ad9fd"
 uuid = "ee1fde0b-3d02-5ea6-8484-8dfef6360eab"
-version = "1.14.10+0"
+version = "1.16.2+0"
 
 [[deps.DefineSingletons]]
 git-tree-sha1 = "0fba8b706d0178b4dc7fd44a96a92382c9065c2c"
@@ -1013,9 +1013,9 @@ version = "2.13.4+0"
 
 [[deps.FriBidi_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "846f7026a9decf3679419122b49f8a1fdb48d2d5"
+git-tree-sha1 = "7a214fdac5ed5f59a22c2d9a885a16da1c74bbc7"
 uuid = "559328eb-81f9-559d-9380-de523a88c83c"
-version = "1.0.16+0"
+version = "1.0.17+0"
 
 [[deps.FunctionProperties]]
 deps = ["Cassette", "DiffRules"]
@@ -1374,9 +1374,9 @@ version = "1.4.0"
 
 [[deps.Latexify]]
 deps = ["Format", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "OrderedCollections", "Requires"]
-git-tree-sha1 = "cd714447457c660382fe634710fb56eb255ee42e"
+git-tree-sha1 = "cd10d2cc78d34c0e2a3a36420ab607b611debfbb"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.16.6"
+version = "0.16.7"
 
     [deps.Latexify.extensions]
     DataFramesExt = "DataFrames"
@@ -2505,9 +2505,9 @@ version = "0.1.4"
 
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
-git-tree-sha1 = "1efcd8b38f007101ec6c4ff42df9aedd1b5450de"
+git-tree-sha1 = "13c5103482a8ed1536a54c08d0e742ae3dca2d42"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
-version = "1.10.3"
+version = "1.10.4"
 
 [[deps.PtrArrays]]
 git-tree-sha1 = "1d36ef11a9aaf1e8b74dacc6a731dd1de8fd493d"
@@ -2647,9 +2647,9 @@ version = "1.1.1"
 
 [[deps.ReverseDiff]]
 deps = ["ChainRulesCore", "DiffResults", "DiffRules", "ForwardDiff", "FunctionWrappers", "LinearAlgebra", "LogExpFunctions", "MacroTools", "NaNMath", "Random", "SpecialFunctions", "StaticArrays", "Statistics"]
-git-tree-sha1 = "fce158da5228197d0cabaa31077a4c1b77b093be"
+git-tree-sha1 = "3ab8eee3620451b09f0272c271875b4bc02146d9"
 uuid = "37e2e3b7-166d-5795-8a7a-e32c996b4267"
-version = "1.16.0"
+version = "1.16.1"
 
 [[deps.Rmath]]
 deps = ["Random", "Rmath_jll"]
@@ -2879,9 +2879,9 @@ version = "0.1.2"
 
 [[deps.SparseMatrixColorings]]
 deps = ["ADTypes", "DocStringExtensions", "LinearAlgebra", "Random", "SparseArrays"]
-git-tree-sha1 = "b7de46dc1cc6a12e4ba4c614f3754015f6fc63ef"
+git-tree-sha1 = "d59566cf03c67733edce6d80e0fb17e183ab31ba"
 uuid = "0a514795-09f3-496d-8182-132a7b665d35"
-version = "0.4.15"
+version = "0.4.16"
 
     [deps.SparseMatrixColorings.extensions]
     SparseMatrixColoringsCliqueTreesExt = "CliqueTrees"
@@ -3287,9 +3287,9 @@ version = "1.1.43+0"
 
 [[deps.XZ_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
-git-tree-sha1 = "6e6f1a4f245f66f93f28e55879f9ba47fed66f36"
+git-tree-sha1 = "fee71455b0aaa3440dfdd54a9a36ccef829be7d4"
 uuid = "ffd25f8a-64ca-5728-b0f7-c24cf3aae800"
-version = "5.8.0+0"
+version = "5.8.1+0"
 
 [[deps.Xorg_libICE_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
