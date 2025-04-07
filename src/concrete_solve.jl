@@ -518,6 +518,7 @@ function DiffEqBase._concrete_solve_adjoint(
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         function df_iip(_out, u, p, t, i)
             outtype = _out isa SubArray ?
                       ArrayInterface.parameterless_type(_out.parent) :
@@ -1718,9 +1719,13 @@ function DiffEqBase._concrete_solve_adjoint(
         out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
     end
 
-    _, repack_adjoint = Zygote.pullback(p) do p
-        t, _, _ = canonicalize(Tunable(), p)
-        t
+    _, repack_adjoint = if isscimlstructure(p)
+        Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+    else
+        nothing, x -> (x,)
     end
 
     function steadystatebackpass(Δ)
@@ -1739,14 +1744,13 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
-        dp_tunables, _, _ = canonicalize(Tunable(), dp)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp_tunables)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp_tunables)[1], NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
