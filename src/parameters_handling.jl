@@ -15,6 +15,9 @@ end
 recursive_copyto!(y::T, x::T) where {T} = fmap(recursive_copyto!, y, x)
 recursive_copyto!(y, ::Nothing) = y
 recursive_copyto!(::Nothing, ::Nothing) = nothing
+function recursive_copyto!(y::T, x::NamedTuple) where T
+    fmap(recursive_copyto!, y, x)
+end
 
 """
     neg!(x)
