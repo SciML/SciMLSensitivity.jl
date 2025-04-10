@@ -55,7 +55,7 @@ end
             f.jac(diffcache.J, y, p, nothing)
         else
             if DiffEqBase.isinplace(sol.prob)
-                jacobian!(diffcache.J.du, diffcache.uf, y, diffcache.f_cache,
+                jacobian!(diffcache.J, diffcache.uf, y, diffcache.f_cache,
                     sensealg, diffcache.jac_config)
             else
                 diffcache.J .= jacobian(diffcache.uf, y, sensealg)
@@ -102,7 +102,7 @@ end
             sensealg.linsolve_kwargs...)
     else
         if !isempty(y)
-            linear_problem = LinearProblem(diffcache.J.du', vec(dgdu_val'); u0 = vec(λ))
+            linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
             solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
         end
     end
