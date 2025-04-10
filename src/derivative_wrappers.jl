@@ -150,6 +150,7 @@ function jacobian!(J::Nothing, f, x::AbstractArray{<:Number},
     @assert isempty(x)
     J
 end
+jacobian!(J::PreallocationTools.DiffCache, x::SciMLBase.UJacobianWrapper, args...) = jacobian!(J.du, x, args...)
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
