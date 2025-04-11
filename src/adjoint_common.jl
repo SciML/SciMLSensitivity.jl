@@ -120,7 +120,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
                 _J .= 0
                 J = dualcache(_J, ForwardDiff.pickchunksize(length(u0)))
             else
-                J = (du = nothing,)
+                J = nothing
             end
         else
             J = similar(u0, numindvar, numindvar)
