@@ -1747,6 +1747,7 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
+        dp, _, _ = canonicalize(Tunable(), dp)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
