@@ -102,7 +102,8 @@ end
             sensealg.linsolve_kwargs...)
     else
         if !isempty(y)
-            linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
+            J_ = diffcache.J isa PreallocationTools.DiffCache ? diffcache.J.du' : diffcache.J'
+            linear_problem = LinearProblem(J_, vec(dgdu_val'); u0 = vec(λ))
             solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
         end
     end
