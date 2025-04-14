@@ -70,10 +70,10 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             new_prob = remake(prob; p = repack(tunables))
             iprob = new_prob.f.initialization_data.initializeprob
             isol = solve(iprob; sensealg)
-            fo = Zygote.ignore() do
+            obsfn = Zygote.ignore() do
                 SII.observed(isol.prob.f.sys, w).f_oop
             end
-            fo(iprob.u0, iprob.p)
+            obsfn(iprob.u0, iprob.p)
         end
         @test gs_zyg ≈ gs_obs
     end
@@ -91,7 +91,7 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             new_prob = remake(prob; p = repack(tunables))
             sol = solve(new_prob; sensealg)
             o = sol[w]
-            o[1]
+            o[end]
         end
         @test any(!iszero, gs_prob)
     end
