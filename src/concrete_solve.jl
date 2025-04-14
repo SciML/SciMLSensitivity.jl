@@ -1748,7 +1748,7 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
-        dp, Δtunables = if Δ isa AbstractArray
+        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
             # this is something that needs changing in the future, but
             # this is the applicable till the movement to structuaral
