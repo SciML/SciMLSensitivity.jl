@@ -1748,9 +1748,19 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
-        Δp = setproperties(dp, to_nt(Δ.prob.p))
-        dp, _, _ = canonicalize(Tunable(), dp)
-        Δtunables, _, _ = canonicalize(Tunable(), Δp)
+        dp, Δtunables = if Δ isa AbstractArray
+            # if Δ isa AbstractArray, the gradients correspond to `u`
+            # this is something that needs changing in the future, but
+            # this is the applicable till the movement to structuaral
+            # tangents is completed
+            dp, nothing
+        else
+            Δp = setproperties(dp, to_nt(Δ.prob.p))
+            Δtunables, _, _ = canonicalize(Tunable(), Δp)
+            dp, _, _ = canonicalize(Tunable(), dp)
+            dp, Δtunables
+        end
+
         dp = Zygote.accum(dp, Δtunables)
 
         if originator isa SciMLBase.TrackerOriginator ||
