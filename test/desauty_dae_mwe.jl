@@ -5,6 +5,7 @@ using NonlinearSolve
 import SciMLStructures as SS
 import SciMLSensitivity
 using SymbolicIndexingInterface
+import ModelingToolkit as MTK
 using Zygote
 
 function create_model(; C₁ = 3e-5, C₂ = 1e-6)
@@ -42,7 +43,8 @@ isys = iprob.f.sys
 tunables, repack, aliases = SS.canonicalize(SS.Tunable(), parameter_values(iprob))
 
 linsolve = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.QRFactorization)
-sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP(), linsolve = linsolve)
+sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP())
+# sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP(), linsolve = linsolve)
 igs, = Zygote.gradient(tunables) do p
     iprob2 = remake(iprob, p = repack(p))
     sol = solve(iprob2,
@@ -52,14 +54,3 @@ igs, = Zygote.gradient(tunables) do p
 end
 
 @test !iszero(sum(igs))
-
-
-# tunable_parameters(isys) .=> gs
-
-# gradient_unk1_idx = only(findfirst(x -> isequal(x, Initial(sys.capacitor1.v)), tunable_parameters(isys)))
-
-# gs[gradient_unk1_idx]
-
-# prob.f.initialization_data.update_initializeprob!(iprob, prob)
-# prob.f.initialization_data.update_initializeprob!(iprob, ::Vector)
-# prob.f.initialization_data.update_initializeprob!(iprob, gs)
