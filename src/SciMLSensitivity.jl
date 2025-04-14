@@ -47,6 +47,7 @@ using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
+using SciMLBase.ConstructionBase
 
 # Std Libs
 using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
