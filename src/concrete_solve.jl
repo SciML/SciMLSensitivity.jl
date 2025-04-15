@@ -373,6 +373,7 @@ function DiffEqBase._concrete_solve_adjoint(
         args...; save_start = true, save_end = true,
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
+        initializealg = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
         kwargs...)
     if !(sensealg isa GaussAdjoint) &&
        !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
@@ -420,11 +421,9 @@ function DiffEqBase._concrete_solve_adjoint(
         local new_p
         iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, SciMLBase.OverrideInit(), Val(true);
-                                                            abstol = 1e-6,
-                                                            reltol = 1e-6,
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, initializealg, Val(isinplace(new_prob));
                                                             sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
-                                                            kwargs...)
+                                                            kwargs_fwd...)
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
