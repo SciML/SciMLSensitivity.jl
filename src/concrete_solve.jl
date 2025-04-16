@@ -416,39 +416,34 @@ function DiffEqBase._concrete_solve_adjoint(
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
 
-    igs, new_u0, new_p = if _prob.f.initialization_data !== nothing
-        local new_u0
-        local new_p
+    igs, new_u0, new_p, inittype = if _prob.f.initialization_data !== nothing
+        local new_u0, new_p
         iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, initializealg, Val(isinplace(new_prob));
                                                             sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
                                                             kwargs_fwd...)
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
-                sum(new_tunables)
-            else
-                sum(new_u0) + sum(new_tunables)
-            end
+            sum(new_u0) + sum(new_tunables)
         end
         igs = back(one(iy))[1] .- one(eltype(tunables))
 
-        igs, new_u0, new_p
+        back(one(iy))[1], new_u0, new_p, SciMLBase.NoInit()
     else
-        nothing, u0, p
+        nothing, u0, p, haskey(kwargs, :initializealg) ? kwargs[:initializealg] : SciMLBase.CheckInit()
     end
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = inittype, save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = inittype, save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = inittype, save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
@@ -670,6 +665,7 @@ function DiffEqBase._concrete_solve_adjoint(
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
+        dp = Zygote.accum(dp, Δ.prob.p.tunable)
         dp = Zygote.accum(dp, igs)
 
         _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
