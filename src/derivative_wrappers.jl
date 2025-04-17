@@ -144,6 +144,13 @@ function jacobian(f, x::AbstractArray{<:Number},
     return J
 end
 
+function jacobian!(J::Nothing, f, x::AbstractArray{<:Number},
+    fx::Union{Nothing, AbstractArray{<:Number}},
+    alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing)
+    @assert isempty(x)
+    J
+end
+jacobian!(J::PreallocationTools.DiffCache, x::SciMLBase.UJacobianWrapper, args...) = jacobian!(J.du, x, args...)
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
@@ -456,9 +463,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     elseif inplace_sensitivity(S)
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
+            _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
                 du1 = similar(u, size(u))
-                f(du1, u, p, first(t))
+                f(du1, u, _repack(p), first(t))
                 return vec(du1)
             end
         else
@@ -474,8 +482,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     else
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            tape = ReverseDiff.GradientTape((_y, _p, [t])) do u, p, t
-                vec(f(u, p, first(t)))
+            _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
+                vec(f(u, _repack(p), first(t)))
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
@@ -1047,6 +1056,7 @@ function accumulate_cost(dλ, y, p, t, S::TS,
     return dλ, dgrad
 end
 
+build_jac_config(alg, uf, u::Nothing) = nothing
 function build_jac_config(alg, uf, u)
     if alg_autodiff(alg)
         jac_config = ForwardDiff.JacobianConfig(uf, u, u,
@@ -1068,9 +1078,10 @@ end
 
 function build_param_jac_config(alg, pf, u, p)
     if alg_autodiff(alg)
-        jac_config = ForwardDiff.JacobianConfig(pf, u, p,
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+        jac_config = ForwardDiff.JacobianConfig(pf, u, tunables,
             ForwardDiff.Chunk{
-                determine_chunksize(p,
+                determine_chunksize(tunables,
                 alg)}())
     else
         if diff_type(alg) != Val{:complex}
