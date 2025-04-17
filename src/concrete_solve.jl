@@ -373,7 +373,7 @@ function DiffEqBase._concrete_solve_adjoint(
         args...; save_start = true, save_end = true,
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
-        initializealg = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
+        initializealg_default = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
         kwargs...)
     if !(sensealg isa GaussAdjoint) &&
        !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
@@ -416,6 +416,12 @@ function DiffEqBase._concrete_solve_adjoint(
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
 
+    if haskey(kwargs, :initializealg) || haskey(prob.kwargs, :initializealg)
+        initializealg = haskey(kwargs, :initializealg) ? kwargs[:initializealg] : prob.kwargs[:initializealg]
+    else
+        initializealg = initializealg_default
+    end
+
     igs, new_u0, new_p = if _prob.f.initialization_data !== nothing
         local new_u0
         local new_p
@@ -440,15 +446,15 @@ function DiffEqBase._concrete_solve_adjoint(
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = CheckInit(), save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = CheckInit(), save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = CheckInit(), save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
