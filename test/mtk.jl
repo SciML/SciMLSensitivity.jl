@@ -5,6 +5,7 @@ using SciMLSensitivity
 using ForwardDiff
 using Zygote
 using Statistics
+using Test
 
 @parameters σ ρ β A[1:3]
 @variables x(t) y(t) z(t) w(t) w2(t)
@@ -35,5 +36,9 @@ mtkparams = SciMLSensitivity.parameter_values(sol)
 gt = rand(5501)
 dmtk, = Zygote.gradient(mtkparams) do p
     new_sol = solve(prob, Rosenbrock23(), p = p)
+    Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
+        @show extrema(new_sol[x + y + z + 2 * β - w])
+        @test all(new_sol[x + y + z + 2 * β - w]  .≈ 0)
+    end
     mean(abs.(new_sol[sys.x] .- gt))
 end
