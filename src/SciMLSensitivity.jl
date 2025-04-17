@@ -39,6 +39,8 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  get_tmp_cache, has_adjoint, isinplace, reinit!, remake,
                  solve, u_modified!, LinearAliasSpecifier
 
+using OrdinaryDiffEqCore: BrownFullBasicInit
+
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent, AbstractThunk
 using Enzyme: Enzyme

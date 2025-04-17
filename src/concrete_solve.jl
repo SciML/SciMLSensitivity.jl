@@ -440,15 +440,15 @@ function DiffEqBase._concrete_solve_adjoint(
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.NoInit(), save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = BrownFullBasicInit(), save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
