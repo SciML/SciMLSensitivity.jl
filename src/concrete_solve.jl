@@ -424,7 +424,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     default_inits = Union{OverrideInit, Nothing, DefaultInit}
-    igs, new_u0, new_p, new_initializealg = if (SciMLBase.has_initialization_data(_prob.f) && initializealg isa default_inits) || initializealg isa CheckInit
+    igs, new_u0, new_p, new_initializealg = if (SciMLBase.has_initialization_data(_prob.f) && initializealg isa default_inits)
         local new_u0
         local new_p
         initializeprob = prob.f.initialization_data.initializeprob
