@@ -415,21 +415,36 @@ function DiffEqBase._concrete_solve_adjoint(
         Base.diff_names(Base._nt_names(values(kwargs)),
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
+    kwargs_init = kwargs_adj[Base.diff_names(Base._nt_names(kwargs_adj), (:initializealg,))]
 
     if haskey(kwargs, :initializealg) || haskey(prob.kwargs, :initializealg)
         initializealg = haskey(kwargs, :initializealg) ? kwargs[:initializealg] : prob.kwargs[:initializealg]
     else
-        initializealg = initializealg_default
+        initializealg = DefaultInit()
     end
 
-    igs, new_u0, new_p = if _prob.f.initialization_data !== nothing
+    default_inits = Union{OverrideInit, Nothing, DefaultInit}
+    igs, new_u0, new_p, new_initializealg = if (SciMLBase.has_initialization_data(_prob.f) && initializealg isa default_inits) || initializealg isa CheckInit
         local new_u0
         local new_p
+        initializeprob = prob.f.initialization_data.initializeprob
+        iu0 = state_values(initializeprob)
+        isAD = if iu0 === nothing
+            AutoForwardDiff
+        elseif has_autodiff(alg)
+            OrdinaryDiffEqCore.alg_autodiff(alg) isa AutoForwardDiff
+        else
+            true 
+        end
+        nlsolve_alg = default_nlsolve(nothing, Val(isinplace(_prob)), iu0, initializeprob, isAD)
+        initializealg = initializealg isa Union{Nothing, DefaultInit} ? initializealg_default : initializealg
+
         iy, back = Zygote.pullback(tunables) do tunables
             new_prob = remake(_prob, p = repack(tunables))
             new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, initializealg, Val(isinplace(new_prob));
                                                             sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
-                                                            kwargs_fwd...)
+                                                            nlsolve_alg,
+                                                            kwargs_init...)
             new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
             if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
                 sum(new_tunables)
@@ -439,22 +454,22 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         igs = back(one(iy))[1] .- one(eltype(tunables))
 
-        igs, new_u0, new_p
+        igs, new_u0, new_p, SciMLBase.NoInit()
     else
-        nothing, u0, p
+        nothing, u0, p, initializealg
     end
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.CheckInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.CheckInit(), save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; initializealg = SciMLBase.CheckInit(), save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
@@ -662,13 +677,13 @@ function DiffEqBase._concrete_solve_adjoint(
                 dgdu_discrete = df_iip,
                 sensealg = sensealg,
                 callback = cb2,
-                kwargs_adj...)
+                kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
                 dgdu_discrete = df_oop,
                 sensealg = sensealg,
                 callback = cb2,
-                kwargs_adj...)
+                kwargs_init...)
         end
 
         du0 = reshape(du0, size(u0))
