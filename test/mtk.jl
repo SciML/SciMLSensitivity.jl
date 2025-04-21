@@ -71,18 +71,16 @@ tspan = (0.0, 100.0)
 prob_incorrectu0 = ODEProblem(sys, u0_incorrect, tspan, p, jac = true)
 mtkparams_incorrectu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
 
-gt = rand(3609)
-
-sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
-dmtk_incorrectu0, = Zygote.gradient(mtkparams_incorrectu0) do p
-    new_sol = solve(prob_incorrectu0, Rodas5P(); p = p, initializealg = BrownFullBasicInit(), sensealg, abstol = 1e-6, reltol = 1e-3)
-    Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
-        @test new_sol.retcode == SciMLBase.ReturnCode.Success
-        @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
-        @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
-    end
-    mean(abs.(new_sol[sys.x] .- gt))
-end
+u0_timedep = [D(x) => 2.0,
+    x => 1.0,
+    y => t,
+    z => 0.0,
+    w2 => 0.0,]
+# this ensures that `y => t` is not applied in the adjoint equation
+# If the MTK init is called for the reverse, then `y0` in the backwards
+# pass will be extremely far off and cause an incorrect gradient
+prob_timedepu0 = ODEProblem(sys, u0_timedep, tspan, p, jac = true)
+mtkparams_timedepu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
 
 u0_correct = [D(x) => 2.0,
     x => 1.0,
@@ -92,14 +90,41 @@ u0_correct = [D(x) => 2.0,
 prob_correctu0 = remake(prob_incorrectu0, u0 = u0_correct)
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
 
-dmtk_correctu0, = Zygote.gradient(mtkparams_correctu0) do p
-    new_sol = solve(prob_correctu0, Rodas5P(); p = p, initializealg = BrownFullBasicInit(), sensealg, abstol = 1e-6, reltol = 1e-3)
-    Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
-        @test new_sol.retcode == SciMLBase.ReturnCode.Success
-        @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
-        @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
+gt = rand(3609)
+
+sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
+
+setups = [
+          (prob_correctu0, mtkparams_correctu0, CheckInit()), # Source of truth first
+    
+          (prob_incorrectu0, mtkparams_incorrectu0, BrownFullBasicInit()),
+          (prob_incorrectu0, mtkparams_incorrectu0, OrdinaryDiffEq.DefaultInit()),
+          (prob_incorrectu0, mtkparams_incorrectu0, nothing), 
+
+          (prob_timedepu0, mtkparams_timedepu0, BrownFullBasicInit()),
+          (prob_timedepu0, mtkparams_timedepu0, OrdinaryDiffEq.DefaultInit()),
+          (prob_timedepu0, mtkparams_timedepu0, nothing), 
+
+          (prob_correctu0, mtkparams_correctu0, BrownFullBasicInit()),
+          (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEq.DefaultInit()),
+          
+          (prob_correctu0, mtkparams_correctu0, NoInit()), 
+          (prob_correctu0, mtkparams_correctu0, nothing), 
+]
+
+grads = map(setups) do setup
+    prob, ps, init = setup
+    Zygote.gradient(ps) do p
+        new_sol = solve(prob, Rodas5P(); p = p, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+        Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
+            @test new_sol.retcode == SciMLBase.ReturnCode.Success
+            # Test that beginning of forward pass init'd correctly
+            @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
+            @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
+        end
+        mean(abs.(new_sol[sys.x] .- gt))
     end
-    mean(abs.(new_sol[sys.x] .- gt))
 end
 
-@test dmtk_incorrectu0.tunable ≈ dmtk_correctu0.tunable
+grads = getproperty.(grads, (:tunable,))
+@test all(x ≈ grads[1] for x in grads)
