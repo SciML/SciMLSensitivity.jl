@@ -37,9 +37,9 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  RODEFunction, RODEProblem, ReturnCode, SDEFunction,
                  SDEProblem, VectorContinuousCallback, deleteat!,
                  get_tmp_cache, has_adjoint, isinplace, reinit!, remake,
-                 solve, u_modified!, LinearAliasSpecifier
+                 solve, u_modified!, LinearAliasSpecifier, OverrideInit, CheckInit
 
-using OrdinaryDiffEqCore: BrownFullBasicInit
+using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit, default_nlsolve, has_autodiff
 
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent, AbstractThunk
