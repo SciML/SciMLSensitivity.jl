@@ -53,7 +53,7 @@ eqs = [D(D(x)) ~ σ * (y - x),
 
 @mtkbuild sys = ODESystem(eqs, t)
 
-u0 = [D(x) => 2.0,
+u0_incorrect = [D(x) => 2.0,
     x => 1.0,
     y => 0.0,
     z => 0.0,
@@ -64,21 +64,42 @@ p = [σ => 28.0,
     β => 8 / 3]
 
 tspan = (0.0, 100.0)
-prob = ODEProblem(sys, u0, tspan, p, jac = true)
-sol = solve(prob, Rodas5P(), initializealg = BrownFullBasicInit())
-# sol = solve(prob, Rodas5P())
-mtkparams = SciMLSensitivity.parameter_values(sol)
+
+# Check that the gradients for the `solve` are the same both for an initialization
+# (for the algebraic variables) initialized poorly (therefore needs correction with BrownBasicInit)
+# and with the initialization corrected to satisfy the algebraic equation
+prob_incorrectu0 = ODEProblem(sys, u0_incorrect, tspan, p, jac = true)
+mtkparams_incorrectu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
 
 gt = rand(3609)
 
 sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
-dmtk, = Zygote.gradient(mtkparams) do p
-    new_sol = solve(prob, Rodas5P(); p = p, initializealg = BrownFullBasicInit(), sensealg)
+dmtk_incorrectu0, = Zygote.gradient(mtkparams_incorrectu0) do p
+    new_sol = solve(prob_incorrectu0, Rodas5P(); p = p, initializealg = BrownFullBasicInit(), sensealg, abstol = 1e-6, reltol = 1e-3)
     Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
-        @show extrema(new_sol[x + y + z + 2 * β - w])
-        @show extrema(new_sol[x^2 + y^2 - w2^2])
-        @show mean(new_sol[x^2 + y^2 - w2^2])
+        @test new_sol.retcode == SciMLBase.ReturnCode.Success
         @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
+        @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
     end
     mean(abs.(new_sol[sys.x] .- gt))
 end
+
+u0_correct = [D(x) => 2.0,
+    x => 1.0,
+    y => 0.0,
+    z => 0.0,
+    w2 => -1.0,]
+prob_correctu0 = remake(prob_incorrectu0, u0 = u0_correct)
+mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
+
+dmtk_correctu0, = Zygote.gradient(mtkparams_correctu0) do p
+    new_sol = solve(prob_correctu0, Rodas5P(); p = p, initializealg = BrownFullBasicInit(), sensealg, abstol = 1e-6, reltol = 1e-3)
+    Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
+        @test new_sol.retcode == SciMLBase.ReturnCode.Success
+        @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
+        @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
+    end
+    mean(abs.(new_sol[sys.x] .- gt))
+end
+
+@test dmtk_incorrectu0.tunable ≈ dmtk_correctu0.tunable
