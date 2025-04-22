@@ -1766,7 +1766,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 @. _out[_save_idxs] = Δ.u[_save_idxs]
             end
         end
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, initializealg = BrownBasicInit())
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, initializealg = BrownFullBasicInit())
 
         dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
