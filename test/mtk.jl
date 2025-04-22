@@ -1,6 +1,7 @@
 using ModelingToolkit, OrdinaryDiffEq
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
+using OrdinaryDiffEqCore
 using SciMLSensitivity
 using ForwardDiff
 using Zygote
@@ -98,15 +99,15 @@ setups = [
           (prob_correctu0, mtkparams_correctu0, CheckInit()), # Source of truth first
     
           (prob_incorrectu0, mtkparams_incorrectu0, BrownFullBasicInit()),
-          (prob_incorrectu0, mtkparams_incorrectu0, OrdinaryDiffEq.DefaultInit()),
+          (prob_incorrectu0, mtkparams_incorrectu0, OrdinaryDiffEqCore.DefaultInit()),
           (prob_incorrectu0, mtkparams_incorrectu0, nothing), 
 
           (prob_timedepu0, mtkparams_timedepu0, BrownFullBasicInit()),
-          (prob_timedepu0, mtkparams_timedepu0, OrdinaryDiffEq.DefaultInit()),
+          (prob_timedepu0, mtkparams_timedepu0, OrdinaryDiffEqCore.DefaultInit()),
           (prob_timedepu0, mtkparams_timedepu0, nothing), 
 
           (prob_correctu0, mtkparams_correctu0, BrownFullBasicInit()),
-          (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEq.DefaultInit()),
+          (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEqCore.DefaultInit()),
           
           (prob_correctu0, mtkparams_correctu0, NoInit()), 
           (prob_correctu0, mtkparams_correctu0, nothing), 
