@@ -115,7 +115,11 @@ grads = map(setups) do setup
     prob, ps, init = setup
     @show init
     Zygote.gradient(ps) do p
-        new_sol = solve(prob, Rodas5P(); p = p, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+        if init === nothing
+            new_sol = solve(prob, Rodas5P(); p = p, sensealg, abstol = 1e-6, reltol = 1e-3)
+        else
+            new_sol = solve(prob, Rodas5P(); p = p, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+        end
         gt = Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test new_sol.retcode == SciMLBase.ReturnCode.Success
             # Test that beginning of forward pass init'd correctly
