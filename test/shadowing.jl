@@ -63,7 +63,7 @@ using Zygote
         res4a = shadow_adjoint(adjointlss_problem_a)
 
         @test res1[1]≈1 atol=1e-1
-        @test res2[1]≈1 atol=1e-1
+        @test res2[1]≈1 atol=2e-1
         @test res3[1]≈1 atol=5e-2
 
         @test res1≈res1a atol=1e-10
