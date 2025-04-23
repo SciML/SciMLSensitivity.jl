@@ -91,8 +91,6 @@ u0_correct = [D(x) => 2.0,
 prob_correctu0 = remake(prob_incorrectu0, u0 = u0_correct)
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
 
-gt = rand(3609)
-
 sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
 
 setups = [
@@ -115,13 +113,15 @@ setups = [
 
 grads = map(setups) do setup
     prob, ps, init = setup
+    @show init
     Zygote.gradient(ps) do p
         new_sol = solve(prob, Rodas5P(); p = p, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
-        Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
+        gt = Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test new_sol.retcode == SciMLBase.ReturnCode.Success
             # Test that beginning of forward pass init'd correctly
             @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1e-12))
             @test all(isapprox.(new_sol[x^2 + y^2 - w2^2], 0, atol = 1e-5, rtol = 1e0))
+            zeros(size(new_sol, 2))
         end
         mean(abs.(new_sol[sys.x] .- gt))
     end
