@@ -128,11 +128,12 @@ setups = [
 grads = map(setups) do setup
     prob, ps, init = setup
     @show init
-    Zygote.gradient(ps) do p
+    u0 = prob.u0
+    Zygote.gradient(u0, ps) do u0,p
         if init === nothing
-            new_sol = solve(prob, Rodas5P(); p = ps, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, sensealg, abstol = 1e-6, reltol = 1e-3)
         else
-            new_sol = solve(prob, Rodas5P(); p = ps, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
         end
         gt = Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test new_sol.retcode == SciMLBase.ReturnCode.Success
@@ -145,5 +146,7 @@ grads = map(setups) do setup
     end
 end
 
-grads = getproperty.(grads, (:tunable,))
-@test all(x ≈ grads[1] for x in grads)
+u0grads = getindex.(grads,1)
+pgrads = getproperty.(getindex.(grads, 2), (:tunable,))
+@test all(x ≈ u0grads[1] for x in grads)
+@test all(x ≈ pgrads[1] for x in grads)
