@@ -35,9 +35,6 @@ sol = solve(prob, Tsit5())
 
 tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
 
-
-# f = remake(prob.f; f, initialization_data)
-
 @testset "Adjoint through Parameter Initialization" begin
     @testset "Forward Mode" begin
         gs_fwd, = Zygote.gradient(tunables) do tunables
