@@ -57,8 +57,7 @@ eqs = [D(D(x)) ~ σ * (y - x),
 u0_incorrect = [D(x) => 2.0,
     x => 1.0,
     y => 0.0,
-    z => 0.0,
-    w2 => 0.0,]
+    z => 0.0]
 
 p = [σ => 28.0,
     ρ => 10.0,
@@ -69,7 +68,7 @@ tspan = (0.0, 100.0)
 # Check that the gradients for the `solve` are the same both for an initialization
 # (for the algebraic variables) initialized poorly (therefore needs correction with BrownBasicInit)
 # and with the initialization corrected to satisfy the algebraic equation
-prob_incorrectu0 = ODEProblem(sys, u0_incorrect, tspan, p, jac = true)
+prob_incorrectu0 = ODEProblem(sys, u0_incorrect, tspan, p, jac = true, guesses = [w2 => 0.0])
 mtkparams_incorrectu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
 
 u0_timedep = [D(x) => 2.0,
@@ -80,7 +79,7 @@ u0_timedep = [D(x) => 2.0,
 # this ensures that `y => t` is not applied in the adjoint equation
 # If the MTK init is called for the reverse, then `y0` in the backwards
 # pass will be extremely far off and cause an incorrect gradient
-prob_timedepu0 = ODEProblem(sys, u0_timedep, tspan, p, jac = true)
+prob_timedepu0 = ODEProblem(sys, u0_timedep, tspan, p, jac = true, guesses = [w2 => 0.0])
 mtkparams_timedepu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
 
 u0_correct = [D(x) => 2.0,
@@ -88,8 +87,17 @@ u0_correct = [D(x) => 2.0,
     y => 0.0,
     z => 0.0,
     w2 => -1.0,]
-prob_correctu0 = remake(prob_incorrectu0, u0 = u0_correct)
+prob_correctu0 = ODEProblem(sys, u0_correct, tspan, p, jac = true, guesses = [w2 => -1.0])
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
+prob_correctu0.u0[5] = -1.0
+
+u0_overdetermined = [D(x) => 2.0,
+    x => 1.0,
+    y => 0.0,
+    z => 0.0,
+    w2 => -1.0,]
+prob_overdetermined = ODEProblem(sys, u0_overdetermined, tspan, p, jac = true)
+mtkparams_overdetermined = SciMLSensitivity.parameter_values(prob_overdetermined)
 
 sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
 
@@ -108,17 +116,24 @@ setups = [
           (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEqCore.DefaultInit()),
           
           (prob_correctu0, mtkparams_correctu0, NoInit()), 
-          (prob_correctu0, mtkparams_correctu0, nothing), 
+          (prob_correctu0, mtkparams_correctu0, nothing),
+
+          (prob_overdetermined, mtkparams_overdetermined, BrownFullBasicInit()),
+          (prob_overdetermined, mtkparams_overdetermined, OrdinaryDiffEq.OrdinaryDiffEqCore.DefaultInit()),
+
+          (prob_overdetermined, mtkparams_overdetermined, NoInit()),
+          (prob_overdetermined, mtkparams_overdetermined, nothing),
 ]
 
 grads = map(setups) do setup
     prob, ps, init = setup
     @show init
-    Zygote.gradient(ps) do p
+    u0 = prob.u0
+    Zygote.gradient(u0, ps) do u0,p
         if init === nothing
-            new_sol = solve(prob, Rodas5P(); p = p, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, sensealg, abstol = 1e-6, reltol = 1e-3)
         else
-            new_sol = solve(prob, Rodas5P(); p = p, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
         end
         gt = Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test new_sol.retcode == SciMLBase.ReturnCode.Success
@@ -131,5 +146,7 @@ grads = map(setups) do setup
     end
 end
 
-grads = getproperty.(grads, (:tunable,))
-@test all(x ≈ grads[1] for x in grads)
+u0grads = getindex.(grads,1)
+pgrads = getproperty.(getindex.(grads, 2), (:tunable,))
+@test all(x ≈ u0grads[1] for x in grads)
+@test all(x ≈ pgrads[1] for x in grads)
