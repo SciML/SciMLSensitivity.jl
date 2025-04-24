@@ -34,7 +34,7 @@ prob = ODEProblem(sys, u0, tspan, p, jac = true)
 sol = solve(prob, Tsit5())
 mtkparams = SciMLSensitivity.parameter_values(sol)
 
-gt = rand(1495)
+gt = rand(length(sol.u))
 dmtk, = Zygote.gradient(mtkparams) do p
     new_sol = solve(prob, Tsit5(), p = p)
     Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
