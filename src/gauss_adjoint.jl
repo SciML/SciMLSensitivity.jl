@@ -224,8 +224,7 @@ end
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
-        # ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
-        ODEFunction{false, true}(unwrapped_f(sol.prob.f))
+        ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
     else
         sol.prob.f
     end
@@ -584,9 +583,6 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
-    @show adj_prob.f.initialization_data
-    @show kwargs
-    @show adj_prob.kwargs
     adj_sol = solve(
         adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
         save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
