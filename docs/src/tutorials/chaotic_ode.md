@@ -35,7 +35,7 @@ u0 = [1.0, 0.0, 0.0]
 prob = ODEProblem(lorenz!, u0, tspan, p)
 sol = solve(prob, Vern9(), abstol = 1e-14, reltol = 1e-14)
 sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
-pl1 = plot(sol, vars = (1, 2, 3), legend = true,
+pl1 = plot(sol, idxs = (1, 2, 3), legend = true,
     label = "sol",
     labelfontsize = 20,
     lw = 2,
@@ -122,7 +122,7 @@ g(u, p, t) = u[end]
 
 function G(p)
     _prob = remake(prob_attractor, p = p)
-    _sol = solve(_prob, Vern9(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01,
+    _sol = solve(_prob, Vern9(), abstol = 1e-8, reltol = 1e-8, saveat = 0.01,
         sensealg = ForwardLSS(g = g))
     sum(getindex.(_sol.u, 3))
 end
@@ -133,7 +133,7 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-14, reltol = 1e-14)
+sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-8, reltol = 1e-8)
 lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(g = g))
 resfw = shadow_forward(lss_problem)
 ```
