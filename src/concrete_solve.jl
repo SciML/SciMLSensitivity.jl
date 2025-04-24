@@ -46,15 +46,16 @@ function inplace_vjp(prob, u0, p, verbose, repack)
 
     vjp = try
         f = unwrapped_f(prob.f)
+        tspan_ = prob isa AbstractNonlinearProblem ? nothing : [prob.tspan[1]]
         if p === nothing || p isa SciMLBase.NullParameters
-            ReverseDiff.GradientTape((copy(u0), [prob.tspan[1]])) do u, t
+            ReverseDiff.GradientTape((copy(u0), tspan_)) do u, t
                 du1 = similar(u, size(u))
                 du1 .= 0
                 f(du1, u, p, first(t))
                 return vec(du1)
             end
         else
-            ReverseDiff.GradientTape((copy(u0), p, [prob.tspan[1]])) do u, p, t
+            ReverseDiff.GradientTape((copy(u0), p, tspan_)) do u, p, t
                 du1 = similar(u, size(u))
                 du1 .= 0
                 f(du1, u, repack(p), first(t))
@@ -299,6 +300,7 @@ function DiffEqBase._concrete_solve_adjoint(
         tunables, repack = Functors.functor(p)
     end
 
+    u0 = state_values(prob) === nothing ? Float64[] : u0
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
@@ -371,6 +373,7 @@ function DiffEqBase._concrete_solve_adjoint(
         args...; save_start = true, save_end = true,
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
+        initializealg_default = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
         kwargs...)
     if !(sensealg isa GaussAdjoint) &&
        !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
@@ -412,16 +415,61 @@ function DiffEqBase._concrete_solve_adjoint(
         Base.diff_names(Base._nt_names(values(kwargs)),
         (:callback_adj, :callback))}(values(kwargs))
     isq = sensealg isa QuadratureAdjoint
+    kwargs_init = kwargs_adj[Base.diff_names(Base._nt_names(kwargs_adj), (:initializealg,))]
+
+    if haskey(kwargs, :initializealg) || haskey(prob.kwargs, :initializealg)
+        initializealg = haskey(kwargs, :initializealg) ? kwargs[:initializealg] : prob.kwargs[:initializealg]
+    else
+        initializealg = DefaultInit()
+    end
+
+    default_inits = Union{OverrideInit, Nothing, DefaultInit}
+    igs, new_u0, new_p, new_initializealg = if (SciMLBase.has_initialization_data(_prob.f) && initializealg isa default_inits)
+        local new_u0
+        local new_p
+        initializeprob = prob.f.initialization_data.initializeprob
+        iu0 = state_values(initializeprob)
+        isAD = if iu0 === nothing
+            AutoForwardDiff
+        elseif has_autodiff(alg)
+            OrdinaryDiffEqCore.alg_autodiff(alg) isa AutoForwardDiff
+        else
+            true 
+        end
+        nlsolve_alg = default_nlsolve(nothing, Val(isinplace(_prob)), iu0, initializeprob, isAD)
+        initializealg = initializealg isa Union{Nothing, DefaultInit} ? initializealg_default : initializealg
+
+        iy, back = Zygote.pullback(tunables) do tunables
+            new_prob = remake(_prob, p = repack(tunables))
+            new_u0, new_p, _ = SciMLBase.get_initial_values(new_prob, new_prob, new_prob.f, initializealg, Val(isinplace(new_prob));
+                                                            sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
+                                                            nlsolve_alg,
+                                                            kwargs_init...)
+            new_tunables, _, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
+            if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
+                sum(new_tunables)
+            else
+                sum(new_u0) + sum(new_tunables)
+            end
+        end
+        igs = back(one(iy))[1] .- one(eltype(tunables))
+
+        igs, new_u0, new_p, SciMLBase.NoInit()
+    else
+        nothing, u0, p, initializealg
+    end
+    _prob = remake(_prob, u0 = new_u0, p = new_p)
+
     if sensealg isa BacksolveAdjoint
-        sol = solve(_prob, alg, args...; save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = save_start, save_end = save_end,
             saveat = saveat, kwargs_fwd...)
     elseif ischeckpointing(sensealg)
-        sol = solve(_prob, alg, args...; save_noise = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = true, save_end = true,
             saveat = saveat, kwargs_fwd...)
     else
-        sol = solve(_prob, alg, args...; save_noise = true, save_start = true,
+        sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true, save_start = true,
             save_end = true, kwargs_fwd...)
     end
 
@@ -491,6 +539,7 @@ function DiffEqBase._concrete_solve_adjoint(
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         function df_iip(_out, u, p, t, i)
             outtype = _out isa SubArray ?
                       ArrayInterface.parameterless_type(_out.parent) :
@@ -628,19 +677,21 @@ function DiffEqBase._concrete_solve_adjoint(
                 dgdu_discrete = df_iip,
                 sensealg = sensealg,
                 callback = cb2,
-                kwargs_adj...)
+                kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
                 dgdu_discrete = df_oop,
                 sensealg = sensealg,
                 callback = cb2,
-                kwargs_adj...)
+                kwargs_init...)
         end
 
         du0 = reshape(du0, size(u0))
 
         dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
+
+        dp = Zygote.accum(dp, igs)
 
         _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
                                !isscimlstructure(p)
@@ -1679,6 +1730,7 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...)
     _prob = remake(prob, u0 = u0, p = p)
+
     sol = solve(_prob, alg, args...; kwargs...)
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
@@ -1688,7 +1740,20 @@ function DiffEqBase._concrete_solve_adjoint(
         out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
     end
 
+    _, repack_adjoint = if isscimlstructure(p)
+        Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+    elseif isfunctor(p)
+        ps, re = Functors.functor(p)
+        ps, x -> (re(x),)
+    else
+        nothing, x -> (x,)
+    end
+
     function steadystatebackpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
@@ -1696,18 +1761,53 @@ function DiffEqBase._concrete_solve_adjoint(
                 _out[_save_idxs] = Δ[_save_idxs]
             elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
-            else
+            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray || Δ isa AbstractArray
                 @. _out[_save_idxs] = Δ[_save_idxs]
+            elseif isnothing(_out)
+                _out
+            else
+                @. _out[_save_idxs] = Δ.u[_save_idxs]
             end
         end
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, initializealg = BrownFullBasicInit())
+
+        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
+            # if Δ isa AbstractArray, the gradients correspond to `u`
+            # this is something that needs changing in the future, but
+            # this is the applicable till the movement to structuaral
+            # tangents is completed
+            dp, Δtunables = if isscimlstructure(dp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, nothing
+            elseif isfunctor(dp)
+                dp, _ = Functors.functor(dp)
+                dp, nothing
+            else
+                dp, nothing
+            end
+        else
+            dp, Δtunables = if isscimlstructure(p)
+                Δp = setproperties(dp, to_nt(Δ.prob.p))
+                Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, Δtunables
+            elseif isfunctor(p)
+                dp, _ = Functors.functor(dp)
+                Δtunables, _ = Functors.functor(Δ.prob.p)
+                dp, Δtunables
+            else
+                dp, Δ.prob.p
+            end
+        end
+
+        dp = Zygote.accum(dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), NoTangent(), dp, NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         else
-            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), dp, NoTangent(),
+            (NoTangent(), NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end

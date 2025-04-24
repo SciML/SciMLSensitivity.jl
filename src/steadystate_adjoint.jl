@@ -41,7 +41,7 @@ end
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
 
     needs_jac = ifelse(has_adjoint(f), false,
-        ifelse(sensealg.linsolve === nothing, length(u0) ≤ 50,
+        ifelse(sensealg.linsolve === nothing, isnothing(u0) || length(u0) ≤ 50,
             __needs_concrete_A(sensealg.linsolve)))
 
     p === SciMLBase.NullParameters() &&
@@ -50,7 +50,6 @@ end
     sense = SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp,
         f, f.colorvec, needs_jac)
     (; diffcache, y, sol, λ, vjp, linsolve) = sense
-
     if needs_jac
         if SciMLBase.has_jac(f)
             f.jac(diffcache.J, y, p, nothing)
@@ -84,7 +83,7 @@ end
         end
     end
 
-    if !needs_jac
+    if !needs_jac && !isempty(y)
         # Current SciMLJacobianOperators requires specifying the problem as a NonlinearProblem
         usize = size(y)
         if SciMLBase.isinplace(f)
@@ -102,18 +101,17 @@ end
         solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
             sensealg.linsolve_kwargs...)
     else
-        if linsolve === nothing && isempty(sensealg.linsolve_kwargs)
-            # For the default case use `\` to avoid any form of unnecessary cache allocation
-            vec(λ) .= diffcache.J' \ vec(dgdu_val)
-        else
-            linear_problem = LinearProblem(diffcache.J', vec(dgdu_val'); u0 = vec(λ))
-            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
-                sensealg.linsolve_kwargs...) # u is vec(λ)
+        if !isempty(y)
+            J_ = diffcache.J isa PreallocationTools.DiffCache ? diffcache.J.du' : diffcache.J'
+            linear_problem = LinearProblem(J_, vec(dgdu_val'); u0 = vec(λ))
+            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
         end
     end
 
     try
-        vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
+        if !isempty(y)
+            vecjacobian!(vec(dgdu_val), y, λ, p, nothing, sense; dgrad = vjp, dy = nothing)
+        end
     catch e
         if sense.sensealg.autojacvec === nothing
             @warn "Automatic AD choice of autojacvec failed in nonlinear solve adjoint, failing back to ODE adjoint + numerical vjp"
