@@ -300,7 +300,6 @@ function DiffEqBase._concrete_solve_adjoint(
         tunables, repack = Functors.functor(p)
     end
 
-    u0 = state_values(prob) === nothing ? Float64[] : u0
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
