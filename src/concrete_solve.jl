@@ -1776,8 +1776,15 @@ function DiffEqBase._concrete_solve_adjoint(
             # this is something that needs changing in the future, but
             # this is the applicable till the movement to structuaral
             # tangents is completed
-            dp, _, _ = canonicalize(Tunable(), dp)
-            dp, nothing
+            dp, Δtunables = if isscimlstructure(dp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, nothing
+            elseif isfunctor(dp)
+                dp, _ = Functors.functor(dp)
+                dp, nothing
+            else
+                dp, nothing
+            end
         else
             dp, Δtunables = if isscimlstructure(p)
                 Δp = setproperties(dp, to_nt(Δ.prob.p))
