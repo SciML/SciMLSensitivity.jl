@@ -1792,7 +1792,7 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
 
-        dp = Zygote.accum(dp, (isempty(Δtunables) || isnothing(Δtunables)) ? nothing : Δtunables)
+        dp = Zygote.accum(dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
