@@ -488,19 +488,8 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.reverse_pass!(tape)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
-        # global gf = f
-        # global gy = y
-        # global gtunables = tunables
-        # global grepack = repack
-        # global gt = t
-        # @show f(y, tunables, t)
-        c = Zygote.bufferfrom(y)
-        c = copy(y)
-        # @show f(c, y, repack(tunables), t)
         _dy, back = Zygote.pullback(tunables) do tunables
-            c = Zygote.bufferfrom(y)
-            f(c, y, repack(tunables), t)
-            vec(copy(c))
+            vec(f(y, repack(tunables), t))
         end
         tmp = back(λ)
         if tmp[1] === nothing

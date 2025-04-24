@@ -12,7 +12,7 @@ x = ones(Float32, 2, 3)
 
 nlprob(u, p) = first(model_nls(u, p, st_nls)) .- u
 
-prob = NonlinearProblem(nlprob, zeros(2, 3), ps)
+prob = NonlinearProblem(nlprob, zeros(2, 3), ca)
 
 @test_nowarn solve(prob, NewtonRaphson())
 

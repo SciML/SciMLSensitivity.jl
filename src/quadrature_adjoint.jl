@@ -176,7 +176,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     adj_prob = adj_sol.prob
     (; f, tspan) = prob
     p = parameter_values(prob)
-    tunables, _, _ = canonicalize(Tunable(), p)
     u0 = state_values(prob)
     numparams = length(p)
     y = zero(state_values(prob))
@@ -253,9 +252,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     end
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
-
-    # AdjointSensitivityIntegrand(sol, adj_sol, tunables, y, λ, pf, f_cache, pJ, paramjac_config,
-    #     sensealg, dgdp_cache, dgdp)
 end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
@@ -289,15 +285,13 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
         _dy, back = Zygote.pullback(p) do p
-            # @show f(y, p, t)
             vec(f(y, p, t))
         end
         tmp = back(λ)
-        # @show tmp
         if tmp[1] === nothing
             out[:] .= 0
         else
-            out[:] .= vec(tmp[1].tunable)
+            out[:] .= vec(tmp[1])
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
@@ -336,7 +330,6 @@ function (S::AdjointSensitivityIntegrand)(out, t)
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
-    # out = similar(S.p.tunable)
     out = similar(S.p)
     out .= false
     S(out, t)
@@ -366,9 +359,7 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             res, err = quadgk(integrand, sol.prob.tspan[1], sol.prob.tspan[2],
                 atol = abstol, rtol = reltol)
         else
-            tunables, _, _ = canonicalize(Tunable(), integrand.p)
-            # res = zero(integrand.p)'
-            res = zero(tunables)'
+            res = zero(integrand.p)'
 
             # handle discrete dgdp contributions
             if dgdp_discrete !== nothing
