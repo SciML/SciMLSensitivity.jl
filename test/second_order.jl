@@ -34,3 +34,17 @@ H2v = H * v
 
 @test H ≈ H2
 @test Hv ≈ H2v
+
+function lotka!(du,u,p,t)
+    du[1] = dx = p[1]*u[1] - p[2]*u[1]*u[2]
+    du[2] = dy = -p[3]*u[2] + p[4]*u[1]*u[2]
+  end
+
+p = [1.5,1.0,3.0,1.0]; u0 = [1.0;1.0]
+prob = ODEProblem(lotka!,u0,(0.0,10.0),p)
+loss(sol) = sum(sol)
+v = ones(4)
+
+Hv = second_order_sensitivity_product(loss,v,prob,Vern9(),saveat=0.1,abstol=1e-12,reltol=1e-12)
+forward_Hv = ForwardDiff.hessian(p -> sum(solve(prob, Vern9(), p=p,saveat=0.1,abstol=1e-12,reltol=1e-12)), p)*v
+@test Hv ≈ forward_Hv
