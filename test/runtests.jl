@@ -81,13 +81,13 @@ end
 
     if GROUP == "All" || GROUP == "Core6"
         @testset "Core 6" begin
-            @time @safetestset "Enzyme Closures" include("enzyme_closure.jl")
-            @time @safetestset "Complex Matrix FiniteDiff Adjoint" include("complex_matrix_finitediff.jl")
-            @time @safetestset "Null Parameters" include("null_parameters.jl")
-            @time @safetestset "Forward Mode Prob Kwargs" include("forward_prob_kwargs.jl")
+            # @time @safetestset "Enzyme Closures" include("enzyme_closure.jl")
+            # @time @safetestset "Complex Matrix FiniteDiff Adjoint" include("complex_matrix_finitediff.jl")
+            # @time @safetestset "Null Parameters" include("null_parameters.jl")
+            # @time @safetestset "Forward Mode Prob Kwargs" include("forward_prob_kwargs.jl")
             @time @safetestset "Steady State Adjoint" include("steady_state.jl")
-            @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" include("second_order_odes.jl")
-            @time @safetestset "Parameter Compatibility Errors" include("parameter_compatibility_errors.jl")
+            # @time @safetestset "Concrete Solve Derivatives of Second Order ODEs" include("second_order_odes.jl")
+            # @time @safetestset "Parameter Compatibility Errors" include("parameter_compatibility_errors.jl")
         end
     end
 

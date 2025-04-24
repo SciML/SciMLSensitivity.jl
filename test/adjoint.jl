@@ -973,8 +973,8 @@ for iip in [true, false]
     p = [0.04, 3e7, 1e4]
 
     prob_singular_mm = ODEProblem(f, [1.0, 0.0, 1.0], (0.0, 100), p)
-    sol_singular_mm = solve(prob_singular_mm, Rodas4(autodiff = false),
-        reltol = 1e-12, abstol = 1e-12)
+    sol_singular_mm = solve(prob_singular_mm, FBDF(autodiff = false),
+        reltol = 1e-12, abstol = 1e-12, initializealg = BrownFullBasicInit())
     ts = [50, sol_singular_mm.t[end]]
     dg_singular(out, u, p, t, i) = (fill!(out, 0); out[end] = 1)
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
