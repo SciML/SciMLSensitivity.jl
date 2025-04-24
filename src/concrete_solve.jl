@@ -1745,6 +1745,9 @@ function DiffEqBase._concrete_solve_adjoint(
             t, _, _ = canonicalize(Tunable(), p)
             t
         end
+    elseif isfunctor(p)
+        ps, re = Functors.functor(p)
+        ps, x -> (re(x),)
     else
         nothing, x -> (x,)
     end
@@ -1776,13 +1779,21 @@ function DiffEqBase._concrete_solve_adjoint(
             dp, _, _ = canonicalize(Tunable(), dp)
             dp, nothing
         else
-            Δp = setproperties(dp, to_nt(Δ.prob.p))
-            Δtunables, _, _ = canonicalize(Tunable(), Δp)
-            dp, _, _ = canonicalize(Tunable(), dp)
-            dp, Δtunables
+            dp, Δtunables = if isscimlstructure(p)
+                Δp = setproperties(dp, to_nt(Δ.prob.p))
+                Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, Δtunables
+            elseif isfunctor(p)
+                dp, _ = Functors.functor(dp)
+                Δtunables, _ = Functors.functor(Δ.prob.p)
+                dp, Δtunables
+            else
+                dp, Δ.prob.p
+            end
         end
 
-        dp = Zygote.accum(dp, Δtunables)
+        dp = Zygote.accum(dp, isempty(Δtunables) ? nothing : Δtunables)
 
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
