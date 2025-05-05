@@ -677,12 +677,14 @@ function DiffEqBase._concrete_solve_adjoint(
                 dgdu_discrete = df_iip,
                 sensealg = sensealg,
                 callback = cb2,
+                initializealg = BrownFullBasicInit(),
                 kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
                 dgdu_discrete = df_oop,
                 sensealg = sensealg,
                 callback = cb2,
+                initializealg = BrownFullBasicInit(),
                 kwargs_init...)
         end
 

@@ -70,17 +70,19 @@ tspan = (0.0, 100.0)
 # and with the initialization corrected to satisfy the algebraic equation
 prob_incorrectu0 = ODEProblem(sys, u0_incorrect, tspan, p, jac = true, guesses = [w2 => 0.0])
 mtkparams_incorrectu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
+test_sol = solve(prob_incorrectu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 
 u0_timedep = [D(x) => 2.0,
     x => 1.0,
     y => t,
     z => 0.0,
-    w2 => 0.0,]
+    w2 => -1.0,]
 # this ensures that `y => t` is not applied in the adjoint equation
 # If the MTK init is called for the reverse, then `y0` in the backwards
 # pass will be extremely far off and cause an incorrect gradient
 prob_timedepu0 = ODEProblem(sys, u0_timedep, tspan, p, jac = true, guesses = [w2 => 0.0])
 mtkparams_timedepu0 = SciMLSensitivity.parameter_values(prob_incorrectu0)
+test_sol = solve(prob_timedepu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 
 u0_correct = [D(x) => 2.0,
     x => 1.0,
@@ -90,6 +92,7 @@ u0_correct = [D(x) => 2.0,
 prob_correctu0 = ODEProblem(sys, u0_correct, tspan, p, jac = true, guesses = [w2 => -1.0])
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
 prob_correctu0.u0[5] = -1.0
+test_sol = solve(prob_correctu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 
 u0_overdetermined = [D(x) => 2.0,
     x => 1.0,
