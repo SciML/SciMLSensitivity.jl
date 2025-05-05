@@ -408,7 +408,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     # Remove callbacks, saveat, etc. from kwargs since it's handled separately
-    kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback,))}(values(kwargs))
+    kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback, :initializealg))}(values(kwargs))
 
     # Capture the callback_adj for the reverse pass and remove both callbacks
     kwargs_adj = NamedTuple{
@@ -454,10 +454,11 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         igs = back(one(iy))[1] .- one(eltype(tunables))
 
-        igs, new_u0, new_p, SciMLBase.NoInit()
+        igs, new_u0, new_p, SciMLBase.CheckInit()
     else
         nothing, u0, p, initializealg
     end
+
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
