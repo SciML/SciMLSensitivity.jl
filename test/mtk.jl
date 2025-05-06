@@ -102,7 +102,7 @@ test_sol = solve(prob_overdetermined, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
 
 setups = [
-          (prob_gtu0, mtkparams_gtu0, CheckInit()), # Source of truth first
+          (prob_correctu0, mtkparams_correctu0, CheckInit()), # Source of truth first
     
           (prob_incorrectu0, mtkparams_incorrectu0, BrownFullBasicInit()),
           (prob_incorrectu0, mtkparams_incorrectu0, OrdinaryDiffEqCore.DefaultInit()),
