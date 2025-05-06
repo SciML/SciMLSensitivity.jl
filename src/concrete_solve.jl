@@ -685,7 +685,7 @@ function DiffEqBase._concrete_solve_adjoint(
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
             dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
             sensealg = sensealg,
-            callback = cb2
+            callback = cb2,
             kwargs_init...)
         end
 
