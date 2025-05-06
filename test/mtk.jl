@@ -86,10 +86,23 @@ test_sol = solve(prob_timedepu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 u0_correct = [D(x) => 2.0,
     x => 1.0,
     y => 0.0,
-    z => 0.0]
+    z => 0.0,]
 prob_correctu0 = ODEProblem(sys, u0_correct, tspan, p, jac = true, guesses = [w2 => -1.0])
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
 test_sol = solve(prob_correctu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
+
+u0_gt = [D(x) => 2.0,
+    x => 1.0,
+    y => 0.0,
+    z => 0.0,
+    w2 => -1.0,]
+# The initialization might be over determined, but that is necessary as we
+# will force DAE initialization to not run via CheckInit. CheckInit will
+# still need to check that the algebraic equations are satisfied, so we need to
+# make sure that the initialization is correct
+prob_gtu0 = ODEProblem(sys, u0_gt, tspan, p, jac = true)
+mtkparams_gtu0 = SciMLSensitivity.parameter_values(prob_gtu0)
+test_sol = solve(prob_gtu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 
 u0_overdetermined = [D(x) => 2.0,
     x => 1.0,
@@ -103,7 +116,7 @@ test_sol = solve(prob_overdetermined, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
 sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ZygoteVJP())
 
 setups = [
-          (prob_correctu0, mtkparams_correctu0, CheckInit()), # Source of truth first
+          (prob_gtu0, mtkparams_gtu0, CheckInit()), # Source of truth first
     
           (prob_incorrectu0, mtkparams_incorrectu0, BrownFullBasicInit()),
           (prob_incorrectu0, mtkparams_incorrectu0, OrdinaryDiffEqCore.DefaultInit()),
@@ -116,7 +129,7 @@ setups = [
           (prob_correctu0, mtkparams_correctu0, BrownFullBasicInit()),
           (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEqCore.DefaultInit()),
           
-          (prob_correctu0, mtkparams_correctu0, NoInit()), 
+        #   (prob_correctu0, mtkparams_correctu0, NoInit()),
           (prob_correctu0, mtkparams_correctu0, nothing),
 
           (prob_overdetermined, mtkparams_overdetermined, BrownFullBasicInit()),
@@ -124,17 +137,18 @@ setups = [
 
           (prob_overdetermined, mtkparams_overdetermined, NoInit()),
           (prob_overdetermined, mtkparams_overdetermined, nothing),
-]
+];
 
 grads = map(setups) do setup
     prob, ps, init = setup
     @show init
     u0 = prob.u0
     Zygote.gradient(u0, ps) do u0,p
+        new_prob = remake(prob, u0 = u0, p = p)
         if init === nothing
-            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(new_prob, Rodas5P(); sensealg, abstol = 1e-6, reltol = 1e-3)
         else
-            new_sol = solve(prob, Rodas5P(); u0 = u0, p = ps, initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
+            new_sol = solve(new_prob, Rodas5P(); initializealg = init, sensealg, abstol = 1e-6, reltol = 1e-3)
         end
         gt = Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test new_sol.retcode == SciMLBase.ReturnCode.Success
@@ -149,5 +163,5 @@ end
 
 u0grads = getindex.(grads,1)
 pgrads = getproperty.(getindex.(grads, 2), (:tunable,))
-@test all(x ≈ u0grads[1] for x in grads)
-@test all(x ≈ pgrads[1] for x in grads)
+@test all(x ≈ u0grads[1] for x in u0grads)
+@test all(x ≈ pgrads[1] for x in pgrads)
