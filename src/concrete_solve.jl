@@ -673,20 +673,20 @@ function DiffEqBase._concrete_solve_adjoint(
         else
             cb2 = cb
         end
-        if ArrayInterface.ismutable(eltype(state_values(sol)))
+
+        if prob isa Union{ODEProblem, DAEProblem}
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
-                dgdu_discrete = df_iip,
-                sensealg = sensealg,
-                callback = cb2,
-                initializealg = BrownFullBasicInit(),
-                kwargs_init...)
+            dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
+            sensealg = sensealg,
+            callback = cb2,
+            initializealg = BrownFullBasicInit(),
+            kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
-                dgdu_discrete = df_oop,
-                sensealg = sensealg,
-                callback = cb2,
-                initializealg = BrownFullBasicInit(),
-                kwargs_init...)
+            dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
+            sensealg = sensealg,
+            callback = cb2
+            kwargs_init...)
         end
 
         du0 = reshape(du0, size(u0))
@@ -1774,7 +1774,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 @. _out[_save_idxs] = Δ.u[_save_idxs]
             end
         end
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, initializealg = BrownFullBasicInit())
+
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
         dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
