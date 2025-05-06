@@ -90,20 +90,6 @@ u0_correct = [D(x) => 2.0,
 prob_correctu0 = ODEProblem(sys, u0_correct, tspan, p, jac = true, guesses = [w2 => -1.0])
 mtkparams_correctu0 = SciMLSensitivity.parameter_values(prob_correctu0)
 test_sol = solve(prob_correctu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
-
-u0_gt = [D(x) => 2.0,
-    x => 1.0,
-    y => 0.0,
-    z => 0.0,
-    w2 => -1.0,]
-# The initialization might be over determined, but that is necessary as we
-# will force DAE initialization to not run via CheckInit. CheckInit will
-# still need to check that the algebraic equations are satisfied, so we need to
-# make sure that the initialization is correct
-prob_gtu0 = ODEProblem(sys, u0_gt, tspan, p, jac = true)
-mtkparams_gtu0 = SciMLSensitivity.parameter_values(prob_gtu0)
-test_sol = solve(prob_gtu0, Rodas5P(), abstol = 1e-6, reltol = 1e-3)
-
 u0_overdetermined = [D(x) => 2.0,
     x => 1.0,
     y => 0.0,
