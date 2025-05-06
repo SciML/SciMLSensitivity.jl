@@ -408,7 +408,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     # Remove callbacks, saveat, etc. from kwargs since it's handled separately
-    kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback,))}(values(kwargs))
+    kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (:callback, :initializealg))}(values(kwargs))
 
     # Capture the callback_adj for the reverse pass and remove both callbacks
     kwargs_adj = NamedTuple{
@@ -454,10 +454,11 @@ function DiffEqBase._concrete_solve_adjoint(
         end
         igs = back(one(iy))[1] .- one(eltype(tunables))
 
-        igs, new_u0, new_p, SciMLBase.NoInit()
+        igs, new_u0, new_p, SciMLBase.CheckInit()
     else
         nothing, u0, p, initializealg
     end
+
     _prob = remake(_prob, u0 = new_u0, p = new_p)
 
     if sensealg isa BacksolveAdjoint
@@ -672,18 +673,20 @@ function DiffEqBase._concrete_solve_adjoint(
         else
             cb2 = cb
         end
-        if ArrayInterface.ismutable(eltype(state_values(sol)))
+
+        if prob isa Union{ODEProblem, DAEProblem}
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
-                dgdu_discrete = df_iip,
-                sensealg = sensealg,
-                callback = cb2,
-                kwargs_init...)
+            dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
+            sensealg = sensealg,
+            callback = cb2,
+            initializealg = BrownFullBasicInit(),
+            kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
-                dgdu_discrete = df_oop,
-                sensealg = sensealg,
-                callback = cb2,
-                kwargs_init...)
+            dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
+            sensealg = sensealg,
+            callback = cb2,
+            kwargs_init...)
         end
 
         du0 = reshape(du0, size(u0))
@@ -1581,6 +1584,8 @@ function DiffEqBase._concrete_solve_adjoint(
             Array(ybar)
         elseif eltype(ybar) <: AbstractArray
             Array(VectorOfArray(ybar))
+        elseif ybar isa Tangent
+            Array(VectorOfArray(ybar.u))
         else
             ybar
         end
@@ -1769,7 +1774,8 @@ function DiffEqBase._concrete_solve_adjoint(
                 @. _out[_save_idxs] = Δ.u[_save_idxs]
             end
         end
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df, initializealg = BrownFullBasicInit())
+
+        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
         dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`

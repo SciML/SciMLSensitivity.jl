@@ -36,7 +36,7 @@ desauty_model = create_model()
 sys = structural_simplify(desauty_model)
 
 
-prob = ODEProblem(sys, [], (0.0, 0.1), guesses = [sys.resistor1.v => 1.])
+prob = ODEProblem(sys, [sys.resistor1.v => 1.], (0.0, 0.1))
 iprob = prob.f.initialization_data.initializeprob
 isys = iprob.f.sys
 
