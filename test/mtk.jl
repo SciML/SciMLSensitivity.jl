@@ -129,7 +129,7 @@ setups = [
           (prob_correctu0, mtkparams_correctu0, BrownFullBasicInit()),
           (prob_correctu0, mtkparams_correctu0, OrdinaryDiffEqCore.DefaultInit()),
           
-        #   (prob_correctu0, mtkparams_correctu0, NoInit()),
+        (prob_correctu0, mtkparams_correctu0, NoInit()),
           (prob_correctu0, mtkparams_correctu0, nothing),
 
           (prob_overdetermined, mtkparams_overdetermined, BrownFullBasicInit()),
