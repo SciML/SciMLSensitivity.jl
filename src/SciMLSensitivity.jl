@@ -16,7 +16,7 @@ using FunctionWrappersWrappers: FunctionWrappersWrappers
 using GPUArraysCore: GPUArraysCore
 using LinearSolve: LinearSolve
 using PreallocationTools: PreallocationTools, dualcache, get_tmp, DiffCache,
-                          FixedSizeDiffCache
+                          FixedSizeDiffCache, LazyBufferCache
 using RandomNumbers: Xorshifts
 using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
                            AbstractVectorOfArray, ArrayPartition, DiffEqArray,

@@ -444,10 +444,10 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::SciMLBase.NullParameters,
             autojacvec.chunksize
         end
 
-        paramjac_config = FixedSizeDiffCache(zero(y), chunk), p,
-        FixedSizeDiffCache(zero(y), chunk),
-        FixedSizeDiffCache(zero(y), chunk),
-        FixedSizeDiffCache(zero(y), chunk)
+        paramjac_config = LazyBufferCache(), p, 
+        LazyBufferCache(),
+        LazyBufferCache(),
+        LazyBufferCache()
     else
         paramjac_config = zero(y), p, zero(y), zero(y), zero(y)
     end
@@ -464,11 +464,10 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
             autojacvec.chunksize
         end
 
-        paramjac_config = FixedSizeDiffCache(zero(y), chunk),
-        zero(_p),
-        FixedSizeDiffCache(zero(y), chunk),
-        FixedSizeDiffCache(zero(y), chunk),
-        FixedSizeDiffCache(zero(y), chunk)
+        paramjac_config = LazyBufferCache(), zero(_p), 
+        LazyBufferCache(),
+        LazyBufferCache(),
+        LazyBufferCache()
     else
         paramjac_config = zero(y), zero(_p), zero(y), zero(y), zero(y)
     end
