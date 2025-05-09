@@ -1017,7 +1017,7 @@ function DiffEqBase._concrete_solve_adjoint(
                                 ForwardDiff.value.(J'vec(v))
                             end
                         else
-                            zero(p)
+                            zero(tunables)
                         end
                     end
                     push!(pparts, vec(_dp))
