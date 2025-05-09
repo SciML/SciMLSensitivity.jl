@@ -574,12 +574,11 @@ function DiffEqBase._concrete_solve_adjoint(
                     end
                 end
             else
-                Δu = Δ isa Tangent ? Δ.u : Δ
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
                    Δ isa Tangent
-                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δ.u[i] : Δ[i]
+                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δu[i] : Δ[i]
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
