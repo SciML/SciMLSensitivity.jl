@@ -1586,7 +1586,7 @@ function DiffEqBase._concrete_solve_adjoint(
             Array(VectorOfArray(ybar))
         elseif ybar isa Tangent
             yy = unthunk(ybar)
-            Array(VectorOfArray(unthunk.(unthunk(yy.u))))
+            Array(VectorOfArray(unthunk.(yy.u)))
         else
             ybar
         end
