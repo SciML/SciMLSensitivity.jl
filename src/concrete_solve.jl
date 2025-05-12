@@ -1431,6 +1431,12 @@ function DiffEqBase._concrete_solve_adjoint(
             Array(ybar) # can also be a ODESolution
         elseif eltype(ybar) <: Number # CuArray{Floats}
             ybar
+        elseif ybar isa Tangent
+            ut = unthunk.(ybar.u)
+            ut_ = map(ut) do u
+                (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
+            end
+            reduce(hcat, ut_)
         elseif ybar[1] isa Array
             return Array(ybar)
         else
@@ -1586,7 +1592,10 @@ function DiffEqBase._concrete_solve_adjoint(
             Array(VectorOfArray(ybar))
         elseif ybar isa Tangent
             yy = unthunk(ybar)
-            Array(VectorOfArray(unthunk.(yy.u)))
+            yy = map(unthunk.(yy.u)) do u
+                (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
+            end
+            Array(VectorOfArray(yy))
         else
             ybar
         end
