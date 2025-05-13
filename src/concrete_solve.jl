@@ -545,12 +545,13 @@ function DiffEqBase._concrete_solve_adjoint(
             outtype = _out isa SubArray ?
                       ArrayInterface.parameterless_type(_out.parent) :
                       ArrayInterface.parameterless_type(_out)
+            Δu = Δ isa Tangent ? unthunk.(Δ.u) : Δ
             if only_end
-                eltype(Δ) <: NoTangent && return
-                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
-                   length(Δ) == 1 && i == 1
+                eltype(Δu) <: NoTangent && return
+                if (Δu isa AbstractArray{<:AbstractArray} || Δu isa AbstractVectorOfArray) &&
+                   length(Δu) == 1 && i == 1
                     # user did sol[end] on only_end
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
+                    x = Δu isa AbstractVectorOfArray ? Δu[1] : Δu[1]
                     if _save_idxs isa Number
                         vx = vec(x)
                         _out[_save_idxs] .= vx[_save_idxs]
@@ -563,22 +564,21 @@ function DiffEqBase._concrete_solve_adjoint(
                 else
                     Δ isa NoTangent && return
                     if _save_idxs isa Number
-                        x = vec(Δ)
+                        x = vec(Δu)
                         _out[_save_idxs] .= adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        vec(_out) .= vec(adapt(outtype, Δ))
+                        vec(_out) .= vec(adapt(outtype, Δu))
                     else
-                        x = vec(Δ)
+                        x = vec(Δu)
                         vec(@view(_out[_save_idxs])) .= adapt(outtype, @view(x[_save_idxs]))
                     end
                 end
             else
-                Δu = Δ isa Tangent ? Δ.u : Δ
                 !Base.isconcretetype(eltype(Δ)) &&
                     (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
                    Δ isa Tangent
-                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δ.u[i] : Δ[i]
+                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δu[i] : Δ[i]
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
@@ -1017,7 +1017,7 @@ function DiffEqBase._concrete_solve_adjoint(
                                 ForwardDiff.value.(J'vec(v))
                             end
                         else
-                            zero(p)
+                            zero(v)
                         end
                     end
                     push!(pparts, vec(_dp))
@@ -1431,6 +1431,12 @@ function DiffEqBase._concrete_solve_adjoint(
             Array(ybar) # can also be a ODESolution
         elseif eltype(ybar) <: Number # CuArray{Floats}
             ybar
+        elseif ybar isa Tangent
+            ut = unthunk.(ybar.u)
+            ut_ = map(ut) do u
+                (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
+            end
+            reduce(hcat, ut_)
         elseif ybar[1] isa Array
             return Array(ybar)
         else
@@ -1585,7 +1591,10 @@ function DiffEqBase._concrete_solve_adjoint(
         elseif eltype(ybar) <: AbstractArray
             Array(VectorOfArray(ybar))
         elseif ybar isa Tangent
-            Array(VectorOfArray(ybar.u))
+            yy = map(unthunk.(ybar.u)) do u
+                (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
+            end
+            Array(VectorOfArray(yy))
         else
             ybar
         end
