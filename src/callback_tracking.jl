@@ -162,7 +162,7 @@ function _track_callback(cb::VectorContinuousCallback, t, u, p, sensealg)
         cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge)
 end
 
-struct FakeIntegrator{uType, P, tType, tprevType}
+mutable struct FakeIntegrator{uType, P, tType, tprevType}
     u::uType
     p::P
     t::tType
