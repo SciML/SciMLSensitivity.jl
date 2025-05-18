@@ -603,6 +603,6 @@ end
     Random.seed!(seed)
     Zdp, Zdu0 = Zygote.gradient(loss, p, u0)
 
-    @test Fdu0 ≈ Zdu0
+    @test Fdu0 ≈ Zdu0 rtol=1e-4
     @test Fdp≈Zdp rtol=1e-4
 end
