@@ -382,20 +382,20 @@ end
 function setup_w_wp(cb::Union{DiscreteCallback, ContinuousCallback},
         autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
         tprev)
-    w = let tprev = tprev, pos_neg = pos_neg
+    w = let _tprev = Ref(tprev), pos_neg = pos_neg
         function (du, u, p, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, _tprev[])
             _affect!(fakeinteg)
             du .= fakeinteg.u
             nothing
         end
     end
 
-    wp = let tprev = tprev, pos_neg = pos_neg
+    wp = let _tprev = Ref(tprev), pos_neg = pos_neg
         function (dp, p, u, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, _tprev[])
             _affect!(fakeinteg)
             dp .= fakeinteg.p
             nothing
@@ -407,20 +407,20 @@ end
 function setup_w_wp(cb::VectorContinuousCallback,
         autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
         tprev)
-    w = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
+    w = let _tprev = Ref(tprev), pos_neg = pos_neg, event_idx = event_idx
         function (du, u, p, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, _tprev[])
             _affect!(fakeinteg, event_idx)
             du .= fakeinteg.u
             nothing
         end
     end
 
-    wp = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
+    wp = let _tprev = Ref(tprev), pos_neg = pos_neg, event_idx = event_idx
         function (dp, p, u, t)
             _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
+            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, _tprev[])
             _affect!(fakeinteg, event_idx)
             dp .= fakeinteg.p
             nothing
