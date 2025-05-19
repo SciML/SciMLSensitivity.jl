@@ -502,7 +502,8 @@ pass and is thus memory efficient.
 ```julia
 GaussAdjoint(; chunk_size = 0, autodiff = true,
     diff_type = Val{:central},
-    autojacvec = nothing)
+    autojacvec = nothing,
+    checkpointing = false)
 ```
 
 ## Keyword Arguments
@@ -528,6 +529,8 @@ GaussAdjoint(; chunk_size = 0, autodiff = true,
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
+  - `checkpointing`: whether checkpointing is enabled for the reverse pass. Defaults
+    to `false`.
 
 For more details on the vjp choices, please consult the sensitivity algorithms
 documentation page or the docstrings of the vjp types.
