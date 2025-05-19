@@ -366,7 +366,7 @@ function _setup_reverse_callbacks(
 
         if sensealg isa GaussAdjoint
             @assert integrator.f.f isa ODEGaussAdjointSensitivityFunction
-            integrator.f.f.integrating_cb.affect!.integrand_values.integrand .= dgrad
+            integrator.f.f.integrating_cb.affect!.integrand_values.integrand .-= dgrad
 
             #recursive_add!(integrator.f.f.integrating_cb.affect!.integrand_values.integrand,dgrad)
         elseif !(sensealg isa QuadratureAdjoint)
