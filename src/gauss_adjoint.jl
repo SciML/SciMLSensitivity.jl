@@ -580,7 +580,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     if sol.prob isa ODEProblem
         adj_prob, cb2, rcb = ODEAdjointProblem(
-            sol, sensealg, alg, integrand, integrating_cb,
+            sol, sensealg, alg, integrand, cb,
             t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
