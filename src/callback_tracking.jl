@@ -344,9 +344,7 @@ function _setup_reverse_callbacks(
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
-        if dgrad !== nothing && !(sensealg isa QuadratureAdjoint)
-            dgrad .*= -1
-        end
+        dgrad !== nothing && (dgrad .*= -1)
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # second correction to correct for left limit
