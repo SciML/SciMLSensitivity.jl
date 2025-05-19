@@ -276,7 +276,7 @@ function _setup_reverse_callbacks(
             dgrad = integrator.f.f.integrating_cb.affect!.accumulation_cache
             recursive_copyto!(dgrad, 0)
         end
-
+        
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
@@ -344,7 +344,7 @@ function _setup_reverse_callbacks(
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
-        dgrad !== nothing && (dgrad .*= -1)
+        dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # second correction to correct for left limit
@@ -370,7 +370,7 @@ function _setup_reverse_callbacks(
 
             #recursive_add!(integrator.f.f.integrating_cb.affect!.integrand_values.integrand,dgrad)
         elseif !(sensealg isa QuadratureAdjoint)
-            grad .= dgrad
+            grad .-= dgrad
         end
     end
 
