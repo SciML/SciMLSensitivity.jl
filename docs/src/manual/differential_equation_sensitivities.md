@@ -73,7 +73,7 @@ differentiation). Generally:
 
   - Continuous sensitivity analysis methods only support a subset of
     equations, which currently includes:
-    
+
       + ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
       + SDEProblem
       + SteadyStateProblem / NonlinearProblem
@@ -93,10 +93,10 @@ is:
     sufficiently large. `GaussAdjoint` should be generally preferred. `BacksolveAdjoint`
     uses the least memory but on very stiff problems it may be unstable and
     requires many checkpoints, while `InterpolatingAdjoint` is more compute intensive
-    than `GaussAdjoint` but allows for checkpointing which can reduce the
-    total memory requirement (`GaussAdjoint` in the future will support checkpointing
+    than `GaussAdjoint` and allows for checkpointing which can reduce the
+    total memory requirement. `GaussAdjoint` supports checkpointing
     in which case `QuadratureAdjoint` and `InterpolatingAdjoint` would only be
-    recommending in rare benchmarking scenarios).
+    recommended in rare benchmarking scenarios.
   - The methods which use direct automatic differentiation (`ReverseDiffAdjoint`,
     `TrackerAdjoint`, `ForwardDiffSensitivity`, and `ZygoteAdjoint`) support
     the full range of DifferentialEquations.jl features (SDEs, DDEs, events, etc.),
@@ -110,7 +110,7 @@ is:
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
 !!! note
-    
+
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
     `ReverseDiffAdjoint`, etc.) can be queried using the
     `SciMLBase.isautodifferentiable(::SciMLAlgorithm)` trait function.
