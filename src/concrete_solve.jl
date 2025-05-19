@@ -578,7 +578,7 @@ function DiffEqBase._concrete_solve_adjoint(
                     (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
                    Δ isa Tangent
-                    x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? Δu[i] : Δ[i]
+                    x = Δ isa AbstractVectorOfArray ? Δu.u[i] : (Δ isa Tangent ? Δu[i] : Δ[i])
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
@@ -1681,8 +1681,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     function adjoint_sensitivity_backpass(Δ)
         function df(_out, u, p, t, i)
-            if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
-                x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+            if Δ isa AbstractArray{<:AbstractArray}  Δ isa AbstractVectorOfArray || Δ isa Tangent
+                x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? unthunk(Δ.u[i]) : Δ[i]
                 if _save_idxs isa Number
                     _out[_save_idxs] = x[_save_idxs]
                 elseif _save_idxs isa Colon
