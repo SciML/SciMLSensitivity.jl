@@ -183,16 +183,16 @@ function test_hybridNODE3(sensealg)
 end
 
 @testset "PresetTimeCallback: $(sensealg)" for sensealg in [ForwardDiffSensitivity(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
     test_hybridNODE(sensealg)
 end
 
 @testset "PeriodicCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
     test_hybridNODE2(sensealg)
 end
 
 @testset "tprevCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint()]
+    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
     test_hybridNODE3(sensealg)
 end
