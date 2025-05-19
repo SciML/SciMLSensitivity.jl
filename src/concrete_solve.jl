@@ -1682,20 +1682,21 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
                     vec(@view(_out[_save_idxs])) .= vec(x[_save_idxs])
                 end
             else
+                Δu = Δ isa AbstractTangent ? Δ.u : Δ
                 if _save_idxs isa Number
                     _out[_save_idxs] = adapt(ArrayInterface.parameterless_type(u0),
-                        reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                            size(Δ)[end])[_save_idxs, i])
+                        reshape(Δu, prod(size(Δu)[1:(end - 1)]),
+                            size(Δu)[end])[_save_idxs, i])
                 elseif _save_idxs isa Colon
                     vec(_out) .= vec(adapt(ArrayInterface.parameterless_type(u0),
-                        reshape(Δ, prod(size(Δ)[1:(end - 1)]),
-                            size(Δ)[end])[:, i]))
+                        reshape(Δu, prod(size(Δu)[1:(end - 1)]),
+                            size(Δu)[end])[:, i]))
                 else
                     vec(@view(_out[_save_idxs])) .= vec(adapt(
                         ArrayInterface.parameterless_type(u0),
-                        reshape(Δ,
-                            prod(size(Δ)[1:(end - 1)]),
-                            size(Δ)[end])[:, i]))
+                        reshape(Δu,
+                            prod(size(Δu)[1:(end - 1)]),
+                            size(Δu)[end])[:, i]))
                 end
             end
         end
