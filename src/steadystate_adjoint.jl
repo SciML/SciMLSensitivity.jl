@@ -96,7 +96,7 @@ end
         nlprob = NonlinearProblem(nlfunc, vec(λ), p)
         operator = VecJacOperator(
             nlprob, vec(y), (λ); autodiff = get_autodiff_from_vjp(sensealg.autojacvec))
-        soperator = StatefulJacobianOperator(operator, vec(λ), p)
+        soperator = StatefulJacobianOperator(operator, vec(y), p)
         linear_problem = LinearProblem(soperator, vec(dgdu_val); u0 = vec(λ))
         solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
             sensealg.linsolve_kwargs...)
