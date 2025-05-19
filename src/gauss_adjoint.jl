@@ -501,7 +501,12 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         vtmp4 = vec(tmp4)
         vtmp4 .= λ
         Enzyme.make_zero!(out)
-        Enzyme.make_zero!(tmp6)
+
+        # Correctness over speed
+        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+        tmp6 = Enzyme.make_zero(tmp6)
+        
         Enzyme.autodiff(
             Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
             Enzyme.Duplicated(tmp3, tmp4),

@@ -707,15 +707,17 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #if dy !== nothing
     #      tmp3 = dy
     #else
-    tmp3 .= 0
-    #Enzyme.make_zero!(tmp3)
+    Enzyme.make_zero!(tmp3)
     #end
 
     vec(tmp4) .= vec(λ)
 
     isautojacvec = get_jacvec(sensealg)
 
-    Enzyme.make_zero!(_tmp6)
+    # Correctness over speed
+    # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+    # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+    _tmp6 = Enzyme.make_zero(_tmp6)
 
     if inplace_sensitivity(S)
         if W === nothing
