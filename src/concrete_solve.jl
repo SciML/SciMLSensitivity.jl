@@ -273,7 +273,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
-    if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm
+    if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm && !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP,ReverseDiffVJP})
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
