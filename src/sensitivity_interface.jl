@@ -388,12 +388,10 @@ function adjoint_sensitivities(sol, args...;
         _sensealg = if isinplace(sol.prob)
             setvjp(
                 sensealg, inplace_vjp(prob, state_values(prob), p, verbose, repack))
+        elseif has_cb
+            setvjp(sensealg, ReverseDiffVJP())
         else
             setvjp(sensealg, ZygoteVJP())
-        end
-
-        if has_cb && !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP,ReverseDiffVJP})
-            _sensealg = setvjp(_sensealg, ReverseDiffVJP())
         end
 
         return try
