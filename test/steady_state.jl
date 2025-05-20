@@ -413,6 +413,9 @@ end
     solve4 = solve(prob4, DynamicSS(Rodas5()))
     @test solve3.u≈solve4.u rtol=1e-10
 
+    prob5 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 50), p)
+    prob6 = NonlinearProblem{false}((u, p) -> u.^2 .- p[1], fill(0.0, 51), p)
+
     function test_loss(p, prob, alg)
         _prob = remake(prob, p = p)
         sol = sum(solve(_prob, alg,
@@ -461,6 +464,16 @@ end
     dp9_enzyme = enzyme_gradient(p, prob, TrustRegion())
     @test dp9≈dp9_enzyme rtol=1e-10
 
+    function test_loss2(p, prob, alg)
+        _prob = remake(prob, p = p)
+        sol = solve(_prob, alg,
+            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()))
+        return sol.u[1]
+    end
+
+    dp10 = Zygote.gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
+    dp11 = Zygote.gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
+
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
     @test dp1≈dp4 rtol=1e-10
@@ -469,6 +482,7 @@ end
     @test dp1≈dp7 rtol=1e-10
     @test dp1≈dp8 rtol=1e-10
     @test dp1≈dp9 rtol=1e-10
+    @test dp10≈dp11 rtol=1e-5
 
     # Larger Batched Problem: For testing the Iterative Solvers Path
     u0 = zeros(128)
