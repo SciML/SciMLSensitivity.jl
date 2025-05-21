@@ -1739,6 +1739,24 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     out, adjoint_sensitivity_backpass
 end
 
+function DiffEqBase._concrete_solve_adjoint(prob::IntervalNonlinearProblem, alg, sensealg::Nothing,
+    u0, p, originator::SciMLBase.ADOriginator, args...; save_idxs = nothing, kwargs...)
+    sol = solve(prob)
+    u = sol.u
+    f = unwrapped_f(prob.f)
+
+    function backpass(Δ)
+        # Δ = dg/du
+        println(u)
+        λ = only(ForwardDiff.derivative(u -> f(u,p), only(u)) \ Δ.u)
+        dgdp = -λ*ForwardDiff.derivative(p -> f(u,p), only(p))
+        (NoTangent(), NoTangent(), NoTangent(),
+            NoTangent(), dgdp, NoTangent(),
+            ntuple(_ -> NoTangent(), length(args))...)
+    end
+    sol, backpass
+end
+
 function DiffEqBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem,
         alg, sensealg::SteadyStateAdjoint,
@@ -1786,7 +1804,7 @@ function DiffEqBase._concrete_solve_adjoint(
         end
 
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
-
+        
         dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
             # this is something that needs changing in the future, but
