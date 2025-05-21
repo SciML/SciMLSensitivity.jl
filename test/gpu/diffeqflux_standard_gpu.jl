@@ -30,7 +30,7 @@ function predict_neuralode(p)
 end
 function loss_neuralode(p)
     pred = predict_neuralode(p)
-    loss = sum(abs2, ode_data .- gdev(pred))
+    loss = sum(abs2, ode_data .- pred)
     return loss
 end
 
