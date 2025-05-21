@@ -678,14 +678,14 @@ function DiffEqBase._concrete_solve_adjoint(
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
             dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
             sensealg = sensealg,
-            callback = cb2, no_start = !save_start && _prob.tspan[2] ∉ ts,
+            callback = cb2, no_start = !save_start && _prob.tspan[1] ∈ ts,
             initializealg = BrownFullBasicInit(),
             kwargs_init...)
         else
             du0, dp = adjoint_sensitivities(sol, alg, args...; t = ts,
             dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ? df_iip : df_oop,
             sensealg = sensealg,
-            callback = cb2, no_start = !save_start && _prob.tspan[2] ∉ ts,
+            callback = cb2, no_start = !save_start && _prob.tspan[2] ∈ ts,
             kwargs_init...)
         end
 
