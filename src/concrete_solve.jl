@@ -1681,8 +1681,8 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
 
     function adjoint_sensitivity_backpass(Δ)
         function df(_out, u, p, t, i)
-            if Δ isa AbstractArray{<:AbstractArray}  Δ isa AbstractVectorOfArray || Δ isa Tangent
-                x = (Δ isa AbstractVectorOfArray || Δ isa Tangent) ? unthunk(Δ.u[i]) : Δ[i]
+            if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray || (Δ isa AbstractTangent && (Δ.u isa AbstractArray{<:AbstractArray} || Δ.u isa AbstractVectorOfArray))
+                x = (Δ isa AbstractVectorOfArray || Δ isa AbstractTangent) ? unthunk(Δ.u[i]) : Δ[i]
                 if _save_idxs isa Number
                     _out[_save_idxs] = x[_save_idxs]
                 elseif _save_idxs isa Colon
