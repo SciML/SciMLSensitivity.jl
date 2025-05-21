@@ -335,9 +335,17 @@ function _setup_reverse_callbacks(
                 fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
                     integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
-                vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
+
+                if sensealg isa GaussAdjoint
+                    vecjacobian!(dgrad, integrator.p, 
+                    integrator.f.f.integrating_cb.affect!.integrand_values.integrand, 
+                    y, integrator.t, fakeSp; dgrad = nothing, dy = nothing)
+                    integrator.f.f.integrating_cb.affect!.integrand_values.integrand .= dgrad
+                else
+                    vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
                     dgrad = nothing, dy = nothing)
-                grad .= dgrad
+                    grad .= dgrad
+                end
             end
         end
 
