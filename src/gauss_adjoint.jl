@@ -212,7 +212,7 @@ end
         g::G = nothing,
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
-        callback = CallbackSet(),
+        callback = CallbackSet(), no_start = false,
         reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
         RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
@@ -283,7 +283,7 @@ end
     z0 = vec(zero(λ))
     cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated)
+        callback, init_cb, terminated, no_start)
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
@@ -554,7 +554,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         abstol = 1e-6, reltol = 1e-3,
         checkpoints = current_time(sol),
         corfunc_analytical = false,
-        callback = CallbackSet(),
+        callback = CallbackSet(), no_start = false,
         kwargs...)
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p)
@@ -585,7 +585,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,
-            callback = callback,
+            callback = callback, no_start = no_start,
             abstol = abstol, reltol = reltol, kwargs...)
     else
         error("Continuous adjoint sensitivities are only supported for ODE problems.")

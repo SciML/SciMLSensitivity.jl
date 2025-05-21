@@ -29,6 +29,7 @@ adjoint_sensitivities(sol,alg;t=nothing,
                             checkpoints=sol.t,
                             corfunc_analytical=nothing,
                             callback = nothing,
+                            no_start = false,
                             sensealg=InterpolatingAdjoint(),
                             kwargs...)
 ```
@@ -127,6 +128,10 @@ For more information, see [Sensitivity Math Details](@ref sensitivity_math).
   then this term is not required and will be approximated by numerical or (forward-mode) automatic
   differentiation (via the `autojacvec` keyword argument in the `sensealg`)
   if this term is not given by the user.
+- `no_start`: Says whether the starting time contains data for the sensitivity analysis.
+  This is required because you must have a solution object which contains the starting time
+  for the adjoint method, but if your forward solve had `save_start=false` then `no_start=true`
+  should be set.
 - `abstol`: the absolute tolerance of the adjoint solve. Defaults to `1e-3`
 - `reltol`: the relative tolerance of the adjoint solve. Defaults to `1e-3`
 - `checkpoints`: the values to use for the checkpoints of the reverse solve, if the
@@ -173,7 +178,8 @@ For continuous functionals, the form is:
 du0,dp = adjoint_sensitivities(sol,alg;dgdu_continuous=dgdu,g=g,
                                dgdp_continuous = dgdp,
                                sensealg=InterpolatingAdjoint(),
-                               checkpoints=sol.t,kwargs...)
+                               checkpoints=sol.t,
+                               no_start = false, kwargs...)
 ```
 
 for the cost functional
@@ -406,7 +412,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         t = nothing,
         dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing,
-        g = nothing,
+        g = nothing, no_start = false, 
         abstol = 1e-6, reltol = 1e-3,
         checkpoints = current_time(sol),
         corfunc_analytical = nothing,
@@ -423,7 +429,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,
-            callback = callback,
+            callback = callback, no_start = no_start,
             abstol = abstol, reltol = reltol, kwargs...)
 
     elseif sol.prob isa SDEProblem

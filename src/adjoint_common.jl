@@ -572,9 +572,10 @@ struct ReverseLossCallback{λType, timeType, yType, RefType, FMType, AlgType, dg
     f::fType
     sol::solType
     Δλas::ΔλasType
+    no_start::Bool
 end
 
-function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
+function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
     (; sensealg, y) = sensefun
     isq = (sensealg isa QuadratureAdjoint)
 
@@ -585,17 +586,19 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
     if ArrayInterface.ismutable(y)
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
             sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-            nothing, Δλas)
+            nothing, Δλas, no_start)
     else
         return ReverseLossCallback(isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
             sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
-            sensefun.sol, Δλas)
+            sensefun.sol, Δλas, no_start)
     end
 end
 
 function (f::ReverseLossCallback)(integrator)
-    (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol) = f
+    (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol, no_start) = f
     (; diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config) = f.diffcache
+
+    no_start && cur_time[] == 1 && !(sensealg isa BacksolveAdjoint) && return nothing
 
     p, u = integrator.p, integrator.u
 
@@ -657,7 +660,7 @@ end
 
 # handle discrete loss contributions
 function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
-        terminated = false)
+        terminated = false, no_start = false)
     if sensefun isa NILSASSensitivityFunction
         (; sensealg) = sensefun.S
     else
@@ -678,7 +681,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     # callbacks can lead to non-unique time points
     _t, duplicate_iterator_times = separate_nonunique(t)
 
-    rlcb = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
+    rlcb = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
 
     if eltype(_t) !== typeof(t0)
         _t = convert.(typeof(t0), _t)
@@ -688,7 +691,7 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     # handle duplicates (currently only for double occurrences)
     if duplicate_iterator_times !== nothing
         # use same ref for cur_time to cope with concrete_solve
-        cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time)
+        cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
         cb_dupl = PresetTimeCallback(duplicate_iterator_times[1], cbrev_dupl_affect)
         return CallbackSet(cb, reverse_cbs, cb_dupl), rlcb, duplicate_iterator_times
     else
