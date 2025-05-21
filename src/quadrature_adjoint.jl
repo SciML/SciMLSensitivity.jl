@@ -299,8 +299,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         vtmp4 = vec(tmp4)
-        vtmp4 .= λ
+
         Enzyme.make_zero!(out)
+        Enzyme.make_zero!(tmp3)
+        vtmp4 .= λ
+
 
         # Correctness over speed
         # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory

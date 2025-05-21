@@ -710,7 +710,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     Enzyme.make_zero!(tmp3)
     #end
 
-    vec(tmp4) .= vec(λ)
+    # Handle the special QuadratureAdjoint
+    # vecjacobian!(dλ, integrand.y, dλ
+    # call
+    if dλ === λ
+        vec(tmp1) .= vec(λ)
+    else
+        vec(tmp4) .= vec(λ)
+    end
 
     isautojacvec = get_jacvec(sensealg)
 
