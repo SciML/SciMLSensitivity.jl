@@ -598,7 +598,7 @@ function (f::ReverseLossCallback)(integrator)
     (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol, no_start) = f
     (; diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config) = f.diffcache
 
-    no_start && !(sensealg isa BacksolveAdjoint) && cur_time[] == 1 && integrator.t == sol.prob.tspan[1] && return nothing
+    no_start && !(sensealg isa BacksolveAdjoint) && cur_time[] == 1 && return nothing
 
     p, u = integrator.p, integrator.u
 
