@@ -669,6 +669,34 @@ Currently fails on almost every solver.
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} end
 
 """
+EnzymeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+
+An implementation of discrete adjoint sensitivity analysis
+using the Enzyme.jl source-to-source AD directly on the differential equation
+solver.
+
+## Constructor
+
+```julia
+EnzymeAdjoint(mode = nothing)
+```
+
+## Arugments
+
+* `mode::M` determines the autodiff mode (forward or reverse). It can be:
+  + an object subtyping `EnzymeCore.Mode` (like `EnzymeCore.Forward` or `EnzymeCore.Reverse`) if a specific mode is required
+  + `nothing` to choose the best mode automatically
+
+## SciMLProblem Support
+
+Currently fails on almost every solver.
+"""
+struct EnzymeAdjoint{M <: Union{Nothing,EnzymeCore.Mode}} <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} 
+  mode::M
+  EnzymeAdjoint(mode = nothing) = new(mode)
+end
+
+"""
 ```julia
 ForwardLSS{CS, AD, FDT, RType, gType} <: AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
 ```
