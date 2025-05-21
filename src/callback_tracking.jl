@@ -272,6 +272,11 @@ function _setup_reverse_callbacks(
         du = first(get_tmp_cache(integrator))
         λ, grad, y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
 
+        if sensealg isa GaussAdjoint
+            dgrad = integrator.f.f.integrating_cb.affect!.accumulation_cache
+            recursive_copyto!(dgrad, 0)
+        end
+        
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
@@ -330,16 +335,25 @@ function _setup_reverse_callbacks(
                 fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
                     integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
-                vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
+
+                if sensealg isa GaussAdjoint
+                    vecjacobian!(dgrad, integrator.p, 
+                    integrator.f.f.integrating_cb.affect!.integrand_values.integrand, 
+                    y, integrator.t, fakeSp; dgrad = nothing, dy = nothing)
+                    integrator.f.f.integrating_cb.affect!.integrand_values.integrand .= dgrad
+                else
+                    vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
                     dgrad = nothing, dy = nothing)
-                grad .= dgrad
+                    grad .= dgrad
+                end
             end
         end
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
-        dgrad !== nothing && (dgrad .*= -1)
+        dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
+
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # second correction to correct for left limit
             (; Lu_left) = correction
@@ -358,7 +372,12 @@ function _setup_reverse_callbacks(
 
         λ .= dλ
 
-        if !(sensealg isa QuadratureAdjoint)
+        if sensealg isa GaussAdjoint
+            @assert integrator.f.f isa ODEGaussAdjointSensitivityFunction
+            integrator.f.f.integrating_cb.affect!.integrand_values.integrand .-= dgrad
+
+            #recursive_add!(integrator.f.f.integrating_cb.affect!.integrand_values.integrand,dgrad)
+        elseif !(sensealg isa QuadratureAdjoint)
             grad .-= dgrad
         end
     end

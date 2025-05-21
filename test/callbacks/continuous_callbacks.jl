@@ -291,5 +291,9 @@ println("Continuous Callbacks")
         sensealg = InterpolatingAdjoint(autojacvec = EnzymeVJP())
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD≈gZy rtol=1e-10
+
+        sensealg = GaussAdjoint(autojacvec = EnzymeVJP())
+        gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+        @test gFD≈gZy rtol=1e-10
     end
 end

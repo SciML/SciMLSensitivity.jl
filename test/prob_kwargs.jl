@@ -59,14 +59,9 @@ let callback_count1 = 0, callback_count2 = 0
             BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
             count1 = 0
             count2 = 0
-            if adjoint_type == GaussAdjoint()
-                @test_broken Zygote.gradient(x -> f1(x, adjoint_type), u0p) ==
-                             Zygote.gradient(x -> f2(x, adjoint_type), u0p)
-            else
-                @test Zygote.gradient(x -> f1(x, adjoint_type), u0p) ==
-                      Zygote.gradient(x -> f2(x, adjoint_type), u0p)
-                @test callback_count1 == callback_count2
-            end
+            @test Zygote.gradient(x -> f1(x, adjoint_type), u0p) ==
+                    Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+            @test callback_count1 == callback_count2
         end
     end
 end

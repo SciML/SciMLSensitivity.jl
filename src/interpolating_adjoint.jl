@@ -271,7 +271,7 @@ end
         g::G = nothing,
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
-        callback = CallbackSet(),
+        callback = CallbackSet(), no_start = false,
         reltol = nothing, abstol = nothing,
         kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
@@ -355,7 +355,7 @@ end
     cb, rcb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated)
+        callback, init_cb, terminated, no_start)
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)

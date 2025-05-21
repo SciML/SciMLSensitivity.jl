@@ -99,6 +99,14 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
             sensealg = QuadratureAdjoint())),
         u0, p)
 
+    du05, dp5 = Zygote.gradient(
+        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+            callback = cb, tstops = tstops,
+            abstol = abstol, reltol = reltol,
+            saveat = savingtimes,
+            sensealg = GaussAdjoint())),
+        u0, p)
+
     dstuff = ForwardDiff.gradient(
         (θ) -> g(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:6],
             callback = cb, tstops = tstops,
@@ -135,9 +143,11 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     @test du01≈du03c rtol=1e-7
     @test du03 ≈ du03c
     @test du01 ≈ du04
+    @test du01 ≈ du05
     @test dp1 ≈ dp3
     @test dp1 ≈ dp3c
     @test dp1≈dp4 rtol=1e-7
+    @test dp1≈dp5 rtol=1e-7
 
     cb2 = SciMLSensitivity.track_callbacks(CallbackSet(cb), prob.tspan[1], prob.u0, prob.p,
         BacksolveAdjoint(autojacvec = ReverseDiffVJP()))

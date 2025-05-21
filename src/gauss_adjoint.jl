@@ -1,5 +1,5 @@
 mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
-    G}
+    G, SAlg <: GaussAdjoint}
     sol::S
     p::pType
     y::uType
@@ -8,7 +8,7 @@ mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DG
     f_cache::rateType
     pJ::PJT
     paramjac_config::PJC
-    sensealg::GaussAdjoint
+    sensealg::SAlg
     dgdp_cache::DGP
     dgdp::G
 end
@@ -16,7 +16,9 @@ end
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: GaussAdjoint,
     uType, SType, CPS, pType,
-    fType <: AbstractDiffEqFunction} <: SensitivityFunction
+    fType <: DiffEqBase.AbstractDiffEqFunction,
+    GI <: GaussIntegrand,
+    ICB} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -25,7 +27,8 @@ struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     checkpoint_sol::CPS
     prob::pType
     f::fType
-    GaussInt::GaussIntegrand
+    GaussInt::GI
+    integrating_cb::ICB
 end
 
 mutable struct GaussCheckpointSolution{S, I, T, T2}
@@ -39,7 +42,7 @@ end
 function ODEGaussAdjointSensitivityFunction(
         g, sensealg, gaussint, discrete, sol, dgdu, dgdp,
         f, alg,
-        checkpoints, tols, tstops = nothing;
+        checkpoints, integrating_cb, tols, tstops = nothing;
         tspan = reverse(sol.prob.tspan))
     checkpointing = ischeckpointing(sensealg, sol)
     (checkpointing && checkpoints === nothing) &&
@@ -82,7 +85,7 @@ function ODEGaussAdjointSensitivityFunction(
         g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
         quad = true)
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
-        y, sol, checkpoint_sol, sol.prob, f, gaussint)
+        y, sol, checkpoint_sol, sol.prob, f, gaussint, integrating_cb)
 end
 
 function Gaussfindcursor(intervals, t)
@@ -200,7 +203,7 @@ function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true
 end
 
 @noinline function ODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
-        GaussInt::GaussIntegrand,
+        GaussInt::GaussIntegrand, integrating_cb,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -209,7 +212,7 @@ end
         g::G = nothing,
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
-        callback = CallbackSet(),
+        callback = CallbackSet(), no_start = false,
         reltol = nothing, abstol = nothing, kwargs...) where {DG1, DG2, DG3, DG4, G,
         RetCB}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
@@ -273,14 +276,14 @@ end
         λ = zero(u0)
     end
     sense = ODEGaussAdjointSensitivityFunction(g, sensealg, GaussInt, discrete, sol,
-        dgdu_continuous, dgdp_continuous, f, alg, checkpoints,
+        dgdu_continuous, dgdp_continuous, f, alg, checkpoints, integrating_cb,
         (reltol = reltol, abstol = abstol), tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
     cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated)
+        callback, init_cb, terminated, no_start)
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
@@ -551,7 +554,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
         abstol = 1e-6, reltol = 1e-3,
         checkpoints = current_time(sol),
         corfunc_analytical = false,
-        callback = CallbackSet(),
+        callback = CallbackSet(), no_start = false,
         kwargs...)
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p)
@@ -577,11 +580,12 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
 
     if sol.prob isa ODEProblem
         adj_prob, cb2, rcb = ODEAdjointProblem(
-            sol, sensealg, alg, integrand, t, dgdu_discrete,
+            sol, sensealg, alg, integrand, cb,
+            t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,
-            callback = callback,
+            callback = callback, no_start = no_start,
             abstol = abstol, reltol = reltol, kwargs...)
     else
         error("Continuous adjoint sensitivities are only supported for ODE problems.")
