@@ -185,21 +185,21 @@ function test_continuous_wrt_discrete_callback()
 
     du06, dp6 = Zygote.gradient(
         (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2,
+            callback = cb2, tstops = [tstop],
             sensealg = GaussAdjoint(),
             saveat = tspan[2], save_start = false)),
         u0, p)
 
     du07, dp7 = Zygote.gradient(
         (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2,
+            callback = cb2, tstops = [tstop],
             sensealg = InterpolatingAdjoint(),
             saveat = tspan[2], save_start = false)),
         u0, p)
 
     du08, dp8 = Zygote.gradient(
         (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2,
+            callback = cb2, tstops = [tstop],
             sensealg = QuadratureAdjoint(),
             saveat = tspan[2], save_start = false)),
         u0, p)
