@@ -710,48 +710,42 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     Enzyme.make_zero!(tmp3)
     #end
 
-    # Handle the special QuadratureAdjoint
-    # vecjacobian!(dλ, integrand.y, dλ
-    # call
-    if dλ === λ
-        vec(tmp1) .= vec(λ)
-    else
-        vec(tmp4) .= vec(λ)
-    end
+    vec(tmp4) .= vec(λ)
 
     isautojacvec = get_jacvec(sensealg)
 
     # Correctness over speed
     # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
     # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-    _tmp6 = Enzyme.make_zero(_tmp6)
+    _tmp6 = Enzyme.make_zero(f)
 
     if inplace_sensitivity(S)
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
+        
         dλ !== nothing && recursive_copyto!(dλ, tmp1)
         dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(S.diffcache.pf, _tmp6),
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))

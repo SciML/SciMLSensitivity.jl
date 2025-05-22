@@ -308,9 +308,10 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         # Correctness over speed
         # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
         # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-        tmp6 = Enzyme.make_zero(tmp6)
+        f = unwrapped_f(f)
+        tmp6 = Enzyme.make_zero(f)
         Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+            Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
             Enzyme.Duplicated(tmp3, tmp4),
             Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
     end
