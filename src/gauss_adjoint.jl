@@ -456,6 +456,7 @@ end
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     f = sol.prob.f
+    f = unwrapped_f(f)
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if p === nothing || p isa SciMLBase.NullParameters
@@ -506,15 +507,27 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.make_zero!(tmp3)
         Enzyme.make_zero!(out)
         
-        # Correctness over speed
-        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
-        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-        tmp6 = Enzyme.make_zero(tmp6)
-        
-        Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
-            Enzyme.Duplicated(tmp3, tmp4),
-            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        if inplace_sensitivity(S)
+            # Correctness over speed
+            # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+            tmp6 = Enzyme.make_zero(tmp6)
+            
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        else
+            function g(du, u, p, t)
+                du .= f(u, p, t)
+                nothing
+            end
+            tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
         out .= p_grad

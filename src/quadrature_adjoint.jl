@@ -258,6 +258,8 @@ end
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol) = S
     f = sol.prob.f
+    f = unwrapped_f(f)
+
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if !isautojacvec
@@ -305,15 +307,26 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         vtmp4 .= λ
 
 
-        # Correctness over speed
-        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
-        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-        f = unwrapped_f(f)
-        tmp6 = Enzyme.make_zero(f)
-        Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
-            Enzyme.Duplicated(tmp3, tmp4),
-            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        if inplace_sensitivity(S)
+            # Correctness over speed
+            # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+            tmp6 = Enzyme.make_zero(f)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        else
+            function g(du, u, p, t)
+                du .= f(u, p, t)
+                nothing
+            end
+            tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        end
     end
 
     # TODO: Add tracker?
