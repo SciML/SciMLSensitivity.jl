@@ -363,6 +363,9 @@ function _setup_reverse_callbacks(
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
 
+        # Since we differentiated the function that changes `p`, need to fix it again
+        update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)
+
         dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
