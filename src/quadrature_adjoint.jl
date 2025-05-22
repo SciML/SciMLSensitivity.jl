@@ -306,6 +306,12 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         Enzyme.make_zero!(tmp3)
         vtmp4 .= λ
 
+        if !(p isa AbstractArray)
+            tunables, repack, _ = canonicalize(Tunable(), p)
+            dup = Enzyme.Duplicated(p, repack(out))
+        else
+            dup = Enzyme.Duplicated(p, out)
+        end
 
         if SciMLBase.isinplace(sol.prob.f)
             # Correctness over speed
@@ -315,7 +321,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+                Enzyme.Const(y), dup, Enzyme.Const(t))
         else
             function g(du, u, p, t)
                 du .= f(u, p, t)
@@ -323,9 +329,9 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             end
             tmp6 = Enzyme.make_zero(g)
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+                Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Duplicated(g, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+                Enzyme.Const(y), dup, Enzyme.Const(t))
         end
     end
 

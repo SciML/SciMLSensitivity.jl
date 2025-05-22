@@ -668,7 +668,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     f = unwrapped_f(S.f)
 
     prob = getprob(S)
-    _p = parameter_values(prob)
+
+    if TS <: CallbackSensitivityFunctionPSwap
+        _p = p
+    else
+        _p = parameter_values(prob)
+    end
+
     if _p === nothing || _p isa SciMLBase.NullParameters
         tunables, repack = _p, identity
     else
