@@ -711,15 +711,15 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #end
 
     vec(tmp4) .= vec(λ)
-
     isautojacvec = get_jacvec(sensealg)
 
-    # Correctness over speed
-    # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
-    # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-    _tmp6 = Enzyme.make_zero(f)
-
     if inplace_sensitivity(S)
+
+        # Correctness over speed
+        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+        _tmp6 = Enzyme.make_zero(f)
+
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
@@ -733,19 +733,28 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
                 dup,
                 Enzyme.Const(t), Enzyme.Const(W))
         end
-        
         dλ !== nothing && recursive_copyto!(dλ, tmp1)
         dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters) &&
             recursive_copyto!(dgrad, tmp2)
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
+            function g(du, u, p, t)
+                du .= f(u, p, t)
+                nothing
+            end
+            _tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(g, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
+            function g(du, u, p, t, W)
+                du .= f(u, p, t, W)
+                nothing
+            end
+            _tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(g, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
