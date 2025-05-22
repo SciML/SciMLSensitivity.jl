@@ -516,7 +516,21 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
     wp(_p, integrand.p, integrand.y, t)
 
     if _p != integrand.p
-        fakeSp = CallbackSensitivityFunction(wp, sensealg, adj_prob.f.f.diffcache, sol.prob)
+        paramjac_config = get_paramjac_config(sensealg.autojacvec, integrand.y, wp, _p, integrand.y, t;
+            numindvar = length(integrand.y), alg = nothing,
+            isinplace = true, isRODE = false,
+            _W = nothing)
+        pf = get_pf(sensealg.autojacvec; _f = wp, isinplace = true, isRODE = false)
+        if sensealg.autojacvec isa EnzymeVJP
+            paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+        end
+
+        diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
+            nothing, nothing, nothing, paramjac_config,
+            nothing, nothing, nothing, nothing, nothing,
+            nothing, nothing, nothing, false)
+
+        fakeSp = CallbackSensitivityFunctionPSwap(wp, sensealg, diffcache_wp, sol.prob)
         #vjp with Jacobin given by dw/dp before event and vector given by grad
         vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
             dgrad = nothing, dy = nothing)
