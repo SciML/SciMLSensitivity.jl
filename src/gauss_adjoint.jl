@@ -507,7 +507,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.make_zero!(tmp3)
         Enzyme.make_zero!(out)
         
-        if inplace_sensitivity(S)
+        if SciMLBase.isinplace(sol.prob.f)
             # Correctness over speed
             # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
             # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
