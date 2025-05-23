@@ -185,6 +185,17 @@ end
 getprob(S::CallbackSensitivityFunction) = S.prob
 inplace_sensitivity(S::CallbackSensitivityFunction) = true
 
+struct CallbackSensitivityFunctionPSwap{fType, Alg <: AbstractOverloadingSensitivityAlgorithm,
+    C <: AdjointDiffCache, pType} <: SensitivityFunction
+    f::fType
+    sensealg::Alg
+    diffcache::C
+    prob::pType
+end
+
+getprob(S::CallbackSensitivityFunctionPSwap) = S.prob
+inplace_sensitivity(S::CallbackSensitivityFunctionPSwap) = true
+
 """
 Sets up callbacks for the adjoint pass. This is a version that has an effect
 at each event of the forward pass and defines the reverse pass values via the
@@ -332,7 +343,7 @@ function _setup_reverse_callbacks(
             if !(sensealg isa QuadratureAdjoint)
                 # reinit diffcache struct
                 #diffcache(t2)
-                fakeSp = CallbackSensitivityFunction(wp, sensealg, diffcaches[2],
+                fakeSp = CallbackSensitivityFunctionPSwap(wp, sensealg, diffcaches[2],
                     integrator.sol.prob)
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
 
@@ -351,6 +362,9 @@ function _setup_reverse_callbacks(
 
         vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS;
             dgrad = dgrad, dy = dy)
+
+        # Since we differentiated the function that changes `p`, need to fix it again
+        update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)
 
         dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 

@@ -456,6 +456,7 @@ end
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     f = sol.prob.f
+    f = unwrapped_f(f)
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if p === nothing || p isa SciMLBase.NullParameters
@@ -503,17 +504,30 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         tmp3, tmp4, tmp6 = paramjac_config
         vtmp4 = vec(tmp4)
         vtmp4 .= λ
+        Enzyme.make_zero!(tmp3)
         Enzyme.make_zero!(out)
-
-        # Correctness over speed
-        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
-        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-        tmp6 = Enzyme.make_zero(tmp6)
         
-        Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
-            Enzyme.Duplicated(tmp3, tmp4),
-            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        if SciMLBase.isinplace(sol.prob.f)
+            # Correctness over speed
+            # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+            tmp6 = Enzyme.make_zero(tmp6)
+            
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        else
+            function g(du, u, p, t)
+                du .= f(u, p, t)
+                nothing
+            end
+            tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
         out .= p_grad
@@ -619,88 +633,3 @@ end
 
 __maybe_adjoint(x::AbstractArray) = x'
 __maybe_adjoint(x) = x
-
-function update_p_integrand(integrand::GaussIntegrand, p)
-    (; sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp) = integrand
-    GaussIntegrand(sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp)
-end
-
-function update_integrand_and_dgrad(res, sensealg::GaussAdjoint, callbacks, integrand,
-        adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
-        ti, cur_time)
-    for cb in callbacks.discrete_callbacks
-        if ti ∈ cb.affect!.event_times
-            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
-                integrand, adj_prob, sol,
-                dgdu_discrete,
-                dgdp_discrete, dλ, dgrad,
-                ti, cur_time)
-        end
-    end
-    for cb in callbacks.continuous_callbacks
-        if ti ∈ cb.affect!.event_times ||
-           ti ∈ cb.affect_neg!.event_times
-            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
-                integrand, adj_prob, sol,
-                dgdu_discrete,
-                dgdp_discrete, dλ, dgrad,
-                ti, cur_time)
-        end
-    end
-    return integrand
-end
-
-function _update_integrand_and_dgrad(res, sensealg::GaussAdjoint, cb, integrand,
-        adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
-    indx, pos_neg = get_indx(cb, t)
-    tprev = get_tprev(cb, indx, pos_neg)
-
-    wp = let tprev = tprev, pos_neg = pos_neg
-        function (dp, p, u, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            _affect!(fakeinteg)
-            dp .= fakeinteg.p
-        end
-    end
-
-    _p = similar(integrand.p, size(integrand.p))
-    _p .= 0
-    wp(_p, integrand.p, integrand.y, t)
-
-    if _p != integrand.p
-        fakeSp = CallbackSensitivityFunction(wp, sensealg, adj_prob.f.f.diffcache, sol.prob)
-        #vjp with Jacobin given by dw/dp before event and vector given by grad
-        vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
-            dgrad = nothing, dy = nothing)
-        integrand = update_p_integrand(integrand, _p)
-    end
-
-    w = let tprev = tprev, pos_neg = pos_neg
-        function (du, u, p, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            _affect!(fakeinteg)
-            du .= vec(fakeinteg.u)
-        end
-    end
-
-    # Create a fake sensitivity function to do the vjps needs to be done
-    # to account for parameter dependence of affect function
-    fakeS = CallbackSensitivityFunction(w, sensealg, adj_prob.f.f.diffcache, sol.prob)
-    if dgdu !== nothing # discrete cost
-        dgdu(dλ, integrand.y, integrand.p, t, cur_time)
-    else
-        error("Please provide `dgdu` to use adjoint_sensitivities with `GaussAdjoint()` and callbacks.")
-    end
-
-    @assert dgdp === nothing
-
-    # account for implicit events
-
-    @. dλ = -dλ - integrand.λ
-    vecjacobian!(dλ, integrand.y, dλ, integrand.p, t, fakeS; dgrad = dgrad)
-    res .-= dgrad
-    return integrand
-end

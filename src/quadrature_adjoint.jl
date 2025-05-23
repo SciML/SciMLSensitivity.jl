@@ -258,6 +258,8 @@ end
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol) = S
     f = sol.prob.f
+    f = unwrapped_f(f)
+
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if !isautojacvec
@@ -299,17 +301,38 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         vtmp4 = vec(tmp4)
-        vtmp4 .= λ
-        Enzyme.make_zero!(out)
 
-        # Correctness over speed
-        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
-        # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-        tmp6 = Enzyme.make_zero(tmp6)
-        Enzyme.autodiff(
-            Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
-            Enzyme.Duplicated(tmp3, tmp4),
-            Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+        Enzyme.make_zero!(out)
+        Enzyme.make_zero!(tmp3)
+        vtmp4 .= λ
+
+        if !(p isa AbstractArray)
+            tunables, repack, _ = canonicalize(Tunable(), p)
+            dup = Enzyme.Duplicated(p, repack(out))
+        else
+            dup = Enzyme.Duplicated(p, out)
+        end
+
+        if SciMLBase.isinplace(sol.prob.f)
+            # Correctness over speed
+            # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
+            tmp6 = Enzyme.make_zero(f)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), dup, Enzyme.Const(t))
+        else
+            function g(du, u, p, t)
+                du .= f(u, p, t)
+                nothing
+            end
+            tmp6 = Enzyme.make_zero(g)
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Const(y), dup, Enzyme.Const(t))
+        end
     end
 
     # TODO: Add tracker?
@@ -493,7 +516,21 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
     wp(_p, integrand.p, integrand.y, t)
 
     if _p != integrand.p
-        fakeSp = CallbackSensitivityFunction(wp, sensealg, adj_prob.f.f.diffcache, sol.prob)
+        paramjac_config = get_paramjac_config(sensealg.autojacvec, integrand.y, wp, _p, integrand.y, t;
+            numindvar = length(integrand.y), alg = nothing,
+            isinplace = true, isRODE = false,
+            _W = nothing)
+        pf = get_pf(sensealg.autojacvec; _f = wp, isinplace = true, isRODE = false)
+        if sensealg.autojacvec isa EnzymeVJP
+            paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+        end
+
+        diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
+            nothing, nothing, nothing, paramjac_config,
+            nothing, nothing, nothing, nothing, nothing,
+            nothing, nothing, nothing, false)
+
+        fakeSp = CallbackSensitivityFunctionPSwap(wp, sensealg, diffcache_wp, sol.prob)
         #vjp with Jacobin given by dw/dp before event and vector given by grad
         vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
             dgrad = nothing, dy = nothing)

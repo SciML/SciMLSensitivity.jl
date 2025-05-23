@@ -577,7 +577,7 @@ end
 
 function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
     (; sensealg, y) = sensefun
-    isq = (sensealg isa QuadratureAdjoint)
+    isq = (sensealg isa QuadratureAdjoint) || (sensealg isa GaussAdjoint)
 
     (; factorized_mass_matrix) = sensefun.diffcache
     prob = getprob(sensefun)
