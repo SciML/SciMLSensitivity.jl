@@ -460,6 +460,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     _prob = remake(_prob, u0 = new_u0, p = new_p)
+    
 
     if sensealg isa BacksolveAdjoint
         sol = solve(_prob, alg, args...; initializealg = new_initializealg, save_noise = true,
@@ -870,8 +871,9 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     # use the callback in kwargs, not prob
-    sol = solve(remake(prob, p = p, u0 = u0, callback = nothing),
-        alg, args...; saveat = _saveat, kwargs...)
+    kwargs_prob = NamedTuple(filter(x -> x[1] != :callback, prob.kwargs))
+    _prob = remake(prob, p = p, u0 = u0, kwargs = kwargs_prob)
+    sol = solve(_prob, alg, args...; saveat = _saveat, kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
         @reset sol.prob = prob
@@ -1273,6 +1275,21 @@ function Base.showerror(io::IO, e::EnzymeTrackedRealError)
     println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
+const MOONCAKE_TRACKED_REAL_ERROR_MESSAGE = """
+                                             `Mooncake` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
+                                             Either choose a different adjoint method like `GaussAdjoint`,
+                                             or use a different AD system like `ReverseDiff`.
+                                             For more details, on these methods see
+                                             https://docs.sciml.ai/SciMLSensitivity/stable/.
+                                             """
+
+struct MooncakeTrackedRealError <: Exception
+end
+
+function Base.showerror(io::IO, e::MooncakeTrackedRealError)
+    println(io, MOONCAKE_TRACKED_REAL_ERROR_MESSAGE)
+end
+
 function DiffEqBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
@@ -1288,6 +1305,10 @@ function DiffEqBase._concrete_solve_adjoint(
     local sol
     if originator isa SciMLBase.EnzymeOriginator
         throw(EnzymeTrackedRealError())
+    end
+
+    if originator isa SciMLBase.MooncakeOriginator
+        throw(MooncakeTrackedRealError())
     end
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
@@ -1460,10 +1481,11 @@ function DiffEqBase._concrete_solve_adjoint(
         end
     end
 
-    u = u0 isa Tracker.TrackedArray ? Tracker.data.(state_values(sol)) :
-        Tracker.data.(Tracker.data.(state_values(sol)))
-    SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
-    tracker_adjoint_backpass
+    u = u0 isa Tracker.TrackedArray ? [Tracker.data(y) for y in state_values(sol)] :
+        [Tracker.data.(y) for y in state_values(sol)]
+    _sol = SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol)))
+    @reset _sol.prob = prob
+    _sol, tracker_adjoint_backpass
 end
 
 const REVERSEDIFF_ADJOINT_GPU_COMPATIBILITY_MESSAGE = """
@@ -1512,6 +1534,10 @@ function DiffEqBase._concrete_solve_adjoint(
 
     if originator isa SciMLBase.EnzymeOriginator
         throw(EnzymeTrackedRealError())
+    end
+
+    if originator isa SciMLBase.MooncakeOriginator
+        throw(MooncakeTrackedRealError())
     end
 
     t = eltype(prob.tspan)[]

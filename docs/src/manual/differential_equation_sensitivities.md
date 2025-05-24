@@ -12,9 +12,10 @@ Current AD libraries whose calls are captured by the sensitivity
 system are:
 
   - [Enzyme.jl](https://github.com/EnzymeAD/Enzyme.jl)
-  - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
-  - [Diffractor.jl](https://github.com/JuliaDiff/Diffractor.jl)
+  - [Mooncake.jl](https://github.com/chalk-lab/Mooncake.jl)
   - [ReverseDiff.jl](https://github.com/JuliaDiff/ReverseDiff.jl)
+  - [Tracker.jl](https://github.com/FluxML/Tracker.jl)
+  - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
 
 ## Using and Controlling Sensitivity Algorithms within AD
 
