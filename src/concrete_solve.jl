@@ -1481,8 +1481,8 @@ function DiffEqBase._concrete_solve_adjoint(
         end
     end
 
-    u = u0 isa Tracker.TrackedArray ? [Tracker.data(y) for y in state_values(sol)] :
-        [Tracker.data.(y) for y in state_values(sol)]
+    u = u0 isa Tracker.TrackedArray ? Tracker.data.(state_values(sol)) :
+        Tracker.data.(Tracker.data.(state_values(sol)))
     SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
     tracker_adjoint_backpass
 end
