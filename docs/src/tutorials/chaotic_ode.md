@@ -122,7 +122,7 @@ g(u, p, t) = u[end]
 
 function G(p)
     _prob = remake(prob_attractor, p = p)
-    _sol = solve(_prob, Vern9(), abstol = 1e-8, reltol = 1e-8, saveat = 0.01,
+    _sol = solve(_prob, Tsit5(), abstol = 1e-6, reltol = 1e-6, saveat = 0.01,
         sensealg = ForwardLSS(g = g))
     sum(getindex.(_sol.u, 3))
 end
@@ -133,7 +133,7 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = solve(prob_attractor, Vern9(), abstol = 1e-8, reltol = 1e-8)
+sol_attractor = solve(prob_attractor, Tsit5(), abstol = 1e-6, reltol = 1e-4)
 lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(g = g))
 resfw = shadow_forward(lss_problem)
 ```
