@@ -1483,9 +1483,8 @@ function DiffEqBase._concrete_solve_adjoint(
 
     u = u0 isa Tracker.TrackedArray ? [Tracker.data(y) for y in state_values(sol)] :
         [Tracker.data.(y) for y in state_values(sol)]
-    _sol = SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol)))
-    @reset _sol.prob = prob
-    _sol, tracker_adjoint_backpass
+    SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
+    tracker_adjoint_backpass
 end
 
 const REVERSEDIFF_ADJOINT_GPU_COMPATIBILITY_MESSAGE = """
