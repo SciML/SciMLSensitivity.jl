@@ -133,7 +133,7 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = solve(prob_attractor, Tsit5(), abstol = 1e-6, reltol = 1e-6)
+sol_attractor = solve(prob_attractor, Tsit5(), abstol = 1e-6, reltol = 1e-4)
 lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(g = g))
 resfw = shadow_forward(lss_problem)
 ```
