@@ -1,7 +1,7 @@
 module SciMLSensitivityMooncakeExt
 
 using SciMLSensitivity, Mooncake
-import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded
+import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded, DiffEqBase
 
 function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     dy_mem = zero(y)
