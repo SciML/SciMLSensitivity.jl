@@ -8,9 +8,14 @@ const ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE = """
                                                 type for being the initial condition `u0` of an array. This means that
                                                 many simple types, such as `Tuple`s and `NamedTuple`s, will work as
                                                 parameters in normal contexts but will fail during adjoint differentiation.
+
                                                 To work around this issue for complicated cases like nested structs, look
                                                 into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
                                                 or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
+
+                                                If you have a non-standard type you wish to work with adjoint differentiation, you need
+                                                to define the SciMLStructures.jl interface on that type. For more information, check out
+                                                https://docs.sciml.ai/SciMLStructures/stable/example/ for an example.
                                                 """
 
 struct AdjointSensitivityParameterCompatibilityError <: Exception end
