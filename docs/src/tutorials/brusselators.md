@@ -230,7 +230,7 @@ The loss function and initial evaluation are implemented as follows:
 println("[Loss] Defining loss function...")
 function loss_fn(ps, _)
     prob = remake(prob_ude_template, p=ps)
-    sol = solve(prob, FBDF(), saveat=t_points, sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP()))
+    sol = solve(prob, FBDF(), saveat=t_points)
     # Failed solve 
     if sol.retcode != ReturnCode.Success
         return Inf32
