@@ -92,7 +92,7 @@ in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both 
 This provides us with an `ODEProblem` that can be solved to obtain training data. 
 
 ```@example bruss
-using DifferentialEquations, ComponentArrays, Random, Plots, OrdinaryDiffEq
+using ComponentArrays, Random, Plots, OrdinaryDiffEq
 
 N_GRID = 16
 XYD = range(0f0, stop = 1f0, length = N_GRID)
