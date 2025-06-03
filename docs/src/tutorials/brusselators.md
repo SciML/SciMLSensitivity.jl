@@ -232,7 +232,7 @@ function loss_fn(ps, _)
     prob = remake(prob_ude_template, p=ps)
     sol = solve(prob, FBDF(), saveat=t_points)
     # Failed solve 
-    if sol.retcode != ReturnCode.Success
+    if !SciMLBase.successful_retcode(sol)
         return Inf32
     end
     pred = Array(sol)
