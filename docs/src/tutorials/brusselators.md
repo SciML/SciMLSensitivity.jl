@@ -176,7 +176,7 @@ Here, $\mathcal{N}_\theta(U, V)$ is trained to approximate the true interaction 
 
 First, we have to define and configure the neural network that has to be used for the training. The implementation for that is as follows:
 
-```julia
+```@example bruss
 using Lux, Random, Optimization, OptimizationOptimJL, SciMLSensitivity, Zygote
 
 model = Lux.Chain(Dense(2 => 16, tanh), Dense(16 => 1))
