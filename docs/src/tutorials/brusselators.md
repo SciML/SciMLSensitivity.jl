@@ -89,7 +89,7 @@ in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both 
 
 ## Generating Training Data
 
-This provides us with an ```ODEProblem``` that can be solved to obtain training data. 
+This provides us with an `ODEProblem` that can be solved to obtain training data. 
 
 ```julia
 using DifferentialEquations, ComponentArrays, Random, Plots, OrdinaryDiffEq
