@@ -197,7 +197,7 @@ The only change lies in the replacement of the known nonlinear term $U^2V$ with 
 $\mathcal{N}_\theta(U, V)$. This design enables the UDE to learn complex or unknown dynamics from data while maintaining the underlying physical structure of the system.
 
 The function below implements this hybrid formulation:
-```julia
+```@example bruss
 function pde_ude!(du, u, ps_nn, t)
     αdx = alpha / dx^2
     for I in CartesianIndices((N_GRID, N_GRID))
