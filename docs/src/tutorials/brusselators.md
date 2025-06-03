@@ -158,10 +158,6 @@ plot!(sol.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
 # Optional: Save the figure
 savefig("avg_concentration_plot.png")
 ```
-The resulting plot is:
-
-![Periodic Plot of Concentrations of U and V over time](docs\src\assets\brusselator_average_concentrations.png)
-
 
 With the ground truth data generated and visualized, we are now ready to construct a Universal Differential Equation (UDE) by replacing the nonlinear term  $U^2V$ with a neural network. The next section outlines how we define this hybrid model and train it to recover the reaction dynamics from data.
 
