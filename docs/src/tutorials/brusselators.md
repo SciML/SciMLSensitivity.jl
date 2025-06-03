@@ -226,7 +226,7 @@ To efficiently compute gradients of the loss with respect to the neural network 
 
 The loss function and initial evaluation are implemented as follows:
 
-```julia
+```@example bruss
 println("[Loss] Defining loss function...")
 function loss_fn(ps, _)
     prob = remake(prob_ude_template, p=ps)
@@ -243,7 +243,7 @@ end
 
 Once the loss function is defined, we use the ADAM optimizer to train the neural network. The optimization problem is defined using SciML's ```Optimization.jl``` tools, and gradients are computed via automatic differentiation using ```AutoZygote()``` from ```SciMLSensitivity```:
 
-```julia
+```@example bruss
 println("[Training] Starting optimization...")
 using OptimizationOptimisers
 optf = OptimizationFunction(loss_fn, AutoZygote())
@@ -259,9 +259,16 @@ end
 ```
 
 Finally to run everything:
-```julia
-res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=100)
 
+```@example bruss
+res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=100)
+```
+
+```@example bruss
+res.objective
+```
+
+```@example bruss
 println("[Plot] Final U/V comparison plots...")
 center = N_GRID ÷ 2
 sol_final = solve(remake(prob_ude_template, p=res.u), FBDF(), saveat=t_points)
@@ -279,9 +286,7 @@ plot(p1, p2, layout=(1,2), size=(900,400))
 ```
 
 ## Results and Conclusion
-After training the Universal Differential Equation (UDE), we compared the predicted dynamics to the ground truth for both chemical species. The loss function, defined as the mean squared error between predicted and true concentrations over time and space, converged as shown below:
 
-Training Loss:
-```Training loss after 100 epochs: 1.08```
+After training the Universal Differential Equation (UDE), we compared the predicted dynamics to the ground truth for both chemical species.
 
 The low training loss shows us that the neural network in the UDE was able to understand the underlying dynamics, and it was able to learn the $U^2V$ term in the partial differential equation. 
