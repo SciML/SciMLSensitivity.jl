@@ -20,7 +20,10 @@ pages = ["index.md",
             "examples/sde/optimization_sde.md",
             "examples/sde/SDE_control.md"],
         "Delay Differential Equations (DDEs)" => Any["examples/dde/delay_diffeq.md"],
-        "Partial Differential Equations (PDEs)" => Any["examples/pde/pde_constrained.md"],
+        "Partial Differential Equations (PDEs)" => Any[
+                "examples/pde/pde_constrained.md",
+                "examples/pde/brusselator.md"
+            ],
         "Hybrid and Jump Equations" => Any["examples/hybrid_jump/hybrid_diffeq.md",
             "examples/hybrid_jump/bouncing_ball.md"],
         "Bayesian Estimation" => Any["examples/bayesian/turing_bayesian.md"],
