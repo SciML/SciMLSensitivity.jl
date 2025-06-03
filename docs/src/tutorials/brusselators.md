@@ -143,7 +143,7 @@ u_true = Array(sol_truth)
 ## Visualizing Mean Concentration Over Time
 
 We can now use this code for training our UDE, and generating time-series plots of the concentrations of species of U and V using the code:
-```julia
+```@example bruss
 using Plots, Statistics
 
 # Compute average concentration at each timestep
@@ -154,9 +154,6 @@ avg_V = [mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
 plot(sol.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
      title="Mean Concentration of U and V Over Time")
 plot!(sol.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
-
-# Optional: Save the figure
-savefig("avg_concentration_plot.png")
 ```
 
 With the ground truth data generated and visualized, we are now ready to construct a Universal Differential Equation (UDE) by replacing the nonlinear term  $U^2V$ with a neural network. The next section outlines how we define this hybrid model and train it to recover the reaction dynamics from data.
