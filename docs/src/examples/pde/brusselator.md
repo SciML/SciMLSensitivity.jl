@@ -222,7 +222,7 @@ $\mathcal{N}_\theta(U, V)$ embedded in the UDE, we define a loss function that m
 
 The loss is computed as the sum of squared errors between the predicted solution from the UDE and the true solution at each saved time point. If the solver fails (e.g., due to numerical instability or incorrect parameters), we return an infinite loss to discard that configuration during optimization. We use ```FBDF()``` as the solver due to the stiff nature of the brusselators euqation. Other solvers like ```KenCarp47()``` could also be used. 
 
-To efficiently compute gradients of the loss with respect to the neural network parameters, we use an adjoint sensitivity method (```InterpolatingAdjoint```) combined with Zygote-based reverse-mode autodifferentiation (```ZygoteVJP()```), which enables scalable training without storing the entire forward trajectory.
+To efficiently compute gradients of the loss with respect to the neural network parameters, we use an adjoint sensitivity method (`GaussAdjoint`), which performs high-accuracy quadrature-based integration of the adjoint equations. This approach enables scalable and memory-efficient training for stiff PDEs by avoiding full trajectory storage while maintaining accurate gradient estimates.
 
 The loss function and initial evaluation are implemented as follows:
 
@@ -230,7 +230,7 @@ The loss function and initial evaluation are implemented as follows:
 println("[Loss] Defining loss function...")
 function loss_fn(ps, _)
     prob = remake(prob_ude_template, p=ps)
-    sol = solve(prob, FBDF(), saveat=t_points)
+    sol = solve(prob, FBDF(), saveat=t_points, sensealg=GaussAdjoint())
     # Failed solve 
     if !SciMLBase.successful_retcode(sol)
         return Inf32
