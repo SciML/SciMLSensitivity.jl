@@ -151,9 +151,9 @@ avg_U = [mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
 avg_V = [mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
 
 # Plot average concentrations over time
-plot(sol.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
+plot(sol_truth.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
      title="Mean Concentration of U and V Over Time")
-plot!(sol.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
+plot!(sol_truth.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
 ```
 
 With the ground truth data generated and visualized, we are now ready to construct a Universal Differential Equation (UDE) by replacing the nonlinear term  $U^2V$ with a neural network. The next section outlines how we define this hybrid model and train it to recover the reaction dynamics from data.
