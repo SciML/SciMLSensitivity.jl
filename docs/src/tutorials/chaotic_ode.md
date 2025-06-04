@@ -23,6 +23,9 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 ```@example chaosode
 using OrdinaryDiffEq, SciMLSensitivity, Zygote, Plots
 
+using Random
+Random.seed!(1201231)
+
 function lorenz!(du, u, p, t)
     du[1] = 10 * (u[2] - u[1])
     du[2] = u[1] * (p[1] - u[3]) - u[2]
