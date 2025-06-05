@@ -8,55 +8,37 @@ The Brusselator is a mathematical model used to describe oscillating chemical re
 
 The Brusselator PDE is defined on a unit square periodic domain as follows:
 
-$$
-\frac{\partial U}{\partial t} = B + U^2V - (A+1)U + \alpha \nabla^2 U + f(x, y, t)
-$$
+$$\frac{\partial U}{\partial t} = B + U^2V - (A+1)U + \alpha \nabla^2 U + f(x, y, t)$$
 
-$$
-\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 V
-$$
+$$\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 V$$
 
 where $A=3.4, B=1$ and the forcing term is:
 
-$$
-f(x, y, t) =
+$$f(x, y, t) =
 \begin{cases}
 5 & \text{if } (x - 0.3)^2 + (y - 0.6)^2 \leq 0.1^2 \text{ and } t \geq 1.1 \\
 0 & \text{otherwise}
-\end{cases}
-$$
+\end{cases}$$
 
 and the Laplacian operator is:
 
-$$
-\nabla^2 = \frac{\partial^2}{\partial x^2} + \frac{\partial^2}{\partial y^2}
-$$
+$$\nabla^2 = \frac{\partial^2}{\partial x^2} + \frac{\partial^2}{\partial y^2}$$
 
 These equations are solved over the time interval:
 
-$$
-t \in [0, 11.5]
-$$
+$$t \in [0, 11.5]$$
 
 with the initial conditions:
 
-$$
-U(x, y, 0) = 22 \cdot \left( y(1 - y) \right)^{3/2}
-$$
+$$U(x, y, 0) = 22 \cdot \left( y(1 - y) \right)^{3/2}$$
 
-$$
-V(x, y, 0) = 27 \cdot \left( x(1 - x) \right)^{3/2}
-$$
+$$V(x, y, 0) = 27 \cdot \left( x(1 - x) \right)^{3/2}$$
 
 and the periodic boundary conditions:
 
-$$
-U(x + 1, y, t) = U(x, y, t)
-$$
+$$U(x + 1, y, t) = U(x, y, t)$$
 
-$$
-V(x, y + 1, t) = V(x, y, t)
-$$
+$$V(x, y + 1, t) = V(x, y, t)$$
 
 ## Numerical Discretization
 
@@ -64,15 +46,11 @@ To numerically solve this PDE, we discretize the unit square domain using $N$ gr
 
 We represent the spatially discretized fields as:
 
-$$
-U[i,j] = U(i \cdot \Delta x, j \cdot \Delta y), \quad V[i,j] = V(i \cdot \Delta x, j \cdot \Delta y),
-$$
+$$U[i,j] = U(i \cdot \Delta x, j \cdot \Delta y), \quad V[i,j] = V(i \cdot \Delta x, j \cdot \Delta y),$$
 
 where  $\Delta x = \Delta y = \frac{1}{N}$ for a grid of size  $N \times N$. To organize the simulation state efficiently, we store both $ U $ and $ V $ in a single 3D array:
 
-$$
-u[i,j,1] = U[i,j], \quad u[i,j,2] = V[i,j],
-$$
+$$u[i,j,1] = U[i,j], \quad u[i,j,2] = V[i,j],$$
 
 giving us a field tensor of shape $(N, N, 2)$. This structure is flexible and extends naturally to systems with additional field variables.
 
@@ -81,9 +59,7 @@ giving us a field tensor of shape $(N, N, 2)$. This structure is flexible and ex
 
 For spatial derivatives, we apply a second-order central difference scheme using a three-point stencil. The Laplacian is discretized as:
 
-$$
-[\ 1,\ -2,\ 1\ ]
-$$
+$$[\ 1,\ -2,\ 1\ ]$$
 
 in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both the x and y directions; applying this 1D stencil (scaled appropriately by $\frac{1}{Δx^2}$ or $\frac{1}{Δy^2}$) along each axis and summing the contributions yields the standard 5-point stencil computation for the 2D Laplacian. Periodic boundary conditions are incorporated by wrapping the stencil at the domain edges, effectively connecting the boundaries. The nonlinear interaction terms are computed directly at each grid point, making the implementation straightforward and local in nature.
 
