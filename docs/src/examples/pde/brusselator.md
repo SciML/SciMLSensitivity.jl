@@ -8,55 +8,54 @@ The Brusselator is a mathematical model used to describe oscillating chemical re
 
 The Brusselator PDE is defined on a unit square periodic domain as follows:
 
-$$
-\frac{\partial U}{\partial t} = B + U^2V - (A+1)U + \alpha \nabla^2 U + f(x, y, t)
-$$
+```math
+\frac{\partial U}{\partial t} = B + U^2V - (A+1)U + \alpha \nabla^2 U + f(x, y, t) 
+```
 
-$$
-\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 V
-$$
+```math
+\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 
+```
 
 where $A=3.4, B=1$ and the forcing term is:
 
-$$
+```math
 f(x, y, t) =
 \begin{cases}
 5 & \text{if } (x - 0.3)^2 + (y - 0.6)^2 \leq 0.1^2 \text{ and } t \geq 1.1 \\
 0 & \text{otherwise}
 \end{cases}
-$$
+```
 
 and the Laplacian operator is:
 
-$$
+```math
 \nabla^2 = \frac{\partial^2}{\partial x^2} + \frac{\partial^2}{\partial y^2}
-$$
+```
 
 These equations are solved over the time interval:
 
-$$
+```math
 t \in [0, 11.5]
-$$
+```
 
 with the initial conditions:
 
-$$
-U(x, y, 0) = 22 \cdot \left( y(1 - y) \right)^{3/2}
-$$
+```math
+U(x, y, 0) = 22 \cdot \left( y(1 - y) \right)^{3/2} 
+```
 
-$$
+```math
 V(x, y, 0) = 27 \cdot \left( x(1 - x) \right)^{3/2}
-$$
+```
 
 and the periodic boundary conditions:
 
-$$
-U(x + 1, y, t) = U(x, y, t)
-$$
-
-$$
+```math
+U(x + 1, y, t) = U(x, y, t) 
+```
+```math
 V(x, y + 1, t) = V(x, y, t)
-$$
+```
 
 ## Numerical Discretization
 
@@ -64,15 +63,15 @@ To numerically solve this PDE, we discretize the unit square domain using $N$ gr
 
 We represent the spatially discretized fields as:
 
-$$
+```math
 U[i,j] = U(i \cdot \Delta x, j \cdot \Delta y), \quad V[i,j] = V(i \cdot \Delta x, j \cdot \Delta y),
-$$
+```
 
 where  $\Delta x = \Delta y = \frac{1}{N}$ for a grid of size  $N \times N$. To organize the simulation state efficiently, we store both $ U $ and $ V $ in a single 3D array:
 
-$$
+```math
 u[i,j,1] = U[i,j], \quad u[i,j,2] = V[i,j],
-$$
+```
 
 giving us a field tensor of shape $(N, N, 2)$. This structure is flexible and extends naturally to systems with additional field variables.
 
@@ -81,11 +80,11 @@ giving us a field tensor of shape $(N, N, 2)$. This structure is flexible and ex
 
 For spatial derivatives, we apply a second-order central difference scheme using a three-point stencil. The Laplacian is discretized as:
 
-$$
+```math
 [\ 1,\ -2,\ 1\ ]
-$$
+```
 
-in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both the x and y directions; applying this 1D stencil (scaled appropriately by $\frac{1}{Δx^2}$ or $\frac{1}{Δy^2}$) along each axis and summing the contributions yields the standard 5-point stencil computation for the 2D Laplacian. Periodic boundary conditions are incorporated by wrapping the stencil at the domain edges, effectively connecting the boundaries. The nonlinear interaction terms are computed directly at each grid point, making the implementation straightforward and local in nature.
+in both the $x$ and $y$ directions, forming a tridiagonal structure in both the x and y directions; applying this 1D stencil (scaled appropriately by $\frac{1}{Δx^2}$ or $\frac{1}{Δy^2}$) along each axis and summing the contributions yields the standard 5-point stencil computation for the 2D Laplacian. Periodic boundary conditions are incorporated by wrapping the stencil at the domain edges, effectively connecting the boundaries. The nonlinear interaction terms are computed directly at each grid point, making the implementation straightforward and local in nature.
 
 ## Generating Training Data
 
@@ -164,13 +163,13 @@ In the original Brusselator model, the nonlinear reaction term \( U^2V \) govern
 
 The resulting system becomes:
 
-$$
+```math
 \frac{\partial U}{\partial t} = 1 + \mathcal{N}_\theta(U, V) - 4.4U + \alpha \nabla^2 U + f(x, y, t)
-$$
+```
 
-$$
+```math
 \frac{\partial V}{\partial t} = 3.4U - \mathcal{N}_\theta(U, V) + \alpha \nabla^2 V
-$$
+```
 
 Here, $\mathcal{N}_\theta(U, V)$ is trained to approximate the true interaction term $U^2V$ using simulation data. This hybrid formulation allows us to recover unknown or partially known physical processes while preserving the known structural components of the PDE.
 
