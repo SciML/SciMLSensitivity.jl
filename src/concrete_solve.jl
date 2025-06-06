@@ -1812,7 +1812,7 @@ function DiffEqBase._concrete_solve_adjoint(
 
         dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
 
-        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
+        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number 
             # if Δ isa AbstractArray, the gradients correspond to `u`
             # this is something that needs changing in the future, but
             # this is the applicable till the movement to structuaral
@@ -1828,10 +1828,15 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         else
             dp, Δtunables = if isscimlstructure(p)
-                Δp = setproperties(dp, to_nt(Δ.prob.p))
-                Δtunables, _, _ = canonicalize(Tunable(), Δp)
-                dp, _, _ = canonicalize(Tunable(), dp)
-                dp, Δtunables
+                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, nothing
+                else
+                    Δp = setproperties(dp, to_nt(Δ.prob.p))
+                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, Δtunables
+                end
             elseif isfunctor(p)
                 dp, _ = Functors.functor(dp)
                 Δtunables, _ = Functors.functor(Δ.prob.p)
