@@ -473,6 +473,8 @@ end
 
     dp10 = Zygote.gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
     dp11 = Zygote.gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
+    dp12 = ForwardDiff.gradient(p -> test_loss2(p, prob6, Broyden()), p)
+ 
 
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
@@ -482,7 +484,9 @@ end
     @test dp1≈dp7 rtol=1e-10
     @test dp1≈dp8 rtol=1e-10
     @test dp1≈dp9 rtol=1e-10
-    @test dp10≈dp11 rtol=1e-5
+    @test dp10≈dp11 rtol=1e-10
+    @test dp11≈dp12 rtol=1e-10
+    @test dp10≈dp12 rtol=1e-10
 
     # Larger Batched Problem: For testing the Iterative Solvers Path
     u0 = zeros(128)
