@@ -107,7 +107,7 @@ display(p_center_combined)
 Now that we have an understanding of the data and its visualization, we can define the neural network and the UDE structure. We replace the $\frac{a u^2}{v} + \bar{u} - \alpha u$ term with a neural network, giving the resultant ODEs.
 
 ```math
-du = D1 * (A_y u + u A_x) + \mathcal{N}_\theta(u,v)
+du = D1 (A_y u + u A_x) + \mathcal{N}_\theta(u,v)
 ```
 
 ```math
