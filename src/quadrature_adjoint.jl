@@ -302,8 +302,8 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         tmp3, tmp4, tmp6 = paramjac_config
         vtmp4 = vec(tmp4)
 
-        Enzyme.make_zero!(out)
-        Enzyme.make_zero!(tmp3)
+        Enzyme.remake_zero!(out)
+        Enzyme.remake_zero!(tmp3)
         vtmp4 .= λ
 
         if !(p isa AbstractArray)
@@ -315,7 +315,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
 
         if SciMLBase.isinplace(sol.prob.f)
             # Correctness over speed
-            # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+            # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
             # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
             tmp6 = Enzyme.make_zero(f)
             Enzyme.autodiff(

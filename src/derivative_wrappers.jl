@@ -695,7 +695,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         ytmp = _tmp5
     end
 
-    Enzyme.make_zero!(tmp1) # should be removed for dλ
+    Enzyme.remake_zero!(tmp1) # should be removed for dλ
     vec(ytmp) .= vec(y)
 
     #if dgrad !== nothing
@@ -703,7 +703,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #else
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         # tmp2 .= 0
-        Enzyme.make_zero!(tmp2)
+        Enzyme.remake_zero!(tmp2)
         Enzyme.Duplicated(p, repack(tmp2))
     else
         Enzyme.Const(p)
@@ -713,7 +713,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     #if dy !== nothing
     #      tmp3 = dy
     #else
-    Enzyme.make_zero!(tmp3)
+    Enzyme.remake_zero!(tmp3)
     #end
 
     vec(tmp4) .= vec(λ)
@@ -722,7 +722,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     if inplace_sensitivity(S)
 
         # Correctness over speed
-        # TODO: Get a fix for `make_zero!` to allow reusing zero'd memory
+        # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
         # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
         _tmp6 = Enzyme.make_zero(f)
 
