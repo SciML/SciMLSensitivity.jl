@@ -720,8 +720,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     isautojacvec = get_jacvec(sensealg)
 
     if inplace_sensitivity(S)
-        _tmp6 = Enzyme.remake_zero!(f)
-
+        Enzyme.remake_zero!(_tmp6)
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),

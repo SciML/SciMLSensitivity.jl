@@ -508,7 +508,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.remake_zero!(out)
         
         if SciMLBase.isinplace(sol.prob.f)
-            tmp6 = Enzyme.remake_zero!(tmp6)
+            Enzyme.remake_zero!(tmp6)
             
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
