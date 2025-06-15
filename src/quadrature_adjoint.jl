@@ -314,10 +314,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         end
 
         if SciMLBase.isinplace(sol.prob.f)
-            # Correctness over speed
-            # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
-            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            tmp6 = Enzyme.make_zero(f)
+            tmp6 = Enzyme.remake_zero!(f)
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
