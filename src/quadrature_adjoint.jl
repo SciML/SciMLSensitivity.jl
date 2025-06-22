@@ -293,7 +293,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
+                Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), dup, Enzyme.Const(t))
         else
