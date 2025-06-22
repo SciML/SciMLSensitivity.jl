@@ -209,30 +209,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        pf = let f = unwrappedf
-            if DiffEqBase.isinplace(prob) && prob isa RODEProblem
-                function (out, u, _p, t, W)
-                    f(out, u, _p, t, W)
-                    nothing
-                end
-            elseif DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    f(out, u, _p, t)
-                    nothing
-                end
-            elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
-                function (out, u, _p, t, W)
-                    out .= f(u, _p, t, W)
-                    nothing
-                end
-            else
-                !DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    out .= f(u, _p, t)
-                    nothing
-                end
-            end
-        end
+        pf = unwrappedf
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
@@ -314,10 +291,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         end
 
         if SciMLBase.isinplace(sol.prob.f)
-            # Correctness over speed
-            # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
-            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            tmp6 = Enzyme.make_zero(f)
+            Enzyme.remake_zero!(tmp6)
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(f, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),

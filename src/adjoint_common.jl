@@ -489,30 +489,7 @@ function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
 end
 
 function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
-    pf = let f = _f
-        if isinplace && isRODE
-            function (out, u, _p, t, W)
-                f(out, u, _p, t, W)
-                nothing
-            end
-        elseif isinplace
-            function (out, u, _p, t)
-                f(out, u, _p, t)
-                nothing
-            end
-        elseif !isinplace && isRODE
-            function (out, u, _p, t, W)
-                out .= f(u, _p, t, W)
-                nothing
-            end
-        else
-            # !isinplace
-            function (out, u, _p, t)
-                out .= f(u, _p, t)
-                nothing
-            end
-        end
-    end
+    _f
 end
 
 function get_pf(::MooncakeVJP, prob, _f)

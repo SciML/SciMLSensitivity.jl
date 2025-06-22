@@ -16,7 +16,7 @@ end
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
     Alg <: GaussAdjoint,
     uType, SType, CPS, pType,
-    fType <: DiffEqBase.AbstractDiffEqFunction,
+    fType,
     GI <: GaussIntegrand,
     ICB} <: SensitivityFunction
     diffcache::C
@@ -82,7 +82,7 @@ function ODEGaussAdjointSensitivityFunction(
         nothing
     end
     diffcache, y = adjointdiffcache(
-        g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
+        g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = true)
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
         y, sol, checkpoint_sol, sol.prob, f, gaussint, integrating_cb)
@@ -415,20 +415,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        pf = let f = unwrappedf
-            if DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    f(out, u, _p, t)
-                    nothing
-                end
-            else
-                !DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    out .= f(u, _p, t)
-                    nothing
-                end
-            end
-        end
+        pf = unwrappedf
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
@@ -508,10 +495,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.remake_zero!(out)
         
         if SciMLBase.isinplace(sol.prob.f)
-            # Correctness over speed
-            # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
-            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            tmp6 = Enzyme.make_zero(tmp6)
+            Enzyme.remake_zero!(tmp6)
             
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
