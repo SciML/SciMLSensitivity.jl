@@ -498,7 +498,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.remake_zero!(tmp6)
             
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(pf), tmp6), Enzyme.Const,
+                Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
         else
