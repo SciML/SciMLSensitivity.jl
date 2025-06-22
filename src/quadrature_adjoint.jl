@@ -209,30 +209,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        pf = let f = unwrappedf
-            if DiffEqBase.isinplace(prob) && prob isa RODEProblem
-                function (out, u, _p, t, W)
-                    f(out, u, _p, t, W)
-                    nothing
-                end
-            elseif DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    f(out, u, _p, t)
-                    nothing
-                end
-            elseif !DiffEqBase.isinplace(prob) && prob isa RODEProblem
-                function (out, u, _p, t, W)
-                    out .= f(u, _p, t, W)
-                    nothing
-                end
-            else
-                !DiffEqBase.isinplace(prob)
-                function (out, u, _p, t)
-                    out .= f(u, _p, t)
-                    nothing
-                end
-            end
-        end
+        pf = unwrappedf
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
