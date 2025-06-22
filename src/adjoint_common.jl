@@ -489,7 +489,7 @@ function get_pf(autojacvec::ReverseDiffVJP; _f = nothing, isinplace = nothing,
 end
 
 function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
-    _f
+    isinplace ? SciMLBase.Void(_f) : _f
 end
 
 function get_pf(::MooncakeVJP, prob, _f)
