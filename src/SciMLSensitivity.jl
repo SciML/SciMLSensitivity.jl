@@ -95,7 +95,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, InterpolatingAdjoint,
-       TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
+       TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,

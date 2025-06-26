@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake
 using Test
 
 function fb(du, u, p, t)
@@ -170,6 +170,10 @@ _, easy_res147 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
+_, easy_res148 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = MooncakeAdjoint())
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -209,6 +213,7 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res145, rtol = 1e-9)
 @test isapprox(res, easy_res146, rtol = 1e-9)
 @test isapprox(res, easy_res147, rtol = 1e-9)
+@test isapprox(res, easy_res148, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -312,6 +317,10 @@ _, easy_res2_mc_back = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discre
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = BacksolveAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
+_, easy_res2_mc_adj = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = MooncakeAdjoint())
 _, easy_res6_mc_quad = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
     dgdu_discrete = dg,
     abstol = 1e-14,
@@ -354,6 +363,7 @@ _, easy_res6_mc_back = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
 @test isapprox(res, easy_res2_mc_quad, rtol = 1e-9)
 @test isapprox(res, easy_res2_mc_interp, rtol = 1e-9)
 @test isapprox(res, easy_res2_mc_back, rtol = 1e-9)
+@test isapprox(res, easy_res2_mc_adj, rtol = 1e-9)
 @test isapprox(res, easy_res6_mc_quad, rtol = 1e-4)
 @test isapprox(res, easy_res6_mc_interp, rtol = 1e-9)
 @test isapprox(res, easy_res6_mc_back, rtol = 1e-9)
@@ -370,9 +380,15 @@ _, easy_res82 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     reltol = 1e-14,
     save_everystep = false, save_start = false,
     sensealg = BacksolveAdjoint(checkpointing = false))
+_, easy_res83 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    save_everystep = false, save_start = false,
+    sensealg = MooncakeAdjoint())
 
 @test isapprox(res, easy_res8, rtol = 1e-9)
 @test isapprox(res, easy_res82, rtol = 1e-9)
+@test isapprox(res, easy_res83, rtol = 1e-9)
 
 _, end_only_res = adjoint_sensitivities(sol_end, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
