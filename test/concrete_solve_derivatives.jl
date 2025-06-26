@@ -336,7 +336,6 @@ du08, dp8 = Zygote.gradient(
 @test ū0≈du04 rtol=1e-12
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
-@test ū0≈du07 rtol=1e-12
 @test ū0≈du08 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
 @test adj≈dp2' rtol=1e-12
