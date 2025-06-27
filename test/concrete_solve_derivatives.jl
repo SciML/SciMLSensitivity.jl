@@ -1,6 +1,6 @@
 using SciMLSensitivity, OrdinaryDiffEq, Zygote
 using Test, ForwardDiff
-import Tracker, ReverseDiff, ChainRulesCore, Mooncake
+import Tracker, ReverseDiff, ChainRulesCore, Mooncake, Enzyme
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -79,6 +79,13 @@ du07, dp7 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
+du08, dp8 = Zygote.gradient(
+    (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+        abstol = 1e-14, reltol = 1e-14,
+        saveat = 0.1,
+        sensealg = EnzymeAdjoint())),
+    u0,
+    p)
 
 @test ū0≈du01 rtol=1e-12
 @test ū0 == du02
@@ -87,6 +94,7 @@ du07, dp7 = Zygote.gradient(
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test ū0≈du07 rtol=1e-12
+@test ū0≈du08 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
 @test adj == dp2'
 @test adj≈dp3' rtol=1e-12
@@ -94,6 +102,7 @@ du07, dp7 = Zygote.gradient(
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test adj≈dp7' rtol=1e-12
+@test adj≈dp8' rtol=1e-12
 
 ###
 ### Direct from prob
@@ -326,6 +335,13 @@ du08, dp8 = Zygote.gradient(
     (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
         abstol = 1e-14, reltol = 1e-14,
         saveat = 0.1,
+        sensealg = EnzymeAdjoint())),
+    u0,
+    p)
+du09, dp9 = Zygote.gradient(
+    (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
+        abstol = 1e-14, reltol = 1e-14,
+        saveat = 0.1,
         sensealg = GaussAdjoint())),
     u0,
     p)
@@ -345,6 +361,7 @@ du08, dp8 = Zygote.gradient(
 @test adj≈dp6' rtol=1e-12
 @test adj≈dp7' rtol=1e-12
 @test adj≈dp8' rtol=1e-12
+@test adj≈dp9' rtol=1e-12
 
 ###
 ### forward
