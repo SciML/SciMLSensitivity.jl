@@ -609,6 +609,26 @@ struct TrackerAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, noth
 
 """
 ```julia
+MooncakeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
+```
+
+An implementation of discrete adjoint sensitivity analysis
+using the Mooncake.jl direct differentiation. 
+
+## Constructor
+
+```julia
+MooncakeAdjoint()
+```
+
+## SciMLProblem Support
+
+This `sensealg` supports any `DEProblem` if the algorithm is `SciMLBase.isautodifferentiable`
+"""
+struct MooncakeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} end
+
+"""
+```julia
 ReverseDiffAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 ```
 
