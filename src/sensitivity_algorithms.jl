@@ -693,7 +693,7 @@ Currently fails on almost every solver.
 """
 struct EnzymeAdjoint{M <: Union{Nothing,EnzymeCore.Mode}} <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} 
   mode::M
-  EnzymeAdjoint(mode = nothing) = new(mode)
+  EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
 end
 
 """
