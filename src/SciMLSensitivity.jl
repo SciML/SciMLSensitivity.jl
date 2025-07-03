@@ -6,8 +6,8 @@ using Accessors: @reset
 using Adapt: Adapt, adapt
 using ArrayInterface: ArrayInterface
 using DiffEqBase: DiffEqBase, SensitivityADPassThrough
-using DiffEqCallbacks: DiffEqCallbacks, IntegrandValuesSum,
-                       IntegratingSumCallback, PresetTimeCallback
+using DiffEqCallbacks: DiffEqCallbacks, IntegrandValuesSum, IntegratingSumCallback,
+                       IntegratingGKSumCallback, PresetTimeCallback
 using DiffEqNoiseProcess: DiffEqNoiseProcess
 using FastBroadcast: @..
 using Functors: Functors, fmap
@@ -78,6 +78,7 @@ include("backsolve_adjoint.jl")
 include("interpolating_adjoint.jl")
 include("quadrature_adjoint.jl")
 include("gauss_adjoint.jl")
+include("gauss_kronrod_adjoint.jl")
 include("callback_tracking.jl")
 include("concrete_solve.jl")
 include("second_order.jl")
@@ -94,7 +95,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        NILSSProblem, NILSASProblem,
        shadow_forward, shadow_adjoint
 
-export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, InterpolatingAdjoint,
+export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
        ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
