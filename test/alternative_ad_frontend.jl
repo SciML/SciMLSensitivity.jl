@@ -63,8 +63,8 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()), u0p)[1]
 @test mooncake_gradient(senseloss(InterpolatingAdjoint()), u0p) ≈ dup
 @test_throws TypeError mooncake_gradient(senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
 @test_throws TypeError mooncake_gradient(senseloss(TrackerAdjoint()), u0p) ≈ dup
-#@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
-#@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(TrackerAdjoint()), u0p) ≈ dup
+@test_broken @test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(ReverseDiffAdjoint()), u0p) ≈ dup
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(TrackerAdjoint()), u0p) ≈ dup
 @test mooncake_gradient(senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken mooncake_gradient(senseloss(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
