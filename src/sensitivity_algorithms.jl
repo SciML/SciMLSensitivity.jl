@@ -615,6 +615,10 @@ MooncakeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 An implementation of discrete adjoint sensitivity analysis
 using the Mooncake.jl direct differentiation. 
 
+!!! warn
+      This is currently experimental and supports only explicit solvers. It will
+      support all solvers in the future.
+
 ## Constructor
 
 ```julia
@@ -674,6 +678,10 @@ EnzymeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
 An implementation of discrete adjoint sensitivity analysis
 using the Enzyme.jl source-to-source AD directly on the differential equation
 solver.
+
+!!! warn
+      This is currently experimental and supports only explicit solvers. It will
+      support all solvers in the future.
 
 ## Constructor
 

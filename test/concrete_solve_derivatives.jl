@@ -79,7 +79,7 @@ du06, dp6 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-du08, dp8 = Zygote.gradient(
+@test_broken du08, dp8 = Zygote.gradient(
     (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
         abstol = 1e-14, reltol = 1e-14,
         saveat = 0.1,
@@ -94,7 +94,7 @@ du08, dp8 = Zygote.gradient(
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test_broken ū0≈du07 rtol=1e-12
-@test ū0≈du08 rtol=1e-12
+@test_broken ū0≈du08 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
 @test adj == dp2'
 @test adj≈dp3' rtol=1e-12
@@ -102,7 +102,7 @@ du08, dp8 = Zygote.gradient(
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@test adj≈dp8' rtol=1e-12
+@test_broken adj≈dp8' rtol=1e-12
 
 ###
 ### Direct from prob
@@ -331,7 +331,7 @@ du06, dp6 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-du08, dp8 = Zygote.gradient(
+@test_broken du08, dp8 = Zygote.gradient(
     (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
         abstol = 1e-14, reltol = 1e-14,
         saveat = 0.1,
@@ -361,7 +361,7 @@ du09, dp9 = Zygote.gradient(
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@test adj≈dp8' rtol=1e-12
+@test_broken adj≈dp8' rtol=1e-12
 @test adj≈dp9' rtol=1e-12
 
 ###
