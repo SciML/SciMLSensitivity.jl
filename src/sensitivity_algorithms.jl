@@ -660,6 +660,9 @@ An implementation of discrete adjoint sensitivity analysis
 using the Zygote.jl source-to-source AD directly on the differential equation
 solver.
 
+!!! warn
+      This is only supports SimpleDiffEq.jl solvers due to limitations of Enzyme.
+
 ## Constructor
 
 ```julia
