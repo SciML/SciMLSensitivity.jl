@@ -1284,7 +1284,7 @@ function DiffEqBase._concrete_solve_adjoint(
     splitmode = if mode isa Enzyme.ForwardMode
         error("EnzymeAdjoint currently only allows mode=Reverse. File an issue if this is necessary.")
     elseif mode === nothing || mode isa Enzyme.ReverseMode
-        Enzyme.ReverseSplitWithPrimal
+        Enzyme.set_runtime_activity(Enzyme.ReverseSplitWithPrimal)
     end
 
     forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(f)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
