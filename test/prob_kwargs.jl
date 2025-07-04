@@ -32,7 +32,7 @@ a = ones(3)
 
 # callback in problem construction or in solve call should give same result
 # https://github.com/SciML/SciMLSensitivity.jl/issues/1081
-odef(du, u, p, t) = du .= u .* p
+odef(du, u, p, t) = du[1] = u[1] * p[1]
 prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
 
 let callback_count1 = 0, callback_count2 = 0

@@ -82,9 +82,9 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     out, pullback = Mooncake.value_and_pullback!!(
-        Mooncake.CoDual(mooncake_adjoint_forwardpass, NoFData()),
-        Mooncake.CoDual(u0, zero_rdata(u0)),
-        Mooncake.CoDual(tunables, zero_rdata(tunables))
+        Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.NoFData()),
+        Mooncake.CoDual(u0, Mooncake.zero_rdata(u0)),
+        Mooncake.CoDual(tunables, Mooncake.zero_rdata(tunables))
     )
     
     function mooncake_adjoint_backpass(ybar)
