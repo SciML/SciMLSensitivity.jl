@@ -96,7 +96,7 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
 
 export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
-       ForwardSensitivity, ForwardDiffSensitivity,
+       EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
        ForwardLSS, AdjointLSS, NILSS, NILSAS

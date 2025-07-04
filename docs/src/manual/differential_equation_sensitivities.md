@@ -200,6 +200,8 @@ QuadratureAdjoint
 ReverseDiffAdjoint
 TrackerAdjoint
 ZygoteAdjoint
+EnzymeAdjoint
+MooncakeAdjoint
 ForwardLSS
 AdjointLSS
 NILSS
