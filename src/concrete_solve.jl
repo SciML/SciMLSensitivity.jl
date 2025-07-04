@@ -1288,7 +1288,7 @@ function DiffEqBase._concrete_solve_adjoint(
     end
 
     forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(f)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
-    tape, result, shadow_result = forward(Enzyme.Const(f), Enzyme.Duplicated(u0, du0), Enzyme.Duplicated(p, dp))
+    tape, result, shadow_result = forward(Enzyme.Const(f), Enzyme.Duplicated(copy(u0), du0), Enzyme.Duplicated(copy(p), dp))
 
     function enzyme_sensitivity_backpass(Δ)
         reverse(Const(f), Duplicated(u0, du0), Duplicated(p, dp), Δ, tape)
