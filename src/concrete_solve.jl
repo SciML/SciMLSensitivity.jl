@@ -1273,8 +1273,8 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
-    du0 = make_zero(u0)
-    dp = make_zero(p)
+    du0 = Enzyme.make_zero(u0)
+    dp = Enzyme.make_zero(p)
     mode = sensealg.mode
 
     f = (u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
@@ -1287,8 +1287,8 @@ function DiffEqBase._concrete_solve_adjoint(
         ReverseSplitWithPrimal
     end
 
-    forward, reverse = autodiff_thunk(splitmode, Const{typeof(f)}, Duplicated, Duplicated{typeof(u0)}, Duplicated{typeof(p)})
-    tape, result, shadow_result = forward(Const(f), Duplicated(u0, du0), Duplicated(p, dp))
+    forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(f)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
+    tape, result, shadow_result = Enzyme.forward(Enzyme.Const(f), Enzyme.Duplicated(u0, du0), Enzyme.Duplicated(p, dp))
 
     function enzyme_sensitivity_backpass(Δ)
         reverse(Const(f), Duplicated(u0, du0), Duplicated(p, dp), Δ, tape)
