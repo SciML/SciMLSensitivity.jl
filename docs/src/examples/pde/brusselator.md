@@ -222,7 +222,14 @@ First, we have to conduct the time segmentation:
 n_segments = 5
 segment_times = range(tspan[1], stop=tspan[2], length=n_segments+1)
 segment_spans = [(segment_times[i], segment_times[i+1]) for i in 1:n_segments]
-segment_saves = [collect(range(t[1], stop=t[2], step=SAVE_AT)) for t in segment_spans]
+segment_saves = [
+  let ts = collect(range(t1, stop=t2, step=SAVE_AT))
+      if ts[end] != t2
+        push!(ts, t2)
+      end
+      ts
+  end for (t1,t2) in segment_spans
+]
 ```
 
 We also compute the indices in the original `t_points` that correspond to each segment:
@@ -247,19 +254,20 @@ $\mathcal{N}_\theta(U, V)$ embedded in the UDE, we implement a multiple shooting
 
 For each segment, the loss is computed as the sum of squared errors between the predicted solution and the ground truth data at saved time points. To ensure continuity across segments, we introduce a penalty that measures the difference between the final predicted state of one segment and the initial true state of the next. If any segment fails to solve (due to instability or divergence), an infinite loss is returned to discard that parameter configuration during optimization.
 
-Although adjoint sensitivity methods such as `GaussAdjoint` are often used in stiff problems to reduce memory load, multiple shooting naturally mitigates this need by shortening the integration window for each segment. Hence, we rely on `AutoZygote()` for automatic differentiation in our implementation.
+Although adjoint sensitivity methods such as `GaussAdjoint` are often used in stiff problems to reduce memory load, multiple shooting naturally mitigates this need by shortening the integration window for each segment. Hence, we rely on `AutoZygote()` for automatic differentiation in our implementation. 
 
-This approach improves training robustness by constraining long-term predictions and encouraging accurate short-term learning within each segment. The final optimization is carried out using the `ADAM` algorithm over all neural network parameters.
+This approach improves training robustness by constraining long-term predictions and encouraging accurate short-term learning within each segment. The final optimization is carried out using the `ADAM` algorithm over all neural network parameters. 
 
 
 The loss function is defined below:
 ```@example bruss
+const λ = 5f0
 function loss_fn_multi(ps, _)
     total_loss = 0f0
     u0_seg = copy(u0)
     for i in 1:n_segments
         prob_i = get_segment_prob(ps, u0_seg, i)
-        sol_i = solve(prob_i, FBDF(), saveat=segment_saves[i])
+        sol_i = solve(prob_i, FBDF(), saveat=segment_saves[i], abstol=1e-6, reltol=1e-6)
         if !SciMLBase.successful_retcode(sol_i)
             return Inf32
         end
@@ -272,9 +280,11 @@ function loss_fn_multi(ps, _)
         true_i = u_true[:,:,:,t_idxs]
         total_loss += sum(abs2, pred_i .- true_i) / length(true_i)
         if i < n_segments
-            u0_seg = pred_i[:,:,:,end]
-            next_u0 = u_true[:,:,:,t_idxs[end]+1]
-            total_loss += sum(abs2, u0_seg .- next_u0) / length(next_u0)
+            t_end    = segment_spans[i][2]
+            pred_end = sol_i(t_end)
+            true_end = sol_truth(t_end)
+            total_loss += λ * sum(abs2, pred_end .- true_end) / length(true_end)
+            u0_seg    = pred_end
         end
     end
     return total_loss
@@ -305,7 +315,7 @@ res.objective
 
 ```@example bruss
 center = N_GRID ÷ 2
-sol_final = solve(remake(prob_ude_template, p=res.u), FBDF(), saveat=t_points)
+sol_final = solve(remake(prob_ude_template, p=res.u), FBDF(), saveat=t_points, abstol=1e-6, reltol=1e-6)
 pred = Array(sol_final)
 
 p1 = plot(t_points, u_true[center,center,1,:], lw=2, label="U True")
