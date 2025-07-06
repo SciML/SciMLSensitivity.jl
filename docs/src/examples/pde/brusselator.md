@@ -280,11 +280,9 @@ function loss_fn_multi(ps, _)
         true_i = u_true[:,:,:,t_idxs]
         total_loss += sum(abs2, pred_i .- true_i) / length(true_i)
         if i < n_segments
-            t_end    = segment_spans[i][2]
-            pred_end = sol_i(t_end)
-            true_end = sol_truth(t_end)
-            total_loss += λ * sum(abs2, pred_end .- true_end) / length(true_end)
-            u0_seg    = pred_end
+            u0_seg = pred_i[:,:,:,end]
+            next_u0 = u_true[:,:,:,t_idxs[end]+1]
+            total_loss += λ * sum(abs2, u0_seg .- next_u0) / length(next_u0)
         end
     end
     return total_loss
@@ -316,6 +314,7 @@ res.objective
 ```@example bruss
 center = N_GRID ÷ 2
 sol_final = solve(remake(prob_ude_template, p=res.u), FBDF(), saveat=t_points, abstol=1e-6, reltol=1e-6)
+
 pred = Array(sol_final)
 
 p1 = plot(t_points, u_true[center,center,1,:], lw=2, label="U True")
