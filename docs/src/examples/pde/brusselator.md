@@ -219,26 +219,13 @@ Traditional single-shooting training for stiff PDEs like the Brusselator often l
 
 First, we have to conduct the time segmentation:
 ```@example bruss
+# ---------------------------- Multiple Shooting ---------------------------- #
+N = length(t_points)   # 24 points: 0.0,0.5,…,11.5
 n_segments = 5
-segment_times = range(tspan[1], stop=tspan[2], length=n_segments+1)
-segment_spans = [(segment_times[i], segment_times[i+1]) for i in 1:n_segments]
-segment_saves = [
-  let ts = collect(range(t1, stop=t2, step=SAVE_AT))
-      if ts[end] != t2
-        push!(ts, t2)
-      end
-      ts
-  end for (t1,t2) in segment_spans
-]
-```
-
-We also compute the indices in the original `t_points` that correspond to each segment:
-```@example bruss
-function match_time_indices(t_points, segment_saves)
-    return [map(ti -> findmin(abs.(t_points .- ti))[2], segment_saves[i]) for i in 1:length(segment_saves)]
-end
-
-segment_time_indices = match_time_indices(t_points, segment_saves)
+ends = round.(Int, LinRange(1, N, n_segments+1))  
+segment_time_indices = [ ends[i]:ends[i+1] for i in 1:n_segments ]
+segment_saves = [ t_points[idxs] for idxs in segment_time_indices ]
+segment_saves = [ t_points[segment_time_indices[i]] for i in 1:length(segment_spans) ]
 ```
 
 Then, we create an individual problem for each segment:
@@ -261,30 +248,37 @@ This approach improves training robustness by constraining long-term predictions
 
 The loss function is defined below:
 ```@example bruss
-const λ = 5f0
 function loss_fn_multi(ps, _)
     total_loss = 0f0
-    u0_seg = copy(u0)
+    u0_seg     = copy(u0)
+
     for i in 1:n_segments
+        # Build & solve the i-th segment problem
         prob_i = get_segment_prob(ps, u0_seg, i)
-        sol_i = solve(prob_i, FBDF(), saveat=segment_saves[i], abstol=1e-6, reltol=1e-6)
+        sol_i  = solve(prob_i, FBDF(), saveat=segment_saves[i])
         if !SciMLBase.successful_retcode(sol_i)
             return Inf32
         end
-        pred_i = Array(sol_i)
-        t_idxs = segment_time_indices[i]
-        println("Segment $i: matched indices = ", t_idxs)
-        if isempty(t_idxs)
-            error("No matching time points for segment $i — check SAVE_AT, t_points, or tolerance.")
-        end
-        true_i = u_true[:,:,:,t_idxs]
+
+        # Extract prediction & truth at the exact same grid-times
+        pred_i = Array(sol_i)                  # dims: (nx,ny,2,Ni)
+        idxs   = segment_time_indices[i]       # e.g. 1:7 or 7:12
+        true_i = u_true[:,:,:, idxs]           # same dims
+
+        # 1) data-fit loss on this segment
         total_loss += sum(abs2, pred_i .- true_i) / length(true_i)
+
+        # 2) continuity penalty at segment boundary
         if i < n_segments
-            u0_seg = pred_i[:,:,:,end]
-            next_u0 = u_true[:,:,:,t_idxs[end]+1]
-            total_loss += λ * sum(abs2, u0_seg .- next_u0) / length(next_u0)
+            # last time‐slice of this segment
+            u0_seg = pred_i[:,:,:, end]
+
+            # truth at that same last slice
+            boundary_truth = true_i[:,:,:, end]
+            total_loss += sum(abs2, u0_seg .- boundary_truth) / length(boundary_truth)
         end
     end
+
     return total_loss
 end
 ```
