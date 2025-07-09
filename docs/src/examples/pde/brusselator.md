@@ -219,13 +219,21 @@ Traditional single-shooting training for stiff PDEs like the Brusselator often l
 
 First, we have to conduct the time segmentation:
 ```@example bruss
-# ---------------------------- Multiple Shooting ---------------------------- #
-N = length(t_points)   # 24 points: 0.0,0.5,…,11.5
-n_segments = 5
-ends = round.(Int, LinRange(1, N, n_segments+1))  
-segment_time_indices = [ ends[i]:ends[i+1] for i in 1:n_segments ]
-segment_saves = [ t_points[idxs] for idxs in segment_time_indices ]
-segment_saves = [ t_points[segment_time_indices[i]] for i in 1:length(segment_spans) ]
+segment_duration = 2.5f0 # 5 steps of SAVE_AT
+n_segments = floor(Int, T_FINAL / segment_duration) # This will calculate n_segments = 4
+
+# Create segments based on the duration, not a fixed number
+segment_times = range(tspan[1], step=segment_duration, length=n_segments + 1)
+segment_spans = [(segment_times[i], segment_times[i+1]) for i in 1:n_segments]
+
+# The rest of the code remains the same
+segment_saves = [collect(range(t[1], stop=t[2], step=SAVE_AT)) for t in segment_spans]
+
+function match_time_indices(t_points, segment_saves)
+    return [map(ti -> findmin(abs.(t_points .- ti))[2], segment_saves[i]) for i in 1:length(segment_saves)]
+end
+
+segment_time_indices = match_time_indices(t_points, segment_saves)
 ```
 
 Then, we create an individual problem for each segment:
@@ -239,7 +247,7 @@ end
 To train the neural network
 $\mathcal{N}_\theta(U, V)$ embedded in the UDE, we implement a multiple shooting loss function that segments the full simulation into smaller time intervals and enforces temporal consistency across them.
 
-For each segment, the loss is computed as the sum of squared errors between the predicted solution and the ground truth data at saved time points. To ensure continuity across segments, we introduce a penalty that measures the difference between the final predicted state of one segment and the initial true state of the next. If any segment fails to solve (due to instability or divergence), an infinite loss is returned to discard that parameter configuration during optimization.
+For each segment, the loss is computed as the sum of squared errors between the predicted solution and the ground truth data at saved time points. To ensure continuity across segments, we introduce a penalty ($\lambda$) that measures the difference between the final predicted state of one segment and the initial true state of the next. If any segment fails to solve (due to instability or divergence), an infinite loss is returned to discard that parameter configuration during optimization.
 
 Although adjoint sensitivity methods such as `GaussAdjoint` are often used in stiff problems to reduce memory load, multiple shooting naturally mitigates this need by shortening the integration window for each segment. Hence, we rely on `AutoZygote()` for automatic differentiation in our implementation. 
 
@@ -248,37 +256,30 @@ This approach improves training robustness by constraining long-term predictions
 
 The loss function is defined below:
 ```@example bruss
+λ = 10.0f0
 function loss_fn_multi(ps, _)
     total_loss = 0f0
-    u0_seg     = copy(u0)
-
+    u0_seg = copy(u0)
     for i in 1:n_segments
-        # Build & solve the i-th segment problem
         prob_i = get_segment_prob(ps, u0_seg, i)
-        sol_i  = solve(prob_i, FBDF(), saveat=segment_saves[i])
+        sol_i = solve(prob_i, FBDF(), saveat=segment_saves[i])
         if !SciMLBase.successful_retcode(sol_i)
             return Inf32
         end
-
-        # Extract prediction & truth at the exact same grid-times
-        pred_i = Array(sol_i)                  # dims: (nx,ny,2,Ni)
-        idxs   = segment_time_indices[i]       # e.g. 1:7 or 7:12
-        true_i = u_true[:,:,:, idxs]           # same dims
-
-        # 1) data-fit loss on this segment
+        pred_i = Array(sol_i)
+        t_idxs = segment_time_indices[i]
+        println("Segment $i: matched indices = ", t_idxs)
+        if isempty(t_idxs)
+            error("No matching time points for segment $i — check SAVE_AT, t_points, or tolerance.")
+        end
+        true_i = u_true[:,:,:,t_idxs]
         total_loss += sum(abs2, pred_i .- true_i) / length(true_i)
-
-        # 2) continuity penalty at segment boundary
         if i < n_segments
-            # last time‐slice of this segment
-            u0_seg = pred_i[:,:,:, end]
-
-            # truth at that same last slice
-            boundary_truth = true_i[:,:,:, end]
-            total_loss += sum(abs2, u0_seg .- boundary_truth) / length(boundary_truth)
+            u0_seg = pred_i[:,:,:,end]
+            next_u0 = u_true[:,:,:,t_idxs[end]+1]
+            total_loss += λ * sum(abs2, u0_seg .- next_u0) / length(next_u0)
         end
     end
-
     return total_loss
 end
 ```
@@ -288,9 +289,11 @@ optf = OptimizationFunction(loss_fn_multi, AutoZygote())
 optprob = OptimizationProblem(optf, ps_init)
 loss_history = Float32[]
 
+epoch_counter = Ref(0)
 callback = (ps, l) -> begin
+    epoch_counter[] += 1
     push!(loss_history, l)
-    println("Epoch $(length(loss_history)): Loss = $l")
+    println("Epoch $(epoch_counter[]): Loss = $l")
     false
 end
 ```
