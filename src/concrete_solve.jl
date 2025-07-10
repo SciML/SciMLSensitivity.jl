@@ -1295,11 +1295,13 @@ function DiffEqBase._concrete_solve_adjoint(
 
     function enzyme_sensitivity_backpass(Δ)
         if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray)
-            shadow_result.u .= Δ.u
+            for (x,y) in zip(shadow_result.u,Δ.u)
+                x .= y
+            end
         else
             error("typeof(Δ) = $(typeof(Δ)) is not currently handled in EnzymeAdjoint. Please open an issue with an MWE to add support")
         end
-        reverse(Enzyme.Const(diff_func), Enzyme.Duplicated(u0, du0), Enzyme.Duplicated(p, dp), Enzyme.Duplicated(result, shadow_result), tape)
+        reverse(Enzyme.Const(diff_func), Enzyme.Duplicated(u0, du0), Enzyme.Duplicated(p, dp), tape)
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
             (NoTangent(), NoTangent(), du0, dp, NoTangent(),
