@@ -139,8 +139,8 @@ dup = Zygote.gradient(senseloss3(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardSensitivity()), u0p)) ≈ dup
 
 @test mooncake_gradient(senseloss3(InterpolatingAdjoint()), u0p) ≈ dup
-@test_broken SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(ReverseDiffAdjoint()), u0p)
-@test_broken SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(TrackerAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(ReverseDiffAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(TrackerAdjoint()), u0p)
 @test mooncake_gradient(senseloss3(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken mooncake_gradient(senseloss3(ForwardSensitivity()), u0p) ≈ dup
 
