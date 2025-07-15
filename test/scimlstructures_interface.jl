@@ -80,7 +80,7 @@ Zygote.gradient(0.1ones(length(SS.canonicalize(SS.Tunable(), p)[1]))) do tunable
 end
 
 using OrdinaryDiffEq
-using StableRNGs, Lux
+using Random, Lux
 using ComponentArrays
 using SciMLSensitivity
 import SciMLStructures as SS
@@ -120,7 +120,7 @@ end
 function initialize()
     # Defining the neural network
     U = Lux.Chain(Lux.Dense(3,30,tanh),Lux.Dense(30,30,tanh),Lux.Dense(30,1))
-    rng = StableRNG(1111)
+    rng = Random.GLOBAL_RNG
     _para,st = Lux.setup(rng,U)
     _para = ComponentArray(_para)
     # Setting the parameters
