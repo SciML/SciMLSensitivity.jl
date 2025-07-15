@@ -421,16 +421,16 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     elseif sensealg.autojacvec isa MooncakeVJP
         pf = get_pf(sensealg.autojacvec, prob, f)
         paramjac_config = get_paramjac_config(
-            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2])
+            MooncakeLoaded(), sensealg.autojacvec, pf, tunables, f, y, tspan[2])
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper((du,u,p,t)->unwrappedf(du,u,repack(p),t), tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
-        paramjac_config = build_param_jac_config(sensealg, pf, y, p)
+        paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
 
     cpsol = sol
@@ -460,7 +460,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         else
             pf.t = t
             pf.u = y
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+            jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)
     elseif sensealg.autojacvec isa ReverseDiffVJP
@@ -610,7 +610,7 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
             res .+= out
             iλ .= zero(eltype(iλ))
         end
-    end
+    end 
 
     return state_values(adj_sol)[end], __maybe_adjoint(res)
 end
