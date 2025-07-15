@@ -85,7 +85,6 @@ using ComponentArrays
 using SciMLSensitivity
 import SciMLStructures as SS
 using Zygote
-using Parameters
 using ADTypes
 using Test
 
@@ -130,12 +129,10 @@ function initialize()
     return myparam(U,_para,st,α,β,γ)
 end
 function UDE_model!(du, u, p, t)
-    # Extracting parameters
-    Parameters.@unpack model, ps, st, α, β, γ = p
-    o = model(u,ps, st)[1][1]
-    du[1] = o * α * u[1] + β * u[2] + γ * u[3]
-    du[2] = -α * u[1] + β * u[2] - γ * u[3]
-    du[3] = α * u[1] - β * u[2] + γ * u[3]
+    o = p.model(u,p.ps, p.st)[1][1]
+    du[1] = o * p.α * u[1] + p.β * u[2] + p.γ * u[3]
+    du[2] = -p.α * u[1] + p.β * u[2] - p.γ * u[3]
+    du[3] = p.α * u[1] - p.β * u[2] + p.γ * u[3]
     nothing
 end
    
