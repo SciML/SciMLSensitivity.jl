@@ -514,7 +514,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
                 Enzyme.Const(y), Enzyme.Duplicated(p, dp), Enzyme.Const(t))
         end
         if isscimlstructure(p)
-            out .+= canonicalize(Tunable(), dp)[1]
+            out .= canonicalize(Tunable(), dp)[1]
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
