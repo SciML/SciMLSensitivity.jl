@@ -568,13 +568,14 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         Enzyme.remake_zero!(tmp3)
         Enzyme.remake_zero!(out)
 
+        dp = isscimlstructure(p) ? repack(out) : out
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
 
             Enzyme.autodiff(
                 sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t)
+                Enzyme.Const(y), Enzyme.Duplicated(p, dp), Enzyme.Const(t)
             )
         else
             tmp6 = Enzyme.make_zero(f)
@@ -583,6 +584,9 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t)
             )
+        end
+        if isscimlstructure(p)
+            out .+= canonicalize(Tunable(), dp)[1]
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
