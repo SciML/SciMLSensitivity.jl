@@ -22,7 +22,9 @@ system are:
 Take for example this simple differential equation solve on Lotka-Volterra:
 
 ```julia
-using SciMLSensitivity, OrdinaryDiffEq, Zygote
+import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE
+import Zygote
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -30,9 +32,9 @@ function fiip(du, u, p, t)
 end
 p = [1.5, 1.0, 3.0, 1.0];
 u0 = [1.0; 1.0];
-prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
-sol = solve(prob, Tsit5())
-loss(u0, p) = sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1))
+prob = ODE.ODEProblem(fiip, u0, (0.0, 10.0), p)
+sol = ODE.solve(prob, ODE.Tsit5())
+loss(u0, p) = sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1))
 du0, dp = Zygote.gradient(loss, u0, p)
 ```
 
@@ -53,7 +55,7 @@ by which the derivative is computed. For example:
 
 ```julia
 function loss(u0, p)
-    sum(solve(prob, Tsit5(), u0 = u0, p = p, saveat = 0.1, sensealg = ForwardSensitivity()))
+    sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1, sensealg = SMS.ForwardSensitivity()))
 end
 du0, dp = Zygote.gradient(loss, u0, p)
 ```

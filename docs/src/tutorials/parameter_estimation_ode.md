@@ -6,9 +6,12 @@ If you want to just get things running, try the following! Explanation will
 follow.
 
 ```@example optode_cp
-using OrdinaryDiffEq,
-      Optimization, OptimizationPolyalgorithms, SciMLSensitivity,
-      Zygote, Plots
+import OrdinaryDiffEq as ODE
+import Optimization as OPT
+import OptimizationPolyalgorithms as OPA
+import SciMLSensitivity as SMS
+import Zygote
+import Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -28,35 +31,34 @@ tsteps = 0.0:0.1:10.0
 p = [1.5, 1.0, 3.0, 1.0]
 
 # Setup the ODE problem, then solve
-prob = ODEProblem(lotka_volterra!, u0, tspan, p)
-sol = solve(prob, Tsit5())
+prob = ODE.ODEProblem(lotka_volterra!, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Tsit5())
 
 # Plot the solution
-using Plots
-plot(sol)
+Plots.plot(sol)
 savefig("LV_ode.png")
 
 function loss(p)
-    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    sol = ODE.solve(prob, ODE.Tsit5(), p = p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
     return loss
 end
 
 callback = function (state, l)
     display(l)
-    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
-    plt = plot(pred, ylim = (0, 6))
+    pred = ODE.solve(prob, ODE.Tsit5(), p = state.u, saveat = tsteps)
+    plt = Plots.plot(pred, ylim = (0, 6))
     display(plt)
     # Tell Optimization.solve to not halt the optimization. If return true, then
     # optimization stops.
     return false
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, p)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
+optprob = OPT.OptimizationProblem(optf, p)
 
-result_ode = Optimization.solve(optprob, PolyOpt(),
+result_ode = OPT.solve(optprob, OPA.PolyOpt(),
     callback = callback,
     maxiters = 100)
 ```
@@ -74,9 +76,12 @@ more details, [see the OrdinaryDiffEq.jl documentation](https://docs.sciml.ai/Di
 ```
 
 ```@example optode
-using OrdinaryDiffEq,
-      Optimization, OptimizationPolyalgorithms,
-      SciMLSensitivity, Zygote, Plots
+import OrdinaryDiffEq as ODE
+import Optimization as OPT
+import OptimizationPolyalgorithms as OPA
+import SciMLSensitivity as SMS
+import Zygote
+import Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -96,12 +101,11 @@ tsteps = 0.0:0.1:10.0
 p = [1.5, 1.0, 3.0, 1.0]
 
 # Setup the ODE problem, then solve
-prob = ODEProblem(lotka_volterra!, u0, tspan, p)
-sol = solve(prob, Tsit5())
+prob = ODE.ODEProblem(lotka_volterra!, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Tsit5())
 
 # Plot the solution
-using Plots
-plot(sol)
+Plots.plot(sol)
 savefig("LV_ode.png")
 ```
 
@@ -117,7 +121,7 @@ define our loss as the squared distance from 1.
 
 ```@example optode
 function loss(p)
-    sol = solve(prob, Tsit5(), p = p, saveat = tsteps)
+    sol = ODE.solve(prob, ODE.Tsit5(), p = p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
     return loss
 end
@@ -133,8 +137,8 @@ situation:
 ```@example optode
 callback = function (state, l)
     display(l)
-    pred = solve(prob, Tsit5(), p = state.u, saveat = tsteps)
-    plt = plot(pred, ylim = (0, 6))
+    pred = ODE.solve(prob, ODE.Tsit5(), p = state.u, saveat = tsteps)
+    plt = Plots.plot(pred, ylim = (0, 6))
     display(plt)
     # Tell Optimization.solve to not halt the optimization. If return true, then
     # optimization stops.
@@ -145,11 +149,11 @@ end
 Let's optimize the model.
 
 ```@example optode
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, p)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
+optprob = OPT.OptimizationProblem(optf, p)
 
-result_ode = Optimization.solve(optprob, PolyOpt(),
+result_ode = OPT.solve(optprob, OPA.PolyOpt(),
     callback = callback,
     maxiters = 100)
 ```
@@ -161,9 +165,9 @@ that we solved the control problem and successfully found parameters to make the
 ODE solution constant:
 
 ```@example optode
-remade_solution = solve(remake(prob, p = result_ode.u), Tsit5(),
+remade_solution = ODE.solve(ODE.remake(prob, p = result_ode.u), ODE.Tsit5(),
     saveat = tsteps)
-plot(remade_solution, ylim = (0, 6))
+Plots.plot(remade_solution, ylim = (0, 6))
 ```
 
 ![Final plot](https://user-images.githubusercontent.com/1814174/51399500-1f4dd080-1b14-11e9-8c9d-144f93b6eac2.gif)

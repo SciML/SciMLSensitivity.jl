@@ -40,9 +40,15 @@ In the following example, a discrete exogenous input signal `ex` is defined and
 used as an input into the neural network of a neural ODE system.
 
 ```@example exogenous
-using SciMLSensitivity
-using OrdinaryDiffEq, Lux, ComponentArrays, Optimization,
-      OptimizationPolyalgorithms, OptimizationOptimisers, Plots, Random
+import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE
+import Lux
+import ComponentArrays as CA
+import Optimization as OPT
+import OptimizationPolyalgorithms as OPA
+import OptimizationOptimisers as OPO
+import Plots
+import Random
 
 rng = Random.default_rng()
 tspan = (0.1, 10.0)
@@ -60,7 +66,7 @@ function hammerstein_system(u)
 end
 
 y = hammerstein_system(ex)
-plot(collect(tsteps), y, ticks = :native)
+Plots.plot(collect(tsteps), y, ticks = :native)
 
 nn_model = Lux.Chain(Lux.Dense(2, 8, tanh), Lux.Dense(8, 1))
 p_model, st = Lux.setup(rng, nn_model)
@@ -74,11 +80,11 @@ function dudt(u, p, t)
     return out
 end
 
-prob = ODEProblem(dudt, u0, tspan, nothing)
+prob = ODE.ODEProblem(dudt, u0, tspan, nothing)
 
 function predict_neuralode(p)
-    _prob = remake(prob, p = p)
-    Array(solve(_prob, Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-6))
+    _prob = ODE.remake(prob, p = p)
+    Array(ODE.solve(_prob, ODE.Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-6))
 end
 
 function loss(p)
@@ -87,14 +93,14 @@ function loss(p)
     return sum(abs2.(y[1:N] .- sol')) / N
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, ComponentArray{Float64}(p_model))
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
+optprob = OPT.OptimizationProblem(optf, CA.ComponentArray{Float64}(p_model))
 
-res0 = Optimization.solve(optprob, PolyOpt(), maxiters = 100)
+res0 = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 100)
 
 sol = predict_neuralode(res0.u)
-plot(tsteps, sol')
+Plots.plot(tsteps, sol')
 N = length(sol)
-scatter!(tsteps, y[1:N])
+Plots.scatter!(tsteps, y[1:N])
 ```

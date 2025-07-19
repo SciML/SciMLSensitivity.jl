@@ -5,8 +5,11 @@ supported. For example, we can build a layer with a delay differential equation
 like:
 
 ```@example dde
-using OrdinaryDiffEq, Optimization, SciMLSensitivity, OptimizationPolyalgorithms,
-      DelayDiffEq
+import OrdinaryDiffEq as ODE
+import Optimization as OPT
+import SciMLSensitivity as SMS
+import OptimizationPolyalgorithms as OPA
+import DelayDiffEq as DDE
 
 # Define the same LV equation, but including a delay parameter
 function delay_lotka_volterra!(du, u, h, p, t)
@@ -27,30 +30,30 @@ h(p, t) = ones(eltype(p), 2)
 u0 = [1.0, 1.0]
 
 # Define the problem as a delay differential equation
-prob_dde = DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
+prob_dde = DDE.DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
     constant_lags = [0.1])
 
 function predict_dde(p)
-    return Array(solve(prob_dde, MethodOfSteps(Tsit5()),
-        u0 = u0, p = p, saveat = 0.1, sensealg = ReverseDiffAdjoint()))
+    return Array(ODE.solve(prob_dde, DDE.MethodOfSteps(ODE.Tsit5()),
+        u0 = u0, p = p, saveat = 0.1, sensealg = SMS.ReverseDiffAdjoint()))
 end
 
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))
 
-using Plots
+import Plots
 callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
-        display(plot(
-            solve(remake(prob_dde, p = state.u), MethodOfSteps(Tsit5()), saveat = 0.1),
+        display(Plots.plot(
+            ODE.solve(ODE.remake(prob_dde, p = state.u), DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
             ylim = (0, 6)))
     return false
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_dde(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, p)
-result_dde = Optimization.solve(optprob, PolyOpt(), maxiters = 300, callback = callback)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_dde(x), adtype)
+optprob = OPT.OptimizationProblem(optf, p)
+result_dde = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 300, callback = callback)
 ```
 
 Notice that we chose `sensealg = ReverseDiffAdjoint()` to utilize the ReverseDiff.jl
@@ -59,12 +62,12 @@ reverse-mode to handle the delay differential equation.
 We define a callback to display the solution at the current parameters for each step of the training:
 
 ```@example dde
-using Plots
+import Plots
 callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
-        display(plot(
-            solve(remake(prob_dde, p = state.u), MethodOfSteps(Tsit5()), saveat = 0.1),
+        display(Plots.plot(
+            ODE.solve(ODE.remake(prob_dde, p = state.u), DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
             ylim = (0, 6)))
     return false
 end

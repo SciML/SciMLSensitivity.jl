@@ -32,7 +32,7 @@ Thus, what SciMLSensitivity.jl provides is:
 To install SciMLSensitivity.jl, use the Julia package manager:
 
 ```julia
-using Pkg
+import Pkg
 Pkg.add("SciMLSensitivity")
 ```
 
@@ -244,7 +244,7 @@ If you use SciMLSensitivity.jl or are influenced by its ideas, please cite:
 ```
 
 ```@example
-using Pkg # hide
+import Pkg # hide
 Pkg.status() # hide
 ```
 
@@ -257,8 +257,8 @@ Pkg.status() # hide
 ```
 
 ```@example
-using InteractiveUtils # hide
-versioninfo() # hide
+import InteractiveUtils
+InteractiveUtils.versioninfo() # hide
 ```
 
 ```@raw html
@@ -270,8 +270,8 @@ versioninfo() # hide
 ```
 
 ```@example
-using Pkg # hide
-Pkg.status(; mode = PKGMODE_MANIFEST) # hide
+import Pkg # hide
+Pkg.status(; mode = Pkg.PKGMODE_MANIFEST) # hide
 ```
 
 ```@raw html
@@ -279,8 +279,8 @@ Pkg.status(; mode = PKGMODE_MANIFEST) # hide
 ```
 
 ```@eval
-using TOML
-using Markdown
+import TOML
+import Markdown
 version = TOML.parse(read("../../Project.toml", String))["version"]
 name = TOML.parse(read("../../Project.toml", String))["name"]
 link_manifest = "https://github.com/SciML/" * name * ".jl/tree/gh-pages/v" * version *

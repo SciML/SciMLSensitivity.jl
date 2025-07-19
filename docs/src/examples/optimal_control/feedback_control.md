@@ -10,22 +10,29 @@ on the current state of the dynamical system that will control the second
 equation to stay close to 1.
 
 ```@example udeneuralcontrol
-using Lux, Optimization, OptimizationPolyalgorithms, ComponentArrays,
-      SciMLSensitivity, Zygote, OrdinaryDiffEq, Plots, Random
+import Lux
+import Optimization as OPT
+import OptimizationPolyalgorithms as OPA
+import ComponentArrays as CA
+import SciMLSensitivity as SMS
+import Zygote
+import OrdinaryDiffEq as ODE
+import Plots
+import Random
 
 rng = Random.default_rng()
 u0 = [1.1]
 tspan = (0.0, 25.0)
 tsteps = 0.0:1.0:25.0
 
-model_univ = Chain(Dense(2, 16, tanh), Dense(16, 16, tanh), Dense(16, 1))
+model_univ = Lux.Chain(Lux.Dense(2, 16, tanh), Lux.Dense(16, 16, tanh), Lux.Dense(16, 1))
 ps, st = Lux.setup(Random.default_rng(), model_univ)
-p_model = ComponentArray(ps)
+p_model = CA.ComponentArray(ps)
 
 # Parameters of the second equation (linear dynamics)
 p_system = [0.5, -0.5]
-p_all = ComponentArray(; p_model, p_system)
-θ = ComponentArray(; u0, p_all)
+p_all = CA.ComponentArray(; p_model, p_system)
+θ = CA.ComponentArray(; u0, p_all)
 
 function dudt_univ!(du, u, p, t)
     # Destructure the parameters
@@ -45,12 +52,12 @@ function dudt_univ!(du, u, p, t)
     du[2] = dsystem_output
 end
 
-prob_univ = ODEProblem(dudt_univ!, [0.0, u0[1]], tspan, p_all)
-sol_univ = solve(prob_univ, Tsit5(), abstol = 1e-8, reltol = 1e-6)
+prob_univ = ODE.ODEProblem(dudt_univ!, [0.0, u0[1]], tspan, p_all)
+sol_univ = ODE.solve(prob_univ, ODE.Tsit5(), abstol = 1e-8, reltol = 1e-6)
 
 function predict_univ(θ)
-    return Array(solve(prob_univ, Tsit5(), u0 = [0.0, θ.u0[1]], p = θ.p_all,
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+    return Array(ODE.solve(prob_univ, ODE.Tsit5(), u0 = [0.0, θ.u0[1]], p = θ.p_all,
+        sensealg = SMS.InterpolatingAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
         saveat = tsteps))
 end
 
@@ -72,7 +79,7 @@ cb = function (state, l; makeplot = false)
     println(l)
 
     if makeplot
-        plt = plot(predict_univ(state.u)', ylim = (0, 6))
+        plt = Plots.plot(predict_univ(state.u)', ylim = (0, 6))
         push!(list_plots, plt)
         display(plt)
     end
@@ -81,10 +88,10 @@ end
 ```
 
 ```@example udeneuralcontrol
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_univ(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, θ)
-result_univ = Optimization.solve(optprob, PolyOpt(), callback = cb)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_univ(x), adtype)
+optprob = OPT.OptimizationProblem(optf, θ)
+result_univ = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
 ```
 
 ```@example udeneuralcontrol

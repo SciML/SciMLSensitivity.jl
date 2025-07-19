@@ -20,11 +20,11 @@ follow a full explanation of the definition and training process:
 
 ```@example
 # load packages
-using SciMLSensitivity, Optimization, OptimizationOptimisers
-using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Zygote, Statistics, LinearAlgebra, Random
-using Lux, Random, ComponentArrays
-using Plots
+import SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO
+import StochasticDiffEq as SDE, DiffEqCallbacks as DEC, DiffEqNoiseProcess as DNP
+import Zygote, Statistics, LinearAlgebra as LA, Random
+import Lux, Random, ComponentArrays as CA
+import Plots
 
 rng = Random.default_rng()
 
@@ -81,7 +81,7 @@ nn = Lux.Chain(Lux.Dense(4, 32, relu),
     Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
-p_nn = ComponentArray(p_nn)
+p_nn = CA.ComponentArray(p_nn)
 
 ###############################################
 # initial state anywhere on the Bloch sphere
@@ -148,23 +148,23 @@ end
 # normalization callback
 condition(u, t, integrator) = true
 function affect!(integrator)
-    integrator.u .= integrator.u / norm(integrator.u)
+    integrator.u .= integrator.u / LA.norm(integrator.u)
 end
-callback = DiscreteCallback(condition, affect!, save_positions = (false, false))
+callback = DEC.DiscreteCallback(condition, affect!, save_positions = (false, false))
 
-CreateGrid(t, W1) = NoiseGrid(t, W1)
+CreateGrid(t, W1) = DNP.NoiseGrid(t, W1)
 Zygote.@nograd CreateGrid #avoid taking grads of this function
 
 # set scalar random process
 W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
 W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-NG = CreateGrid(myparameters.ts, W1)
+NG = DNP.NoiseGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = ComponentArray(p_nn = p_nn,
+p_all = CA.ComponentArray(p_nn = p_nn,
     myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 # define SDE problem
-prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
+prob = SDE.SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
     p_all,
     callback = callback, noise = NG)
 
@@ -175,11 +175,11 @@ function g(u, p, t)
     cdR = @view u[2, :, :]
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
-    p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
+    p[1] * Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p_nn,
+function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
+    pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
@@ -188,19 +188,19 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         u0tmp = deepcopy(vec(u0[:, i]))
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-        NG = CreateGrid(myparameters.ts, W1)
-        remake(prob,
+        NG = DNP.NoiseGrid(myparameters.ts, W1)
+        SDE.remake(prob,
             u0 = u0tmp,
             callback = callback,
             noise = NG)
     end
-    _prob = remake(prob, p = pars)
+    _prob = SDE.remake(prob, p = pars)
 
-    ensembleprob = EnsembleProblem(_prob,
+    ensembleprob = SDE.EnsembleProblem(_prob,
         prob_func = prob_func,
         safetycopy = true)
 
-    _sol = solve(ensembleprob, alg, EnsembleSerial(),
+    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleSerial(),
         sensealg = sensealg,
         saveat = myparameters.tinterval,
         dt = myparameters.dt,
@@ -215,9 +215,9 @@ end
 
 #########################################
 # visualization -- run for new batch
-function visualize(p_nn; alg = EM())
+function visualize(p_nn; alg = SDE.EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p_nn,
+    pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 
     function prob_func(prob, i, repeat)
@@ -225,20 +225,20 @@ function visualize(p_nn; alg = EM())
         u0tmp = deepcopy(vec(u0[:, i]))
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-        NG = CreateGrid(myparameters.ts, W1)
+        NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        remake(prob,
+        SDE.remake(prob,
             p = pars,
             u0 = u0tmp,
             callback = callback,
             noise = NG)
     end
 
-    ensembleprob = EnsembleProblem(prob,
+    ensembleprob = SDE.EnsembleProblem(prob,
         prob_func = prob_func,
         safetycopy = true)
 
-    u = solve(ensembleprob, alg, EnsembleThreads(),
+    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
         saveat = myparameters.tinterval,
         dt = myparameters.dt,
         adaptive = false, #abstol=1e-6, reltol=1e-6,
@@ -250,22 +250,22 @@ function visualize(p_nn; alg = EM())
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
     infidelity = @. (cdR^2 + cdI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
-    meaninfidelity = mean(infidelity)
+    meaninfidelity = Statistics.mean(infidelity)
     loss = myparameters.C1 * meaninfidelity
 
     @info "Loss: " loss
 
     fidelity = @. (ceR^2 + ceI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
 
-    mf = mean(fidelity, dims = 2)[:]
-    sf = std(fidelity, dims = 2)[:]
+    mf = Statistics.mean(fidelity, dims = 2)[:]
+    sf = Statistics.std(fidelity, dims = 2)[:]
 
-    pl1 = plot(0:(myparameters.Nintervals), mf,
+    pl1 = Plots.plot(0:(myparameters.Nintervals), mf,
         ribbon = sf,
         ylim = (0, 1), xlim = (0, myparameters.Nintervals),
         c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
 
-    pl = plot(pl1, legend = false, size = (400, 360))
+    pl = Plots.plot(pl1, legend = false, size = (400, 360))
     return pl, loss
 end
 
@@ -292,11 +292,11 @@ visualization_callback((; u = p_nn), l; doplot = true)
 
 # optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
-adtype = Optimization.AutoForwardDiff()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoForwardDiff()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
+optprob = OPT.OptimizationProblem(optf, p_nn)
+res = OPT.solve(optprob, OPO.Adam(myparameters.lr),
     callback = visualization_callback,
     maxiters = 100)
 
@@ -309,12 +309,12 @@ visualization_callback(res, loss(res.u); doplot = true)
 ### Load packages
 
 ```@example sdecontrol
-using SciMLSensitivity
-using Optimization, OptimizationOptimisers, Zygote
-using StochasticDiffEq, DiffEqCallbacks, DiffEqNoiseProcess
-using Statistics, LinearAlgebra
-using Lux, Random, ComponentArrays
-using Plots
+import SciMLSensitivity as SMS
+import Optimization as OPT, OptimizationOptimisers as OPO, Zygote
+import StochasticDiffEq as SDE, DiffEqCallbacks as DEC, DiffEqNoiseProcess as DNP
+import Statistics, LinearAlgebra as LA
+import Lux, Random, ComponentArrays as CA
+import Plots
 ```
 
 ### Parameters
@@ -397,7 +397,7 @@ nn = Lux.Chain(Lux.Dense(4, 32, relu),
     Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
-p_nn = ComponentArray(p_nn)
+p_nn = CA.ComponentArray(p_nn)
 ```
 
 ### Initial state
@@ -486,23 +486,23 @@ end
 # normalization callback
 condition(u, t, integrator) = true
 function affect!(integrator)
-    integrator.u .= integrator.u / norm(integrator.u)
+    integrator.u .= integrator.u / LA.norm(integrator.u)
 end
-callback = DiscreteCallback(condition, affect!, save_positions = (false, false))
+callback = DEC.DiscreteCallback(condition, affect!, save_positions = (false, false))
 
-CreateGrid(t, W1) = NoiseGrid(t, W1)
+CreateGrid(t, W1) = DNP.NoiseGrid(t, W1)
 Zygote.@nograd CreateGrid #avoid taking grads of this function
 
 # set scalar random process
 W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
 W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-NG = CreateGrid(myparameters.ts, W1)
+NG = DNP.NoiseGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = ComponentArray(p_nn = p_nn,
+p_all = CA.ComponentArray(p_nn = p_nn,
     myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
-prob = SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
+prob = SDE.SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
     p_all,
     callback = callback, noise = NG)
 ```
@@ -526,11 +526,11 @@ function g(u, p, t)
     cdR = @view u[2, :, :]
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
-    p[1] * mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
+    p[1] * Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
-    pars = ComponentArray(p_nn = p_nn,
+function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
+    pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
@@ -540,16 +540,16 @@ function loss(p_nn; alg = EM(), sensealg = BacksolveAdjoint(autojacvec = Reverse
         u0tmp = deepcopy(vec(u0[:, i]))
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-        NG = CreateGrid(myparameters.ts, W1)
+        NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        remake(prob,
+        SDE.remake(prob,
             p = pars,
             u0 = u0tmp,
             callback = callback,
             noise = NG)
     end
 
-    ensembleprob = EnsembleProblem(prob,
+    ensembleprob = SDE.EnsembleProblem(prob,
         prob_func = prob_func,
         safetycopy = true)
 
@@ -574,9 +574,9 @@ standard deviation of the fidelity of a bunch of trajectories (`myparameters.num
 a function of the time steps at which loss values are computed.
 
 ```@example sdecontrol
-function visualize(p_nn; alg = EM())
+function visualize(p_nn; alg = SDE.EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = ComponentArray(p_nn = p_nn,
+    pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])
 
@@ -585,20 +585,20 @@ function visualize(p_nn; alg = EM())
         u0tmp = deepcopy(vec(u0[:, i]))
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
-        NG = CreateGrid(myparameters.ts, W1)
+        NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        remake(prob,
+        SDE.remake(prob,
             p = pars,
             u0 = u0tmp,
             callback = callback,
             noise = NG)
     end
 
-    ensembleprob = EnsembleProblem(prob,
+    ensembleprob = SDE.EnsembleProblem(prob,
         prob_func = prob_func,
         safetycopy = true)
 
-    u = solve(ensembleprob, alg, EnsembleThreads(),
+    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
         saveat = myparameters.tinterval,
         dt = myparameters.dt,
         adaptive = false, #abstol=1e-6, reltol=1e-6,
@@ -610,22 +610,22 @@ function visualize(p_nn; alg = EM())
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
     infidelity = @. (cdR^2 + cdI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
-    meaninfidelity = mean(infidelity)
+    meaninfidelity = Statistics.mean(infidelity)
     loss = myparameters.C1 * meaninfidelity
 
     @info "Loss: " loss
 
     fidelity = @. (ceR^2 + ceI^2) / (ceR^2 + cdR^2 + ceI^2 + cdI^2)
 
-    mf = mean(fidelity, dims = 2)[:]
-    sf = std(fidelity, dims = 2)[:]
+    mf = Statistics.mean(fidelity, dims = 2)[:]
+    sf = Statistics.std(fidelity, dims = 2)[:]
 
-    pl1 = plot(0:(myparameters.Nintervals), mf,
+    pl1 = Plots.plot(0:(myparameters.Nintervals), mf,
         ribbon = sf,
         ylim = (0, 1), xlim = (0, myparameters.Nintervals),
         c = 1, lw = 1.5, xlabel = "steps i", ylabel = "Fidelity", legend = false)
 
-    pl = plot(pl1, legend = false, size = (400, 360))
+    pl = Plots.plot(pl1, legend = false, size = (400, 360))
     return pl, loss
 end
 # callback to visualize training
@@ -655,11 +655,11 @@ is computed under the hood in the SciMLSensitivity package.
 ```@example sdecontrol
 # optimize the parameters for a few epochs with Adam on time span
 # Setup and run the optimization
-adtype = Optimization.AutoForwardDiff()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoForwardDiff()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, p_nn)
-res = Optimization.solve(optprob, OptimizationOptimisers.Adam(myparameters.lr),
+optprob = OPT.OptimizationProblem(optf, p_nn)
+res = OPT.solve(optprob, OPO.Adam(myparameters.lr),
     callback = visualization_callback,
     maxiters = 100)
 
