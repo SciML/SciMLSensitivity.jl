@@ -67,7 +67,7 @@ function simloss(p)
     end
     e2 = yh[1, :]
     e2 .= abs2.(y .- e2)
-    return mean(e2)
+    return Statistics.mean(e2)
 end
 ```
 
@@ -116,7 +116,7 @@ function predloss(p)
     end
     e2 = yh[1, :]
     e2 .= abs2.(y .- e2)
-    return mean(e2)
+    return Statistics.mean(e2)
 end
 
 predlosses = map(Ls) do L

@@ -35,9 +35,9 @@ Note that the solution is the standard ODE system and the sensitivity system com
 We can use the following helper functions to extract the sensitivity information:
 
 ```julia
-x, dp = extract_local_sensitivities(sol)
-x, dp = extract_local_sensitivities(sol, i)
-x, dp = extract_local_sensitivities(sol, t)
+x, dp = SMS.extract_local_sensitivities(sol)
+x, dp = SMS.extract_local_sensitivities(sol, i)
+x, dp = SMS.extract_local_sensitivities(sol, t)
 ```
 
 In each case, `x` is the ODE values and `dp` is the matrix of sensitivities

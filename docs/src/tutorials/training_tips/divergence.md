@@ -17,7 +17,7 @@ parameters. This is shown in the loss function:
 function loss(p)
     tmp_prob = ODE.remake(prob, p = p)
     tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
-    if tmp_sol.retcode == ReturnCode.Success
+    if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
     else
         return Inf
@@ -28,7 +28,7 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
-import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO, Plots
+import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, SciMLBase, Optimization as OPT, OptimizationOptimisers as OPO, Plots
 
 function lotka_volterra!(du, u, p, t)
     rab, wol = u
@@ -50,13 +50,13 @@ Plots.scatter!(sol.t, dataset')
 
 tmp_prob = ODE.remake(prob, p = [1.2, 0.8, 2.5, 0.8])
 tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5())
-plot(tmp_sol)
+Plots.plot(tmp_sol)
 Plots.scatter!(sol.t, dataset')
 
 function loss(p)
     tmp_prob = ODE.remake(prob, p = p)
     tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
-    if tmp_sol.retcode == ReturnCode.Success
+    if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
     else
         return Inf
