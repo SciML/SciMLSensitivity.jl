@@ -22,7 +22,7 @@ import OrdinaryDiffEq as ODE
 import LuxCUDA
 import Random
 
-gdev = gpu_device()
+gdev = LuxCUDA.gpu_device()
 
 rng = Random.default_rng()
 
@@ -161,7 +161,7 @@ end
 We now build the `EnsembleProblem` with this basis:
 
 ```@example dataparallel
-ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+ensemble_prob = ODE.EnsembleProblem(prob, prob_func = prob_func)
 ```
 
 Now, to solve an ensemble problem, we need to choose an ensembling

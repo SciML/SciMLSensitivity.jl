@@ -29,10 +29,10 @@ data = Array(ODE.solve(prob, ODE.Tsit5(), saveat = tsteps))
 Next, we set up a small neural network. It will be trained to output the derivative of the solution at each time step given the value of the solution at the previous time step, and the parameters of the network. Thus, we are treating the neural network as a function `f(u,p,t)`. The difference is that instead of relying on knowing the exact equation for the ODE, we get to solve it only with the data.
 
 ```@example sc_neuralode
-sc = SimpleChain(static(2),
-    Activation(x -> x .^ 3),
-    TurboDense{true}(tanh, static(50)),
-    TurboDense{true}(identity, static(2)))
+sc = SimpleChains.SimpleChain(SimpleChains.static(2),
+    SimpleChains.Activation(x -> x .^ 3),
+    SimpleChains.TurboDense{true}(tanh, SimpleChains.static(50)),
+    SimpleChains.TurboDense{true}(identity, SimpleChains.static(2)))
 
 p_nn = Array(SimpleChains.init_params(sc))
 
