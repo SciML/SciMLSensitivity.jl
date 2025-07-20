@@ -155,7 +155,7 @@ First, we have to define and configure the neural network that has to be used fo
 ```@example bruss
 import Lux, Random, Optimization as OPT, OptimizationOptimJL as OOJ, SciMLSensitivity as SMS, Zygote
 
-model = Lux.Chain(Dense(2 => 16, tanh), Dense(16 => 1))
+model = Lux.Chain(Lux.Dense(2 => 16, tanh), Lux.Dense(16 => 1))
 rng = Random.default_rng()
 ps_init, st = Lux.setup(rng, model)
 ps_init = CA.ComponentArray(ps_init)
@@ -205,7 +205,7 @@ The loss function and initial evaluation are implemented as follows:
 ```@example bruss
 println("[Loss] Defining loss function...")
 function loss_fn(ps, _)
-    prob = remake(prob_ude_template, p=ps)
+    prob = ODE.remake(prob_ude_template, p=ps)
     sol = ODE.solve(prob, ODE.FBDF(), saveat=t_points)
     # Failed solve 
     if !SciMLBase.successful_retcode(sol)

@@ -28,7 +28,6 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
-import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO, Plots
 
 function lotka_volterra!(du, u, p, t)

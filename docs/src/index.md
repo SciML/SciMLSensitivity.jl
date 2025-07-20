@@ -41,7 +41,9 @@ Pkg.add("SciMLSensitivity")
 The highest level interface is provided by the function `solve`:
 
 ```julia
-solve(prob, args...; sensealg = InterpolatingAdjoint(), checkpoints = sol.t, kwargs...)
+import SciMLSensitivity as SMS
+
+solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t, kwargs...)
 ```
 
 `solve` is fully compatible with automatic differentiation libraries

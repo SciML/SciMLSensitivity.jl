@@ -154,7 +154,7 @@ Thus we use the [remake function from the problem interface](https://docs.sciml.
 
 ```@example dataparallel
 function prob_func(prob, i, repeat)
-    remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    ODE.remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
 end
 ```
 

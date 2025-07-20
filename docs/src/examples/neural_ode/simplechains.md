@@ -7,8 +7,8 @@
 First, we'll need data for training the NeuralODE, which can be obtained by solving the ODE `u' = f(u,p,t)` numerically using the SciML ecosystem in Julia.
 
 ```@example sc_neuralode
-import SimpleChains,
-      StaticArrays, OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO, Plots
+import SimpleChains, OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO, Plots
+using StaticArrays: @SArray, @SMatrix
 
 u0 = @SArray Float32[2.0, 0.0]
 datasize = 30
