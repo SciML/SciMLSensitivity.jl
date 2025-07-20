@@ -18,7 +18,7 @@ on `(0,5.0)`. Naively, we use the same training strategy as before:
 ```@example iterativefit
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE,
-      ComponentArrays as CA, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO
+      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
 import Lux, Plots, Random, Zygote
 
 rng = Random.default_rng()
@@ -68,7 +68,7 @@ function callback(state, l; doplot = false)
         # plot current prediction against data
         pred = predict_neuralode(state.u)
         plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-        Plots.Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+        Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
         display(Plots.plot(plt))
     end
 
@@ -170,7 +170,7 @@ one could use a mix of (3) and (4), or breaking up the trajectory into chunks an
 ```@example resetic
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE,
-      ComponentArrays as CA, SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO
+      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
 import Lux, Plots, Random, Zygote
 
 #Starting example with tspan (0, 5)
