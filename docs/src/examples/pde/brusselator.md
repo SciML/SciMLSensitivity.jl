@@ -123,8 +123,8 @@ We can now use this code for training our UDE, and generating time-series plots 
 import Plots, Statistics
 
 # Compute average concentration at each timestep
-avg_U = [mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
-avg_V = [mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
+avg_U = [Statistics.mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
+avg_V = [Statistics.mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
 
 # Plot average concentrations over time
 Plots.plot(sol_truth.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
