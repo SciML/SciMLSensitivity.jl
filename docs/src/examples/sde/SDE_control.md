@@ -77,7 +77,7 @@ myparameters = Parameters{typeof(dt), typeof(numtraj), typeof(tspan)}(lr, epochs
 # Define Neural Network
 
 # state-aware
-nn = Lux.Chain(Lux.Dense(4, 32, relu),
+nn = Lux.Chain(Lux.Dense(4, 32, Lux.relu),
     Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
@@ -393,7 +393,7 @@ coolness factor and complexity.
 
 ```@example sdecontrol
 # state-aware
-nn = Lux.Chain(Lux.Dense(4, 32, relu),
+nn = Lux.Chain(Lux.Dense(4, 32, Lux.relu),
     Lux.Dense(32, 1, tanh))
 
 p_nn, st = Lux.setup(rng, nn)
