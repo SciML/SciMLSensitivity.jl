@@ -26,6 +26,7 @@ import Plots
 import Statistics
 import DataInterpolations as DI
 import ForwardDiff as FD
+import SciMLBase as SMB
 
 tspan = (0.1, 20.0)
 tsteps = range(tspan[1], tspan[2], length = 1000)
@@ -62,7 +63,7 @@ end
 
 function simloss(p)
     yh = simulate(p)
-    if !SciMLBase.successful_retcode(yh.retcode)
+    if !SMB.successful_retcode(yh.retcode)
         return Inf
     end
     e2 = yh[1, :]
@@ -111,7 +112,7 @@ end
 
 function predloss(p)
     yh = prediction(p)
-    if !SciMLBase.successful_retcode(yh.retcode)
+    if !SMB.successful_retcode(yh.retcode)
         return Inf
     end
     e2 = yh[1, :]

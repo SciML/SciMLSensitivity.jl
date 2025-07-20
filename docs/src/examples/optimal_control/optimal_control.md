@@ -76,8 +76,8 @@ end
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = CA.ComponentArray(θ, ax)
-    mean(abs2, 4.0f0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
-    mean(abs2, [first(first(ann([t], ps, st))) for t in ts]) / 10
+    Statistics.mean(abs2, 4.0f0 .- x[1, :]) + 2Statistics.mean(abs2, x[2, :]) +
+    Statistics.mean(abs2, [first(first(ann([t], ps, st))) for t in ts]) / 10
 end
 
 l = loss_adjoint(θ)
@@ -118,8 +118,8 @@ the original loss function to finish the optimization:
 function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = CA.ComponentArray(θ, ax)
-    mean(abs2, 4.0 .- x[1, :]) + 2mean(abs2, x[2, :]) +
-    mean(abs2, [first(first(ann([t], ps, st))) for t in ts])
+    Statistics.mean(abs2, 4.0 .- x[1, :]) + 2Statistics.mean(abs2, x[2, :]) +
+    Statistics.mean(abs2, [first(first(ann([t], ps, st))) for t in ts])
 end
 optf3 = OPT.OptimizationFunction((x, p) -> loss_adjoint(x), adtype)
 
