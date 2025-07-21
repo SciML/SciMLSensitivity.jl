@@ -69,6 +69,7 @@ This provides us with an `ODEProblem` that can be solved to obtain training data
 
 ```@example bruss
 import ComponentArrays as CA, Random, Plots, OrdinaryDiffEq as ODE
+import SciMLBase
 
 N_GRID = 16
 XYD = range(0f0, stop = 1f0, length = N_GRID)
