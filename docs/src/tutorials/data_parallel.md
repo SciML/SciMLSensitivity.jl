@@ -22,7 +22,7 @@ import OrdinaryDiffEq as ODE
 import LuxCUDA
 import Random
 
-gdev = LuxCUDA.gpu_device()
+gdev = Lux.gpu_device()
 
 rng = Random.default_rng()
 
