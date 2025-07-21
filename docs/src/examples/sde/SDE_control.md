@@ -553,7 +553,7 @@ function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec =
         prob_func = prob_func,
         safetycopy = true)
 
-    _sol = solve(ensembleprob, alg, EnsembleThreads(),
+    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
         sensealg = sensealg,
         saveat = myparameters.tinterval,
         dt = myparameters.dt,
