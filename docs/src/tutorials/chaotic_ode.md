@@ -27,7 +27,7 @@ import Zygote
 import Plots
 
 import Random
-Random.seed!(1201244)
+Random.seed!(1201254)
 
 function lorenz!(du, u, p, t)
     du[1] = 10 * (u[2] - u[1])
