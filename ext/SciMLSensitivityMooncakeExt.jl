@@ -1,6 +1,7 @@
 module SciMLSensitivityMooncakeExt
 
-using SciMLSensitivity, Mooncake
+using SciMLSensitivity: SciMLSensitivity
+using Mooncake: Mooncake
 import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded, DiffEqBase, MooncakeAdjoint
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure, 
                         SciMLStructuresCompatibilityError, convert_tspan, has_continuous_callback,

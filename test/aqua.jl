@@ -1,4 +1,4 @@
-using SciMLSensitivity, Aqua, DiffEqBase
+using SciMLSensitivity, Aqua, DiffEqBase, ExplicitImports
 
 @testset "Aqua" begin
     Aqua.find_persistent_tasks_deps(SciMLSensitivity)
@@ -11,4 +11,12 @@ using SciMLSensitivity, Aqua, DiffEqBase
     Aqua.test_stale_deps(SciMLSensitivity)
     Aqua.test_unbound_args(SciMLSensitivity)
     Aqua.test_undefined_exports(SciMLSensitivity)
+end
+
+@testset "ExplicitImports" begin
+    @test ExplicitImports.check_no_implicit_imports(
+        SciMLSensitivity; skip = (Base, Core, SciMLBase)
+    ) === nothing
+    @test ExplicitImports.check_no_stale_explicit_imports(SciMLSensitivity) === nothing
+    @test ExplicitImports.check_all_qualified_accesses_via_owners(SciMLSensitivity) === nothing
 end

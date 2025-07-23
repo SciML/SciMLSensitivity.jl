@@ -692,12 +692,12 @@ function DiffEqBase._concrete_solve_adjoint(
 
         du0 = reshape(du0, size(u0))
 
-        dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
+        dp = p === nothing || p === SciMLBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
         dp = Zygote.accum(dp, igs)
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
+        _, repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
                                !isscimlstructure(p)
             nothing, x -> (x,)
         else
@@ -1201,7 +1201,7 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
+        _, repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
                                !isscimlstructure(p)
             nothing, x -> (x,)
         else
