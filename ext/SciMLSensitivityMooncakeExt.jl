@@ -123,7 +123,7 @@ function DiffEqBase._concrete_solve_adjoint(
         end
     end
 
-    u = state_values(put)
+    u = state_values(out)
     SciMLBase.sensitivity_solution(out, u, current_time(out)),
     mooncake_adjoint_backpass
 end

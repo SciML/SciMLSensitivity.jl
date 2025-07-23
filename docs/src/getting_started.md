@@ -28,7 +28,8 @@ Let's first define a differential equation we wish to solve. We will choose the
 Lotka-Volterra equation. This is done via DifferentialEquations.jl using:
 
 ```@example diffode
-using OrdinaryDiffEq
+import OrdinaryDiffEq as ODE
+import SciMLSensitivity as SMS
 
 function lotka_volterra!(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -36,8 +37,8 @@ function lotka_volterra!(du, u, p, t)
 end
 p = [1.5, 1.0, 3.0, 1.0];
 u0 = [1.0; 1.0];
-prob = ODEProblem(lotka_volterra!, u0, (0.0, 10.0), p)
-sol = solve(prob, Tsit5(), reltol = 1e-6, abstol = 1e-6)
+prob = ODE.ODEProblem(lotka_volterra!, u0, (0.0, 10.0), p)
+sol = ODE.solve(prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6)
 ```
 
 Now let's differentiate the solution to this ODE using a few different automatic
@@ -54,14 +55,14 @@ let's say we want the derivative of the first component of the ODE solution with
 these quantities at evenly spaced time points of `dt = 1`. We can compute this via:
 
 ```@example diffode
-using ForwardDiff
+import ForwardDiff as FD
 
 function f(x)
-    _prob = remake(prob, u0 = x[1:2], p = x[3:end])
-    solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 1)[1, :]
+    _prob = ODE.remake(prob, u0 = x[1:2], p = x[3:end])
+    ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 1)[1, :]
 end
 x = [u0; p]
-dx = ForwardDiff.jacobian(f, x)
+dx = FD.jacobian(f, x)
 ```
 
 Let's dig into what this is saying a bit. `x` is a vector which concatenates the initial condition
@@ -88,11 +89,11 @@ to an ODE and computes the gradient of a loss function (the sum of the ODE's out
 timepoint with dt=0.1) via the adjoint method:
 
 ```@example diffode
-using Zygote, SciMLSensitivity
+import Zygote
 
 function sum_of_solution(u0, p)
-    _prob = remake(prob, u0 = u0, p = p)
-    sum(solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
+    _prob = ODE.remake(prob, u0 = u0, p = p)
+    sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
 end
 du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
 ```
@@ -111,16 +112,16 @@ this system:
 
 ```@example diffode
 function sum_of_solution(u0, p)
-    _prob = remake(prob, u0 = u0, p = p)
-    sum(solve(_prob, Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
-        sensealg = GaussAdjoint()))
+    _prob = ODE.remake(prob, u0 = u0, p = p)
+    sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
+        sensealg = SMS.GaussAdjoint()))
 end
 du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
 ```
 
 Here this computes the derivative of the output with respect to the initial
 condition and the derivative with respect to the parameters respectively
-using the `GaussAdjoint()`. For more information on the choices of sensitivity
+using the `SciMLSensitivity.GaussAdjoint()`. For more information on the choices of sensitivity
 algorithms, see the [reference documentation in choosing sensitivity algorithms](@ref sensitivity_diffeq).
 
 !!! note

@@ -4,9 +4,9 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 (Step-by-step description below)
 
 ```@example pde
-using SciMLSensitivity
-using DelimitedFiles, Plots
-using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Zygote
+import SciMLSensitivity as SMS
+import DelimitedFiles, Plots
+import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Zygote
 
 # Problem setup parameters:
 Lx = 10.0
@@ -52,16 +52,16 @@ end
 heat_closure(u, p, t) = heat(u, p, t, xtrs)
 
 # Testing Solver on linear PDE
-prob = ODEProblem(heat_closure, u0, tspan, p)
-sol = solve(prob, Tsit5(), dt = dt, saveat = t);
+prob = ODE.ODEProblem(heat_closure, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Tsit5(), dt = dt, saveat = t);
 arr_sol = Array(sol)
 
-plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
-plot!(x, sol.u[end], lw = 3, ls = :dash, label = "tMax")
+Plots.plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
+Plots.plot!(x, sol.u[end], lw = 3, ls = :dash, label = "tMax")
 
 ps = [0.1, 0.2];   # Initial guess for model parameters
 function predict(θ)
-    Array(solve(prob, Tsit5(), p = θ, dt = dt, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(), p = θ, dt = dt, saveat = t))
 end
 
 ## Defining Loss function
@@ -89,14 +89,14 @@ end
 cb((; u = ps), loss(ps)) # Testing callback function
 
 # Let see prediction vs. Truth
-scatter(sol[:, end], label = "Truth", size = (800, 500))
-plot!(PRED[end][:, end], lw = 2, label = "Prediction")
+Plots.scatter(sol[:, end], label = "Truth", size = (800, 500))
+Plots.plot!(PRED[end][:, end], lw = 2, label = "Prediction")
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), callback = cb)
+optprob = OPT.OptimizationProblem(optf, ps)
+res = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 
@@ -105,9 +105,9 @@ res = Optimization.solve(optprob, PolyOpt(), callback = cb)
 ### Load Packages
 
 ```@example pde2
-using SciMLSensitivity
-using DelimitedFiles, Plots
-using OrdinaryDiffEq, Optimization, OptimizationPolyalgorithms, Zygote
+import SciMLSensitivity as SMS
+import DelimitedFiles, Plots
+import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Zygote
 ```
 
 ### Parameters
@@ -192,12 +192,12 @@ will compare to further on.
 
 ```@example pde2
 # Testing Solver on linear PDE
-prob = ODEProblem(heat_closure, u0, tspan, p)
-sol = solve(prob, Tsit5(), dt = dt, saveat = t);
+prob = ODE.ODEProblem(heat_closure, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Tsit5(), dt = dt, saveat = t);
 arr_sol = Array(sol)
 
-plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
-plot!(x, sol.u[end], lw = 3, ls = :dash, label = "tMax")
+Plots.plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
+Plots.plot!(x, sol.u[end], lw = 3, ls = :dash, label = "tMax")
 ```
 
 ### Building the Prediction Model
@@ -210,7 +210,7 @@ refer to [here](https://julialang.org/blog/2019/01/fluxdiffeq/).
 ```@example pde2
 ps = [0.1, 0.2];   # Initial guess for model parameters
 function predict(θ)
-    Array(solve(prob, Tsit5(), p = θ, dt = dt, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(), p = θ, dt = dt, saveat = t))
 end
 ```
 
@@ -272,8 +272,8 @@ almost perfectly when the PDE finishes its training and the loss is close to 0.
 
 ```@example pde2
 # Let see prediction vs. Truth
-scatter(sol[:, end], label = "Truth", size = (800, 500))
-plot!(PRED[end][:, end], lw = 2, label = "Prediction")
+Plots.scatter(sol[:, end], label = "Truth", size = (800, 500))
+Plots.plot!(PRED[end][:, end], lw = 2, label = "Prediction")
 ```
 
 ### Train
@@ -283,11 +283,11 @@ The resulting best parameters are stored in `res` and `res.u` returns the
 parameters that minimize the cost function.
 
 ```@example pde2
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, ps)
-res = Optimization.solve(optprob, PolyOpt(), callback = cb)
+optprob = OPT.OptimizationProblem(optf, ps)
+res = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
 @show res.u # returns [0.999999999613485, 0.9999999991343996]
 ```
 

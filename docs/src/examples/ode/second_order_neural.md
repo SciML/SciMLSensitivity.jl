@@ -21,25 +21,30 @@ neural network by the mass!)
 An example of training a neural network on a second order ODE is as follows:
 
 ```@example secondorderneural
-using SciMLSensitivity
-using OrdinaryDiffEq, Lux, Optimization, OptimizationOptimisers, RecursiveArrayTools,
-      Random, ComponentArrays
+import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE
+import Lux
+import Optimization as OPT
+import OptimizationOptimisers as OPO
+import RecursiveArrayTools
+import Random
+import ComponentArrays as CA
 
 u0 = Float32[0.0; 2.0]
 du0 = Float32[0.0; 0.0]
 tspan = (0.0f0, 1.0f0)
 t = range(tspan[1], tspan[2], length = 20)
 
-model = Chain(Dense(2, 50, tanh), Dense(50, 2))
+model = Lux.Chain(Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
 ps, st = Lux.setup(Random.default_rng(), model)
-ps = ComponentArray(ps)
+ps = CA.ComponentArray(ps)
 model = Lux.StatefulLuxLayer{true}(model, ps, st)
 
 ff(du, u, p, t) = model(u, p)
-prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
+prob = ODE.SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
 
 function predict(p)
-    Array(solve(prob, Tsit5(), p = p, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(), p = p, saveat = t))
 end
 
 correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:1)[2:end])))
@@ -56,9 +61,9 @@ callback = function (state, l)
     l < 0.01
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, ps)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
+optprob = OPT.OptimizationProblem(optf, ps)
 
-res = Optimization.solve(optprob, Adam(0.01); callback = callback, maxiters = 1000)
+res = OPT.solve(optprob, OPO.Adam(0.01); callback = callback, maxiters = 1000)
 ```

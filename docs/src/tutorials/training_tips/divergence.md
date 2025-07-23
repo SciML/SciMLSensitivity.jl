@@ -15,9 +15,9 @@ parameters. This is shown in the loss function:
 
 ```julia
 function loss(p)
-    tmp_prob = remake(prob, p = p)
-    tmp_sol = solve(tmp_prob, Tsit5(), saveat = 0.1)
-    if tmp_sol.retcode == ReturnCode.Success
+    tmp_prob = ODE.remake(prob, p = p)
+    tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
+    if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
     else
         return Inf
@@ -28,8 +28,7 @@ end
 A full example making use of this trick is:
 
 ```@example divergence
-using SciMLSensitivity
-using OrdinaryDiffEq, SciMLSensitivity, Optimization, OptimizationOptimisers, Plots
+import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, SciMLBase, Optimization as OPT, OptimizationOptimisers as OPO, Plots
 
 function lotka_volterra!(du, u, p, t)
     rab, wol = u
@@ -42,22 +41,22 @@ end
 u0 = [1.0, 1.0]
 tspan = (0.0, 10.0)
 p = [1.5, 1.0, 3.0, 1.0]
-prob = ODEProblem(lotka_volterra!, u0, tspan, p)
-sol = solve(prob, Tsit5(); saveat = 0.1)
-plot(sol)
+prob = ODE.ODEProblem(lotka_volterra!, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Tsit5(); saveat = 0.1)
+Plots.plot(sol)
 
 dataset = Array(sol)
-scatter!(sol.t, dataset')
+Plots.scatter!(sol.t, dataset')
 
-tmp_prob = remake(prob, p = [1.2, 0.8, 2.5, 0.8])
-tmp_sol = solve(tmp_prob, Tsit5())
-plot(tmp_sol)
-scatter!(sol.t, dataset')
+tmp_prob = ODE.remake(prob, p = [1.2, 0.8, 2.5, 0.8])
+tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5())
+Plots.plot(tmp_sol)
+Plots.scatter!(sol.t, dataset')
 
 function loss(p)
-    tmp_prob = remake(prob, p = p)
-    tmp_sol = solve(tmp_prob, Tsit5(), saveat = 0.1)
-    if tmp_sol.retcode == ReturnCode.Success
+    tmp_prob = ODE.remake(prob, p = p)
+    tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
+    if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
     else
         return Inf
@@ -65,16 +64,16 @@ function loss(p)
 end
 
 pinit = [1.2, 0.8, 2.5, 0.8]
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, pinit)
-res = Optimization.solve(optprob, Adam(), maxiters = 1000)
+optprob = OPT.OptimizationProblem(optf, pinit)
+res = OPT.solve(optprob, OPO.Adam(), maxiters = 1000)
 
-# res = Optimization.solve(optprob,NLopt.LD_LBFGS(), maxiters = 1000) ### errors!
+# res = OPT.solve(optprob,NLopt.LD_LBFGS(), maxiters = 1000) ### errors!
 ```
 
-You might notice that `AutoZygote` (default) fails for the above `Optimization.solve` call
+You might notice that `AutoZygote` (default) fails for the above `OPT.solve` call
 with Optim's optimizers, which happens because of Zygote's behavior for zero gradients, in
 which case it returns `nothing`. To avoid such issues, you can just use a different version
 of the same check which compares the size of the obtained solution and the data we have,
@@ -82,8 +81,8 @@ shown below, which is easier to AD.
 
 ```julia
 function loss(p)
-    tmp_prob = remake(prob, p = p)
-    tmp_sol = solve(tmp_prob, Tsit5(), saveat = 0.1)
+    tmp_prob = ODE.remake(prob, p = p)
+    tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
     if size(tmp_sol) == size(dataset)
         return sum(abs2, Array(tmp_sol) .- dataset)
     else
