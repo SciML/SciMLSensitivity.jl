@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations · SciMLSensitivity.jl</title><meta name="title" content="Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations · SciMLSensitivity.jl"/><meta property="og:title" content="Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations · SciMLSensitivity.jl"/><meta property="twitter:title" content="Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations · SciMLSensitivity.jl"/><meta name="description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:description" content="Documentation for SciMLSensitivity.jl."/><meta property="twitter:description" content="Documentation for SciMLSensitivity.jl."/><meta property="og:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/examples/pde/brusselator/"/><meta property="twitter:url" content="https://docs.sciml.ai/SciMLSensitivity/stable/examples/pde/brusselator/"/><link rel="canonical" href="https://docs.sciml.ai/SciMLSensitivity/stable/examples/pde/brusselator/"/><script data-outdated-warner src="../../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../../assets/documenter.js"></script><script src="../../../search_index.js"></script><script src="../../../siteinfo.js"></script><script src="../../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../../assets/themeswap.js"></script><link href="../../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../../"><img src="../../../assets/logo.png" alt="SciMLSensitivity.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../../">SciMLSensitivity.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../../">SciMLSensitivity: Automatic Differentiation and Adjoints for (Differential) Equation Solvers</a></li><li><a class="tocitem" href="../../../getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../../tutorials/parameter_estimation_ode/">Parameter Estimation of Ordinary Differential Equations</a></li><li><a class="tocitem" href="../../../tutorials/direct_sensitivity/">Direct Sensitivity Analysis Functionality</a></li><li><a class="tocitem" href="../../../tutorials/adjoint_continuous_functional/">Adjoint Sensitivity Analysis of Continuous Functionals</a></li><li><a class="tocitem" href="../../../tutorials/data_parallel/">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching</a></li><li><a class="tocitem" href="../../../tutorials/chaotic_ode/">Sensitivity analysis for chaotic systems (shadowing methods)</a></li><li><input class="collapse-toggle" id="menuitem-3-6" type="checkbox"/><label class="tocitem" for="menuitem-3-6"><span class="docs-label">Training Techniques and Tips</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../../tutorials/training_tips/local_minima/">Strategies to Avoid Local Minima</a></li><li><a class="tocitem" href="../../../tutorials/training_tips/divergence/">Handling Divergent and Unstable Trajectories</a></li><li><a class="tocitem" href="../../../tutorials/training_tips/multiple_nn/">Simultaneous Fitting of Multiple Neural Networks</a></li></ul></li></ul></li><li><a class="tocitem" href="../../../faq/">Frequently Asked Questions (FAQ)</a></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-5-1" type="checkbox"/><label class="tocitem" for="menuitem-5-1"><span class="docs-label">Ordinary Differential Equations (ODEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../ode/exogenous_input/">Handling Exogenous Input Signals</a></li><li><a class="tocitem" href="../../ode/prediction_error_method/">Prediction error method (PEM)</a></li><li><a class="tocitem" href="../../ode/second_order_adjoints/">Newton and Hessian-Free Newton-Krylov with Second Order Adjoint Sensitivity Analysis</a></li><li><a class="tocitem" href="../../ode/second_order_neural/">Neural Second Order Ordinary Differential Equation</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-2" type="checkbox"/><label class="tocitem" for="menuitem-5-2"><span class="docs-label">Neural Ordinary Differential Equations (Neural ODE)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../neural_ode/simplechains/">Faster Neural Ordinary Differential Equations with SimpleChains</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-3" type="checkbox"/><label class="tocitem" for="menuitem-5-3"><span class="docs-label">Stochastic Differential Equations (SDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../sde/optimization_sde/">Optimization of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../../sde/SDE_control/">Controlling Stochastic Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-4" type="checkbox"/><label class="tocitem" for="menuitem-5-4"><span class="docs-label">Delay Differential Equations (DDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../dde/delay_diffeq/">Delay Differential Equations</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-5" type="checkbox" checked/><label class="tocitem" for="menuitem-5-5"><span class="docs-label">Partial Differential Equations (PDEs)</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization</a></li><li class="is-active"><a class="tocitem" href>Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations</a><ul class="internal"><li><a class="tocitem" href="#Introduction"><span>Introduction</span></a></li><li><a class="tocitem" href="#The-Brusselator-PDE"><span>The Brusselator PDE</span></a></li><li><a class="tocitem" href="#Numerical-Discretization"><span>Numerical Discretization</span></a></li><li><a class="tocitem" href="#Finite-Difference-Laplacian-and-Forcing"><span>Finite Difference Laplacian and Forcing</span></a></li><li><a class="tocitem" href="#Generating-Training-Data"><span>Generating Training Data</span></a></li><li><a class="tocitem" href="#Visualizing-Mean-Concentration-Over-Time"><span>Visualizing Mean Concentration Over Time</span></a></li><li><a class="tocitem" href="#Universal-Differential-Equation-(UDE)-Formulation"><span>Universal Differential Equation (UDE) Formulation</span></a></li><li><a class="tocitem" href="#Loss-Function-and-Optimization"><span>Loss Function and Optimization</span></a></li><li><a class="tocitem" href="#Results-and-Conclusion"><span>Results and Conclusion</span></a></li></ul></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-6" type="checkbox"/><label class="tocitem" for="menuitem-5-6"><span class="docs-label">Hybrid and Jump Equations</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../hybrid_jump/hybrid_diffeq/">Training Neural Networks in Hybrid Differential Equations</a></li><li><a class="tocitem" href="../../hybrid_jump/bouncing_ball/">Bouncing Ball Hybrid ODE Optimization</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-7" type="checkbox"/><label class="tocitem" for="menuitem-5-7"><span class="docs-label">Bayesian Estimation</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5-8" type="checkbox"/><label class="tocitem" for="menuitem-5-8"><span class="docs-label">Optimal and Model Predictive Control</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../optimal_control/optimal_control/">Solving Optimal Control Problems with Universal Differential Equations</a></li><li><a class="tocitem" href="../../optimal_control/feedback_control/">Universal Differential Equations for Neural Feedback Control</a></li></ul></li></ul></li><li><span class="tocitem">Manual and APIs</span><ul><li><a class="tocitem" href="../../../manual/differential_equation_sensitivities/">Sensitivity Algorithms for Differential Equations with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../../manual/nonlinear_solve_sensitivities/">Sensitivity Algorithms for Nonlinear Problems with Automatic Differentiation (AD)</a></li><li><a class="tocitem" href="../../../manual/direct_forward_sensitivity/">Direct Forward Sensitivity Analysis of ODEs</a></li><li><a class="tocitem" href="../../../manual/direct_adjoint_sensitivities/">Direct Adjoint Sensitivities of Differential Equations</a></li></ul></li><li><a class="tocitem" href="../../../Benchmark/">Benchmarks</a></li><li><a class="tocitem" href="../../../sensitivity_math/">Sensitivity Math Details</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li><a class="is-disabled">Partial Differential Equations (PDEs)</a></li><li class="is-active"><a href>Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/SciMLSensitivity.jl/blob/master/docs/src/examples/pde/brusselator.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Learning-Nonlinear-Reaction-Dynamics-in-the-2D-Brusselator-PDE-Using-Universal-Differential-Equations"><a class="docs-heading-anchor" href="#Learning-Nonlinear-Reaction-Dynamics-in-the-2D-Brusselator-PDE-Using-Universal-Differential-Equations">Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations</a><a id="Learning-Nonlinear-Reaction-Dynamics-in-the-2D-Brusselator-PDE-Using-Universal-Differential-Equations-1"></a><a class="docs-heading-anchor-permalink" href="#Learning-Nonlinear-Reaction-Dynamics-in-the-2D-Brusselator-PDE-Using-Universal-Differential-Equations" title="Permalink"></a></h1><h2 id="Introduction"><a class="docs-heading-anchor" href="#Introduction">Introduction</a><a id="Introduction-1"></a><a class="docs-heading-anchor-permalink" href="#Introduction" title="Permalink"></a></h2><p>The Brusselator is a mathematical model used to describe oscillating chemical reactions and spatial pattern formation, capturing how concentrations of chemical species evolve over time and space. In this documentation, we simulate the two-dimensional Brusselator partial differential equation (PDE) on a periodic square domain, generate time-resolved data using a finite difference discretization, and use this data to train a <strong>Universal Differential Equation (UDE)</strong>. Specifically, we replace the known nonlinear reaction term with a neural network, enabling us to learn complex dynamics directly from the generated data while preserving the known physical structure of the system.</p><h2 id="The-Brusselator-PDE"><a class="docs-heading-anchor" href="#The-Brusselator-PDE">The Brusselator PDE</a><a id="The-Brusselator-PDE-1"></a><a class="docs-heading-anchor-permalink" href="#The-Brusselator-PDE" title="Permalink"></a></h2><p>The Brusselator PDE is defined on a unit square periodic domain as follows:</p><p class="math-container">\[\frac{\partial U}{\partial t} = B + U^2V - (A+1)U + \alpha \nabla^2 U + f(x, y, t)\]</p><p class="math-container">\[\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 V\]</p><p>where <span>$A=3.4, B=1$</span> and the forcing term is:</p><p class="math-container">\[f(x, y, t) =
+\begin{cases}
+5 &amp; \text{if } (x - 0.3)^2 + (y - 0.6)^2 \leq 0.1^2 \text{ and } t \geq 1.1 \\
+0 &amp; \text{otherwise}
+\end{cases}\]</p><p>and the Laplacian operator is:</p><p class="math-container">\[\nabla^2 = \frac{\partial^2}{\partial x^2} + \frac{\partial^2}{\partial y^2}\]</p><p>These equations are solved over the time interval:</p><p class="math-container">\[t \in [0, 11.5]\]</p><p>with the initial conditions:</p><p class="math-container">\[U(x, y, 0) = 22 \cdot \left( y(1 - y) \right)^{3/2}\]</p><p class="math-container">\[V(x, y, 0) = 27 \cdot \left( x(1 - x) \right)^{3/2}\]</p><p>and the periodic boundary conditions:</p><p class="math-container">\[U(x + 1, y, t) = U(x, y, t)\]</p><p class="math-container">\[V(x, y + 1, t) = V(x, y, t)\]</p><h2 id="Numerical-Discretization"><a class="docs-heading-anchor" href="#Numerical-Discretization">Numerical Discretization</a><a id="Numerical-Discretization-1"></a><a class="docs-heading-anchor-permalink" href="#Numerical-Discretization" title="Permalink"></a></h2><p>To numerically solve this PDE, we discretize the unit square domain using <span>$N$</span> grid points along each spatial dimension. The variables <span>$U[i,j]$</span> and <span>$V[i,j]$</span> then denote the concentrations at the grid point <span>$(i, j)$</span> at a given time <span>$t$</span>.</p><p>We represent the spatially discretized fields as:</p><p class="math-container">\[U[i,j] = U(i \cdot \Delta x, j \cdot \Delta y), \quad V[i,j] = V(i \cdot \Delta x, j \cdot \Delta y),\]</p><p>where  <span>$\Delta x = \Delta y = \frac{1}{N}$</span> for a grid of size  <span>$N \times N$</span>. To organize the simulation state efficiently, we store both $ U $ and $ V $ in a single 3D array:</p><p class="math-container">\[u[i,j,1] = U[i,j], \quad u[i,j,2] = V[i,j],\]</p><p>giving us a field tensor of shape <span>$(N, N, 2)$</span>. This structure is flexible and extends naturally to systems with additional field variables.</p><h2 id="Finite-Difference-Laplacian-and-Forcing"><a class="docs-heading-anchor" href="#Finite-Difference-Laplacian-and-Forcing">Finite Difference Laplacian and Forcing</a><a id="Finite-Difference-Laplacian-and-Forcing-1"></a><a class="docs-heading-anchor-permalink" href="#Finite-Difference-Laplacian-and-Forcing" title="Permalink"></a></h2><p>For spatial derivatives, we apply a second-order central difference scheme using a three-point stencil. The Laplacian is discretized as:</p><p class="math-container">\[[\ 1,\ -2,\ 1\ ]\]</p><p>in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both the x and y directions; applying this 1D stencil (scaled appropriately by <span>$\frac{1}{Δx^2}$</span> or <span>$\frac{1}{Δy^2}$</span>) along each axis and summing the contributions yields the standard 5-point stencil computation for the 2D Laplacian. Periodic boundary conditions are incorporated by wrapping the stencil at the domain edges, effectively connecting the boundaries. The nonlinear interaction terms are computed directly at each grid point, making the implementation straightforward and local in nature.</p><h2 id="Generating-Training-Data"><a class="docs-heading-anchor" href="#Generating-Training-Data">Generating Training Data</a><a id="Generating-Training-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Generating-Training-Data" title="Permalink"></a></h2><p>This provides us with an <code>ODEProblem</code> that can be solved to obtain training data. </p><pre><code class="language-julia hljs">import ComponentArrays as CA, Random, Plots, OrdinaryDiffEq as ODE
+import SciMLBase
+
+N_GRID = 16
+XYD = range(0f0, stop = 1f0, length = N_GRID)
+dx = step(XYD)
+T_FINAL = 11.5f0
+SAVE_AT = 0.5f0
+tspan = (0.0f0, T_FINAL)
+t_points = range(tspan[1], stop=tspan[2], step=SAVE_AT)
+A, B, alpha = 3.4f0, 1.0f0, 10.0f0
+
+brusselator_f(x, y, t) = (((x - 0.3f0)^2 + (y - 0.6f0)^2) &lt;= 0.01f0) * (t &gt;= 1.1f0) * 5.0f0
+limit(a, N) = a == 0 ? N : a == N+1 ? 1 : a
+
+function init_brusselator(xyd)
+    println(&quot;[Init] Creating initial condition array...&quot;)
+    u0 = zeros(Float32, N_GRID, N_GRID, 2)
+    for I in CartesianIndices((N_GRID, N_GRID))
+        x, y = xyd[I[1]], xyd[I[2]]
+        u0[I,1] = 22f0 * (y * (1f0 - y))^(3f0/2f0)
+        u0[I,2] = 27f0 * (x * (1f0 - x))^(3f0/2f0)
+    end
+    println(&quot;[Init] Done.&quot;)
+    return u0
+end
+u0 = init_brusselator(XYD)
+
+function pde_truth!(du, u, p, t)
+    A, B, alpha, dx = p
+    αdx = alpha / dx^2
+    for I in CartesianIndices((N_GRID, N_GRID))
+        i, j = Tuple(I)
+        x, y = XYD[i], XYD[j]
+        ip1, im1 = limit(i+1, N_GRID), limit(i-1, N_GRID)
+        jp1, jm1 = limit(j+1, N_GRID), limit(j-1, N_GRID)
+        U, V = u[i,j,1], u[i,j,2]
+        ΔU = u[im1,j,1] + u[ip1,j,1] + u[i,jp1,1] + u[i,jm1,1] - 4f0 * U
+        ΔV = u[im1,j,2] + u[ip1,j,2] + u[i,jp1,2] + u[i,jm1,2] - 4f0 * V
+        du[i,j,1] = αdx*ΔU + B + U^2 * V - (A+1f0)*U + brusselator_f(x, y, t)
+        du[i,j,2] = αdx*ΔV + A*U - U^2 * V
+    end
+end
+
+p_tuple = (A, B, alpha, dx)
+@time sol_truth = ODE.solve(ODE.ODEProblem(pde_truth!, u0, tspan, p_tuple), ODE.FBDF(), saveat=t_points)
+u_true = Array(sol_truth)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">16×16×2×24 Array{Float32, 4}:
+[:, :, 1, 1] =
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+
+[:, :, 2, 1] =
+ 0.0       0.0       0.0       0.0       …  0.0       0.0       0.0
+ 0.419066  0.419066  0.419066  0.419066     0.419066  0.419066  0.419066
+ 1.0606    1.0606    1.0606    1.0606       1.0606    1.0606    1.0606
+ 1.728     1.728     1.728     1.728        1.728     1.728     1.728
+ 2.3349    2.3349    2.3349    2.3349       2.3349    2.3349    2.3349
+ 2.82843   2.82843   2.82843   2.82843   …  2.82843   2.82843   2.82843
+ 3.17454   3.17454   3.17454   3.17454      3.17454   3.17454   3.17454
+ 3.35252   3.35252   3.35252   3.35252      3.35252   3.35252   3.35252
+ 3.35252   3.35252   3.35252   3.35252      3.35252   3.35252   3.35252
+ 3.17454   3.17454   3.17454   3.17454      3.17454   3.17454   3.17454
+ 2.82843   2.82843   2.82843   2.82843   …  2.82843   2.82843   2.82843
+ 2.3349    2.3349    2.3349    2.3349       2.3349    2.3349    2.3349
+ 1.728     1.728     1.728     1.728        1.728     1.728     1.728
+ 1.0606    1.0606    1.0606    1.0606       1.0606    1.0606    1.0606
+ 0.419066  0.419066  0.419066  0.419066     0.419066  0.419066  0.419066
+ 0.0       0.0       0.0       0.0       …  0.0       0.0       0.0
+
+[:, :, 1, 2] =
+ 0.900959  0.900958  0.900906  0.900949  …  0.900975  0.900924  0.900967
+ 0.900941  0.900958  0.900952  0.900947     0.900935  0.90096   0.900951
+ 0.900942  0.900923  0.900957  0.900939     0.90094   0.900916  0.900951
+ 0.900966  0.900959  0.900941  0.900932     0.90093   0.900967  0.900914
+ 0.900952  0.900941  0.900915  0.900955     0.900931  0.900974  0.90094
+ 0.900939  0.900921  0.900929  0.900972  …  0.900922  0.90093   0.900941
+ 0.900939  0.90093   0.900938  0.900971     0.900914  0.90094   0.900956
+ 0.900932  0.900905  0.900947  0.900972     0.900955  0.900931  0.900904
+ 0.900922  0.900922  0.900922  0.900955     0.900947  0.900905  0.900939
+ 0.900958  0.900947  0.90093   0.900936     0.900931  0.900947  0.900915
+ 0.900905  0.90093   0.900941  0.900953  …  0.900904  0.900932  0.900913
+ 0.900933  0.900932  0.900957  0.900956     0.900949  0.900958  0.900959
+ 0.900966  0.900942  0.900931  0.900916     0.900932  0.90095   0.900949
+ 0.900942  0.900958  0.900938  0.900943     0.900957  0.900975  0.900949
+ 0.900941  0.90096   0.900991  0.90095      0.900916  0.900967  0.90096
+ 0.90096   0.90095   0.90096   0.900949  …  0.900934  0.90096   0.900976
+
+[:, :, 2, 2] =
+ 2.38291  2.38295  2.38301  2.38301  …  2.38304  2.38298  2.38301  2.38305
+ 2.38308  2.38298  2.38301  2.38301     2.38298  2.38305  2.38308  2.38294
+ 2.38305  2.38311  2.38301  2.38302     2.38301  2.38305  2.38301  2.38305
+ 2.38308  2.383    2.38308  2.38305     2.38305  2.38308  2.38295  2.38298
+ 2.38308  2.38301  2.38308  2.38298     2.38308  2.38301  2.38298  2.38298
+ 2.38307  2.38302  2.38304  2.38308  …  2.38299  2.38301  2.38305  2.38308
+ 2.38307  2.38302  2.38308  2.38302     2.38298  2.38308  2.38307  2.38305
+ 2.38308  2.38307  2.38302  2.38311     2.38308  2.38301  2.38307  2.38302
+ 2.38311  2.38301  2.38311  2.38295     2.38298  2.38305  2.38305  2.38302
+ 2.38307  2.38301  2.38301  2.38305     2.38305  2.38308  2.38301  2.38308
+ 2.38311  2.38305  2.38308  2.38305  …  2.38308  2.38298  2.38305  2.38304
+ 2.38295  2.38305  2.38305  2.38301     2.38301  2.38301  2.38308  2.38298
+ 2.38301  2.38298  2.38305  2.38305     2.38298  2.38301  2.38298  2.38305
+ 2.38298  2.38305  2.38301  2.38305     2.38307  2.38301  2.38311  2.38301
+ 2.38295  2.38305  2.38298  2.383       2.38301  2.38301  2.38305  2.38298
+ 2.38308  2.38298  2.383    2.38312  …  2.38305  2.38297  2.38307  2.38298
+
+[:, :, 1, 3] =
+ 0.520114  0.520106  0.520109  0.520104  …  0.520105  0.52011   0.520109
+ 0.520113  0.52011   0.52011   0.520115     0.520109  0.520109  0.520111
+ 0.520109  0.520115  0.52011   0.520111     0.52011   0.520106  0.52011
+ 0.52011   0.520109  0.520114  0.52011      0.52011   0.520114  0.520109
+ 0.520109  0.520111  0.52011   0.520109     0.520109  0.520109  0.520111
+ 0.520111  0.52011   0.52011   0.52011   …  0.520115  0.520109  0.52011
+ 0.520106  0.520105  0.520111  0.52011      0.520109  0.520106  0.520109
+ 0.52011   0.520106  0.520106  0.520107     0.520111  0.52011   0.520111
+ 0.52011   0.520109  0.52011   0.52011      0.520111  0.520113  0.52011
+ 0.520111  0.52011   0.520115  0.520115     0.52011   0.52011   0.52011
+ 0.520113  0.520115  0.520109  0.520107  …  0.52011   0.52011   0.52011
+ 0.520111  0.520106  0.52011   0.52011      0.52011   0.520109  0.52011
+ 0.52011   0.520109  0.52011   0.520113     0.520107  0.52011   0.520106
+ 0.52011   0.52011   0.52011   0.520106     0.520105  0.520106  0.52011
+ 0.520113  0.52011   0.520114  0.520109     0.52011   0.520109  0.520109
+ 0.52011   0.520114  0.520109  0.520114  …  0.520106  0.520114  0.520111
+
+[:, :, 2, 3] =
+ 2.91981  2.91982  2.91984  2.91982  …  2.91981  2.91984  2.9198   2.91984
+ 2.9198   2.91984  2.91982  2.91983     2.91982  2.91982  2.9198   2.91984
+ 2.91982  2.91983  2.91983  2.91981     2.9198   2.91982  2.91982  2.91982
+ 2.91984  2.91983  2.91982  2.91982     2.91982  2.91984  2.91982  2.91982
+ 2.91984  2.91981  2.91982  2.91983     2.91982  2.9198   2.91982  2.91982
+ 2.91982  2.91983  2.91981  2.91982  …  2.91982  2.91984  2.91982  2.91983
+ 2.91983  2.91983  2.91983  2.91979     2.91982  2.91982  2.91982  2.91984
+ 2.91984  2.91983  2.91979  2.91981     2.9198   2.91982  2.91984  2.91982
+ 2.9198   2.91981  2.91982  2.91982     2.9198   2.91982  2.91982  2.91984
+ 2.91982  2.91983  2.91984  2.91986     2.91982  2.91982  2.91984  2.9198
+ 2.91982  2.91983  2.91984  2.91984  …  2.91983  2.91981  2.91982  2.91984
+ 2.91984  2.91984  2.91982  2.91982     2.91982  2.91983  2.91982  2.91983
+ 2.91984  2.91982  2.91982  2.91979     2.91981  2.91981  2.91981  2.91982
+ 2.91983  2.91981  2.91981  2.91982     2.91982  2.91981  2.91982  2.91982
+ 2.91982  2.91982  2.91984  2.91982     2.91984  2.91983  2.91982  2.91983
+ 2.91982  2.91982  2.91984  2.91982  …  2.91984  2.9198   2.9198   2.91983
+
+;;;; … 
+
+[:, :, 1, 22] =
+ 0.560204  0.560167  0.560194  0.560255  …  0.560535  0.560387  0.560265
+ 0.560275  0.560254  0.560285  0.56038      0.560737  0.560524  0.56038
+ 0.560391  0.560352  0.560381  0.560506     0.560954  0.560682  0.560503
+ 0.560459  0.560405  0.560459  0.560598     0.561171  0.560811  0.560589
+ 0.560498  0.560459  0.560505  0.560652     0.561314  0.56091   0.560659
+ 0.560499  0.560474  0.560506  0.56066   …  0.561332  0.560933  0.560653
+ 0.560483  0.560433  0.56048   0.560618     0.561231  0.560869  0.560616
+ 0.560415  0.560374  0.560405  0.560538     0.56103   0.560731  0.560529
+ 0.560323  0.560289  0.560326  0.560427     0.560819  0.560587  0.560417
+ 0.560219  0.560211  0.560231  0.560309     0.560615  0.560432  0.560312
+ 0.560152  0.56012   0.560149  0.560208  …  0.560428  0.560307  0.560209
+ 0.560083  0.56006   0.560085  0.560125     0.560313  0.560219  0.560138
+ 0.560044  0.560031  0.560044  0.560095     0.56023   0.560163  0.560085
+ 0.56004   0.560024  0.56003   0.560084     0.56024   0.560151  0.560075
+ 0.560068  0.560039  0.560056  0.560117     0.560276  0.56018   0.560115
+ 0.560112  0.560102  0.560112  0.560168  …  0.560379  0.560281  0.560168
+
+[:, :, 2, 22] =
+ 4.97969  4.97971  4.97971  4.97971  …  4.97975  4.97977  4.97978  4.97978
+ 4.9798   4.97971  4.97971  4.97972     4.97984  4.97971  4.9797   4.97978
+ 4.9798   4.97974  4.9797   4.97985     4.97973  4.97978  4.97985  4.97972
+ 4.9798   4.97978  4.97978  4.97987     4.97972  4.97977  4.97976  4.97979
+ 4.97988  4.97978  4.97985  4.97971     4.97979  4.97981  4.97966  4.97969
+ 4.97977  4.97988  4.97972  4.97977  …  4.97973  4.97975  4.97968  4.97979
+ 4.97978  4.9798   4.97978  4.97977     4.97977  4.97983  4.97968  4.97977
+ 4.9797   4.97978  4.9797   4.97977     4.97982  4.97978  4.97975  4.97987
+ 4.97988  4.97978  4.9798   4.97978     4.97975  4.97976  4.97971  4.9798
+ 4.97965  4.97971  4.97973  4.97978     4.97984  4.97969  4.97978  4.9798
+ 4.97971  4.97979  4.97979  4.97979  …  4.97971  4.9798   4.97978  4.97971
+ 4.97981  4.97971  4.97979  4.97987     4.97978  4.9798   4.97971  4.97987
+ 4.97979  4.97979  4.97971  4.97971     4.97978  4.97978  4.97973  4.97971
+ 4.97969  4.97979  4.97983  4.97973     4.97978  4.9798   4.97975  4.97987
+ 4.97973  4.97979  4.97981  4.97973     4.97978  4.97972  4.97979  4.97963
+ 4.97981  4.97973  4.97969  4.97981  …  4.97987  4.9797   4.97986  4.97981
+
+[:, :, 1, 23] =
+ 0.769321  0.769286  0.769321  0.7694    …  0.76967   0.76951   0.769397
+ 0.769418  0.769383  0.769415  0.769504     0.769856  0.769662  0.769509
+ 0.769512  0.769471  0.769507  0.769621     0.770083  0.76981   0.769626
+ 0.769592  0.769541  0.769589  0.769724     0.7703    0.769953  0.769719
+ 0.769636  0.769591  0.76963   0.769785     0.770445  0.770048  0.769786
+ 0.769644  0.769596  0.769642  0.769796  …  0.770473  0.770061  0.769794
+ 0.769615  0.769568  0.769608  0.769749     0.770368  0.770007  0.769757
+ 0.769539  0.769503  0.769544  0.769664     0.770161  0.769877  0.769664
+ 0.769451  0.769417  0.769451  0.769556     0.769954  0.769713  0.769564
+ 0.769363  0.769328  0.769361  0.769437     0.769736  0.769569  0.769432
+ 0.769276  0.769249  0.769278  0.769335  …  0.76957   0.76944   0.769341
+ 0.769201  0.769185  0.769208  0.769254     0.769428  0.769344  0.769256
+ 0.769169  0.769148  0.769172  0.769213     0.769367  0.76928   0.769213
+ 0.76916   0.769144  0.769158  0.769203     0.769358  0.769272  0.769208
+ 0.769189  0.769174  0.769186  0.769238     0.769411  0.76931   0.769238
+ 0.76924   0.769228  0.76924   0.769299  …  0.769508  0.769389  0.769304
+
+[:, :, 2, 23] =
+ 5.0146   5.01464  5.0146   5.01464  …  5.01458  5.01461  5.01463  5.0146
+ 5.01462  5.01466  5.0146   5.01459     5.01462  5.0146   5.01463  5.01457
+ 5.01465  5.01462  5.01463  5.01465     5.01458  5.01462  5.01458  5.01465
+ 5.01457  5.01463  5.01459  5.01463     5.01464  5.01459  5.01458  5.01459
+ 5.01465  5.01459  5.01461  5.01464     5.01461  5.01458  5.01462  5.01458
+ 5.01463  5.01469  5.01459  5.01464  …  5.01459  5.01464  5.01465  5.01462
+ 5.01465  5.01453  5.01465  5.01462     5.01467  5.01461  5.01462  5.01459
+ 5.01461  5.01462  5.01465  5.01461     5.01458  5.01465  5.01458  5.01465
+ 5.01458  5.01466  5.01463  5.01465     5.01461  5.01458  5.01463  5.01463
+ 5.0146   5.01456  5.01466  5.0146      5.01462  5.01463  5.01461  5.01464
+ 5.01462  5.01469  5.01458  5.01462  …  5.01465  5.01459  5.01468  5.0146
+ 5.01469  5.01461  5.01463  5.01462     5.01463  5.01466  5.0147   5.01462
+ 5.01459  5.01467  5.01463  5.01463     5.0146   5.01462  5.01456  5.01463
+ 5.01465  5.01463  5.01465  5.01463     5.0146   5.01464  5.01462  5.01461
+ 5.01469  5.01465  5.01461  5.01462     5.01466  5.01464  5.01468  5.01466
+ 5.01466  5.01465  5.0146   5.01466  …  5.01459  5.01461  5.0146   5.01466
+
+[:, :, 1, 24] =
+ 2.105    2.10497  2.105    2.10507  …  2.10553  2.10535  2.1052   2.10508
+ 2.1051   2.10506  2.1051   2.10519     2.1058   2.10556  2.10535  2.10519
+ 2.10519  2.10515  2.10519  2.10531     2.10613  2.10579  2.10551  2.10531
+ 2.10528  2.10523  2.10528  2.10542     2.10648  2.10601  2.10566  2.10542
+ 2.10533  2.10528  2.10533  2.10548     2.10676  2.10616  2.10575  2.10548
+ 2.10533  2.10528  2.10533  2.10549  …  2.10681  2.10619  2.10577  2.10549
+ 2.1053   2.10525  2.1053   2.10545     2.1066   2.10608  2.1057   2.10545
+ 2.10523  2.10519  2.10523  2.10536     2.10627  2.10588  2.10557  2.10536
+ 2.10514  2.1051   2.10514  2.10524     2.10593  2.10565  2.10541  2.10524
+ 2.10504  2.10501  2.10504  2.10512     2.10563  2.10543  2.10526  2.10512
+ 2.10495  2.10493  2.10495  2.10501  …  2.1054   2.10525  2.10512  2.10501
+ 2.10488  2.10486  2.10488  2.10493     2.10523  2.10512  2.10502  2.10493
+ 2.10484  2.10482  2.10484  2.10489     2.10514  2.10505  2.10496  2.10489
+ 2.10483  2.10481  2.10483  2.10488     2.10513  2.10504  2.10495  2.10488
+ 2.10486  2.10484  2.10486  2.10491     2.10519  2.10508  2.10499  2.10491
+ 2.10492  2.1049   2.10492  2.10498  …  2.10532  2.10519  2.10507  2.10498
+
+[:, :, 2, 24] =
+ 3.65567  3.65568  3.65567  3.65567  …  3.65565  3.65566  3.65566  3.65567
+ 3.65567  3.65567  3.65567  3.65566     3.65564  3.65565  3.65566  3.65566
+ 3.65566  3.65566  3.65566  3.65566     3.65562  3.65564  3.65565  3.65566
+ 3.65566  3.65566  3.65566  3.65565     3.65561  3.65563  3.65564  3.65565
+ 3.65565  3.65566  3.65565  3.65565     3.65561  3.65562  3.65564  3.65565
+ 3.65565  3.65565  3.65565  3.65565  …  3.65561  3.65562  3.65564  3.65565
+ 3.65565  3.65566  3.65565  3.65565     3.65561  3.65562  3.65564  3.65565
+ 3.65566  3.65566  3.65566  3.65565     3.65562  3.65563  3.65564  3.65565
+ 3.65566  3.65567  3.65567  3.65566     3.65563  3.65564  3.65565  3.65566
+ 3.65567  3.65567  3.65567  3.65567     3.65564  3.65565  3.65566  3.65567
+ 3.65568  3.65568  3.65568  3.65567  …  3.65565  3.65566  3.65567  3.65567
+ 3.65568  3.65568  3.65568  3.65568     3.65566  3.65567  3.65567  3.65568
+ 3.65569  3.65569  3.65569  3.65568     3.65566  3.65567  3.65568  3.65568
+ 3.65569  3.65569  3.65569  3.65568     3.65567  3.65567  3.65568  3.65568
+ 3.65568  3.65569  3.65568  3.65568     3.65566  3.65567  3.65568  3.65568
+ 3.65568  3.65568  3.65568  3.65568  …  3.65566  3.65566  3.65567  3.65568</code></pre><h2 id="Visualizing-Mean-Concentration-Over-Time"><a class="docs-heading-anchor" href="#Visualizing-Mean-Concentration-Over-Time">Visualizing Mean Concentration Over Time</a><a id="Visualizing-Mean-Concentration-Over-Time-1"></a><a class="docs-heading-anchor-permalink" href="#Visualizing-Mean-Concentration-Over-Time" title="Permalink"></a></h2><p>We can now use this code for training our UDE, and generating time-series plots of the concentrations of species of U and V using the code:</p><pre><code class="language-julia hljs">import Plots, Statistics
+
+# Compute average concentration at each timestep
+avg_U = [Statistics.mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
+avg_V = [Statistics.mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
+
+# Plot average concentrations over time
+Plots.plot(sol_truth.t, avg_U, label=&quot;Mean U&quot;, lw=2, xlabel=&quot;Time&quot;, ylabel=&quot;Concentration&quot;,
+     title=&quot;Mean Concentration of U and V Over Time&quot;)
+Plots.plot!(sol_truth.t, avg_V, label=&quot;Mean V&quot;, lw=2, linestyle=:dash)</code></pre><img src="4c2b2d36.svg" alt="Example block output"/><p>With the ground truth data generated and visualized, we are now ready to construct a Universal Differential Equation (UDE) by replacing the nonlinear term  <span>$U^2V$</span> with a neural network. The next section outlines how we define this hybrid model and train it to recover the reaction dynamics from data.</p><h2 id="Universal-Differential-Equation-(UDE)-Formulation"><a class="docs-heading-anchor" href="#Universal-Differential-Equation-(UDE)-Formulation">Universal Differential Equation (UDE) Formulation</a><a id="Universal-Differential-Equation-(UDE)-Formulation-1"></a><a class="docs-heading-anchor-permalink" href="#Universal-Differential-Equation-(UDE)-Formulation" title="Permalink"></a></h2><p>In the original Brusselator model, the nonlinear reaction term ( U^2V ) governs key dynamic behavior. In our UDE approach, we replace this known term with a trainable neural network ( \mathcal{N}_\theta(U, V) ), where ( \theta ) are the learnable parameters.</p><p>The resulting system becomes:</p><p>$</p><p>\frac{\partial U}{\partial t} = 1 + \mathcal{N}_\theta(U, V) - 4.4U + \alpha \nabla^2 U + f(x, y, t) $</p><p>$</p><p>\frac{\partial V}{\partial t} = 3.4U - \mathcal{N}_\theta(U, V) + \alpha \nabla^2 V $</p><p>Here, <span>$\mathcal{N}_\theta(U, V)$</span> is trained to approximate the true interaction term <span>$U^2V$</span> using simulation data. This hybrid formulation allows us to recover unknown or partially known physical processes while preserving the known structural components of the PDE.</p><p>First, we have to define and configure the neural network that has to be used for the training. The implementation for that is as follows:</p><pre><code class="language-julia hljs">import Lux, Random, Optimization as OPT, OptimizationOptimJL as OOJ, SciMLSensitivity as SMS, Zygote
+
+model = Lux.Chain(Lux.Dense(2 =&gt; 16, tanh), Lux.Dense(16 =&gt; 1))
+rng = Random.default_rng()
+ps_init, st = Lux.setup(rng, model)
+ps_init = CA.ComponentArray(ps_init)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ComponentVector{Float32}(layer_1 = (weight = Float32[-1.7312284 2.0057783; 1.579726 0.39244646; … ; -2.00748 0.48403043; -1.6406164 -1.1563113], bias = Float32[0.2784038, -0.5350537, -0.62655884, 0.21372136, -0.16249709, 0.58296335, -0.011232725, -0.4016802, -0.52388257, -0.032728713, 0.56126076, -0.06756485, 0.010714403, 0.014237121, -0.15939441, -0.16571425]), layer_2 = (weight = Float32[0.2074573 -0.25751692 … -0.108034156 0.13508295], bias = Float32[-0.05319816]))</code></pre><p>We use a simple fully connected neural network with one hidden layer of 16 tanh-activated units to approximate the nonlinear interaction term.</p><p>To ensure consistency between the ground truth simulation and the learned Universal Differential Equation (UDE) model, we preserve the same spatial discretization scheme used in the original ODEProblem. This includes:</p><ul><li>the finite difference Laplacian,</li><li>periodic boundary conditions, and</li><li>the external forcing function.</li></ul><p>The only change lies in the replacement of the known nonlinear term <span>$U^2V$</span> with a neural network approximation  <span>$\mathcal{N}_\theta(U, V)$</span>. This design enables the UDE to learn complex or unknown dynamics from data while maintaining the underlying physical structure of the system.</p><p>The function below implements this hybrid formulation:</p><pre><code class="language-julia hljs">function pde_ude!(du, u, ps_nn, t)
+    αdx = alpha / dx^2
+    for I in CartesianIndices((N_GRID, N_GRID))
+        i, j = Tuple(I)
+        x, y = XYD[i], XYD[j]
+        ip1, im1 = limit(i+1, N_GRID), limit(i-1, N_GRID)
+        jp1, jm1 = limit(j+1, N_GRID), limit(j-1, N_GRID)
+        U, V = u[i,j,1], u[i,j,2]
+        ΔU = u[im1,j,1] + u[ip1,j,1] + u[i,jp1,1] + u[i,jm1,1] - 4f0 * U
+        ΔV = u[im1,j,2] + u[ip1,j,2] + u[i,jp1,2] + u[i,jm1,2] - 4f0 * V
+        nn_val, _ = model([U, V], ps_nn, st)
+        val = nn_val[1]
+        du[i,j,1] = αdx*ΔU + B + val - (A+1f0)*U + brusselator_f(x, y, t)
+        du[i,j,2] = αdx*ΔV + A*U - val
+    end
+end
+prob_ude_template = ODE.ODEProblem(pde_ude!, u0, tspan, ps_init)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr38_2" style="color:#56b6c2">ODEProblem</span> with uType <span class="sgr38_2" style="color:#56b6c2">Array{Float32, 3}</span> and tType <span class="sgr38_2" style="color:#56b6c2">Float32</span>. In-place: <span class="sgr38_2" style="color:#56b6c2">true</span>
+Non-trivial mass matrix: <span class="sgr38_2" style="color:#56b6c2">false</span>
+timespan: (0.0f0, 11.5f0)
+u0: 16×16×2 Array{Float32, 3}:
+[:, :, 1] =
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251     1.408  0.864189  0.341461  0.0
+ 0.0  0.341461  0.864189  1.408  1.90251  …  1.408  0.864189  0.341461  0.0
+
+[:, :, 2] =
+ 0.0       0.0       0.0       0.0       …  0.0       0.0       0.0
+ 0.419066  0.419066  0.419066  0.419066     0.419066  0.419066  0.419066
+ 1.0606    1.0606    1.0606    1.0606       1.0606    1.0606    1.0606
+ 1.728     1.728     1.728     1.728        1.728     1.728     1.728
+ 2.3349    2.3349    2.3349    2.3349       2.3349    2.3349    2.3349
+ 2.82843   2.82843   2.82843   2.82843   …  2.82843   2.82843   2.82843
+ 3.17454   3.17454   3.17454   3.17454      3.17454   3.17454   3.17454
+ 3.35252   3.35252   3.35252   3.35252      3.35252   3.35252   3.35252
+ 3.35252   3.35252   3.35252   3.35252      3.35252   3.35252   3.35252
+ 3.17454   3.17454   3.17454   3.17454      3.17454   3.17454   3.17454
+ 2.82843   2.82843   2.82843   2.82843   …  2.82843   2.82843   2.82843
+ 2.3349    2.3349    2.3349    2.3349       2.3349    2.3349    2.3349
+ 1.728     1.728     1.728     1.728        1.728     1.728     1.728
+ 1.0606    1.0606    1.0606    1.0606       1.0606    1.0606    1.0606
+ 0.419066  0.419066  0.419066  0.419066     0.419066  0.419066  0.419066
+ 0.0       0.0       0.0       0.0       …  0.0       0.0       0.0</code></pre><h2 id="Loss-Function-and-Optimization"><a class="docs-heading-anchor" href="#Loss-Function-and-Optimization">Loss Function and Optimization</a><a id="Loss-Function-and-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Loss-Function-and-Optimization" title="Permalink"></a></h2><p>To train the neural network  <span>$\mathcal{N}_\theta(U, V)$</span> embedded in the UDE, we define a loss function that measures how closely the solution of the UDE matches the ground truth data generated earlier.</p><p>The loss is computed as the sum of squared errors between the predicted solution from the UDE and the true solution at each saved time point. If the solver fails (e.g., due to numerical instability or incorrect parameters), we return an infinite loss to discard that configuration during optimization. We use <code>FBDF()</code> as the solver due to the stiff nature of the brusselators euqation. Other solvers like <code>KenCarp47()</code> could also be used. </p><p>To efficiently compute gradients of the loss with respect to the neural network parameters, we use an adjoint sensitivity method (<code>GaussAdjoint</code>), which performs high-accuracy quadrature-based integration of the adjoint equations. This approach enables scalable and memory-efficient training for stiff PDEs by avoiding full trajectory storage while maintaining accurate gradient estimates.</p><p>The loss function and initial evaluation are implemented as follows:</p><pre><code class="language-julia hljs">println(&quot;[Loss] Defining loss function...&quot;)
+function loss_fn(ps, _)
+    prob = ODE.remake(prob_ude_template, p=ps)
+    sol = ODE.solve(prob, ODE.FBDF(), saveat=t_points)
+    # Failed solve
+    if !SciMLBase.successful_retcode(sol)
+        return Inf32
+    end
+    pred = Array(sol)
+    lval = sum(abs2, pred .- u_true) / length(u_true)
+    return lval
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">loss_fn (generic function with 1 method)</code></pre><p>Once the loss function is defined, we use the ADAM optimizer to train the neural network. The optimization problem is defined using SciML&#39;s <code>Optimization.jl</code> tools, and gradients are computed via automatic differentiation using <code>AutoZygote()</code> from <code>SciMLSensitivity</code>:</p><pre><code class="language-julia hljs">println(&quot;[Training] Starting optimization...&quot;)
+import OptimizationOptimisers as OPO
+optf = OPT.OptimizationFunction(loss_fn, SMS.AutoZygote())
+optprob = OPT.OptimizationProblem(optf, ps_init)
+loss_history = Float32[]
+
+
+callback = (ps, l) -&gt; begin
+    push!(loss_history, l)
+    println(&quot;Epoch $(length(loss_history)): Loss = $l&quot;)
+    false
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">#5 (generic function with 1 method)</code></pre><p>Finally to run everything:</p><pre><code class="language-julia hljs">res = OPT.solve(optprob, OPO.Optimisers.Adam(0.01), callback=callback, maxiters=100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
+u: ComponentVector{Float32}(layer_1 = (weight = Float32[-1.613666 2.0899365; 1.2901307 0.13966362; … ; -2.071416 0.42095295; -0.88313407 -0.5842678], bias = Float32[0.37842497, -0.78669506, -0.68497807, 0.18800125, -0.23650178, 0.16708943, -0.2289777, -0.4646627, -0.31830037, 0.13208714, 0.58876973, 0.26439515, -0.11728463, 0.22657007, -0.25196734, 0.5959609]), layer_2 = (weight = Float32[0.4391066 -0.023665335 … 0.107222684 -0.09664141], bias = Float32[0.17842759]))</code></pre><pre><code class="language-julia hljs">res.objective</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1.0426732f0</code></pre><pre><code class="language-julia hljs">println(&quot;[Plot] Final U/V comparison plots...&quot;)
+center = N_GRID ÷ 2
+sol_final = ODE.solve(ODE.remake(prob_ude_template, p=res.u), ODE.FBDF(), saveat=t_points)
+pred = Array(sol_final)
+
+p1 = Plots.plot(t_points, u_true[center,center,1,:], lw=2, label=&quot;U True&quot;)
+Plots.plot!(p1, t_points, pred[center,center,1,:], lw=2, ls=:dash, label=&quot;U Pred&quot;)
+Plots.title!(p1, &quot;Center U Concentration Over Time&quot;)
+
+p2 = Plots.plot(t_points, u_true[center,center,2,:], lw=2, label=&quot;V True&quot;)
+Plots.plot!(p2, t_points, pred[center,center,2,:], lw=2, ls=:dash, label=&quot;V Pred&quot;)
+Plots.title!(p2, &quot;Center V Concentration Over Time&quot;)
+
+Plots.plot(p1, p2, layout=(1,2), size=(900,400))</code></pre><img src="ab8a74f9.svg" alt="Example block output"/><h2 id="Results-and-Conclusion"><a class="docs-heading-anchor" href="#Results-and-Conclusion">Results and Conclusion</a><a id="Results-and-Conclusion-1"></a><a class="docs-heading-anchor-permalink" href="#Results-and-Conclusion" title="Permalink"></a></h2><p>After training the Universal Differential Equation (UDE), we compared the predicted dynamics to the ground truth for both chemical species.</p><p>The low training loss shows us that the neural network in the UDE was able to understand the underlying dynamics, and it was able to learn the <span>$U^2V$</span> term in the partial differential equation. </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../pde_constrained/">« Partial Differential Equation (PDE) Constrained Optimization</a><a class="docs-footer-nextpage" href="../../hybrid_jump/hybrid_diffeq/">Training Neural Networks in Hybrid Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Thursday 24 July 2025 14:56">Thursday 24 July 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
