@@ -461,7 +461,7 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback,
     cur_time = Ref(length(_checkpoints))
     affect! = let sol = sol, cur_time = cur_time, idx = length(state_values(prob))
         function (integrator)
-            _y = reshape(@view(integrator.u[(end - idx + 1):end]), axes(state_values(prob)))
+            _y = reshape(@view(integrator.u[(end - idx + 1):end]), size(state_values(prob)))
             sol(_y, integrator.t)
             u_modified!(integrator, true)
             cur_time[] -= 1
