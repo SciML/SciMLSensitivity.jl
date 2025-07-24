@@ -34,11 +34,11 @@ adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
 # The following code causes an infinite loop/timeout and has been temporarily disabled
 # See: https://github.com/SciML/SciMLSensitivity.jl/issues/[PR_NUMBER]
 #
-# res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
-#     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)));
+ res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
+     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)));
 
-res1 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
-    abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP()));
+#res1 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
+#    abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP()));
 
 # Tests comparing res1 and res2 are commented out until the ReverseDiffVJP issue is resolved
 # @test res1[1] ≈ res2[1]
