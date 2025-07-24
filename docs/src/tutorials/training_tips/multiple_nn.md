@@ -7,9 +7,9 @@ this kind of study.
 The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 
 ```@example
-using SciMLSensitivity
-using Lux, ComponentArrays, Optimization, OptimizationOptimJL,
-      OptimizationOptimisers, OrdinaryDiffEq, Random
+import SciMLSensitivity as SMS
+import Lux, ComponentArrays as CA, Optimization as OPT, OptimizationOptimJL as OOJ,
+      OptimizationOptimisers as OPO, OrdinaryDiffEq as ODE, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
@@ -24,8 +24,8 @@ end
 p_ = Float32[0.7, 0.8, 1 / 12.5, 0.5]
 u0 = [1.0f0; 1.0f0]
 tspan = (0.0f0, 10.0f0)
-prob = ODEProblem(fitz, u0, tspan, p_)
-sol = solve(prob, Tsit5(), saveat = 0.5)
+prob = ODE.ODEProblem(fitz, u0, tspan, p_)
+sol = ODE.solve(prob, ODE.Tsit5(), saveat = 0.5)
 
 # Ideal data
 X = Array(sol)
@@ -40,13 +40,13 @@ NN_2 = Lux.Chain(Lux.Dense(3, 16, tanh), Lux.Dense(16, 1))
 p2, st2 = Lux.setup(rng, NN_2)
 scaling_factor = 1.0f0
 
-p1 = ComponentArray(p1)
-p2 = ComponentArray(p2)
+p1 = CA.ComponentArray(p1)
+p2 = CA.ComponentArray(p2)
 
-p = ComponentArray{eltype(p1)}()
-p = ComponentArray(p; p1)
-p = ComponentArray(p; p2)
-p = ComponentArray(p; scaling_factor)
+p = CA.ComponentArray{eltype(p1)}()
+p = CA.ComponentArray(p; p1)
+p = CA.ComponentArray(p; p2)
+p = CA.ComponentArray(p; scaling_factor)
 
 function dudt_(u, p, t)
     v, w = u
@@ -54,13 +54,13 @@ function dudt_(u, p, t)
     z2 = NN_2([v, w, t], p.p2, st2)[1]
     [z1[1], p.scaling_factor * z2[1]]
 end
-prob_nn = ODEProblem(dudt_, u0, tspan, p)
-sol_nn = solve(prob_nn, Tsit5(), saveat = sol.t)
+prob_nn = ODE.ODEProblem(dudt_, u0, tspan, p)
+sol_nn = ODE.solve(prob_nn, ODE.Tsit5(), saveat = sol.t)
 
 function predict(θ)
-    Array(solve(prob_nn, Vern7(), p = θ, saveat = sol.t,
+    Array(ODE.solve(prob_nn, ODE.Vern7(), p = θ, saveat = sol.t,
         abstol = 1e-6, reltol = 1e-6,
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))))
+        sensealg = SMS.InterpolatingAdjoint(autojacvec = SMS.ReverseDiffVJP(true))))
 end
 
 # No regularisation right now
@@ -77,19 +77,19 @@ callback(θ, l) = begin
     end
     false
 end
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, p)
-res1_uode = Optimization.solve(optprob, OptimizationOptimisers.Adam(0.01),
+optprob = OPT.OptimizationProblem(optf, p)
+res1_uode = OPT.solve(optprob, OPO.Adam(0.01),
     callback = callback, maxiters = 500)
 
-optprob2 = Optimization.OptimizationProblem(optf, res1_uode.u)
-res2_uode = Optimization.solve(optprob2, OptimizationOptimJL.BFGS(), maxiters = 10000,
+optprob2 = OPT.OptimizationProblem(optf, res1_uode.u)
+res2_uode = OPT.solve(optprob2, OOJ.BFGS(), maxiters = 10000,
     callback = callback)
 ```
 
-The key is that `Optimization.solve` acts on a single parameter vector `p`.
+The key is that `OPT.solve` acts on a single parameter vector `p`.
 Thus what we do here is concatenate all the parameters into a single
 ComponentVector `p` and then train on this parameter
 vector. Whenever we need to evaluate the neural networks, we dereference the

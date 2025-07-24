@@ -37,7 +37,13 @@ Quick summary:
   - `ReverseDiffVJP(compile = true)` works well for small Lux neural networks
 
 ```julia
-using OrdinaryDiffEq, Lux, SciMLSensitivity, Zygote, BenchmarkTools, Random, ComponentArrays
+import OrdinaryDiffEq as ODE
+import Lux
+import SciMLSensitivity as SMS
+import Zygote
+import BenchmarkTools
+import Random
+import ComponentArrays as CA
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -49,24 +55,24 @@ function trueODEfunc(du, u, p, t)
     du .= ((u .^ 3)'true_A)'
 end
 
-prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
+prob_trueode = ODE.ODEProblem(trueODEfunc, u0, tspan)
+ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 
-dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
+dudt2 = Lux.Chain(x -> x .^ 3, Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
 Random.seed!(100)
 
-for sensealg in (InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
-    BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
-    BacksolveAdjoint(autojacvec = ZygoteVJP()),
-    BacksolveAdjoint(autojacvec = ReverseDiffVJP(false)),
-    BacksolveAdjoint(autojacvec = TrackerVJP()),
-    QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
-    TrackerAdjoint())
-    prob_neuralode = NeuralODE(dudt2, tspan, Tsit5(); saveat = tsteps,
+for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
+    SMS.InterpolatingAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
+    SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
+    SMS.BacksolveAdjoint(autojacvec = SMS.ZygoteVJP()),
+    SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP(false)),
+    SMS.BacksolveAdjoint(autojacvec = SMS.TrackerVJP()),
+    SMS.QuadratureAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
+    SMS.TrackerAdjoint())
+    prob_neuralode = SMS.NeuralODE(dudt2, tspan, ODE.Tsit5(); saveat = tsteps,
         sensealg = sensealg)
     ps, st = Lux.setup(Random.default_rng(), prob_neuralode)
-    ps = ComponentArray(ps)
+    ps = CA.ComponentArray(ps)
 
     loss_neuralode = function (u0, p, st)
         pred = Array(first(prob_neuralode(u0, p, st)))
@@ -74,7 +80,7 @@ for sensealg in (InterpolatingAdjoint(autojacvec = ZygoteVJP()),
         return loss
     end
 
-    t = @belapsed Zygote.gradient($loss_neuralode, $u0, $ps, $st)
+    t = BenchmarkTools.@belapsed Zygote.gradient($loss_neuralode, $u0, $ps, $st)
     println("$(sensealg) took $(t)s")
 end
 

@@ -21,10 +21,13 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 `1e-14` tolerances with 9th order integrators and a small machine-epsilon perturbation:
 
 ```@example chaosode
-using OrdinaryDiffEq, SciMLSensitivity, Zygote, Plots
+import OrdinaryDiffEq as ODE
+import SciMLSensitivity as SMS
+import Zygote
+import Plots
 
-using Random
-Random.seed!(1201242)
+import Random
+Random.seed!(1201254)
 
 function lorenz!(du, u, p, t)
     du[1] = 10 * (u[2] - u[1])
@@ -35,17 +38,17 @@ end
 p = [28.0]
 tspan = (0.0, 100.0)
 u0 = [1.0, 0.0, 0.0]
-prob = ODEProblem(lorenz!, u0, tspan, p)
-sol = solve(prob, Vern9(), abstol = 1e-14, reltol = 1e-14)
-sol2 = solve(prob, Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
-pl1 = plot(sol, idxs = (1, 2, 3), legend = true,
+prob = ODE.ODEProblem(lorenz!, u0, tspan, p)
+sol = ODE.solve(prob, ODE.Vern9(), abstol = 1e-14, reltol = 1e-14)
+sol2 = ODE.solve(prob, ODE.Vern9(), abstol = 1e-14 + eps(Float64), reltol = 1e-14)
+pl1 = Plots.plot(sol, idxs = (1, 2, 3), legend = true,
     label = "sol",
     labelfontsize = 20,
     lw = 2,
     xlabel = "x", ylabel = "y", zlabel = "z",
     margin = 4Plots.mm
 )
-plot!(pl1, sol2, vars = (1, 2, 3), label = "sol2",
+Plots.plot!(pl1, sol2, vars = (1, 2, 3), label = "sol2",
     xlims = (-25, 30), ylims = (-30, 30), zlims = (5, 49)
 )
 ```
@@ -90,7 +93,7 @@ The following `sensealg` choices exist
     An implementation of the [non-intrusive least squares shadowing (NILSS)](https://arxiv.org/abs/1611.00880)
     method. Here, `nseg` is the number of segments, `nstep` is the number of steps per
     segment, and `nus` is the number of unstable Lyapunov exponents.
-  - `NILSAS(nseg,nstep,M=nothing;rng =Xorshifts.Xoroshiro128Plus(rand(UInt64)), adjoint_sensealg=BacksolveAdjoint(autojacvec=ReverseDiffVJP()),g=nothing,ADKwargs...)`:
+  - `NILSAS(nseg,nstep,M=nothing;rng =Xorshifts.Xoroshiro128Plus(rand(UInt64)), adjoint_sensealg=SMS.BacksolveAdjoint(autojacvec=SMS.ReverseDiffVJP()),g=nothing,ADKwargs...)`:
     An implementation of the [non-intrusive least squares adjoint shadowing (NILSAS)](https://arxiv.org/abs/1801.08674)
     method. `nseg` is the number of segments. `nstep` is the number of steps per
     segment, `M >= nus + 1` has to be provided, where `nus` is the number of unstable
@@ -117,16 +120,16 @@ p = [10.0, 28.0, 8 / 3]
 tspan_init = (0.0, 30.0)
 tspan_attractor = (30.0, 50.0)
 u0 = rand(3)
-prob_init = ODEProblem(lorenz!, u0, tspan_init, p)
-sol_init = solve(prob_init, Tsit5())
-prob_attractor = ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+prob_init = ODE.ODEProblem(lorenz!, u0, tspan_init, p)
+sol_init = ODE.solve(prob_init, ODE.Tsit5())
+prob_attractor = ODE.ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
 
 g(u, p, t) = u[end]
 
 function G(p)
-    _prob = remake(prob_attractor, p = p)
-    _sol = solve(_prob, Tsit5(), abstol = 1e-6, reltol = 1e-6, saveat = 0.01,
-        sensealg = ForwardLSS(g = g))
+    _prob = ODE.remake(prob_attractor, p = p)
+    _sol = ODE.solve(_prob, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-6, saveat = 0.01,
+        sensealg = SMS.ForwardLSS(g = g))
     sum(getindex.(_sol.u, 3))
 end
 dp1 = Zygote.gradient(p -> G(p), p)
@@ -136,7 +139,7 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = solve(prob_attractor, Tsit5(), abstol = 1e-6, reltol = 1e-4)
-lss_problem = ForwardLSSProblem(sol_attractor, ForwardLSS(g = g))
-resfw = shadow_forward(lss_problem)
+sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4)
+lss_problem = SMS.ForwardLSSProblem(sol_attractor, SMS.ForwardLSS(g = g))
+resfw = SMS.shadow_forward(lss_problem)
 ```

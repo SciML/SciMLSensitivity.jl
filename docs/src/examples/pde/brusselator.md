@@ -68,7 +68,8 @@ in both the $ x $ and $ y $ directions, forming a tridiagonal structure in both 
 This provides us with an `ODEProblem` that can be solved to obtain training data. 
 
 ```@example bruss
-using ComponentArrays, Random, Plots, OrdinaryDiffEq
+import ComponentArrays as CA, Random, Plots, OrdinaryDiffEq as ODE
+import SciMLBase
 
 N_GRID = 16
 XYD = range(0f0, stop = 1f0, length = N_GRID)
@@ -112,7 +113,7 @@ function pde_truth!(du, u, p, t)
 end
 
 p_tuple = (A, B, alpha, dx)
-@time sol_truth = solve(ODEProblem(pde_truth!, u0, tspan, p_tuple), FBDF(), saveat=t_points)
+@time sol_truth = ODE.solve(ODE.ODEProblem(pde_truth!, u0, tspan, p_tuple), ODE.FBDF(), saveat=t_points)
 u_true = Array(sol_truth)
 ```
 
@@ -120,16 +121,16 @@ u_true = Array(sol_truth)
 
 We can now use this code for training our UDE, and generating time-series plots of the concentrations of species of U and V using the code:
 ```@example bruss
-using Plots, Statistics
+import Plots, Statistics
 
 # Compute average concentration at each timestep
-avg_U = [mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
-avg_V = [mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
+avg_U = [Statistics.mean(snapshot[:, :, 1]) for snapshot in sol_truth.u]
+avg_V = [Statistics.mean(snapshot[:, :, 2]) for snapshot in sol_truth.u]
 
 # Plot average concentrations over time
-plot(sol_truth.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
+Plots.plot(sol_truth.t, avg_U, label="Mean U", lw=2, xlabel="Time", ylabel="Concentration",
      title="Mean Concentration of U and V Over Time")
-plot!(sol_truth.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
+Plots.plot!(sol_truth.t, avg_V, label="Mean V", lw=2, linestyle=:dash)
 ```
 
 With the ground truth data generated and visualized, we are now ready to construct a Universal Differential Equation (UDE) by replacing the nonlinear term  $U^2V$ with a neural network. The next section outlines how we define this hybrid model and train it to recover the reaction dynamics from data.
@@ -153,12 +154,12 @@ Here, $\mathcal{N}_\theta(U, V)$ is trained to approximate the true interaction 
 First, we have to define and configure the neural network that has to be used for the training. The implementation for that is as follows:
 
 ```@example bruss
-using Lux, Random, Optimization, OptimizationOptimJL, SciMLSensitivity, Zygote
+import Lux, Random, Optimization as OPT, OptimizationOptimJL as OOJ, SciMLSensitivity as SMS, Zygote
 
-model = Lux.Chain(Dense(2 => 16, tanh), Dense(16 => 1))
+model = Lux.Chain(Lux.Dense(2 => 16, tanh), Lux.Dense(16 => 1))
 rng = Random.default_rng()
 ps_init, st = Lux.setup(rng, model)
-ps_init = ComponentArray(ps_init)
+ps_init = CA.ComponentArray(ps_init)
 ```
 
 We use a simple fully connected neural network with one hidden layer of 16 tanh-activated units to approximate the nonlinear interaction term.
@@ -190,7 +191,7 @@ function pde_ude!(du, u, ps_nn, t)
         du[i,j,2] = αdx*ΔV + A*U - val
     end
 end
-prob_ude_template = ODEProblem(pde_ude!, u0, tspan, ps_init)
+prob_ude_template = ODE.ODEProblem(pde_ude!, u0, tspan, ps_init)
 ```
 ## Loss Function and Optimization
 To train the neural network 
@@ -205,8 +206,8 @@ The loss function and initial evaluation are implemented as follows:
 ```@example bruss
 println("[Loss] Defining loss function...")
 function loss_fn(ps, _)
-    prob = remake(prob_ude_template, p=ps)
-    sol = solve(prob, FBDF(), saveat=t_points)
+    prob = ODE.remake(prob_ude_template, p=ps)
+    sol = ODE.solve(prob, ODE.FBDF(), saveat=t_points)
     # Failed solve 
     if !SciMLBase.successful_retcode(sol)
         return Inf32
@@ -221,9 +222,9 @@ Once the loss function is defined, we use the ADAM optimizer to train the neural
 
 ```@example bruss
 println("[Training] Starting optimization...")
-using OptimizationOptimisers
-optf = OptimizationFunction(loss_fn, AutoZygote())
-optprob = OptimizationProblem(optf, ps_init)
+import OptimizationOptimisers as OPO
+optf = OPT.OptimizationFunction(loss_fn, SMS.AutoZygote())
+optprob = OPT.OptimizationProblem(optf, ps_init)
 loss_history = Float32[]
 
 
@@ -237,7 +238,7 @@ end
 Finally to run everything:
 
 ```@example bruss
-res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=100)
+res = OPT.solve(optprob, OPO.Optimisers.Adam(0.01), callback=callback, maxiters=100)
 ```
 
 ```@example bruss
@@ -247,18 +248,18 @@ res.objective
 ```@example bruss
 println("[Plot] Final U/V comparison plots...")
 center = N_GRID ÷ 2
-sol_final = solve(remake(prob_ude_template, p=res.u), FBDF(), saveat=t_points)
+sol_final = ODE.solve(ODE.remake(prob_ude_template, p=res.u), ODE.FBDF(), saveat=t_points)
 pred = Array(sol_final)
 
-p1 = plot(t_points, u_true[center,center,1,:], lw=2, label="U True")
-plot!(p1, t_points, pred[center,center,1,:], lw=2, ls=:dash, label="U Pred")
-title!(p1, "Center U Concentration Over Time")
+p1 = Plots.plot(t_points, u_true[center,center,1,:], lw=2, label="U True")
+Plots.plot!(p1, t_points, pred[center,center,1,:], lw=2, ls=:dash, label="U Pred")
+Plots.title!(p1, "Center U Concentration Over Time")
 
-p2 = plot(t_points, u_true[center,center,2,:], lw=2, label="V True")
-plot!(p2, t_points, pred[center,center,2,:], lw=2, ls=:dash, label="V Pred")
-title!(p2, "Center V Concentration Over Time")
+p2 = Plots.plot(t_points, u_true[center,center,2,:], lw=2, label="V True")
+Plots.plot!(p2, t_points, pred[center,center,2,:], lw=2, ls=:dash, label="V Pred")
+Plots.title!(p2, "Center V Concentration Over Time")
 
-plot(p1, p2, layout=(1,2), size=(900,400))
+Plots.plot(p1, p2, layout=(1,2), size=(900,400))
 ```
 
 ## Results and Conclusion
