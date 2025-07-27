@@ -15,7 +15,7 @@ is a stochastic process. Each time we solve this equation we get a different
 solution, so we need a sensible data source.
 
 ```@example sde
-using StochasticDiffEq, SciMLSensitivity, Plots
+import StochasticDiffEq as SDE, SciMLSensitivity as SMS, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -33,9 +33,9 @@ function multiplicative_noise!(du, u, p, t)
 end
 p = [1.5, 1.0, 3.0, 1.0, 0.3, 0.3]
 
-prob = SDEProblem(lotka_volterra!, multiplicative_noise!, u0, tspan, p)
-sol = solve(prob, SOSRI())
-plot(sol)
+prob = SDE.SDEProblem(lotka_volterra!, multiplicative_noise!, u0, tspan, p)
+sol = SDE.solve(prob, SDE.SOSRI())
+Plots.plot(sol)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/88511873-97bc0a00-cfb3-11ea-8cf5-5930b6575d9d.png)
@@ -46,11 +46,11 @@ We can utilize this to get the seasonal means and variances. To simulate that
 scenario, we will generate 10,000 trajectories from the SDE to build our dataset:
 
 ```@example sde
-using Statistics
-ensembleprob = EnsembleProblem(prob)
-@time sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 10_000)
-truemean = mean(sol, dims = 3)[:, :]
-truevar = var(sol, dims = 3)[:, :]
+import Statistics
+ensembleprob = SDE.EnsembleProblem(prob)
+@time sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 10_000)
+truemean = Statistics.mean(sol, dims = 3)[:, :]
+truevar = Statistics.var(sol, dims = 3)[:, :]
 ```
 
 From here, we wish to utilize the method of moments to fit the SDE's parameters.
@@ -66,29 +66,29 @@ function predict(p)
         return arrsol
     end
     global currp = p
-    tmp_prob = remake(prob, p = p)
-    ensembleprob = EnsembleProblem(tmp_prob)
-    tmp_sol = solve(ensembleprob, SOSRI(), saveat = 0.1, trajectories = 1000)
+    tmp_prob = SDE.remake(prob, p = p)
+    ensembleprob = SDE.EnsembleProblem(tmp_prob)
+    tmp_sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 1000)
     global arrsol = Array(tmp_sol)
     return arrsol
 end
 
 function loss(p)
     pred = predict(p)
-    sum(abs2, truemean - mean(arrsol, dims = 3)) +
-    0.1sum(abs2, truevar - var(arrsol, dims = 3))
+    sum(abs2, truemean - Statistics.mean(arrsol, dims = 3)) +
+    0.1sum(abs2, truevar - Statistics.var(arrsol, dims = 3))
 end
 
 function cb2(st, l)
     @show st.u, l
     arrsol1 = predict(st.u)
-    means = mean(arrsol1, dims = 3)[:, :]
-    vars = var(arrsol1, dims = 3)[:, :]
-    p1 = plot(sol[1].t, means', lw = 5)
-    scatter!(p1, sol[1].t, truemean')
-    p2 = plot(sol[1].t, vars', lw = 5)
-    scatter!(p2, sol[1].t, truevar')
-    p = plot(p1, p2, layout = (2, 1))
+    means = Statistics.mean(arrsol1, dims = 3)[:, :]
+    vars = Statistics.var(arrsol1, dims = 3)[:, :]
+    p1 = Plots.plot(sol[1].t, means', lw = 5)
+    Plots.scatter!(p1, sol[1].t, truemean')
+    p2 = Plots.plot(sol[1].t, vars', lw = 5)
+    Plots.scatter!(p2, sol[1].t, truevar')
+    p = Plots.plot(p1, p2, layout = (2, 1))
     display(p)
     false
 end
@@ -97,12 +97,12 @@ end
 We can then use `Optimization.solve` to fit the SDE:
 
 ```@example sde
-using Optimization, Zygote, OptimizationOptimisers
+import Optimization as OPT, Zygote, OptimizationOptimisers as OPO
 pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, pinit)
-@time res = Optimization.solve(optprob, Adam(0.05), callback = cb2, maxiters = 100)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
+optprob = OPT.OptimizationProblem(optf, pinit)
+@time res = OPT.solve(optprob, OPO.Adam(0.05), callback = cb2, maxiters = 100)
 ```
 
 Notice that **both the parameters of the deterministic drift equations and the
@@ -132,7 +132,7 @@ In this example, we will find the parameters of the SDE that force the
 solution to be close to the constant 1.
 
 ```@example sde
-using StochasticDiffEq, Optimization, OptimizationOptimisers, Plots
+import StochasticDiffEq as SDE, Optimization as OPT, OptimizationOptimisers as OPO, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -149,11 +149,11 @@ end
 u0 = [1.0, 1.0]
 tspan = (0.0, 10.0)
 p = [2.2, 1.0, 2.0, 0.4]
-prob_sde = SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
+prob_sde = SDE.SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
 
 function predict_sde(p)
-    return Array(solve(prob_sde, SOSRI(), p = p,
-        sensealg = ForwardDiffSensitivity(), saveat = 0.1))
+    return Array(SDE.solve(prob_sde, SDE.SOSRI(), p = p,
+        sensealg = SMS.ForwardDiffSensitivity(), saveat = 0.1))
 end
 
 loss_sde(p) = sum(abs2, x - 1 for x in predict_sde(p))
@@ -168,8 +168,8 @@ like:
 ```@example sde
 callback = function (state, l)
     display(l)
-    remade_solution = solve(remake(prob_sde, p = state.u), SOSRI(), saveat = 0.1)
-    plt = plot(remade_solution, ylim = (0, 6))
+    remade_solution = SDE.solve(SDE.remake(prob_sde, p = state.u), SDE.SOSRI(), saveat = 0.1)
+    plt = Plots.plot(remade_solution, ylim = (0, 6))
     display(plt)
     return false
 end
@@ -178,11 +178,11 @@ end
 Let's optimize
 
 ```@example sde
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_sde(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, p)
-result_sde = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 100)
+optprob = OPT.OptimizationProblem(optf, p)
+result_sde = OPT.solve(optprob, OPO.Adam(0.1), callback = callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

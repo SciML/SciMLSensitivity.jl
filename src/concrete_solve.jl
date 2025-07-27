@@ -692,12 +692,12 @@ function DiffEqBase._concrete_solve_adjoint(
 
         du0 = reshape(du0, size(u0))
 
-        dp = p === nothing || p === DiffEqBase.NullParameters() ? nothing :
+        dp = p === nothing || p === SciMLBase.NullParameters() ? nothing :
              dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
 
         dp = Zygote.accum(dp, igs)
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
+        _, repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
                                !isscimlstructure(p)
             nothing, x -> (x,)
         else
@@ -1201,7 +1201,7 @@ function DiffEqBase._concrete_solve_adjoint(
             end
         end
 
-        _, repack_adjoint = if p === nothing || p === DiffEqBase.NullParameters() ||
+        _, repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
                                !isscimlstructure(p)
             nothing, x -> (x,)
         else
@@ -1258,6 +1258,88 @@ function DiffEqBase._concrete_solve_adjoint(
             kwargs_filtered...),
         u0,
         p)
+end
+
+function DiffEqBase._concrete_solve_adjoint(
+        prob::Union{SciMLBase.AbstractDiscreteProblem,
+            SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractDAEProblem,
+            SciMLBase.AbstractDDEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractSDDEProblem,
+            SciMLBase.AbstractRODEProblem
+        },
+        alg, sensealg::EnzymeAdjoint,
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; kwargs...)
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+    du0 = Enzyme.make_zero(u0)
+    dp = Enzyme.make_zero(p)
+    mode = sensealg.mode
+
+    f = (u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
+            sensealg = SensitivityADPassThrough(),
+            kwargs_filtered...)
+
+    splitmode = if mode isa Enzyme.ForwardMode
+        error("EnzymeAdjoint currently only allows mode=Reverse. File an issue if this is necessary.")
+    elseif mode === nothing || mode isa Enzyme.ReverseMode
+        Enzyme.set_runtime_activity(Enzyme.ReverseSplitWithPrimal)
+    end
+
+    forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(f)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
+    tape, result, shadow_result = forward(Enzyme.Const(f), Enzyme.Duplicated(copy(u0), du0), Enzyme.Duplicated(copy(p), dp))
+
+    function enzyme_sensitivity_backpass(Δ)
+        reverse(Const(f), Duplicated(u0, du0), Duplicated(p, dp), Δ, tape)
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+    sol, enzyme_sensitivity_backpass
+end
+
+# NOTE: This is needed to prevent a method ambiguity error
+function DiffEqBase._concrete_solve_adjoint(
+        prob::AbstractNonlinearProblem, alg, sensealg::EnzymeAdjoint,
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; kwargs...)
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+
+    du0 = make_zero(u0)
+    dp = make_zero(p)
+    mode = sensealg.mode
+
+    f = (u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
+            sensealg = SensitivityADPassThrough(),
+            kwargs_filtered...)
+
+    splitmode = if mode isa Forward
+        error("EnzymeAdjoint currently only allows mode=Reverse. File an issue if this is necessary.")
+    elseif mode === nothing || mode === Reverse
+        ReverseSplitWithPrimal
+    end
+
+    forward, reverse = autodiff_thunk(splitmode, Const{typeof(f)}, Duplicated, Duplicated{typeof(u0)}, Duplicated{typeof(p)})
+    tape, result, shadow_result = forward(Const(f), Duplicated(u0, du0), Duplicated(p, dp))
+
+    function enzyme_sensitivity_backpass(Δ)
+        reverse(Const(f), Duplicated(u0, du0), Duplicated(p, dp), Δ, tape)
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+    sol, enzyme_sensitivity_backpass
 end
 
 const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """

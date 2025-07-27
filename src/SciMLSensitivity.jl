@@ -16,7 +16,7 @@ using FunctionWrappersWrappers: FunctionWrappersWrappers
 using GPUArraysCore: GPUArraysCore
 using LinearSolve: LinearSolve
 using PreallocationTools: PreallocationTools, dualcache, get_tmp, DiffCache,
-                          FixedSizeDiffCache, LazyBufferCache
+                          LazyBufferCache
 using RandomNumbers: Xorshifts
 using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
                            AbstractVectorOfArray, ArrayPartition, DiffEqArray,
@@ -29,7 +29,7 @@ using QuadGK: quadgk
 using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  AbstractForwardSensitivityAlgorithm, AbstractAdjointSensitivityAlgorithm,
                  AbstractSecondOrderSensitivityAlgorithm,
-                 AbstractShadowingSensitivityAlgorithm, AbstractTimeseriesSolution,
+                 AbstractShadowingSensitivityAlgorithm,
                  AbstractNonlinearProblem, AbstractSensitivityAlgorithm,
                  AbstractDiffEqFunction, AbstractODEFunction, unwrapped_f, CallbackSet,
                  ContinuousCallback, DESolution, NonlinearFunction, NonlinearProblem,
@@ -37,7 +37,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
                  RODEFunction, RODEProblem, ReturnCode, SDEFunction,
                  SDEProblem, VectorContinuousCallback, deleteat!,
                  get_tmp_cache, has_adjoint, isinplace, reinit!, remake,
-                 solve, u_modified!, LinearAliasSpecifier, OverrideInit, CheckInit
+                 solve, u_modified!, LinearAliasSpecifier, OverrideInit
 
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit, default_nlsolve, has_autodiff
 
@@ -49,7 +49,7 @@ using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
-using SciMLBase.ConstructionBase
+using SciMLBase.ConstructionBase: setproperties
 
 # Std Libs
 using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
@@ -59,7 +59,6 @@ using Markdown: Markdown, @doc_str
 using Random: Random, rand!
 using Statistics: Statistics, mean
 
-using LinearAlgebra: diag
 
 abstract type SensitivityFunction end
 abstract type TransformedFunction end
@@ -95,8 +94,8 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
        shadow_forward, shadow_adjoint
 
 export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint, InterpolatingAdjoint,
-       TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint,
-       ForwardSensitivity, ForwardDiffSensitivity,
+       TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
+       EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
        ForwardLSS, AdjointLSS, NILSS, NILSAS

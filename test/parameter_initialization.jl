@@ -36,39 +36,44 @@ sol = solve(prob, Tsit5())
 tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
 
 @testset "Adjoint through Parameter Initialization" begin
-    @testset "Forward Mode" begin
-        gs_fwd, = Zygote.gradient(tunables) do tunables
-            new_prob = remake(prob; p = repack(tunables))
-            iprob = new_prob.f.initialization_data.initializeprob
-            isol = solve(iprob)
-            isol[w]
+    fn = function (tunables)
+        new_prob = remake(prob; p = repack(tunables))
+        initdata = new_prob.f.initialization_data
+        iprob = initdata.initializeprob
+        iprob = if initdata.is_update_oop === Val(true)
+            initdata.update_initializeprob!(iprob, new_prob)
+        else
+            initdata.update_initializeprob!(iprob, new_prob)
+            iprob
         end
+        isol = solve(iprob)
+        isol[w]
+    end
+    @testset "Forward Mode" begin
+        gs_fwd, = Zygote.gradient(fn, tunables)
         @test any(!iszero, gs_fwd)
     end
 
     @testset "Reverse Mode" begin
         sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ReverseDiffVJP())
-        gs_reverse, = Zygote.gradient(tunables) do tunables
-            new_prob = remake(prob; p = repack(tunables))
-            iprob = new_prob.f.initialization_data.initializeprob
-            isol = solve(iprob; sensealg)
-            isol[w]
-        end
+        gs_reverse, = Zygote.gradient(fn, tunables)
         @test any(!iszero, gs_reverse)
 
         sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP())
-        gs_zyg, = Zygote.gradient(tunables) do tunables
-            new_prob = remake(prob; p = repack(tunables))
-            iprob = new_prob.f.initialization_data.initializeprob
-            isol = solve(iprob; sensealg)
-            isol[w]
-        end
+        gs_zyg, = Zygote.gradient(fn, tunables)
         @test any(!iszero, gs_zyg)
 
         sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP())
         gs_obs, = Zygote.gradient(tunables) do tunables
             new_prob = remake(prob; p = repack(tunables))
-            iprob = new_prob.f.initialization_data.initializeprob
+            initdata = new_prob.f.initialization_data
+            iprob = initdata.initializeprob
+            iprob = if initdata.is_update_oop === Val(true)
+                initdata.update_initializeprob!(iprob, new_prob)
+            else
+                initdata.update_initializeprob!(iprob, new_prob)
+                iprob
+            end
             isol = solve(iprob; sensealg)
             obsfn = Zygote.ignore() do
                 SII.observed(isol.prob.f.sys, w).f_oop

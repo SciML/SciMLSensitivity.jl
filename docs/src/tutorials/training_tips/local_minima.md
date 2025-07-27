@@ -16,10 +16,10 @@ before, except with one small twist: we wish to find the neural ODE that fits
 on `(0,5.0)`. Naively, we use the same training strategy as before:
 
 ```@example iterativefit
-using SciMLSensitivity
-using OrdinaryDiffEq,
-      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
-using Lux, Plots, Random, Zygote
+import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE,
+      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
+import Lux, Plots, Random, Zygote
 
 rng = Random.default_rng()
 u0 = Float32[2.0; 0.0]
@@ -32,23 +32,23 @@ function trueODEfunc(du, u, p, t)
     du .= ((u .^ 3)'true_A)'
 end
 
-prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
+prob_trueode = ODE.ODEProblem(trueODEfunc, u0, tspan)
+ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 
 dudt2 = Lux.Chain(x -> x .^ 3,
     Lux.Dense(2, 16, tanh),
     Lux.Dense(16, 2))
 
 pinit, st = Lux.setup(rng, dudt2)
-pinit = ComponentArray(pinit)
+pinit = CA.ComponentArray(pinit)
 
 function neuralode_f(u, p, t)
     dudt2(u, p, st)[1]
 end
 
 function predict_neuralode(p)
-    prob = ODEProblem(neuralode_f, u0, tspan, p)
-    sol = solve(prob, Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
+    prob = ODE.ODEProblem(neuralode_f, u0, tspan, p)
+    sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
@@ -67,25 +67,25 @@ function callback(state, l; doplot = false)
     if doplot
         # plot current prediction against data
         pred = predict_neuralode(state.u)
-        plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-        scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
-        display(plot(plt))
+        plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
+        Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+        display(Plots.plot(plt))
     end
 
     return false
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, pinit)
-result_neuralode = Optimization.solve(optprob,
-    Adam(0.05), callback = callback,
+optprob = OPT.OptimizationProblem(optf, pinit)
+result_neuralode = OPT.solve(optprob,
+    OPO.Adam(0.05), callback = callback,
     maxiters = 300)
 
 pred = predict_neuralode(result_neuralode.u)
-plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
 ```
 
 However, we've now fallen into a trap of a local minimum. If the optimizer changes
@@ -99,22 +99,22 @@ Let's start by reducing the timespan to `(0,1.5)`:
 
 ```@example iterativefit
 function predict_neuralode(p)
-    prob = ODEProblem(neuralode_f, u0, (0.0f0, 1.5f0), p)
-    sol = solve(prob, Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
+    prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 1.5f0), p)
+    sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
-optprob = Optimization.OptimizationProblem(optf, pinit)
-result_neuralode2 = Optimization.solve(optprob,
-    Adam(0.05), callback = callback,
+optprob = OPT.OptimizationProblem(optf, pinit)
+result_neuralode2 = OPT.solve(optprob,
+    OPO.Adam(0.05), callback = callback,
     maxiters = 300)
 
 pred = predict_neuralode(result_neuralode2.u)
-plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
 ```
 
 This fits beautifully. Now let's grow the timespan and utilize the parameters
@@ -122,19 +122,19 @@ from our `(0,1.5)` fit as the initial condition to our next fit:
 
 ```@example iterativefit
 function predict_neuralode(p)
-    prob = ODEProblem(neuralode_f, u0, (0.0f0, 3.0f0), p)
-    sol = solve(prob, Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
+    prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 3.0f0), p)
+    sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
-optprob = Optimization.OptimizationProblem(optf, result_neuralode2.u)
-result_neuralode3 = Optimization.solve(optprob,
-    Adam(0.05), maxiters = 300,
+optprob = OPT.OptimizationProblem(optf, result_neuralode2.u)
+result_neuralode3 = OPT.solve(optprob,
+    OPO.Adam(0.05), maxiters = 300,
     callback = callback)
 
 pred = predict_neuralode(result_neuralode3.u)
-plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
 ```
 
 Once again, a great fit. Now we utilize these parameters as the initial condition
@@ -142,19 +142,19 @@ to the full fit:
 
 ```@example iterativefit
 function predict_neuralode(p)
-    prob = ODEProblem(neuralode_f, u0, (0.0f0, 5.0f0), p)
-    sol = solve(prob, Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
+    prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 5.0f0), p)
+    sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
-optprob = Optimization.OptimizationProblem(optf, result_neuralode3.u)
-result_neuralode4 = Optimization.solve(optprob,
-    Adam(0.01), maxiters = 500,
+optprob = OPT.OptimizationProblem(optf, result_neuralode3.u)
+result_neuralode4 = OPT.solve(optprob,
+    OPO.Adam(0.01), maxiters = 500,
     callback = callback)
 
 pred = predict_neuralode(result_neuralode4.u)
-plt = scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
-scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
+plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = "prediction")
 ```
 
 ## Training both the initial conditions and the parameters to start
@@ -168,10 +168,10 @@ time span and (0, 10), any longer and more iterations will be required. Alternat
 one could use a mix of (3) and (4), or breaking up the trajectory into chunks and just (4).
 
 ```@example resetic
-using SciMLSensitivity
-using OrdinaryDiffEq,
-      ComponentArrays, SciMLSensitivity, Optimization, OptimizationOptimisers
-using Lux, Plots, Random, Zygote
+import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE,
+      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
+import Lux, Plots, Random, Zygote
 
 #Starting example with tspan (0, 5)
 u0 = Float32[2.0; 0.0]
@@ -184,20 +184,20 @@ function trueODEfunc(du, u, p, t)
     du .= ((u .^ 3)'true_A)'
 end
 
-prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
+prob_trueode = ODE.ODEProblem(trueODEfunc, u0, tspan)
+ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 
-dudt2 = Chain(Dense(2, 16, tanh), Dense(16, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 16, tanh), Lux.Dense(16, 2))
 
 ps, st = Lux.setup(Random.default_rng(), dudt2)
-p = ComponentArray(ps)
+p = CA.ComponentArray(ps)
 dudt(u, p, t) = first(dudt2(u, p, st))
-prob = ODEProblem(dudt, u0, tspan)
+prob = ODE.ODEProblem(dudt, u0, tspan)
 
 function predict_n_ode(pu0)
     u0 = pu0.u0
     p = pu0.p
-    Array(solve(prob, Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
 end
 
 function loss_n_ode(pu0, _)
@@ -212,23 +212,23 @@ function callback(state, l; doplot = true) #callback function to observe trainin
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data
-        pl = plot(tsteps, ode_data[1, :], label = "data")
-        plot!(pl, tsteps, pred[1, :], label = "prediction")
-        display(plot(pl))
+        pl = Plots.plot(tsteps, ode_data[1, :], label = "data")
+        Plots.plot!(pl, tsteps, pred[1, :], label = "prediction")
+        display(Plots.plot(pl))
     end
     return false
 end
 
-p_init = ComponentArray(; u0 = u0, p = p)
+p_init = CA.ComponentArray(; u0 = u0, p = p)
 
 predict_n_ode(p_init)
 loss_n_ode(p_init, nothing)
 
-res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), p_init),
-    Adam(0.05); callback = callback, maxiters = 1000)
+res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
+    OPO.Adam(0.05); callback = callback, maxiters = 1000)
 
 function predict_n_ode2(p)
-    Array(solve(prob, Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
 end
 
 function loss_n_ode2(p, _)
@@ -243,39 +243,39 @@ function callback2(state, l; doplot = true) #callback function to observe traini
     display(sum(abs2, ode_data .- pred))
     if doplot
         # plot current prediction against data
-        pl = plot(tsteps, ode_data[1, :], label = "data")
-        plot!(pl, tsteps, pred[1, :], label = "prediction")
-        display(plot(pl))
+        pl = Plots.plot(tsteps, ode_data[1, :], label = "data")
+        Plots.plot!(pl, tsteps, pred[1, :], label = "prediction")
+        display(Plots.plot(pl))
     end
     return false
 end
 
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
-res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode2, AutoZygote()), p_init.p),
-    Adam(0.05); callback = callback2, maxiters = 1000)
+res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
+    OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 
 #Now use the same technique for a longer tspan (0, 10)
 datasize = 30
 tspan = (0.0f0, 10.0f0)
 tsteps = range(tspan[1], tspan[2], length = datasize)
 
-prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
+prob_trueode = ODE.ODEProblem(trueODEfunc, u0, tspan)
+ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 
-dudt2 = Chain(Dense(2, 16, tanh), Dense(16, 2))
+dudt2 = Lux.Chain(Lux.Dense(2, 16, tanh), Lux.Dense(16, 2))
 
 ps, st = Lux.setup(Random.default_rng(), dudt2)
-p = ComponentArray(ps)
+p = CA.ComponentArray(ps)
 dudt(u, p, t) = first(dudt2(u, p, st))
-prob = ODEProblem(dudt, u0, tspan)
+prob = ODE.ODEProblem(dudt, u0, tspan)
 
-p_init = ComponentArray(; u0 = u0, p = p)
-res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), p_init),
-    Adam(0.05); callback = callback, maxiters = 1000)
+p_init = CA.ComponentArray(; u0 = u0, p = p)
+res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
+    OPO.Adam(0.05); callback = callback, maxiters = 1000)
 
-res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode2, AutoZygote()), p_init.p),
-    Adam(0.05); callback = callback2, maxiters = 1000)
+res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
+    OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 ```
 
 And there we go, a set of robust strategies for fitting an equation that would otherwise

@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote
+      ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake
 using Test
 
 function fb(du, u, p, t)

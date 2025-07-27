@@ -19,7 +19,7 @@ If you have an in-place function, then you will want to isolate it to Enzyme. Th
 as follows for an arbitrary problem:
 
 ```julia
-using Enzyme
+import Enzyme
 u0 = prob.u0
 p = prob.p
 tmp2 = Enzyme.make_zero(p)

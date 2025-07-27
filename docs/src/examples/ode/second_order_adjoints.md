@@ -14,9 +14,15 @@ with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
 ```@example secondorderadjoints
-using SciMLSensitivity
-using Lux, ComponentArrays, Optimization, OptimizationOptimisers,
-      OrdinaryDiffEq, Plots, Random, OptimizationOptimJL
+import SciMLSensitivity as SMS
+import Lux
+import ComponentArrays as CA
+import Optimization as OPT
+import OptimizationOptimisers as OPO
+import OrdinaryDiffEq as ODE
+import Plots
+import Random
+import OptimizationOptimJL as OOJ
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -28,19 +34,19 @@ function trueODEfunc(du, u, p, t)
     du .= ((u .^ 3)'true_A)'
 end
 
-prob_trueode = ODEProblem(trueODEfunc, u0, tspan)
-ode_data = Array(solve(prob_trueode, Tsit5(), saveat = tsteps))
+prob_trueode = ODE.ODEProblem(trueODEfunc, u0, tspan)
+ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 
-dudt2 = Chain(x -> x .^ 3, Dense(2, 50, tanh), Dense(50, 2))
+dudt2 = Lux.Chain(x -> x .^ 3, Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
 ps, st = Lux.setup(Random.default_rng(), dudt2)
 function neuralodefunc(u, p, t)
     dudt2(u, p, st)[1]
 end
 function prob_neuralode(u0, p)
-    prob = ODEProblem(neuralodefunc, u0, tspan, p)
-    sol = solve(prob, Tsit5(), saveat = tsteps)
+    prob = ODE.ODEProblem(neuralodefunc, u0, tspan, p)
+    sol = ODE.solve(prob, ODE.Tsit5(), saveat = tsteps)
 end
-ps = ComponentArray(ps)
+ps = CA.ComponentArray(ps)
 
 function predict_neuralode(p)
     Array(prob_neuralode(u0, p))
@@ -67,25 +73,25 @@ callback = function (state, l; doplot = false)
 
     # plot current prediction against data
     pred = predict_neuralode(state.u)
-    plt = scatter(tsteps, ode_data[1, :], label = "data")
-    scatter!(plt, tsteps, pred[1, :], label = "prediction")
+    plt = Plots.scatter(tsteps, ode_data[1, :], label = "data")
+    Plots.scatter!(plt, tsteps, pred[1, :], label = "prediction")
     push!(list_plots, plt)
     if doplot
-        display(plot(plt))
+        display(Plots.plot(plt))
     end
 
     return l < 0.01
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
-optprob1 = Optimization.OptimizationProblem(optf, ps)
-pstart = Optimization.solve(
-    optprob1, Optimisers.Adam(0.01), callback = callback, maxiters = 100).u
+optprob1 = OPT.OptimizationProblem(optf, ps)
+pstart = OPT.solve(
+    optprob1, OPO.Adam(0.01), callback = callback, maxiters = 100).u
 
-optprob2 = Optimization.OptimizationProblem(optf, pstart)
-pmin = Optimization.solve(optprob2, NewtonTrustRegion(), callback = callback,
+optprob2 = OPT.OptimizationProblem(optf, pstart)
+pmin = OPT.solve(optprob2, OOJ.NewtonTrustRegion(), callback = callback,
     maxiters = 200)
 ```
 
