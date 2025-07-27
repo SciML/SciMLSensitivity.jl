@@ -573,12 +573,14 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
-    if sensealg::GaussAdjoint
+    if sensealg isa GaussAdjoint
 	cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
             integrand_values, allocate_vjp(tunables))
-    elseif sensealg::GaussKronrodAdjoint
+    elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
             integrand_values, allocate_vjp(tunables))
+    else
+        print("\n\nerror\n\n  typeof(sensealg) = ", typeof(sensealg),"\n\n")
     end
     rcb = nothing
     cb2 = nothing

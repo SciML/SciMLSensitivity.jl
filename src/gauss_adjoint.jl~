@@ -1,4 +1,4 @@
-abstract type AbstractGAdjoint # needs to be supertype of GaussAdjoint && GaussKronrodAdjoint !!!
+AbstractGAdjoint = Union{GaussAdjoint, GaussKronrodAdjoint} # needs to be supertype of GaussAdjoint && GaussKronrodAdjoint !!!
 
 
 mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
@@ -205,7 +205,7 @@ function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true
     λ, nothing, y, nothing, nothing
 end
 
-@noinline function ODEAdjointProblem(sol, sensealg<:AbstractGAdjoint, alg,
+@noinline function ODEAdjointProblem(sol, sensealg::AbstractGAdjoint, alg,
         GaussInt::GaussIntegrand, integrating_cb,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
@@ -546,7 +546,7 @@ function (S::GaussIntegrand)(t, λ)
     S(out, t, λ)
 end
 
-function _adjoint_sensitivities(sol, sensealg<:AbstractGAdjoint, alg; t = nothing,
+function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothing,
         dgdu_discrete = nothing,
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
@@ -573,12 +573,14 @@ function _adjoint_sensitivities(sol, sensealg<:AbstractGAdjoint, alg; t = nothin
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
-    if sensealg::GaussAdjoint
+    if typeof(sensealg) == GaussAdjoint
 	cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
             integrand_values, allocate_vjp(tunables))
-    elseif sensealg::GaussKronrodAdjoint
+    elseif typeof(sensealg) == GaussKronrodAdjoint
         cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
             integrand_values, allocate_vjp(tunables))
+    else
+        print("\n\nerror\n\n  typeof(sensealg) = ", typeof(sensealg))
     end
     rcb = nothing
     cb2 = nothing
