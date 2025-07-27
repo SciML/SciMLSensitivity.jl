@@ -11,7 +11,7 @@ function activate_gpu_env()
 end
 
 @time @testset "SciMLSensitivity" begin
-#=    if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
+    if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
         @testset "Core1" begin
             @time @safetestset "Forward Sensitivity" include("forward.jl")
             @time @safetestset "MTK Forward Mode" include("mtk.jl")
@@ -32,8 +32,7 @@ end
             @time @safetestset "SciMLStructures Interface" include("scimlstructures_interface.jl")
         end
     end
-=#
-#=
+
     if GROUP == "All" || GROUP == "Core2"
         @testset "Core 2" begin
             @time @safetestset "Literal Adjoint" include("literal_adjoint.jl")
@@ -44,15 +43,15 @@ end
             @time @safetestset "Autodiff Events" include("autodiff_events.jl")
         end
     end
-=#
+
     if GROUP == "All" || GROUP == "Core3" || GROUP == "Downstream"
         @testset "Core 3" begin
-            #@time @safetestset "Default DiffEq Alg" include("default_alg_diff.jl")
+            @time @safetestset "Default DiffEq Alg" include("default_alg_diff.jl")
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
-            #@time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
+            @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
         end
     end
-#=
+
     if GROUP == "All" || GROUP == "Core4"
         @testset "Core 4" begin
             @time @safetestset "Ensemble Tests" include("ensembles.jl")
@@ -166,5 +165,4 @@ end
             @time @safetestset "Mixed GPU/CPU" include("gpu/mixed_gpu_cpu_adjoint.jl")
         end
     end
-=#
 end

@@ -667,6 +667,7 @@ function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT, Nothing}, vjp) where 
     GaussKronrodAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
+# Supertype of gauss methods, internal
 AbstractGAdjoint = Union{GaussAdjoint, GaussKronrodAdjoint}
 
 """
