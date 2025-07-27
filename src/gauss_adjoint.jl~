@@ -1,5 +1,8 @@
-mutable struct GaussKronrodIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
-    G, SAlg <: GaussKronrodAdjoint}
+abstract type AbstractGAdjoint # needs to be supertype of GaussAdjoint && GaussKronrodAdjoint !!!
+
+
+mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
+    G, SAlg <: AbstractGAdjoint}
     sol::S
     p::pType
     y::uType
@@ -13,11 +16,11 @@ mutable struct GaussKronrodIntegrand{pType, uType, lType, rateType, S, PF, PJC, 
     dgdp::G
 end
 
-struct ODEGaussKronrodAdjointSensitivityFunction{C <: AdjointDiffCache,
-    Alg <: GaussKronrodAdjoint,
+struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
+    Alg <: AbstractGAdjoint,
     uType, SType, CPS, pType,
     fType,
-    GI <: GaussKronrodIntegrand,
+    GI <: GaussIntegrand,
     ICB} <: SensitivityFunction
     diffcache::C
     sensealg::Alg
@@ -27,11 +30,11 @@ struct ODEGaussKronrodAdjointSensitivityFunction{C <: AdjointDiffCache,
     checkpoint_sol::CPS
     prob::pType
     f::fType
-    GaussKronrodInt::GI
+    GaussInt::GI
     integrating_cb::ICB
 end
 
-mutable struct GaussKronrodCheckpointSolution{S, I, T, T2}
+mutable struct GaussCheckpointSolution{S, I, T, T2}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals
     cursor::Int # sol.prob.tspan = intervals[cursor]
@@ -39,8 +42,8 @@ mutable struct GaussKronrodCheckpointSolution{S, I, T, T2}
     tstops::T2 # for callbacks
 end
 
-function ODEGaussKronrodAdjointSensitivityFunction(
-        g, sensealg, gaussKronrodint, discrete, sol, dgdu, dgdp,
+function ODEGaussAdjointSensitivityFunction(
+        g, sensealg, gaussint, discrete, sol, dgdu, dgdp,
         f, alg,
         checkpoints, integrating_cb, tols, tstops = nothing;
         tspan = reverse(sol.prob.tspan))
@@ -56,11 +59,11 @@ function ODEGaussKronrodAdjointSensitivityFunction(
         if tstops === nothing
             cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                 sol.alg; dense = true, tols...)
-            gaussKronrodint.sol = cpsol
+            gaussint.sol = cpsol
         else
             if maximum(interval[1] .< tstops .< interval[2])
                 # callback might have changed p
-                _p = GaussKronrodreset_p(sol.prob.kwargs[:callback], interval)
+                _p = Gaussreset_p(sol.prob.kwargs[:callback], interval)
                 #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                 #    tstops = tstops,
                 #    p = _p, sol.alg; tols...)
@@ -68,34 +71,34 @@ function ODEGaussKronrodAdjointSensitivityFunction(
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     dense = true,
                     p = _p, sol.alg; tols...)
-                gaussKronrodint.sol = cpsol
+                gaussint.sol = cpsol
             else
                 #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                 #    tstops = tstops, sol.alg; tols...)
                 cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     sol.alg; dense = true, tols...)
-                gaussKronrodint.sol = cpsol
+                gaussint.sol = cpsol
             end
         end
-        GaussKronrodCheckpointSolution(cpsol, intervals, cursor, tols, tstops)
+        GaussCheckpointSolution(cpsol, intervals, cursor, tols, tstops)
     else
         nothing
     end
     diffcache, y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = true)
-    return ODEGaussKronrodAdjointSensitivityFunction(diffcache, sensealg, discrete,
-        y, sol, checkpoint_sol, sol.prob, f, gaussKronrodint, integrating_cb)
+    return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
+        y, sol, checkpoint_sol, sol.prob, f, gaussint, integrating_cb)
 end
 
-function GaussKronrodfindcursor(intervals, t)
+function Gaussfindcursor(intervals, t)
     # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
     lt(x, t) = <(x[2], t)
     return searchsortedfirst(intervals, t, lt = lt)
 end
 
 # u = λ'
-function (S::ODEGaussKronrodAdjointSensitivityFunction)(du, u, p, t)
+function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t)
     (; sol, checkpoint_sol, discrete, prob, f) = S
     #f = sol.prob.f
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
@@ -107,7 +110,7 @@ function (S::ODEGaussKronrodAdjointSensitivityFunction)(du, u, p, t)
     return nothing
 end
 
-function (S::ODEGaussKronrodAdjointSensitivityFunction)(du, u, p, t, W)
+function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
     (; sol, checkpoint_sol, discrete, prob, f) = S
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
@@ -120,7 +123,7 @@ function (S::ODEGaussKronrodAdjointSensitivityFunction)(du, u, p, t, W)
     return nothing
 end
 
-function (S::ODEGaussKronrodAdjointSensitivityFunction)(u, p, t)
+function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
     (; sol, checkpoint_sol, discrete, prob) = S
     f = sol.prob.f
 
@@ -135,8 +138,8 @@ function (S::ODEGaussKronrodAdjointSensitivityFunction)(u, p, t)
     return dλ
 end
 
-function split_states(du, u, t, S::ODEGaussKronrodAdjointSensitivityFunction; update = true)
-    (; sol, y, checkpoint_sol, discrete, prob, f, GaussKronrodInt) = S
+function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
+    (; sol, y, checkpoint_sol, discrete, prob, f, GaussInt) = S
     if update
         if checkpoint_sol === nothing
             if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -148,7 +151,7 @@ function split_states(du, u, t, S::ODEGaussKronrodAdjointSensitivityFunction; up
             intervals = checkpoint_sol.intervals
             interval = intervals[checkpoint_sol.cursor]
             if !(interval[1] <= t <= interval[2])
-                cursor′ = GaussKronrodfindcursor(intervals, t)
+                cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -180,7 +183,7 @@ function split_states(du, u, t, S::ODEGaussKronrodAdjointSensitivityFunction; up
                 end
                 checkpoint_sol.cpsol = cpsol′
                 checkpoint_sol.cursor = cursor′
-                GaussKronrodInt.sol = cpsol′
+                GaussInt.sol = cpsol′
             end
             checkpoint_sol.cpsol(y, t, continuity = :right)
         end
@@ -190,7 +193,7 @@ function split_states(du, u, t, S::ODEGaussKronrodAdjointSensitivityFunction; up
     λ, nothing, y, dλ, nothing, nothing
 end
 
-function split_states(u, t, S::ODEGaussKronrodAdjointSensitivityFunction; update = true)
+function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
     (; y, sol) = S
 
     if update
@@ -202,8 +205,8 @@ function split_states(u, t, S::ODEGaussKronrodAdjointSensitivityFunction; update
     λ, nothing, y, nothing, nothing
 end
 
-@noinline function ODEAdjointProblem(sol, sensealg::GaussKronrodAdjoint, alg,
-        GaussKronrodInt::GaussKronrodIntegrand, integrating_cb,
+@noinline function ODEAdjointProblem(sol, sensealg<:AbstractGAdjoint, alg,
+        GaussInt::GaussIntegrand, integrating_cb,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -275,7 +278,7 @@ end
     else
         λ = zero(u0)
     end
-    sense = ODEGaussKronrodAdjointSensitivityFunction(g, sensealg, GaussKronrodInt, discrete, sol,
+    sense = ODEGaussAdjointSensitivityFunction(g, sensealg, GaussInt, discrete, sol,
         dgdu_continuous, dgdp_continuous, f, alg, checkpoints, integrating_cb,
         (reltol = reltol, abstol = abstol), tstops, tspan = tspan)
 
@@ -305,7 +308,7 @@ end
     end
 end
 
-function GaussKronrodreset_p(CBS, interval)
+function Gaussreset_p(CBS, interval)
     # check which events are close to tspan[1]
     if !isempty(CBS.discrete_callbacks)
         ts = map(CBS.discrete_callbacks) do cb
@@ -367,7 +370,7 @@ function GaussKronrodreset_p(CBS, interval)
     return p
 end
 
-function GaussKronrodIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
+function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
     (; f, tspan) = prob
     u0 = state_values(prob)
@@ -435,12 +438,12 @@ function GaussKronrodIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     cpsol = sol
 
-    GaussKronrodIntegrand(cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
+    GaussIntegrand(cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
-function vec_pjac!(out, λ, y, t, S::GaussKronrodIntegrand)
+function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     f = sol.prob.f
     f = unwrapped_f(f)
@@ -516,13 +519,13 @@ function vec_pjac!(out, λ, y, t, S::GaussKronrodIntegrand)
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
         out .= p_grad
     else
-        error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussKronrodAdjoint")
+        error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
     # TODO: Add tracker?
     return out
 end
 
-function (S::GaussKronrodIntegrand)(out, t, λ)
+function (S::GaussIntegrand)(out, t, λ)
     (; y, pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
     if ArrayInterface.ismutable(y)
         sol(y, t)
@@ -538,12 +541,12 @@ function (S::GaussKronrodIntegrand)(out, t, λ)
     out
 end
 
-function (S::GaussKronrodIntegrand)(t, λ)
+function (S::GaussIntegrand)(t, λ)
     out = allocate_zeros(S.p)
     S(out, t, λ)
 end
 
-function _adjoint_sensitivities(sol, sensealg::GaussKronrodAdjoint, alg; t = nothing,
+function _adjoint_sensitivities(sol, sensealg<:AbstractGAdjoint, alg; t = nothing,
         dgdu_discrete = nothing,
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
@@ -568,10 +571,15 @@ function _adjoint_sensitivities(sol, sensealg::GaussKronrodAdjoint, alg; t = not
     else
         throw(SciMLStructuresCompatibilityError())
     end
-    integrand = GaussKronrodIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
+    integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
-    cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u),
-        integrand_values, allocate_vjp(tunables))
+    if sensealg::GaussAdjoint
+	cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
+            integrand_values, allocate_vjp(tunables))
+    elseif sensealg::GaussKronrodAdjoint
+        cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
+            integrand_values, allocate_vjp(tunables))
+    end
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
@@ -614,3 +622,6 @@ function _adjoint_sensitivities(sol, sensealg::GaussKronrodAdjoint, alg; t = not
 
     return state_values(adj_sol)[end], __maybe_adjoint(res)
 end
+
+__maybe_adjoint(x::AbstractArray) = x'
+__maybe_adjoint(x) = x
