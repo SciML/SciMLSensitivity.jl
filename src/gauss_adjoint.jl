@@ -1,6 +1,3 @@
-AbstractGAdjoint = Union{GaussAdjoint, GaussKronrodAdjoint} # needs to be supertype of GaussAdjoint && GaussKronrodAdjoint !!!
-
-
 mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
     G, SAlg <: AbstractGAdjoint}
     sol::S
@@ -579,8 +576,6 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
             integrand_values, allocate_vjp(tunables))
-    else
-        print("\n\nerror\n\n  typeof(sensealg) = ", typeof(sensealg),"\n\n")
     end
     rcb = nothing
     cb2 = nothing

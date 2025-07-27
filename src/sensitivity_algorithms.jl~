@@ -1386,8 +1386,6 @@ end
 @inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
 @inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
-@inline ischeckpointing(alg::GaussKronrodAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::GaussKronrodAdjoint, sol) = alg.checkpointing || !sol.dense
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
 @inline isnoisemixing(alg::AbstractSensitivityAlgorithm) = false
