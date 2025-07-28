@@ -779,7 +779,6 @@ _, easy_res42k = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussKronrodAdjoint(autojacvec = false))
-println("43k")
 _, easy_res43k = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussKronrodAdjoint())
