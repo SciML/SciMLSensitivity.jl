@@ -767,7 +767,6 @@ _, easy_res44 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false))
 
-println("40k")
 _, easy_res40k = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
     abstol = 1e-14,
     reltol = 1e-14,
