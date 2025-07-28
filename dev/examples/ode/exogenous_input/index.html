@@ -9,9 +9,15 @@ end</code></pre><p>so that <code>I(t)</code> is an exogenous input signal into <
     du[2] = u[1]
 end
 
-_f(du, u, p, t) = f(du, u, p, t, x -&gt; x^2)</code></pre><p>which encloses an extra argument into <code>f</code> so that <code>_f</code> is now the interface-compliant differential equation definition.</p><p>Note that you can also learn what the exogenous equation is from data. For an example on how to do this, you can use the <a href="../../optimal_control/optimal_control/#optcontrol">Optimal Control Example</a>, which shows how to parameterize a <code>u(t)</code> by a universal function and learn that from data.</p><h2 id="Example-of-a-Neural-ODE-with-Exogenous-Input"><a class="docs-heading-anchor" href="#Example-of-a-Neural-ODE-with-Exogenous-Input">Example of a Neural ODE with Exogenous Input</a><a id="Example-of-a-Neural-ODE-with-Exogenous-Input-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-a-Neural-ODE-with-Exogenous-Input" title="Permalink"></a></h2><p>In the following example, a discrete exogenous input signal <code>ex</code> is defined and used as an input into the neural network of a neural ODE system.</p><pre><code class="language-julia hljs">using SciMLSensitivity
-using OrdinaryDiffEq, Lux, ComponentArrays, Optimization,
-      OptimizationPolyalgorithms, OptimizationOptimisers, Plots, Random
+_f(du, u, p, t) = f(du, u, p, t, x -&gt; x^2)</code></pre><p>which encloses an extra argument into <code>f</code> so that <code>_f</code> is now the interface-compliant differential equation definition.</p><p>Note that you can also learn what the exogenous equation is from data. For an example on how to do this, you can use the <a href="../../optimal_control/optimal_control/#optcontrol">Optimal Control Example</a>, which shows how to parameterize a <code>u(t)</code> by a universal function and learn that from data.</p><h2 id="Example-of-a-Neural-ODE-with-Exogenous-Input"><a class="docs-heading-anchor" href="#Example-of-a-Neural-ODE-with-Exogenous-Input">Example of a Neural ODE with Exogenous Input</a><a id="Example-of-a-Neural-ODE-with-Exogenous-Input-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-a-Neural-ODE-with-Exogenous-Input" title="Permalink"></a></h2><p>In the following example, a discrete exogenous input signal <code>ex</code> is defined and used as an input into the neural network of a neural ODE system.</p><pre><code class="language-julia hljs">import SciMLSensitivity as SMS
+import OrdinaryDiffEq as ODE
+import Lux
+import ComponentArrays as CA
+import Optimization as OPT
+import OptimizationPolyalgorithms as OPA
+import OptimizationOptimisers as OPO
+import Plots
+import Random
 
 rng = Random.default_rng()
 tspan = (0.1, 10.0)
@@ -29,7 +35,7 @@ function hammerstein_system(u)
 end
 
 y = hammerstein_system(ex)
-plot(collect(tsteps), y, ticks = :native)
+Plots.plot(collect(tsteps), y, ticks = :native)
 
 nn_model = Lux.Chain(Lux.Dense(2, 8, tanh), Lux.Dense(8, 1))
 p_model, st = Lux.setup(rng, nn_model)
@@ -43,11 +49,11 @@ function dudt(u, p, t)
     return out
 end
 
-prob = ODEProblem(dudt, u0, tspan, nothing)
+prob = ODE.ODEProblem(dudt, u0, tspan, nothing)
 
 function predict_neuralode(p)
-    _prob = remake(prob, p = p)
-    Array(solve(_prob, Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-6))
+    _prob = ODE.remake(prob, p = p)
+    Array(ODE.solve(_prob, ODE.Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-6))
 end
 
 function loss(p)
@@ -56,13 +62,13 @@ function loss(p)
     return sum(abs2.(y[1:N] .- sol&#39;)) / N
 end
 
-adtype = Optimization.AutoZygote()
-optf = Optimization.OptimizationFunction((x, p) -&gt; loss(x), adtype)
-optprob = Optimization.OptimizationProblem(optf, ComponentArray{Float64}(p_model))
+adtype = OPT.AutoZygote()
+optf = OPT.OptimizationFunction((x, p) -&gt; loss(x), adtype)
+optprob = OPT.OptimizationProblem(optf, CA.ComponentArray{Float64}(p_model))
 
-res0 = Optimization.solve(optprob, PolyOpt(), maxiters = 100)
+res0 = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 100)
 
 sol = predict_neuralode(res0.u)
-plot(tsteps, sol&#39;)
+Plots.plot(tsteps, sol&#39;)
 N = length(sol)
-scatter!(tsteps, y[1:N])</code></pre><img src="1b3ccb71.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../../faq/">« Frequently Asked Questions (FAQ)</a><a class="docs-footer-nextpage" href="../prediction_error_method/">Prediction error method (PEM) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.12.0 on <span class="colophon-date" title="Sunday 8 June 2025 03:52">Sunday 8 June 2025</span>. Using Julia version 1.10.9.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Plots.scatter!(tsteps, y[1:N])</code></pre><img src="36a47b5b.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../../faq/">« Frequently Asked Questions (FAQ)</a><a class="docs-footer-nextpage" href="../prediction_error_method/">Prediction error method (PEM) »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 28 July 2025 15:34">Monday 28 July 2025</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
