@@ -1,5 +1,5 @@
 mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
-    G, SAlg <: GaussAdjoint}
+    G, SAlg <: AbstractGAdjoint}
     sol::S
     p::pType
     y::uType
@@ -14,7 +14,7 @@ mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DG
 end
 
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
-    Alg <: GaussAdjoint,
+    Alg <: AbstractGAdjoint,
     uType, SType, CPS, pType,
     fType,
     GI <: GaussIntegrand,
@@ -202,7 +202,7 @@ function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true
     λ, nothing, y, nothing, nothing
 end
 
-@noinline function ODEAdjointProblem(sol, sensealg::GaussAdjoint, alg,
+@noinline function ODEAdjointProblem(sol, sensealg::AbstractGAdjoint, alg,
         GaussInt::GaussIntegrand, integrating_cb,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
@@ -543,7 +543,7 @@ function (S::GaussIntegrand)(t, λ)
     S(out, t, λ)
 end
 
-function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
+function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothing,
         dgdu_discrete = nothing,
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
@@ -570,8 +570,13 @@ function _adjoint_sensitivities(sol, sensealg::GaussAdjoint, alg; t = nothing,
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
-    cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
-        integrand_values, allocate_vjp(tunables))
+    if sensealg isa GaussAdjoint
+	cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
+            integrand_values, allocate_vjp(tunables))
+    elseif sensealg isa GaussKronrodAdjoint
+        cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
+            integrand_values, allocate_vjp(tunables))
+    end
     rcb = nothing
     cb2 = nothing
     adj_prob = nothing
