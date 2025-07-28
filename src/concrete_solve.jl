@@ -375,8 +375,10 @@ function DiffEqBase._concrete_solve_adjoint(
         save_idxs = nothing,
         initializealg_default = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
         kwargs...)
-    if !(sensealg isa GaussAdjoint) &&
-       !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    # Check parameter compatibility for adjoint methods
+    if !((p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+         (sensealg isa Union{GaussAdjoint, BacksolveAdjoint, InterpolatingAdjoint, QuadratureAdjoint} && isscimlstructure(p)) ||
+         (sensealg isa Union{GaussAdjoint, QuadratureAdjoint} && isfunctor(p))) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end

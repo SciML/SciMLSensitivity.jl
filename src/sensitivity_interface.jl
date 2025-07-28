@@ -423,7 +423,8 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         callback = nothing,
         kwargs...)
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
-    if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+    if !((mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+         isscimlstructure(mtkp) || isfunctor(mtkp)) ||
        (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
