@@ -287,8 +287,12 @@ end
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = Functors.functor(p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
