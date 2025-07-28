@@ -289,8 +289,6 @@ end
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif isfunctor(p)
-        tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
     end
