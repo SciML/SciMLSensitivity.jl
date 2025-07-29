@@ -164,7 +164,8 @@ NG = DNP.NoiseGrid(myparameters.ts, W1)
 p_all = CA.ComponentArray(p_nn = p_nn,
     myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 # define SDE problem
-prob = SDE.SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
+prob = SDE.SDEProblem{true}(
+    qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
     p_all,
     callback = callback, noise = NG)
 
@@ -175,10 +176,12 @@ function g(u, p, t)
     cdR = @view u[2, :, :]
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
-    p[1] * Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
+    p[1] *
+    Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
+function loss(p_nn; alg = SDE.EM(),
+        sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
     pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
@@ -502,7 +505,8 @@ NG = DNP.NoiseGrid(myparameters.ts, W1)
 p_all = CA.ComponentArray(p_nn = p_nn,
     myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
-prob = SDE.SDEProblem{true}(qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
+prob = SDE.SDEProblem{true}(
+    qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
     p_all,
     callback = callback, noise = NG)
 ```
@@ -526,10 +530,12 @@ function g(u, p, t)
     cdR = @view u[2, :, :]
     ceI = @view u[3, :, :]
     cdI = @view u[4, :, :]
-    p[1] * Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
+    p[1] *
+    Statistics.mean((cdR .^ 2 + cdI .^ 2) ./ (ceR .^ 2 + cdR .^ 2 + ceI .^ 2 + cdI .^ 2))
 end
 
-function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
+function loss(p_nn; alg = SDE.EM(),
+        sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
     pars = CA.ComponentArray(p_nn = p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax,
             myparameters.κ])

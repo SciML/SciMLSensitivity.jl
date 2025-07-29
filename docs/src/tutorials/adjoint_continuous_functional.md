@@ -85,7 +85,8 @@ To get the adjoint sensitivities, we call:
 ```@example continuousadjoint
 prob = ODE.ODEProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.DP8())
-res = SMS.adjoint_sensitivities(sol, ODE.Vern9(), dgdu_continuous = dg, g = g, abstol = 1e-8,
+res = SMS.adjoint_sensitivities(
+    sol, ODE.Vern9(), dgdu_continuous = dg, g = g, abstol = 1e-8,
     reltol = 1e-8)
 ```
 
@@ -99,7 +100,8 @@ import Calculus
 function G(p)
     tmp_prob = ODE.remake(prob, p = p)
     sol = ODE.solve(tmp_prob, ODE.Vern9(), abstol = 1e-14, reltol = 1e-14)
-    res, err = QuadGK.quadgk((t) -> sum(sol(t) .^ 2) ./ 2, 0.0, 10.0, atol = 1e-14, rtol = 1e-10)
+    res,
+    err = QuadGK.quadgk((t) -> sum(sol(t) .^ 2) ./ 2, 0.0, 10.0, atol = 1e-14, rtol = 1e-10)
     res
 end
 res2 = FD.gradient(G, [1.5, 1.0, 3.0])

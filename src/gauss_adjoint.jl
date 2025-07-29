@@ -81,7 +81,8 @@ function ODEGaussAdjointSensitivityFunction(
     else
         nothing
     end
-    diffcache, y = adjointdiffcache(
+    diffcache,
+    y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = true)
     return ODEGaussAdjointSensitivityFunction(diffcache, sensealg, discrete,
@@ -281,7 +282,8 @@ end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
-    cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+    cb, rcb,
+    _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated, no_start)
 
@@ -339,7 +341,8 @@ function Gaussreset_p(CBS, interval)
         # check if continuous or discrete callback was applied first if both occur in interval
         if isempty(CBS.discrete_callbacks)
             if ts2[perm2][3] == 0
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(
+                    ts2, 1)[perm2]])
             else
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
                     ts2,
@@ -428,7 +431,8 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper((du,u,p,t)->unwrappedf(du,u,repack(p),t), tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(
+            (du, u, p, t)->unwrappedf(du, u, repack(p), t), tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
@@ -493,10 +497,10 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         vtmp4 .= λ
         Enzyme.remake_zero!(tmp3)
         Enzyme.remake_zero!(out)
-        
+
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
-            
+
             Enzyme.autodiff(
                 Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
@@ -571,10 +575,10 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     if sensealg isa GaussAdjoint
-	cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
+        cb = IntegratingSumCallback((out, u, t, integrator) -> integrand(out, t, u),
             integrand_values, allocate_vjp(tunables))
     elseif sensealg isa GaussKronrodAdjoint
-        cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u), 
+        cb = IntegratingGKSumCallback((out, u, t, integrator) -> integrand(out, t, u),
             integrand_values, allocate_vjp(tunables))
     end
     rcb = nothing
@@ -582,7 +586,8 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
     adj_prob = nothing
 
     if sol.prob isa ODEProblem
-        adj_prob, cb2, rcb = ODEAdjointProblem(
+        adj_prob, cb2,
+        rcb = ODEAdjointProblem(
             sol, sensealg, alg, integrand, cb,
             t, dgdu_discrete,
             dgdp_discrete,
@@ -615,7 +620,7 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
             res .+= out
             iλ .= zero(eltype(iλ))
         end
-    end 
+    end
 
     return state_values(adj_sol)[end], __maybe_adjoint(res)
 end

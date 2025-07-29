@@ -281,7 +281,8 @@ end
 
 function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     #TODO determine a good dtsave (ΔT in paper, see Sec.4.2)
-    (; nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y, dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0) = prob
+    (; nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y,
+        dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0) = prob
     (; p, f) = forward_prob
     (; S, sensealg) = f
     (; nseg, nstep) = nilss
@@ -560,7 +561,7 @@ end
 function shadow_forward(prob::NILSSProblem, sensealg::NILSS, alg)
     (; nseg, nstep) = sensealg
     (; res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
-    gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ) = prob
+        gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ) = prob
     (; numindvar, numparams) = forward_prob.f.S
 
     # reset dg pointer

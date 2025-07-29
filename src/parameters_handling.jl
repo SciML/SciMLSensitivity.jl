@@ -15,7 +15,7 @@ end
 recursive_copyto!(y::T, x::T) where {T} = fmap(recursive_copyto!, y, x)
 recursive_copyto!(y, ::Nothing) = y
 recursive_copyto!(::Nothing, ::Nothing) = nothing
-function recursive_copyto!(y::T, x::NamedTuple) where T
+function recursive_copyto!(y::T, x::NamedTuple) where {T}
     fmap(recursive_copyto!, y, x)
 end
 
@@ -64,7 +64,9 @@ recursive_add!(::Nothing, ::Nothing) = nothing
 
 `similar(λ, size(x))` for generic `x`. This is used to handle non-array parameters!
 """
-allocate_vjp(λ::AbstractArray{T}, x::AbstractArray) where T = fill!(similar(λ, size(x)), zero(T))
+function allocate_vjp(λ::AbstractArray{T}, x::AbstractArray) where {T}
+    fill!(similar(λ, size(x)), zero(T))
+end
 allocate_vjp(λ::AbstractArray, x::Tuple) = allocate_vjp.((λ,), x)
 function allocate_vjp(λ::AbstractArray, x::NamedTuple{F}) where {F}
     NamedTuple{F}(allocate_vjp.((λ,), values(x)))

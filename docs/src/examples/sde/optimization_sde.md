@@ -168,7 +168,8 @@ like:
 ```@example sde
 callback = function (state, l)
     display(l)
-    remade_solution = SDE.solve(SDE.remake(prob_sde, p = state.u), SDE.SOSRI(), saveat = 0.1)
+    remade_solution = SDE.solve(
+        SDE.remake(prob_sde, p = state.u), SDE.SOSRI(), saveat = 0.1)
     plt = Plots.plot(remade_solution, ylim = (0, 6))
     display(plt)
     return false

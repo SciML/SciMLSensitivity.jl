@@ -86,7 +86,8 @@ function ODEInterpolatingAdjointSensitivityFunction(g, sensealg, discrete, sol, 
         nothing
     end
 
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+    diffcache,
+    y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
 
     return ODEInterpolatingAdjointSensitivityFunction(diffcache, sensealg,
@@ -352,7 +353,8 @@ end
         tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing)
-    cb, rcb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+    cb, rcb,
+    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated, no_start)
@@ -480,7 +482,8 @@ end
         noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, _, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+    cb, _,
+    duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
         dgdp_discrete, λ, t,
         tspan[2], callback, init_cb,
         terminated)
@@ -606,7 +609,8 @@ end
         tstops, tspan = tspan)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, _, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+    cb, _,
+    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated)
@@ -683,7 +687,8 @@ function reset_p(CBS, interval)
         # check if continuous or discrete callback was applied first if both occur in interval
         if isempty(CBS.discrete_callbacks)
             if ts2[perm2][3] == 0
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
+                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(
+                    ts2, 1)[perm2]])
             else
                 p = deepcopy(CBS.continuous_callbacks[perm2].affect_neg!.pleft[getindex.(
                     ts2,

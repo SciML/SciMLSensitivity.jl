@@ -45,7 +45,8 @@ callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
         display(Plots.plot(
-            ODE.solve(ODE.remake(prob_dde, p = state.u), DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
+            ODE.solve(ODE.remake(prob_dde, p = state.u),
+                DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
             ylim = (0, 6)))
     return false
 end
@@ -67,7 +68,8 @@ callback = function (state, l; doplot = false)
     display(loss_dde(state.u))
     doplot &&
         display(Plots.plot(
-            ODE.solve(ODE.remake(prob_dde, p = state.u), DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
+            ODE.solve(ODE.remake(prob_dde, p = state.u),
+                DDE.MethodOfSteps(ODE.Tsit5()), saveat = 0.1),
             ylim = (0, 6)))
     return false
 end

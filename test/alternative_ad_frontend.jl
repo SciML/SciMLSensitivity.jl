@@ -3,7 +3,9 @@ using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracke
 using Test
 Enzyme.API.typeWarning!(false)
 
-mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+function mooncake_gradient(f, x)
+    Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+end
 
 odef(du, u, p, t) = du .= u .* p
 const prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
@@ -61,8 +63,10 @@ dup = Zygote.gradient(senseloss(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test mooncake_gradient(senseloss(InterpolatingAdjoint()), u0p) ≈ dup
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(ReverseDiffAdjoint()), u0p)
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss(TrackerAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss(ReverseDiffAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss(TrackerAdjoint()), u0p)
 @test mooncake_gradient(senseloss(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken mooncake_gradient(senseloss(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
@@ -101,8 +105,10 @@ dup = Zygote.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test mooncake_gradient(senseloss2(InterpolatingAdjoint()), u0p) ≈ dup
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss2(ReverseDiffAdjoint()), u0p)
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss2(TrackerAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss2(ReverseDiffAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss2(TrackerAdjoint()), u0p)
 @test mooncake_gradient(senseloss2(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken mooncake_gradient(senseloss2(ForwardSensitivity()), u0p) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
@@ -139,8 +145,10 @@ dup = Zygote.gradient(senseloss3(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardSensitivity()), u0p)) ≈ dup
 
 @test mooncake_gradient(senseloss3(InterpolatingAdjoint()), u0p) ≈ dup
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(ReverseDiffAdjoint()), u0p)
-@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(senseloss3(TrackerAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss3(ReverseDiffAdjoint()), u0p)
+@test_throws SciMLSensitivity.MooncakeTrackedRealError mooncake_gradient(
+    senseloss3(TrackerAdjoint()), u0p)
 @test mooncake_gradient(senseloss3(ForwardDiffSensitivity()), u0p) ≈ dup
 @test_broken mooncake_gradient(senseloss3(ForwardSensitivity()), u0p) ≈ dup
 

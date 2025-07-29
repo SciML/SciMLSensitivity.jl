@@ -145,12 +145,14 @@ function jacobian(f, x::AbstractArray{<:Number},
 end
 
 function jacobian!(J::Nothing, f, x::AbstractArray{<:Number},
-    fx::Union{Nothing, AbstractArray{<:Number}},
-    alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing)
+        fx::Union{Nothing, AbstractArray{<:Number}},
+        alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing)
     @assert isempty(x)
     J
 end
-jacobian!(J::PreallocationTools.DiffCache, x::SciMLBase.UJacobianWrapper, args...) = jacobian!(J.du, x, args...)
+function jacobian!(J::PreallocationTools.DiffCache, x::SciMLBase.UJacobianWrapper, args...)
+    jacobian!(J.du, x, args...)
+end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
@@ -728,7 +730,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         else
             Enzyme.remake_zero!(_tmp6)
         end
-        
+
         if W === nothing
             Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),

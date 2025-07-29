@@ -34,31 +34,39 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
         @test length(sol1.t) == length(sol2.t)
     end
 
-    du01, dp1 = @time Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du01,
+    dp1 = @time Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, abstol = abstol,
             reltol = reltol,
             saveat = savingtimes,
             sensealg = BacksolveAdjoint())),
         u0, p)
 
-    du01b, dp1b = Zygote.gradient(
-        (u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
+    du01b,
+    dp1b = Zygote.gradient(
+        (u0,
+            p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
             callback = cb, abstol = abstol,
             reltol = reltol, saveat = savingtimes,
             sensealg = BacksolveAdjoint())),
         u0, p)
 
-    du01c, dp1c = Zygote.gradient(
-        (u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
+    du01c,
+    dp1c = Zygote.gradient(
+        (u0,
+            p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
             callback = cb, abstol = abstol,
             reltol = reltol, saveat = savingtimes,
             sensealg = BacksolveAdjoint(checkpointing = false))),
         u0, p)
 
     if !only_backsolve
-        du02, dp2 = @time Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(),
+        du02,
+        dp2 = @time Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(),
                 u0 = u0, p = p,
                 callback = cb,
                 abstol = abstol,
@@ -67,24 +75,30 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
                 sensealg = ReverseDiffAdjoint())),
             u0, p)
 
-        du03, dp3 = @time Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du03,
+        dp3 = @time Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cb, abstol = abstol,
                 reltol = reltol,
                 saveat = savingtimes,
                 sensealg = InterpolatingAdjoint(checkpointing = true))),
             u0, p)
 
-        du03c, dp3c = Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du03c,
+        dp3c = Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cb, abstol = abstol,
                 reltol = reltol,
                 saveat = savingtimes,
                 sensealg = InterpolatingAdjoint(checkpointing = false))),
             u0, p)
 
-        du04, dp4 = @time Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du04,
+        dp4 = @time Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cb, abstol = abstol,
                 reltol = reltol,
                 saveat = savingtimes,
@@ -185,7 +199,8 @@ println("Continuous Callbacks")
         @testset "= callback with terminate" begin
             condition(u, t, integrator) = u[1]
             function affect!(integrator)
-                (integrator.u[2] = -integrator.p[2] * integrator.u[2]; terminate!(integrator))
+                (integrator.u[2] = -integrator.p[2] * integrator.u[2];
+                    terminate!(integrator))
             end
             cb = ContinuousCallback(condition, affect!, save_positions = (true, true))
             test_continuous_callback(cb, g, dg!; only_backsolve = true)
@@ -236,8 +251,10 @@ println("Continuous Callbacks")
         affect!(integrator) = (integrator.u[2] = -integrator.u[2])
         cb = ContinuousCallback(condition, affect!)
 
-        du01, dp1 = Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du01,
+        dp1 = Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cb, abstol = abstol,
                 reltol = reltol,
                 saveat = savingtimes,

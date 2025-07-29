@@ -638,7 +638,8 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
         LSSregularizer::TimeDilation)
     (; sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid) = prob
     (; wBinv, B, E) = S
-    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
+    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar,
+        uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
     (; t0skip, t1skip) = LSSregularizer
 
     b .= E * h + B * wBinv

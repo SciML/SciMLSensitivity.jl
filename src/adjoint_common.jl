@@ -444,7 +444,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p::SciMLBase.NullParameters,
             autojacvec.chunksize
         end
 
-        paramjac_config = LazyBufferCache(), p, 
+        paramjac_config = LazyBufferCache(), p,
         LazyBufferCache(),
         LazyBufferCache(),
         LazyBufferCache()
@@ -464,7 +464,7 @@ function get_paramjac_config(autojacvec::EnzymeVJP, p, f, y, _p, _t; numindvar, 
             autojacvec.chunksize
         end
 
-        paramjac_config = LazyBufferCache(), zero(_p), 
+        paramjac_config = LazyBufferCache(), zero(_p),
         LazyBufferCache(),
         LazyBufferCache(),
         LazyBufferCache()
@@ -573,7 +573,8 @@ end
 
 function (f::ReverseLossCallback)(integrator)
     (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol, no_start) = f
-    (; diffvar_idxs, algevar_idxs, issemiexplicitdae, J, uf, f_cache, jac_config) = f.diffcache
+    (; diffvar_idxs, algevar_idxs, issemiexplicitdae,
+        J, uf, f_cache, jac_config) = f.diffcache
 
     no_start && !(sensealg isa BacksolveAdjoint) && cur_time[] == 1 && return nothing
 
@@ -668,7 +669,8 @@ function generate_callbacks(sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
     # handle duplicates (currently only for double occurrences)
     if duplicate_iterator_times !== nothing
         # use same ref for cur_time to cope with concrete_solve
-        cbrev_dupl_affect = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
+        cbrev_dupl_affect = ReverseLossCallback(
+            sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
         cb_dupl = PresetTimeCallback(duplicate_iterator_times[1], cbrev_dupl_affect)
         return CallbackSet(cb, reverse_cbs, cb_dupl), rlcb, duplicate_iterator_times
     else
@@ -727,4 +729,3 @@ function out_and_ts(_ts, duplicate_iterator_times, sol)
     end
     return out, ts
 end
-

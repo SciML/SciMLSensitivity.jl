@@ -9,7 +9,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 ```@example
 import SciMLSensitivity as SMS
 import Lux, ComponentArrays as CA, Optimization as OPT, OptimizationOptimJL as OOJ,
-      OptimizationOptimisers as OPO, OrdinaryDiffEq as ODE, Random
+       OptimizationOptimisers as OPO, OrdinaryDiffEq as ODE, Random
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
