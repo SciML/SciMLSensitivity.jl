@@ -106,7 +106,6 @@ _, easy_res7 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete 
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(),
     checkpoints = sol.t[1:500:end])
-
 _, easy_res8 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -135,6 +134,10 @@ _, easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint())
+_, easy_res14k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
 _, easy_res15 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
@@ -170,6 +173,33 @@ _, easy_res147 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
+_, easy_res142k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = false))
+_, easy_res143k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(true)))
+_, easy_res144k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+_, easy_res145k = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(checkpointing = true),
+    checkpoints = sol.t[1:500:end])
+_, easy_res146k = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(checkpointing = true,
+        autojacvec = false),
+    checkpoints = sol.t[1:500:end])
+_, easy_res147k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = SciMLSensitivity.MooncakeVJP()))
 adj_prob = ODEAdjointProblem(sol,
     QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
         autojacvec = SciMLSensitivity.ReverseDiffVJP()),
@@ -201,6 +231,7 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res13, rtol = 1e-9)
 @test isapprox(res, easy_res14, rtol = 1e-9)
+@test isapprox(res, easy_res14k, rtol = 1e-9)
 @test isapprox(res, easy_res15, rtol = 1e-9)
 @test isapprox(res, easy_res16, rtol = 1e-9)
 @test isapprox(res, easy_res142, rtol = 1e-9)
@@ -209,6 +240,12 @@ res, err = quadgk(integrand, 0.0, 10.0, atol = 1e-14, rtol = 1e-12)
 @test isapprox(res, easy_res145, rtol = 1e-9)
 @test isapprox(res, easy_res146, rtol = 1e-9)
 @test isapprox(res, easy_res147, rtol = 1e-9)
+@test isapprox(res, easy_res142k, rtol = 1e-9)
+@test isapprox(res, easy_res143k, rtol = 1e-9)
+@test isapprox(res, easy_res144k, rtol = 1e-9)
+@test isapprox(res, easy_res145k, rtol = 1e-9)
+@test isapprox(res, easy_res146k, rtol = 1e-9)
+@test isapprox(res, easy_res147k, rtol = 1e-9)
 
 println("OOP adjoint sensitivities ")
 
@@ -298,6 +335,19 @@ _, easy_res123 = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_disc
     reltol = 1e-14,
     sensealg = GaussAdjoint(checkpointing = true),
     checkpoints = soloop_nodense.t[1:5:end])
+_, easy_res12k = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
+_, easy_res122k = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(true)))
+_, easy_res123k = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(checkpointing = true),
+    checkpoints = soloop_nodense.t[1:5:end])
 
 _, easy_res2_mc_quad = adjoint_sensitivities(soloop, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
@@ -351,6 +401,9 @@ _, easy_res6_mc_back = adjoint_sensitivities(soloop_nodense, Tsit5(), t = t,
 @test isapprox(res, easy_res12, rtol = 1e-9)
 @test isapprox(res, easy_res122, rtol = 1e-9)
 @test isapprox(res, easy_res123, rtol = 1e-4)
+@test isapprox(res, easy_res12k, rtol = 1e-9)
+@test isapprox(res, easy_res122k, rtol = 1e-9)
+@test isapprox(res, easy_res123k, rtol = 1e-4)
 @test isapprox(res, easy_res2_mc_quad, rtol = 1e-9)
 @test isapprox(res, easy_res2_mc_interp, rtol = 1e-9)
 @test isapprox(res, easy_res2_mc_back, rtol = 1e-9)
@@ -503,16 +556,27 @@ ū05, adj53 = adjoint_sensitivities(
 ū06, adj6 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
     sensealg = GaussAdjoint(),
     reltol = 1e-14)
-
 ū062, adj62 = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false),
     reltol = 1e-14)
-
 ū06, adj63 = adjoint_sensitivities(
     sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
     reltol = 1e-14)
+
+ū06k, adj6k = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
+    sensealg = GaussKronrodAdjoint(),
+    reltol = 1e-14)
+ū062k, adj62k = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg,
+    abstol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = false),
+    reltol = 1e-14)
+ū06k, adj63k = adjoint_sensitivities(
+    sol, Tsit5(), t = t, dgdu_discrete = dg, abstol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(true)),
+    reltol = 1e-14)
+
 ū0args, adjargs = adjoint_sensitivities(sol, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     save_everystep = false, save_start = false,
@@ -544,6 +608,8 @@ end
 @test ū052≈res rtol=1e-10
 @test ū06≈res rtol=1e-10
 @test ū062≈res rtol=1e-10
+@test ū06k≈res rtol=1e-10
+@test ū062k≈res rtol=1e-10
 @test adj≈adjnou0 rtol=1e-10
 @test adj≈adj2 rtol=1e-10
 @test adj≈adj22 rtol=1e-10
@@ -558,6 +624,10 @@ end
 @test adj≈adj6 rtol=1e-10
 @test adj≈adj62 rtol=1e-10
 @test adj≈adj63 rtol=1e-10
+
+@test adj≈adj6k rtol=1e-10
+@test adj≈adj62k rtol=1e-10
+@test adj≈adj63k rtol=1e-10
 
 @test ū0args≈res rtol=1e-10
 @test adjargs≈adj rtol=1e-10
@@ -697,6 +767,26 @@ _, easy_res44 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = false))
 
+_, easy_res40k = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
+_, easy_res41k = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(false)))
+_, easy_res42k = adjoint_sensitivities(sol, Tsit5(), dgdu_continuous = dg, g = g,
+    abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = false))
+_, easy_res43k = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
+_, easy_res44k = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
+    reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint(autojacvec = false))
+
+
 @test norm(easy_res .- res) < 1e-8
 @test norm(easy_res2 .- res) < 1e-8
 @test norm(easy_res22 .- res) < 1e-8
@@ -721,6 +811,12 @@ _, easy_res44 = adjoint_sensitivities(sol, Tsit5(), g = g, abstol = 1e-14,
 @test norm(easy_res42 .- res) < 1e-8
 @test norm(easy_res43 .- res) < 1e-8
 @test norm(easy_res44 .- res) < 1e-8
+@test norm(easy_res40k .- res) < 1e-8
+@test norm(easy_res41k .- res) < 1e-8
+@test norm(easy_res42k .- res) < 1e-8
+@test norm(easy_res43k .- res) < 1e-8
+@test norm(easy_res44k .- res) < 1e-8
+
 
 println("Calculate adjoint sensitivities from autodiff & numerical diff")
 function G(p)
@@ -905,6 +1001,12 @@ _, res_gauss = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
     sensealg = GaussAdjoint())
 @test res_gauss≈res rtol=1e-11
 
+_, res_gausskron = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
+    abstol = 1e-14, reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
+@test res_gausskron≈res rtol=1e-11
+
+
 _, res_interp = adjoint_sensitivities(sol_mm, alg, t = ts, dgdu_discrete = dg,
     abstol = 1e-14, reltol = 1e-14,
     sensealg = InterpolatingAdjoint())
@@ -932,10 +1034,16 @@ _, easy_res_cont = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
     g = g_cont,
     abstol = 1e-14, reltol = 1e-14,
     sensealg = QuadratureAdjoint())
+
 _, easy_res_cont_gauss = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
     g = g_cont,
     abstol = 1e-14, reltol = 1e-14,
     sensealg = GaussAdjoint())
+_, easy_res_cont_gauss_kron = adjoint_sensitivities(sol_mm, alg, dgdu_continuous = dg_cont,
+    g = g_cont,
+    abstol = 1e-14, reltol = 1e-14,
+    sensealg = GaussKronrodAdjoint())
+
 function G_cont(p)
     tmp_prob_mm = remake(prob_mm, u0 = eltype(p).(prob_mm.u0), p = p,
         tspan = eltype(p).(prob_mm.tspan))
@@ -948,6 +1056,7 @@ end
 reference_sol_cont = ForwardDiff.gradient(G_cont, p)
 @test easy_res_cont'≈reference_sol_cont rtol=1e-11
 @test easy_res_cont_gauss'≈reference_sol_cont rtol=1e-11
+@test easy_res_cont_gauss_kron'≈reference_sol_cont rtol=1e-11
 
 @info "Singular mass matrix"
 function rober(du, u, p, t)
@@ -991,6 +1100,12 @@ for iip in [true, false]
         reltol = 1e-8, sensealg = GaussAdjoint(),
         maxiters = Int(1e6))
     @test res_gauss≈res rtol=1e-5
+
+    _, res_gausskron = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
+        dgdu_discrete = dg_singular, abstol = 1e-8,
+        reltol = 1e-8, sensealg = GaussKronrodAdjoint(),
+        maxiters = Int(1e6))
+    @test res_gausskron≈res rtol=1e-5
 
     _, res_interp = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular,
@@ -1042,7 +1157,8 @@ for salg in [
     QuadratureAdjoint(),
     InterpolatingAdjoint(),
     BacksolveAdjoint(),
-    GaussAdjoint()
+    GaussAdjoint(),
+    GaussKronrodAdjoint()
 ]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
@@ -1075,7 +1191,8 @@ for salg in [
     QuadratureAdjoint(),
     InterpolatingAdjoint(),
     BacksolveAdjoint(),
-    GaussAdjoint()
+    GaussAdjoint(),
+    GaussKronrodAdjoint()
 ]
     _, res = adjoint_sensitivities(sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1e-14,
@@ -1116,7 +1233,8 @@ for salg in [
     QuadratureAdjoint(),
     InterpolatingAdjoint(),
     BacksolveAdjoint(),
-    GaussAdjoint()
+    GaussAdjoint(),
+    GaussKronrodAdjoint()
 ]
     sol_singular_mm = solve(prob_singular_mm, Rodas5P(),
         reltol = 1e-12, abstol = 1e-12)

@@ -1277,7 +1277,10 @@ function DiffEqBase._concrete_solve_adjoint(
     dp = Enzyme.make_zero(p)
     mode = sensealg.mode
 
-    f = (u0, p) -> solve(prob, alg, args...; u0 = u0, p = p,
+    # Force no FunctionWrappers for Enzyme
+    _prob = remake(prob, f=f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f)))
+
+    diff_func = (u0, p) -> solve(_prob, alg, args...; u0 = u0, p = p,
             sensealg = SensitivityADPassThrough(),
             kwargs_filtered...)
 
@@ -1287,11 +1290,18 @@ function DiffEqBase._concrete_solve_adjoint(
         Enzyme.set_runtime_activity(Enzyme.ReverseSplitWithPrimal)
     end
 
-    forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(f)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
-    tape, result, shadow_result = forward(Enzyme.Const(f), Enzyme.Duplicated(copy(u0), du0), Enzyme.Duplicated(copy(p), dp))
+    forward, reverse = Enzyme.autodiff_thunk(splitmode, Enzyme.Const{typeof(diff_func)}, Enzyme.Duplicated, Enzyme.Duplicated{typeof(u0)}, Enzyme.Duplicated{typeof(p)})
+    tape, result, shadow_result = forward(Enzyme.Const(diff_func), Enzyme.Duplicated(copy(u0), du0), Enzyme.Duplicated(copy(p), dp))
 
     function enzyme_sensitivity_backpass(Δ)
-        reverse(Const(f), Duplicated(u0, du0), Duplicated(p, dp), Δ, tape)
+        if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray)
+            for (x,y) in zip(shadow_result.u,Δ.u)
+                x .= y
+            end
+        else
+            error("typeof(Δ) = $(typeof(Δ)) is not currently handled in EnzymeAdjoint. Please open an issue with an MWE to add support")
+        end
+        reverse(Enzyme.Const(diff_func), Enzyme.Duplicated(u0, du0), Enzyme.Duplicated(p, dp), tape)
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
             (NoTangent(), NoTangent(), du0, dp, NoTangent(),
@@ -1301,7 +1311,7 @@ function DiffEqBase._concrete_solve_adjoint(
                 ntuple(_ -> NoTangent(), length(args))...)
         end
     end
-    sol, enzyme_sensitivity_backpass
+    result, enzyme_sensitivity_backpass
 end
 
 # NOTE: This is needed to prevent a method ambiguity error

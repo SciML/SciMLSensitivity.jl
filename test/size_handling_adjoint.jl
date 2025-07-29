@@ -23,13 +23,8 @@ end
 
 loss_adjoint(p, _) = sum(abs2, x - 1 for x in predict_adjoint(p))
 
-cb = function (p, loss) #callback function to observe training
-    @show loss
-    return false
-end
-
 res = solve(OptimizationProblem(OptimizationFunction(loss_adjoint, AutoZygote()), ps),
-    Adam(0.1); callback = cb, maxiters = 200)
+    Adam(0.1); maxiters = 200)
 
 @test loss_adjoint(res.u, nothing) < 1
 
