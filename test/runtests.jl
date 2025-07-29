@@ -87,7 +87,7 @@ end
             println("=== COMPLETED: Callback - ReverseDiff ===")
             flush(stdout)
             
-            # TODO: This test causes timeout on Julia v1.11 
+            # TODO: This test causes timeout on Julia v1.11 (confirmed - runs >30min) 
             # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
             # println("=== STARTING: Alternative AD Frontend ===")
             # flush(stdout)
@@ -95,7 +95,7 @@ end
             # println("=== COMPLETED: Alternative AD Frontend ===")
             # flush(stdout)
             
-            # TODO: This test causes timeout on Julia v1.11
+            # TODO: This test causes timeout on Julia v1.11 (confirmed - runs >20min)
             # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
             # println("=== STARTING: Hybrid DE ===")
             # flush(stdout)
