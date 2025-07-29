@@ -801,9 +801,9 @@ version = "1.0.5"
 
 [[deps.Enzyme]]
 deps = ["CEnum", "EnzymeCore", "Enzyme_jll", "GPUCompiler", "InteractiveUtils", "LLVM", "Libdl", "LinearAlgebra", "ObjectFile", "PrecompileTools", "Preferences", "Printf", "Random", "SparseArrays"]
-git-tree-sha1 = "8deb8400d19dcbcb1cc8aa18c92d4c07f0e22be4"
+git-tree-sha1 = "1a644ed9b0681542c8f40ba8223ac41bc0f03920"
 uuid = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-version = "0.13.63"
+version = "0.13.64"
 weakdeps = ["BFloat16s", "ChainRulesCore", "GPUArraysCore", "LogExpFunctions", "SpecialFunctions", "StaticArrays"]
 
     [deps.Enzyme.extensions]
@@ -825,9 +825,9 @@ weakdeps = ["Adapt"]
 
 [[deps.Enzyme_jll]]
 deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "TOML"]
-git-tree-sha1 = "5c024fa2548c53d10c70d151a1e7051fa9483209"
+git-tree-sha1 = "7940ea94d7bdc18cf15ec0bf1466aef973d3191e"
 uuid = "7cc45869-7501-5eee-bdea-0790c847d4ef"
-version = "0.0.186+0"
+version = "0.0.187+0"
 
 [[deps.EpollShim_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
