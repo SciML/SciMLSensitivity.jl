@@ -5,9 +5,9 @@ manifest_format = "2.0"
 project_hash = "8d62dddf0a91e7be8d98d1753f7dddafe344ce55"
 
 [[deps.ADTypes]]
-git-tree-sha1 = "be7ae030256b8ef14a441726c4c37766b90b93a3"
+git-tree-sha1 = "7927b9af540ee964cc5d1b73293f1eb0b761a3a1"
 uuid = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-version = "1.15.0"
+version = "1.16.0"
 weakdeps = ["ChainRulesCore", "ConstructionBase", "EnzymeCore"]
 
     [deps.ADTypes.extensions]
@@ -437,9 +437,9 @@ version = "1.0.0"
 
 [[deps.Compat]]
 deps = ["TOML", "UUIDs"]
-git-tree-sha1 = "3a3dfb30697e96a440e4149c8c51bf32f818c0f3"
+git-tree-sha1 = "0037835448781bb46feb39866934e243886d756a"
 uuid = "34da2185-b29b-5c13-b0c7-acf172513d20"
-version = "4.17.0"
+version = "4.18.0"
 weakdeps = ["Dates", "LinearAlgebra"]
 
     [deps.Compat.extensions]
@@ -1925,9 +1925,9 @@ version = "0.9.31"
 
 [[deps.NVTX]]
 deps = ["Colors", "JuliaNVTXCallbacks_jll", "Libdl", "NVTX_jll"]
-git-tree-sha1 = "1a24c3430fa2ef3317c4c97fa7e431ef45793bd2"
+git-tree-sha1 = "6b573a3e66decc7fc747afd1edbf083ff78c813a"
 uuid = "5da4648a-3479-48b8-97b9-01cb529c0a1f"
-version = "1.0.0"
+version = "1.0.1"
 
 [[deps.NVTX_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
@@ -2700,9 +2700,9 @@ version = "0.6.43"
 
 [[deps.SciMLBase]]
 deps = ["ADTypes", "Accessors", "Adapt", "ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "EnumX", "FunctionWrappersWrappers", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "Markdown", "Moshi", "PrecompileTools", "Preferences", "Printf", "RecipesBase", "RecursiveArrayTools", "Reexport", "RuntimeGeneratedFunctions", "SciMLOperators", "SciMLStructures", "StaticArraysCore", "Statistics", "SymbolicIndexingInterface"]
-git-tree-sha1 = "57d3969321911e101c94dde1d1ff54d6308669fd"
+git-tree-sha1 = "30be59ab5e15ce31771455b726c47e164e627270"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "2.105.0"
+version = "2.106.0"
 
     [deps.SciMLBase.extensions]
     SciMLBaseChainRulesCoreExt = "ChainRulesCore"
