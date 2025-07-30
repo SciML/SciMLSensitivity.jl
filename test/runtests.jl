@@ -69,16 +69,12 @@ end
             @time @safetestset "Nested AD Regression Tests" include("nested_ad_regression.jl")
             @time @safetestset "Size Handling in Adjoint Tests" include("size_handling_adjoint.jl")
             @time @safetestset "Callback - ReverseDiff" include("callback_reversediff.jl")
-            # TODO: This test causes timeout on Julia v1.11 - optimization loops in neural ODE tests
-            # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
-            # @time @safetestset "Alternative AD Frontend" include("alternative_ad_frontend.jl")
-            # TODO: This test causes timeout on Julia v1.11 - optimization loops in neural ODE tests  
-            # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
-            # @time @safetestset "Hybrid DE" include("hybrid_de.jl")
-            # TODO: This test causes timeout on Julia v1.11 - optimization loops in neural ODE tests
-            # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
+            @time @safetestset "Alternative AD Frontend" include("alternative_ad_frontend.jl")
+            @time @safetestset "Hybrid DE" include("hybrid_de.jl")
+            # TODO: This test causes timeout on Julia v1.11 - neural ODE optimization takes >1 hour
+            # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247  
             # @time @safetestset "HybridNODE" include("HybridNODE.jl")
-            # TODO: This test causes timeout on Julia v1.11 - likely related to ForwardDiff v1.0+
+            # TODO: This test causes timeout on Julia v1.11 - likely related to ForwardDiff v1.0+, takes >1 hour
             # See: https://github.com/SciML/SciMLSensitivity.jl/pull/1247
             # @time @safetestset "ForwardDiff Sparsity Components" include("forwarddiffsensitivity_sparsity_components.jl")
             @time @safetestset "Complex No u" include("complex_no_u.jl")
