@@ -21,8 +21,10 @@ function test_discrete_callback(cb, tstops, g)
     @show g(solve(prob, Tsit5(), callback = cb, tstops = tstops, abstol = abstol,
         reltol = reltol, saveat = savingtimes))
 
-    du01, dp1 = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du01,
+    dp1 = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,

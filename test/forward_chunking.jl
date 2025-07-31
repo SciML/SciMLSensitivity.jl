@@ -16,15 +16,18 @@ p = reshape(vcat(p, ones(100)), 4, 26)
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1, sensealg = ForwardDiffSensitivity()))
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1, sensealg = InterpolatingAdjoint()))
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1,
     sensealg = ForwardDiffSensitivity(chunk_size = 104)))
 @time du03, dp3 = Zygote.gradient(loss, u0, p)
@@ -39,17 +42,20 @@ du0 = ForwardDiff.gradient(u0 -> loss(u0, p), u0)
 @test dp1≈dp2 rtol=1e-12
 @test dp1≈dp3 rtol=1e-12
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = ForwardDiffSensitivity()))
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = InterpolatingAdjoint()))
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = ForwardDiffSensitivity(chunk_size = 104)))
 @time du03, dp3 = Zygote.gradient(loss, u0, p)
@@ -81,15 +87,18 @@ u0 = reshape(vcat(u0, ones(100)), 2, 51)
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1, sensealg = ForwardDiffSensitivity()))
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1, sensealg = InterpolatingAdjoint()))
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1e-14, reltol = 1e-14,
     saveat = 0.1,
     sensealg = ForwardDiffSensitivity(chunk_size = 102)))
 @time du03, dp3 = Zygote.gradient(loss, u0, p)
@@ -104,17 +113,20 @@ du0 = ForwardDiff.gradient(u0 -> loss(u0, p), u0)
 @test dp1≈dp2 rtol=1e-12
 @test dp1≈dp3 rtol=1e-12
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = ForwardDiffSensitivity()))
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = InterpolatingAdjoint()))
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
 
-loss = (u0, p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
+loss = (u0,
+    p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p, abstol = 1e-14,
     reltol = 1e-14, saveat = 0.1,
     sensealg = ForwardDiffSensitivity(chunk_size = 102)))
 @time du03, dp3 = Zygote.gradient(loss, u0, p)

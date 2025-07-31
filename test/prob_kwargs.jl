@@ -60,7 +60,7 @@ let callback_count1 = 0, callback_count2 = 0
             count1 = 0
             count2 = 0
             @test Zygote.gradient(x -> f1(x, adjoint_type), u0p) ==
-                    Zygote.gradient(x -> f2(x, adjoint_type), u0p)
+                  Zygote.gradient(x -> f2(x, adjoint_type), u0p)
             @test callback_count1 == callback_count2
         end
     end

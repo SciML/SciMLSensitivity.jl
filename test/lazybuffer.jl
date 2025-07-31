@@ -36,8 +36,10 @@ using Random, FiniteDiff, ForwardDiff, ReverseDiff, SciMLSensitivity, Zygote
     @test du0≈Fdu0 rtol=1e-8
     @test dp≈Fdp rtol=1e-8
 
-    Zdu0, Zdp = Zygote.gradient(
-        (u0, p) -> loss(u0, p;
+    Zdu0,
+    Zdp = Zygote.gradient(
+        (u0,
+            p) -> loss(u0, p;
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
         u0, p)
     @test du0≈Zdu0 rtol=1e-8

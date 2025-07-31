@@ -13,7 +13,7 @@ using Test
 @parameters σ ρ β
 @variables x(t) y(t) z(t) w(t)
 
-eqs = [D(D(x)) ~ σ * (y - x), 
+eqs = [D(D(x)) ~ σ * (y - x),
     D(y) ~ x * (ρ - z) - y,
     D(z) ~ x * y - β * z,
     w ~ x + y + z + 2 * β]
@@ -100,5 +100,4 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
         end
         @test any(!iszero, gs_prob)
     end
-
 end

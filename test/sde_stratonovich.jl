@@ -40,7 +40,8 @@ p2 = [1.01, 0.87]
 
     prob_oop_ode = ODEProblem(f_oop_linear, u₀, (tstart, tend), p)
     sol_oop_ode = solve(prob_oop_ode, Tsit5(), saveat = t, abstol = abstol, reltol = reltol)
-    res_ode_u0, res_ode_p = adjoint_sensitivities(sol_oop_ode, Tsit5(), t = t,
+    res_ode_u0,
+    res_ode_p = adjoint_sensitivities(sol_oop_ode, Tsit5(), t = t,
         dgdu_discrete = dg!, abstol = abstol,
         reltol = reltol,
         sensealg = BacksolveAdjoint())
@@ -65,13 +66,15 @@ p2 = [1.01, 0.87]
     prob_oop_sde = SDEProblem(f_oop_linear, σ_oop_linear, u₀, trange, p)
     sol_oop_sde = solve(prob_oop_sde, EulerHeun(), dt = 1e-4, adaptive = false,
         save_noise = true)
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_oop_sde,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_oop_sde,
         EulerHeun(), t = t, dgdu_discrete = dg!,
         dt = 1e-2, sensealg = BacksolveAdjoint())
 
     @info res_sde_p
 
-    res_sde_u0a, res_sde_pa = adjoint_sensitivities(sol_oop_sde,
+    res_sde_u0a,
+    res_sde_pa = adjoint_sensitivities(sol_oop_sde,
         EulerHeun(), t = t, dgdu_discrete = dg!,
         dt = 1e-2,
         sensealg = InterpolatingAdjoint())
@@ -115,7 +118,8 @@ end
         RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich), dt = dt1,
         adaptive = false, save_noise = true)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
@@ -123,7 +127,8 @@ end
     @info res_sde_p2
 
     # test consistency for different switches for the noise Jacobian
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -134,7 +139,8 @@ end
 
     @info res_sde_p2a
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -145,7 +151,8 @@ end
 
     @info res_sde_p2a
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = tend / dt1, adaptive = false,
@@ -188,7 +195,8 @@ end
     # InterpolatingAdjoint
     @info "InterpolatingAdjoint SDE"
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -199,7 +207,8 @@ end
 
     @info res_sde_p2a
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = false))
@@ -207,7 +216,8 @@ end
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-6)
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-6)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
@@ -215,7 +225,8 @@ end
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-6)
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-6)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
@@ -247,12 +258,14 @@ end
 
     @info "Diagonal Adjoint"
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -261,7 +274,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -270,7 +284,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -279,7 +294,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -288,7 +304,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 5e-4)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 2e-5)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -297,7 +314,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-7)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-7)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -306,7 +324,8 @@ end
     @test isapprox(res_sde_p2, res_sde_p2a, rtol = 1e-7)
     @test isapprox(res_sde_u02, res_sde_u02a, rtol = 1e-7)
 
-    res_sde_u02a, res_sde_p2a = adjoint_sensitivities(
+    res_sde_u02a,
+    res_sde_p2a = adjoint_sensitivities(
         sol_oop_sde2, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
@@ -369,7 +388,8 @@ end
 
     res_sde_forward = ForwardDiff.gradient(GSDE, p2)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
@@ -378,7 +398,8 @@ end
 
     @info res_sde_p
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = false))
@@ -388,7 +409,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-5)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-5)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
@@ -398,7 +420,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-5) # not broken here because it just uses the vjps
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-5)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
@@ -408,7 +431,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-10)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-10)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
@@ -416,7 +440,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 2e-4)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint())
@@ -424,7 +449,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-7)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-7)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = false))
@@ -432,7 +458,8 @@ end
     @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-7)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-7)
 
-    res_sde_u02, res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u02,
+    res_sde_p2 = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
@@ -449,7 +476,8 @@ end
     prob_oop_sde = SDEProblem(f_oop_linear, σ_oop_linear, [u₀; u₀; u₀], trange, p2)
     sol_oop_sde = solve(prob_oop_sde, EulerHeun(), dt = dt1, adaptive = false,
         save_noise = true)
-    res_oop_u0, res_oop_p = adjoint_sensitivities(sol_oop_sde, EulerHeun(), t = tarray,
+    res_oop_u0,
+    res_oop_p = adjoint_sensitivities(sol_oop_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
@@ -460,7 +488,8 @@ end
     prob_sde = SDEProblem(f!, σ!, [u₀; u₀; u₀], trange, p2)
     sol_sde = solve(prob_sde, EulerHeun(), dt = dt1, adaptive = false, save_noise = true)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
@@ -470,7 +499,8 @@ end
 
     @info res_sde_p
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = false))
@@ -480,7 +510,8 @@ end
 
     @info res_sde_p
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP()))
@@ -490,7 +521,8 @@ end
 
     @info res_sde_p
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
@@ -500,7 +532,8 @@ end
 
     @info res_sde_p
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
@@ -508,7 +541,8 @@ end
     @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
     @test isapprox(res_sde_u0, res_oop_u0, rtol = 1e-4)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint())
@@ -516,7 +550,8 @@ end
     @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
     @test isapprox(res_sde_u0, res_oop_u0, rtol = 1e-4)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = false))
@@ -524,7 +559,8 @@ end
     @test isapprox(res_sde_p, res_oop_p, rtol = 5e-4)
     @test isapprox(res_sde_u0, res_oop_u0, rtol = 1e-4)
 
-    res_sde_u0, res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
+    res_sde_u0,
+    res_sde_p = adjoint_sensitivities(sol_sde, EulerHeun(), t = tarray,
         dgdu_discrete = dg!,
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
@@ -563,8 +599,10 @@ end
     res_sde_forward = ForwardDiff.gradient(GSDE1, p2)
 
     Random.seed!(seed)
-    res_sde_trackeru0, res_sde_trackerp = Zygote.gradient(
-        (u0, p) -> sum(Array(solve(prob_oop_sde,
+    res_sde_trackeru0,
+    res_sde_trackerp = Zygote.gradient(
+        (u0,
+            p) -> sum(Array(solve(prob_oop_sde,
             RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
             dt = 5e-4,
             adaptive = false,
@@ -572,7 +610,7 @@ end
             p = p,
             saveat = tarray,
             sensealg = TrackerAdjoint())) .^
-                       2.0 / 2.0),
+                      2.0 / 2.0),
         u₀,
         p2)
 

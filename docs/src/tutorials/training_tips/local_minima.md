@@ -18,7 +18,7 @@ on `(0,5.0)`. Naively, we use the same training strategy as before:
 ```@example iterativefit
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE,
-      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
+       ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
 import Lux, Plots, Random, Zygote
 
 rng = Random.default_rng()
@@ -170,7 +170,7 @@ one could use a mix of (3) and (4), or breaking up the trajectory into chunks an
 ```@example resetic
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE,
-      ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
+       ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
 import Lux, Plots, Random, Zygote
 
 #Starting example with tspan (0, 5)
@@ -224,7 +224,8 @@ p_init = CA.ComponentArray(; u0 = u0, p = p)
 predict_n_ode(p_init)
 loss_n_ode(p_init, nothing)
 
-res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
+res = OPT.solve(
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
     OPO.Adam(0.05); callback = callback, maxiters = 1000)
 
 function predict_n_ode2(p)
@@ -252,7 +253,8 @@ end
 
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
-res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
+res = OPT.solve(
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
     OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 
 #Now use the same technique for a longer tspan (0, 10)
@@ -271,10 +273,12 @@ dudt(u, p, t) = first(dudt2(u, p, st))
 prob = ODE.ODEProblem(dudt, u0, tspan)
 
 p_init = CA.ComponentArray(; u0 = u0, p = p)
-res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
+res = OPT.solve(
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
     OPO.Adam(0.05); callback = callback, maxiters = 1000)
 
-res = OPT.solve(OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
+res = OPT.solve(
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
     OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 ```
 

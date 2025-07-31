@@ -416,7 +416,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         t = nothing,
         dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing,
-        g = nothing, no_start = false, 
+        g = nothing, no_start = false,
         abstol = 1e-6, reltol = 1e-3,
         checkpoints = current_time(sol),
         corfunc_analytical = nothing,
@@ -430,7 +430,8 @@ function _adjoint_sensitivities(sol, sensealg, alg;
     end
     rcb = nothing
     if sol.prob isa ODEProblem
-        adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
+        adj_prob,
+        rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,

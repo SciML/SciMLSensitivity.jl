@@ -33,24 +33,30 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         @test length(sol1.t) == length(sol2.t)
     end
 
-    du01, dp1 = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du01,
+    dp1 = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
             sensealg = BacksolveAdjoint())),
         u0, p)
 
-    du01b, dp1b = Zygote.gradient(
-        (u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
+    du01b,
+    dp1b = Zygote.gradient(
+        (u0,
+            p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
             sensealg = BacksolveAdjoint())),
         u0, p)
 
-    du01c, dp1c = Zygote.gradient(
-        (u0, p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
+    du01c,
+    dp1c = Zygote.gradient(
+        (u0,
+            p) -> g(solve(proboop, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
@@ -58,16 +64,20 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p)
 
     if cboop === nothing
-        du02, dp2 = Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du02,
+        dp2 = Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cb, tstops = tstops,
                 abstol = abstol, reltol = reltol,
                 saveat = savingtimes,
                 sensealg = ReverseDiffAdjoint())),
             u0, p)
     else
-        du02, dp2 = Zygote.gradient(
-            (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+        du02,
+        dp2 = Zygote.gradient(
+            (u0,
+                p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
                 callback = cboop, tstops = tstops,
                 abstol = abstol, reltol = reltol,
                 saveat = savingtimes,
@@ -75,32 +85,40 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
             u0, p)
     end
 
-    du03, dp3 = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du03,
+    dp3 = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
             sensealg = InterpolatingAdjoint(checkpointing = true))),
         u0, p)
 
-    du03c, dp3c = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du03c,
+    dp3c = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
             sensealg = InterpolatingAdjoint(checkpointing = false))),
         u0, p)
 
-    du04, dp4 = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du04,
+    dp4 = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
             sensealg = QuadratureAdjoint())),
         u0, p)
 
-    du05, dp5 = Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du05,
+    dp5 = Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, tstops = tstops,
             abstol = abstol, reltol = reltol,
             saveat = savingtimes,
@@ -232,8 +250,8 @@ end
                 condition(u, t, integrator) = t == 5
                 function affect!(integrator)
                     (@show integrator.tprev;
-                    integrator.u[1] += integrator.t -
-                                       integrator.tprev)
+                        integrator.u[1] += integrator.t -
+                                           integrator.tprev)
                 end
                 cb = DiscreteCallback(condition, affect!)
                 tstops = [4.999, 5.0]
@@ -300,8 +318,8 @@ end
                 condition(u, t, integrator) = t == 5
                 function affect!(integrator)
                     (@show integrator.tprev;
-                    integrator.u[1] += integrator.t -
-                                       integrator.tprev)
+                        integrator.u[1] += integrator.t -
+                                           integrator.tprev)
                 end
                 cb = DiscreteCallback(condition, affect!)
                 tstops = [4.999, 5.0]

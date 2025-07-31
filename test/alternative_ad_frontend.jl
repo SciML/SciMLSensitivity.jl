@@ -3,7 +3,9 @@ using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracke
 using Test
 Enzyme.API.typeWarning!(false)
 
-mooncake_gradient(f, x) = Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+function mooncake_gradient(f, x)
+    Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+end
 
 odef(du, u, p, t) = du .= u .* p
 const prob = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])

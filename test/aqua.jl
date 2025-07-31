@@ -18,5 +18,6 @@ end
         SciMLSensitivity; skip = (Base, Core, SciMLBase)
     ) === nothing
     @test ExplicitImports.check_no_stale_explicit_imports(SciMLSensitivity) === nothing
-    @test ExplicitImports.check_all_qualified_accesses_via_owners(SciMLSensitivity) === nothing
+    @test ExplicitImports.check_all_qualified_accesses_via_owners(SciMLSensitivity) ===
+          nothing
 end

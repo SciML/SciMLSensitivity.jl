@@ -414,7 +414,7 @@ end
     @test solve3.u≈solve4.u rtol=1e-10
 
     prob5 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 50), p)
-    prob6 = NonlinearProblem{false}((u, p) -> u.^2 .- p[1], fill(0.0, 51), p)
+    prob6 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 51), p)
 
     function test_loss(p, prob, alg)
         _prob = remake(prob, p = p)
@@ -474,7 +474,6 @@ end
     dp10 = Zygote.gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
     dp11 = Zygote.gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
     dp12 = ForwardDiff.gradient(p -> test_loss2(p, prob6, Broyden()), p)
- 
 
     @test dp1≈dp2 rtol=1e-10
     @test dp1≈dp3 rtol=1e-10
@@ -562,18 +561,21 @@ end
         dp = ForwardDiff.gradient((p) -> loss(u0, p), p)
 
         # save_start = false, save_everystep=false
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss(u0, p,
                 sensealg = ForwardDiffSensitivity()),
             u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
+        Zdu0,
+        Zdp = Zygote.gradient((u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
             u0,
             p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss(u0, p,
                 sensealg = InterpolatingAdjoint()),
             u0, p)
@@ -581,19 +583,22 @@ end
         @test dp≈Zdp atol=1e-4
 
         # save_start = true, save_everystep=false
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss(u0, p,
                 sensealg = ForwardDiffSensitivity(),
                 save_start = true),
             u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
                 save_start = true), u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss(u0, p,
                 sensealg = InterpolatingAdjoint(),
                 save_start = true),
@@ -602,8 +607,10 @@ end
         @test dp≈Zdp atol=1e-4
 
         # save_start = true, save_everystep=true
-        Zdu0, Zdp = Zygote.gradient(
-            (u0, p) -> loss(u0, p,
+        Zdu0,
+        Zdp = Zygote.gradient(
+            (u0,
+                p) -> loss(u0, p,
                 sensealg = ForwardDiffSensitivity(),
                 save_start = true,
                 save_everystep = true),
@@ -611,15 +618,19 @@ end
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
 
-        Zdu0, Zdp = Zygote.gradient(
-            (u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
+        Zdu0,
+        Zdp = Zygote.gradient(
+            (u0,
+                p) -> loss(u0, p, sensealg = BacksolveAdjoint(),
                 save_start = true,
                 save_everystep = true),
             u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
-            (u0, p) -> loss(u0, p,
+        Zdu0,
+        Zdp = Zygote.gradient(
+            (u0,
+                p) -> loss(u0, p,
                 sensealg = InterpolatingAdjoint(),
                 save_start = true,
                 save_everystep = true),
@@ -627,8 +638,10 @@ end
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
         # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
-        Zdu0, Zdp = Zygote.gradient(
-            (u0, p) -> loss(u0, p, sensealg = QuadratureAdjoint(),
+        Zdu0,
+        Zdp = Zygote.gradient(
+            (u0,
+                p) -> loss(u0, p, sensealg = QuadratureAdjoint(),
                 save_start = true,
                 save_everystep = true),
             u0, p)
@@ -649,24 +662,28 @@ end
         dp = ForwardDiff.gradient((p) -> loss2(u0, p), p)
 
         # saveat::Number
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss2(u0, p,
                 sensealg = ForwardDiffSensitivity()),
             u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
+        Zdu0,
+        Zdp = Zygote.gradient((u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
             u0,
             p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss2(u0, p,
                 sensealg = InterpolatingAdjoint()),
             u0, p)
         @test du0≈Zdu0 atol=1e-4
         @test dp≈Zdp atol=1e-4
-        Zdu0, Zdp = Zygote.gradient(
+        Zdu0,
+        Zdp = Zygote.gradient(
             (u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
             u0, p)
         @test du0≈Zdu0 atol=1e-4

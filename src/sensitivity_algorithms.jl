@@ -575,7 +575,6 @@ function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD
     GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
-
 """
 ```julia
 GaussKronrodAdjoint{CS, AD, FDT, VJP} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
@@ -663,7 +662,8 @@ Base.@pure function GaussKronrodAdjoint(; chunk_size = 0, autodiff = true,
         autojacvec, checkpointing)
 end
 
-function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
+function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT, Nothing}, vjp) where {
+        CS, AD, FDT}
     GaussKronrodAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
@@ -708,11 +708,12 @@ MooncakeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 ```
 
 An implementation of discrete adjoint sensitivity analysis
-using the Mooncake.jl direct differentiation. 
+using the Mooncake.jl direct differentiation.
 
 !!! warn
-      This is currently experimental and supports only explicit solvers. It will
-      support all solvers in the future.
+
+    This is currently experimental and supports only explicit solvers. It will
+    support all solvers in the future.
 
 ## Constructor
 
@@ -756,7 +757,8 @@ using the Zygote.jl source-to-source AD directly on the differential equation
 solver.
 
 !!! warn
-      This is only supports SimpleDiffEq.jl solvers due to limitations of Enzyme.
+
+    This is only supports SimpleDiffEq.jl solvers due to limitations of Enzyme.
 
 ## Constructor
 
@@ -778,8 +780,9 @@ using the Enzyme.jl source-to-source AD directly on the differential equation
 solver.
 
 !!! warn
-      This is currently experimental and supports only explicit solvers. It will
-      support all solvers in the future.
+
+    This is currently experimental and supports only explicit solvers. It will
+    support all solvers in the future.
 
 ## Constructor
 
@@ -787,19 +790,21 @@ solver.
 EnzymeAdjoint(mode = nothing)
 ```
 
-## Arugments
+## Arguments
 
-* `mode::M` determines the autodiff mode (forward or reverse). It can be:
-  + an object subtyping `EnzymeCore.Mode` (like `EnzymeCore.Forward` or `EnzymeCore.Reverse`) if a specific mode is required
-  + `nothing` to choose the best mode automatically
+  - `mode::M` determines the autodiff mode (forward or reverse). It can be:
+
+      + an object subtyping `EnzymeCore.Mode` (like `EnzymeCore.Forward` or `EnzymeCore.Reverse`) if a specific mode is required
+      + `nothing` to choose the best mode automatically
 
 ## SciMLProblem Support
 
 Currently fails on almost every solver.
 """
-struct EnzymeAdjoint{M <: Union{Nothing,Enzyme.EnzymeCore.Mode}} <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} 
-  mode::M
-  EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
+struct EnzymeAdjoint{M <: Union{Nothing, Enzyme.EnzymeCore.Mode}} <:
+       AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
+    mode::M
+    EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
 end
 
 """

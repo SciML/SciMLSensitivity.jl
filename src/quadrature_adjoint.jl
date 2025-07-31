@@ -13,7 +13,8 @@ end
 
 function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
         alg)
-    diffcache, y = adjointdiffcache(
+    diffcache,
+    y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
         quad = true)
     return ODEQuadratureAdjointSensitivityFunction(diffcache, sensealg, discrete,
@@ -131,7 +132,8 @@ end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
-    cb, rcb, _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+    cb, rcb,
+    _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated, no_start)
 
@@ -346,7 +348,8 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         abstol = sensealg.abstol, reltol = sensealg.reltol,
         callback = CallbackSet(),
         kwargs...)
-    adj_prob, rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+    adj_prob,
+    rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
         callback, no_start)
     adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
@@ -358,7 +361,8 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
     else
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
         if t === nothing
-            res, err = quadgk(integrand, sol.prob.tspan[1], sol.prob.tspan[2],
+            res,
+            err = quadgk(integrand, sol.prob.tspan[1], sol.prob.tspan[2],
                 atol = abstol, rtol = reltol)
         else
             res = zero(integrand.p)'
@@ -441,7 +445,8 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 end
 
 function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
-    (; sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config, sensealg, dgdp_cache, dgdp) = integrand
+    (; sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config,
+        sensealg, dgdp_cache, dgdp) = integrand
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end
@@ -490,7 +495,8 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
     wp(_p, integrand.p, integrand.y, t)
 
     if _p != integrand.p
-        paramjac_config = get_paramjac_config(sensealg.autojacvec, integrand.y, wp, _p, integrand.y, t;
+        paramjac_config = get_paramjac_config(
+            sensealg.autojacvec, integrand.y, wp, _p, integrand.y, t;
             numindvar = length(integrand.y), alg = nothing,
             isinplace = true, isRODE = false,
             _W = nothing)
