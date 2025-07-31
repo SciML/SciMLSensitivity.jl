@@ -289,9 +289,9 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
         end
         B0 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-            (i * numindvar + 1):((i + 1) * numindvar)]
+        (i * numindvar + 1):((i + 1) * numindvar)]
         B1 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-            ((i - 1) * numindvar + 1):(i * numindvar)]
+        ((i - 1) * numindvar + 1):(i * numindvar)]
         B0 .+= I / dt[i] - J / 2
         B1 .+= -I / dt[i] - J / 2
     end
@@ -638,7 +638,8 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
         LSSregularizer::TimeDilation)
     (; sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid) = prob
     (; wBinv, B, E) = S
-    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar, uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
+    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar,
+        uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
     (; t0skip, t1skip) = LSSregularizer
 
     b .= E * h + B * wBinv

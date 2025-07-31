@@ -23,8 +23,8 @@ prob = ODEProblem(func, x0, (0.0f0, 1.0f0))
 
 function evolve(p)
     solve(prob, Tsit5(), p = p, save_start = false,
-    save_everystep = false, abstol = 1e-4, reltol = 1e-4,
-    sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())).u[1]
+        save_everystep = false, abstol = 1e-4, reltol = 1e-4,
+        sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())).u[1]
 end
 
 function cost(p)

@@ -71,7 +71,8 @@ function NILSASProblem(sol, sensealg::NILSAS, alg;
 
     # sensealg choice
     adjoint_sensealg === nothing &&
-        (adjoint_sensealg = automatic_sensealg_choice(sol.prob, u0, tunables, false, repack))
+        (adjoint_sensealg = automatic_sensealg_choice(
+            sol.prob, u0, tunables, false, repack))
 
     p === nothing &&
         error("You must have parameters to use parameter sensitivity calculations!")
@@ -282,7 +283,8 @@ end
 
 function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
     (; M, nseg, nstep, adjoint_sensealg) = nilsas
-    (; sol, nilss, z0, t, dgdu_discrete, dgdp_discrete, g, T_seg, dtsave, adjoint_prob) = prob
+    (; sol, nilss, z0, t, dgdu_discrete, dgdp_discrete,
+        g, T_seg, dtsave, adjoint_prob) = prob
     (; u0, tspan) = adjoint_prob
     (; dgdu, dgdp) = nilss
 

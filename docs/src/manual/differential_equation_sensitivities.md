@@ -55,7 +55,8 @@ by which the derivative is computed. For example:
 
 ```julia
 function loss(u0, p)
-    sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1, sensealg = SMS.ForwardSensitivity()))
+    sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1,
+        sensealg = SMS.ForwardSensitivity()))
 end
 du0, dp = Zygote.gradient(loss, u0, p)
 ```
@@ -76,7 +77,7 @@ differentiation). Generally:
 
   - Continuous sensitivity analysis methods only support a subset of
     equations, which currently includes:
-
+    
       + ODEProblem (with mass matrices for differential-algebraic equations (DAEs)
       + SDEProblem
       + SteadyStateProblem / NonlinearProblem
@@ -113,7 +114,7 @@ is:
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
 !!! note
-
+    
     Compatibility with direct automatic differentiation algorithms (`ForwardDiffSensitivity`,
     `ReverseDiffAdjoint`, etc.) can be queried using the
     `SciMLBase.isautodifferentiable(::SciMLAlgorithm)` trait function.

@@ -281,7 +281,8 @@ end
 
 function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     #TODO determine a good dtsave (ΔT in paper, see Sec.4.2)
-    (; nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y, dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0) = prob
+    (; nus, T_seg, dtsave, vstar, vstar_perp, w, w_perp, R, b, y,
+        dudt, gsave, dgdu_val, forward_prob, u0, vstar0, w0) = prob
     (; p, f) = forward_prob
     (; S, sensealg) = f
     (; nseg, nstep) = nilss
@@ -440,7 +441,7 @@ function compute_Cinv!(Cinv, w_perp, weight, nseg, nus, indxp)
     _weight = @view weight[1, :]
     for iseg in 1:nseg
         _C = @view Cinv[((iseg - 1) * nus + 1):(iseg * nus),
-            ((iseg - 1) * nus + 1):(iseg * nus)]
+        ((iseg - 1) * nus + 1):(iseg * nus)]
         for i in 1:nus
             wi = @view w_perp[:, :, iseg, i]
             for j in 1:nus
@@ -471,7 +472,7 @@ end
 function compute_B!(B, R, nseg, nus, indxp)
     for iseg in 1:(nseg - 1)
         _B = @view B[((iseg - 1) * nus + 1):(iseg * nus),
-            ((iseg - 1) * nus + 1):(iseg * nus)]
+        ((iseg - 1) * nus + 1):(iseg * nus)]
         _R = @view R[indxp, iseg, :, :]
         copyto!(_B, -_R)
         # off diagonal one
@@ -560,7 +561,7 @@ end
 function shadow_forward(prob::NILSSProblem, sensealg::NILSS, alg)
     (; nseg, nstep) = sensealg
     (; res, nus, dtsave, vstar, vstar_perp, w, w_perp, R, b, dudt,
-    gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ) = prob
+        gsave, dgdu_val, forward_prob, weight, Cinv, d, B, a, v, v_perp, ξ) = prob
     (; numindvar, numparams) = forward_prob.f.S
 
     # reset dg pointer

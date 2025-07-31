@@ -170,13 +170,15 @@ solve this in serial with 100 trajectories. Note that `i` will thus run
 from `1:100`.
 
 ```@example dataparallel
-sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ODE.EnsembleSerial(), saveat = 0.1, trajectories = 100)
+sim = ODE.solve(
+    ensemble_prob, ODE.Tsit5(), ODE.EnsembleSerial(), saveat = 0.1, trajectories = 100)
 ```
 
 and thus running in multithreading would be:
 
 ```@example dataparallel
-sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ODE.EnsembleThreads(), saveat = 0.1, trajectories = 100)
+sim = ODE.solve(
+    ensemble_prob, ODE.Tsit5(), ODE.EnsembleThreads(), saveat = 0.1, trajectories = 100)
 ```
 
 This whole mechanism is differentiable, so we then put it in a training
@@ -193,7 +195,8 @@ Changing to distributed computing is very simple as well. The setup is
 all the same, except you utilize `EnsembleDistributed` as the ensembler:
 
 ```@example dataparallel
-sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ODE.EnsembleDistributed(), saveat = 0.1, trajectories = 100)
+sim = ODE.solve(
+    ensemble_prob, ODE.Tsit5(), ODE.EnsembleDistributed(), saveat = 0.1, trajectories = 100)
 ```
 
 Note that for this to work, you need to ensure that your processes are

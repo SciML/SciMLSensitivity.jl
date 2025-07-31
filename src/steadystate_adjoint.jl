@@ -16,7 +16,8 @@ function SteadyStateAdjointSensitivityFunction(g, sensealg, alg, sol, dgdu, dgdp
         colorvec, needs_jac)
     (; p, u0) = sol.prob
 
-    diffcache, y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
+    diffcache,
+    y = adjointdiffcache(g, sensealg, false, sol, dgdu, dgdp, f, alg;
         quad = false, needs_jac)
 
     λ = zero(y)
@@ -87,10 +88,12 @@ end
         # Current SciMLJacobianOperators requires specifying the problem as a NonlinearProblem
         usize = size(y)
         if SciMLBase.isinplace(f)
-            nlfunc = NonlinearFunction{true}((du, u, p) -> unwrapped_f(f)(
+            nlfunc = NonlinearFunction{true}((du, u,
+                p) -> unwrapped_f(f)(
                 reshape(u, usize), reshape(u, usize), p, nothing))
         else
-            nlfunc = NonlinearFunction{false}((u, p) -> unwrapped_f(f)(
+            nlfunc = NonlinearFunction{false}((
+                u, p) -> unwrapped_f(f)(
                 reshape(u, usize), p, nothing))
         end
         nlprob = NonlinearProblem(nlfunc, vec(λ), p)
@@ -102,9 +105,11 @@ end
             sensealg.linsolve_kwargs...)
     else
         if !isempty(y)
-            J_ = diffcache.J isa PreallocationTools.DiffCache ? diffcache.J.du' : diffcache.J'
+            J_ = diffcache.J isa PreallocationTools.DiffCache ? diffcache.J.du' :
+                 diffcache.J'
             linear_problem = LinearProblem(J_, vec(dgdu_val'); u0 = vec(λ))
-            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true), sensealg.linsolve_kwargs...) # u is vec(λ)
+            solve(linear_problem, linsolve; alias = LinearAliasSpecifier(alias_A = true),
+                sensealg.linsolve_kwargs...) # u is vec(λ)
         end
     end
 

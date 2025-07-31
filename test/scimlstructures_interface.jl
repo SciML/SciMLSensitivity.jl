@@ -88,13 +88,13 @@ using Zygote
 using ADTypes
 using Test
 
-mutable struct myparam{M,P,S}
+mutable struct myparam{M, P, S}
     model::M
-    ps ::P 
-    st ::S
-    α :: Float64
-    β :: Float64
-    γ :: Float64
+    ps::P
+    st::S
+    α::Float64
+    β::Float64
+    γ::Float64
 end
 
 SS.isscimlstructure(::myparam) = true
@@ -118,24 +118,24 @@ function SS.replace!(::SS.Tunable, p::myparam, newbuffer)
 end
 function initialize()
     # Defining the neural network
-    U = Lux.Chain(Lux.Dense(3,30,tanh),Lux.Dense(30,30,tanh),Lux.Dense(30,1))
+    U = Lux.Chain(Lux.Dense(3, 30, tanh), Lux.Dense(30, 30, tanh), Lux.Dense(30, 1))
     rng = Random.GLOBAL_RNG
-    _para,st = Lux.setup(rng,U)
+    _para, st = Lux.setup(rng, U)
     _para = ComponentArray(_para)
     # Setting the parameters
     α = 0.5
     β = 0.1
     γ = 0.01
-    return myparam(U,_para,st,α,β,γ)
+    return myparam(U, _para, st, α, β, γ)
 end
 function UDE_model!(du, u, p, t)
-    o = p.model(u,p.ps, p.st)[1][1]
+    o = p.model(u, p.ps, p.st)[1][1]
     du[1] = o * p.α * u[1] + p.β * u[2] + p.γ * u[3]
     du[2] = -p.α * u[1] + p.β * u[2] - p.γ * u[3]
     du[3] = p.α * u[1] - p.β * u[2] + p.γ * u[3]
     nothing
 end
-   
+
 p = initialize()
 function run_diff(ps)
     u01 = [1.0, 0.0, 0.0]
@@ -148,14 +148,14 @@ end
 run_diff(initialize())
 @test !iszero(Zygote.gradient(run_diff, initialize())[1].ps)
 
-function run_diff(ps,sensealg)
+function run_diff(ps, sensealg)
     u01 = [1.0, 0.0, 0.0]
     tspan = (0.0, 10.0)
     prob = ODEProblem(UDE_model!, u01, tspan, ps)
-    sol = solve(prob, Rosenbrock23(), saveat = 0.1, sensealg=sensealg)
+    sol = solve(prob, Rosenbrock23(), saveat = 0.1, sensealg = sensealg)
     return sol.u |> last |> sum
 end
 
 run_diff(initialize())
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint())[1].ps)
-@test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec=false))[1].ps)
+@test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec = false))[1].ps)

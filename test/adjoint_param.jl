@@ -54,7 +54,8 @@ g(u, p, t) = -u[1] * p[1] - p[2]
 dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
-du0, dp = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
+du0,
+dp = adjoint_sensitivities(sol, Vern9(), dgdu_continuous = dgdu,
     dgdp_continuous = dgdp; abstol = abstol, reltol = reltol)
 
 function G(p)
