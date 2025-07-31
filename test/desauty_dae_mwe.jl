@@ -20,23 +20,22 @@ function create_model(; C₁ = 3e-5, C₂ = 1e-6)
     @named ampermeter = CurrentSensor()
 
     eqs = [connect(input_signal.output, source.V)
-        connect(source.p, capacitor1.n, capacitor2.n)
-        connect(source.n, resistor1.p, resistor2.p, ground.g)
-        connect(resistor1.n, capacitor1.p, ampermeter.n)
-        connect(resistor2.n, capacitor2.p, ampermeter.p)]
+           connect(source.p, capacitor1.n, capacitor2.n)
+           connect(source.n, resistor1.p, resistor2.p, ground.g)
+           connect(resistor1.n, capacitor1.p, ampermeter.n)
+           connect(resistor2.n, capacitor2.p, ampermeter.p)]
 
     @named circuit_model = ODESystem(eqs, t,
         systems = [
             resistor1, resistor2, capacitor1, capacitor2,
-            source, input_signal, ground, ampermeter,
+            source, input_signal, ground, ampermeter
         ])
 end
 
 desauty_model = create_model()
 sys = structural_simplify(desauty_model)
 
-
-prob = ODEProblem(sys, [sys.resistor1.v => 1.], (0.0, 0.1))
+prob = ODEProblem(sys, [sys.resistor1.v => 1.0], (0.0, 0.1))
 iprob = prob.f.initialization_data.initializeprob
 isys = iprob.f.sys
 
@@ -48,7 +47,7 @@ sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.Zyg
 igs, = Zygote.gradient(tunables) do p
     iprob2 = remake(iprob, p = repack(p))
     sol = solve(iprob2,
-                sensealg = sensealg
+        sensealg = sensealg
     )
     sum(Array(sol))
 end

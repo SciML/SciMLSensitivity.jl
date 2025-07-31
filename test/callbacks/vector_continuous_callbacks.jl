@@ -21,16 +21,20 @@ function test_vector_continuous_callback(cb, g)
     sol = solve(prob, Tsit5(), callback = cb, abstol = abstol, reltol = reltol,
         saveat = savingtimes)
 
-    du01, dp1 = @time Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du01,
+    dp1 = @time Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, abstol = abstol,
             reltol = reltol,
             saveat = savingtimes,
             sensealg = BacksolveAdjoint())),
         u0, p)
 
-    du02, dp2 = @time Zygote.gradient(
-        (u0, p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
+    du02,
+    dp2 = @time Zygote.gradient(
+        (u0,
+            p) -> g(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb, abstol = abstol,
             reltol = reltol,
             saveat = savingtimes,

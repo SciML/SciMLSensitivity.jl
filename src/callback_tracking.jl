@@ -185,7 +185,8 @@ end
 getprob(S::CallbackSensitivityFunction) = S.prob
 inplace_sensitivity(S::CallbackSensitivityFunction) = true
 
-struct CallbackSensitivityFunctionPSwap{fType, Alg <: AbstractOverloadingSensitivityAlgorithm,
+struct CallbackSensitivityFunctionPSwap{
+    fType, Alg <: AbstractOverloadingSensitivityAlgorithm,
     C <: AdjointDiffCache, pType} <: SensitivityFunction
     f::fType
     sensealg::Alg
@@ -287,7 +288,7 @@ function _setup_reverse_callbacks(
             dgrad = integrator.f.f.integrating_cb.affect!.accumulation_cache
             recursive_copyto!(dgrad, 0)
         end
-        
+
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
@@ -348,13 +349,13 @@ function _setup_reverse_callbacks(
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
 
                 if sensealg isa GaussAdjoint
-                    vecjacobian!(dgrad, integrator.p, 
-                    integrator.f.f.integrating_cb.affect!.integrand_values.integrand, 
-                    y, integrator.t, fakeSp; dgrad = nothing, dy = nothing)
+                    vecjacobian!(dgrad, integrator.p,
+                        integrator.f.f.integrating_cb.affect!.integrand_values.integrand,
+                        y, integrator.t, fakeSp; dgrad = nothing, dy = nothing)
                     integrator.f.f.integrating_cb.affect!.integrand_values.integrand .= dgrad
                 else
                     vecjacobian!(dgrad, integrator.p, grad, y, integrator.t, fakeSp;
-                    dgrad = nothing, dy = nothing)
+                        dgrad = nothing, dy = nothing)
                     grad .= dgrad
                 end
             end
@@ -722,10 +723,10 @@ mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Func
 end
 function (ff::VectorConditionTimeWrapper)(t)
     (out = zeros(typeof(t), length(ff.out_cache));
-    ff.f(out, ff.u, t, ff.integrator);
-    [
-        out[ff.event_idx]
-    ])
+        ff.f(out, ff.u, t, ff.integrator);
+        [
+            out[ff.event_idx]
+        ])
 end
 
 mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Function
@@ -736,7 +737,8 @@ mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Functio
     out_cache::outType
 end
 function (ff::VectorConditionUWrapper)(u)
-    (out = similar(u, length(ff.out_cache)); ff.f(out, u, ff.t, ff.integrator); out[ff.event_idx])
+    (out = similar(u, length(ff.out_cache));
+        ff.f(out, u, ff.t, ff.integrator); out[ff.event_idx])
 end
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing

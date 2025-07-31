@@ -2,9 +2,11 @@ module SciMLSensitivityMooncakeExt
 
 using SciMLSensitivity: SciMLSensitivity
 using Mooncake: Mooncake
-import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded, DiffEqBase, MooncakeAdjoint
-using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure, 
-                        SciMLStructuresCompatibilityError, convert_tspan, has_continuous_callback,
+import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded,
+                         DiffEqBase, MooncakeAdjoint
+using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
+                        SciMLStructuresCompatibilityError, convert_tspan,
+                        has_continuous_callback,
                         unwrapped_f, state_values, current_time
 using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
 using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
@@ -38,7 +40,6 @@ function DiffEqBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...;
         kwargs...)
-
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p)
             throw(SciMLStructuresCompatibilityError())
@@ -65,7 +66,8 @@ function DiffEqBase._concrete_solve_adjoint(
                (prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                 SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize)
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
-                _prob = remake(prob, f = f, u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
+                _prob = remake(
+                    prob, f = f, u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             else
                 _prob = remake(prob, u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
             end
@@ -82,12 +84,13 @@ function DiffEqBase._concrete_solve_adjoint(
         sol
     end
 
-    out, pullback = Mooncake.value_and_pullback!!(
+    out,
+    pullback = Mooncake.value_and_pullback!!(
         Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.NoFData()),
         Mooncake.CoDual(u0, Mooncake.zero_rdata(u0)),
         Mooncake.CoDual(tunables, Mooncake.zero_rdata(tunables))
     )
-    
+
     function mooncake_adjoint_backpass(ybar)
         tmp = if eltype(ybar) <: Number && u0 isa Array
             Array(ybar)
@@ -108,10 +111,10 @@ function DiffEqBase._concrete_solve_adjoint(
             end
             return reshape(tmp, size(ybar.u[1])..., length(ybar.u))
         end
-        
+
         _, u0bar, pbar = pullback(tmp)
         _u0bar = u0bar
-        
+
         if originator isa SciMLBase.TrackerOriginator ||
            originator isa SciMLBase.ReverseDiffOriginator
             (NoTangent(), NoTangent(), _u0bar, pbar, NoTangent(),

@@ -13,7 +13,8 @@ end
 
 function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         noiseterm = false)
-    diffcache, y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+    diffcache,
+    y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
         quad = false, noiseterm = noiseterm)
 
     return ODEBacksolveSensitivityFunction(diffcache, sensealg, discrete,
@@ -190,7 +191,8 @@ end
     end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, rcb, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+    cb, rcb,
+    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated)
@@ -309,7 +311,8 @@ end
         noiseterm = true)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, _, duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+    cb, _,
+    duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
         dgdp_discrete, λ, t,
         tspan[2], callback, init_cb,
         terminated)
@@ -411,7 +414,8 @@ end
         noiseterm = false)
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
-    cb, _, duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+    cb, _,
+    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
         callback, init_cb, terminated)
