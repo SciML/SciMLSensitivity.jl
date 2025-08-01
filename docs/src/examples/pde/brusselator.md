@@ -301,7 +301,7 @@ end
 Finally to run everything:
 
 ```@example bruss
-res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=5000)
+res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=10000)
 ```
 
 ```@example bruss
