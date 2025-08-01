@@ -478,8 +478,7 @@ end
 struct MooncakeLoaded end
 
 function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
-    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
-          "`using Mooncake` to use this functionality"
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
     error(msg)
 end
 
@@ -522,8 +521,7 @@ function get_pf(::MooncakeVJP, prob, _f)
 end
 
 function mooncake_run_ad(paramjac_config, y, p, t, λ)
-    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
-          "`using Mooncake` to use this functionality"
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
     error(msg)
 end
 
