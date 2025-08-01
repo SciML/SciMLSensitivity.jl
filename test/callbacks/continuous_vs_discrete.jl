@@ -72,7 +72,7 @@ function test_continuous_wrt_discrete_callback()
         (u0,
             p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint())[end]),
+            sensealg = BacksolveAdjoint()).u[end]),
         u0, p)
 
     du02,
@@ -80,12 +80,12 @@ function test_continuous_wrt_discrete_callback()
         (u0,
             p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb,
-            sensealg = BacksolveAdjoint())[end]),
+            sensealg = BacksolveAdjoint()).u[end]),
         u0, p)
 
     dstuff = ForwardDiff.gradient(
         (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb)[end]),
+            callback = cb).u[end]),
         [u0; p])
 
     @info dstuff
@@ -134,7 +134,7 @@ function test_continuous_wrt_discrete_callback()
         (u0,
             p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint())[end]),
+            sensealg = BacksolveAdjoint()).u[end]),
         u0, p)
 
     du02,
@@ -142,12 +142,12 @@ function test_continuous_wrt_discrete_callback()
         (u0,
             p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
             callback = cb,
-            sensealg = BacksolveAdjoint())[end]),
+            sensealg = BacksolveAdjoint()).u[end]),
         u0, p)
 
     dstuff = ForwardDiff.gradient(
         (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb)[end]),
+            callback = cb).u[end]),
         [u0; p])
 
     @info dstuff

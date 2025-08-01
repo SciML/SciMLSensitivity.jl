@@ -189,8 +189,8 @@ f_dp = ForwardDiff.gradient(G_p, p)
 du0,
 dp = Zygote.gradient(
     (u0,
-        p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
-        abstol = 1e-10, reltol = 1e-10, saveat = tsteps,
+        p) -> sum(solve(prob, Tsit5(),
+        abstol = 1e-10, reltol = 1e-10, saveat = tsteps, u0 = u0, p = p,
         sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
             autojacvec = ZygoteVJP()))),
     u0, p)

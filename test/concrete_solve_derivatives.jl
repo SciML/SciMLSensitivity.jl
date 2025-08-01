@@ -316,7 +316,7 @@ dp4 = Zygote.gradient(
         p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
         abstol = 1e-14, reltol = 1e-14,
         save_everystep = false, save_start = false,
-        sensealg = InterpolatingAdjoint())[end]),
+        sensealg = InterpolatingAdjoint()).u[end]),
     u0, p)
 @test ū0≈du03 rtol=1e-11
 @test ū0≈du04 rtol=1e-12

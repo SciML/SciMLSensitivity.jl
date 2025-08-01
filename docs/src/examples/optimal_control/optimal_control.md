@@ -134,8 +134,9 @@ Now let's see what we received:
 ```@example neuraloptimalcontrol
 l = loss_adjoint(res3.u)
 cb(res3, l)
-p = Plots.plot(ODE.solve(ODE.remake(prob, p = res3.u), ODE.Tsit5(), saveat = 0.01), ylim = (
-    -6, 6), lw = 3)
+p = Plots.plot(
+    ODE.solve(ODE.remake(prob, p = res3.u), ODE.Tsit5(), saveat = 0.01), ylim = (
+        -6, 6), lw = 3)
 Plots.plot!(p, ts, [first(first(ann([t], CA.ComponentArray(res3.u, ax), st))) for t in ts],
     label = "u(t)", lw = 3)
 ```

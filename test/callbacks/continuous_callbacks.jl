@@ -148,8 +148,8 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
         callback = cb2,
         abstol = abstol, reltol = reltol)
     adj_sol = solve(adj_prob, Tsit5(), abstol = abstol, reltol = reltol)
-    @test du01 ≈ adj_sol[1:2, end]
-    @test dp1 ≈ adj_sol[3:4, end]
+    @test du01 ≈ adj_sol.u[1:2, end]
+    @test dp1 ≈ adj_sol.u[3:4, end]
 end
 
 println("Continuous Callbacks")
