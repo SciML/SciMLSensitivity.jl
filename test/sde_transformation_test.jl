@@ -50,8 +50,7 @@ sol_strat = solve(
     adaptive = false,
     dt = 0.0001, save_noise = true)
 prob_strat1 = SDEProblem{false}(
-    SDEFunction((u, p, t) -> transformed_function(u, p, t) .+
-                             1 // 2 * p[2]^2 * u[1], σ,
+    SDEFunction((u, p, t) -> transformed_function(u, p, t) .+ 1 // 2 * p[2]^2 * u[1], σ,
         analytic = linear_analytic),
     σ,
     u0,

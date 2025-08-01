@@ -116,8 +116,7 @@ end
 compute_index(t) = round(Int, t) + 1
 function (cb::Affect)(integrator)
     indx = compute_index(integrator.t)
-    integrator.u .= integrator.u .+
-                    @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
+    integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
 end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.0; 0.0]

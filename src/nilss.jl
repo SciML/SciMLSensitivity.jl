@@ -592,8 +592,7 @@ function shadow_forward(prob::NILSSProblem, sensealg::NILSS, alg)
             _dgdu = @view dgdu_val[:, :, iseg]
             _v = @view v[:, :, iseg]
             res[i] += sum((_v .* _dgdu) * _weight) / ((nstep - 1) * nseg)
-            res[i] += ξ[iseg, end] * (gavg - gsave[end, iseg]) /
-                      (dtsave * (nstep - 1) * nseg)
+            res[i] += ξ[iseg, end] * (gavg - gsave[end, iseg]) / (dtsave * (nstep - 1) * nseg)
         end
     end
 
