@@ -190,3 +190,4 @@ run_diff(initialize())
 
 # Mark tests that are expected to fail as broken until fixed
 @test_broken !iszero(Zygote.gradient(run_diff, initialize(), EnzymeAdjoint())[1].ps)
+end

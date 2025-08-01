@@ -253,6 +253,15 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
     (; sensealg, f) = S
     prob = getprob(S)
 
+    # Handle SciMLStructures parameters for jacobian computation
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables = p
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables = p
+    end
+
     (; J, uf, f_cache, jac_config) = S.diffcache
 
     if J isa DiffCache && dλ !== nothing
@@ -304,9 +313,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 pf.t = t
                 pf.u = y
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    temp = jacobian(pf, tunables, sensealg)
                     pJ .= temp
                 end
             end
@@ -319,9 +328,9 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 pf.u = y
                 pf.W = W
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    temp = jacobian(pf, tunables, sensealg)
                     pJ .= temp
                 end
             end
