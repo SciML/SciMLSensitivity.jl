@@ -29,7 +29,7 @@ function rhs(u, p, t)
 end
 
 function loss_fun(sol)
-    final_u = sol.u[:, end]
+    final_u = sol[:, end]
     err = sum(abs.(final_u))
     return err
 end
