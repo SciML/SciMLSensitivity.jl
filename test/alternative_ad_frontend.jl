@@ -205,7 +205,7 @@ end
 function loss2(p)
     prob = ODEProblem(f_aug, u0, tspan, p)
     sol = solve(prob, solvealg_test; sensealg = sensealg_test)
-    sum(sol.u[:, :, end])
+    sum(sol[:, :, end])
 end
 
 res1 = loss(p0)
