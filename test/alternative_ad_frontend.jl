@@ -199,7 +199,7 @@ f_aug(u, p, t) = reshape(p, 4, 4) * u
 function loss(p)
     prob = ODEProblem(f_aug, u0, tspan, p; alg = solvealg_test, sensealg = sensealg_test)
     sol = solve(prob)
-    sum(sol.u[:, :, end])
+    sum(sol[:, :, end])
 end
 
 function loss2(p)
