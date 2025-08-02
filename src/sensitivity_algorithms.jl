@@ -58,7 +58,7 @@ end
 function ForwardSensitivity(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
-        autojacvec = autodiff,
+        autojacvec = autodiff isa Bool ? autodiff : true,
         autojacmat = false)
     autojacvec && autojacmat &&
         error("Choose either Jacobian matrix products or Jacobian vector products,

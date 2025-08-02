@@ -392,7 +392,7 @@ function _ODEForwardSensitivityProblem(f::F, u0,
     uf = SciMLBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
     pf = SciMLBase.ParamJacobianWrapper(unwrapped_f(f), tspan[1], copy(u0))
     if isautojacmat
-        if alg_autodiff(alg)
+        if alg_autodiff(alg) !== false
             jac_config_seed = ForwardDiff.Dual{
                 typeof(uf),
             }.(u0,
@@ -404,7 +404,7 @@ function _ODEForwardSensitivityProblem(f::F, u0,
             error("Jacobian matrix products only work with automatic differentiation.")
         end
     elseif isautojacvec
-        if alg_autodiff(alg)
+        if alg_autodiff(alg) !== false
             # if we are using automatic `jac*vec`, then we need to use a `jac_config`
             # that is a tuple in the form of `(seed, buffer)`
             jac_config_seed = ForwardDiff.Dual{typeof(jacobianvec!)}.(u0, u0)

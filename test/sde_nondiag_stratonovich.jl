@@ -584,7 +584,7 @@ end
     adj_soloop = solve(adjproboop, EulerHeun(); dt = dtmix, tstops = soloop.t,
         adaptive = false)
 
-    @test adj_soloop.u[end][(length(p) + length(u₀) + 1):end] == soloop.u.u[1]
+    @test adj_soloop.u[end][(length(p) + length(u₀) + 1):end] == soloop.u[1]
     @test adj_soloop.u[end][1:length(u₀)] == res_sde_u0
     @test adj_soloop.u[end][(length(u₀) + 1):(end - length(u₀))] == res_sde_p'
 

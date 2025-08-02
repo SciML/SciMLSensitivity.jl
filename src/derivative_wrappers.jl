@@ -128,7 +128,7 @@ end
 
 function jacobian(f, x::AbstractArray{<:Number},
         alg::AbstractOverloadingSensitivityAlgorithm)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
@@ -156,7 +156,7 @@ end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         uf = unwrapped_f(f)
         if fx === nothing
             ForwardDiff.jacobian!(J, uf, x)
@@ -172,7 +172,7 @@ end
 function derivative!(df::AbstractArray{<:Number}, f,
         x::Number,
         alg::AbstractOverloadingSensitivityAlgorithm, der_config)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         ForwardDiff.derivative!(df, f, x) # der_config doesn't work
     else
         FiniteDiff.finite_difference_derivative!(df, f, x, der_config)
@@ -183,7 +183,7 @@ end
 function gradient!(df::AbstractArray{<:Number}, f,
         x::Union{Number, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, grad_config)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
         FiniteDiff.finite_difference_gradient!(df, f, x, grad_config)
@@ -198,7 +198,7 @@ jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 """
 function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
         v, alg::AbstractOverloadingSensitivityAlgorithm, config)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         buffer, seed = config
         TD = typeof(first(seed))
         T = typeof(first(seed).partials)
@@ -1084,7 +1084,7 @@ end
 
 build_jac_config(alg, uf, u::Nothing) = nothing
 function build_jac_config(alg, uf, u)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         jac_config = ForwardDiff.JacobianConfig(uf, u, u,
             ForwardDiff.Chunk{
                 determine_chunksize(u,
@@ -1103,7 +1103,7 @@ function build_jac_config(alg, uf, u)
 end
 
 function build_param_jac_config(alg, pf, u, p)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         tunables, repack, aliases = canonicalize(Tunable(), p)
         jac_config = ForwardDiff.JacobianConfig(pf, u, tunables,
             ForwardDiff.Chunk{
@@ -1123,7 +1123,7 @@ function build_param_jac_config(alg, pf, u, p)
 end
 
 function build_grad_config(alg, tf, du1, t)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         grad_config = ForwardDiff.GradientConfig(tf, du1,
             ForwardDiff.Chunk{
                 determine_chunksize(du1,
@@ -1136,7 +1136,7 @@ function build_grad_config(alg, tf, du1, t)
 end
 
 function build_deriv_config(alg, tf, du1, t)
-    if alg_autodiff(alg)
+    if alg_autodiff(alg) !== false
         grad_config = ForwardDiff.DerivativeConfig(tf, du1, t)
     else
         grad_config = FiniteDiff.DerivativeCache(du1, t, diff_type(alg))

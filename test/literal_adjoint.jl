@@ -9,7 +9,7 @@ function test(u0, p)
     tspan = [0.0, 1.0]
     prob = ODEProblem(lv!, u0, tspan, p)
     sol = solve(prob, Tsit5())
-    return sol.u.u[end][1]
+    return sol.u[end][1]
 end
 function test2(u0, p)
     tspan = [0.0, 1.0]

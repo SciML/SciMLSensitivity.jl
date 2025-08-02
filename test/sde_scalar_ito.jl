@@ -157,12 +157,12 @@ res_forward = ForwardDiff.gradient(u0 -> Gu0(u0, sensealg = ForwardDiffSensitivi
 resu0 = sum(@. u0 * exp(2 * (p[1] - p[2]^2 / 2) * tarray + 2 * p[2] * Wfix))
 @show resu0
 
-@test isapprox(resu0, gs_u0.u[1], rtol = 5e-2) # exact vs ito adjoint
+@test isapprox(resu0, gs_u0[1], rtol = 5e-2) # exact vs ito adjoint
 @test isapprox(res_u0, gs_u0, rtol = 5e-2) # strat vs ito adjoint
 @test isapprox(gs_u0, res_forward, rtol = 5e-2) # ito adjoint vs forward
-@test isapprox(resu0, res_u0.u[1], rtol = 1e-3) # exact vs strat adjoint
+@test isapprox(resu0, res_u0[1], rtol = 1e-3) # exact vs strat adjoint
 @test isapprox(res_u0, res_forward, rtol = 1e-3) # strat adjoint vs forward
-@test isapprox(resu0, res_forward.u[1], rtol = 1e-3)  # exact vs forward
+@test isapprox(resu0, res_forward[1], rtol = 1e-3)  # exact vs forward
 
 adj_probStrat = SDEAdjointProblem(solStrat, BacksolveAdjoint(autojacvec = ZygoteVJP()),
     EulerHeun(), t,
