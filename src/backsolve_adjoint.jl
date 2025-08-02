@@ -139,8 +139,10 @@ end
     u0 = state_values(sol.prob)
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
-    else
+    elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
     end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
@@ -263,7 +265,13 @@ end
     (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
-    tunables, repack, _ = canonicalize(Tunable(), p)
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -283,7 +291,7 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
-    numparams = length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(tunables, len)
@@ -386,7 +394,13 @@ end
     (; f, tspan) = sol.prob
     p = parameter_values(sol)
     u0 = state_values(sol.prob)
-    tunables, repack, _ = canonicalize(Tunable(), p)
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        throw(SciMLStructuresCompatibilityError())
+    end
     # check if solution was terminated, then use reduced time span
     terminated = false
     if hasfield(typeof(sol), :retcode)
@@ -404,7 +418,7 @@ end
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
 
     numstates = length(u0)
-    numparams = length(tunables)
+    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
 
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(tunables, len)
