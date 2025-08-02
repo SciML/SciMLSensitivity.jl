@@ -180,8 +180,8 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         callback = cb2,
         abstol = abstol, reltol = reltol)
     adj_sol = solve(adj_prob, Tsit5(), abstol = abstol, reltol = reltol)
-    @test du01 ≈ adj_sol.u[1:2, end]
-    @test dp1 ≈ adj_sol.u[3:6, end]
+    @test du01 ≈ adj_sol[1:2, end]
+    @test dp1 ≈ adj_sol[3:6, end]
 end
 
 @testset "Discrete callbacks" begin
