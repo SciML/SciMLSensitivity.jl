@@ -184,11 +184,11 @@ function automatic_sensealg_choice(
             if p === nothing || p === SciMLBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+                QuadratureAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autodiff = false, autojacvec = vjp)
+                GaussAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             else
-                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
+                InterpolatingAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             end
         else
             if p === nothing || p === SciMLBase.NullParameters()
@@ -209,11 +209,11 @@ function automatic_sensealg_choice(
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
             if p === nothing || p === SciMLBase.NullParameters()
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+                QuadratureAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autodiff = false, autojacvec = vjp)
+                GaussAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             else
-                InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
+                InterpolatingAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
             end
         else
             if p === nothing || p === SciMLBase.NullParameters()
@@ -235,7 +235,7 @@ function automatic_sensealg_choice(
                           !DiffEqBase.isinplace(prob)
         # autodiff = false because forwarddiff fails on many GPU kernels
         # this only effects the Jacobian calculation and is same computation order
-        SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
+        SteadyStateAdjoint(autodiff = AutoFiniteDiff(), autojacvec = ZygoteVJP())
     else
         vjp = inplace_vjp(prob, u0, p, verbose, repack)
         SteadyStateAdjoint(autojacvec = vjp)

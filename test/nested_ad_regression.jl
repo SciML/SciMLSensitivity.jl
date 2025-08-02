@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, Test
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
 function f!(du, u::AbstractArray{T}, p, x) where {T}
     du[1] = -p[1] * exp((x - 8)) * u[1]
 end
@@ -20,14 +21,14 @@ adj_prob = ODEAdjointProblem(sol,
     nothing, nothing, nothing, dg, nothing, g)
 adj_sol = solve(adj_prob, KenCarp4())
 @test length(adj_sol.t) < 300
-adj_sol2 = solve(adj_prob, KenCarp4(autodiff = false))
+adj_sol2 = solve(adj_prob, KenCarp4(autodiff = AutoFiniteDiff()))
 @test abs(length(adj_sol.t) - length(adj_sol2.t)) < 20
 
 adj_prob2 = ODEAdjointProblem(sol,
     QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
     KenCarp4(),
     nothing, nothing, nothing, dg, nothing, g)
-adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
+adj_sol3 = solve(adj_prob, KenCarp4(autodiff = AutoFiniteDiff()))
 @test abs(length(adj_sol.t) - length(adj_sol3.t)) < 20
 
 res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,

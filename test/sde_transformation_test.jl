@@ -22,7 +22,7 @@ sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
 
 du = zeros(size(u0))
-u = sol.u[end]
+u = sol.u.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 #transformed_function(du,u,p,tspan[2])
 du2 = transformed_function(u, p, tspan[2])
@@ -78,7 +78,7 @@ sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
 
 du = zeros(size(u0))
-u = sol.u[end]
+u = sol.u.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
 
@@ -97,7 +97,7 @@ u0 = rand(3)
 
 prob = SDEProblem(SDEFunction(f, σ, analytic = linear_analytic), σ, u0, tspan, p)
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
-u = sol.u[end]
+u = sol.u.u[end]
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 du2 = transformed_function(u, p, tspan[2])
@@ -112,7 +112,7 @@ prob = SDEProblem(SDEFunction(f!, σ!, analytic = linear_analytic), σ!, u0, tsp
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 
 du = zeros(size(u0))
-u = sol.u[end]
+u = sol.u.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
 @test isapprox(du, (p[1] * u - p[2]^2 * u), atol = 1e-15)
@@ -162,7 +162,7 @@ prob = SDEProblem(fnd!, σnd!, u0, tspan, p, noise_rate_prototype = zeros(2, 4))
 sol = solve(prob, EM(), adaptive = false, dt = 0.001, save_noise = true)
 
 du = zeros(size(u0))
-u = sol.u[end]
+u = sol.u.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
 @test isapprox(du, zeros(2), atol = 1e-15)
@@ -384,7 +384,7 @@ prob = SDEProblem(SDEFunction(f!, σ!, analytic = linear_analytic), σ!, u0, tsp
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 
 du = zeros(size(u0))
-u = sol.u[end]
+u = sol.u.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 
 function inplacefunc!(du, u, p, t)

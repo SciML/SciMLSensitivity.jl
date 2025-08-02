@@ -1,6 +1,7 @@
 using Zygote, SciMLSensitivity
 println("Starting tests")
 using OrdinaryDiffEq, ForwardDiff, Test
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
 
 function lotka_volterra(u, p, t)
     x, y = u
@@ -237,7 +238,7 @@ if VERSION >= v"1.7-"
     end
 
     function sum_of_solution_CASA(x; vjp = EnzymeVJP())
-        sensealg = QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+        sensealg = QuadratureAdjoint(autodiff = AutoFiniteDiff(), autojacvec = vjp)
         _prob = ODEProblem(rober, x[1:3], (0.0, 1e4), x[4:end])
         sum(solve(_prob, Rodas5P(), reltol = 1e-12, abstol = 1e-12, saveat = 1,
             sensealg = sensealg))

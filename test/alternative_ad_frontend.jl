@@ -1,6 +1,7 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, ReverseDiff, Tracker, Enzyme,
       FiniteDiff, Mooncake
 using Test
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
 Enzyme.API.typeWarning!(false)
 
 function mooncake_gradient(f, x)
@@ -275,7 +276,7 @@ function loss2(p)
     end
 end
 
-solver = Rosenbrock23(autodiff = false)
+solver = Rosenbrock23(autodiff = AutoFiniteDiff())
 sensealg = ReverseDiffAdjoint()
 
 grad_fi = FiniteDiff.finite_difference_gradient(loss2, p)

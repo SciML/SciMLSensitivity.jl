@@ -1,5 +1,6 @@
 using OrdinaryDiffEq, Zygote, SciMLSensitivity, ComponentArrays, Lux, ForwardDiff
 using Test, Random, LinearAlgebra
+using ADTypes: AutoFiniteDiff, AutoForwardDiff
 
 const T = 10.0;
 const ω = π / T;
@@ -32,7 +33,7 @@ dp1 = Zygote.gradient(loss_adjoint, ComponentArray(ip))
 dp2 = ForwardDiff.gradient(loss_adjoint, ComponentArray(ip))
 dp3 = Zygote.gradient(
     x -> loss_adjoint(
-        x, sensealg = InterpolatingAdjoint(autodiff = false, autojacvec = false)),
+        x, sensealg = InterpolatingAdjoint(autodiff = AutoFiniteDiff(), autojacvec = false)),
     ComponentArray(ip))
 
 @test dp1[1]≈dp2 atol=1e-2

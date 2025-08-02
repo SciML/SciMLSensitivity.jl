@@ -76,7 +76,7 @@ Zygote.gradient(0.1ones(length(SS.canonicalize(SS.Tunable(), p)[1]))) do tunable
     newp = SS.replace(SS.Tunable(), p, tunables)
     newprob = remake(prob; p = newp)
     sol = solve(newprob, Tsit5())
-    return sum(sol.u[end])
+    return sum(sol.u.u[end])
 end
 
 using OrdinaryDiffEq
