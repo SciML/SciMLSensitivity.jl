@@ -31,11 +31,8 @@ adj_sol2 = solve(adj_prob, KenCarp4(autodiff = false))
 # adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
 # @test abs(length(adj_sol.t) - length(adj_sol3.t)) < 20
 
-# TODO: This test causes an infinite loop/timeout on Julia v1.11
-# See: https://github.com/SciML/SciMLSensitivity.jl/pull/1246
-# The issue is with adjoint_sensitivities using QuadratureAdjoint(autojacvec = ReverseDiffVJP(true))
-# res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
-#     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)));
+res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
+     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)));
 
 res1 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP()));
