@@ -71,7 +71,8 @@ dc = sol.u[(sol.prob.f.numindvar * 3 + 1):(sol.prob.f.numindvar * 4), :]
 sense_res1 = [da[:, end] db[:, end] dc[:, end]]
 
 prob = ODEForwardSensitivityProblem(f.f, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autojacvec = true))
+                                  sensealg = ForwardSensitivity(autodiff = false,
+                                                             autojacvec = false))
 sol = solve(prob, Tsit5(), abstol = 1e-14, reltol = 1e-14, saveat = 0.01)
 x = sol.u[1:(sol.prob.f.numindvar), :]
 
