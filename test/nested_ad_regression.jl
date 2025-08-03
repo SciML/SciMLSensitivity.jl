@@ -23,13 +23,12 @@ adj_sol = solve(adj_prob, KenCarp4())
 adj_sol2 = solve(adj_prob, KenCarp4(autodiff = false))
 @test abs(length(adj_sol.t) - length(adj_sol2.t)) < 20
 
-# TODO: This also causes issues with ReverseDiffVJP(true) on Julia v1.11
-# adj_prob2 = ODEAdjointProblem(sol,
-#     QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
-#     KenCarp4(),
-#     nothing, nothing, nothing, dg, nothing, g)
-# adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
-# @test abs(length(adj_sol.t) - length(adj_sol3.t)) < 20
+adj_prob2 = ODEAdjointProblem(sol,
+    QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    KenCarp4(),
+    nothing, nothing, nothing, dg, nothing, g)
+adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
+@test abs(length(adj_sol.t) - length(adj_sol3.t)) < 20
 
 res2 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
      abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)));
