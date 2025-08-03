@@ -40,5 +40,5 @@ adj_sol2 = solve(adj_prob, KenCarp4(autodiff = false))
 res1 = adjoint_sensitivities(sol, KenCarp4(), dgdu_continuous = dg, g = g,
     abstol = 1e-6, reltol = 1e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP()));
 
-# @test res1[1] ≈ res2[1]
-# @test res1[2] ≈ res2[2]
+@test res1[1] ≈ res2[1]
+@test res1[2] ≈ res2[2]
