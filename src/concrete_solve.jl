@@ -378,7 +378,9 @@ function DiffEqBase._concrete_solve_adjoint(
         kwargs...)
     # Check parameter compatibility for adjoint methods
     if !((p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-         (sensealg isa Union{GaussAdjoint, BacksolveAdjoint, InterpolatingAdjoint, QuadratureAdjoint} && isscimlstructure(p)) ||
+         (sensealg isa
+          Union{GaussAdjoint, BacksolveAdjoint, InterpolatingAdjoint, QuadratureAdjoint} &&
+          isscimlstructure(p)) ||
          (sensealg isa Union{GaussAdjoint, QuadratureAdjoint} && isfunctor(p))) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
