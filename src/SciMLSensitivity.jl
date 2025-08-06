@@ -55,7 +55,7 @@ using SciMLBase.ConstructionBase: setproperties
 
 # Std Libs
 using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
-                     convert, copyto!, dot, issuccess, ldiv!, lu, lu!, mul!,
+                     cond, convert, copyto!, dot, issuccess, ldiv!, lu, lu!, mul!,
                      norm, normalize!, qr, transpose
 using Markdown: Markdown, @doc_str
 using Random: Random, rand!

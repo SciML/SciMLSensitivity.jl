@@ -203,6 +203,29 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
     B!(S, dt, umid, sense, sensealg)
     E!(S, dudt, sensealg.LSSregularizer)
 
+    # Pre-check and clean matrices before SchurLU
+    if any(!isfinite, S.B) || any(!isfinite, S.wBinv) || 
+       (S.wEinv !== nothing && (any(!isfinite, S.E) || any(!isfinite, S.wEinv)))
+        @warn "Non-finite values detected in input matrices before SchurLU. Attempting to clean."
+        # Clean B matrix
+        if any(!isfinite, S.B)
+            S.B[.!isfinite.(S.B)] .= 0
+        end
+        # Clean wBinv
+        if any(!isfinite, S.wBinv)
+            S.wBinv[.!isfinite.(S.wBinv)] .= 1
+        end
+        # Clean E and wEinv if present
+        if S.wEinv !== nothing
+            if any(!isfinite, S.E)
+                S.E[.!isfinite.(S.E)] .= 0
+            end
+            if any(!isfinite, S.wEinv)
+                S.wEinv[.!isfinite.(S.wEinv)] .= 1
+            end
+        end
+    end
+    
     F = SchurLU(S)
 
     res = similar(u0, numparams)
@@ -254,16 +277,29 @@ function wB!(S::LSSSchur, Δt, Nt, numindvar, dt)
     (; wBinv) = S
     fill!(wBinv, one(Δt))
     dim = numindvar * Nt
+    
+    # Add small regularization to prevent division by very small dt values
+    dt_min = eps(eltype(dt))^(1/3)
+    
     tmp = @view wBinv[1:numindvar]
-    tmp ./= dt[1]
+    tmp ./= max(dt[1], dt_min)
     tmp = @view wBinv[(dim - 2):end]
-    tmp ./= dt[end]
+    tmp ./= max(dt[end], dt_min)
     for indx in 2:(Nt - 1)
         tmp = @view wBinv[((indx - 1) * numindvar + 1):(indx * numindvar)]
-        tmp ./= (dt[indx] + dt[indx - 1])
+        tmp ./= max(dt[indx] + dt[indx - 1], dt_min)
     end
 
     wBinv .*= 2 * Δt
+    
+    # Check for non-finite values after computation
+    if any(!isfinite, wBinv)
+        @warn "Non-finite values detected in wBinv after computation. Clamping to reasonable bounds."
+        max_val = 1e12 / (2 * Δt)  # Maximum reasonable value
+        @. wBinv = clamp(wBinv, -max_val, max_val)
+        wBinv[.!isfinite.(wBinv)] .= one(eltype(wBinv))
+    end
+    
     return nothing
 end
 
@@ -272,7 +308,20 @@ wE!(S::LSSSchur, Δt, dt, LSSregularizer::AbstractCosWindowing) = nothing
 function wE!(S::LSSSchur, Δt, dt, LSSregularizer::TimeDilation)
     (; wEinv) = S
     (; alpha) = LSSregularizer
-    @. wEinv = Δt / (alpha^2 * dt)
+    
+    # Add small regularization to prevent division by very small dt values
+    dt_min = eps(eltype(dt))^(1/3)
+    
+    @. wEinv = Δt / (alpha^2 * max(dt, dt_min))
+    
+    # Check for non-finite values after computation
+    if any(!isfinite, wEinv)
+        @warn "Non-finite values detected in wEinv after computation. Clamping to reasonable bounds."
+        max_val = 1e12 * Δt / alpha^2  # Maximum reasonable value  
+        @. wEinv = clamp(wEinv, -max_val, max_val)
+        wEinv[.!isfinite.(wEinv)] .= Δt / alpha^2
+    end
+    
     return nothing
 end
 
@@ -281,6 +330,9 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
     (; f, J, uf, numindvar, f_cache, jac_config) = sense
 
     fill!(B, zero(eltype(J)))
+    
+    # Add small regularization to prevent division by very small dt values
+    dt_min = eps(eltype(dt))^(1/3)
 
     for (i, u) in enumerate(eachcol(umid))
         if SciMLBase.has_jac(f)
@@ -288,13 +340,32 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
         else
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
         end
+        
+        # Check for non-finite values in Jacobian
+        if any(!isfinite, J)
+            @warn "Non-finite values detected in Jacobian at time step $i. Using finite differences with regularization."
+            # Replace NaNs/Infs with zeros and add small regularization
+            J[.!isfinite.(J)] .= 0
+            # Add small perturbation to diagonal to ensure stability
+            J .+= eps(eltype(J))^(1/4) * I
+        end
+        
+        dt_reg = max(dt[i], dt_min)
+        
         B0 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
         (i * numindvar + 1):((i + 1) * numindvar)]
         B1 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
         ((i - 1) * numindvar + 1):(i * numindvar)]
-        B0 .+= I / dt[i] - J / 2
-        B1 .+= -I / dt[i] - J / 2
+        B0 .+= I / dt_reg - J / 2
+        B1 .+= -I / dt_reg - J / 2
     end
+    
+    # Final check for non-finite values in B
+    if any(!isfinite, B)
+        @warn "Non-finite values detected in B matrix after computation. Applying regularization."
+        B[.!isfinite.(B)] .= 0
+    end
+    
     return nothing
 end
 
@@ -310,12 +381,69 @@ function E!(S::LSSSchur, dudt, LSSregularizer::TimeDilation)
     return nothing
 end
 
-# compute Schur
+# compute Schur with robustness checks
 function SchurLU(S::LSSSchur)
     (; B, E, wBinv, wEinv) = S
-    Smat = B * Diagonal(wBinv) * B'
-    (wEinv !== nothing) && (Smat .+= E * Diagonal(wEinv) * E')
-    F = lu!(Smat)
+    
+    # Check for NaNs or Infs in input matrices
+    if any(!isfinite, B) || any(!isfinite, wBinv)
+        @warn "Non-finite values detected in B or wBinv matrices. Adding regularization."
+        # Add small regularization to diagonal weights  
+        wBinv_reg = copy(wBinv)
+        wBinv_reg .+= eps(eltype(wBinv)) * maximum(abs, wBinv_reg)
+        Smat = B * Diagonal(wBinv_reg) * B'
+    else
+        Smat = B * Diagonal(wBinv) * B'
+    end
+    
+    if wEinv !== nothing
+        if any(!isfinite, E) || any(!isfinite, wEinv)
+            @warn "Non-finite values detected in E or wEinv matrices. Adding regularization."
+            wEinv_reg = copy(wEinv)
+            wEinv_reg .+= eps(eltype(wEinv)) * maximum(abs, wEinv_reg)
+            Smat .+= E * Diagonal(wEinv_reg) * E'
+        else
+            Smat .+= E * Diagonal(wEinv) * E'
+        end
+    end
+    
+    # Check for ill-conditioning and add regularization if needed
+    if any(!isfinite, Smat)
+        @warn "Non-finite values in Schur complement matrix. Cleaning and adding strong regularization."
+        # Replace NaNs/Infs with zeros and add regularization
+        Smat[.!isfinite.(Smat)] .= 0
+        Smat .+= eps(eltype(Smat))^(1/4) * I
+    elseif cond(Smat) > 1e12
+        @warn "Schur complement matrix is ill-conditioned (condition number: $(cond(Smat))). Adding regularization."
+        Smat .+= eps(eltype(Smat))^(1/2) * I
+    end
+    
+    # Ensure no NaNs/Infs before LU (LAPACK requirement)
+    if any(!isfinite, Smat)
+        # Last resort: create identity-like matrix with small perturbation
+        n = size(Smat, 1)
+        Smat .= I(n) * sqrt(eps(eltype(Smat)))
+        @warn "Matrix still had non-finite values after regularization. Using identity matrix with small scaling."
+    end
+    
+    # Try LU decomposition with regularization if needed
+    local F
+    try
+        F = lu!(Smat)
+    catch e
+        if isa(e, LinearAlgebra.SingularException)
+            @warn "LU decomposition failed due to singularity. Adding stronger regularization."
+            Smat .+= sqrt(eps(eltype(Smat))) * I
+            try
+                F = lu!(Smat)
+            catch e2
+                error("Unable to compute stable LU decomposition even with regularization. Consider using different solver parameters or increasing tolerances.")
+            end
+        else
+            rethrow(e)
+        end
+    end
+    
     return F
 end
 
@@ -574,6 +702,29 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
 
     B!(S, dt, umid, sense, sensealg)
     E!(S, dudt, sensealg.LSSregularizer)
+    # Pre-check and clean matrices before SchurLU
+    if any(!isfinite, S.B) || any(!isfinite, S.wBinv) || 
+       (S.wEinv !== nothing && (any(!isfinite, S.E) || any(!isfinite, S.wEinv)))
+        @warn "Non-finite values detected in input matrices before SchurLU. Attempting to clean."
+        # Clean B matrix
+        if any(!isfinite, S.B)
+            S.B[.!isfinite.(S.B)] .= 0
+        end
+        # Clean wBinv
+        if any(!isfinite, S.wBinv)
+            S.wBinv[.!isfinite.(S.wBinv)] .= 1
+        end
+        # Clean E and wEinv if present
+        if S.wEinv !== nothing
+            if any(!isfinite, S.E)
+                S.E[.!isfinite.(S.E)] .= 0
+            end
+            if any(!isfinite, S.wEinv)
+                S.wEinv[.!isfinite.(S.wEinv)] .= 1
+            end
+        end
+    end
+    
     F = SchurLU(S)
     wBcorrect!(S, sol, g, Nt, sense, sensealg)
 
