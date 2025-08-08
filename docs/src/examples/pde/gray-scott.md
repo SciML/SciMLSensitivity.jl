@@ -403,7 +403,8 @@ optf = OptimizationFunction((θ, p) -> loss_fn(θ), Optimization.AutoZygote())
 optprob = OptimizationProblem(optf, ps)
 
 # Solve using Adam
-res = solve(optprob, Optimisers.Adam(0.001); maxiters=5000, callback=training_callback)
+res = solve(optprob, Optimisers.Adam(0.003); maxiters=10000, callback=training_callback)
+res.objective
 ```
 
 ## Results and conclusion
@@ -411,7 +412,7 @@ We can visualize the final results of the UDE and the ground-truth data with the
 
 ```@example gray_scott
 # Final model prediction and plot
-sol_pred = solve(prob_ude, FBDF(), saveat=tsteps, abstol=1e-6, reltol=1e-6)
+sol_pred = solve(prob_ude, FBDF(), saveat=tsteps, p = res.u, abstol=1e-6, reltol=1e-6)
 pred_u = [mean(s[:, :, 1]) for s in sol_pred.u]
 
 using Plots
