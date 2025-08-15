@@ -5,6 +5,11 @@ The Gray–Scott model is a prototypical reaction–diffusion system known for g
 
 In this tutorial, we’ll employ a Universal Differential Equation (UDE) framework: embedding a small neural network within the PDE’s reaction term to learn unknown dynamics from data, while retaining the known diffusion physics.
 
+!!! note
+
+    The data generation and training process specifically avoids the chaotic regime of this equation in order to avoid the potential fitting issues involved in that case. See
+    [How chaotic is chaos? How some AI for Science / SciML papers are overstating accuracy claims](https://www.stochasticlifestyle.com/how-chaotic-is-chaos-how-some-ai-for-science-sciml-papers-are-overstating-accuracy-claims/) or
+    [Scientific Machine Learning of Chaotic Systems Discovers Governing Equations for Neural Populations](https://arxiv.org/abs/2507.03631) for more details
 
 ## Equations of the Gray-Scott Model
 The system is governed by the coupled PDEs:
