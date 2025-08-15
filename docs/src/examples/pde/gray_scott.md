@@ -12,6 +12,12 @@ In this tutorial, we’ll employ a Universal Differential Equation (UDE) framewo
     [Scientific Machine Learning of Chaotic Systems Discovers Governing Equations for Neural Populations](https://arxiv.org/abs/2507.03631) for more details
 
 ## Equations of the Gray-Scott Model
+
+!!! note
+
+    For more information on the semi-discretization of the Gray-Scott model for performance, see
+    [the DifferentialEquations.jl tutorial](https://docs.sciml.ai/DiffEqDocs/stable/tutorials/faster_ode_example/#Example-Accelerating-Linear-Algebra-PDE-Semi-Discretization).
+
 The system is governed by the coupled PDEs:
 ```math
 \frac{\partial u}{\partial t} = D_1\,\nabla^2 u + \frac{a\,u^2}{v} + \bar{u} - \alpha
