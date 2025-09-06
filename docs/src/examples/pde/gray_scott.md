@@ -24,7 +24,7 @@ The system is governed by the coupled PDEs:
 ```
 
 ```math
-\frac{\partial v}{\partial t} = D_2\,\nabla^2 v + a\,u^2 + \beta\,v 
+\frac{\partial v}{\partial t} = D_2\,\nabla^2 v + a\,u^2 - \beta\,v 
 ```
 
 where $u$ and $v$ are the two chemical concentrations, $D_1$ and $D_2$ are diffusion coefficients, and $a$, $\bar{u}$, $\alpha$, $\beta$ are reaction parameters.
@@ -36,8 +36,8 @@ du = D1 * (A_y u + u A_x) + \frac{a u^2}{v} + \bar{u} - \alpha u
 ```
 
 ```math
-dv = D2 (A_y v + v A_x) + a u^2 + \beta v
-````
+dv = D2 (A_y v + v A_x) + a u^2 - \beta v
+```
 Here $A_x$ and $A_y$ are the 1D Laplacian matrices for x- and y-directions, respectively.
 
 Now we will dive into the implementation of the UDE. 
@@ -196,8 +196,8 @@ du = D1 (A_y u + u A_x) + \mathcal{N}_\theta(u,v)
 ```
 
 ```math
-dv = D2 (A_y v + v A_x) + a u^2 + \beta v
-````
+dv = D2 (A_y v + v A_x) + a u^2 - \beta v
+```
 
 The first step is to define the neural network structure.
 
