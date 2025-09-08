@@ -393,7 +393,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+		ReverseDiff.GradientTape((y, collect(tunables), [tspan[2]])) do u, tunables, t
                 du1 = similar(tunables, size(u))
                 du1 .= false
                 unwrappedf(

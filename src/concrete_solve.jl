@@ -875,9 +875,12 @@ function DiffEqBase._concrete_solve_adjoint(
                     else
                         _f = prob.f
                     end
-                    # use the callback from kwargs, not prob
-                    _prob = remake(prob, f = _f, u0 = u0dual, p = pdual,
-                        tspan = tspandual, callback = nothing)
+                    # @show typeof(p)
+                    pdual_structure = SciMLStructures.replace(Tunable(), p, pdual)
+                    # @show typeof(pdual_structure)
+                    # @show repack(pdual)
+                    _prob = remake(prob, f = _f, u0 = u0dual, p = repack(pdual), tspan = tspandual, callback = nothing)
+                    # _prob = remake(prob, f = _f, u0 = u0dual, p = pdual_structure, tspan = tspandual)
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (_prob = remake(_prob,
