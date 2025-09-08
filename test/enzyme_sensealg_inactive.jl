@@ -1,9 +1,10 @@
 using Test, SciMLSensitivity, Enzyme, OrdinaryDiffEq
 
-# Test that sensitivity algorithms are treated as inactive by Enzyme
+# Test that VJP choice types are treated as inactive by Enzyme  
+# The AbstractSensitivityAlgorithm inactive rule is now in SciMLBase
 # This addresses issue #1225 where sensealg in ODEProblem constructor would fail
 
-@testset "Enzyme Sensitivity Algorithm Inactive Types" begin
+@testset "Enzyme VJP Choice Inactive Types" begin
     
     # Test 1: Basic test that sensealg objects can be stored in data structures during Enzyme differentiation
     @testset "Sensealg in data structures" begin

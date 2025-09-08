@@ -1,22 +1,18 @@
 module SciMLSensitivityEnzymeExt
 
 using SciMLSensitivity
-using SciMLBase: AbstractSensitivityAlgorithm
 import Enzyme: EnzymeRules
 
-# Enzyme rules for sensitivity algorithms
-# 
-# Sensitivity algorithms define HOW to compute sensitivities, not WHAT to differentiate.
-# They should be treated as inactive (constant) during Enzyme differentiation to prevent
-# errors when they are stored in problem structures or other data that Enzyme differentiates through.
+# Enzyme rules for VJP choice types defined in SciMLSensitivity
 #
-# This fixes issues like #1225 where passing `sensealg` to ODEProblem constructor would fail
-# with Enzyme, while passing it to solve() would work.
+# VJP choice types configure how jacobian-vector products are computed within 
+# sensitivity algorithms. They should be treated as inactive (constant) during 
+# Enzyme differentiation.
+#
+# Note: AbstractSensitivityAlgorithm inactive rule is handled in SciMLBase
+# to avoid type piracy.
 
-# All sensitivity algorithm types should be inactive
-EnzymeRules.inactive_type(::Type{<:AbstractSensitivityAlgorithm}) = true
-
-# VJP choice types should also be inactive since they configure how jacobian-vector 
+# VJP choice types should be inactive since they configure how jacobian-vector 
 # products are computed within sensitivity algorithms
 EnzymeRules.inactive_type(::Type{<:SciMLSensitivity.VJPChoice}) = true
 
