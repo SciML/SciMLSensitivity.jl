@@ -83,6 +83,7 @@ include("concrete_solve.jl")
 include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
+include("enzyme_rules.jl")
 
 export extract_local_sensitivities
 
