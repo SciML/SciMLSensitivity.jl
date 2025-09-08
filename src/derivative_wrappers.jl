@@ -156,11 +156,25 @@ end
 function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
         alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+    # @warn "Allocating Jacobian matrix in jacobian!; consider using a DiffCache instead"
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
             ForwardDiff.jacobian!(J, uf, x)
         else
+            # @show uf.repack
+            # @show uf.repack(x)
+            # @show uf(fx, x)
+            # @show typeof(fx)
+            # function _uf(fx, x)
+            #     @show "in here"
+            #     @show typeof(fx)
+            #     @show typeof(x)
+            #     uf(fx, x)
+            # end
+            # @show uf(fx, x)
+            # @show typeof(uf)
+            # @show typeof(jac_config)
             ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
         end
     else
@@ -168,6 +182,25 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
     end
     nothing
 end
+
+# function jacobian!(J, f, repack, x,
+#     fx::Union{Nothing, AbstractArray{<:Number}},
+#     alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+#     # jacobian!(J, f, repack(x), fx, alg, jac_config)
+#     if alg_autodiff(alg)
+#         uf = unwrapped_f(f)
+#         global guf = uf
+
+#         if fx === nothing
+#             ForwardDiff.jacobian!(J, uf, x)
+#         else
+#             ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
+#             # ForwardDiff.jacobian!(J, uf, fx, x, jac_config)
+#         end
+#     else
+#         FiniteDiff.finite_difference_jacobian!(J, f, repack(x), jac_config)
+#     end
+# end
 
 function derivative!(df::AbstractArray{<:Number}, f,
         x::Number,
@@ -259,6 +292,12 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
         J = get_tmp(J, dλ)
     end
 
+    prob_tunables, repack, _ = canonicalize(Tunable(), uf.p)
+    # @show typeof(p)
+    # @show typeof(uf.p)
+    p = repack(p)
+    tunables, _, _ = canonicalize(Tunable(), p)
+
     if !(prob isa AbstractNonlinearProblem) && dλ !== nothing
         if W === nothing
             if SciMLBase.has_jac(f)
@@ -270,8 +309,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                     # This is really slow and allocates, but it's a fallback only for a
                     # rare case so it can be optimized in the future
                     _f_cache = DiffEqBase.isinplace(prob) ? deepcopy(y) : nothing
+                    @show t
+                    @show dλ
+                    @show typeof(ForwardDiff.value.(dλ))
+                    @show typeof(y)
                     _jac_config = build_jac_config(sensealg, _uf, t * dλ)
+                    @show typeof(_jac_config)
                     jacobian!(J, _uf, y, _f_cache, sensealg, _jac_config)
+                    # jacobian!(J, _uf, y, _f_cache, sensealg, nothing)
                 else
                     uf.t = t
                     uf.p = p
@@ -304,9 +349,23 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
                 pf.t = t
                 pf.u = y
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    # @show pf.repack
+                    # @show pf.f
+                    # @show pf(f_cache, p)
+                    # function _pf(fx, x)
+                    #     pf(fx, repack(x))
+
+                    # end
+                    
+                    # @show typeof(f_cache)
+                    # @show typeof(p)
+                    # p, _, _ = canonicalize(Tunable(), p)
+                    # @show _pf(f_cache, p)
+                    # @show typeof(pf)
+                    # error()
+                    jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    temp = jacobian(pf, tunables, sensealg)
                     pJ .= temp
                 end
             end
@@ -452,7 +511,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     else
-        tunables, repack, aliases = canonicalize(Tunable(), p)
+        tunables, repack, aliases = canonicalize(Tunable(), prob.p)
     end
 
     u0 = state_values(prob)
@@ -468,7 +527,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
             _tunables, _repack, _ = canonicalize(Tunable(), _p)
             tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
                 du1 = similar(u, size(u))
-                f(du1, u, _repack(p), first(t))
+                f(du1, u, repack(p), first(t))
                 return vec(du1)
             end
         else
@@ -486,7 +545,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
         if W === nothing
             _tunables, _repack, _ = canonicalize(Tunable(), _p)
             tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
-                vec(f(u, _repack(p), first(t)))
+                vec(f(u, repack(p), first(t)))
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
@@ -569,11 +628,17 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    else
+        tunables, repack, aliases = canonicalize(Tunable(), prob.p)
+    end
+
     if inplace_sensitivity(S)
         if W === nothing
             _dy, back = Zygote.pullback(y, p) do u, p
                 out_ = Zygote.Buffer(similar(u))
-                f(out_, u, p, t)
+                f(out_, u, repack(p), t)
                 vec(copy(out_))
             end
         else

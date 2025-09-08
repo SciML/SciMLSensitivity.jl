@@ -424,6 +424,7 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         kwargs...)
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
 
+    @show typeof(sol.prob.p)
     rcb = nothing
     if sol.prob isa ODEProblem
         adj_prob,

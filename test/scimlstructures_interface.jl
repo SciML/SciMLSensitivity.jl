@@ -87,6 +87,7 @@ import SciMLStructures as SS
 using Zygote
 using ADTypes
 using Test
+using Tracker, ReverseDiff
 
 mutable struct myparam{M, P, S}
     model::M
@@ -159,3 +160,27 @@ end
 run_diff(initialize())
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint())[1].ps)
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec = false))[1].ps)
+## Test all adjoints with SciMLStructures
+
+# Test basic functionality
+run_diff(initialize())
+
+@testset "SciMLStructures Support for All Adjoints" begin
+    # Test GaussAdjoint (already working)
+    @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint())[1].ps)
+
+    # Test newly fixed BacksolveAdjoint and InterpolatingAdjoint - these are the main fixes in this PR
+    Zygote.gradient(run_diff, initialize(), BacksolveAdjoint(autojacvec = ZygoteVJP()))[1].ps
+    Zygote.gradient(run_diff, initialize(), BacksolveAdjoint(autojacvec = ReverseDiffVJP()))[1].ps
+    Zygote.gradient(run_diff, initialize(), BacksolveAdjoint())[1].ps
+    @test !iszero(Zygote.gradient(run_diff, initialize(), BacksolveAdjoint())[1].ps)
+    @test !iszero(Zygote.gradient(run_diff, initialize(), InterpolatingAdjoint())[1].ps)
+
+    # Test QuadratureAdjoint (already working) 
+    @test !iszero(Zygote.gradient(run_diff, initialize(), QuadratureAdjoint())[1].ps)
+
+    # Test with different AD backends
+    @test !iszero(Zygote.gradient(run_diff, initialize(), ReverseDiffAdjoint())[1].ps)
+    @test !iszero(Zygote.gradient(run_diff, initialize(), TrackerAdjoint())[1].ps)
+    @test !iszero(Zygote.gradient(run_diff, initialize(), ZygoteAdjoint())[1].ps)
+end

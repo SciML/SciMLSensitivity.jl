@@ -31,6 +31,8 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
     else
         copyto!(vec(y), _y)
     end
+    prob_tunables, repack, _ = canonicalize(Tunable(), prob.p)
+    tunables, _, _ = canonicalize(Tunable(), p)
 
     if S.noiseterm
         if length(u) == length(du)
@@ -43,7 +45,9 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ, dy = dy)
         end
     else
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
+        # @warn "in vecjacqacobian! with noiseterm=false"
+        # @show typeof(p)
+        vecjacobian!(dλ, y, λ, tunables, t, S, dgrad = dgrad, dy = dy)
     end
     dλ .*= -1
     dgrad .*= -one(eltype(dgrad))
@@ -58,6 +62,8 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
 
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
     copyto!(vec(y), _y)
+    p, _, _ = canonicalize(Tunable(), p)
+
 
     vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy, W = W)
     dλ .*= -one(eltype(λ))
@@ -234,6 +240,8 @@ end
     end
     odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
         jac_prototype = adjoint_jac_prototype)
+    @warn typeof(p)
+    @show typeof(adjoint_jac_prototype)
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
     else

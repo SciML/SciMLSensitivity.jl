@@ -167,7 +167,7 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
     else
         if isinplace
             if !isRODE
-                uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
+                uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p, repack)
             else
                 uf = RODEUJacobianWrapper(unwrappedf, _t, p, _W)
             end
@@ -227,10 +227,14 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         paramjac_config = nothing
         pf = nothing
     else
+        @warn "constructing ParamJacobianWrapper"
         if isinplace &&
            !(p === nothing || p === SciMLBase.NullParameters())
             if !isRODE
-                pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                @show "constructing rn"
+                @show y
+                # @show repack
+                pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y, repack)
             else
                 pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
             end
