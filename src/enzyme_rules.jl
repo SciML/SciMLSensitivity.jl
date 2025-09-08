@@ -1,8 +1,3 @@
-module SciMLSensitivityEnzymeExt
-
-using SciMLSensitivity
-import Enzyme: EnzymeRules
-
 # Enzyme rules for VJP choice types defined in SciMLSensitivity
 #
 # VJP choice types configure how jacobian-vector products are computed within 
@@ -13,7 +8,7 @@ import Enzyme: EnzymeRules
 # Note: AbstractSensitivityAlgorithm inactive rule is handled in SciMLBase
 # to avoid type piracy.
 
-# VJP choice types should be inactive since they configure computation methods
-EnzymeRules.inactive_type(::Type{<:SciMLSensitivity.VJPChoice}) = true
+import Enzyme: EnzymeRules
 
-end
+# VJP choice types should be inactive since they configure computation methods
+EnzymeRules.inactive_type(::Type{<:VJPChoice}) = true
