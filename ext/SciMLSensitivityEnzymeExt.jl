@@ -1,7 +1,7 @@
 module SciMLSensitivityEnzymeExt
 
 using SciMLSensitivity
-import Enzyme: EnzymeRules
+import EnzymeRules
 
 # Enzyme rules for VJP choice types defined in SciMLSensitivity
 #
