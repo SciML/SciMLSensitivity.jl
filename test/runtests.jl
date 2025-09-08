@@ -40,6 +40,7 @@ end
             @time @safetestset "Scalar u0" include("scalar_u.jl")
             @time @safetestset "Error Messages" include("error_messages.jl")
             @time @safetestset "Autodiff Events" include("autodiff_events.jl")
+            @time @safetestset "Enzyme Sensealg Inactive" include("enzyme_sensealg_inactive.jl")
         end
     end
 
