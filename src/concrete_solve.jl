@@ -369,14 +369,15 @@ function DiffEqBase._concrete_solve_adjoint(
         sensealg::Union{BacksolveAdjoint,
             QuadratureAdjoint,
             InterpolatingAdjoint,
-            GaussAdjoint},
+            GaussAdjoint,
+			GaussKronrodAdjoint},
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_start = true, save_end = true,
         saveat = eltype(prob.tspan)[],
         save_idxs = nothing,
         initializealg_default = SciMLBase.OverrideInit(; abstol = 1e-6, reltol = 1e-3),
         kwargs...)
-    if !(sensealg isa GaussAdjoint) &&
+    if !((sensealg isa GaussAdjoint)||(sensealg isa GaussKronrodAdjoint)) &&
        !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
        (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
@@ -386,7 +387,7 @@ function DiffEqBase._concrete_solve_adjoint(
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
-    elseif sensealg isa Union{QuadratureAdjoint, GaussAdjoint}
+    elseif sensealg isa Union{QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint}
         tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())

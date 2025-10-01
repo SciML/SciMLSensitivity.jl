@@ -268,7 +268,14 @@ dp13 = Zygote.gradient(
         saveat = 0.1, save_idxs = 1:1,
         sensealg = GaussAdjoint())),
     u0, p)
-
+du014,
+dp14 = Zygote.gradient(
+	(u0,
+		p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+		abstol = 1e-14, reltol = 1e-14,
+		saveat = 0.1, save_idxs = 1:1,
+		sensealg = GaussKronrodAdjoint())),
+	u0, p)
 @test ū02≈du05 rtol=1e-12
 @test ū02≈du06 rtol=1e-12
 @test ū02≈du07 rtol=1e-12
@@ -278,6 +285,7 @@ dp13 = Zygote.gradient(
 #@test ū02 ≈ du011 rtol=1e-12
 @test ū02≈du012 rtol=1e-12
 @test ū02≈du013 rtol=1e-12
+@test ū02≈du014 rtol=1e-12
 @test adj2≈dp5 rtol=1e-12
 @test adj2≈dp6 rtol=1e-12
 @test adj2≈dp7 rtol=1e-12
@@ -287,6 +295,7 @@ dp13 = Zygote.gradient(
 #@test adj2 ≈ dp11 rtol=1e-12
 @test adj2≈dp12 rtol=1e-12
 @test adj2≈dp13 rtol=1e-12
+@test adj2≈dp14 rtol=1e-12
 
 ###
 ### Only End
@@ -415,6 +424,15 @@ dp9 = Zygote.gradient(
         sensealg = GaussAdjoint())),
     u0,
     p)
+du010,
+dp10 = Zygote.gradient(
+    (u0,
+        p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
+        abstol = 1e-14, reltol = 1e-14,
+        saveat = 0.1,
+        sensealg = GaussKronrodAdjoint())),
+    u0,
+    p)
 
 @test ū0≈du01 rtol=1e-12
 @test ū0≈du02 rtol=1e-12
@@ -425,6 +443,7 @@ dp9 = Zygote.gradient(
 @test_broken ū0≈du07 rtol=1e-12
 @test ū0≈du08 rtol=1e-12
 @test ū0≈du09 rtol=1e-12
+@test ū0≈du010 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
 @test adj≈dp2' rtol=1e-12
 @test adj≈dp3' rtol=1e-12
@@ -434,6 +453,7 @@ dp9 = Zygote.gradient(
 @test_broken adj≈dp7' rtol=1e-12
 @test adj≈dp8' rtol=1e-12
 @test adj≈dp9' rtol=1e-12
+@test adj≈dp10' rtol=1e-12
 
 ###
 ### forward
@@ -571,6 +591,15 @@ dp15 = Zygote.gradient(
         sensealg = GaussAdjoint())),
     u0,
     p)
+du016,
+dp16 = Zygote.gradient(
+    (u0,
+        p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
+        abstol = 1e-14, reltol = 1e-14,
+        save_idxs = 1, saveat = 0.1,
+        sensealg = GaussKronrodAdjoint())),
+    u0,
+    p)
 
 @test ū02≈du05 rtol=1e-12
 @test ū02≈du06 rtol=1e-12
@@ -583,6 +612,7 @@ dp15 = Zygote.gradient(
 @test ū02≈du013 rtol=1e-12
 @test ū02≈du014 rtol=1e-12
 @test ū02≈du015 rtol=1e-12
+@test ū02≈du016 rtol=1e-12
 @test adj2≈dp5 rtol=1e-12
 @test adj2≈dp6 rtol=1e-12
 @test adj2≈dp7 rtol=1e-12
@@ -594,6 +624,7 @@ dp15 = Zygote.gradient(
 @test adj2≈dp13 rtol=1e-12
 @test adj2≈dp14 rtol=1e-12
 @test adj2≈dp15 rtol=1e-12
+@test adj2≈dp16 rtol=1e-12
 
 # Handle VecOfArray Derivatives
 dp1 = Zygote.gradient(
