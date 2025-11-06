@@ -542,8 +542,18 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.reverse_pass!(tape)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
-        _dy, back = Zygote.pullback(tunables) do tunables
-            vec(f(y, repack(tunables), t))
+        if SciMLBase.isinplace(sol.prob.f)
+            # For in-place functions, create an out-of-place wrapper using Zygote.Buffer
+            # to allow mutation during the forward pass while remaining differentiable
+            _dy, back = Zygote.pullback(tunables) do tunables
+                du_buf = Zygote.Buffer(y)
+                f(du_buf, y, repack(tunables), t)
+                vec(copy(du_buf))
+            end
+        else
+            _dy, back = Zygote.pullback(tunables) do tunables
+                vec(f(y, repack(tunables), t))
+            end
         end
         tmp = back(λ)
         if tmp[1] === nothing
