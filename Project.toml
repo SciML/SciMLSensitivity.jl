@@ -27,10 +27,7 @@ LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-<<<<<<< Updated upstream
 OrdinaryDiffEqCore = "bbf590c4-e513-4bbe-9b18-05decba2e5d8"
-=======
->>>>>>> Stashed changes
 PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -100,14 +97,9 @@ RandomNumbers = "1.5.3"
 Reexport = "1.0"
 ReverseDiff = "1.15.1"
 SafeTestsets = "0.1.0"
-<<<<<<< Updated upstream
 SciMLBase = "2.103.1"
 SciMLJacobianOperators = "0.1"
 SciMLStructures = "1.3"
-=======
-SciMLJacobianOperators = "0.1"
->>>>>>> Stashed changes
-SciMLOperators = "0.3"
 SparseArrays = "1.10"
 StaticArrays = "1.8.0"
 StaticArraysCore = "1.4"
