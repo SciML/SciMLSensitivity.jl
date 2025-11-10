@@ -664,6 +664,16 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     return dy, dλ, dgrad
 end
 
+function gclosure1(f, du, u, p, t)
+    Base.copyto!(du, f(u, p, t))
+    nothing
+end
+            
+function gclosure2(du, u, p, t, W)
+    Base.copyto!(du, f(u, p, t, W))
+    nothing
+end
+
 function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
         W) where {TS <: SensitivityFunction}
     (; sensealg) = S
@@ -732,13 +742,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         end
 
         if W === nothing
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(isautojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(isautojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -750,22 +760,14 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
-            function g(du, u, p, t)
-                du .= f(u, p, t)
-                nothing
-            end
-            _tmp6 = Enzyme.make_zero(g)
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(g, _tmp6),
+            _tmp6 = Enzyme.make_zero(f)
+	    Enzyme.autodiff(isautojacvec.mode, Enzyme.Const(gclosure1), Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
-            function g(du, u, p, t, W)
-                du .= f(u, p, t, W)
-                nothing
-            end
-            _tmp6 = Enzyme.make_zero(g)
-            Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(g, _tmp6),
+            _tmp6 = Enzyme.make_zero(f)
+	    Enzyme.autodiff(isautojacvec.mode, Enzyme.Const(gclosure2), Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
