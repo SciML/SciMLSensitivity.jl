@@ -5,6 +5,11 @@
 
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
+        
+function adfunc(out, u, _p, t, repack)
+    f(out, u, repack(_p), t)
+    nothing
+end
 
 function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
@@ -12,12 +17,21 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     ez = try
         f = unwrapped_f(prob.f)
 
-        function adfunc(out, u, _p, t)
-            f(out, u, repack(_p), t)
-            nothing
-        end
         Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
-            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
+			Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]), Enzyme.Const(repack))
+        true
+    catch e
+        false
+    end
+    if ez
+        return EnzymeVJP()
+    end
+    
+    erz = try
+        f = unwrapped_f(prob.f)
+
+	Enzyme.autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse), adfunc, Enzyme.Duplicated(du, copy(u0)),
+			Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]), Enzyme.Const(repack))
         true
     catch e
         if verbose && have_not_warned_vjp[]
@@ -28,8 +42,8 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         end
         false
     end
-    if ez
-        return EnzymeVJP()
+    if erz
+      return EnzymeVJP(; mode=Enzyme.set_runtime_activity(Enzyme.Reverse))
     end
 
     # Determine if we can compile ReverseDiff

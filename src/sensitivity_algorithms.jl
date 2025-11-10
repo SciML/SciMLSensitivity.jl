@@ -1306,7 +1306,7 @@ like BLAS/LAPACK are used) and this will be the most efficient adjoint implement
 ## Constructor
 
 ```julia
-EnzymeVJP(; chunksize = 0)
+EnzymeVJP(; chunksize = 0, mode = EnzymeCore.Reverse)
 ```
 
 ## Keyword Arguments
@@ -1317,12 +1317,15 @@ EnzymeVJP(; chunksize = 0)
     should be set to the maximum chunksize that can occur during an integration to preallocate
     the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
     but could be decreased if this value is known to be lower to conserve memory.
+  - `mode`: the parameterized Enzyme mode, default set to EnzymeCore.Reverse. Alternatively one
+    may want to pass Enzyme.set_runtime_activity(Enzyme.Reverse)
 """
-struct EnzymeVJP <: VJPChoice
+struct EnzymeVJP{Mode<:Enzyme.ReverseMode} <: VJPChoice
     chunksize::Int
+    mode::Mode
 end
 
-EnzymeVJP(; chunksize = 0) = EnzymeVJP(chunksize)
+EnzymeVJP(; chunksize = 0, mode = Enzyme.Reverse) = EnzymeVJP(chunksize, mode)
 
 """
 ```julia

@@ -441,6 +441,11 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         sensealg, dgdp_cache, dgdp)
 end
 
+function g(f, du, u, p, t)
+    Base.copyto!(du, f(u, p, t))
+    nothing
+end
+
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
@@ -500,17 +505,13 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.remake_zero!(tmp6)
 
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+                sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
         else
-            function g(du, u, p, t)
-                du .= f(u, p, t)
-                nothing
-            end
-            tmp6 = Enzyme.make_zero(g)
+            tmp6 = Enzyme.make_zero(f)
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+	        sensealg.autojacvec.mode, Enzyme.Const(gclosure3), Enzyme.Duplicated(f, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
         end
