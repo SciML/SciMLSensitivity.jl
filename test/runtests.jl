@@ -10,6 +10,9 @@ function activate_gpu_env()
     Pkg.instantiate()
 end
 
+using Enzyme
+Enzyme.Compiler.VERBOSE_ERRORS[] = true 
+
 @time @testset "SciMLSensitivity" begin
     if GROUP == "All" || GROUP == "Core1" || GROUP == "Downstream"
         @testset "Core1" begin
