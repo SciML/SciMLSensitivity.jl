@@ -5,7 +5,10 @@
 
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
-        
+
+using Enzyme
+Enzyme.Compiler.VERBOSE_ERRORS[] = true
+
 function adfunc(out, u, _p, t, repack)
     f(out, u, repack(_p), t)
     nothing
