@@ -772,39 +772,50 @@ Currently fails on almost every solver.
 """
 struct ZygoteAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing} end
 
-"""
-EnzymeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
+@static if VERSION < v"1.12"
+    """
+    EnzymeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing,true,nothing}
 
-An implementation of discrete adjoint sensitivity analysis
-using the Enzyme.jl source-to-source AD directly on the differential equation
-solver.
+    An implementation of discrete adjoint sensitivity analysis
+    using the Enzyme.jl source-to-source AD directly on the differential equation
+    solver.
 
-!!! warn
+    !!! warn
 
-    This is currently experimental and supports only explicit solvers. It will
-    support all solvers in the future.
+        This is currently experimental and supports only explicit solvers. It will
+        support all solvers in the future.
 
-## Constructor
+    ## Constructor
 
-```julia
-EnzymeAdjoint(mode = nothing)
-```
+    ```julia
+    EnzymeAdjoint(mode = nothing)
+    ```
 
-## Arguments
+    ## Arguments
 
-  - `mode::M` determines the autodiff mode (forward or reverse). It can be:
+      - `mode::M` determines the autodiff mode (forward or reverse). It can be:
 
-      + an object subtyping `EnzymeCore.Mode` (like `EnzymeCore.Forward` or `EnzymeCore.Reverse`) if a specific mode is required
-      + `nothing` to choose the best mode automatically
+          + an object subtyping `EnzymeCore.Mode` (like `EnzymeCore.Forward` or `EnzymeCore.Reverse`) if a specific mode is required
+          + `nothing` to choose the best mode automatically
 
-## SciMLProblem Support
+    ## SciMLProblem Support
 
-Currently fails on almost every solver.
-"""
-struct EnzymeAdjoint{M <: Union{Nothing, Enzyme.EnzymeCore.Mode}} <:
-       AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
-    mode::M
-    EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
+    Currently fails on almost every solver.
+    """
+    struct EnzymeAdjoint{M <: Union{Nothing, Enzyme.EnzymeCore.Mode}} <:
+           AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
+        mode::M
+        EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
+    end
+else
+    # Dummy type for Julia 1.12+ - Enzyme is not supported on this version
+    struct EnzymeAdjoint{M <: Nothing} <:
+           AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
+        mode::M
+        function EnzymeAdjoint(mode = nothing)
+            error("EnzymeAdjoint is not supported on Julia 1.12+. Please use a different sensitivity algorithm.")
+        end
+    end
 end
 
 """
@@ -1291,38 +1302,48 @@ struct ZygoteVJP <: VJPChoice
 end
 ZygoteVJP(; allow_nothing = false) = ZygoteVJP(allow_nothing)
 
-"""
-```julia
-EnzymeVJP <: VJPChoice
-```
+@static if VERSION < v"1.12"
+    """
+    ```julia
+    EnzymeVJP <: VJPChoice
+    ```
 
-Uses Enzyme.jl to compute vector-Jacobian products. Is the fastest VJP whenever applicable,
-though Enzyme.jl currently has low coverage over the Julia programming language, for example
-restricting the user's defined `f` function to not do things like require garbage collection
-or calls to BLAS/LAPACK. However, mutation is supported, meaning that in-place `f` with
-fully mutating non-allocating code will work with Enzyme (provided no high-level calls to C
-like BLAS/LAPACK are used) and this will be the most efficient adjoint implementation.
+    Uses Enzyme.jl to compute vector-Jacobian products. Is the fastest VJP whenever applicable,
+    though Enzyme.jl currently has low coverage over the Julia programming language, for example
+    restricting the user's defined `f` function to not do things like require garbage collection
+    or calls to BLAS/LAPACK. However, mutation is supported, meaning that in-place `f` with
+    fully mutating non-allocating code will work with Enzyme (provided no high-level calls to C
+    like BLAS/LAPACK are used) and this will be the most efficient adjoint implementation.
 
-## Constructor
+    ## Constructor
 
-```julia
-EnzymeVJP(; chunksize = 0)
-```
+    ```julia
+    EnzymeVJP(; chunksize = 0)
+    ```
 
-## Keyword Arguments
+    ## Keyword Arguments
 
-  - `chunksize`: the default chunk size for the temporary variables inside the vjp's right
-    hand side definition. This is used for compatibility with ODE solves that default to using
-    ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
-    should be set to the maximum chunksize that can occur during an integration to preallocate
-    the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
-    but could be decreased if this value is known to be lower to conserve memory.
-"""
-struct EnzymeVJP <: VJPChoice
-    chunksize::Int
+      - `chunksize`: the default chunk size for the temporary variables inside the vjp's right
+        hand side definition. This is used for compatibility with ODE solves that default to using
+        ForwardDiff.jl for the Jacobian of the stiff ODE solve, such as OrdinaryDiffEq.jl. This
+        should be set to the maximum chunksize that can occur during an integration to preallocate
+        the `DualCaches` for PreallocationTools.jl. It defaults to 0, using `ForwardDiff.pickchunksize`
+        but could be decreased if this value is known to be lower to conserve memory.
+    """
+    struct EnzymeVJP <: VJPChoice
+        chunksize::Int
+    end
+
+    EnzymeVJP(; chunksize = 0) = EnzymeVJP(chunksize)
+else
+    # Dummy type for Julia 1.12+ - Enzyme is not supported on this version
+    struct EnzymeVJP <: VJPChoice
+        chunksize::Int
+        function EnzymeVJP(; chunksize = 0)
+            error("EnzymeVJP is not supported on Julia 1.12+. Please use a different VJP method.")
+        end
+    end
 end
-
-EnzymeVJP(; chunksize = 0) = EnzymeVJP(chunksize)
 
 """
 ```julia
@@ -1496,7 +1517,9 @@ function get_autodiff_from_vjp(::ReverseDiffVJP{compile}) where {compile}
     return AutoReverseDiff(; compile)
 end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
-get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
+@static if VERSION < v"1.12"
+    get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
+end
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
 get_autodiff_from_vjp(::Nothing) = AutoZygote()
 get_autodiff_from_vjp(b::Bool) = ifelse(b, AutoForwardDiff(), AutoFiniteDiff())

@@ -1,7 +1,12 @@
 module SciMLSensitivity
 
-using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
-               AutoReverseDiff, AutoTracker, AutoZygote
+@static if VERSION < v"1.12"
+    using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
+                   AutoReverseDiff, AutoTracker, AutoZygote
+else
+    using ADTypes: ADTypes, AutoFiniteDiff, AutoForwardDiff,
+                   AutoReverseDiff, AutoTracker, AutoZygote
+end
 using Accessors: @reset
 using Adapt: Adapt, adapt
 using ArrayInterface: ArrayInterface
@@ -45,7 +50,9 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
                       AbstractThunk, AbstractTangent
-using Enzyme: Enzyme
+@static if VERSION < v"1.12"
+    using Enzyme: Enzyme
+end
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
@@ -97,14 +104,22 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
 export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
        InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
-       EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
+       ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
        ForwardLSS, AdjointLSS, NILSS, NILSAS
 
+@static if VERSION < v"1.12"
+    export EnzymeAdjoint
+end
+
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
+export TrackerVJP, ZygoteVJP, ReverseDiffVJP
+
+@static if VERSION < v"1.12"
+    export EnzymeVJP
+end
 
 export StochasticTransformedFunction
 
