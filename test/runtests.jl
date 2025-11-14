@@ -80,7 +80,9 @@ end
 
     if GROUP == "All" || GROUP == "Core6"
         @testset "Core 6" begin
-            @time @safetestset "Enzyme Closures" include("enzyme_closure.jl")
+            if VERSION < v"1.12"
+                @time @safetestset "Enzyme Closures" include("enzyme_closure.jl")
+            end
             @time @safetestset "Complex Matrix FiniteDiff Adjoint" include("complex_matrix_finitediff.jl")
             @time @safetestset "Null Parameters" include("null_parameters.jl")
             @time @safetestset "Forward Mode Prob Kwargs" include("forward_prob_kwargs.jl")

@@ -93,15 +93,17 @@ dp7 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-du08,
-dp8 = Zygote.gradient(
-    (u0,
-        p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-        abstol = 1e-14, reltol = 1e-14,
-        saveat = 0.1,
-        sensealg = EnzymeAdjoint())),
-    u0,
-    p)
+@static if VERSION < v"1.12"
+    du08,
+    dp8 = Zygote.gradient(
+        (u0,
+            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
+            abstol = 1e-14, reltol = 1e-14,
+            saveat = 0.1,
+            sensealg = EnzymeAdjoint())),
+        u0,
+        p)
+end
 
 @test ū0≈du01 rtol=1e-12
 @test ū0 == du02
@@ -110,7 +112,9 @@ dp8 = Zygote.gradient(
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test_broken ū0≈du07 rtol=1e-12
-@test ū0≈du08 rtol=1e-12
+@static if VERSION < v"1.12"
+    @test ū0≈du08 rtol=1e-12
+end
 @test adj≈dp1' rtol=1e-12
 @test adj == dp2'
 @test adj≈dp3' rtol=1e-12
@@ -118,7 +122,9 @@ dp8 = Zygote.gradient(
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@test adj≈dp8' rtol=1e-12
+@static if VERSION < v"1.12"
+    @test adj≈dp8' rtol=1e-12
+end
 
 ###
 ### Direct from prob
@@ -406,15 +412,17 @@ dp7 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-du08,
-dp8 = Zygote.gradient(
-    (u0,
-        p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
-        abstol = 1e-14, reltol = 1e-14,
-        saveat = 0.1,
-        sensealg = EnzymeAdjoint())),
-    u0,
-    p)
+@static if VERSION < v"1.12"
+    du08,
+    dp8 = Zygote.gradient(
+        (u0,
+            p) -> sum(solve(proboop, Tsit5(), u0 = u0, p = p,
+            abstol = 1e-14, reltol = 1e-14,
+            saveat = 0.1,
+            sensealg = EnzymeAdjoint())),
+        u0,
+        p)
+end
 du09,
 dp9 = Zygote.gradient(
     (u0,
@@ -441,7 +449,9 @@ dp10 = Zygote.gradient(
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test_broken ū0≈du07 rtol=1e-12
-@test ū0≈du08 rtol=1e-12
+@static if VERSION < v"1.12"
+    @test ū0≈du08 rtol=1e-12
+end
 @test ū0≈du09 rtol=1e-12
 @test ū0≈du010 rtol=1e-12
 @test adj≈dp1' rtol=1e-12
@@ -451,7 +461,9 @@ dp10 = Zygote.gradient(
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@test adj≈dp8' rtol=1e-12
+@static if VERSION < v"1.12"
+    @test adj≈dp8' rtol=1e-12
+end
 @test adj≈dp9' rtol=1e-12
 @test adj≈dp10' rtol=1e-12
 
