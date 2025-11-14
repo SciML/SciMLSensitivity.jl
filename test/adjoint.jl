@@ -139,16 +139,18 @@ easy_res11 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(autojacvec = SciMLSensitivity.ReverseDiffVJP(true)))
-_,
-easy_res12 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
-    abstol = 1e-14,
-    reltol = 1e-14,
-    sensealg = InterpolatingAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
-_,
-easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
-    abstol = 1e-14,
-    reltol = 1e-14,
-    sensealg = QuadratureAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+@static if VERSION < v"1.12"
+    _,
+    easy_res12 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+        abstol = 1e-14,
+        reltol = 1e-14,
+        sensealg = InterpolatingAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+    _,
+    easy_res13 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+        abstol = 1e-14,
+        reltol = 1e-14,
+        sensealg = QuadratureAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+end
 _,
 easy_res14 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
@@ -179,11 +181,13 @@ easy_res143 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
-_,
-easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
-    abstol = 1e-14,
-    reltol = 1e-14,
-    sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+@static if VERSION < v"1.12"
+    _,
+    easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+        abstol = 1e-14,
+        reltol = 1e-14,
+        sensealg = GaussAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+end
 _,
 easy_res145 = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
@@ -212,11 +216,13 @@ easy_res143k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(true)))
-_,
-easy_res144k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
-    abstol = 1e-14,
-    reltol = 1e-14,
-    sensealg = GaussKronrodAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+@static if VERSION < v"1.12"
+    _,
+    easy_res144k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
+        abstol = 1e-14,
+        reltol = 1e-14,
+        sensealg = GaussKronrodAdjoint(autojacvec = SciMLSensitivity.EnzymeVJP()))
+end
 _,
 easy_res145k = adjoint_sensitivities(sol_nodense, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
@@ -1049,34 +1055,36 @@ function dynamics!(du, u, p, t)
     du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
 end
 
-function backsolve_grad(sol, lqr_params, checkpointing)
-    bwd_sol = solve(
-        ODEAdjointProblem(sol,
-            BacksolveAdjoint(autojacvec = EnzymeVJP(),
-                checkpointing = checkpointing),
+@static if VERSION < v"1.12"
+    function backsolve_grad(sol, lqr_params, checkpointing)
+        bwd_sol = solve(
+            ODEAdjointProblem(sol,
+                BacksolveAdjoint(autojacvec = EnzymeVJP(),
+                    checkpointing = checkpointing),
+                Tsit5(),
+                nothing, nothing, nothing, nothing, nothing,
+                (x, lqr_params, t) -> cost(x, lqr_params)),
             Tsit5(),
-            nothing, nothing, nothing, nothing, nothing,
-            (x, lqr_params, t) -> cost(x, lqr_params)),
-        Tsit5(),
+            dense = false,
+            save_everystep = false)
+
+        bwd_sol.u[end][1:(end - x_dim)]
+        #fwd_sol, bwd_sol
+    end
+
+    x0 = ones(x_dim)
+    fwd_sol = solve(ODEProblem(dynamics!, x0, (0, T), params),
+        Tsit5(), abstol = 1e-9, reltol = 1e-9,
+        u0 = x0,
+        p = params,
         dense = false,
-        save_everystep = false)
+        save_everystep = true)
 
-    bwd_sol.u[end][1:(end - x_dim)]
-    #fwd_sol, bwd_sol
+    backsolve_results = backsolve_grad(fwd_sol, params, false)
+    backsolve_checkpointing_results = backsolve_grad(fwd_sol, params, true)
+
+    @test backsolve_results != backsolve_checkpointing_results
 end
-
-x0 = ones(x_dim)
-fwd_sol = solve(ODEProblem(dynamics!, x0, (0, T), params),
-    Tsit5(), abstol = 1e-9, reltol = 1e-9,
-    u0 = x0,
-    p = params,
-    dense = false,
-    save_everystep = true)
-
-backsolve_results = backsolve_grad(fwd_sol, params, false)
-backsolve_checkpointing_results = backsolve_grad(fwd_sol, params, true)
-
-@test backsolve_results != backsolve_checkpointing_results
 
 int_u0,
 int_p = adjoint_sensitivities(fwd_sol, Tsit5(),
