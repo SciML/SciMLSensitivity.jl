@@ -1,12 +1,7 @@
 module SciMLSensitivity
 
-@static if VERSION < v"1.12"
-    using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
-                   AutoReverseDiff, AutoTracker, AutoZygote
-else
-    using ADTypes: ADTypes, AutoFiniteDiff, AutoForwardDiff,
-                   AutoReverseDiff, AutoTracker, AutoZygote
-end
+using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
+               AutoReverseDiff, AutoTracker, AutoZygote
 using Accessors: @reset
 using Adapt: Adapt, adapt
 using ArrayInterface: ArrayInterface
@@ -104,22 +99,14 @@ export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityF
 export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
        InterpolatingAdjoint,
        TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
-       ForwardSensitivity, ForwardDiffSensitivity,
+       EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
        ForwardDiffOverAdjoint,
        SteadyStateAdjoint,
        ForwardLSS, AdjointLSS, NILSS, NILSAS
 
-@static if VERSION < v"1.12"
-    export EnzymeAdjoint
-end
-
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, ReverseDiffVJP
-
-@static if VERSION < v"1.12"
-    export EnzymeVJP
-end
+export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
 export StochasticTransformedFunction
 
