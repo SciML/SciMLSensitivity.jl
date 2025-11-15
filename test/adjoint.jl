@@ -139,7 +139,7 @@ easy_res11 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = InterpolatingAdjoint(autojacvec = SciMLSensitivity.ReverseDiffVJP(true)))
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     _,
     easy_res12 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
         abstol = 1e-14,
@@ -181,7 +181,7 @@ easy_res143 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP(true)))
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     _,
     easy_res144 = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
         abstol = 1e-14,
@@ -216,7 +216,7 @@ easy_res143k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
     abstol = 1e-14,
     reltol = 1e-14,
     sensealg = GaussKronrodAdjoint(autojacvec = ReverseDiffVJP(true)))
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     _,
     easy_res144k = adjoint_sensitivities(solb, Tsit5(), t = t, dgdu_discrete = dg,
         abstol = 1e-14,
@@ -1055,7 +1055,7 @@ function dynamics!(du, u, p, t)
     du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
 end
 
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     function backsolve_grad(sol, lqr_params, checkpointing)
         bwd_sol = solve(
             ODEAdjointProblem(sol,

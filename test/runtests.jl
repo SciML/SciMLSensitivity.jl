@@ -80,7 +80,7 @@ end
 
     if GROUP == "All" || GROUP == "Core6"
         @testset "Core 6" begin
-            if VERSION < v"1.12"
+            if SciMLSensitivity.ENZYME_ENABLED
                 @time @safetestset "Enzyme Closures" include("enzyme_closure.jl")
             end
             @time @safetestset "Complex Matrix FiniteDiff Adjoint" include("complex_matrix_finitediff.jl")

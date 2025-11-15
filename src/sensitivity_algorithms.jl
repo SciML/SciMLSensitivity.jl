@@ -801,7 +801,7 @@ EnzymeAdjoint(mode = nothing)
 
 Currently fails on almost every solver.
 """
-@static if VERSION < v"1.12"
+@static if ENZYME_ENABLED
     struct EnzymeAdjoint{M <: Union{Nothing, Enzyme.EnzymeCore.Mode}} <:
            AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
         mode::M

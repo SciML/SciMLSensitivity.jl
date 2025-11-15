@@ -1,5 +1,8 @@
 module SciMLSensitivity
 
+# Enzyme is not compatible with Julia 1.12+
+const ENZYME_ENABLED = VERSION < v"1.12"
+
 using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
                AutoReverseDiff, AutoTracker, AutoZygote
 using Accessors: @reset
@@ -45,7 +48,7 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
                       AbstractThunk, AbstractTangent
-@static if VERSION < v"1.12"
+@static if ENZYME_ENABLED
     using Enzyme: Enzyme
 end
 using FiniteDiff: FiniteDiff
@@ -87,6 +90,8 @@ include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 
 export extract_local_sensitivities
+
+export ENZYME_ENABLED
 
 export ODEForwardSensitivityFunction, ODEForwardSensitivityProblem, SensitivityFunction,
        ODEAdjointProblem, AdjointSensitivityIntegrand,

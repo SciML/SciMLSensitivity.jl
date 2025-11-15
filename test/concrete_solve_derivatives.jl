@@ -93,7 +93,7 @@ dp7 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     du08,
     dp8 = Zygote.gradient(
         (u0,
@@ -112,7 +112,7 @@ end
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test_broken ū0≈du07 rtol=1e-12
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     @test ū0≈du08 rtol=1e-12
 end
 @test adj≈dp1' rtol=1e-12
@@ -122,7 +122,7 @@ end
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     @test adj≈dp8' rtol=1e-12
 end
 
@@ -412,7 +412,7 @@ dp7 = Zygote.gradient(
         sensealg = MooncakeAdjoint())),
     u0,
     p)
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     du08,
     dp8 = Zygote.gradient(
         (u0,
@@ -449,7 +449,7 @@ dp10 = Zygote.gradient(
 #@test ū0 ≈ du05 rtol=1e-12
 @test ū0≈du06 rtol=1e-12
 @test_broken ū0≈du07 rtol=1e-12
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     @test ū0≈du08 rtol=1e-12
 end
 @test ū0≈du09 rtol=1e-12
@@ -461,7 +461,7 @@ end
 #@test adj ≈ dp5' rtol=1e-12
 @test adj≈dp6' rtol=1e-12
 @test_broken adj≈dp7' rtol=1e-12
-@static if VERSION < v"1.12"
+@static if SciMLSensitivity.ENZYME_ENABLED
     @test adj≈dp8' rtol=1e-12
 end
 @test adj≈dp9' rtol=1e-12

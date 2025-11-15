@@ -1285,7 +1285,7 @@ function DiffEqBase._concrete_solve_adjoint(
         p)
 end
 
-@static if VERSION < v"1.12"
+@static if ENZYME_ENABLED
     function DiffEqBase._concrete_solve_adjoint(
             prob::Union{SciMLBase.AbstractDiscreteProblem,
                 SciMLBase.AbstractODEProblem,
