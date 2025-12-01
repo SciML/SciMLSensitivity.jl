@@ -704,6 +704,13 @@ function gclosure2(f, du, u, p, t, W)
     return nothing
 end
 
+function repack_ode_function(f, repack)
+    f_repacked = function (du, u, p, t)
+        f(du, u, repack(p), t)
+    end
+    return f_repacked
+end
+
 function _vecjacobian!(
         dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
         W
@@ -745,25 +752,24 @@ function _vecjacobian!(
     Enzyme.remake_zero!(tmp1) # should be removed for dλ
     vec(ytmp) .= vec(y)
 
-    #if dgrad !== nothing
-    #  tmp2 = dgrad
-    #else
     dup = if !(tmp2 isa SciMLBase.NullParameters)
-        # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
-        # Skip repack when it's just a simple vector - avoids unnecessary allocation
-        shadow_p = trivial_repack ? tmp2 : repack(tmp2)
-        Enzyme.Duplicated(p, shadow_p)
+        if isscimlstructure(p)
+            Enzyme.Duplicated(tunables, tmp2)
+        else
+            # Skip repack when it's just a simple vector - avoids unnecessary allocation
+            shadow_p = trivial_repack ? tmp2 : repack(tmp2)
+            Enzyme.Duplicated(p, shadow_p)
+        end
     else
         Enzyme.Const(p)
     end
-    #end
 
-    #if dy !== nothing
-    #      tmp3 = dy
-    #else
+    if isscimlstructure(p)
+        f = repack_ode_function(f, repack)
+    end
+
     Enzyme.remake_zero!(tmp3)
-    #end
 
     vec(tmp4) .= vec(λ)
     isautojacvec = get_jacvec(sensealg)
