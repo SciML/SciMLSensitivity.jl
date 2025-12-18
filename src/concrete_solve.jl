@@ -8,6 +8,10 @@ const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
+    # Convert verbose to bool for NonlinearVerbosity types
+    _verbose = verbose isa Bool ? verbose : true
+    # Get time value - NonlinearProblems don't have tspan
+    t0 = prob isa AbstractNonlinearProblem ? nothing : prob.tspan[1]
 
     ez = try
         f = unwrapped_f(prob.f)
@@ -16,11 +20,17 @@ function inplace_vjp(prob, u0, p, verbose, repack)
             f(out, u, repack(_p), t)
             nothing
         end
-        Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
-            Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(prob.tspan[1]))
-        true
+        # Skip Enzyme autodiff for NonlinearProblems since they don't have tspan
+        if prob isa AbstractNonlinearProblem
+            false
+        else
+            Enzyme.autodiff(Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
+                Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
+                Enzyme.Const(t0))
+            true
+        end
     catch e
-        if verbose && have_not_warned_vjp[]
+        if _verbose && have_not_warned_vjp[]
             @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
             STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
             println()
@@ -35,10 +45,13 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     # Determine if we can compile ReverseDiff
     compile = try
         f = unwrapped_f(prob.f)
-        if DiffEqBase.isinplace(prob)
-            !hasbranching(f, copy(u0), u0, repack(p), prob.tspan[1])
+        # Skip hasbranching check for NonlinearProblems
+        if prob isa AbstractNonlinearProblem
+            false
+        elseif DiffEqBase.isinplace(prob)
+            !hasbranching(f, copy(u0), u0, repack(p), t0)
         else
-            !hasbranching(f, u0, repack(p), prob.tspan[1])
+            !hasbranching(f, u0, repack(p), t0)
         end
     catch
         false
@@ -46,7 +59,7 @@ function inplace_vjp(prob, u0, p, verbose, repack)
 
     vjp = try
         f = unwrapped_f(prob.f)
-        tspan_ = prob isa AbstractNonlinearProblem ? nothing : [prob.tspan[1]]
+        tspan_ = prob isa AbstractNonlinearProblem ? nothing : [t0]
         if p === nothing || p isa SciMLBase.NullParameters
             ReverseDiff.GradientTape((copy(u0), tspan_)) do u, t
                 du1 = similar(u, size(u))
@@ -64,7 +77,7 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         end
         ReverseDiffVJP(compile)
     catch e
-        if verbose
+        if _verbose
             @warn "Potential performance improvement omitted. ReverseDiffVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
             STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
             println()
