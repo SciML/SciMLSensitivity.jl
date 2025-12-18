@@ -184,12 +184,12 @@ f_dp = ForwardDiff.gradient(G_p, p)
 @test !iszero(f_du0)
 @test !iszero(f_dp)
 
-## concrete solve
+## solve with u0, p
 
 du0,
 dp = Zygote.gradient(
     (u0,
-        p) -> sum(concrete_solve(prob, Tsit5(), u0, p,
+        p) -> sum(solve(prob, Tsit5(); u0 = u0, p = p,
         abstol = 1e-10, reltol = 1e-10, saveat = tsteps,
         sensealg = QuadratureAdjoint(abstol = 1e-14, reltol = 1e-14,
             autojacvec = ZygoteVJP()))),
