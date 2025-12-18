@@ -28,7 +28,7 @@ function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
     return dy, y_grad, p_grad
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
