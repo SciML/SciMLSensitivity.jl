@@ -243,7 +243,7 @@ function automatic_sensealg_choice(
     return default_sensealg
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractSDEProblem,
             SciMLBase.AbstractRODEProblem},
@@ -277,12 +277,12 @@ function DiffEqBase._concrete_solve_adjoint(
        !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP})
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
+    SciMLBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator, args...; verbose,
         kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem, alg,
         sensealg::Nothing, u0, p,
         originator::SciMLBase.ADOriginator, args...;
@@ -303,12 +303,12 @@ function DiffEqBase._concrete_solve_adjoint(
 
     u0 = state_values(prob) === nothing ? Float64[] : u0
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
+    SciMLBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
         kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractDDEProblem,
             SciMLBase.AbstractSDDEProblem,
@@ -321,7 +321,7 @@ function DiffEqBase._concrete_solve_adjoint(
     else
         default_sensealg = ForwardDiffSensitivity()
     end
-    DiffEqBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
+    SciMLBase._concrete_solve_adjoint(prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         kwargs...)
 end
@@ -347,7 +347,7 @@ function Base.showerror(io::IO, e::AdjointSteadyProblemPairingError)
 end
 
 # Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem, alg,
         sensealg::Union{
             AbstractAdjointSensitivityAlgorithm,
@@ -361,7 +361,7 @@ function DiffEqBase._concrete_solve_adjoint(
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractSDEProblem,
             SciMLBase.AbstractRODEProblem},
@@ -743,7 +743,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 # Prefer this route since it works better with callback AD
-function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
+function SciMLBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
         sensealg::ForwardSensitivity,
         u0, p, originator::SciMLBase.ADOriginator,
         args...;
@@ -821,7 +821,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     out, forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, alg,
+function SciMLBase._concrete_solve_forward(prob::SciMLBase.AbstractODEProblem, alg,
         sensealg::AbstractForwardSensitivityAlgorithm,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing,
@@ -866,7 +866,7 @@ function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityE
 end
 
 # Generic Fallback for ForwardDiff
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
             SciMLBase.AbstractDDEProblem,
@@ -1248,7 +1248,7 @@ function DiffEqBase._concrete_solve_adjoint(
     sol, forward_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
@@ -1271,7 +1271,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 # NOTE: This is needed to prevent a method ambiguity error
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem, alg, sensealg::ZygoteAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
@@ -1285,7 +1285,7 @@ function DiffEqBase._concrete_solve_adjoint(
         p)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
@@ -1346,7 +1346,7 @@ function DiffEqBase._concrete_solve_adjoint(
 end
 
 # NOTE: This is needed to prevent a method ambiguity error
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem, alg, sensealg::EnzymeAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
@@ -1416,7 +1416,7 @@ function Base.showerror(io::IO, e::MooncakeTrackedRealError)
     println(io, MOONCAKE_TRACKED_REAL_ERROR_MESSAGE)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
@@ -1638,7 +1638,7 @@ function Base.showerror(io::IO, e::SciMLStructuresCompatibilityError)
     println(io, SCIMLSTRUCTURES_ERROR_MESSAGE)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::Union{SciMLBase.AbstractDiscreteProblem,
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractDAEProblem,
@@ -1768,7 +1768,7 @@ function DiffEqBase._concrete_solve_adjoint(
     reversediff_adjoint_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
+function SciMLBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
         sensealg::AbstractShadowingSensitivityAlgorithm,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_start = true, save_end = true,
@@ -1893,7 +1893,7 @@ function DiffEqBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, 
     out, adjoint_sensitivity_backpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractNonlinearProblem,
         alg, sensealg::SteadyStateAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
