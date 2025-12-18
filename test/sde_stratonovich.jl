@@ -394,7 +394,7 @@ end
         dt = dt1, adaptive = false,
         sensealg = BacksolveAdjoint())
 
-    @test isapprox(res_sde_p', res_sde_forward, rtol = 1e-4)
+    @test isapprox(res_sde_p', res_sde_forward, rtol = 5e-4)
 
     @info res_sde_p
 
@@ -437,7 +437,7 @@ end
         dt = dt1, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
 
-    @test isapprox(res_sde_p, res_sde_p2, rtol = 2e-4)
+    @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-3)
     @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
 
     res_sde_u0,

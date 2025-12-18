@@ -187,7 +187,6 @@ if VERSION >= v"1.7-"
             sum(abs2, Array(sol))
         end
 
-        println(DiffEqBase.parameterless_type(solver))
         loss(p)
         dp = Zygote.gradient(loss, p)[1]
 
