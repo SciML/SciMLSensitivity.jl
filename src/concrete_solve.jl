@@ -447,6 +447,64 @@ function SciMLBase._concrete_solve_adjoint(
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
 end
 
+# SCCNonlinearProblem uses ForwardDiff to compute sensitivities through the solve.
+# SteadyStateAdjoint cannot work because f = Returns(nothing).
+function SciMLBase._concrete_solve_adjoint(
+        prob::SCCNonlinearProblem, alg,
+        sensealg::Union{Nothing, SteadyStateAdjoint, ForwardDiffSensitivity}, u0, p,
+        originator::SciMLBase.ADOriginator, args...;
+        verbose = true, kwargs...)
+    # Forward solve
+    sol = solve(prob, alg; u0=u0, p=p, sensealg=SensitivityADPassThrough(), kwargs...)
+
+    function scc_pullback(Δ)
+        # Use ForwardDiff to compute Jacobian of solution w.r.t. parameters
+        if p === nothing || p isa SciMLBase.NullParameters
+            dp = NoTangent()
+        else
+            function solve_for_p(_p)
+                _sol = solve(prob, alg; u0=u0, p=_p, sensealg=SensitivityADPassThrough(), kwargs...)
+                _sol.u
+            end
+
+            # Compute J' * Δ using ForwardDiff
+            if p isa AbstractArray
+                # For array parameters, compute full Jacobian and multiply
+                J = ForwardDiff.jacobian(solve_for_p, p)
+                Δ_vec = Δ isa AbstractArray ? vec(Δ) : Δ
+                dp = reshape(J' * Δ_vec, size(p))
+            else
+                # For structured parameters, use gradient
+                dp = ForwardDiff.gradient(_p -> dot(solve_for_p(_p), Δ), p)
+            end
+        end
+
+        # Gradient w.r.t. u0
+        if u0 === nothing
+            du0 = NoTangent()
+        else
+            function solve_for_u0(_u0)
+                _sol = solve(prob, alg; u0=_u0, p=p, sensealg=SensitivityADPassThrough(), kwargs...)
+                _sol.u
+            end
+            J_u0 = ForwardDiff.jacobian(solve_for_u0, u0)
+            Δ_vec = Δ isa AbstractArray ? vec(Δ) : Δ
+            du0 = reshape(J_u0' * Δ_vec, size(u0))
+        end
+
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+
+    sol, scc_pullback
+end
+
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractODEProblem,
@@ -1672,7 +1730,7 @@ function SciMLBase._concrete_solve_adjoint(
             )
         end
     end
-    return sol, enzyme_sensitivity_backpass
+    result, enzyme_sensitivity_backpass
 end
 
 const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
