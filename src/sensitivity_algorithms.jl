@@ -1325,6 +1325,7 @@ struct EnzymeVJP{Mode<:Enzyme.ReverseMode} <: VJPChoice
     mode::Mode
 end
 
+EnzymeVJP(chunksize::Int) = EnzymeVJP(chunksize, Enzyme.Reverse)
 EnzymeVJP(; chunksize = 0, mode = Enzyme.Reverse) = EnzymeVJP(chunksize, mode)
 
 """
