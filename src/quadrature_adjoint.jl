@@ -232,6 +232,11 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp)
 end
+            
+function gclosure4(f, du, u, p, t)
+    Base.copyto!(du, f(u, p, t))
+    nothing
+end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
@@ -295,17 +300,13 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
             Enzyme.autodiff(
-                Enzyme.Reverse, Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
+                sensealg.autojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), dup, Enzyme.Const(t))
         else
-            function g(du, u, p, t)
-                du .= f(u, p, t)
-                nothing
-            end
-            tmp6 = Enzyme.make_zero(g)
-            Enzyme.autodiff(
-                Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Duplicated(g, tmp6), Enzyme.Const,
+            tmp6 = Enzyme.make_zero(f)
+            Enzyme.autodiff(sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
+                Enzyme.Duplicated(f, tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), dup, Enzyme.Const(t))
         end

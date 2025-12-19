@@ -53,6 +53,30 @@ function inplace_vjp(prob, u0, p, verbose, repack)
             true
         end
     catch e
+        false
+    end
+    if ez
+        return EnzymeVJP()
+    end
+
+    # Try Enzyme with runtime activity if regular Enzyme failed
+    erz = try
+        f = unwrapped_f(prob.f)
+        function adfunc_rta(out, u, _p, t)
+            f(out, u, repack(_p), t)
+            nothing
+        end
+        # Skip Enzyme autodiff for NonlinearProblems since they don't have tspan
+        if prob isa AbstractNonlinearProblem
+            false
+        else
+            Enzyme.autodiff(Enzyme.set_runtime_activity(Enzyme.Reverse), adfunc_rta,
+                Enzyme.Duplicated(du, copy(u0)),
+                Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
+                Enzyme.Const(t0))
+            true
+        end
+    catch e
         if _verbose && have_not_warned_vjp[]
             @warn "Potential performance improvement omitted. EnzymeVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
             STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
@@ -61,8 +85,8 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         end
         false
     end
-    if ez
-        return EnzymeVJP()
+    if erz
+      return EnzymeVJP(; mode=Enzyme.set_runtime_activity(Enzyme.Reverse))
     end
 
     # Determine if we can compile ReverseDiff
