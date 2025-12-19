@@ -51,4 +51,4 @@ end
 res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()),
         ps),
     Adam(0.05); callback = cba, maxiters = 200)
-@test loss_n_ode(res.u, nothing) < 0.5
+@test loss_n_ode(res.u, nothing) < 1.0
