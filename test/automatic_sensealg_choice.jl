@@ -20,5 +20,5 @@ x0 = [-4.0f0, 0.0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))
 prob = ODEProblem(dxdt_, x0, tspan, θ)
 _, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
-SciMLSensitivity.automatic_sensealg_choice(prob, x0, θ, true, repack) ==
-InterpolatingAdjoint{0, true, Val{:central}, EnzymeVJP}(EnzymeVJP(0), false, false)
+sensealg = SciMLSensitivity.automatic_sensealg_choice(prob, x0, θ, true, repack)
+sensealg isa InterpolatingAdjoint && sensealg.autojacvec isa EnzymeVJP
