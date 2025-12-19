@@ -99,7 +99,7 @@ dup = Zygote.gradient(senseloss2(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(InterpolatingAdjoint()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(ReverseDiffAdjoint()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(TrackerAdjoint()), u0p)) ≈ dup
-@test_broken only(Enzyme.gradient(Reverse, senseloss2(ForwardDiffSensitivity()), u0p)) ≈ dup
+@test only(Enzyme.gradient(Reverse, senseloss2(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss2(ForwardSensitivity()), u0p)) ≈ dup # broken because ForwardSensitivity not compatible with perturbing u0
 
 @test mooncake_gradient(senseloss2(InterpolatingAdjoint()), u0p) ≈ dup
@@ -137,7 +137,7 @@ dup = Zygote.gradient(senseloss3(InterpolatingAdjoint()), u0p)[1]
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(InterpolatingAdjoint()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ReverseDiffAdjoint()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(TrackerAdjoint()), u0p)) ≈ dup
-@test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardDiffSensitivity()), u0p)) ≈ dup
+@test only(Enzyme.gradient(Reverse, senseloss3(ForwardDiffSensitivity()), u0p)) ≈ dup
 @test_broken only(Enzyme.gradient(Reverse, senseloss3(ForwardSensitivity()), u0p)) ≈ dup
 
 @test mooncake_gradient(senseloss3(InterpolatingAdjoint()), u0p) ≈ dup
