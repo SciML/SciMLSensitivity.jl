@@ -669,7 +669,7 @@ function gclosure1(f, du, u, p, t)
     nothing
 end
             
-function gclosure2(du, u, p, t, W)
+function gclosure2(f, du, u, p, t, W)
     Base.copyto!(du, f(u, p, t, W))
     nothing
 end
@@ -731,7 +731,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     vec(tmp4) .= vec(λ)
     isautojacvec = get_jacvec(sensealg)
     # Extract Enzyme mode from EnzymeVJP or use default Enzyme.Reverse
-    enzyme_mode = isautojacvec isa EnzymeVJP ? enzyme_mode : Enzyme.Reverse
+    enzyme_mode = isautojacvec isa EnzymeVJP ? isautojacvec.mode : Enzyme.Reverse
 
     if inplace_sensitivity(S)
         if S isa CallbackSensitivityFunction
@@ -763,14 +763,16 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         if W === nothing
             _tmp6 = Enzyme.make_zero(f)
-	    Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Duplicated(f, _tmp6),
-                Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
+                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
             _tmp6 = Enzyme.make_zero(f)
-	    Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Duplicated(f, _tmp6),
-                Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
+            Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
+                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
         end
