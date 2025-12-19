@@ -6,6 +6,7 @@ import SymbolicIndexingInterface as SII
 import SciMLStructures as SS
 import ModelingToolkit as MTK
 using SciMLSensitivity
+using SCCNonlinearSolve  # Needed to load ChainRulesCore extension for SCCNonlinearProblem
 using OrdinaryDiffEq
 using Test
 
