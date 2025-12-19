@@ -730,6 +730,8 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
 
     vec(tmp4) .= vec(λ)
     isautojacvec = get_jacvec(sensealg)
+    # Extract Enzyme mode from EnzymeVJP or use default Enzyme.Reverse
+    enzyme_mode = isautojacvec isa EnzymeVJP ? enzyme_mode : Enzyme.Reverse
 
     if inplace_sensitivity(S)
         if S isa CallbackSensitivityFunction
@@ -742,13 +744,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         end
 
         if W === nothing
-            Enzyme.autodiff(isautojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
                 Enzyme.Const(t))
         else
-            Enzyme.autodiff(isautojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -761,13 +763,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         if W === nothing
             _tmp6 = Enzyme.make_zero(f)
-	    Enzyme.autodiff(isautojacvec.mode, Enzyme.Const(gclosure1), Enzyme.Duplicated(f, _tmp6),
+	    Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t))
         else
             _tmp6 = Enzyme.make_zero(f)
-	    Enzyme.autodiff(isautojacvec.mode, Enzyme.Const(gclosure2), Enzyme.Duplicated(f, _tmp6),
+	    Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W))
