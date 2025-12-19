@@ -6,10 +6,33 @@
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
+"""
+    _get_sensitivity_vjp_verbose(verbose)
+
+Extract the verbosity setting for sensitivity VJP choice warnings.
+
+Returns `true` if warnings should be displayed, `false` if they should be silenced.
+Handles:
+
+  - `Bool`: used directly
+  - `NonlinearVerbosity` (or similar types with `sensitivity_vjp_choice` field): checks the toggle
+  - Other types: defaults to `true` for backward compatibility
+"""
+function _get_sensitivity_vjp_verbose(verbose)
+    verbose isa Bool && return verbose
+    # Check for NonlinearVerbosity or similar types with sensitivity_vjp_choice field
+    if hasproperty(verbose, :sensitivity_vjp_choice)
+        toggle = getproperty(verbose, :sensitivity_vjp_choice)
+        return verbosity_to_bool(toggle)
+    end
+    # Default: verbose means show warnings
+    return true
+end
+
 function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
-    # Convert verbose to bool for NonlinearVerbosity types
-    _verbose = verbose isa Bool ? verbose : true
+    # Get verbosity for sensitivity VJP choice warnings
+    _verbose = _get_sensitivity_vjp_verbose(verbose)
     # Get time value - NonlinearProblems don't have tspan
     t0 = prob isa AbstractNonlinearProblem ? nothing : prob.tspan[1]
 
@@ -93,6 +116,9 @@ function automatic_sensealg_choice(
         prob::Union{SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractSDEProblem},
         u0, p, verbose, repack)
+    # Get verbosity for sensitivity VJP choice warnings
+    _verbose = _get_sensitivity_vjp_verbose(verbose)
+
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
@@ -132,7 +158,7 @@ function automatic_sensealg_choice(
             end
             ZygoteVJP()
         catch e
-            if verbose
+            if _verbose
                 @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
                 STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                 println()
@@ -150,7 +176,7 @@ function automatic_sensealg_choice(
                 end
                 ReverseDiffVJP()
             catch e
-                if verbose
+                if _verbose
                     @warn "Potential performance improvement omitted. ReverseDiffVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
                     STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                     println()
@@ -180,7 +206,7 @@ function automatic_sensealg_choice(
                 end
                 TrackerVJP()
             catch e
-                if verbose
+                if _verbose
                     @warn "Potential performance improvement omitted. TrackerVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
                     STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
                     println()
@@ -190,7 +216,7 @@ function automatic_sensealg_choice(
         end
 
         if vjp isa Bool
-            if verbose
+            if _verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
 
@@ -217,7 +243,7 @@ function automatic_sensealg_choice(
     else
         vjp = inplace_vjp(prob, u0, p, verbose, repack)
         if vjp isa Bool
-            if verbose
+            if _verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
