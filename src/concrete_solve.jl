@@ -455,7 +455,7 @@ function SciMLBase._concrete_solve_adjoint(
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
     # Forward solve
-    sol = solve(prob, alg; u0=u0, p=p, sensealg=SensitivityADPassThrough(), kwargs...)
+    sol = solve(prob, alg; u0 = u0, p = p, sensealg = SensitivityADPassThrough(), kwargs...)
 
     function scc_pullback(Δ)
         # Use ForwardDiff to compute Jacobian of solution w.r.t. parameters
@@ -463,7 +463,8 @@ function SciMLBase._concrete_solve_adjoint(
             dp = NoTangent()
         else
             function solve_for_p(_p)
-                _sol = solve(prob, alg; u0=u0, p=_p, sensealg=SensitivityADPassThrough(), kwargs...)
+                _sol = solve(prob, alg; u0 = u0, p = _p,
+                    sensealg = SensitivityADPassThrough(), kwargs...)
                 _sol.u
             end
 
@@ -484,7 +485,8 @@ function SciMLBase._concrete_solve_adjoint(
             du0 = NoTangent()
         else
             function solve_for_u0(_u0)
-                _sol = solve(prob, alg; u0=_u0, p=p, sensealg=SensitivityADPassThrough(), kwargs...)
+                _sol = solve(prob, alg; u0 = _u0, p = p,
+                    sensealg = SensitivityADPassThrough(), kwargs...)
                 _sol.u
             end
             J_u0 = ForwardDiff.jacobian(solve_for_u0, u0)
@@ -2342,6 +2344,102 @@ function SciMLBase._concrete_solve_adjoint(
         out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
     end
 
+    # Handle trivial problems with no unknowns (u0 === nothing or empty u)
+    # In this case, gradients should flow through the observed function, not the solve
+    if u0 === nothing || isempty(sol.u)
+        # Set up the repack for parameter gradients
+        _, repack_trivial = if isscimlstructure(p)
+            Zygote.pullback(p) do p
+                t, _, _ = canonicalize(Tunable(), p)
+                t
+            end
+        elseif isfunctor(p)
+            ps, re = Functors.functor(p)
+            ps, x -> (re(x),)
+        else
+            nothing, x -> (x,)
+        end
+
+        function trivial_backpass(Δ)
+            Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+            # Extract gradient from structured tangent if present
+            # The gradient flows through observed function indexing
+            # Handle both ChainRulesCore.Tangent and NamedTuple formats
+            dp = if p === nothing || p isa SciMLBase.NullParameters
+                NoTangent()
+            elseif Δ isa Tangent
+                # ChainRulesCore Tangent type
+                prob_tangent = getproperty(Δ, :prob)
+                if prob_tangent !== nothing && !(prob_tangent isa NoTangent)
+                    Δp = if prob_tangent isa Tangent
+                        getproperty(prob_tangent, :p)
+                    else
+                        hasproperty(prob_tangent, :p) ? prob_tangent.p : NoTangent()
+                    end
+                    if Δp isa NamedTuple && hasproperty(Δp, :tunable) &&
+                       Δp.tunable !== nothing
+                        if isscimlstructure(p)
+                            replace(Tunable(), p, Δp.tunable)
+                        else
+                            Δp.tunable
+                        end
+                    elseif isscimlstructure(Δp)
+                        Δp
+                    else
+                        Δp
+                    end
+                else
+                    NoTangent()
+                end
+            elseif Δ isa NamedTuple && hasproperty(Δ, :prob) && Δ.prob !== nothing &&
+                   hasproperty(Δ.prob, :p) && Δ.prob.p !== nothing
+                # NamedTuple format (for Zygote @adjoint)
+                Δp = Δ.prob.p
+                if Δp isa NamedTuple && hasproperty(Δp, :tunable) && Δp.tunable !== nothing
+                    if isscimlstructure(p)
+                        replace(Tunable(), p, Δp.tunable)
+                    else
+                        Δp.tunable
+                    end
+                elseif isscimlstructure(Δp)
+                    Δp
+                else
+                    Δp
+                end
+            elseif Δ isa AbstractArray || Δ isa Number
+                # Gradient came from sol.u (but u is empty, so this shouldn't happen)
+                if isscimlstructure(p)
+                    zero(p)
+                else
+                    zero.(p)
+                end
+            else
+                NoTangent()
+            end
+
+            # Convert to tunable representation for return
+            dp_out = if dp isa NoTangent || dp === nothing
+                dp
+            elseif isscimlstructure(dp)
+                t, _, _ = canonicalize(Tunable(), dp)
+                repack_trivial(t)[1]
+            else
+                repack_trivial !== nothing ? repack_trivial(dp)[1] : dp
+            end
+
+            if originator isa SciMLBase.TrackerOriginator ||
+               originator isa SciMLBase.ReverseDiffOriginator
+                (NoTangent(), NoTangent(), NoTangent(), dp_out, NoTangent(),
+                    ntuple(_ -> NoTangent(), length(args))...)
+            else
+                (NoTangent(), NoTangent(), NoTangent(),
+                    NoTangent(), dp_out, NoTangent(),
+                    ntuple(_ -> NoTangent(), length(args))...)
+            end
+        end
+        return out, trivial_backpass
+    end
+
     _, repack_adjoint = if isscimlstructure(p)
         Zygote.pullback(p) do p
             t, _, _ = canonicalize(Tunable(), p)
@@ -2436,4 +2534,54 @@ function fix_endpoints(sensealg, sol, ts)
     @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(last(current_time(sol))), ts[end]: $(ts[end])"
     ts = collect(ts)
     return push!(ts, last(current_time(sol)))
+end
+
+# ChainRulesCore rrule for NonlinearSolution getindex with symbolic variables
+# This enables AD through isol[sym] for NonlinearSolution by computing gradients
+# directly through the observed function and using proper Tangent types.
+import SymbolicIndexingInterface: symbolic_type, NotSymbolic, variable_index
+
+# Zygote adjoint for NonlinearSolution getindex with symbolic variables
+# This enables AD through isol[sym] for NonlinearSolution by computing gradients
+# directly through the observed function.
+# Note: Due to issues with pullback chaining between Zygote @adjoint and ChainRulesCore rrule,
+# the gradient computed here may not flow back through solve's pullback correctly.
+# For now, use the Zygote.ignore() pattern for observed values as shown in the test.
+Zygote.@adjoint function Base.getindex(sol::SciMLBase.NonlinearSolution, sym)
+    val = sol[sym]
+
+    function NonlinearSolution_getindex_pullback(Δ)
+        # Check if sym is a symbolic variable
+        i = symbolic_type(sym) != NotSymbolic() ? variable_index(sol, sym) : sym
+
+        if i === nothing
+            # Observed variable - compute gradient through observed function
+            obsgetter = Zygote.ignore() do
+                SymbolicIndexingInterface.observed(sol.prob.f.sys, sym)
+            end
+            obsfn = obsgetter.f_oop
+
+            p_for_obs = sol.prob.p
+            u_for_obs = sol.u === nothing || isempty(sol.u) ? nothing : sol.u
+
+            # Compute gradient through the observed function
+            _, pullback = Zygote.pullback(obsfn, u_for_obs, p_for_obs)
+            du, dp = pullback(Δ)
+
+            # Return tangent for solve's pullback
+            Δsol = (u = du, prob = (p = dp,))
+            (Δsol, nothing)
+        else
+            # State variable
+            if sol.u === nothing || isempty(sol.u)
+                Δsol = (u = nothing, prob = (p = nothing,))
+            else
+                du = [k == i ? Δ : zero(sol.u[k]) for k in 1:length(sol.u)]
+                Δsol = (u = du, prob = (p = nothing,))
+            end
+            (Δsol, nothing)
+        end
+    end
+
+    val, NonlinearSolution_getindex_pullback
 end
