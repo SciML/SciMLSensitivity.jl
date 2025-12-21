@@ -45,7 +45,9 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
 
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
-    AbstractThunk, AbstractTangent
+    AbstractThunk, AbstractTangent, rrule, rrule_via_ad, RuleConfig,
+    HasReverseMode
+import ChainRulesCore
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
