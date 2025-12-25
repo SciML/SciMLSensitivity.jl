@@ -634,7 +634,21 @@ function SciMLBase._concrete_solve_adjoint(
                 sum(new_u0) + sum(new_tunables)
             end
         end
-        igs = back(one(iy))[1] .- one(eltype(tunables))
+        back_result = back(one(iy))[1]
+        # Handle case where gradient is nothing (no tunables or no gradient flow)
+        igs = if back_result === nothing
+            if isempty(tunables)
+                # No tunables, so no initialization gradient needed
+                nothing
+            else
+                @warn "Initialization gradient is nothing but tunables exist. " *
+                      "This may indicate a missing AD rule. tunables=$tunables, " *
+                      "prob type=$(typeof(_prob)), initializeprob type=$(typeof(initializeprob))"
+                nothing
+            end
+        else
+            back_result .- one(eltype(tunables))
+        end
 
         igs, new_u0, new_p, SciMLBase.CheckInit()
     else
