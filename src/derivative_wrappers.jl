@@ -90,6 +90,29 @@ mutable struct RODEUDerivativeWrapper{F, tType, P, WType} <: Function
 end
 (ff::RODEUDerivativeWrapper)(u) = ff.f(u, ff.p, ff.t, ff.W)
 
+# DDE wrappers
+mutable struct DDEUJacobianWrapper{fType, tType, P, HType} <: Function
+    f::fType
+    t::tType
+    p::P
+    h::HType  # History function
+end
+
+# In-place: f(du, u, h, p, t)
+(ff::DDEUJacobianWrapper)(du1, uprev) = ff.f(du1, uprev, ff.h, ff.p, ff.t)
+# Out-of-place: f(u, p, h, t)
+function (ff::DDEUJacobianWrapper)(uprev)
+    (du1 = similar(uprev); ff.f(du1, uprev, ff.h, ff.p, ff.t); du1)
+end
+
+mutable struct DDEUDerivativeWrapper{F, tType, P, HType} <: Function
+    f::F
+    t::tType
+    p::P
+    h::HType
+end
+(ff::DDEUDerivativeWrapper)(u) = ff.f(u, ff.p, ff.h, ff.t)
+
 mutable struct RODEParamGradientWrapper{fType, tType, uType, WType} <: Function
     f::fType
     t::tType
@@ -569,12 +592,37 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
+    # Check if this is a DDE problem
+    isDDE = prob isa SciMLBase.AbstractDDEProblem
+
     if inplace_sensitivity(S)
         if W === nothing
-            _dy, back = Zygote.pullback(y, p) do u, p
-                out_ = Zygote.Buffer(similar(u))
-                f(out_, u, p, t)
-                vec(copy(out_))
+            if isDDE
+                # For DDEs, create history function from the forward solution
+                # The history is treated as known (not differentiated through)
+                sol = S.sol
+                t0 = prob.tspan[1]
+                h_t = (p_arg, t_arg) -> begin
+                    # Use Zygote.ignore to prevent differentiation through history lookup
+                    Zygote.ignore() do
+                        if t_arg < t0
+                            prob.h(p_arg, t_arg)
+                        else
+                            sol(t_arg)
+                        end
+                    end
+                end
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    out_ = Zygote.Buffer(similar(u))
+                    f(out_, u, h_t, p, t)
+                    vec(copy(out_))
+                end
+            else
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    out_ = Zygote.Buffer(similar(u))
+                    f(out_, u, p, t)
+                    vec(copy(out_))
+                end
             end
         else
             _dy, back = Zygote.pullback(y, p) do u, p
@@ -598,8 +646,27 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
         end
     else
         if W === nothing
-            _dy, back = Zygote.pullback(y, p) do u, p
-                vec(f(u, p, t))
+            if isDDE
+                # For DDEs, create history function from the forward solution
+                # The history is treated as known (not differentiated through)
+                sol = S.sol
+                t0 = prob.tspan[1]
+                h_t = (p_arg, t_arg) -> begin
+                    Zygote.ignore() do
+                        if t_arg < t0
+                            prob.h(p_arg, t_arg)
+                        else
+                            sol(t_arg)
+                        end
+                    end
+                end
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    vec(f(u, p, h_t, t))
+                end
+            else
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    vec(f(u, p, t))
+                end
             end
         else
             _dy, back = Zygote.pullback(y, p) do u, p
@@ -634,9 +701,31 @@ function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
+    # Check if this is a DDE problem
+    isDDE = prob isa SciMLBase.AbstractDDEProblem
+
     if W === nothing
-        _dy, back = Zygote.pullback(y, p) do u, p
-            vec(f(u, p, t))
+        if isDDE
+            # For DDEs, create history function from the forward solution
+            # The history is treated as known (not differentiated through)
+            sol = S.sol
+            t0 = prob.tspan[1]
+            h_t = (p_arg, t_arg) -> begin
+                Zygote.ignore() do
+                    if t_arg < t0
+                        prob.h(p_arg, t_arg)
+                    else
+                        sol(t_arg)
+                    end
+                end
+            end
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(f(u, p, h_t, t))
+            end
+        else
+            _dy, back = Zygote.pullback(y, p) do u, p
+                vec(f(u, p, t))
+            end
         end
     else
         _dy, back = Zygote.pullback(y, p) do u, p

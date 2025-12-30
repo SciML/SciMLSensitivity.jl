@@ -805,6 +805,294 @@ function SciMLBase._concrete_solve_adjoint(
     out, adjoint_sensitivity_backpass
 end
 
+# GaussAdjoint for DDEProblem
+# EXPERIMENTAL: GaussAdjoint support for DDEs is work in progress.
+# The adjoint of a DDE has "advanced" terms that are not yet fully implemented.
+# For production use with DDEs, consider TrackerAdjoint or ForwardDiffSensitivity.
+function SciMLBase._concrete_solve_adjoint(
+        prob::SciMLBase.AbstractDDEProblem,
+        alg,
+        sensealg::Union{GaussAdjoint, GaussKronrodAdjoint},
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; save_start = true, save_end = true,
+        saveat = eltype(prob.tspan)[],
+        save_idxs = nothing,
+        kwargs...)
+    @warn "GaussAdjoint with DDEProblem is experimental and may not produce accurate gradients. Consider using TrackerAdjoint or ForwardDiffSensitivity instead." maxlog=1
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, aliases = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
+    end
+
+    # Remove saveat, etc. from kwargs since it's handled separately
+    kwargs_prob = NamedTuple(filter(
+        x -> x[1] != :saveat && x[1] != :save_start &&
+             x[1] != :save_end && x[1] != :save_idxs,
+        prob.kwargs))
+
+    if haskey(kwargs, :callback)
+        cb = track_callbacks(CallbackSet(kwargs[:callback]), current_time(prob),
+            state_values(prob), parameter_values(prob),
+            sensealg)
+        _prob = remake(prob; u0 = u0, p = p, kwargs = merge(kwargs_prob, (; callback = cb)))
+    else
+        cb = nothing
+        _prob = remake(prob; u0 = u0, p = p, kwargs = kwargs_prob)
+    end
+
+    # Remove callbacks, saveat, etc. from kwargs since it's handled separately
+    kwargs_fwd = NamedTuple{Base.diff_names(Base._nt_names(values(kwargs)), (
+        :callback, :initializealg))}(values(kwargs))
+
+    # Capture the callback_adj for the reverse pass
+    kwargs_adj = NamedTuple{
+        Base.diff_names(Base._nt_names(values(kwargs)),
+        (:callback_adj, :callback))}(values(kwargs))
+
+    # For DDEs with checkpointing, we need dense output for the history
+    if ischeckpointing(sensealg)
+        sol = solve(
+            _prob, alg, args...; save_noise = true,
+            save_start = true, save_end = true,
+            saveat = saveat, kwargs_fwd...)
+    else
+        sol = solve(_prob, alg, args...; save_noise = true, save_start = true,
+            save_end = true, kwargs_fwd...)
+    end
+
+    # Handle output formatting
+    if saveat isa Number
+        if _prob.tspan[2] > _prob.tspan[1]
+            ts = _prob.tspan[1]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[2]
+        else
+            ts = _prob.tspan[2]:convert(typeof(_prob.tspan[2]), abs(saveat)):_prob.tspan[1]
+        end
+        last(current_time(sol)) !== ts[end] && (ts = fix_endpoints(sensealg, sol, ts))
+        if cb === nothing
+            _out = sol(ts)
+        else
+            _, duplicate_iterator_times = separate_nonunique(current_time(sol))
+            _out, ts = out_and_ts(ts, duplicate_iterator_times, sol)
+        end
+
+        out = if save_idxs === nothing
+            out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
+        else
+            _outf = getu(_out, save_idxs)
+            out = SciMLBase.sensitivity_solution(sol, _outf(_out), ts)
+        end
+        only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
+    elseif isempty(saveat)
+        no_start = !save_start
+        no_end = !save_end
+        sol_idxs = 1:length(sol)
+        no_start && (sol_idxs = sol_idxs[2:end])
+        no_end && (sol_idxs = sol_idxs[1:(end - 1)])
+        only_end = length(sol_idxs) <= 1
+        _u = sol.u[sol_idxs]
+        u = save_idxs === nothing ? _u : [x[save_idxs] for x in _u]
+        ts = current_time(sol, sol_idxs)
+        out = SciMLBase.sensitivity_solution(sol, u, ts)
+    else
+        _saveat = saveat isa Array ? sort(saveat) : saveat
+        if cb === nothing
+            _saveat = eltype(_saveat) <: typeof(prob.tspan[2]) ?
+                      convert.(typeof(_prob.tspan[2]), _saveat) : _saveat
+            ts = _saveat
+            _out = sol(ts)
+        else
+            _ts, duplicate_iterator_times = separate_nonunique(current_time(sol))
+            _out, ts = out_and_ts(_saveat, duplicate_iterator_times, sol)
+        end
+        out = if save_idxs === nothing
+            out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
+        else
+            _outf = getu(_out, save_idxs)
+            out = SciMLBase.sensitivity_solution(sol, _outf(_out), ts)
+        end
+        only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
+    end
+
+    function dde_adjoint_sensitivity_backpass(Δ)
+        _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+
+        function df_iip(_out, u, p, t, i; outtype = eltype(first(Δ)))
+            Δu = Δ
+            if only_end
+                eltype(Δ) <: NoTangent && return
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
+                   length(Δ) == 1 && i == 1
+                    # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δu.u[1] : Δ[1]
+                    if _save_idxs isa Number
+                        _out[_save_idxs] = x[_save_idxs]
+                    elseif _save_idxs isa Colon
+                        vec(_out) .= vec(x)
+                    else
+                        vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
+                    end
+                else
+                    Δ isa NoTangent && return
+                    if _save_idxs isa Number
+                        _out[_save_idxs] = adapt(outtype,
+                            vec(Δ)[_save_idxs])
+                    elseif _save_idxs isa Colon
+                        vec(_out) .= vec(adapt(outtype, Δ))
+                    else
+                        vec(@view(_out[_save_idxs])) .= vec(adapt(outtype,
+                            @view(reshape(Δ, :)[_save_idxs])))
+                    end
+                end
+            else
+                !Base.isconcretetype(eltype(Δ)) &&
+                    (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
+                   Δ isa Tangent
+                    x = Δ isa AbstractVectorOfArray ? Δu.u[i] :
+                        (Δ isa Tangent ? Δu[i] : Δ[i])
+                    if _save_idxs isa Number
+                        _out[_save_idxs] = x[_save_idxs]
+                    elseif _save_idxs isa Colon
+                        vec(_out) .= (x isa NoTangent || x isa ZeroTangent) ? vec(zero(u)) :
+                                     vec(x)
+                    else
+                        vec(@view(_out[_save_idxs])) .= vec(@view(x[_save_idxs]))
+                    end
+                else
+                    if _save_idxs isa Number
+                        _out[_save_idxs] = adapt(outtype,
+                            reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[_save_idxs,
+                            i])
+                    elseif _save_idxs isa Colon
+                        vec(_out) .= vec(adapt(outtype,
+                            reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[:, i]))
+                    else
+                        vec(@view(_out[_save_idxs])) .= vec(adapt(outtype,
+                            reshape(Δ,
+                                prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[:,
+                            i]))
+                    end
+                end
+            end
+        end
+
+        function df_oop(u, p, t, i; outtype = nothing)
+            if only_end
+                eltype(Δ) <: NoTangent && return
+                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
+                   length(Δ) == 1 && i == 1
+                    # user did sol[end] on only_end
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
+                    if _save_idxs isa Number
+                        vx = vec(x)
+                        _out = adapt(outtype, @view(vx[_save_idxs]))
+                    elseif _save_idxs isa Colon
+                        _out = adapt(outtype, x)
+                    else
+                        _out = adapt(outtype, vec(x)[_save_idxs])
+                    end
+                else
+                    Δ isa NoTangent && return
+                    if _save_idxs isa Number
+                        x = vec(Δ)
+                        _out = adapt(outtype, @view(x[_save_idxs]))
+                    elseif _save_idxs isa Colon
+                        _out = adapt(outtype, vec(Δ))
+                    else
+                        x = vec(Δ)
+                        _out = adapt(outtype, @view(x[_save_idxs]))
+                    end
+                end
+            else
+                !Base.isconcretetype(eltype(Δ)) &&
+                    (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+                    if _save_idxs isa Number
+                        _out = @view(x[_save_idxs])
+                    elseif _save_idxs isa Colon
+                        _out = vec(x)
+                    else
+                        _out = vec(@view(x[_save_idxs]))
+                    end
+                else
+                    if _save_idxs isa Number
+                        _out = adapt(outtype,
+                            reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[_save_idxs,
+                            i])
+                    elseif _save_idxs isa Colon
+                        _out = vec(adapt(outtype,
+                            reshape(Δ, prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[:, i]))
+                    else
+                        _out = vec(adapt(outtype,
+                            reshape(Δ,
+                                prod(size(Δ)[1:(end - 1)]),
+                                size(Δ)[end])[:, i]))
+                    end
+                end
+            end
+            return _out
+        end
+
+        if haskey(kwargs_adj, :callback_adj)
+            cb2 = CallbackSet(cb, kwargs[:callback_adj])
+        else
+            cb2 = cb
+        end
+
+        # For DDEs, extract the underlying ODE algorithm from MethodOfSteps
+        # since the adjoint problem is an ODE (no delays in adjoint equation)
+        adj_alg = if hasfield(typeof(alg), :alg)
+            alg.alg  # Extract underlying ODE algorithm from MethodOfSteps
+        else
+            alg
+        end
+
+        du0,
+        dp = adjoint_sensitivities(sol, adj_alg, args...; t = ts,
+            dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ?
+                            df_iip : df_oop,
+            sensealg = sensealg,
+            callback = cb2, no_start = !save_start && _prob.tspan[1] ∈ ts,
+            kwargs_adj...)
+
+        du0 = reshape(du0, size(u0))
+
+        dp = p === nothing || p === SciMLBase.NullParameters() ? nothing :
+             dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
+
+        _,
+        repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
+                            !isscimlstructure(p)
+            nothing, x -> (x,)
+        else
+            Zygote.pullback(p) do p
+                t, _, _ = canonicalize(Tunable(), p)
+                t
+            end
+        end
+
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(),
+                du0, repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+    out, dde_adjoint_sensitivity_backpass
+end
+
 # Prefer this route since it works better with callback AD
 function SciMLBase._concrete_solve_adjoint(prob::SciMLBase.AbstractODEProblem, alg,
         sensealg::ForwardSensitivity,

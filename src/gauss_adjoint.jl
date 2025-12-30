@@ -1,5 +1,5 @@
 mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
-    G, SAlg <: AbstractGAdjoint}
+    G, SAlg <: AbstractGAdjoint, HType}
     sol::S
     p::pType
     y::uType
@@ -11,6 +11,7 @@ mutable struct GaussIntegrand{pType, uType, lType, rateType, S, PF, PJC, PJT, DG
     sensealg::SAlg
     dgdp_cache::DGP
     dgdp::G
+    dde_history::HType  # History wrapper for DDEs, nothing for ODEs
 end
 
 struct ODEGaussAdjointSensitivityFunction{C <: AdjointDiffCache,
@@ -369,6 +370,27 @@ function Gaussreset_p(CBS, interval)
     return p
 end
 
+"""
+    DDEHistoryWrapper
+
+A wrapper that provides a history function for DDEs using the forward solution.
+For times before t0, it uses the original history function from the problem.
+For times >= t0, it interpolates from the forward solution.
+"""
+struct DDEHistoryWrapper{S, H, T}
+    sol::S          # Forward DDE solution
+    orig_h::H       # Original history function from problem
+    t0::T           # Start time of the problem
+end
+
+function (h::DDEHistoryWrapper)(p, t)
+    if t < h.t0
+        return h.orig_h(p, t)
+    else
+        return h.sol(t)
+    end
+end
+
 function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob
     (; f, tspan) = prob
@@ -394,19 +416,50 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     dgdp_cache = dgdp === nothing ? nothing : zero(p)
 
+    # Check if this is a DDE problem and create history wrapper
+    is_dde = prob isa SciMLBase.AbstractDDEProblem
+    dde_history = if is_dde
+        DDEHistoryWrapper(sol, prob.h, tspan[1])
+    else
+        nothing
+    end
+
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                du1 = similar(tunables, size(u))
-                du1 .= false
-                unwrappedf(
-                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
-                return vec(du1)
+            if is_dde
+                # DDE in-place: f(du, u, h, p, t)
+                # Create a tape that wraps the history function
+                ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                    du1 = similar(tunables, size(u))
+                    du1 .= false
+                    # Create a history function that uses the current solution interpolant
+                    h_t = (p_arg, t_arg) -> sol(t_arg)
+                    unwrappedf(
+                        du1, u, h_t, SciMLStructures.replace(Tunable(), p, tunables), first(t))
+                    return vec(du1)
+                end
+            else
+                ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                    du1 = similar(tunables, size(u))
+                    du1 .= false
+                    unwrappedf(
+                        du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t))
+                    return vec(du1)
+                end
             end
         else
-            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                vec(unwrappedf(
-                    u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
+            if is_dde
+                # DDE out-of-place: f(u, p, h, t)
+                ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                    h_t = (p_arg, t_arg) -> sol(t_arg)
+                    vec(unwrappedf(
+                        u, SciMLStructures.replace(Tunable(), p, tunables), h_t, first(t)))
+                end
+            else
+                ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                    vec(unwrappedf(
+                        u, SciMLStructures.replace(Tunable(), p, tunables), first(t)))
+                end
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -430,7 +483,16 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper((du, u, p, t)->unwrappedf(du, u, repack(p), t), tspan[1], y)
+        if is_dde
+            # For DDEs with numerical Jacobian, wrap the function
+            pf = SciMLBase.ParamJacobianWrapper(
+                (du, u, p_arg, t) -> begin
+                    h_t = (p_h, t_h) -> sol(t_h)
+                    unwrappedf(du, u, h_t, repack(p_arg), t)
+                end, tspan[1], y)
+        else
+            pf = SciMLBase.ParamJacobianWrapper((du, u, p, t)->unwrappedf(du, u, repack(p), t), tspan[1], y)
+        end
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
@@ -438,7 +500,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     cpsol = sol
 
     GaussIntegrand(cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp)
+        sensealg, dgdp_cache, dgdp, dde_history)
 end
 
 function g(f, du, u, p, t)
@@ -448,10 +510,11 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
-    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
+    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, dde_history) = S
     f = sol.prob.f
     f = unwrapped_f(f)
     isautojacvec = get_jacvec(sensealg)
+    is_dde = dde_history !== nothing
     # y is aliased
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
@@ -485,8 +548,36 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         ReverseDiff.reverse_pass!(tape)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
-        _dy, back = Zygote.pullback(tunables) do tunables
-            vec(f(y, repack(tunables), t))
+        if is_dde
+            # History is treated as known (not differentiated through)
+            t0 = sol.prob.tspan[1]
+            orig_h = sol.prob.h
+            h_t = (p_arg, t_arg) -> begin
+                Zygote.ignore() do
+                    if t_arg < t0
+                        orig_h(p_arg, t_arg)
+                    else
+                        sol(t_arg)
+                    end
+                end
+            end
+            if SciMLBase.isinplace(sol.prob)
+                # DDE in-place: f(du, u, h, p, t)
+                _dy, back = Zygote.pullback(tunables) do tunables
+                    out_ = Zygote.Buffer(similar(y))
+                    f(out_, y, h_t, repack(tunables), t)
+                    vec(copy(out_))
+                end
+            else
+                # DDE out-of-place: f(u, p, h, t)
+                _dy, back = Zygote.pullback(tunables) do tunables
+                    vec(f(y, repack(tunables), h_t, t))
+                end
+            end
+        else
+            _dy, back = Zygote.pullback(tunables) do tunables
+                vec(f(y, repack(tunables), t))
+            end
         end
         tmp = back(λ)
         if tmp[1] === nothing
@@ -504,16 +595,42 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
 
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            if is_dde
+                # For DDEs, we need to wrap the function with history
+                h_t = (p_arg, t_arg) -> sol(t_arg)
+                # Create a wrapped function for Enzyme that includes history
+                wrapped_f = SciMLBase.Void((du, u, p_arg, t_arg) -> begin
+                    f(du, u, h_t, p_arg, t_arg)
+                    nothing
+                end)
+                tmp6_dde = Enzyme.make_zero(wrapped_f)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Duplicated(wrapped_f, tmp6_dde), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            else
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            end
         else
             tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(
-	        sensealg.autojacvec.mode, Enzyme.Const(gclosure3), Enzyme.Duplicated(f, tmp6), Enzyme.Const,
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            if is_dde
+                # For out-of-place DDEs
+                h_t = (p_arg, t_arg) -> sol(t_arg)
+                wrapped_f = (u, p_arg, t_arg) -> f(u, p_arg, h_t, t_arg)
+                tmp6_dde = Enzyme.make_zero(wrapped_f)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(gclosure3), Enzyme.Duplicated(wrapped_f, tmp6_dde), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            else
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(gclosure3), Enzyme.Duplicated(f, tmp6), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t))
+            end
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
@@ -584,10 +701,20 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
     cb2 = nothing
     adj_prob = nothing
 
-    if sol.prob isa ODEProblem
+    # For DDEs, the adjoint problem is still an ODE (no delays in adjoint equation)
+    # We need to extract the underlying ODE algorithm from MethodOfSteps
+    adj_alg = if sol.prob isa SciMLBase.AbstractDDEProblem && hasfield(typeof(alg), :alg)
+        alg.alg  # Extract underlying ODE algorithm from MethodOfSteps
+    else
+        alg
+    end
+
+    if sol.prob isa ODEProblem || sol.prob isa SciMLBase.AbstractDDEProblem
+        # For DDEs, the adjoint problem is still an ODE (no delays in adjoint equation)
+        # The DDE-specific handling is done in GaussIntegrand via history wrapper
         adj_prob, cb2,
         rcb = ODEAdjointProblem(
-            sol, sensealg, alg, integrand, cb,
+            sol, sensealg, adj_alg, integrand, cb,
             t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
@@ -595,13 +722,13 @@ function _adjoint_sensitivities(sol, sensealg::AbstractGAdjoint, alg; t = nothin
             callback = callback, no_start = no_start,
             abstol = abstol, reltol = reltol, kwargs...)
     else
-        error("Continuous adjoint sensitivities are only supported for ODE problems.")
+        error("Continuous adjoint sensitivities are only supported for ODE and DDE problems.")
     end
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
     adj_sol = solve(
-        adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
+        adj_prob, adj_alg; abstol = abstol, reltol = reltol, save_everystep = false,
         save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
         callback = CallbackSet(cb, cb2), kwargs...)
     res = integrand_values.integrand

@@ -51,12 +51,27 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
 
     isinplace = DiffEqBase.isinplace(prob)
     isRODE = prob isa RODEProblem
+    isDDE = prob isa SciMLBase.AbstractDDEProblem
     autojacvec = sensealg.autojacvec
 
     if isRODE
         _W = last(sol.W)
     else
         _W = nothing
+    end
+
+    # For DDEs, create a history wrapper that uses the forward solution
+    if isDDE
+        t0 = tspan[1]
+        _h = (p_arg, t_arg) -> begin
+            if t_arg < t0
+                prob.h(p_arg, t_arg)
+            else
+                sol(t_arg)
+            end
+        end
+    else
+        _h = nothing
     end
 
     if prob isa AbstractNonlinearProblem
@@ -166,17 +181,21 @@ function adjointdiffcache(g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f
         uf = nothing
     else
         if isinplace
-            if !isRODE
-                uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
-            else
+            if isDDE
+                uf = DDEUJacobianWrapper(unwrappedf, _t, p, _h)
+            elseif isRODE
                 uf = RODEUJacobianWrapper(unwrappedf, _t, p, _W)
+            else
+                uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
             end
             jac_config = build_jac_config(sensealg, uf, u0)
         else
-            if !isRODE
-                uf = SciMLBase.UDerivativeWrapper(unwrappedf, _t, p)
-            else
+            if isDDE
+                uf = DDEUDerivativeWrapper(unwrappedf, _t, p, _h)
+            elseif isRODE
                 uf = RODEUDerivativeWrapper(unwrappedf, _t, p, _W)
+            else
+                uf = SciMLBase.UDerivativeWrapper(unwrappedf, _t, p)
             end
             jac_config = nothing
         end
