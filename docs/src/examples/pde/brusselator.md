@@ -13,7 +13,7 @@ The Brusselator PDE is defined on a unit square periodic domain as follows:
 ```
 
 ```math
-\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 
+\frac{\partial V}{\partial t} = AU - U^2V + \alpha \nabla^2 V
 ```
 
 where $A=3.4, B=1$ and the forcing term is:
@@ -58,7 +58,6 @@ V(x, y + 1, t) = V(x, y, t)
 ```
 
 ## Numerical Discretization
-f
 To numerically solve this PDE, we discretize the unit square domain using $N$ grid points along each spatial dimension. The variables $U[i,j]$ and $V[i,j]$ then denote the concentrations at the grid point $(i, j)$ at a given time $t$.
 
 We represent the spatially discretized fields as:
@@ -301,7 +300,7 @@ end
 Finally to run everything:
 
 ```@example bruss
-res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=10000)
+res = solve(optprob, Optimisers.Adam(0.01), callback=callback, maxiters=5000)
 ```
 
 ```@example bruss
