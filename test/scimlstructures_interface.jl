@@ -159,3 +159,4 @@ end
 run_diff(initialize())
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint())[1].ps)
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec = false))[1].ps)
+@test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec = EnzymeVJP()))[1].ps)
