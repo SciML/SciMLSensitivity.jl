@@ -691,7 +691,7 @@ TrackerAdjoint()
 This `sensealg` supports any `DEProblem` if the algorithm is `SciMLBase.isautodifferentiable`
 Compatible with a limited subset of `AbstractArray` types for `u0`, including `CuArrays`.
 
-!!! warn
+!!! warning
 
     TrackerAdjoint is incompatible with Stiff ODE solvers using forward-mode automatic
     differentiation for the Jacobians. Thus, for example, `TRBDF2()` will error. Instead,
@@ -710,7 +710,7 @@ MooncakeAdjoint <: AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
 An implementation of discrete adjoint sensitivity analysis
 using the Mooncake.jl direct differentiation.
 
-!!! warn
+!!! warning
 
     This is currently experimental and supports only explicit solvers. It will
     support all solvers in the future.
@@ -756,7 +756,7 @@ An implementation of discrete adjoint sensitivity analysis
 using the Zygote.jl source-to-source AD directly on the differential equation
 solver.
 
-!!! warn
+!!! warning
 
     This is only supports SimpleDiffEq.jl solvers due to limitations of Enzyme.
 
@@ -779,7 +779,7 @@ An implementation of discrete adjoint sensitivity analysis
 using the Enzyme.jl source-to-source AD directly on the differential equation
 solver.
 
-!!! warn
+!!! warning
 
     This is currently experimental and supports only explicit solvers. It will
     support all solvers in the future.
