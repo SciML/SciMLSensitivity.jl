@@ -16,11 +16,11 @@ t = tstart:dt:tend
 tarray = collect(t)
 
 function g(u, p, t)
-    sum(u .^ 2.0 / 2.0)
+    return sum(u .^ 2.0 / 2.0)
 end
 
 function dg!(out, u, p, t, i)
-    (out .= u)
+    return (out .= u)
 end
 
 p2 = [1.01, 0.87]
@@ -28,7 +28,7 @@ p2 = [1.01, 0.87]
 f_oop_linear(u, p, t) = p[1] * u
 σ_oop_linear(u, p, t) = p[2] * u
 
-dt1 = tend / 1e3
+dt1 = tend / 1.0e3
 
 Random.seed!(seed)
 prob_oop = SDEProblem(f_oop_linear, σ_oop_linear, u₀, trange, p2)
@@ -37,33 +37,38 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 @show length(sol_oop)
 
 res_u0,
-res_p = adjoint_sensitivities(
+    res_p = adjoint_sensitivities(
     sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
-    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
+    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
+)
 
 res_u0a,
-res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray,
+    res_pa = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray,
     dgdu_discrete = dg!,
     dt = dt1,
     adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    checkpoints = sol_oop.t[1:2:end])
+    checkpoints = sol_oop.t[1:2:end]
+)
 
-@test isapprox(res_u0, res_u0a, rtol = 1e-5)
-@test isapprox(res_p, res_pa, rtol = 1e-2)
+@test isapprox(res_u0, res_u0a, rtol = 1.0e-5)
+@test isapprox(res_p, res_pa, rtol = 1.0e-2)
 
 res_u0a,
-res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray,
+    res_pa = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray,
     dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    checkpoints = sol_oop.t[1:10:end])
+    checkpoints = sol_oop.t[1:10:end]
+)
 
-@test isapprox(res_u0, res_u0a, rtol = 1e-5)
-@test isapprox(res_p, res_pa, rtol = 1e-1)
+@test isapprox(res_u0, res_u0a, rtol = 1.0e-5)
+@test isapprox(res_p, res_pa, rtol = 1.0e-1)
 
-dt1 = tend / 1e4
+dt1 = tend / 1.0e4
 
 Random.seed!(seed)
 prob_oop = SDEProblem(f_oop_linear, σ_oop_linear, u₀, trange, p2)
@@ -72,37 +77,44 @@ sol_oop = solve(prob_oop, EulerHeun(), dt = dt1, adaptive = false, save_noise = 
 @show length(sol_oop)
 
 res_u0,
-res_p = adjoint_sensitivities(
+    res_p = adjoint_sensitivities(
     sol_oop, EulerHeun(), t = tarray, dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
-    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()))
+    sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
+)
 
 res_u0a,
-res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray,
+    res_pa = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray,
     dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    checkpoints = sol_oop.t[1:2:end])
+    checkpoints = sol_oop.t[1:2:end]
+)
 
-@test isapprox(res_u0, res_u0a, rtol = 1e-6)
-@test isapprox(res_p, res_pa, rtol = 1e-3)
+@test isapprox(res_u0, res_u0a, rtol = 1.0e-6)
+@test isapprox(res_p, res_pa, rtol = 1.0e-3)
 
 res_u0a,
-res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray,
+    res_pa = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray,
     dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    checkpoints = sol_oop.t[1:10:end])
+    checkpoints = sol_oop.t[1:10:end]
+)
 
-@test isapprox(res_u0, res_u0a, rtol = 1e-6)
-@test isapprox(res_p, res_pa, rtol = 1e-2)
+@test isapprox(res_u0, res_u0a, rtol = 1.0e-6)
+@test isapprox(res_p, res_pa, rtol = 1.0e-2)
 
 res_u0a,
-res_pa = adjoint_sensitivities(sol_oop, EulerHeun(), t = tarray,
+    res_pa = adjoint_sensitivities(
+    sol_oop, EulerHeun(), t = tarray,
     dgdu_discrete = dg!,
     dt = dt1, adaptive = false,
     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP()),
-    checkpoints = sol_oop.t[1:500:end])
+    checkpoints = sol_oop.t[1:500:end]
+)
 
-@test isapprox(res_u0, res_u0a, rtol = 1e-3)
-@test isapprox(res_p, res_pa, rtol = 1e-2)
+@test isapprox(res_u0, res_u0a, rtol = 1.0e-3)
+@test isapprox(res_p, res_pa, rtol = 1.0e-2)

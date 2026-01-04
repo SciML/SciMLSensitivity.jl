@@ -46,7 +46,7 @@ function SS.canonicalize(::SS.Tunable, p::Parameters)
     # so we can use that instead.
     repack = let p = p
         function repack(newbuffer)
-            SS.replace(SS.Tunable(), p, newbuffer)
+            return SS.replace(SS.Tunable(), p, newbuffer)
         end
     end
     # the canonicalized vector, the repack function, and a boolean indicating
@@ -56,10 +56,13 @@ end
 function SS.replace(::SS.Tunable, p::Parameters, newbuffer)
     N = length(p.subparams) + length(p.coeffs)
     @assert length(newbuffer) == N
-    subparams = [SubproblemParameters(newbuffer[i], subpar.q, subpar.r)
-                 for (i, subpar) in enumerate(p.subparams)]
+    subparams = [
+        SubproblemParameters(newbuffer[i], subpar.q, subpar.r)
+            for (i, subpar) in enumerate(p.subparams)
+    ]
     coeffs = reshape(
-        view(newbuffer, (length(p.subparams) + 1):length(newbuffer)), size(p.coeffs))
+        view(newbuffer, (length(p.subparams) + 1):length(newbuffer)), size(p.coeffs)
+    )
     return Parameters(subparams, coeffs)
 end
 function SS.replace!(::SS.Tunable, p::Parameters, newbuffer)
@@ -104,7 +107,7 @@ function SS.canonicalize(::SS.Tunable, p::myparam)
     buffer = copy(p.ps)
     repack = let p = p
         function repack(newbuffer)
-            SS.replace(SS.Tunable(), p, newbuffer)
+            return SS.replace(SS.Tunable(), p, newbuffer)
         end
     end
     return buffer, repack, false
@@ -133,7 +136,7 @@ function UDE_model!(du, u, p, t)
     du[1] = o * p.α * u[1] + p.β * u[2] + p.γ * u[3]
     du[2] = -p.α * u[1] + p.β * u[2] - p.γ * u[3]
     du[3] = p.α * u[1] - p.β * u[2] + p.γ * u[3]
-    nothing
+    return nothing
 end
 
 p = initialize()

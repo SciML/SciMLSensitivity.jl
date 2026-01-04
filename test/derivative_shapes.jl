@@ -20,18 +20,24 @@ p = [1.7, 1.0, 3.0, 1.0]
 prob_ode = ODEProblem(f, u0, tspan, p);
 
 fd_ode = ForwardDiff.gradient(p) do p
-    sum(last(solve(prob_ode, Tsit5(), p = p, abstol = 1e-12, reltol = 1e-12)))
+    sum(last(solve(prob_ode, Tsit5(), p = p, abstol = 1.0e-12, reltol = 1.0e-12)))
 end
 
 grad_ode = Zygote.gradient(p) do p
-    sum(last(solve(prob_ode, Tsit5(), p = p, abstol = 1e-12, reltol = 1e-12)))
+    sum(last(solve(prob_ode, Tsit5(), p = p, abstol = 1.0e-12, reltol = 1.0e-12)))
 end[1]
 
-@test fd_ode≈grad_ode rtol=1e-6
+@test fd_ode ≈ grad_ode rtol = 1.0e-6
 
 grad_ode = Zygote.gradient(p) do p
-    sum(last(solve(prob_ode, Tsit5(), p = p, abstol = 1e-12, reltol = 1e-12,
-        sensealg = InterpolatingAdjoint())))
+    sum(
+        last(
+            solve(
+                prob_ode, Tsit5(), p = p, abstol = 1.0e-12, reltol = 1.0e-12,
+                sensealg = InterpolatingAdjoint()
+            )
+        )
+    )
 end[1]
 
-@test fd_ode≈grad_ode rtol=1e-6
+@test fd_ode ≈ grad_ode rtol = 1.0e-6

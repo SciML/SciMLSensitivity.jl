@@ -14,12 +14,12 @@ f(u, p, t) = p[1] * u
 
 Random.seed!(seed)
 u0 = rand(1)
-linear_analytic(u0, p, t, W) = @.(u0*exp((p[1] - p[2]^2 / 2) * t + p[2] * W))
+linear_analytic(u0, p, t, W) = @.(u0 * exp((p[1] - p[2]^2 / 2) * t + p[2] * W))
 
 prob = SDEProblem(SDEFunction(f, σ, analytic = linear_analytic), σ, u0, tspan, p)
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 
-@test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+@test isapprox(sol.u_analytic, sol.u, atol = 1.0e-4)
 
 du = zeros(size(u0))
 u = sol.u[end]
@@ -28,66 +28,78 @@ transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g
 du2 = transformed_function(u, p, tspan[2])
 
 #@test du[1] == (p[1]*u[1]-p[2]^2*u[1])
-@test isapprox(du2[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1e-15)
+@test isapprox(du2[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1.0e-15)
 #@test du2 == du
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (u, p, t) -> p[2]^2 * u)
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (u, p, t) -> p[2]^2 * u
+)
 du2 = transformed_function(u, p, tspan[2])
-@test isapprox(du2[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1e-15)
+@test isapprox(du2[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1.0e-15)
 
-linear_analytic_strat(u0, p, t, W) = @.(u0*exp((p[1]) * t + p[2] * W))
+linear_analytic_strat(u0, p, t, W) = @.(u0 * exp((p[1]) * t + p[2] * W))
 
 prob_strat = SDEProblem{false}(
-    SDEFunction((u, p, t) -> p[1] * u - 1 // 2 * p[2]^2 * u, σ,
-        analytic = linear_analytic_strat),
+    SDEFunction(
+        (u, p, t) -> p[1] * u - 1 // 2 * p[2]^2 * u, σ,
+        analytic = linear_analytic_strat
+    ),
     σ,
     u0,
     tspan,
-    p)
+    p
+)
 Random.seed!(seed)
 sol_strat = solve(
     prob_strat, RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
     adaptive = false,
-    dt = 0.0001, save_noise = true)
+    dt = 0.0001, save_noise = true
+)
 prob_strat1 = SDEProblem{false}(
-    SDEFunction((u, p, t) -> transformed_function(u, p, t) .+ 1 // 2 * p[2]^2 * u[1], σ,
-        analytic = linear_analytic),
+    SDEFunction(
+        (u, p, t) -> transformed_function(u, p, t) .+ 1 // 2 * p[2]^2 * u[1], σ,
+        analytic = linear_analytic
+    ),
     σ,
     u0,
     tspan,
-    p)
+    p
+)
 Random.seed!(seed)
 sol_strat1 = solve(
     prob_strat1, RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
     adaptive = false,
-    dt = 0.0001, save_noise = true)
+    dt = 0.0001, save_noise = true
+)
 
 # Test if we recover Ito solution in Stratonovich sense
-@test isapprox(sol_strat.u, sol_strat1.u, atol = 1e-4) # own transformation and custom function agree
-@test !isapprox(sol_strat.u_analytic, sol_strat.u, atol = 1e-4) # we don't get the stratonovich solution for the linear SDE
-@test isapprox(sol_strat1.u_analytic, sol_strat.u, atol = 1e-3) # we do recover the analytic solution from the Ito sense
+@test isapprox(sol_strat.u, sol_strat1.u, atol = 1.0e-4) # own transformation and custom function agree
+@test !isapprox(sol_strat.u_analytic, sol_strat.u, atol = 1.0e-4) # we don't get the stratonovich solution for the linear SDE
+@test isapprox(sol_strat1.u_analytic, sol_strat.u, atol = 1.0e-3) # we do recover the analytic solution from the Ito sense
 
 # inplace
 
-f!(du, u, p, t) = @.(du=p[1] * u)
-σ!(du, u, p, t) = @.(du=p[2] * u)
+f!(du, u, p, t) = @.(du = p[1] * u)
+σ!(du, u, p, t) = @.(du = p[2] * u)
 
 prob = SDEProblem(SDEFunction(f!, σ!, analytic = linear_analytic), σ!, u0, tspan, p)
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
 
-@test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+@test isapprox(sol.u_analytic, sol.u, atol = 1.0e-4)
 
 du = zeros(size(u0))
 u = sol.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
 
-@test isapprox(du[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1e-15)
+@test isapprox(du[1], (p[1] * u[1] - p[2]^2 * u[1]), atol = 1.0e-15)
 # @test isapprox(du2[1], (p[1]*u[1]-p[2]^2*u[1]), atol=1e-15)
 # @test isapprox(du2, du,  atol=1e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (du, u, p, t) -> (du .= p[2]^2 * u))
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (du, u, p, t) -> (du .= p[2]^2 * u)
+)
 transformed_function(du, u, p, tspan[2])
 @test du[1] == (p[1] * u[1] - p[2]^2 * u[1])
 
@@ -101,10 +113,12 @@ u = sol.u[end]
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 du2 = transformed_function(u, p, tspan[2])
-@test isapprox(du2, (p[1] * u - p[2]^2 * u), atol = 1e-15)
+@test isapprox(du2, (p[1] * u - p[2]^2 * u), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (u, p, t) -> p[2]^2 * u)
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (u, p, t) -> p[2]^2 * u
+)
 du2 = transformed_function(u, p, tspan[2])
 @test du2[1] == (p[1] * u[1] - p[2]^2 * u[1])
 
@@ -115,12 +129,14 @@ du = zeros(size(u0))
 u = sol.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
-@test isapprox(du, (p[1] * u - p[2]^2 * u), atol = 1e-15)
+@test isapprox(du, (p[1] * u - p[2]^2 * u), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (du, u, p, t) -> (du .= p[2]^2 * u))
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (du, u, p, t) -> (du .= p[2]^2 * u)
+)
 transformed_function(du, u, p, tspan[2])
-@test isapprox(du, (p[1] * u - p[2]^2 * u), atol = 1e-15)
+@test isapprox(du, (p[1] * u - p[2]^2 * u), atol = 1.0e-15)
 
 #  non-diagonal noise torus
 u0 = rand(2)
@@ -128,8 +144,10 @@ p = rand(1)
 
 fnd(u, p, t) = 0 * u
 function σnd(u, p, t)
-    du = [cos(p[1])*sin(u[1]) cos(p[1])*cos(u[1]) -sin(p[1])*sin(u[2]) -sin(p[1])*cos(u[2])
-          sin(p[1])*sin(u[1]) sin(p[1])*cos(u[1]) cos(p[1])*sin(u[2]) cos(p[1])*cos(u[2])]
+    du = [
+        cos(p[1]) * sin(u[1]) cos(p[1]) * cos(u[1]) -sin(p[1]) * sin(u[2]) -sin(p[1]) * cos(u[2])
+        sin(p[1]) * sin(u[1]) sin(p[1]) * cos(u[1]) cos(p[1]) * sin(u[2]) cos(p[1]) * cos(u[2])
+    ]
     return du
 end
 
@@ -138,12 +156,14 @@ sol = solve(prob, EM(), adaptive = false, dt = 0.001, save_noise = true)
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 du2 = transformed_function(u0, p, tspan[2])
-@test isapprox(du2, zeros(2), atol = 1e-15)
+@test isapprox(du2, zeros(2), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (u, p, t) -> false * u)
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (u, p, t) -> false * u
+)
 du2 = transformed_function(u0, p, tspan[2])
-@test isapprox(du2, zeros(2), atol = 1e-15)
+@test isapprox(du2, zeros(2), atol = 1.0e-15)
 
 fnd!(du, u, p, t) = du .= false
 function σnd!(du, u, p, t)
@@ -165,12 +185,14 @@ du = zeros(size(u0))
 u = sol.u[end]
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 transformed_function(du, u, p, tspan[2])
-@test isapprox(du, zeros(2), atol = 1e-15)
+@test isapprox(du, zeros(2), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (du, u, p, t) -> (du .= false * u))
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (du, u, p, t) -> (du .= false * u)
+)
 transformed_function(du, u, p, tspan[2])
-@test isapprox(du, zeros(2), atol = 1e-15)
+@test isapprox(du, zeros(2), atol = 1.0e-15)
 
 t = sol.t[end]
 
@@ -195,8 +217,8 @@ _dy, back = Zygote.pullback(u0, p) do u, p
 end
 ∇1, ∇2 = back(λ)
 
-@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 prob = SDEProblem(f, σ, u0, tspan, p)
 sol = solve(prob, SOSRI(), adaptive = false, dt = 0.001, save_noise = true)
@@ -206,17 +228,19 @@ transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g
 _dy, back = Zygote.pullback(u0, p) do u, p
     vec(transformed_function(u, p, t))
 end
-@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (u, p, t) -> p[2]^2 * u)
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (u, p, t) -> p[2]^2 * u
+)
 _dy, back = Zygote.pullback(u0, p) do u, p
     vec(transformed_function(u, p, t))
 end
 ∇1, ∇2 = back(λ)
-@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(∇2, (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 ###
 # Check general compatibility of StochasticTransformedFunction() with ReverseDiff
@@ -244,8 +268,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 tape = ReverseDiff.GradientTape((u0, p, [t])) do u, p, t
     _dy, back = Zygote.pullback(u, p) do u, p
@@ -269,8 +293,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g)
 
@@ -292,8 +316,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 # diagonal
 Random.seed!(seed)
@@ -305,9 +329,9 @@ _dy, back = Zygote.pullback(u0, p) do u, p
 end
 ∇1, ∇2 = back(λ)
 
-@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(∇2[1], dot(u0, λ), atol = 1e-15)
-@test isapprox(∇2[2], -2 * p[2] * dot(u0, λ), atol = 1e-15)
+@test isapprox(∇1, (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(∇2[1], dot(u0, λ), atol = 1.0e-15)
+@test isapprox(∇2[2], -2 * p[2] * dot(u0, λ), atol = 1.0e-15)
 
 tape = ReverseDiff.GradientTape((u0, p, [t])) do u, p, t
     vec(transformed_function(u, p, first(t)))
@@ -329,9 +353,9 @@ ReverseDiff.reverse_pass!(tape)
 
 tmptp = ReverseDiff.deriv(tp)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(tmptp[1], dot(u0, λ), atol = 1e-15)
-@test isapprox(tmptp[2], -2 * p[2] * dot(u0, λ), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(tmptp[1], dot(u0, λ), atol = 1.0e-15)
+@test isapprox(tmptp[2], -2 * p[2] * dot(u0, λ), atol = 1.0e-15)
 
 # non-diagonal
 Random.seed!(seed)
@@ -344,7 +368,7 @@ _dy, back = Zygote.pullback(u0, p) do u, p
 end
 ∇1, ∇2 = back(λ)
 
-@test isapprox(∇1, zero(∇1), atol = 1e-15)
+@test isapprox(∇1, zero(∇1), atol = 1.0e-15)
 
 prob = SDEProblem(fnd, σnd, u0, tspan, p, noise_rate_prototype = zeros(2, 4))
 sol = solve(prob, EM(), adaptive = false, dt = 0.001, save_noise = true)
@@ -368,8 +392,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), zero(u0), atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), zero(p), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), zero(u0), atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), zero(p), atol = 1.0e-15)
 
 ###
 # Check Mutating functions
@@ -414,8 +438,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15) # -0.016562475307537294
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)  #[0.017478629739736098, -0.023103635221731166]
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15) # -0.016562475307537294
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)  #[0.017478629739736098, -0.023103635221731166]
 
 tape = ReverseDiff.GradientTape((u0, p, [t])) do u, p, t
     _dy, back = Zygote.pullback(u, p) do u, p
@@ -443,8 +467,8 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test_broken isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test_broken isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test_broken isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test_broken isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
 tape = ReverseDiff.GradientTape((u0, p, [t])) do u1, p1, t1
     du1 = similar(u1, size(u1))
@@ -466,11 +490,13 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)
 
-transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-    (du, u, p, t) -> (du .= p[2]^2 * u))
+transformed_function = StochasticTransformedFunction(
+    sol, sol.prob.f, sol.prob.g,
+    (du, u, p, t) -> (du .= p[2]^2 * u)
+)
 
 tape = ReverseDiff.GradientTape((u0, p, [t])) do u1, p1, t1
     du1 = similar(u1, size(u1))
@@ -492,5 +518,5 @@ ReverseDiff.forward_pass!(tape)
 ReverseDiff.increment_deriv!(output, λ)
 ReverseDiff.reverse_pass!(tape)
 
-@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1e-15)
-@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1e-15)
+@test isapprox(ReverseDiff.deriv(tu), (p[1] - p[2]^2) * λ, atol = 1.0e-15)
+@test isapprox(ReverseDiff.deriv(tp), (@. [1, -2 * p[2]] * u0 * λ[1]), atol = 1.0e-15)

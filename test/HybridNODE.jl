@@ -17,7 +17,7 @@ function test_hybridNODE(sensealg)
     # t is an integer
     function affect!(integrator, cbinput)
         event_index = round(Int, integrator.t)
-        integrator.u[1] += 0.2 * cbinput[event_index]
+        return integrator.u[1] += 0.2 * cbinput[event_index]
     end
     callback = PresetTimeCallback(collect(1:datalength), (int) -> affect!(int, cbinput))
 
@@ -25,14 +25,18 @@ function test_hybridNODE(sensealg)
     prob = ODEProblem(dudt, [0.0, 1.0], tspan, ps)
 
     function predict_n_ode(p)
-        arr = Array(solve(prob, Tsit5(),
-            p = p, sensealg = sensealg, saveat = 2.0, callback = callback))[1, 2:2:end]
+        arr = Array(
+            solve(
+                prob, Tsit5(),
+                p = p, sensealg = sensealg, saveat = 2.0, callback = callback
+            )
+        )[1, 2:2:end]
         return arr[1:datalength]
     end
 
     function loss_n_ode(p, _)
         pred = predict_n_ode(p)
-        loss = sum(abs2, target .- pred) ./ datalength
+        return loss = sum(abs2, target .- pred) ./ datalength
     end
 
     cb = function (p, l) #callback function to observe training
@@ -40,10 +44,12 @@ function test_hybridNODE(sensealg)
         return false
     end
     @show sensealg
-    res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
-        Adam(0.005); callback = cb, maxiters = 200)
+    res = solve(
+        OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
+        Adam(0.005); callback = cb, maxiters = 200
+    )
     @test loss_n_ode(res.u, nothing) < 0.5
-    println("  ")
+    return println("  ")
 end
 
 function test_hybridNODE2(sensealg)
@@ -53,16 +59,18 @@ function test_hybridNODE2(sensealg)
 
     ## Get goal data
     function trueaffect!(integrator)
-        integrator.u[3:4] = -3 * integrator.u[1:2]
+        return integrator.u[3:4] = -3 * integrator.u[1:2]
     end
     function trueODEfunc(dx, x, p, t)
         @views dx[1:2] .= x[1:2] + x[3:4]
         dx[1] += x[2]
         dx[2] += x[1]
-        dx[3:4] .= 0.0f0
+        return dx[3:4] .= 0.0f0
     end
-    cb_ = PeriodicCallback(trueaffect!, 0.1f0, save_positions = (true, true),
-        initial_affect = true)
+    cb_ = PeriodicCallback(
+        trueaffect!, 0.1f0, save_positions = (true, true),
+        initial_affect = true
+    )
     prob = ODEProblem(trueODEfunc, u0, tspan)
     sol = solve(prob, Tsit5(), callback = cb_, save_everystep = false, save_start = true)
     ode_data = Array(sol)[1:2, 1:end]'
@@ -73,26 +81,32 @@ function test_hybridNODE2(sensealg)
     ps = ComponentArray{Float32}(ps)
 
     function affect!(integrator)
-        integrator.u[3:4] = -3 * integrator.u[1:2]
+        return integrator.u[3:4] = -3 * integrator.u[1:2]
     end
     function ODEfunc(dx, x, p, t)
         dx[1:2] .= first(dudt2(x, p, st))
-        dx[3:4] .= 0.0f0
+        return dx[3:4] .= 0.0f0
     end
     z0 = u0
     prob = ODEProblem(ODEfunc, z0, tspan)
-    cb = PeriodicCallback(affect!, 0.1f0, save_positions = (true, true),
-        initial_affect = true)
+    cb = PeriodicCallback(
+        affect!, 0.1f0, save_positions = (true, true),
+        initial_affect = true
+    )
 
     ## Initialize learning functions
     function predict_n_ode(ps)
-        Array(solve(prob, Tsit5(), u0 = z0, p = ps, callback = cb, save_everystep = false,
-            save_start = true, sensealg = sensealg))[1:2, :]
+        return Array(
+            solve(
+                prob, Tsit5(), u0 = z0, p = ps, callback = cb, save_everystep = false,
+                save_start = true, sensealg = sensealg
+            )
+        )[1:2, :]
     end
     function loss_n_ode(ps, _)
         pred = predict_n_ode(ps)[1:2, 1:end]'
         loss = sum(abs2, ode_data .- pred)
-        loss
+        return loss
     end
 
     cba = function (p, loss)  #callback function to observe training
@@ -102,12 +116,14 @@ function test_hybridNODE2(sensealg)
 
     @show sensealg
 
-    res = solve(OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
-        Adam(0.0025); callback = cba, maxiters = 200)
+    res = solve(
+        OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps),
+        Adam(0.0025); callback = cba, maxiters = 200
+    )
 
     @test loss_n_ode(res.u, nothing) < 0.5
 
-    println("  ")
+    return println("  ")
 end
 
 mutable struct Affect{T}
@@ -116,7 +132,7 @@ end
 compute_index(t) = round(Int, t) + 1
 function (cb::Affect)(integrator)
     indx = compute_index(integrator.t)
-    integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
+    return integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
 end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.0; 0.0]
@@ -124,7 +140,7 @@ function test_hybridNODE3(sensealg)
     tspan = (0.0f0, 10.0f0)
 
     function trueODEfunc(du, u, p, t)
-        du .= -u
+        return du .= -u
     end
     t = range(tspan[1], tspan[2], length = datasize)
     prob = ODEProblem(trueODEfunc, u0, tspan)
@@ -140,7 +156,7 @@ function test_hybridNODE3(sensealg)
     ps = ComponentArray{Float32}(ps)
 
     function dudt(du, u, p, t)
-        du .= first(dudt2(u, p, st))
+        return du .= first(dudt2(u, p, st))
     end
 
     z0 = Float32[2.0; 0.0]
@@ -149,20 +165,22 @@ function test_hybridNODE3(sensealg)
     function callback_(callback_data)
         affect! = Affect(callback_data)
         condition(u, t, integrator) = integrator.t > 0
-        DiscreteCallback(condition, affect!, save_positions = (false, false))
+        return DiscreteCallback(condition, affect!, save_positions = (false, false))
     end
 
     function predict_n_ode(p, true_data_0, callback_data, sense)
         _prob = remake(prob, p = p, u0 = true_data_0)
-        solve(_prob, Tsit5(), callback = callback_(callback_data), saveat = t,
-            sensealg = sense)
+        return solve(
+            _prob, Tsit5(), callback = callback_(callback_data), saveat = t,
+            sensealg = sense
+        )
     end
 
     function loss_n_ode(p, (true_data, callback_data))
         sol = predict_n_ode(p, (vec(true_data[:, 1, :])), callback_data, sensealg)
         pred = Array(sol)
         loss = sum(abs2, true_data[:, :, 1] .- pred)
-        loss
+        return loss
     end
 
     cba = function (p, loss)  #callback function to observe training
@@ -173,25 +191,34 @@ function test_hybridNODE3(sensealg)
     @show sensealg
 
     res = solve(
-        OptimizationProblem(OptimizationFunction(loss_n_ode, AutoZygote()), ps,
-            data),
-        Adam(0.01); maxiters = 1000, callback = cba)
+        OptimizationProblem(
+            OptimizationFunction(loss_n_ode, AutoZygote()), ps,
+            data
+        ),
+        Adam(0.01); maxiters = 1000, callback = cba
+    )
     loss = loss_n_ode(res.u, (true_data, callback_data))
 
-    @test loss < 0.5
+    return @test loss < 0.5
 end
 
-@testset "PresetTimeCallback: $(sensealg)" for sensealg in [ForwardDiffSensitivity(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
+@testset "PresetTimeCallback: $(sensealg)" for sensealg in [
+        ForwardDiffSensitivity(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+    ]
     test_hybridNODE(sensealg)
 end
 
-@testset "PeriodicCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
+@testset "PeriodicCallback: $(sensealg)" for sensealg in [
+        ReverseDiffAdjoint(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+    ]
     test_hybridNODE2(sensealg)
 end
 
-@testset "tprevCallback: $(sensealg)" for sensealg in [ReverseDiffAdjoint(),
-    BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint()]
+@testset "tprevCallback: $(sensealg)" for sensealg in [
+        ReverseDiffAdjoint(),
+        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+    ]
     test_hybridNODE3(sensealg)
 end

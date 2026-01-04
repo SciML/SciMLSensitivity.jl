@@ -1,5 +1,5 @@
 function SensitivityAlg(args...; kwargs...)
-    @error("The SensitivityAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
+    return @error("The SensitivityAlg choice mechanism was completely overhauled. Please consult the local sensitivity documentation for more information")
 end
 
 """
@@ -59,11 +59,12 @@ function ForwardSensitivity(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = autodiff,
-        autojacmat = false)
+        autojacmat = false
+    )
     autojacvec && autojacmat &&
         error("Choose either Jacobian matrix products or Jacobian vector products,
                 autojacmat and autojacvec cannot both be true")
-    ForwardSensitivity{chunk_size, autodiff, diff_type}(autojacvec, autojacmat)
+    return ForwardSensitivity{chunk_size, autodiff, diff_type}(autojacvec, autojacmat)
 end
 
 """
@@ -97,9 +98,9 @@ This `sensealg` supports any `SciMLProblem`s, provided that the solver algorithm
 accurately differentiate code with callbacks only when `convert_tspan=true`.
 """
 struct ForwardDiffSensitivity{CS, CTS} <:
-       AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing} end
+    AbstractForwardSensitivityAlgorithm{CS, Nothing, Nothing} end
 function ForwardDiffSensitivity(; chunk_size = 0, convert_tspan = nothing)
-    ForwardDiffSensitivity{chunk_size, convert_tspan}()
+    return ForwardDiffSensitivity{chunk_size, convert_tspan}()
 end
 
 """
@@ -249,23 +250,29 @@ Scalable Gradients for Stochastic Differential Equations,
 PMLR 108, pp. 3870-3882 (2020), http://proceedings.mlr.press/v108/li20i.html
 """
 struct BacksolveAdjoint{CS, AD, FDT, VJP} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
     noisemixing::Bool
 end
-Base.@pure function BacksolveAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function BacksolveAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = true, noisemixing = false)
-    BacksolveAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
+        checkpointing = true, noisemixing = false
+    )
+    BacksolveAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+        autojacvec,
         checkpointing,
-        noisemixing)
+        noisemixing
+    )
 end
 
 function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
-    BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
-        sensealg.noisemixing)
+    return BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(
+        vjp, sensealg.checkpointing,
+        sensealg.noisemixing
+    )
 end
 
 """
@@ -365,24 +372,32 @@ continuous sensitivity analysis for derivatives of differential equation solutio
 arXiv:1812.01892
 """
 struct InterpolatingAdjoint{CS, AD, FDT, VJP} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
     noisemixing::Bool
 end
-Base.@pure function InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function InterpolatingAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = false, noisemixing = false)
-    InterpolatingAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
+        checkpointing = false, noisemixing = false
+    )
+    InterpolatingAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+        autojacvec,
         checkpointing,
-        noisemixing)
+        noisemixing
+    )
 end
 
-function setvjp(sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
-        vjp) where {CS, AD, FDT}
-    InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing,
-        sensealg.noisemixing)
+function setvjp(
+        sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
+        vjp
+    ) where {CS, AD, FDT}
+    return InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(
+        vjp, sensealg.checkpointing,
+        sensealg.noisemixing
+    )
 end
 
 """
@@ -463,22 +478,28 @@ Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinar
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
 struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     abstol::Float64
     reltol::Float64
 end
-Base.@pure function QuadratureAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function QuadratureAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
-        autojacvec = nothing, abstol = 1e-6,
-        reltol = 1e-3)
-    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(autojacvec,
-        abstol, reltol)
+        autojacvec = nothing, abstol = 1.0e-6,
+        reltol = 1.0e-3
+    )
+    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+        autojacvec,
+        abstol, reltol
+    )
 end
 
 function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
-    QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.abstol,
-        sensealg.reltol)
+    return QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(
+        vjp, sensealg.abstol,
+        sensealg.reltol
+    )
 end
 
 """
@@ -559,20 +580,23 @@ Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinar
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
 struct GaussAdjoint{CS, AD, FDT, VJP} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
 end
-Base.@pure function GaussAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function GaussAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = false)
+        checkpointing = false
+    )
     GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
-        autojacvec, checkpointing)
+        autojacvec, checkpointing
+    )
 end
 
 function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
-    GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
+    return GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
 """
@@ -650,21 +674,25 @@ Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinar
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
 struct GaussKronrodAdjoint{CS, AD, FDT, VJP} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
 end
-Base.@pure function GaussKronrodAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function GaussKronrodAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = false)
+        checkpointing = false
+    )
     GaussKronrodAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
-        autojacvec, checkpointing)
+        autojacvec, checkpointing
+    )
 end
 
 function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT, Nothing}, vjp) where {
-        CS, AD, FDT}
-    GaussKronrodAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
+        CS, AD, FDT,
+    }
+    return GaussKronrodAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
 # Supertype of gauss methods, internal
@@ -802,7 +830,7 @@ EnzymeAdjoint(mode = nothing)
 Currently fails on almost every solver.
 """
 struct EnzymeAdjoint{M <: Union{Nothing, Enzyme.EnzymeCore.Mode}} <:
-       AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
+    AbstractAdjointSensitivityAlgorithm{nothing, true, nothing}
     mode::M
     EnzymeAdjoint(mode = nothing) = new{typeof(mode)}(mode)
 end
@@ -872,7 +900,7 @@ Blonigan, P., Gomez, S., Wang, Q., Least Squares Shadowing for sensitivity analy
 fluid flows, in: 52nd Aerospace Sciences Meeting, 1–24 (2014).
 """
 struct ForwardLSS{CS, AD, FDT, RType, gType} <:
-       AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
+    AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
     LSSregularizer::RType
     g::gType
 end
@@ -880,10 +908,12 @@ Base.@pure function ForwardLSS(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-        g = nothing)
+        g = nothing
+    )
     ForwardLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
         LSSregularizer,
-        g)
+        g
+    )
 end
 
 """
@@ -943,7 +973,7 @@ Wang, Q., Hu, R., and Blonigan, P. Least squares shadowing sensitivity analysis 
 chaotic limit cycle oscillations. Journal of Computational Physics, 267, 210-224 (2014).
 """
 struct AdjointLSS{CS, AD, FDT, RType, gType} <:
-       AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
+    AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
     LSSregularizer::RType
     g::gType
 end
@@ -951,10 +981,12 @@ Base.@pure function AdjointLSS(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
-        g = nothing)
+        g = nothing
+    )
     AdjointLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
         LSSregularizer,
-        g)
+        g
+    )
 end
 
 abstract type AbstractLSSregularizer end
@@ -984,7 +1016,7 @@ struct TimeDilation{T1 <: Number} <: AbstractLSSregularizer
     t1skip::T1
 end
 function TimeDilation(alpha, t0skip = zero(alpha), t1skip = zero(alpha))
-    TimeDilation{typeof(alpha)}(alpha, t0skip, t1skip)
+    return TimeDilation{typeof(alpha)}(alpha, t0skip, t1skip)
 end
 """
 ```
@@ -1056,7 +1088,7 @@ Ni, A., and Wang, Q. Sensitivity analysis on chaotic dynamical systems by Non-In
 Least Squares Shadowing (NILSS). Journal of Computational Physics 347, 56-77 (2017).
 """
 struct NILSS{CS, AD, FDT, RNG, nType, gType} <:
-       AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
+    AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
     rng::RNG
     nseg::Int
     nstep::Int
@@ -1064,16 +1096,20 @@ struct NILSS{CS, AD, FDT, RNG, nType, gType} <:
     autojacvec::Bool
     g::gType
 end
-Base.@pure function NILSS(nseg, nstep; nus = nothing,
+Base.@pure function NILSS(
+        nseg, nstep; nus = nothing,
         rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = autodiff,
-        g = nothing)
-    NILSS{chunk_size, autodiff, diff_type, typeof(rng), typeof(nus), typeof(g)}(rng, nseg,
+        g = nothing
+    )
+    NILSS{chunk_size, autodiff, diff_type, typeof(rng), typeof(nus), typeof(g)}(
+        rng, nseg,
         nstep, nus,
         autojacvec,
-        g)
+        g
+    )
 end
 
 """
@@ -1156,7 +1192,7 @@ by Non-Intrusive Least Squares Adjoint Shadowing (NILSAS). Journal of Computatio
 Physics 395, 690-709 (2019).
 """
 struct NILSAS{CS, AD, FDT, RNG, SENSE, gType} <:
-       AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
+    AbstractShadowingSensitivityAlgorithm{CS, AD, FDT}
     rng::RNG
     adjoint_sensealg::SENSE
     M::Int
@@ -1164,12 +1200,14 @@ struct NILSAS{CS, AD, FDT, RNG, SENSE, gType} <:
     nstep::Int
     g::gType
 end
-Base.@pure function NILSAS(nseg, nstep, M = nothing;
+Base.@pure function NILSAS(
+        nseg, nstep, M = nothing;
         rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
         adjoint_sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
-        g = nothing)
+        g = nothing
+    )
 
     # integer dimension of the unstable subspace
     M === nothing &&
@@ -1181,9 +1219,11 @@ Base.@pure function NILSAS(nseg, nstep, M = nothing;
         diff_type,
         typeof(rng),
         typeof(adjoint_sensealg),
-        typeof(g)
-    }(rng, adjoint_sensealg, M,
-        nseg, nstep, g)
+        typeof(g),
+    }(
+        rng, adjoint_sensealg, M,
+        nseg, nstep, g
+    )
 end
 
 """
@@ -1240,22 +1280,30 @@ Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
 struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
 end
 
-Base.@pure function SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
+Base.@pure function SteadyStateAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-        linsolve_kwargs = (;))
-    return SteadyStateAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs)}(autojacvec, linsolve, linsolve_kwargs)
+        linsolve_kwargs = (;)
+    )
+    return SteadyStateAdjoint{
+        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs),
+    }(autojacvec, linsolve, linsolve_kwargs)
 end
-function setvjp(sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
-        vjp) where {CS, AD, FDT, VJP, LS, LK}
-    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(vjp, sensealg.linsolve,
-        sensealg.linsolve_kwargs)
+function setvjp(
+        sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
+        vjp
+    ) where {CS, AD, FDT, VJP, LS, LK}
+    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
+        vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs
+    )
 end
 
 abstract type VJPChoice end
@@ -1320,7 +1368,7 @@ EnzymeVJP(; chunksize = 0, mode = EnzymeCore.Reverse)
   - `mode`: the parameterized Enzyme mode, default set to EnzymeCore.Reverse. Alternatively one
     may want to pass Enzyme.set_runtime_activity(Enzyme.Reverse)
 """
-struct EnzymeVJP{Mode<:Enzyme.ReverseMode} <: VJPChoice
+struct EnzymeVJP{Mode <: Enzyme.ReverseMode} <: VJPChoice
     chunksize::Int
     mode::Mode
 end
@@ -1410,44 +1458,50 @@ struct MooncakeVJP <: VJPChoice end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
-@inline function alg_autodiff(alg::AbstractSensitivityAlgorithm{
+@inline function alg_autodiff(
+        alg::AbstractSensitivityAlgorithm{
+            CS,
+            AD,
+            FDT,
+        }
+    ) where {
         CS,
         AD,
-        FDT
-}) where {
-        CS,
-        AD,
-        FDT
-}
-    AD
+        FDT,
+    }
+    return AD
 end
-@inline function get_chunksize(alg::AbstractSensitivityAlgorithm{
+@inline function get_chunksize(
+        alg::AbstractSensitivityAlgorithm{
+            CS,
+            AD,
+            FDT,
+        }
+    ) where {
         CS,
         AD,
-        FDT
-}) where {
-        CS,
-        AD,
-        FDT
-}
-    CS
+        FDT,
+    }
+    return CS
 end
-@inline function diff_type(alg::AbstractSensitivityAlgorithm{
+@inline function diff_type(
+        alg::AbstractSensitivityAlgorithm{
+            CS,
+            AD,
+            FDT,
+        }
+    ) where {
         CS,
         AD,
-        FDT
-}) where {
-        CS,
-        AD,
-        FDT
-}
-    FDT
+        FDT,
+    }
+    return FDT
 end
 @inline function get_jacvec(alg::AbstractSensitivityAlgorithm)
-    alg.autojacvec isa Bool ? alg.autojacvec : true
+    return alg.autojacvec isa Bool ? alg.autojacvec : true
 end
 @inline function get_jacmat(alg::AbstractSensitivityAlgorithm)
-    alg.autojacmat isa Bool ? alg.autojacmat : true
+    return alg.autojacmat isa Bool ? alg.autojacmat : true
 end
 @inline ischeckpointing(alg::AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
@@ -1491,7 +1545,7 @@ differential/algebraic equation solvers, ACM Transactions on Mathematical
 Software (TOMS), 31, pp:363–396 (2005)
 """
 struct ForwardDiffOverAdjoint{A} <:
-       AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
+    AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
     adjalg::A
 end
 

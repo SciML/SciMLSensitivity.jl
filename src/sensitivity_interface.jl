@@ -1,27 +1,27 @@
 ## Direct calls
 
 const ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE = """
-                                                Adjoint sensitivity analysis functionality requires being able to solve
-                                                a differential equation defined by the parameter struct `p`. Thus while
-                                                DifferentialEquations.jl can support any parameter struct type, usage
-                                                with adjoint sensitivity analysis requires that `p` could be a valid
-                                                type for being the initial condition `u0` of an array. This means that
-                                                many simple types, such as `Tuple`s and `NamedTuple`s, will work as
-                                                parameters in normal contexts but will fail during adjoint differentiation.
+Adjoint sensitivity analysis functionality requires being able to solve
+a differential equation defined by the parameter struct `p`. Thus while
+DifferentialEquations.jl can support any parameter struct type, usage
+with adjoint sensitivity analysis requires that `p` could be a valid
+type for being the initial condition `u0` of an array. This means that
+many simple types, such as `Tuple`s and `NamedTuple`s, will work as
+parameters in normal contexts but will fail during adjoint differentiation.
 
-                                                To work around this issue for complicated cases like nested structs, look
-                                                into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
-                                                or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
+To work around this issue for complicated cases like nested structs, look
+into defining `p` using `AbstractArray` libraries such as RecursiveArrayTools.jl
+or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element type.
 
-                                                If you have a non-standard type you wish to work with adjoint differentiation, you need
-                                                to define the SciMLStructures.jl interface on that type. For more information, check out
-                                                https://docs.sciml.ai/SciMLStructures/stable/example/ for an example.
-                                                """
+If you have a non-standard type you wish to work with adjoint differentiation, you need
+to define the SciMLStructures.jl interface on that type. For more information, check out
+https://docs.sciml.ai/SciMLStructures/stable/example/ for an example.
+"""
 
 struct AdjointSensitivityParameterCompatibilityError <: Exception end
 
 function Base.showerror(io::IO, e::AdjointSensitivityParameterCompatibilityError)
-    print(io, ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE)
+    return print(io, ADJOINT_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
 @doc doc"""
@@ -366,9 +366,11 @@ res2 = ForwardDiff.gradient(G,[1.5,1.0,3.0])
 res3 = Calculus.gradient(G,[1.5,1.0,3.0])
 ```
 """
-function adjoint_sensitivities(sol, args...;
+function adjoint_sensitivities(
+        sol, args...;
         sensealg = InterpolatingAdjoint(),
-        verbose = true, kwargs...)
+        verbose = true, kwargs...
+    )
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
@@ -392,7 +394,8 @@ function adjoint_sensitivities(sol, args...;
 
         _sensealg = if isinplace(sol.prob)
             setvjp(
-                sensealg, inplace_vjp(prob, state_values(prob), p, verbose, repack))
+                sensealg, inplace_vjp(prob, state_values(prob), p, verbose, repack)
+            )
         elseif has_cb
             setvjp(sensealg, ReverseDiffVJP())
         else
@@ -404,61 +407,73 @@ function adjoint_sensitivities(sol, args...;
         catch e
             verbose &&
                 @warn "Automatic AD choice of autojacvec failed in ODE adjoint, failing back to ODE adjoint + numerical vjp"
-            _adjoint_sensitivities(sol, setvjp(sensealg, false), args...; verbose,
-                kwargs...)
+            _adjoint_sensitivities(
+                sol, setvjp(sensealg, false), args...; verbose,
+                kwargs...
+            )
         end
     else
         return _adjoint_sensitivities(sol, sensealg, args...; verbose, kwargs...)
     end
 end
 
-function _adjoint_sensitivities(sol, sensealg, alg;
+function _adjoint_sensitivities(
+        sol, sensealg, alg;
         t = nothing,
         dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing,
         g = nothing, no_start = false,
-        abstol = 1e-6, reltol = 1e-3,
+        abstol = 1.0e-6, reltol = 1.0e-3,
         checkpoints = current_time(sol),
         corfunc_analytical = nothing,
         callback = nothing,
-        kwargs...)
+        kwargs...
+    )
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
     if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
-       (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
+            (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
     rcb = nothing
     if sol.prob isa ODEProblem
         adj_prob,
-        rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete,
+            rcb = ODEAdjointProblem(
+            sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints = checkpoints,
             callback = callback, no_start = no_start,
-            abstol = abstol, reltol = reltol, kwargs...)
+            abstol = abstol, reltol = reltol, kwargs...
+        )
 
     elseif sol.prob isa SDEProblem
-        adj_prob = SDEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+        adj_prob = SDEAdjointProblem(
+            sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g;
             checkpoints = checkpoints,
             callback = callback,
             abstol = abstol, reltol = reltol,
-            corfunc_analytical = corfunc_analytical)
+            corfunc_analytical = corfunc_analytical
+        )
     elseif sol.prob isa RODEProblem
-        adj_prob = RODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+        adj_prob = RODEAdjointProblem(
+            sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g;
             checkpoints = checkpoints,
             callback = callback,
             abstol = abstol, reltol = reltol,
-            corfunc_analytical = corfunc_analytical)
+            corfunc_analytical = corfunc_analytical
+        )
     else
         error("Continuous adjoint sensitivities are only supported for ODE/SDE/RODE problems.")
     end
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
-    adj_sol = solve(adj_prob, alg;
+    adj_sol = solve(
+        adj_prob, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
-        tstops = tstops, abstol = abstol, reltol = reltol, kwargs...)
+        tstops = tstops, abstol = abstol, reltol = reltol, kwargs...
+    )
 
     if mtkp === nothing || mtkp isa SciMLBase.NullParameters
         tunables, repack = mtkp, identity
@@ -492,14 +507,16 @@ function _adjoint_sensitivities(sol, sensealg, alg;
         end
     end
 
-    du0, dp
+    return du0, dp
 end
 
-function _adjoint_sensitivities(sol, sensealg::SteadyStateAdjoint, alg;
+function _adjoint_sensitivities(
+        sol, sensealg::SteadyStateAdjoint, alg;
         dgdu = nothing, dgdp = nothing, g = nothing,
-        abstol = 1e-6, reltol = 1e-3,
-        kwargs...)
-    SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
+        abstol = 1.0e-6, reltol = 1.0e-3,
+        kwargs...
+    )
+    return SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
 end
 
 @doc doc"""
@@ -553,10 +570,12 @@ sensitivity analysis with an adjoint sensitivity analysis for a faster computati
 double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument just accepts
 a first order sensitivity algorithm.
 """
-function second_order_sensitivities(loss, prob, alg, args...;
+function second_order_sensitivities(
+        loss, prob, alg, args...;
         sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-        kwargs...)
-    _second_order_sensitivities(loss, prob, alg, sensealg, args...; kwargs...)
+        kwargs...
+    )
+    return _second_order_sensitivities(loss, prob, alg, sensealg, args...; kwargs...)
 end
 
 @doc doc"""
@@ -611,8 +630,10 @@ sensitivity analysis with an adjoint sensitivity analysis for a faster computati
 double forward or double reverse. `ForwardDiffOverAdjoint`'s positional argument just accepts
 a first order sensitivity algorithm.
 """
-function second_order_sensitivity_product(loss, v, prob, alg, args...;
+function second_order_sensitivity_product(
+        loss, v, prob, alg, args...;
         sensealg = ForwardDiffOverAdjoint(InterpolatingAdjoint(autojacvec = ReverseDiffVJP())),
-        kwargs...)
-    _second_order_sensitivity_product(loss, v, prob, alg, sensealg, args...; kwargs...)
+        kwargs...
+    )
+    return _second_order_sensitivity_product(loss, v, prob, alg, sensealg, args...; kwargs...)
 end

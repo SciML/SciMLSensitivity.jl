@@ -11,8 +11,8 @@ p = [1.5, 1.0, 3.0, 1.0]
 prob = ODEProblem(lotka_volterra, u0, tspan, p)
 
 function loss(u0; kwargs...)
-    solve(remake(prob, u0 = u0), Tsit5(); reltol = 1e-10, abstol = 1e-10, kwargs...).u |>
-    last |> sum
+    return solve(remake(prob, u0 = u0), Tsit5(); reltol = 1.0e-10, abstol = 1.0e-10, kwargs...).u |>
+        last |> sum
 end
 
 dp1 = Zygote.gradient(loss, u0)[1]

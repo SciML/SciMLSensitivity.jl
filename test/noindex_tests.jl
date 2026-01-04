@@ -11,7 +11,7 @@ Base.ndims(::Type{<:CustomArray{T, N}}) where {T, N} = N
 Base.zero(x::CustomArray) = CustomArray(zero(x.x))
 Base.zero(::Type{<:CustomArray{T, N}}) where {T, N} = CustomArray(zero(Array{T, N}))
 function Base.similar(x::CustomArray, dims::Union{Integer, AbstractUnitRange}...)
-    CustomArray(similar(x.x, dims...))
+    return CustomArray(similar(x.x, dims...))
 end
 Base.copyto!(x::CustomArray, y::CustomArray) = CustomArray(copyto!(x.x, y.x))
 Base.copy(x::CustomArray) = CustomArray(copy(x.x))
@@ -41,20 +41,27 @@ CustomStyle(::Val{N}) where {N} = CustomStyle{N}()
 CustomStyle{M}(::Val{N}) where {N, M} = NoIndexStyle{N}()
 Base.BroadcastStyle(::Type{<:CustomArray{T, N}}) where {T, N} = CustomStyle{N}()
 function Broadcast.BroadcastStyle(
-        ::CustomStyle{N}, ::Broadcast.DefaultArrayStyle{0}) where {N}
-    CustomStyle{N}()
+        ::CustomStyle{N}, ::Broadcast.DefaultArrayStyle{0}
+    ) where {N}
+    return CustomStyle{N}()
 end
 function Base.similar(
-        bc::Base.Broadcast.Broadcasted{CustomStyle{N}}, ::Type{ElType}) where {N, ElType}
-    CustomArray(similar(Array{ElType, N}, axes(bc)))
+        bc::Base.Broadcast.Broadcasted{CustomStyle{N}}, ::Type{ElType}
+    ) where {N, ElType}
+    return CustomArray(similar(Array{ElType, N}, axes(bc)))
 end
 Base.@propagate_inbounds Base.Broadcast._broadcast_getindex(x::CustomArray, i) = x.x[i]
 Base.Broadcast.extrude(x::CustomArray) = x
 Base.Broadcast.broadcastable(x::CustomArray) = x
 
-@inline function Base.copyto!(dest::CustomArray,
-        bc::Base.Broadcast.Broadcasted{<:Union{
-            Base.Broadcast.AbstractArrayStyle, CustomStyle}})
+@inline function Base.copyto!(
+        dest::CustomArray,
+        bc::Base.Broadcast.Broadcasted{
+            <:Union{
+                Base.Broadcast.AbstractArrayStyle, CustomStyle,
+            },
+        }
+    )
     axes(dest) == axes(bc) || throwdm(axes(dest), axes(bc))
     bc′ = Base.Broadcast.preprocess(dest, bc)
     dest′ = dest.x
@@ -88,7 +95,7 @@ Base.show_vector(io::IO, x::CustomArray) = Base.show_vector(io, x.x)
 Base.show(io::IO, x::CustomArray) = (print(io, "CustomArray"); show(io, x.x))
 function Base.show(io::IO, ::MIME"text/plain", x::CustomArray)
     println(io, Base.summary(x), ":")
-    Base.print_array(io, x.x)
+    return Base.print_array(io, x.x)
 end
 
 ca0 = CustomArray(ones(2))
@@ -101,7 +108,8 @@ for alg in algs
     function cost(p)
         prob = ODEProblem(
             (du, u, p, t) -> (du[1] = p[1] * u[1] + p[2] * u[2]; du[2] = p[2] * u[1]),
-            ca0, tspan, p)
+            ca0, tspan, p
+        )
         sol = solve(prob, alg; save_everystep = false)
         return 1 - norm(sol[end])^2
     end

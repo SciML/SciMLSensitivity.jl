@@ -115,7 +115,7 @@ function (ff::RODEParamJacobianWrapper)(p)
 end
 
 function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
-    determine_chunksize(u, get_chunksize(alg))
+    return determine_chunksize(u, get_chunksize(alg))
 end
 
 function determine_chunksize(u, CS)
@@ -126,8 +126,10 @@ function determine_chunksize(u, CS)
     end
 end
 
-function jacobian(f, x::AbstractArray{<:Number},
-        alg::AbstractOverloadingSensitivityAlgorithm)
+function jacobian(
+        f, x::AbstractArray{<:Number},
+        alg::AbstractOverloadingSensitivityAlgorithm
+    )
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
@@ -144,18 +146,22 @@ function jacobian(f, x::AbstractArray{<:Number},
     return J
 end
 
-function jacobian!(J::Nothing, f, x::AbstractArray{<:Number},
+function jacobian!(
+        J::Nothing, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
-        alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing)
+        alg::AbstractOverloadingSensitivityAlgorithm, jac_config::Nothing
+    )
     @assert isempty(x)
-    J
+    return J
 end
 function jacobian!(J::PreallocationTools.DiffCache, x::SciMLBase.UJacobianWrapper, args...)
-    jacobian!(J.du, x, args...)
+    return jacobian!(J.du, x, args...)
 end
-function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
+function jacobian!(
+        J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
-        alg::AbstractOverloadingSensitivityAlgorithm, jac_config)
+        alg::AbstractOverloadingSensitivityAlgorithm, jac_config
+    )
     if alg_autodiff(alg)
         uf = unwrapped_f(f)
         if fx === nothing
@@ -166,29 +172,33 @@ function jacobian!(J::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
     else
         FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
     end
-    nothing
+    return nothing
 end
 
-function derivative!(df::AbstractArray{<:Number}, f,
+function derivative!(
+        df::AbstractArray{<:Number}, f,
         x::Number,
-        alg::AbstractOverloadingSensitivityAlgorithm, der_config)
+        alg::AbstractOverloadingSensitivityAlgorithm, der_config
+    )
     if alg_autodiff(alg)
         ForwardDiff.derivative!(df, f, x) # der_config doesn't work
     else
         FiniteDiff.finite_difference_derivative!(df, f, x, der_config)
     end
-    nothing
+    return nothing
 end
 
-function gradient!(df::AbstractArray{<:Number}, f,
+function gradient!(
+        df::AbstractArray{<:Number}, f,
         x::Union{Number, AbstractArray{<:Number}},
-        alg::AbstractOverloadingSensitivityAlgorithm, grad_config)
+        alg::AbstractOverloadingSensitivityAlgorithm, grad_config
+    )
     if alg_autodiff(alg)
         ForwardDiff.gradient!(df, f, x, grad_config)
     else
         FiniteDiff.finite_difference_gradient!(df, f, x, grad_config)
     end
-    nothing
+    return nothing
 end
 
 """
@@ -196,8 +206,10 @@ jacobianvec!(Jv, f, x, v, alg, (buffer, seed)) -> nothing
 
 ``Jv <- J(f(x))v``
 """
-function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
-        v, alg::AbstractOverloadingSensitivityAlgorithm, config)
+function jacobianvec!(
+        Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number},
+        v, alg::AbstractOverloadingSensitivityAlgorithm, config
+    )
     if alg_autodiff(alg)
         buffer, seed = config
         TD = typeof(first(seed))
@@ -217,10 +229,12 @@ function jacobianvec!(Jv::AbstractArray{<:Number}, f, x::AbstractArray{<:Number}
         @. x -= ϵ * v
         @. Jv = (buffer2 - buffer1) / ϵ
     end
-    nothing
+    return nothing
 end
-function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
-        M, alg::AbstractOverloadingSensitivityAlgorithm, config)
+function jacobianmat!(
+        JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number},
+        M, alg::AbstractOverloadingSensitivityAlgorithm, config
+    )
     buffer, seed = config
     T = eltype(seed)
     numparams = length(ForwardDiff.partials(seed[1]))
@@ -235,21 +249,27 @@ function jacobianmat!(JM::AbstractMatrix{<:Number}, f, x::AbstractArray{<:Number
     end
     return nothing
 end
-function vecjacobian!(dλ, y, λ, p, t, S::TS;
+function vecjacobian!(
+        dλ, y, λ, p, t, S::TS;
         dgrad = nothing, dy = nothing,
-        W = nothing) where {TS <: SensitivityFunction}
+        W = nothing
+    ) where {TS <: SensitivityFunction}
     _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
     return
 end
 
-function vecjacobian(y, λ, p, t, S::TS;
+function vecjacobian(
+        y, λ, p, t, S::TS;
         dgrad = nothing, dy = nothing,
-        W = nothing) where {TS <: SensitivityFunction}
+        W = nothing
+    ) where {TS <: SensitivityFunction}
     return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian!(
+        dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg, f) = S
     prob = getprob(S)
 
@@ -347,41 +367,43 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy,
 end
 
 const TRACKERVJP_NOTHING_MESSAGE = """
-                                   `nothing` returned from a Tracker vector-Jacobian product (vjp) calculation.
-                                   This indicates that your function `f` is not a function of `p` or `u`, i.e. that
-                                   the derivative is constant zero. In many cases this is due to an error in
-                                   the model definition, for example accidentally using a global parameter
-                                   instead of the one in the model (`f(u,p,t)= _p .* u`).
+`nothing` returned from a Tracker vector-Jacobian product (vjp) calculation.
+This indicates that your function `f` is not a function of `p` or `u`, i.e. that
+the derivative is constant zero. In many cases this is due to an error in
+the model definition, for example accidentally using a global parameter
+instead of the one in the model (`f(u,p,t)= _p .* u`).
 
-                                   One common cause of this is using Flux neural networks with implicit parameters,
-                                   for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
-                                   derivative. The answer is to use `Flux.destructure` in this case, for example:
+One common cause of this is using Flux neural networks with implicit parameters,
+for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
+derivative. The answer is to use `Flux.destructure` in this case, for example:
 
-                                   ```julia
-                                   p,re = Flux.destructure(NN)
-                                   f(u,p,t) = re(p)(u)
-                                   prob = ODEProblem(f,u0,tspan,p)
-                                   ```
+```julia
+p,re = Flux.destructure(NN)
+f(u,p,t) = re(p)(u)
+prob = ODEProblem(f,u0,tspan,p)
+```
 
-                                   Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
-                                   also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
+Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
+also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
 
-                                   If this zero gradient with respect to `u` or `p` is intended, then one can set
-                                   `TrackerVJP(allow_nothing=true)` to override this error message. For example:
+If this zero gradient with respect to `u` or `p` is intended, then one can set
+`TrackerVJP(allow_nothing=true)` to override this error message. For example:
 
-                                   ```julia
-                                   solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=TrackerVJP(allow_nothing=true)))
-                                   ```
-                                   """
+```julia
+solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=TrackerVJP(allow_nothing=true)))
+```
+"""
 
 struct TrackerVJPNothingError <: Exception end
 
 function Base.showerror(io::IO, e::TrackerVJPNothingError)
-    print(io, TRACKERVJP_NOTHING_MESSAGE)
+    return print(io, TRACKERVJP_NOTHING_MESSAGE)
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian!(
+        dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     f = unwrapped_f(S.f)
 
@@ -401,7 +423,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         end
 
         if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) &&
-           !sensealg.autojacvec.allow_nothing
+                !sensealg.autojacvec.allow_nothing
             throw(TrackerVJPNothingError())
         end
 
@@ -423,7 +445,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
         end
 
         if !(typeof(_dy) isa TrackedArray) && !(eltype(_dy) <: Tracker.TrackedReal) &&
-           !sensealg.autojacvec.allow_nothing
+                !sensealg.autojacvec.allow_nothing
             throw(TrackerVJPNothingError())
         end
 
@@ -437,8 +459,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::TrackerVJP, dgrad,
     return
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian!(
+        dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -457,8 +481,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
 
     u0 = state_values(prob)
     if prob isa AbstractNonlinearProblem ||
-       (eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
-        compile_tape(sensealg.autojacvec))
+            (
+            eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
+                compile_tape(sensealg.autojacvec)
+        )
         tape = S.diffcache.paramjac_config
 
         ## These other cases happen due to autodiff in stiff ODE solvers
@@ -473,10 +499,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
-                 convert.(promote_type(eltype(W), eltype(λ)), W)
+                convert.(promote_type(eltype(W), eltype(λ)), W)
             tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
                 du1 = p !== nothing && p !== SciMLBase.NullParameters() ?
-                      similar(p, size(u)) : similar(u)
+                    similar(p, size(u)) : similar(u)
                 f(du1, u, p, first(t), Wloc)
                 return vec(du1)
             end
@@ -490,7 +516,7 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
             end
         else
             _W = eltype(W) === eltype(λ) ? W :
-                 convert.(promote_type(eltype(W), eltype(λ)), W)
+                convert.(promote_type(eltype(W), eltype(λ)), W)
             tape = ReverseDiff.GradientTape((_y, _p, [t], _W)) do u, p, t, Wloc
                 vec(f(u, p, first(t), Wloc))
             end
@@ -530,41 +556,43 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ReverseDiffVJP, dg
 end
 
 const ZYGOTEVJP_NOTHING_MESSAGE = """
-                                  `nothing` returned from a Zygote vector-Jacobian product (vjp) calculation.
-                                  This indicates that your function `f` is not a function of `p` or `u`, i.e. that
-                                  the derivative is constant zero. In many cases this is due to an error in
-                                  the model definition, for example accidentally using a global parameter
-                                  instead of the one in the model (`f(u,p,t)= _p .* u`).
+`nothing` returned from a Zygote vector-Jacobian product (vjp) calculation.
+This indicates that your function `f` is not a function of `p` or `u`, i.e. that
+the derivative is constant zero. In many cases this is due to an error in
+the model definition, for example accidentally using a global parameter
+instead of the one in the model (`f(u,p,t)= _p .* u`).
 
-                                  One common cause of this is using Flux neural networks with implicit parameters,
-                                  for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
-                                  derivative. The answer is to use `Flux.destructure` in this case, for example:
+One common cause of this is using Flux neural networks with implicit parameters,
+for example `f(u,p,t) = NN(u)` does not use `p` and therefore will have a zero
+derivative. The answer is to use `Flux.destructure` in this case, for example:
 
-                                  ```julia
-                                  p,re = Flux.destructure(NN)
-                                  f(u,p,t) = re(p)(u)
-                                  prob = ODEProblem(f,u0,tspan,p)
-                                  ```
+```julia
+p,re = Flux.destructure(NN)
+f(u,p,t) = re(p)(u)
+prob = ODEProblem(f,u0,tspan,p)
+```
 
-                                  Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
-                                  also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
+Note that restructuring outside of `f`, i.e. `reNN = re(p); f(u,p,t) = reNN(u)` will
+also trigger a zero gradient. The `p` must be used inside of `f`, not globally outside.
 
-                                  If this zero gradient with respect to `u` or `p` is intended, then one can set
-                                  `ZygoteVJP(allow_nothing=true)` to override this error message, for example:
+If this zero gradient with respect to `u` or `p` is intended, then one can set
+`ZygoteVJP(allow_nothing=true)` to override this error message, for example:
 
-                                  ```julia
-                                  solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)))
-                                  ```
-                                  """
+```julia
+solve(prob,alg,sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP(allow_nothing=true)))
+```
+"""
 
 struct ZygoteVJPNothingError <: Exception end
 
 function Base.showerror(io::IO, e::ZygoteVJPNothingError)
-    print(io, ZYGOTEVJP_NOTHING_MESSAGE)
+    return print(io, ZYGOTEVJP_NOTHING_MESSAGE)
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian!(
+        dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -628,8 +656,10 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, 
     return
 end
 
-function _vecjacobian(y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function _vecjacobian(
+        y, λ, p, t, S::TS, isautojacvec::ZygoteVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -666,16 +696,18 @@ end
 
 function gclosure1(f, du, u, p, t)
     Base.copyto!(du, f(u, p, t))
-    nothing
-end
-            
-function gclosure2(f, du, u, p, t, W)
-    Base.copyto!(du, f(u, p, t, W))
-    nothing
+    return nothing
 end
 
-function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
-        W) where {TS <: SensitivityFunction}
+function gclosure2(f, du, u, p, t, W)
+    Base.copyto!(du, f(u, p, t, W))
+    return nothing
+end
+
+function _vecjacobian!(
+        dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     f = unwrapped_f(S.f)
 
@@ -744,17 +776,21 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
         end
 
         if W === nothing
-            Enzyme.autodiff(enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
-                Enzyme.Const(t))
+                Enzyme.Const(t)
+            )
         else
-            Enzyme.autodiff(enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
-                Enzyme.Const(t), Enzyme.Const(W))
+                Enzyme.Const(t), Enzyme.Const(W)
+            )
         end
         dλ !== nothing && recursive_copyto!(dλ, tmp1)
         dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters) &&
@@ -763,18 +799,22 @@ function _vecjacobian!(dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, 
     else
         if W === nothing
             _tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
                 Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
-                dup, Enzyme.Const(t))
+                dup, Enzyme.Const(t)
+            )
         else
             _tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
                 Enzyme.Duplicated(f, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
-                dup, Enzyme.Const(t), Enzyme.Const(W))
+                dup, Enzyme.Const(t), Enzyme.Const(W)
+            )
         end
         if dy !== nothing
             out_ = if W === nothing
@@ -800,14 +840,18 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, 
     return
 end
 
-function jacNoise!(λ, y, p, t, S::SensitivityFunction;
-        dgrad = nothing, dλ = nothing, dy = nothing)
+function jacNoise!(
+        λ, y, p, t, S::SensitivityFunction;
+        dgrad = nothing, dλ = nothing, dy = nothing
+    )
     _jacNoise!(λ, y, p, t, S, S.sensealg.autojacvec, dgrad, dλ, dy)
     return
 end
 
-function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
-        dy) where {TS <: SensitivityFunction}
+function _jacNoise!(
+        λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
+        dy
+    ) where {TS <: SensitivityFunction}
     (; sensealg, f) = S
     prob = getprob(S)
 
@@ -845,7 +889,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
     end
 
     if dλ !== nothing &&
-       (isnoisemixing(sensealg) || !SciMLBase.is_diagonal_noise(prob))
+            (isnoisemixing(sensealg) || !SciMLBase.is_diagonal_noise(prob))
         (; J, uf, f_cache, jac_noise_config) = S.diffcache
         if dy !== nothing
             if inplace_sensitivity(S)
@@ -894,8 +938,10 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::Bool, dgrad, dλ,
     return
 end
 
-function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
-        dy) where {TS <: SensitivityFunction}
+function _jacNoise!(
+        λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
+        dy
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
     f = unwrapped_f(S.f)
@@ -941,8 +987,10 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ReverseDiffVJP, dgrad, dλ,
     return
 end
 
-function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
-        dy) where {TS <: SensitivityFunction}
+function _jacNoise!(
+        λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
+        dy
+    ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
     p_ = parameter_values(prob)
@@ -1011,7 +1059,7 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
                     f(out_, u, repack(p), t)
                     copy(out_[:, i])
                 end
-                tmp1, tmp2 = back(λ)#issue with Zygote.Buffer
+                tmp1, tmp2 = back(λ) #issue with Zygote.Buffer
                 if dgrad !== nothing
                     if tmp2 !== nothing
                         !isempty(dgrad) && (dgrad[:, i] .= vec(tmp2))
@@ -1044,8 +1092,10 @@ function _jacNoise!(λ, y, p, t, S::TS, isnoise::ZygoteVJP, dgrad, dλ,
     return
 end
 
-function accumulate_cost!(dλ, y, p, t, S::TS,
-        dgrad = nothing) where {TS <: SensitivityFunction}
+function accumulate_cost!(
+        dλ, y, p, t, S::TS,
+        dgrad = nothing
+    ) where {TS <: SensitivityFunction}
     (; dgdu, dgdp, dg_val, g, g_grad_config) = S.diffcache
 
     if dgdu !== nothing
@@ -1075,8 +1125,10 @@ function accumulate_cost!(dλ, y, p, t, S::TS,
     return nothing
 end
 
-function accumulate_cost(dλ, y, p, t, S::TS,
-        dgrad = nothing) where {TS <: SensitivityFunction}
+function accumulate_cost(
+        dλ, y, p, t, S::TS,
+        dgrad = nothing
+    ) where {TS <: SensitivityFunction}
     (; dgdu, dgdp) = S.diffcache
 
     dλ -= dgdu(y, p, t)
@@ -1091,54 +1143,72 @@ end
 build_jac_config(alg, uf, u::Nothing) = nothing
 function build_jac_config(alg, uf, u)
     if alg_autodiff(alg)
-        jac_config = ForwardDiff.JacobianConfig(uf, u, u,
+        jac_config = ForwardDiff.JacobianConfig(
+            uf, u, u,
             ForwardDiff.Chunk{
-                determine_chunksize(u,
-                alg)}())
+                determine_chunksize(
+                    u,
+                    alg
+                ),
+            }()
+        )
     else
         if diff_type(alg) != Val{:complex}
-            jac_config = FiniteDiff.JacobianCache(zero(u), zero(u),
-                zero(u), diff_type(alg))
+            jac_config = FiniteDiff.JacobianCache(
+                zero(u), zero(u),
+                zero(u), diff_type(alg)
+            )
         else
             tmp = Complex{eltype(u)}.(u)
             du1 = Complex{eltype(u)}.(du1)
             jac_config = FiniteDiff.JacobianCache(tmp, du1, nothing, diff_type(alg))
         end
     end
-    jac_config
+    return jac_config
 end
 
 function build_param_jac_config(alg, pf, u, p)
     if alg_autodiff(alg)
         tunables, repack, aliases = canonicalize(Tunable(), p)
-        jac_config = ForwardDiff.JacobianConfig(pf, u, tunables,
+        jac_config = ForwardDiff.JacobianConfig(
+            pf, u, tunables,
             ForwardDiff.Chunk{
-                determine_chunksize(tunables,
-                alg)}())
+                determine_chunksize(
+                    tunables,
+                    alg
+                ),
+            }()
+        )
     else
         if diff_type(alg) != Val{:complex}
-            jac_config = FiniteDiff.JacobianCache(similar(p), similar(u),
-                similar(u), diff_type(alg))
+            jac_config = FiniteDiff.JacobianCache(
+                similar(p), similar(u),
+                similar(u), diff_type(alg)
+            )
         else
             tmp = Complex{eltype(p)}.(p)
             du1 = Complex{eltype(u)}.(u)
             jac_config = FiniteDiff.JacobianCache(tmp, du1, nothing, diff_type(alg))
         end
     end
-    jac_config
+    return jac_config
 end
 
 function build_grad_config(alg, tf, du1, t)
     if alg_autodiff(alg)
-        grad_config = ForwardDiff.GradientConfig(tf, du1,
+        grad_config = ForwardDiff.GradientConfig(
+            tf, du1,
             ForwardDiff.Chunk{
-                determine_chunksize(du1,
-                alg),
-            }())
+                determine_chunksize(
+                    du1,
+                    alg
+                ),
+            }()
+        )
     else
         grad_config = FiniteDiff.GradientCache(du1, t, diff_type(alg))
     end
-    grad_config
+    return grad_config
 end
 
 function build_deriv_config(alg, tf, du1, t)
@@ -1147,5 +1217,5 @@ function build_deriv_config(alg, tf, du1, t)
     else
         grad_config = FiniteDiff.DerivativeCache(du1, t, diff_type(alg))
     end
-    grad_config
+    return grad_config
 end

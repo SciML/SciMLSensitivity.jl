@@ -4,7 +4,7 @@ using Optimization, OptimizationOptimisers
 p = [1.5 1.0; 3.0 1.0]
 function lotka_volterra(du, u, p, t)
     du[1] = p[1, 1] * u[1] - p[1, 2] * u[1] * u[2]
-    du[2] = -p[2, 1] * u[2] + p[2, 2] * u[1] * u[2]
+    return du[2] = -p[2, 1] * u[2] + p[2, 2] * u[1] * u[2]
 end
 
 u0 = [1.0, 1.0]
@@ -18,13 +18,15 @@ sol = solve(prob, Tsit5())
 ps = [2.2 1.0; 2.0 0.4] # Tweaked Initial Parameter Array
 
 function predict_adjoint(p) # Our 1-layer neural network
-    Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:10.0))
+    return Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:10.0))
 end
 
 loss_adjoint(p, _) = sum(abs2, x - 1 for x in predict_adjoint(p))
 
-res = solve(OptimizationProblem(OptimizationFunction(loss_adjoint, AutoZygote()), ps),
-    Adam(0.1); maxiters = 200)
+res = solve(
+    OptimizationProblem(OptimizationFunction(loss_adjoint, AutoZygote()), ps),
+    Adam(0.1); maxiters = 200
+)
 
 @test loss_adjoint(res.u, nothing) < 1
 
@@ -44,8 +46,10 @@ end
 
 function loss(p; vjp)
     prob = ODEProblem(rhs!, f0, tspan, p)
-    sol = solve(prob, Midpoint(), saveat = tran,
-        sensealg = InterpolatingAdjoint(autojacvec = vjp)) |> Array
+    sol = solve(
+        prob, Midpoint(), saveat = tran,
+        sensealg = InterpolatingAdjoint(autojacvec = vjp)
+    ) |> Array
     l = sum(abs2, sol)
 
     return l

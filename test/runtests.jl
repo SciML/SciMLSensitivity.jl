@@ -7,7 +7,7 @@ const GROUP = get(ENV, "GROUP", "All")
 function activate_gpu_env()
     Pkg.activate("gpu")
     Pkg.develop(PackageSpec(path = dirname(@__DIR__)))
-    Pkg.instantiate()
+    return Pkg.instantiate()
 end
 
 @time @testset "SciMLSensitivity" begin

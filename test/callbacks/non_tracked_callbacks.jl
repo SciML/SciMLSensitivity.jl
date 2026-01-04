@@ -2,8 +2,8 @@ using SciMLSensitivity, OrdinaryDiffEq, Zygote
 using DiffEqCallbacks
 using Test
 
-abstol = 1e-12
-reltol = 1e-12
+abstol = 1.0e-12
+reltol = 1.0e-12
 
 @testset "Non-tracked callbacks" begin
     function f(du, u, p, t)
@@ -28,12 +28,16 @@ reltol = 1e-12
     cb = SavingCallback((u, t, integrator) -> copy(u[(end - 1):end]), saved_values)
 
     _,
-    res = adjoint_sensitivities(sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
-        dgdu_discrete = dg, callback = cb)
+        res = adjoint_sensitivities(
+        sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
+        dgdu_discrete = dg, callback = cb
+    )
     _,
-    res2 = adjoint_sensitivities(sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
-        dgdu_discrete = dg)
+        res2 = adjoint_sensitivities(
+        sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
+        dgdu_discrete = dg
+    )
 
-    @test res≈res2 rtol=1e-10
-    @test sol(saved_values.t).u≈saved_values.saveval rtol=1e-10
+    @test res ≈ res2 rtol = 1.0e-10
+    @test sol(saved_values.t).u ≈ saved_values.saveval rtol = 1.0e-10
 end

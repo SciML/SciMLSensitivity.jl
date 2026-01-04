@@ -12,7 +12,7 @@ u0 = sin.(π * x)
     u₂ = @view u[2:(end - 1)]
     u₁ = @view u[1:(end - 2)]
     @. du[2:(end - 1)] = p.k * ((u₃ - 2 * u₂ + u₁) / (h^2.0))
-    nothing
+    return nothing
 end
 
 p_true = ComponentArray(k = 0.42)
@@ -22,9 +22,11 @@ prob = ODEProblem(ODEFunction(f #=, jac_prototype = jac_proto =#), u0, (0.0, 1.0
 
 function loss(p)
     _prob = remake(prob, p = p)
-    sol = solve(_prob, Rodas4P(autodiff = false), saveat = 0.1,
-        sensealg = ForwardDiffSensitivity())
-    sum((sol .- sol_true) .^ 2)
+    sol = solve(
+        _prob, Rodas4P(autodiff = false), saveat = 0.1,
+        sensealg = ForwardDiffSensitivity()
+    )
+    return sum((sol .- sol_true) .^ 2)
 end
 
 p0 = ComponentArray(k = 1.0)
@@ -33,4 +35,4 @@ optf = Optimization.OptimizationFunction((x, p) -> loss(x), Optimization.AutoZyg
 optprob = Optimization.OptimizationProblem(optf, p0)
 res = Optimization.solve(optprob, Adam(0.01), maxiters = 100)
 
-@test res.u.k≈0.42461977305259074 rtol=1e-1
+@test res.u.k ≈ 0.42461977305259074 rtol = 1.0e-1

@@ -13,7 +13,7 @@ p = ComponentArray(p)
 const _st = st
 
 function func(x, p, t)
-    CuArray(reshape(first(ann([t], p, _st)), 2, 2)) * H * x
+    return CuArray(reshape(first(ann([t], p, _st)), 2, 2)) * H * x
 end
 
 x0 = CuArray(rand(Float32, 2))
@@ -22,16 +22,18 @@ x1 = CuArray(rand(Float32, 2))
 prob = ODEProblem(func, x0, (0.0f0, 1.0f0))
 
 function evolve(p)
-    solve(prob, Tsit5(), p = p, save_start = false,
-        save_everystep = false, abstol = 1e-4, reltol = 1e-4,
-        sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())).u[1]
+    return solve(
+        prob, Tsit5(), p = p, save_start = false,
+        save_everystep = false, abstol = 1.0e-4, reltol = 1.0e-4,
+        sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())
+    ).u[1]
 end
 
 function cost(p)
     x = evolve(p)
     c = sum(abs, x - x1)
     #println(c)
-    c
+    return c
 end
 
 grad = Zygote.gradient(cost, p)[1]
@@ -56,13 +58,13 @@ function f(ca, Z, t)
     Ka_unit = Z' * w_unit
     z_unit = dot(abs.(Ka_unit), a_unit)
     aKa_over_z = a .* Ka_unit / z_unit
-    [sum(aKa_over_z) / m; -abs.(aKa_over_z)] |> gdev
+    return [sum(aKa_over_z) / m; -abs.(aKa_over_z)] |> gdev
 end
 
 function c(Z)
     prob = ODEProblem(f, ca_init, (0.0f0, 𝒯), Z, saveat = Δτ)
     sol = solve(prob, Tsit5(), sensealg = BacksolveAdjoint(), saveat = Δτ)
-    sum(last(sol.u))
+    return sum(last(sol.u))
 end
 
 println("forward:", c(Z))

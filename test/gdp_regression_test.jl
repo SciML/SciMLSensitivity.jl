@@ -1,6 +1,6 @@
 using SciMLSensitivity,
-      OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
-      OptimizationOptimisers
+    OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
+    OptimizationOptimisers
 
 GDP = [
     11394358246872.6,
@@ -61,17 +61,17 @@ GDP = [
     75802901433146,
     77752106717302.4,
     80209237761564.8,
-    82643194654568.3
+    82643194654568.3,
 ]
 function monomial(cGDP, parameters, t)
     α1, β1, nu1, nu2, δ, δ2 = parameters
 
-    [α1 * ((cGDP[1]))^β1]
+    return [α1 * ((cGDP[1]))^β1]
 end
 GDP0 = GDP[1]
 
 tspan = (1.0, 59.0)
-p = [474.8501513113645, 0.7036417845990167, 0.0, 1e-10, 1e-10, 1e-10]
+p = [474.8501513113645, 0.7036417845990167, 0.0, 1.0e-10, 1.0e-10, 1.0e-10]
 u0 = [GDP0]
 if false
     prob = ODEProblem(monomial, [GDP0], tspan, p)
@@ -79,13 +79,19 @@ else ## false crashes. that is when i am tracking the initial conditions
     prob = ODEProblem(monomial, u0, tspan, p)
 end
 
-@testset "sensealg: $(sensealg)" for sensealg in (TrackerAdjoint(),
-    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)))
+@testset "sensealg: $(sensealg)" for sensealg in (
+        TrackerAdjoint(),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
     function predict_rd(pu0) # Our 1-layer neural network
         p = pu0[1:6]
         u0 = pu0[7:7]
-        Array(solve(prob, Tsit5(); p = p, u0 = u0, saveat = 1.0:1.0:59.0, reltol = 1e-4,
-            sensealg))
+        Array(
+            solve(
+                prob, Tsit5(); p = p, u0 = u0, saveat = 1.0:1.0:59.0, reltol = 1.0e-4,
+                sensealg
+            )
+        )
     end
 
     function loss_rd(pu0, _) ##L2 norm biases the newer times unfairly
@@ -106,9 +112,12 @@ end
     end
 
     res = solve(
-        OptimizationProblem(OptimizationFunction(loss_rd, AutoZygote()),
-            vcat(p, u0)),
-        Adam(0.01); callback = peek, maxiters = 100)
+        OptimizationProblem(
+            OptimizationFunction(loss_rd, AutoZygote()),
+            vcat(p, u0)
+        ),
+        Adam(0.01); callback = peek, maxiters = 100
+    )
 
     @test loss_rd(res.u, nothing) < 0.2
 end

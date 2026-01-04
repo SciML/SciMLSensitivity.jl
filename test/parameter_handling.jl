@@ -16,11 +16,13 @@ prob = NonlinearProblem(nlprob, zeros(2, 3), ca)
 
 @test_nowarn solve(prob, NewtonRaphson())
 
-gs = only(Zygote.gradient(ca) do ca
-    prob = NonlinearProblem(nlprob, zero.(x), ca)
-    sol = solve(prob, NewtonRaphson())
-    return sum(sol.u)
-end)
+gs = only(
+    Zygote.gradient(ca) do ca
+        prob = NonlinearProblem(nlprob, zero.(x), ca)
+        sol = solve(prob, NewtonRaphson())
+        return sum(sol.u)
+    end
+)
 
 @test gs.layer_1.weight !== nothing
 @test gs.layer_1.bias !== nothing
@@ -42,11 +44,13 @@ prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ca)
 
 @test_nowarn solve(prob, Tsit5())
 
-gs = only(Zygote.gradient(ca) do ca
-    prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ca)
-    sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(; autojacvec = ZygoteVJP()))
-    return sum(last(sol.u))
-end)
+gs = only(
+    Zygote.gradient(ca) do ca
+        prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ca)
+        sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(; autojacvec = ZygoteVJP()))
+        return sum(last(sol.u))
+    end
+)
 
 @test gs.layer_1.weight !== nothing
 @test gs.layer_1.bias !== nothing

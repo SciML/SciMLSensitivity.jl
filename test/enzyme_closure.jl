@@ -12,8 +12,10 @@ struct Dense{T, F <: Function}
 end
 
 function Dense(n_inp, n_nodes, f::Function, T, randfn::Function = rand)
-    Dense(n_inp, n_nodes, convert.(T, randfn(n_nodes, n_inp)),
-        convert.(T, randfn(n_nodes)), f)
+    return Dense(
+        n_inp, n_nodes, convert.(T, randfn(n_nodes, n_inp)),
+        convert.(T, randfn(n_nodes)), f
+    )
 end
 
 struct NN{T}
@@ -28,7 +30,7 @@ function NN(n_inp, layers, ::Type{T}) where {T}
     for i in eachindex(layers)[1:(end - 1)]
         @assert layers[i].n_nodes == layers[i + 1].n_inp
     end
-    NN(n_inp, layers, [zeros(T, layer.n_nodes) for layer in layers])
+    return NN(n_inp, layers, [zeros(T, layer.n_nodes) for layer in layers])
 end
 
 function paramlength(nn::NN)
@@ -57,6 +59,7 @@ function set_params(nn, params)
         l.b .= params[i:(i + length(l.b) - 1)]
         i = i + length(l.b)
     end
+    return
 end
 
 function Base.zero(nn::NN)
@@ -74,7 +77,7 @@ end
 function applydense!(d::Dense, inp, out)
     mul!(out, d.W, inp, 1.0, 0.0)
     out .+= d.b
-    nothing
+    return nothing
 end
 
 function applyNN!(nn::NN, inp, out)
@@ -83,7 +86,7 @@ function applyNN!(nn::NN, inp, out)
         applydense!(nn.layers[i], nn.intermediates[i - 1], nn.intermediates[i])
     end
     out .+= nn.intermediates[end]
-    nothing
+    return nothing
 end
 
 const step = 0.22
@@ -97,16 +100,16 @@ const impart = 3:4
 function make_dfunc(T)
     nn = NN(4, [Dense(4, 10, tanh, T), Dense(10, 4, sin, T)], T)
     plen = paramlength(nn)
-    set_params(nn, 1e-3 * rand(plen))
+    set_params(nn, 1.0e-3 * rand(plen))
     function dfunc(dstate, state, p, t)
         set_params(nn, p)
         scratch = zeros(eltype(dstate), 4)
         dstate[impart] .= -1.0 .*
-                          (H_0 * state[repart] .+ cos(2.0 * t) .* H_D * state[repart])
+            (H_0 * state[repart] .+ cos(2.0 * t) .* H_D * state[repart])
         dstate[repart] .= H_0 * state[impart] .+ cos(2.0 * t) .* H_D * state[impart]
         applyNN!(nn, dstate, scratch)
         dstate .+= scratch
-        nothing
+        return nothing
     end
     return dfunc, nn
 end
@@ -123,41 +126,48 @@ dfunc(ds, y0, p, 0.2) #test dfunc works
 
 #get solution
 prob = ODEProblem{true}(dfunc, y0, tspan, p)
-sol = solve(prob, Tsit5(), reltol = 1e-10)
+sol = solve(prob, Tsit5(), reltol = 1.0e-10)
 ##cell
 const target = zero(y0);
 target[2] = 1.0;
 function g(u, p, t)
-    dot(u, target)^2
+    return dot(u, target)^2
 end
 
 function gintegrate(p)
     dfunc, nn = make_dfunc(eltype(p))
     set_params(nn, p)
     prob = ODEProblem{true}(dfunc, y0, tspan, p)
-    sol = solve(prob, Tsit5(), abstol = 1e-12, reltol = 1e-12)
+    sol = solve(prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12)
     integral, error = quadgk((t) -> (g(sol(t), p, t)), tspan...)
     return integral
 end
 refdp = ForwardDiff.gradient(gintegrate, p)
 
 du1,
-dp1 = adjoint_sensitivities(sol, Tsit5(), g = g,
+    dp1 = adjoint_sensitivities(
+    sol, Tsit5(), g = g,
     sensealg = BacksolveAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
-    abstol = 1e-12, reltol = 1e-12)
-@test isapprox(dp1', refdp, atol = 1e-5)
+    abstol = 1.0e-12, reltol = 1.0e-12
+)
+@test isapprox(dp1', refdp, atol = 1.0e-5)
 du2,
-dp2 = adjoint_sensitivities(
+    dp2 = adjoint_sensitivities(
     sol, Tsit5(), g = g, sensealg = GaussAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
-    abstol = 1e-12, reltol = 1e-12)
-@test isapprox(dp2', refdp, atol = 1e-5)
+    abstol = 1.0e-12, reltol = 1.0e-12
+)
+@test isapprox(dp2', refdp, atol = 1.0e-5)
 du3,
-dp3 = adjoint_sensitivities(sol, Tsit5(), g = g,
+    dp3 = adjoint_sensitivities(
+    sol, Tsit5(), g = g,
     sensealg = QuadratureAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
-    abstol = 1e-12, reltol = 1e-12)
-@test isapprox(dp3', refdp, atol = 1e-5)
+    abstol = 1.0e-12, reltol = 1.0e-12
+)
+@test isapprox(dp3', refdp, atol = 1.0e-5)
 du4,
-dp4 = adjoint_sensitivities(sol, Tsit5(), g = g,
+    dp4 = adjoint_sensitivities(
+    sol, Tsit5(), g = g,
     sensealg = InterpolatingAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
-    abstol = 1e-12, reltol = 1e-12)
-@test isapprox(dp4', refdp, atol = 1e-5)
+    abstol = 1.0e-12, reltol = 1.0e-12
+)
+@test isapprox(dp4', refdp, atol = 1.0e-5)
