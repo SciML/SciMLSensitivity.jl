@@ -5,10 +5,12 @@ struct LSSSchur{wBType, wEType, BType, EType}
     E::EType
 end
 
-struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc, JM, pJM,
-    MM, CV,
-    DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG} <:
-       AbstractODEFunction{iip}
+struct LSSSensitivityFunction{
+        iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc, JM, pJM,
+        MM, CV,
+        DG1, DG2, PGPU, PGPP, CONFU, CONGP, DG,
+    } <:
+    AbstractODEFunction{iip}
     f::F
     analytic::A
     jac::J
@@ -36,10 +38,12 @@ struct LSSSensitivityFunction{iip, F, A, J, JP, S, PJ, UF, PF, JC, PJC, Alg, fc,
     dg_val::DG
 end
 
-function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, sparsity,
+function LSSSensitivityFunction(
+        sensealg, f, analytic, jac, jac_prototype, sparsity,
         paramjac, u0,
         alg, p, f_cache, mm,
-        colorvec, tspan, g, dgdu, dgdp)
+        colorvec, tspan, g, dgdu, dgdp
+    )
     !(mm isa UniformScaling || mm isa Tuple{UniformScaling, UniformScaling}) &&
         throw(SHADOWING_DAE_ERROR())
     uf = SciMLBase.UJacobianWrapper(unwrapped_f(f), tspan[1], p)
@@ -85,7 +89,8 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
         dg_val[2] .= false
     end
 
-    LSSSensitivityFunction{isinplace(f), typeof(f), typeof(analytic),
+    return LSSSensitivityFunction{
+        isinplace(f), typeof(f), typeof(analytic),
         typeof(jac), typeof(jac_prototype), typeof(sparsity),
         typeof(paramjac),
         typeof(uf),
@@ -95,7 +100,9 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
         typeof(J), typeof(pJ), typeof(mm), typeof(f.colorvec),
         typeof(dgdu), typeof(dgdp),
         typeof(pgpu), typeof(pgpp), typeof(pgpu_config),
-        typeof(pgpp_config), typeof(dg_val)}(f, analytic, jac,
+        typeof(pgpp_config), typeof(dg_val),
+    }(
+        f, analytic, jac,
         jac_prototype, sparsity,
         paramjac, uf, pf, J, pJ,
         jac_config, paramjac_config,
@@ -104,12 +111,15 @@ function LSSSensitivityFunction(sensealg, f, analytic, jac, jac_prototype, spars
         f_cache, mm, colorvec,
         dgdu, dgdp,
         pgpu, pgpp, pgpu_config,
-        pgpp_config, dg_val)
+        pgpp_config, dg_val
+    )
 end
 
-struct ForwardLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, Ftype, bType,
-    ηType, wType, vType, windowType,
-    ΔtType, G0, G, resType}
+struct ForwardLSSProblem{
+        A, C, solType, dtType, umidType, dudtType, SType, Ftype, bType,
+        ηType, wType, vType, windowType,
+        ΔtType, G0, G, resType,
+    }
     sensealg::A
     diffcache::C
     sol::solType
@@ -130,13 +140,15 @@ struct ForwardLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, Ftype
     res::resType
 end
 
-function ForwardLSSProblem(sol, sensealg::ForwardLSS;
+function ForwardLSSProblem(
+        sol, sensealg::ForwardLSS;
         t = nothing, dgdu_discrete = nothing,
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
         dgdp_continuous = nothing,
         g = sensealg.g,
-        kwargs...)
+        kwargs...
+    )
     (; p, u0, tspan) = sol.prob
 
     isinplace = DiffEqBase.isinplace(sol.prob.f)
@@ -158,17 +170,19 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
     else
         @assert dgdu_discrete === nothing && dgdp_discrete === nothing
         dgdu = dgdu_continuous === nothing ? dgdu_continuous :
-               (out, u, p, t, i) -> dgdu_continuous(out, u, p, t)
+            (out, u, p, t, i) -> dgdu_continuous(out, u, p, t)
         dgdp = dgdp_continuous === nothing ? dgdp_continuous :
-               (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
+            (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
     end
     f = sol.prob.f
-    sense = LSSSensitivityFunction(sensealg, f, f.analytic, f.jac,
+    sense = LSSSensitivityFunction(
+        sensealg, f, f.analytic, f.jac,
         f.jac_prototype, f.sparsity, f.paramjac,
         u0, sensealg,
         p, similar(u0), f.mass_matrix,
         f.colorvec,
-        tspan, g, dgdu, dgdp)
+        tspan, g, dgdu, dgdp
+    )
 
     (; numparams, numindvar) = sense
     Nt = length(ts)
@@ -207,15 +221,19 @@ function ForwardLSSProblem(sol, sensealg::ForwardLSS;
 
     res = similar(u0, numparams)
 
-    ForwardLSSProblem{typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
+    return ForwardLSSProblem{
+        typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
         typeof(umid), typeof(dudt),
         typeof(S), typeof(F), typeof(b), typeof(η), typeof(w), typeof(v),
         typeof(window), typeof(Δt),
-        typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
+        typeof(g0), typeof(g), typeof(res),
+    }(
+        sensealg, sense, sol,
         dt, umid, dudt, S, F,
         b, η, w, v,
         window, Δt, Nt, g0, g,
-        res)
+        res
+    )
 end
 
 function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::TimeDilation)
@@ -224,7 +242,7 @@ function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::TimeDilation)
     E = Matrix{eltype(u0)}(undef, numindvar * Ndt, Ndt)
     B = Matrix{eltype(u0)}(undef, numindvar * Ndt, numindvar * Nt)
 
-    LSSSchur(wBinv, wEinv, B, E)
+    return LSSSchur(wBinv, wEinv, B, E)
 end
 
 function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::AbstractCosWindowing)
@@ -233,7 +251,7 @@ function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::AbstractCosWindowi
     E = nothing
     B = Matrix{eltype(u0)}(undef, numindvar * Ndt, numindvar * Nt)
 
-    LSSSchur(wBinv, wEinv, B, E)
+    return LSSSchur(wBinv, wEinv, B, E)
 end
 
 # compute discretized reference trajectory
@@ -288,10 +306,14 @@ function B!(S::LSSSchur, dt, umid, sense, sensealg)
         else
             jacobian!(J, uf, u, f_cache, sensealg, jac_config)
         end
-        B0 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-        (i * numindvar + 1):((i + 1) * numindvar)]
-        B1 = @view B[((i - 1) * numindvar + 1):(i * numindvar),
-        ((i - 1) * numindvar + 1):(i * numindvar)]
+        B0 = @view B[
+            ((i - 1) * numindvar + 1):(i * numindvar),
+            (i * numindvar + 1):((i + 1) * numindvar),
+        ]
+        B1 = @view B[
+            ((i - 1) * numindvar + 1):(i * numindvar),
+            ((i - 1) * numindvar + 1):(i * numindvar),
+        ]
         B0 .+= I / dt[i] - J / 2
         B1 .+= -I / dt[i] - J / 2
     end
@@ -337,11 +359,13 @@ function b!(b, prob::ForwardLSSProblem)
 end
 
 function shadow_forward(prob::ForwardLSSProblem; sensealg = prob.sensealg)
-    shadow_forward(prob, sensealg, sensealg.LSSregularizer)
+    return shadow_forward(prob, sensealg, sensealg.LSSregularizer)
 end
 
-function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-        LSSregularizer::TimeDilation)
+function shadow_forward(
+        prob::ForwardLSSProblem, sensealg::ForwardLSS,
+        LSSregularizer::TimeDilation
+    )
     (; sol, S, F, window, Δt, diffcache, b, w, v, η, res, g, g0, umid) = prob
     (; wBinv, wEinv, B, E) = S
     (; dg_val, numparams, numindvar, uf) = diffcache
@@ -395,8 +419,10 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     return res
 end
 
-function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-        LSSregularizer::CosWindowing)
+function shadow_forward(
+        prob::ForwardLSSProblem, sensealg::ForwardLSS,
+        LSSregularizer::CosWindowing
+    )
     (; sol, S, F, window, Δt, diffcache, b, w, v, res) = prob
     (; wBinv, B) = S
     (; dg_val, numparams, numindvar, uf) = diffcache
@@ -430,8 +456,10 @@ function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
     return res
 end
 
-function shadow_forward(prob::ForwardLSSProblem, sensealg::ForwardLSS,
-        LSSregularizer::Cos2Windowing)
+function shadow_forward(
+        prob::ForwardLSSProblem, sensealg::ForwardLSS,
+        LSSregularizer::Cos2Windowing
+    )
     (; sol, S, F, window, Δt, diffcache, b, w, v, res) = prob
     (; wBinv, B) = S
     (; dg_val, numparams, numindvar, uf) = diffcache
@@ -486,9 +514,11 @@ function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
 
     return nothing
 end
-struct AdjointLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, FType, hType,
-    bType, wType,
-    ΔtType, G0, G, resType}
+struct AdjointLSSProblem{
+        A, C, solType, dtType, umidType, dudtType, SType, FType, hType,
+        bType, wType,
+        ΔtType, G0, G, resType,
+    }
     sensealg::A
     diffcache::C
     sol::solType
@@ -507,11 +537,13 @@ struct AdjointLSSProblem{A, C, solType, dtType, umidType, dudtType, SType, FType
     res::resType
 end
 
-function AdjointLSSProblem(sol, sensealg::AdjointLSS;
+function AdjointLSSProblem(
+        sol, sensealg::AdjointLSS;
         t = nothing, dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing,
         g = sensealg.g,
-        kwargs...)
+        kwargs...
+    )
     (; f, p, u0, tspan) = sol.prob
 
     isinplace = DiffEqBase.isinplace(f)
@@ -533,17 +565,19 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
     else
         @assert dgdu_discrete === nothing && dgdp_discrete === nothing
         dgdu = dgdu_continuous === nothing ? dgdu_continuous :
-               (out, u, p, t, i) -> dgdu_continuous(out, u, p, t)
+            (out, u, p, t, i) -> dgdu_continuous(out, u, p, t)
         dgdp = dgdp_continuous === nothing ? dgdp_continuous :
-               (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
+            (out, u, p, t, i) -> dgdp_continuous(out, u, p, t)
     end
 
-    sense = LSSSensitivityFunction(sensealg, f, f.analytic, f.jac,
+    sense = LSSSensitivityFunction(
+        sensealg, f, f.analytic, f.jac,
         f.jac_prototype, f.sparsity, f.paramjac,
         u0, sensealg,
         p, similar(u0), f.mass_matrix,
         f.colorvec,
-        tspan, g, dgdu, dgdp)
+        tspan, g, dgdu, dgdp
+    )
 
     (; numparams, numindvar) = sense
     Nt = length(ts)
@@ -581,14 +615,18 @@ function AdjointLSSProblem(sol, sensealg::AdjointLSS;
 
     res = similar(u0, numparams)
 
-    AdjointLSSProblem{typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
+    return AdjointLSSProblem{
+        typeof(sensealg), typeof(sense), typeof(sol), typeof(dt),
         typeof(umid), typeof(dudt),
         typeof(S), typeof(F), typeof(h), typeof(b), typeof(wa), typeof(Δt),
-        typeof(g0), typeof(g), typeof(res)}(sensealg, sense, sol,
+        typeof(g0), typeof(g), typeof(res),
+    }(
+        sensealg, sense, sol,
         dt, umid, dudt, S, F,
         h, b, wa,
         Δt, Nt, g0, g,
-        res)
+        res
+    )
 end
 
 function h!(h, g0, g, u, p, wEinv)
@@ -631,15 +669,19 @@ function wBcorrect!(S, sol, g, Nt, sense, sensealg)
 end
 
 function shadow_adjoint(prob::AdjointLSSProblem; sensealg = prob.sensealg)
-    shadow_adjoint(prob, sensealg, sensealg.LSSregularizer)
+    return shadow_adjoint(prob, sensealg, sensealg.LSSregularizer)
 end
 
-function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
-        LSSregularizer::TimeDilation)
+function shadow_adjoint(
+        prob::AdjointLSSProblem, sensealg::AdjointLSS,
+        LSSregularizer::TimeDilation
+    )
     (; sol, S, F, Δt, diffcache, h, b, wa, res, g, g0, umid) = prob
     (; wBinv, B, E) = S
-    (; dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar,
-        uf, f, f_cache, pJ, pf, paramjac_config) = diffcache
+    (;
+        dgdu, dgdp, dg_val, pgpp, pgpp_config, numparams, numindvar,
+        uf, f, f_cache, pJ, pf, paramjac_config,
+    ) = diffcache
     (; t0skip, t1skip) = LSSregularizer
 
     b .= E * h + B * wBinv
@@ -684,20 +726,22 @@ function shadow_adjoint(prob::AdjointLSSProblem, sensealg::AdjointLSS,
 end
 
 function check_for_g(sensealg::Union{ForwardLSS, AdjointLSS}, g)
-    ((sensealg.LSSregularizer isa TimeDilation && g === nothing) &&
-     error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing."))
+    return (
+        (sensealg.LSSregularizer isa TimeDilation && g === nothing) &&
+            error("Time dilation needs explicit knowledge of g. Either pass `g` as a kwarg to `ForwardLSS(g=g)` or `AdjointLSS(g=g)` or use ForwardLSS/AdjointLSS with windowing.")
+    )
 end
 
 const SHADOWING_DAE_MESSAGE = """
-                                  A mass matrix `mm` with `mm !== I || mm !== (I, I)` was used in a sensitivity
-                                  computation based on shadowing methods.
-                                  This indicates that you are trying to differentiate the solution of a DAE,
-                                  i.e. an ODE function that has additional algebraic constraints. However, the
-                                  shadowing methods are only compatible with ODEs, not with DAEs.
-                                  """
+A mass matrix `mm` with `mm !== I || mm !== (I, I)` was used in a sensitivity
+computation based on shadowing methods.
+This indicates that you are trying to differentiate the solution of a DAE,
+i.e. an ODE function that has additional algebraic constraints. However, the
+shadowing methods are only compatible with ODEs, not with DAEs.
+"""
 
 struct SHADOWING_DAE_ERROR <: Exception end
 
 function Base.showerror(io::IO, e::SHADOWING_DAE_ERROR)
-    print(io, SHADOWING_DAE_MESSAGE)
+    return print(io, SHADOWING_DAE_MESSAGE)
 end

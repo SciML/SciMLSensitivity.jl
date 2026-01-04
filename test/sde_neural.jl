@@ -13,7 +13,7 @@ Random.seed!(238248735)
         du[2] = e * 0.05 * (10μ - u[2]) # grazer density time series
         du[3] = 0.2 * exp(u[1]) - 0.05 * u[3] - r * u[3] / (h + u[3]) * u[4] # nutrient concentration
         du[4] = r * u[3] / (h + u[3]) * u[4] - 0.1 * u[4] -
-                0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
+            0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i #Algae density
     end
 
     function noise!(du, u, p, t)
@@ -27,19 +27,21 @@ Random.seed!(238248735)
     tspan = (0.0f0, 3.0f0)
     tsteps = range(tspan[1], tspan[2], length = datasize)
     u0 = [1.0, 1.0, 1.0, 1.0]
-    p_ = [1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1e-6, 1.0]
+    p_ = [1.1, 1.0, 0.0, 2.0, 1.0, 1.0, 1.0e-6, 1.0]
 
     prob = SDEProblem(sys!, noise!, u0, tspan, p_)
     ensembleprob = EnsembleProblem(prob)
 
-    solution = solve(ensembleprob,
+    solution = solve(
+        ensembleprob,
         SOSRI(),
         EnsembleThreads();
         trajectories = 1000,
-        abstol = 1e-5,
-        reltol = 1e-5,
-        maxiters = 1e8,
-        saveat = tsteps)
+        abstol = 1.0e-5,
+        reltol = 1.0e-5,
+        maxiters = 1.0e8,
+        saveat = tsteps
+    )
 
     (truemean, truevar) = Array.(timeseries_steps_meanvar(solution))
 
@@ -65,10 +67,12 @@ Random.seed!(238248735)
 
         MM = first(ann(u, p, st))
 
-        [e * 0.5 * (5μ - u[1]), # nutrient input time series
+        [
+            e * 0.5 * (5μ - u[1]), # nutrient input time series
             e * 0.05 * (10μ - u[2]), # grazer density time series
             0.2 * exp(u[1]) - 0.05 * u[3] - MM[1], # nutrient concentration
-            MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i] #Algae density
+            MM[2] - 0.1 * u[4] - 0.02 * u[4]^z / (ph^z + u[4]^z) * exp(u[2] / 2.0) + i,
+        ] #Algae density
     end
 
     function noise_(du, u, p, t)
@@ -80,10 +84,12 @@ Random.seed!(238248735)
     end
 
     function noise_op(u, p, t)
-        [p_[end],
+        [
+            p_[end],
             p_[end],
             0.0,
-            0.0]
+            0.0,
+        ]
     end
 
     prob_nn = SDEProblem(dudt_, noise_, u0, tspan, p = nothing)
@@ -92,11 +98,15 @@ Random.seed!(238248735)
     function loss(θ)
         tmp_prob = remake(prob_nn, p = θ)
         ensembleprob = EnsembleProblem(tmp_prob)
-        tmp_sol = Array(solve(ensembleprob,
-            EM();
-            dt = tsteps.step,
-            trajectories = 100,
-            sensealg = ReverseDiffAdjoint()))
+        tmp_sol = Array(
+            solve(
+                ensembleprob,
+                EM();
+                dt = tsteps.step,
+                trajectories = 100,
+                sensealg = ReverseDiffAdjoint()
+            )
+        )
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
         sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var)
@@ -105,11 +115,15 @@ Random.seed!(238248735)
     function loss_op(θ)
         tmp_prob = remake(prob_nn_op, p = θ)
         ensembleprob = EnsembleProblem(tmp_prob)
-        tmp_sol = Array(solve(ensembleprob,
-            EM();
-            dt = tsteps.step,
-            trajectories = 100,
-            sensealg = ReverseDiffAdjoint()))
+        tmp_sol = Array(
+            solve(
+                ensembleprob,
+                EM();
+                dt = tsteps.step,
+                trajectories = 100,
+                sensealg = ReverseDiffAdjoint()
+            )
+        )
         tmp_mean = mean(tmp_sol, dims = 3)[:, :]
         tmp_var = var(tmp_sol, dims = 3)[:, :]
         sum(abs2, truemean - tmp_mean) + 0.1 * sum(abs2, truevar - tmp_var)
@@ -133,8 +147,10 @@ Random.seed!(238248735)
 
     println("Test non-mutating form")
 
-    optf = Optimization.OptimizationFunction((x, p) -> loss_op(x),
-        Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction(
+        (x, p) -> loss_op(x),
+        Optimization.AutoZygote()
+    )
     optprob = Optimization.OptimizationProblem(optf, α)
     res2 = Optimization.solve(optprob, Adam(0.001), callback = callback, maxiters = 200)
 end
@@ -185,9 +201,11 @@ end
 
         ensembleprob = EnsembleProblem(prob, prob_func = prob_func)
 
-        _sol = solve(ensembleprob, alg, EnsembleThreads(),
+        _sol = solve(
+            ensembleprob, alg, EnsembleThreads(),
             sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
-            saveat = ts, trajectories = 10, abstol = 1e-1, reltol = 1e-1)
+            saveat = ts, trajectories = 10, abstol = 1.0e-1, reltol = 1.0e-1
+        )
         A = convert(Array, _sol)
         sum(abs2, A .- 1)
     end
@@ -204,18 +222,24 @@ end
         end
     end
 
-    optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, LambaEM()),
-        Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction(
+        (p, _) -> loss(p, probscalar, LambaEM()),
+        Optimization.AutoZygote()
+    )
     optprob = Optimization.OptimizationProblem(optf, ps)
     res1 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 
-    optf = Optimization.OptimizationFunction((p, _) -> loss(p, probscalar, SOSRI()),
-        Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction(
+        (p, _) -> loss(p, probscalar, SOSRI()),
+        Optimization.AutoZygote()
+    )
     optprob = Optimization.OptimizationProblem(optf, ps)
     res2 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 
-    optf = Optimization.OptimizationFunction((p, _) -> loss(p, prob, LambaEM()),
-        Optimization.AutoZygote())
+    optf = Optimization.OptimizationFunction(
+        (p, _) -> loss(p, prob, LambaEM()),
+        Optimization.AutoZygote()
+    )
     optprob = Optimization.OptimizationProblem(optf, ps)
     res1 = Optimization.solve(optprob, Adam(0.1), callback = callback, maxiters = 5)
 end

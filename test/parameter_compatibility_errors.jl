@@ -35,16 +35,20 @@ p2 = [4; 5; 6]
 @test_throws SciMLSensitivity.SciMLStructuresCompatibilityError grad(p2)
 
 function loss(p1)
-    sol = solve(prob, Tsit5(), p = [p1, mystruct(-1, -2), control],
-        sensealg = InterpolatingAdjoint())
+    sol = solve(
+        prob, Tsit5(), p = [p1, mystruct(-1, -2), control],
+        sensealg = InterpolatingAdjoint()
+    )
     return sum(abs2, sol)
 end
 
 @test_throws SciMLSensitivity.AdjointSensitivityParameterCompatibilityError grad(p2)
 
 function loss(p1)
-    sol = solve(prob, Tsit5(), p = [p1, mystruct(-1, -2), control],
-        sensealg = ForwardSensitivity())
+    sol = solve(
+        prob, Tsit5(), p = [p1, mystruct(-1, -2), control],
+        sensealg = ForwardSensitivity()
+    )
     return sum(abs2, sol)
 end
 
@@ -53,4 +57,5 @@ end
     f!,
     u0,
     tspan,
-    p)
+    p
+)

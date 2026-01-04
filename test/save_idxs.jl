@@ -4,7 +4,7 @@ function lotka_volterra!(du, u, p, t)
     x, y = u
     α, β, δ, γ = p
     du[1] = dx = α * x - β * x * y
-    du[2] = dy = -δ * y + γ * x * y
+    return du[2] = dy = -δ * y + γ * x * y
 end
 
 # Initial condition
@@ -21,8 +21,10 @@ p = [1.5, 1.0, 3.0, 1.0]
 prob = ODEProblem(lotka_volterra!, u0, tspan, p)
 
 function loss(p)
-    sol = solve(prob, Tsit5(), p = p, save_idxs = [2], saveat = tsteps, abstol = 1e-14,
-        reltol = 1e-14)
+    sol = solve(
+        prob, Tsit5(), p = p, save_idxs = [2], saveat = tsteps, abstol = 1.0e-14,
+        reltol = 1.0e-14
+    )
     loss = sum(abs2, sol .- 1)
     return loss
 end

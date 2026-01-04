@@ -15,11 +15,11 @@ t = tstart:dt:tend
 tarray = collect(t)
 
 function g(u, p, t)
-    sum(u .^ 2.0 / 2.0)
+    return sum(u .^ 2.0 / 2.0)
 end
 
 function dg!(out, u, p, t, i)
-    (out .= u)
+    return (out .= u)
 end
 
 p2 = [1.01, 0.87]
@@ -28,7 +28,7 @@ p2 = [1.01, 0.87]
 @testset "SDE inplace scalar noise tests" begin
     using DiffEqNoiseProcess
 
-    dtscalar = tend / 1e3
+    dtscalar = tend / 1.0e3
 
     f!(du, u, p, t) = (du .= p[1] * u)
     σ!(du, u, p, t) = (du .= p[2] * u)
@@ -39,74 +39,87 @@ p2 = [1.01, 0.87]
     W = WienerProcess(0.0, 0.0, 0.0)
     u0 = rand(2)
 
-    linear_analytic_strat(u0, p, t, W) = @.(u0*exp(p[1] * t + p[2] * W))
+    linear_analytic_strat(u0, p, t, W) = @.(u0 * exp(p[1] * t + p[2] * W))
 
     prob = SDEProblem(
         SDEFunction(f!, σ!, analytic = linear_analytic_strat), σ!, u0, trange,
         p2,
-        noise = W)
+        noise = W
+    )
     sol = solve(prob, EulerHeun(), dt = dtscalar, save_noise = true)
 
-    @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+    @test isapprox(sol.u_analytic, sol.u, atol = 1.0e-4)
 
     res_sde_u0,
-    res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint())
+        sensealg = BacksolveAdjoint()
+    )
 
     @show res_sde_u0, res_sde_p
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint(autojacvec = false))
+        sensealg = BacksolveAdjoint(autojacvec = false)
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, atol = 1e-8)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
+    @test isapprox(res_sde_u0, res_sde_u02, atol = 1.0e-8)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-8)
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP())
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, atol = 1e-8)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
+    @test isapprox(res_sde_u0, res_sde_u02, atol = 1.0e-8)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-8)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
-        dt = tend / 1e2, adaptive = false,
-        sensealg = InterpolatingAdjoint())
+        dt = tend / 1.0e2, adaptive = false,
+        sensealg = InterpolatingAdjoint()
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, rtol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = InterpolatingAdjoint(autojacvec = false))
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, rtol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, rtol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
@@ -129,18 +142,18 @@ p2 = [1.01, 0.87]
 
     @show true_grads
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, rtol = 1e-4)
-    @test isapprox(true_grads[2], res_sde_p', atol = 1e-4)
-    @test isapprox(true_grads[1], res_sde_u0, rtol = 1e-4)
-    @test isapprox(true_grads[2], res_sde_p2', atol = 1e-4)
-    @test isapprox(true_grads[1], res_sde_u02, rtol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, rtol = 1.0e-4)
+    @test isapprox(true_grads[2], res_sde_p', atol = 1.0e-4)
+    @test isapprox(true_grads[1], res_sde_u0, rtol = 1.0e-4)
+    @test isapprox(true_grads[2], res_sde_p2', atol = 1.0e-4)
+    @test isapprox(true_grads[1], res_sde_u02, rtol = 1.0e-4)
 end
 
 @testset "SDE oop scalar noise tests" begin
     using DiffEqNoiseProcess
 
-    dtscalar = tend / 1e3
+    dtscalar = tend / 1.0e3
 
     f(u, p, t) = p[1] * u
     σ(u, p, t) = p[2] * u
@@ -149,73 +162,87 @@ end
     W = WienerProcess(0.0, 0.0, 0.0)
     u0 = rand(2)
 
-    linear_analytic_strat(u0, p, t, W) = @.(u0*exp(p[1] * t + p[2] * W))
+    linear_analytic_strat(u0, p, t, W) = @.(u0 * exp(p[1] * t + p[2] * W))
 
-    prob = SDEProblem(SDEFunction(f, σ, analytic = linear_analytic_strat), σ, u0, trange,
+    prob = SDEProblem(
+        SDEFunction(f, σ, analytic = linear_analytic_strat), σ, u0, trange,
         p2,
-        noise = W)
+        noise = W
+    )
     sol = solve(prob, EulerHeun(), dt = dtscalar, save_noise = true)
 
-    @test isapprox(sol.u_analytic, sol.u, atol = 1e-4)
+    @test isapprox(sol.u_analytic, sol.u, atol = 1.0e-4)
 
     res_sde_u0,
-    res_sde_p = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint())
+        sensealg = BacksolveAdjoint()
+    )
 
     @show res_sde_u0, res_sde_p
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint(autojacvec = false))
+        sensealg = BacksolveAdjoint(autojacvec = false)
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, atol = 1e-8)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
+    @test isapprox(res_sde_u0, res_sde_u02, atol = 1.0e-8)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-8)
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()))
+        sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP())
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, atol = 1e-8)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-8)
+    @test isapprox(res_sde_u0, res_sde_u02, atol = 1.0e-8)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-8)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
-        dt = tend / 1e2, adaptive = false,
-        sensealg = InterpolatingAdjoint())
+        dt = tend / 1.0e2, adaptive = false,
+        sensealg = InterpolatingAdjoint()
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = InterpolatingAdjoint(autojacvec = false))
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
     res_sde_u02,
-    res_sde_p2 = adjoint_sensitivities(sol, EulerHeun(), t = Array(t),
+        res_sde_p2 = adjoint_sensitivities(
+        sol, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtscalar, adaptive = false,
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()))
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
 
-    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1e-4)
-    @test isapprox(res_sde_p, res_sde_p2, atol = 1e-4)
+    @test isapprox(res_sde_u0, res_sde_u02, rtol = 1.0e-4)
+    @test isapprox(res_sde_p, res_sde_p2, atol = 1.0e-4)
 
     @show res_sde_u02, res_sde_p2
 
@@ -238,8 +265,8 @@ end
 
     @show true_grads
 
-    @test isapprox(true_grads[2], res_sde_p', atol = 1e-4)
-    @test isapprox(true_grads[1], res_sde_u0, rtol = 1e-4)
-    @test isapprox(true_grads[2], res_sde_p2', atol = 1e-4)
-    @test isapprox(true_grads[1], res_sde_u02, rtol = 1e-4)
+    @test isapprox(true_grads[2], res_sde_p', atol = 1.0e-4)
+    @test isapprox(true_grads[1], res_sde_u0, rtol = 1.0e-4)
+    @test isapprox(true_grads[2], res_sde_p2', atol = 1.0e-4)
+    @test isapprox(true_grads[1], res_sde_u02, rtol = 1.0e-4)
 end

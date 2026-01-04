@@ -15,7 +15,7 @@ t_stop = 2.0
 u0 = [1.0, 0.0] # start state: mass position (1.0) and velocity (0.0)
 p = [GRAVITY, MASS]
 
-# setup falling mass ODE 
+# setup falling mass ODE
 function fx(u, p, t)
     g, m = p
     return [u[2], -g]
@@ -40,7 +40,7 @@ function mysolve(p; solver = nothing)
 end
 
 analyt_sol = [-27.675, 0.0]
-atol = 1e-2
+atol = 1.0e-2
 
 solvers = [Tsit5(), Rosenbrock23(autodiff = false), Rosenbrock23(autodiff = true)]
 for solver in solvers

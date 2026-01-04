@@ -1,7 +1,9 @@
-struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAdjoint,
-    uType, pType,
-    fType <: AbstractDiffEqFunction} <:
-       SensitivityFunction
+struct ODEBacksolveSensitivityFunction{
+        C <: AdjointDiffCache, Alg <: BacksolveAdjoint,
+        uType, pType,
+        fType <: AbstractDiffEqFunction,
+    } <:
+    SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -11,14 +13,20 @@ struct ODEBacksolveSensitivityFunction{C <: AdjointDiffCache, Alg <: BacksolveAd
     noiseterm::Bool
 end
 
-function ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-        noiseterm = false)
+function ODEBacksolveSensitivityFunction(
+        g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+        noiseterm = false
+    )
     diffcache,
-    y = adjointdiffcache(g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-        quad = false, noiseterm = noiseterm)
+        y = adjointdiffcache(
+        g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
+        quad = false, noiseterm = noiseterm
+    )
 
-    return ODEBacksolveSensitivityFunction(diffcache, sensealg, discrete,
-        y, sol.prob, f, noiseterm)
+    return ODEBacksolveSensitivityFunction(
+        diffcache, sensealg, discrete,
+        y, sol.prob, f, noiseterm
+    )
 end
 
 function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
@@ -36,7 +44,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
         if length(u) == length(du)
             vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
         elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
-               !isnoisemixing(S.sensealg)
+                !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S, dy = dy)
             jacNoise!(λ, y, p, t, S, dgrad = dgrad)
         else
@@ -82,7 +90,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dy = @view du[(end - idx + 1):end]
 
     elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
-           !isnoisemixing(S.sensealg)
+            !isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, length(du) =  u*m
         idx1 = [length(u) * (i - 1) + i for i in 1:idx] # for diagonal indices of [1:idx,1:idx]
         idx2 = [(length(u) + 1) * i - idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
@@ -92,7 +100,7 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dy = @view du[idx2]
 
     elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
-           isnoisemixing(S.sensealg)
+            isnoisemixing(S.sensealg)
         # Diffusion term, diagonal noise, (as above but can handle mixing noise terms)
         idx2 = [(length(u) + 1) * i - idx for i in 1:idx] # for diagonal indices of [end-idx+1:end,1:idx]
 
@@ -108,11 +116,12 @@ function split_states(du, u, t, S::ODEBacksolveSensitivityFunction; update = tru
         dgrad = @view du[(idx + 1):(end - idx), 1:m]
         dy = @view du[(end - idx + 1):end, 1:m]
     end
-    λ, grad, _y, dλ, dgrad, dy
+    return λ, grad, _y, dλ, dgrad, dy
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
+@noinline function ODEAdjointProblem(
+        sol, sensealg::BacksolveAdjoint, alg,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -126,7 +135,8 @@ end
         M = nothing,
         nilss = nothing,
         tspan = sol.prob.tspan,
-        kwargs...) where {DG1, DG2, DG3, DG4, G, RetCB}
+        kwargs...
+    ) where {DG1, DG2, DG3, DG4, G, RetCB}
     # add homogeneous adjoint for NILSAS by explicitly passing a z0 and nilss::NILSSSensitivityFunction
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
@@ -145,7 +155,7 @@ end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
-           sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
+            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
         ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
     else
         sol.prob.f
@@ -162,9 +172,13 @@ end
 
     tspan = reverse(tspan)
 
-    discrete = (t !== nothing &&
-                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
-                 g !== nothing))
+    discrete = (
+        t !== nothing &&
+            (
+            dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                g !== nothing
+        )
+    )
 
     numstates = length(u0)
     numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
@@ -179,27 +193,37 @@ end
         λ = nothing
     end
 
-    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
-        dgdp_continuous, f, alg)
+    sense = ODEBacksolveSensitivityFunction(
+        g, sensealg, discrete, sol, dgdu_continuous,
+        dgdp_continuous, f, alg
+    )
 
     if z0 !== nothing
-        sense = NILSASSensitivityFunction{isinplace(f), typeof(nilss), typeof(sense),
-            typeof(M)}(nilss,
+        sense = NILSASSensitivityFunction{
+            isinplace(f), typeof(nilss), typeof(sense),
+            typeof(M),
+        }(
+            nilss,
             sense,
             M,
-            discrete)
+            discrete
+        )
     end
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, rcb,
-    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+        duplicate_iterator_times = generate_callbacks(
+        sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated)
+        callback, init_cb, terminated
+    )
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
-        cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb,
-            duplicate_iterator_times)
+        cb = backsolve_checkpoint_callbacks(
+            sense, sol, checkpoints, cb,
+            duplicate_iterator_times
+        )
     end
 
     if z0 === nothing
@@ -215,9 +239,11 @@ end
         II = Diagonal(I, numparams)
         Z1 = zzz(original_mm, numstates, numstates + numparams)
         Z2 = zzz(original_mm, numparams, numstates)
-        mm = [copy(original_mm') Z1
-              Z2 II Z2
-              Z1 original_mm]
+        mm = [
+            copy(original_mm') Z1
+            Z2 II Z2
+            Z1 original_mm
+        ]
     end
     jac_prototype = sol.prob.f.jac_prototype
     if !sense.discrete || jac_prototype === nothing
@@ -228,12 +254,16 @@ end
         II = Diagonal(I, numparams)
         Z1 = zzz(J, numstates, numstates + numparams)
         Z2 = zzz(J, numparams, numstates)
-        adjoint_jac_prototype = [Ja Z1
-                                 Z2 II Z2
-                                 Z1 J]
+        adjoint_jac_prototype = [
+            Ja Z1
+            Z2 II Z2
+            Z1 J
+        ]
     end
-    odefun = ODEFunction{true, true}(sense, mass_matrix = mm,
-        jac_prototype = adjoint_jac_prototype)
+    odefun = ODEFunction{true, true}(
+        sense, mass_matrix = mm,
+        jac_prototype = adjoint_jac_prototype
+    )
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
     else
@@ -241,7 +271,8 @@ end
     end
 end
 
-@noinline function SDEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
+@noinline function SDEAdjointProblem(
+        sol, sensealg::BacksolveAdjoint, alg,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -252,7 +283,8 @@ end
         callback = CallbackSet(),
         corfunc_analytical = nothing, diffusion_jac = nothing,
         diffusion_paramjac = nothing,
-        kwargs...) where {DG1, DG2, DG3, DG4, G}
+        kwargs...
+    ) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -275,9 +307,13 @@ end
     end
 
     tspan = reverse(tspan)
-    discrete = (t !== nothing &&
-                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
-                 g !== nothing))
+    discrete = (
+        t !== nothing &&
+            (
+            dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                g !== nothing
+        )
+    )
 
     p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
@@ -289,37 +325,51 @@ end
     λ = one(eltype(u0)) .* similar(tunables, len)
 
     if SciMLBase.alg_interpretation(sol.alg) ==
-       SciMLBase.AlgorithmInterpretation.Stratonovich
-        sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
+            SciMLBase.AlgorithmInterpretation.Stratonovich
+        sense_drift = ODEBacksolveSensitivityFunction(
+            g, sensealg, discrete, sol,
             dgdu_continuous, dgdp_continuous,
-            sol.prob.f, alg)
+            sol.prob.f, alg
+        )
     else
-        transformed_function = StochasticTransformedFunction(sol, sol.prob.f, sol.prob.g,
-            corfunc_analytical)
+        transformed_function = StochasticTransformedFunction(
+            sol, sol.prob.f, sol.prob.g,
+            corfunc_analytical
+        )
         drift_function = ODEFunction{false, true}(transformed_function)
-        sense_drift = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
+        sense_drift = ODEBacksolveSensitivityFunction(
+            g, sensealg, discrete, sol,
             dgdu_continuous, dgdp_continuous,
-            drift_function, alg)
+            drift_function, alg
+        )
     end
 
-    diffusion_function = ODEFunction{isinplace(sol.prob), true}(sol.prob.g,
+    diffusion_function = ODEFunction{isinplace(sol.prob), true}(
+        sol.prob.g,
         jac = diffusion_jac,
-        paramjac = diffusion_paramjac)
-    sense_diffusion = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol,
+        paramjac = diffusion_paramjac
+    )
+    sense_diffusion = ODEBacksolveSensitivityFunction(
+        g, sensealg, discrete, sol,
         dgdu_continuous, dgdp_continuous,
         diffusion_function, alg;
-        noiseterm = true)
+        noiseterm = true
+    )
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, _,
-    duplicate_iterator_times = generate_callbacks(sense_drift, dgdu_discrete,
+        duplicate_iterator_times = generate_callbacks(
+        sense_drift, dgdu_discrete,
         dgdp_discrete, λ, t,
         tspan[2], callback, init_cb,
-        terminated)
+        terminated
+    )
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
-        cb = backsolve_checkpoint_callbacks(sense_drift, sol, checkpoints, cb,
-            duplicate_iterator_times)
+        cb = backsolve_checkpoint_callbacks(
+            sense_drift, sol, checkpoints, cb,
+            duplicate_iterator_times
+        )
     end
 
     z0 = [vec(zero(λ)); vec(sense_drift.y)]
@@ -360,13 +410,16 @@ end
         end
     end
 
-    return SDEProblem(sdefun, sense_diffusion, z0, tspan, p,
+    return SDEProblem(
+        sdefun, sense_diffusion, z0, tspan, p,
         callback = cb,
         noise = backwardnoise,
-        noise_rate_prototype = noise_matrix)
+        noise_rate_prototype = noise_matrix
+    )
 end
 
-@noinline function RODEAdjointProblem(sol, sensealg::BacksolveAdjoint, alg,
+@noinline function RODEAdjointProblem(
+        sol, sensealg::BacksolveAdjoint, alg,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -375,7 +428,8 @@ end
         g::G = nothing;
         checkpoints = current_time(sol),
         callback = CallbackSet(),
-        kwargs...) where {DG1, DG2, DG3, DG4, G}
+        kwargs...
+    ) where {DG1, DG2, DG3, DG4, G}
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -396,9 +450,13 @@ end
         end
     end
     tspan = reverse(tspan)
-    discrete = (t !== nothing &&
-                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
-                 g !== nothing))
+    discrete = (
+        t !== nothing &&
+            (
+            dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                g !== nothing
+        )
+    )
 
     p === SciMLBase.NullParameters() &&
         error("Your model does not have parameters, and thus it is impossible to calculate the derivative of the solution with respect to the parameters. Your model must have parameters to use parameter sensitivity calculations!")
@@ -409,20 +467,26 @@ end
     len = length(u0) + numparams
     λ = one(eltype(u0)) .* similar(tunables, len)
 
-    sense = ODEBacksolveSensitivityFunction(g, sensealg, discrete, sol, dgdu_continuous,
+    sense = ODEBacksolveSensitivityFunction(
+        g, sensealg, discrete, sol, dgdu_continuous,
         dgdp_continuous, f, alg;
-        noiseterm = false)
+        noiseterm = false
+    )
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     cb, _,
-    duplicate_iterator_times = generate_callbacks(sense, dgdu_discrete,
+        duplicate_iterator_times = generate_callbacks(
+        sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated)
+        callback, init_cb, terminated
+    )
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
-        cb = backsolve_checkpoint_callbacks(sense, sol, checkpoints, cb,
-            duplicate_iterator_times)
+        cb = backsolve_checkpoint_callbacks(
+            sense, sol, checkpoints, cb,
+            duplicate_iterator_times
+        )
     end
 
     z0 = [vec(zero(λ)); vec(sense.y)]
@@ -449,13 +513,17 @@ end
     _sol = deepcopy(sol)
     backwardnoise = reverse(_sol.W)
 
-    return RODEProblem(rodefun, z0, tspan, p,
+    return RODEProblem(
+        rodefun, z0, tspan, p,
         callback = cb,
-        noise = backwardnoise)
+        noise = backwardnoise
+    )
 end
 
-function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback,
-        duplicate_iterator_times = nothing)
+function backsolve_checkpoint_callbacks(
+        sensefun, sol, checkpoints, callback,
+        duplicate_iterator_times = nothing
+    )
     prob = sol.prob
     if duplicate_iterator_times !== nothing
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)
@@ -477,9 +545,11 @@ function backsolve_checkpoint_callbacks(sensefun, sol, checkpoints, callback,
     return CallbackSet(cb, callback)
 end
 
-function backsolve_checkpoint_callbacks(sensefun::NILSASSensitivityFunction, sol,
+function backsolve_checkpoint_callbacks(
+        sensefun::NILSASSensitivityFunction, sol,
         checkpoints, callback,
-        duplicate_iterator_times = nothing)
+        duplicate_iterator_times = nothing
+    )
     prob = sol.prob
     if duplicate_iterator_times !== nothing
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)

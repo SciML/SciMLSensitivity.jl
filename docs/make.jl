@@ -9,14 +9,20 @@ using Plots
 
 include("pages.jl")
 
-makedocs(sitename = "SciMLSensitivity.jl",
+makedocs(
+    sitename = "SciMLSensitivity.jl",
     authors = "Chris Rackauckas et al.",
     modules = [SciMLSensitivity],
     clean = true, doctest = false, linkcheck = true,
     warnonly = [:missing_docs],
-    format = Documenter.HTML(assets = ["assets/favicon.ico"],
-        canonical = "https://docs.sciml.ai/SciMLSensitivity/stable/"),
-    pages = pages)
+    format = Documenter.HTML(
+        assets = ["assets/favicon.ico"],
+        canonical = "https://docs.sciml.ai/SciMLSensitivity/stable/"
+    ),
+    pages = pages
+)
 
-deploydocs(repo = "github.com/SciML/SciMLSensitivity.jl.git";
-    push_preview = true)
+deploydocs(
+    repo = "github.com/SciML/SciMLSensitivity.jl.git";
+    push_preview = true
+)

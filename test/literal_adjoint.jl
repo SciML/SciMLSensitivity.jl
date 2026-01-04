@@ -3,7 +3,7 @@ function lv!(du, u, p, t)
     x, y = u
     a, b, c, d = p
     du[1] = a * x - b * x * y
-    du[2] = -c * y + d * x * y
+    return du[2] = -c * y + d * x * y
 end
 function test(u0, p)
     tspan = [0.0, 1.0]

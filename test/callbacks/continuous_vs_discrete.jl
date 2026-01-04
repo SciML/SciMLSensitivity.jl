@@ -1,8 +1,8 @@
 using OrdinaryDiffEq, Zygote
 using SciMLSensitivity, Test, ForwardDiff
 
-abstol = 1e-12
-reltol = 1e-12
+abstol = 1.0e-12
+reltol = 1.0e-12
 savingtimes = 0.5
 
 function test_continuous_wrt_discrete_callback()
@@ -10,7 +10,7 @@ function test_continuous_wrt_discrete_callback()
     function f(du, u, p, t)
         #Bouncing Ball
         du[1] = u[2]
-        du[2] = -p[1]
+        return du[2] = -p[1]
     end
 
     # no saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint
@@ -26,10 +26,10 @@ function test_continuous_wrt_discrete_callback()
     prob = ODEProblem(f, u0, tspan, p)
 
     function condition(u, t, integrator) # Event when event_f(u,t) == 0
-        t - tstop
+        return t - tstop
     end
     function affect!(integrator)
-        integrator.u[2] += vafter - vbefore
+        return integrator.u[2] += vafter - vbefore
     end
     cb = ContinuousCallback(condition, affect!, save_positions = (false, false))
 
@@ -37,28 +37,47 @@ function test_continuous_wrt_discrete_callback()
     cb2 = DiscreteCallback(condition2, affect!, save_positions = (false, false))
 
     du01,
-    dp1 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp1 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du02,
-    dp2 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp2 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     dstuff = ForwardDiff.gradient(
-        (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb, saveat = tspan[2],
-            save_start = false)),
-        [u0; p])
+        (θ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
+                callback = cb, saveat = tspan[2],
+                save_start = false
+            )
+        ),
+        [u0; p]
+    )
 
     @info dstuff
     @test du01 ≈ dstuff[1:2]
@@ -68,25 +87,44 @@ function test_continuous_wrt_discrete_callback()
 
     # no saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint by slicing
     du01,
-    dp1 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint())[end]),
-        u0, p)
+        dp1 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = BacksolveAdjoint()
+            )[end]
+        ),
+        u0, p
+    )
 
     du02,
-    dp2 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = BacksolveAdjoint())[end]),
-        u0, p)
+        dp2 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = BacksolveAdjoint()
+            )[end]
+        ),
+        u0, p
+    )
 
     dstuff = ForwardDiff.gradient(
-        (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb)[end]),
-        [u0; p])
+        (θ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
+                callback = cb
+            )[end]
+        ),
+        [u0; p]
+    )
 
     @info dstuff
     @test du01 ≈ dstuff[1:2]
@@ -99,28 +137,47 @@ function test_continuous_wrt_discrete_callback()
     cb2 = DiscreteCallback(condition2, affect!, save_positions = (true, true))
 
     du01,
-    dp1 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp1 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du02,
-    dp2 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp2 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     dstuff = ForwardDiff.gradient(
-        (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb, saveat = tspan[2],
-            save_start = false)),
-        [u0; p])
+        (θ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
+                callback = cb, saveat = tspan[2],
+                save_start = false
+            )
+        ),
+        [u0; p]
+    )
 
     @info dstuff
     @test du01 ≈ dstuff[1:2]
@@ -130,25 +187,44 @@ function test_continuous_wrt_discrete_callback()
 
     # with saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint by slicing
     du01,
-    dp1 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint())[end]),
-        u0, p)
+        dp1 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = BacksolveAdjoint()
+            )[end]
+        ),
+        u0, p
+    )
 
     du02,
-    dp2 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = BacksolveAdjoint())[end]),
-        u0, p)
+        dp2 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = BacksolveAdjoint()
+            )[end]
+        ),
+        u0, p
+    )
 
     dstuff = ForwardDiff.gradient(
-        (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb)[end]),
-        [u0; p])
+        (θ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
+                callback = cb
+            )[end]
+        ),
+        [u0; p]
+    )
 
     @info dstuff
     @test du01 ≈ dstuff[1:2]
@@ -158,89 +234,150 @@ function test_continuous_wrt_discrete_callback()
 
     # with saving in Callbacks;  different affect function
     function affect2!(integrator)
-        integrator.u[2] = -integrator.p[2] * integrator.u[2]
+        return integrator.u[2] = -integrator.p[2] * integrator.u[2]
     end
     cb = ContinuousCallback(condition, affect2!, save_positions = (true, true))
 
     cb2 = DiscreteCallback(condition2, affect2!, save_positions = (true, true))
 
     du01,
-    dp1 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp1 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du02,
-    dp2 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = BacksolveAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp2 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = BacksolveAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du03,
-    dp3 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = GaussAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp3 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = GaussAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du04,
-    dp4 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = InterpolatingAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp4 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = InterpolatingAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du05,
-    dp5 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb,
-            sensealg = QuadratureAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp5 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb,
+                sensealg = QuadratureAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du06,
-    dp6 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = GaussAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp6 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = GaussAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du07,
-    dp7 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = InterpolatingAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp7 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = InterpolatingAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     du08,
-    dp8 = Zygote.gradient(
-        (u0,
-            p) -> sum(solve(prob, Tsit5(), u0 = u0, p = p,
-            callback = cb2, tstops = [tstop],
-            sensealg = QuadratureAdjoint(),
-            saveat = tspan[2], save_start = false)),
-        u0, p)
+        dp8 = Zygote.gradient(
+        (
+            u0,
+            p,
+        ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0, p = p,
+                callback = cb2, tstops = [tstop],
+                sensealg = QuadratureAdjoint(),
+                saveat = tspan[2], save_start = false
+            )
+        ),
+        u0, p
+    )
 
     dstuff = ForwardDiff.gradient(
-        (θ) -> sum(solve(prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-            callback = cb, saveat = tspan[2],
-            save_start = false)),
-        [u0; p])
+        (θ) -> sum(
+            solve(
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
+                callback = cb, saveat = tspan[2],
+                save_start = false
+            )
+        ),
+        [u0; p]
+    )
 
     @info dstuff
     @test du01 ≈ dstuff[1:2]
@@ -262,7 +399,7 @@ function test_continuous_wrt_discrete_callback()
     @test du01 ≈ du02
     @test dp1 ≈ dp2
     @test du01 ≈ du03
-    @test dp1 ≈ dp3
+    return @test dp1 ≈ dp3
 end
 
 @testset "Compare continuous with discrete callbacks" begin

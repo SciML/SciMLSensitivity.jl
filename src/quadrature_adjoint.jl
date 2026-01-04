@@ -1,8 +1,9 @@
-struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
-    Alg <: QuadratureAdjoint,
-    uType, SType,
-    fType <: AbstractDiffEqFunction
-} <: SensitivityFunction
+struct ODEQuadratureAdjointSensitivityFunction{
+        C <: AdjointDiffCache,
+        Alg <: QuadratureAdjoint,
+        uType, SType,
+        fType <: AbstractDiffEqFunction,
+    } <: SensitivityFunction
     diffcache::C
     sensealg::Alg
     discrete::Bool
@@ -11,14 +12,19 @@ struct ODEQuadratureAdjointSensitivityFunction{C <: AdjointDiffCache,
     f::fType
 end
 
-function ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol, dgdu, dgdp,
-        alg)
+function ODEQuadratureAdjointSensitivityFunction(
+        g, sensealg, discrete, sol, dgdu, dgdp,
+        alg
+    )
     diffcache,
-    y = adjointdiffcache(
+        y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
-        quad = true)
-    return ODEQuadratureAdjointSensitivityFunction(diffcache, sensealg, discrete,
-        y, sol, sol.prob.f)
+        quad = true
+    )
+    return ODEQuadratureAdjointSensitivityFunction(
+        diffcache, sensealg, discrete,
+        y, sol, sol.prob.f
+    )
 end
 
 # u = λ'
@@ -64,7 +70,7 @@ function split_states(du, u, t, S::ODEQuadratureAdjointSensitivityFunction; upda
     λ = u
     dλ = du
 
-    λ, nothing, y, dλ, nothing, nothing
+    return λ, nothing, y, dλ, nothing, nothing
 end
 
 function split_states(u, t, S::ODEQuadratureAdjointSensitivityFunction; update = true)
@@ -76,11 +82,12 @@ function split_states(u, t, S::ODEQuadratureAdjointSensitivityFunction; update =
 
     λ = u
 
-    λ, nothing, y, nothing, nothing
+    return λ, nothing, y, nothing, nothing
 end
 
 # g is either g(t,u,p) or discrete g(t,u,i)
-@noinline function ODEAdjointProblem(sol, sensealg::QuadratureAdjoint, alg,
+@noinline function ODEAdjointProblem(
+        sol, sensealg::QuadratureAdjoint, alg,
         t = nothing,
         dgdu_discrete::DG1 = nothing,
         dgdp_discrete::DG2 = nothing,
@@ -88,8 +95,11 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false); no_start = false,
-        callback = CallbackSet()) where {DG1, DG2, DG3, DG4, G,
-        RetCB}
+        callback = CallbackSet()
+    ) where {
+        DG1, DG2, DG3, DG4, G,
+        RetCB,
+    }
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
     t !== nothing && dgdu_discrete === nothing && dgdp_discrete === nothing &&
@@ -101,7 +111,7 @@ end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
     f = if sol.prob.f isa ODEFunction &&
-           sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
+            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
         ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
     else
         sol.prob.f
@@ -116,9 +126,13 @@ end
     end
     tspan = reverse(tspan)
 
-    discrete = (t !== nothing &&
-                (dgdu_continuous === nothing && dgdp_continuous === nothing ||
-                 g !== nothing))
+    discrete = (
+        t !== nothing &&
+            (
+            dgdu_continuous === nothing && dgdp_continuous === nothing ||
+                g !== nothing
+        )
+    )
 
     if ArrayInterface.ismutable(u0)
         len = length(u0)
@@ -127,28 +141,36 @@ end
     else
         λ = zero(u0)
     end
-    sense = ODEQuadratureAdjointSensitivityFunction(g, sensealg, discrete, sol,
-        dgdu_continuous, dgdp_continuous, alg)
+    sense = ODEQuadratureAdjointSensitivityFunction(
+        g, sensealg, discrete, sol,
+        dgdu_continuous, dgdp_continuous, alg
+    )
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
     z0 = vec(zero(λ))
     cb, rcb,
-    _ = generate_callbacks(sense, dgdu_discrete, dgdp_discrete,
+        _ = generate_callbacks(
+        sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated, no_start)
+        callback, init_cb, terminated, no_start
+    )
 
     jac_prototype = sol.prob.f.jac_prototype
     adjoint_jac_prototype = !sense.discrete || jac_prototype === nothing ? nothing :
-                            copy(jac_prototype')
+        copy(jac_prototype')
 
     original_mm = sol.prob.f.mass_matrix
     if original_mm === I || original_mm === (I, I)
-        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
-            jac_prototype = adjoint_jac_prototype)
+        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(
+            sense,
+            jac_prototype = adjoint_jac_prototype
+        )
     else
-        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(sense,
+        odefun = ODEFunction{ArrayInterface.ismutable(z0), true}(
+            sense,
             mass_matrix = sol.prob.f.mass_matrix',
-            jac_prototype = adjoint_jac_prototype)
+            jac_prototype = adjoint_jac_prototype
+        )
     end
     if RetCB
         return ODEProblem(odefun, z0, tspan, p, callback = cb), rcb
@@ -157,8 +179,10 @@ end
     end
 end
 
-struct AdjointSensitivityIntegrand{pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
-    G}
+struct AdjointSensitivityIntegrand{
+        pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
+        G,
+    }
     sol::S
     adj_sol::AS
     p::pType
@@ -217,7 +241,8 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     elseif sensealg.autojacvec isa MooncakeVJP
         pf = get_pf(sensealg.autojacvec, prob, f)
         paramjac_config = get_paramjac_config(
-            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2])
+            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2]
+        )
         pJ = nothing
     elseif isautojacvec # Zygote
         paramjac_config = nothing
@@ -229,13 +254,15 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pJ .= false
         paramjac_config = build_param_jac_config(sensealg, pf, y, p)
     end
-    AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp)
+    return AdjointSensitivityIntegrand(
+        sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
+        sensealg, dgdp_cache, dgdp
+    )
 end
-            
+
 function gclosure4(f, du, u, p, t)
     Base.copyto!(du, f(u, p, t))
-    nothing
+    return nothing
 end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
@@ -302,13 +329,16 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             Enzyme.autodiff(
                 sensealg.autojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t))
+                Enzyme.Const(y), dup, Enzyme.Const(t)
+            )
         else
             tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
+            Enzyme.autodiff(
+                sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
                 Enzyme.Duplicated(f, tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t))
+                Enzyme.Const(y), dup, Enzyme.Const(t)
+            )
         end
     end
 
@@ -331,16 +361,17 @@ function (S::AdjointSensitivityIntegrand)(out, t)
         S.dgdp(dgdp_cache, y, p, t)
         out .+= dgdp_cache
     end
-    out'
+    return out'
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
     out = similar(S.p)
     out .= false
-    S(out, t)
+    return S(out, t)
 end
 
-function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothing,
+function _adjoint_sensitivities(
+        sol, sensealg::QuadratureAdjoint, alg; t = nothing,
         dgdu_discrete = nothing,
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
@@ -348,13 +379,18 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         g = nothing, no_start = false,
         abstol = sensealg.abstol, reltol = sensealg.reltol,
         callback = CallbackSet(),
-        kwargs...)
+        kwargs...
+    )
     adj_prob,
-    rcb = ODEAdjointProblem(sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+        rcb = ODEAdjointProblem(
+        sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g, Val(true);
-        callback, no_start)
-    adj_sol = solve(adj_prob, alg; abstol = abstol, reltol = reltol,
-        save_everystep = true, save_start = true, kwargs...)
+        callback, no_start
+    )
+    adj_sol = solve(
+        adj_prob, alg; abstol = abstol, reltol = reltol,
+        save_everystep = true, save_start = true, kwargs...
+    )
 
     p = sol.prob.p
     if p === nothing || p === SciMLBase.NullParameters()
@@ -363,8 +399,10 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
         integrand = AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp_continuous)
         if t === nothing
             res,
-            err = quadgk(integrand, sol.prob.tspan[1], sol.prob.tspan[2],
-                atol = abstol, rtol = reltol)
+                err = quadgk(
+                integrand, sol.prob.tspan[1], sol.prob.tspan[2],
+                atol = abstol, rtol = reltol
+            )
         else
             res = zero(integrand.p)'
 
@@ -387,31 +425,41 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 
             # correction for end interval.
             if t[end] != sol.prob.tspan[2] && sol.retcode !== ReturnCode.Terminated
-                res .+= quadgk(integrand, t[end], sol.prob.tspan[end],
-                    atol = abstol, rtol = reltol)[1]
+                res .+= quadgk(
+                    integrand, t[end], sol.prob.tspan[end],
+                    atol = abstol, rtol = reltol
+                )[1]
             end
 
             if sol.retcode === ReturnCode.Terminated
-                integrand = update_integrand_and_dgrad(res, sensealg, callback, integrand,
+                integrand = update_integrand_and_dgrad(
+                    res, sensealg, callback, integrand,
                     adj_prob, sol, dgdu_discrete,
                     dgdp_discrete, dλ, dgrad, t[end],
-                    cur_time)
+                    cur_time
+                )
             end
 
             for i in (length(t) - 1):-1:1
                 if ArrayInterface.ismutable(res)
-                    res .+= quadgk(integrand, t[i], t[i + 1],
-                        atol = abstol, rtol = reltol)[1]
+                    res .+= quadgk(
+                        integrand, t[i], t[i + 1],
+                        atol = abstol, rtol = reltol
+                    )[1]
                 else
-                    res += quadgk(integrand, t[i], t[i + 1],
-                        atol = abstol, rtol = reltol)[1]
+                    res += quadgk(
+                        integrand, t[i], t[i + 1],
+                        atol = abstol, rtol = reltol
+                    )[1]
                 end
                 if t[i] == t[i + 1]
-                    integrand = update_integrand_and_dgrad(res, sensealg, callback,
+                    integrand = update_integrand_and_dgrad(
+                        res, sensealg, callback,
                         integrand,
                         adj_prob, sol, dgdu_discrete,
                         dgdp_discrete, dλ, dgrad, t[i],
-                        cur_time)
+                        cur_time
+                    )
                 end
                 if dgdp_discrete !== nothing
                     (; y) = integrand
@@ -423,8 +471,10 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
             end
             # correction for start interval
             if t[1] != sol.prob.tspan[1]
-                res .+= quadgk(integrand, sol.prob.tspan[1], t[1],
-                    atol = abstol, rtol = reltol)[1]
+                res .+= quadgk(
+                    integrand, sol.prob.tspan[1], t[1],
+                    atol = abstol, rtol = reltol
+                )[1]
             end
         end
         if rcb !== nothing && !isempty(rcb.Δλas)
@@ -446,39 +496,51 @@ function _adjoint_sensitivities(sol, sensealg::QuadratureAdjoint, alg; t = nothi
 end
 
 function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
-    (; sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp) = integrand
-    AdjointSensitivityIntegrand(sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp)
+    (;
+        sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config,
+        sensealg, dgdp_cache, dgdp,
+    ) = integrand
+    return AdjointSensitivityIntegrand(
+        sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
+        sensealg, dgdp_cache, dgdp
+    )
 end
 
-function update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, callbacks, integrand,
+function update_integrand_and_dgrad(
+        res, sensealg::QuadratureAdjoint, callbacks, integrand,
         adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
-        ti, cur_time)
+        ti, cur_time
+    )
     for cb in callbacks.discrete_callbacks
         if ti ∈ cb.affect!.event_times
-            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
+            integrand = _update_integrand_and_dgrad(
+                res, sensealg, cb,
                 integrand, adj_prob, sol,
                 dgdu_discrete,
                 dgdp_discrete, dλ, dgrad,
-                ti, cur_time)
+                ti, cur_time
+            )
         end
     end
     for cb in callbacks.continuous_callbacks
         if ti ∈ cb.affect!.event_times ||
-           ti ∈ cb.affect_neg!.event_times
-            integrand = _update_integrand_and_dgrad(res, sensealg, cb,
+                ti ∈ cb.affect_neg!.event_times
+            integrand = _update_integrand_and_dgrad(
+                res, sensealg, cb,
                 integrand, adj_prob, sol,
                 dgdu_discrete,
                 dgdp_discrete, dλ, dgrad,
-                ti, cur_time)
+                ti, cur_time
+            )
         end
     end
     return integrand
 end
 
-function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integrand,
-        adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time)
+function _update_integrand_and_dgrad(
+        res, sensealg::QuadratureAdjoint, cb, integrand,
+        adj_prob, sol, dgdu, dgdp, dλ, dgrad, t, cur_time
+    )
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
@@ -487,7 +549,7 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
             _affect! = get_affect!(cb, pos_neg)
             fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
             _affect!(fakeinteg)
-            dp .= fakeinteg.p
+            return dp .= fakeinteg.p
         end
     end
 
@@ -500,21 +562,26 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
             sensealg.autojacvec, integrand.y, wp, _p, integrand.y, t;
             numindvar = length(integrand.y), alg = nothing,
             isinplace = true, isRODE = false,
-            _W = nothing)
+            _W = nothing
+        )
         pf = get_pf(sensealg.autojacvec; _f = wp, isinplace = true, isRODE = false)
         if sensealg.autojacvec isa EnzymeVJP
             paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
         end
 
-        diffcache_wp = AdjointDiffCache(nothing, pf, nothing, nothing, nothing,
+        diffcache_wp = AdjointDiffCache(
+            nothing, pf, nothing, nothing, nothing,
             nothing, nothing, nothing, paramjac_config,
             nothing, nothing, nothing, nothing, nothing,
-            nothing, nothing, nothing, false)
+            nothing, nothing, nothing, false
+        )
 
         fakeSp = CallbackSensitivityFunctionPSwap(wp, sensealg, diffcache_wp, sol.prob)
         #vjp with Jacobin given by dw/dp before event and vector given by grad
-        vecjacobian!(res, integrand.p, res, integrand.y, t, fakeSp;
-            dgrad = nothing, dy = nothing)
+        vecjacobian!(
+            res, integrand.p, res, integrand.y, t, fakeSp;
+            dgrad = nothing, dy = nothing
+        )
         integrand = update_p_integrand(integrand, _p)
     end
 
@@ -523,7 +590,7 @@ function _update_integrand_and_dgrad(res, sensealg::QuadratureAdjoint, cb, integ
             _affect! = get_affect!(cb, pos_neg)
             fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
             _affect!(fakeinteg)
-            du .= vec(fakeinteg.u)
+            return du .= vec(fakeinteg.u)
         end
     end
 

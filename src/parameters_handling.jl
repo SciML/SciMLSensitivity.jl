@@ -10,13 +10,13 @@ recursive_copyto!(y::AbstractArray, x::AbstractArray) = copyto!(y, x)
 recursive_copyto!(y::AbstractArray, x::Number) = y .= x
 recursive_copyto!(y::Tuple, x::Tuple) = map(recursive_copyto!, y, x)
 function recursive_copyto!(y::NamedTuple{F}, x::NamedTuple{F}) where {F}
-    map(recursive_copyto!, values(y), values(x))
+    return map(recursive_copyto!, values(y), values(x))
 end
 recursive_copyto!(y::T, x::T) where {T} = fmap(recursive_copyto!, y, x)
 recursive_copyto!(y, ::Nothing) = y
 recursive_copyto!(::Nothing, ::Nothing) = nothing
 function recursive_copyto!(y::T, x::NamedTuple) where {T}
-    fmap(recursive_copyto!, y, x)
+    return fmap(recursive_copyto!, y, x)
 end
 
 """
@@ -38,7 +38,7 @@ recursive_neg!(::Nothing) = nothing
 recursive_sub!(y::AbstractArray, x::AbstractArray) = axpy!(-1, x, y)
 recursive_sub!(y::Tuple, x::Tuple) = map(recursive_sub!, y, x)
 function recursive_sub!(y::NamedTuple{F}, x::NamedTuple{F}) where {F}
-    NamedTuple{F}(map(recursive_sub!, values(y), values(x)))
+    return NamedTuple{F}(map(recursive_sub!, values(y), values(x)))
 end
 recursive_sub!(y::T, x::T) where {T} = fmap(recursive_sub!, y, x)
 recursive_sub!(y, ::Nothing) = y
@@ -52,7 +52,7 @@ recursive_sub!(::Nothing, ::Nothing) = nothing
 recursive_add!(y::AbstractArray, x::AbstractArray) = y .+= x
 recursive_add!(y::Tuple, x::Tuple) = recursive_add!.(y, x)
 function recursive_add!(y::NamedTuple{F}, x::NamedTuple{F}) where {F}
-    NamedTuple{F}(recursive_add!(values(y), values(x)))
+    return NamedTuple{F}(recursive_add!(values(y), values(x)))
 end
 recursive_add!(y::T, x::T) where {T} = fmap(recursive_add!, y, x)
 recursive_add!(y, ::Nothing) = y
@@ -65,11 +65,11 @@ recursive_add!(::Nothing, ::Nothing) = nothing
 `similar(λ, size(x))` for generic `x`. This is used to handle non-array parameters!
 """
 function allocate_vjp(λ::AbstractArray{T}, x::AbstractArray) where {T}
-    fill!(similar(λ, size(x)), zero(T))
+    return fill!(similar(λ, size(x)), zero(T))
 end
 allocate_vjp(λ::AbstractArray, x::Tuple) = allocate_vjp.((λ,), x)
 function allocate_vjp(λ::AbstractArray, x::NamedTuple{F}) where {F}
-    NamedTuple{F}(allocate_vjp.((λ,), values(x)))
+    return NamedTuple{F}(allocate_vjp.((λ,), values(x)))
 end
 allocate_vjp(λ::AbstractArray, x) = fmap(Base.Fix1(allocate_vjp, λ), x)
 
