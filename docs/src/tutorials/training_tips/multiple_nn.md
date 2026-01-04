@@ -81,12 +81,10 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)
-res1_uode = OPT.solve(optprob, OPO.Adam(0.01),
-    callback = callback, maxiters = 500)
+res1_uode = OPT.solve(optprob, OPO.Adam(0.01); callback, maxiters = 500)
 
 optprob2 = OPT.OptimizationProblem(optf, res1_uode.u)
-res2_uode = OPT.solve(optprob2, OOJ.BFGS(), maxiters = 10000,
-    callback = callback)
+res2_uode = OPT.solve(optprob2, OOJ.BFGS(); callback, maxiters = 10000)
 ```
 
 The key is that `OPT.solve` acts on a single parameter vector `p`.

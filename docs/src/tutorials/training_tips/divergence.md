@@ -15,7 +15,7 @@ parameters. This is shown in the loss function:
 
 ```julia
 function loss(p)
-    tmp_prob = ODE.remake(prob, p = p)
+    tmp_prob = ODE.remake(prob; p)
     tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
     if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
@@ -55,7 +55,7 @@ Plots.plot(tmp_sol)
 Plots.scatter!(sol.t, dataset')
 
 function loss(p)
-    tmp_prob = ODE.remake(prob, p = p)
+    tmp_prob = ODE.remake(prob; p)
     tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
     if tmp_sol.retcode == SciMLBase.ReturnCode.Success
         return sum(abs2, Array(tmp_sol) - dataset)
@@ -82,7 +82,7 @@ shown below, which is easier to AD.
 
 ```julia
 function loss(p)
-    tmp_prob = ODE.remake(prob, p = p)
+    tmp_prob = ODE.remake(prob; p)
     tmp_sol = ODE.solve(tmp_prob, ODE.Tsit5(), saveat = 0.1)
     if size(tmp_sol) == size(dataset)
         return sum(abs2, Array(tmp_sol) .- dataset)

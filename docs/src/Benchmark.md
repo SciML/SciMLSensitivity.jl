@@ -70,7 +70,7 @@ for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
     SMS.QuadratureAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
     SMS.TrackerAdjoint())
     prob_neuralode = SMS.NeuralODE(dudt2, tspan, ODE.Tsit5(); saveat = tsteps,
-        sensealg = sensealg)
+        sensealg)
     ps, st = Lux.setup(Random.default_rng(), prob_neuralode)
     ps = CA.ComponentArray(ps)
 

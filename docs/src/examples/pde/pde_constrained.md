@@ -53,7 +53,7 @@ heat_closure(u, p, t) = heat(u, p, t, xtrs)
 
 # Testing Solver on linear PDE
 prob = ODE.ODEProblem(heat_closure, u0, tspan, p)
-sol = ODE.solve(prob, ODE.Tsit5(), dt = dt, saveat = t);
+sol = ODE.solve(prob, ODE.Tsit5(); dt, saveat = t);
 arr_sol = Array(sol)
 
 Plots.plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
@@ -61,7 +61,7 @@ Plots.plot!(x, sol.u[end], lw = 3, ls = :dash, label = "tMax")
 
 ps = [0.1, 0.2];   # Initial guess for model parameters
 function predict(θ)
-    Array(ODE.solve(prob, ODE.Tsit5(), p = θ, dt = dt, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(); p = θ, dt, saveat = t))
 end
 
 ## Defining Loss function
@@ -193,7 +193,7 @@ will compare to further on.
 ```@example pde2
 # Testing Solver on linear PDE
 prob = ODE.ODEProblem(heat_closure, u0, tspan, p)
-sol = ODE.solve(prob, ODE.Tsit5(), dt = dt, saveat = t);
+sol = ODE.solve(prob, ODE.Tsit5(); dt, saveat = t);
 arr_sol = Array(sol)
 
 Plots.plot(x, sol.u[1], lw = 3, label = "t0", size = (800, 500))
@@ -210,7 +210,7 @@ refer to [here](https://julialang.org/blog/2019/01/fluxdiffeq/).
 ```@example pde2
 ps = [0.1, 0.2];   # Initial guess for model parameters
 function predict(θ)
-    Array(ODE.solve(prob, ODE.Tsit5(), p = θ, dt = dt, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(); p = θ, dt, saveat = t))
 end
 ```
 

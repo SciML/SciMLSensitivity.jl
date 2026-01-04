@@ -79,9 +79,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
-result_neuralode = OPT.solve(optprob,
-    OPO.Adam(0.05), callback = callback,
-    maxiters = 300)
+result_neuralode = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
 
 pred = predict_neuralode(result_neuralode.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -108,9 +106,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
-result_neuralode2 = OPT.solve(optprob,
-    OPO.Adam(0.05), callback = callback,
-    maxiters = 300)
+result_neuralode2 = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
 
 pred = predict_neuralode(result_neuralode2.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -128,9 +124,7 @@ function predict_neuralode(p)
 end
 
 optprob = OPT.OptimizationProblem(optf, result_neuralode2.u)
-result_neuralode3 = OPT.solve(optprob,
-    OPO.Adam(0.05), maxiters = 300,
-    callback = callback)
+result_neuralode3 = OPT.solve(optprob, OPO.Adam(0.05); maxiters = 300, callback)
 
 pred = predict_neuralode(result_neuralode3.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -148,9 +142,7 @@ function predict_neuralode(p)
 end
 
 optprob = OPT.OptimizationProblem(optf, result_neuralode3.u)
-result_neuralode4 = OPT.solve(optprob,
-    OPO.Adam(0.01), maxiters = 500,
-    callback = callback)
+result_neuralode4 = OPT.solve(optprob, OPO.Adam(0.01); maxiters = 500, callback)
 
 pred = predict_neuralode(result_neuralode4.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = "data")
@@ -197,7 +189,7 @@ prob = ODE.ODEProblem(dudt, u0, tspan)
 function predict_n_ode(pu0)
     u0 = pu0.u0
     p = pu0.p
-    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = tsteps))
 end
 
 function loss_n_ode(pu0, _)
@@ -219,17 +211,17 @@ function callback(state, l; doplot = true) #callback function to observe trainin
     return false
 end
 
-p_init = CA.ComponentArray(; u0 = u0, p = p)
+p_init = CA.ComponentArray(; u0, p)
 
 predict_n_ode(p_init)
 loss_n_ode(p_init, nothing)
 
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
-    OPO.Adam(0.05); callback = callback, maxiters = 1000)
+    OPO.Adam(0.05); callback, maxiters = 1000)
 
 function predict_n_ode2(p)
-    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = tsteps))
 end
 
 function loss_n_ode2(p, _)
@@ -272,10 +264,10 @@ p = CA.ComponentArray(ps)
 dudt(u, p, t) = first(dudt2(u, p, st))
 prob = ODE.ODEProblem(dudt, u0, tspan)
 
-p_init = CA.ComponentArray(; u0 = u0, p = p)
+p_init = CA.ComponentArray(; u0, p)
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
-    OPO.Adam(0.05); callback = callback, maxiters = 1000)
+    OPO.Adam(0.05); callback, maxiters = 1000)
 
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),

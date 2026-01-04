@@ -87,12 +87,10 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob1 = OPT.OptimizationProblem(optf, ps)
-pstart = OPT.solve(
-    optprob1, OPO.Adam(0.01), callback = callback, maxiters = 100).u
+pstart = OPT.solve(optprob1, OPO.Adam(0.01); callback, maxiters = 100).u
 
 optprob2 = OPT.OptimizationProblem(optf, pstart)
-pmin = OPT.solve(optprob2, OOJ.NewtonTrustRegion(), callback = callback,
-    maxiters = 200)
+pmin = OPT.solve(optprob2, OOJ.NewtonTrustRegion(); callback, maxiters = 200)
 ```
 
 Note that we do not demonstrate `Newton()` because we have not found a single

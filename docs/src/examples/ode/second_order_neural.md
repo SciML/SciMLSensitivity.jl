@@ -44,7 +44,7 @@ ff(du, u, p, t) = model(u, p)
 prob = ODE.SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
 
 function predict(p)
-    Array(ODE.solve(prob, ODE.Tsit5(), p = p, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(); p, saveat = t))
 end
 
 correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:1)[2:end])))
@@ -65,5 +65,5 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
 optprob = OPT.OptimizationProblem(optf, ps)
 
-res = OPT.solve(optprob, OPO.Adam(0.01); callback = callback, maxiters = 1000)
+res = OPT.solve(optprob, OPO.Adam(0.01); callback, maxiters = 1000)
 ```

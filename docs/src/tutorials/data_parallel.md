@@ -105,7 +105,7 @@ function model1(θ, ensemble)
         ODE.remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
     end
 
-    ensemble_prob = ODE.EnsembleProblem(prob, prob_func = prob_func)
+    ensemble_prob = ODE.EnsembleProblem(prob; prob_func)
     sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
 end
 
@@ -125,12 +125,12 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_serial(x), adtype)
 optprob = OPT.OptimizationProblem(optf, θ)
 
-res_serial = OPT.solve(optprob, opt; callback = callback, maxiters = 100)
+res_serial = OPT.solve(optprob, opt; callback, maxiters = 100)
 
 optf2 = OPT.OptimizationFunction((x, p) -> loss_threaded(x), adtype)
 optprob2 = OPT.OptimizationProblem(optf2, θ)
 
-res_threads = OPT.solve(optprob2, opt; callback = callback, maxiters = 100)
+res_threads = OPT.solve(optprob2, opt; callback, maxiters = 100)
 ```
 
 ## Multithreaded Batching In-Depth
@@ -161,7 +161,7 @@ end
 We now build the `EnsembleProblem` with this basis:
 
 ```@example dataparallel
-ensemble_prob = ODE.EnsembleProblem(prob, prob_func = prob_func)
+ensemble_prob = ODE.EnsembleProblem(prob; prob_func)
 ```
 
 Now, to solve an ensemble problem, we need to choose an ensembling
@@ -230,7 +230,7 @@ function model1(θ, ensemble)
         ODE.remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
     end
 
-    ensemble_prob = ODE.EnsembleProblem(prob, prob_func = prob_func)
+    ensemble_prob = ODE.EnsembleProblem(prob; prob_func)
     sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
 end
 
@@ -247,7 +247,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_distributed(x), adtype)
 optprob = OPT.OptimizationProblem(optf, θ)
 
-res_distributed = OPT.solve(optprob, opt; callback = callback, maxiters = 100)
+res_distributed = OPT.solve(optprob, opt; callback, maxiters = 100)
 ```
 
 And note that only `Distributed.addprocs(4)` needs to be changed in order to make
@@ -287,7 +287,7 @@ function model1(θ, ensemble)
         ODE.remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
     end
 
-    ensemble_prob = ODE.EnsembleProblem(prob, prob_func = prob_func)
+    ensemble_prob = ODE.EnsembleProblem(prob; prob_func)
     sim = ODE.solve(ensemble_prob, ODE.Tsit5(), ensemble, saveat = 0.1, trajectories = 100)
 end
 
@@ -304,7 +304,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_gpu(x), adtype)
 optprob = OPT.OptimizationProblem(optf, θ)
 
-res_gpu = OPT.solve(optprob, opt; callback = callback, maxiters = 100)
+res_gpu = OPT.solve(optprob, opt; callback, maxiters = 100)
 ```
 
 ## Multi-GPU Batching

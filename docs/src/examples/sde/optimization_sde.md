@@ -66,7 +66,7 @@ function predict(p)
         return arrsol
     end
     global currp = p
-    tmp_prob = SDE.remake(prob, p = p)
+    tmp_prob = SDE.remake(prob; p)
     ensembleprob = SDE.EnsembleProblem(tmp_prob)
     tmp_sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 1000)
     global arrsol = Array(tmp_sol)
@@ -152,7 +152,7 @@ p = [2.2, 1.0, 2.0, 0.4]
 prob_sde = SDE.SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
 
 function predict_sde(p)
-    return Array(SDE.solve(prob_sde, SDE.SOSRI(), p = p,
+    return Array(SDE.solve(prob_sde, SDE.SOSRI(); p,
         sensealg = SMS.ForwardDiffSensitivity(), saveat = 0.1))
 end
 
@@ -182,7 +182,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)
-result_sde = OPT.solve(optprob, OPO.Adam(0.1), callback = callback, maxiters = 100)
+result_sde = OPT.solve(optprob, OPO.Adam(0.1); callback, maxiters = 100)
 ```
 
 ![](https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif)

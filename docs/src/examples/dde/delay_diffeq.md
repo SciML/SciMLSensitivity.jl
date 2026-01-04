@@ -34,8 +34,8 @@ prob_dde = DDE.DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
     constant_lags = [0.1])
 
 function predict_dde(p)
-    return Array(ODE.solve(prob_dde, DDE.MethodOfSteps(ODE.Tsit5()),
-        u0 = u0, p = p, saveat = 0.1, sensealg = SMS.ReverseDiffAdjoint()))
+    return Array(ODE.solve(prob_dde, DDE.MethodOfSteps(ODE.Tsit5());
+        u0, p, saveat = 0.1, sensealg = SMS.ReverseDiffAdjoint()))
 end
 
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))
@@ -53,7 +53,7 @@ end
 adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
-result_dde = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 300, callback = callback)
+result_dde = OPT.solve(optprob, OPA.PolyOpt(); maxiters = 300, callback)
 ```
 
 Notice that we chose `sensealg = ReverseDiffAdjoint()` to utilize the ReverseDiff.jl
@@ -79,5 +79,5 @@ We use `Optimization.solve` to optimize the parameters for our loss function:
 adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
-result_dde = OPT.solve(optprob, OPA.PolyOpt(), callback = callback)
+result_dde = OPT.solve(optprob, OPA.PolyOpt(); callback)
 ```

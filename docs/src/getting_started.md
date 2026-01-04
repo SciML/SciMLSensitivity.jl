@@ -92,7 +92,7 @@ timepoint with dt=0.1) via the adjoint method:
 import Zygote
 
 function sum_of_solution(u0, p)
-    _prob = ODE.remake(prob, u0 = u0, p = p)
+    _prob = ODE.remake(prob; u0, p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
 end
 du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
@@ -112,7 +112,7 @@ this system:
 
 ```@example diffode
 function sum_of_solution(u0, p)
-    _prob = ODE.remake(prob, u0 = u0, p = p)
+    _prob = ODE.remake(prob; u0, p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
         sensealg = SMS.GaussAdjoint()))
 end

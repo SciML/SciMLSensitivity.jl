@@ -39,7 +39,7 @@ Plots.plot(sol)
 Plots.savefig("LV_ode.png")
 
 function loss(p)
-    sol = ODE.solve(prob, ODE.Tsit5(), p = p, saveat = tsteps)
+    sol = ODE.solve(prob, ODE.Tsit5(); p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
     return loss
 end
@@ -58,9 +58,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 
-result_ode = OPT.solve(optprob, OPA.PolyOpt(),
-    callback = callback,
-    maxiters = 1000)
+result_ode = OPT.solve(optprob, OPA.PolyOpt(); callback, maxiters = 1000)
 ```
 
 ## Explanation
@@ -121,7 +119,7 @@ define our loss as the squared distance from 1.
 
 ```@example optode
 function loss(p)
-    sol = ODE.solve(prob, ODE.Tsit5(), p = p, saveat = tsteps)
+    sol = ODE.solve(prob, ODE.Tsit5(); p, saveat = tsteps)
     loss = sum(abs2, sol .- 1)
     return loss
 end
@@ -153,9 +151,7 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 
-result_ode = OPT.solve(optprob, OPA.PolyOpt(),
-    callback = callback,
-    maxiters = 1000)
+result_ode = OPT.solve(optprob, OPA.PolyOpt(); callback, maxiters = 1000)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can

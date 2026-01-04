@@ -83,7 +83,7 @@ end
 prob = ODE.ODEProblem(dudt, u0, tspan, nothing)
 
 function predict_neuralode(p)
-    _prob = ODE.remake(prob, p = p)
+    _prob = ODE.remake(prob; p)
     Array(ODE.solve(_prob, ODE.Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-6))
 end
 

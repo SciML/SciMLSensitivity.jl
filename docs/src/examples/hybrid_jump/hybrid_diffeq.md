@@ -49,10 +49,10 @@ affect!(integrator) = integrator.u[1:2] .= integrator.u[3:end]
 cb = DEC.PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
 
 function predict_n_ode(p)
-    _prob = ODE.remake(prob, p = p)
-    Array(ODE.solve(_prob, ODE.Tsit5(), u0 = z0, p = p, callback = cb, saveat = t,
+    _prob = ODE.remake(prob; p)
+    Array(ODE.solve(_prob, ODE.Tsit5(); u0 = z0, p, callback = cb, saveat = t,
         sensealg = SMS.ReverseDiffAdjoint()))[1:2, :]
-    #Array(solve(prob,Tsit5(),u0=z0,p=p,saveat=t))[1:2,:]
+    #Array(solve(prob,Tsit5();u0=z0,p,saveat=t))[1:2,:]
 end
 
 function loss_n_ode(p, _)
