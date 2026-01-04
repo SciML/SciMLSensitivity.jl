@@ -21,8 +21,7 @@ function _second_order_sensitivity_product(
     θ = ForwardDiff.Dual{T, eltype(v), 1}.(prob.p, ForwardDiff.Partials.(Tuple.(v)))
     _loss = p -> loss(
         solve(
-            prob, alg, args...; p = p, sensealg = sensealg.adjalg,
-            kwargs...
+            prob, alg, args...; p, sensealg = sensealg.adjalg, kwargs...
         )
     )
     return getindex.(ForwardDiff.partials.(Zygote.gradient(_loss, θ)[1]), 1)

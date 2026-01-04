@@ -170,13 +170,13 @@ function NILSSProblem(
     # homogeneous + inhomogeneous forward sensitivity problems
     forward_prob = ODEForwardSensitivityProblem(
         f, u0, tspan, p,
-        ForwardSensitivity(
-            chunk_size = chunk_size,
-            autodiff = autodiff,
+        ForwardSensitivity(;
+            chunk_size,
+            autodiff,
             diff_type = difftype,
-            autojacvec = autojacvec
+            autojacvec
         );
-        nus = nus, kwargs...
+        nus, kwargs...
     )
 
     sense = NILSSSensitivityFunction(
@@ -317,8 +317,7 @@ function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
     t1 = forward_prob.tspan[1]
     t2 = forward_prob.tspan[1] + T_seg
     _prob = ODEForwardSensitivityProblem(
-        S.f, u0, (t1, t2), p; sensealg = sensealg, nus = nus, w0 = w0,
-        v0 = vstar0
+        S.f, u0, (t1, t2), p; sensealg, nus, w0, v0 = vstar0
     )
 
     for iseg in 1:nseg
@@ -344,7 +343,7 @@ function forward_sense(prob::NILSSProblem, nilss::NILSS, alg)
             t2 = forward_prob.tspan[1] + (iseg + 1) * T_seg
             _prob = ODEForwardSensitivityProblem(
                 S.f, y[:, 1, iseg + 1], (t1, t2), p;
-                sensealg = sensealg, nus = nus,
+                sensealg, nus,
                 w0 = vec(w[:, 1, iseg + 1, :]),
                 v0 = vec(vstar[:, :, 1, iseg + 1])
             )

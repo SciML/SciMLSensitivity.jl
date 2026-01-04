@@ -499,10 +499,10 @@ function SciMLBase._concrete_solve_adjoint(
             state_values(prob), parameter_values(prob),
             sensealg
         )
-        _prob = remake(prob; u0 = u0, p = p, kwargs = merge(kwargs_prob, (; callback = cb)))
+        _prob = remake(prob; u0, p, kwargs = merge(kwargs_prob, (; callback = cb)))
     else
         cb = nothing
-        _prob = remake(prob; u0 = u0, p = p, kwargs = kwargs_prob)
+        _prob = remake(prob; u0, p, kwargs = kwargs_prob)
     end
 
     # Remove callbacks, saveat, etc. from kwargs since it's handled separately
@@ -585,14 +585,14 @@ function SciMLBase._concrete_solve_adjoint(
     if sensealg isa BacksolveAdjoint
         sol = solve(
             _prob, alg, args...; initializealg = new_initializealg, save_noise = true,
-            save_start = save_start, save_end = save_end,
-            saveat = saveat, kwargs_fwd...
+            save_start, save_end,
+            saveat, kwargs_fwd...
         )
     elseif ischeckpointing(sensealg)
         sol = solve(
             _prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = true, save_end = true,
-            saveat = saveat, kwargs_fwd...
+            saveat, kwargs_fwd...
         )
     else
         sol = solve(
@@ -852,7 +852,7 @@ function SciMLBase._concrete_solve_adjoint(
                 sol, alg, args...; t = ts,
                 dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ?
                     df_iip : df_oop,
-                sensealg = sensealg,
+                sensealg,
                 callback = cb2, no_start = !save_start && _prob.tspan[1] ∈ ts,
                 initializealg = BrownFullBasicInit(),
                 kwargs_init...
@@ -863,7 +863,7 @@ function SciMLBase._concrete_solve_adjoint(
                 sol, alg, args...; t = ts,
                 dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ?
                     df_iip : df_oop,
-                sensealg = sensealg,
+                sensealg,
                 callback = cb2, no_start = !save_start && _prob.tspan[2] ∈ ts,
                 kwargs_init...
             )
@@ -940,7 +940,7 @@ function SciMLBase._concrete_solve_adjoint(
 
     # callback = nothing ensures only the callback in kwargs is used
     _prob = ODEForwardSensitivityProblem(
-        _f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing
+        _f, u0, prob.tspan, p; sensealg, callback = nothing
     )
     sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
@@ -1000,7 +1000,7 @@ function SciMLBase._concrete_solve_forward(
         kwargs...
     )
     _prob = ODEForwardSensitivityProblem(
-        prob.f, u0, prob.tspan, p; sensealg = sensealg, callback = nothing
+        prob.f, u0, prob.tspan, p; sensealg, callback = nothing
     )
     sol = solve(_prob, args...; kwargs...)
 
@@ -1073,7 +1073,7 @@ function SciMLBase._concrete_solve_adjoint(
 
     # use the callback in kwargs, not prob
     kwargs_prob = NamedTuple(filter(x -> x[1] != :callback, prob.kwargs))
-    _prob = remake(prob, p = p, u0 = u0, kwargs = kwargs_prob)
+    _prob = remake(prob; p, u0, kwargs = kwargs_prob)
     sol = solve(_prob, alg, args...; saveat = _saveat, kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
@@ -1518,7 +1518,7 @@ function SciMLBase._concrete_solve_adjoint(
             u0,
             p,
         ) -> solve(
-            prob, alg, args...; u0 = u0, p = p,
+            prob, alg, args...; u0, p,
             sensealg = SensitivityADPassThrough(),
             kwargs_filtered...
         ),
@@ -1539,7 +1539,7 @@ function SciMLBase._concrete_solve_adjoint(
             u0,
             p,
         ) -> solve(
-            prob, alg, args...; u0 = u0, p = p,
+            prob, alg, args...; u0, p,
             sensealg = SensitivityADPassThrough(),
             kwargs_filtered...
         ),
@@ -1574,7 +1574,7 @@ function SciMLBase._concrete_solve_adjoint(
         u0,
         p,
     ) -> solve(
-        _prob, alg, args...; u0 = u0, p = p,
+        _prob, alg, args...; u0, p,
         sensealg = SensitivityADPassThrough(),
         kwargs_filtered...
     )
@@ -1636,7 +1636,7 @@ function SciMLBase._concrete_solve_adjoint(
         u0,
         p,
     ) -> solve(
-        prob, alg, args...; u0 = u0, p = p,
+        prob, alg, args...; u0, p,
         sensealg = SensitivityADPassThrough(),
         kwargs_filtered...
     )
@@ -1761,7 +1761,7 @@ function SciMLBase._concrete_solve_adjoint(
                 )
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                 _prob = remake(
-                    prob, f = f, u0 = map(identity, _u0),
+                    prob; f, u0 = map(identity, _u0),
                     p = _p, tspan = _tspan, callback = nothing
                 )
             else
@@ -2017,7 +2017,7 @@ function SciMLBase._concrete_solve_adjoint(
                 )
                 f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                 _prob = remake(
-                    prob, f = f, u0 = reshape([x for x in _u0], size(_u0)),
+                    prob; f, u0 = reshape([x for x in _u0], size(_u0)),
                     p = _p,
                     tspan = _tspan,
                     callback = nothing
@@ -2126,13 +2126,10 @@ function SciMLBase._concrete_solve_adjoint(
     if haskey(kwargs, :callback)
         error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
     else
-        _prob = remake(prob, f = unwrapped_f(prob.f), u0 = u0, p = p)
+        _prob = remake(prob; f = unwrapped_f(prob.f), u0, p)
     end
 
-    sol = solve(
-        _prob, alg, args...; save_start = save_start, save_end = save_end,
-        saveat = saveat, kwargs...
-    )
+    sol = solve(_prob, alg, args...; save_start, save_end, saveat, kwargs...)
 
     if saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
@@ -2273,7 +2270,7 @@ function SciMLBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...
     )
-    _prob = remake(prob, u0 = u0, p = p)
+    _prob = remake(prob; u0, p)
 
     sol = solve(_prob, alg, args...; kwargs...)
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
@@ -2315,7 +2312,7 @@ function SciMLBase._concrete_solve_adjoint(
             end
         end
 
-        dp = adjoint_sensitivities(sol, alg; sensealg = sensealg, dgdu = df)
+        dp = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
 
         dp,
             Δtunables = if Δ isa AbstractArray || Δ isa Number

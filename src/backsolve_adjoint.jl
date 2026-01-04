@@ -20,7 +20,7 @@ function ODEBacksolveSensitivityFunction(
     diffcache,
         y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-        quad = false, noiseterm = noiseterm
+        quad = false, noiseterm
     )
 
     return ODEBacksolveSensitivityFunction(
@@ -42,16 +42,16 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t)
 
     if S.noiseterm
         if length(u) == length(du)
-            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
+            vecjacobian!(dλ, y, λ, p, t, S; dgrad, dy)
         elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                 !isnoisemixing(S.sensealg)
-            vecjacobian!(dλ, y, λ, p, t, S, dy = dy)
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
+            vecjacobian!(dλ, y, λ, p, t, S; dy)
+            jacNoise!(λ, y, p, t, S; dgrad)
         else
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ, dy = dy)
+            jacNoise!(λ, y, p, t, S; dgrad, dλ, dy)
         end
     else
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
+        vecjacobian!(dλ, y, λ, p, t, S; dgrad, dy)
     end
     dλ .*= -1
     dgrad .*= -one(eltype(dgrad))
@@ -67,7 +67,7 @@ function (S::ODEBacksolveSensitivityFunction)(du, u, p, t, W)
     λ, grad, _y, dλ, dgrad, dy = split_states(du, u, t, S)
     copyto!(vec(y), _y)
 
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy, W = W)
+    vecjacobian!(dλ, y, λ, p, t, S; dgrad, dy, W)
     dλ .*= -one(eltype(λ))
     dgrad .*= -one(eltype(dgrad))
 

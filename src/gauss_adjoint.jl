@@ -68,9 +68,8 @@ function ODEGaussAdjointSensitivityFunction(
             if maximum(interval[1] .< tstops .< interval[2])
                 # callback might have changed p
                 _p = Gaussreset_p(sol.prob.kwargs[:callback], interval)
-                #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                #    tstops = tstops,
-                #    p = _p, sol.alg; tols...)
+                #cpsol = solve(remake(sol.prob; tspan = interval, u0 = sol(interval[1])),
+                #    tstops, p = _p, sol.alg; tols...)
 
                 cpsol = solve(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
@@ -79,8 +78,8 @@ function ODEGaussAdjointSensitivityFunction(
                 )
                 gaussint.sol = cpsol
             else
-                #cpsol = solve(remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                #    tstops = tstops, sol.alg; tols...)
+                #cpsol = solve(remake(sol.prob; tspan = interval, u0 = sol(interval[1])),
+                #    tstops, sol.alg; tols...)
                 cpsol = solve(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     sol.alg; dense = true, tols...
@@ -106,7 +105,7 @@ end
 function Gaussfindcursor(intervals, t)
     # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
     lt(x, t) = <(x[2], t)
-    return searchsortedfirst(intervals, t, lt = lt)
+    return searchsortedfirst(intervals, t; lt)
 end
 
 # u = λ'
@@ -127,7 +126,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(du, u, p, t, W)
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
-    vecjacobian!(dλ, y, λ, p, t, S, W = W)
+    vecjacobian!(dλ, y, λ, p, t, S; W)
 
     dλ .*= -one(eltype(λ))
 
@@ -141,7 +140,7 @@ function (S::ODEGaussAdjointSensitivityFunction)(u, p, t)
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
 
-    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad = dgrad, dy = dy)
+    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad, dy)
     dλ *= (-one(eltype(λ)))
 
     if !discrete
@@ -307,7 +306,7 @@ end
     sense = ODEGaussAdjointSensitivityFunction(
         g, sensealg, GaussInt, discrete, sol,
         dgdu_continuous, dgdp_continuous, f, alg, checkpoints, integrating_cb,
-        (reltol = reltol, abstol = abstol), tstops, tspan = tspan
+        (; reltol, abstol), tstops; tspan
     )
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]
@@ -657,9 +656,9 @@ function _adjoint_sensitivities(
             t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
-            checkpoints = checkpoints,
-            callback = callback, no_start = no_start,
-            abstol = abstol, reltol = reltol, kwargs...
+            checkpoints,
+            callback, no_start,
+            abstol, reltol, kwargs...
         )
     else
         error("Continuous adjoint sensitivities are only supported for ODE problems.")
@@ -668,8 +667,8 @@ function _adjoint_sensitivities(
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
     adj_sol = solve(
-        adj_prob, alg; abstol = abstol, reltol = reltol, save_everystep = false,
-        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops = tstops,
+        adj_prob, alg; abstol, reltol, save_everystep = false,
+        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops,
         callback = CallbackSet(cb, cb2), kwargs...
     )
     res = integrand_values.integrand

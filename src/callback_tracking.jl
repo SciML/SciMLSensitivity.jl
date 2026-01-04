@@ -397,10 +397,7 @@ function _setup_reverse_callbacks(
             end
         end
 
-        vecjacobian!(
-            dλ, y, λ, integrator.p, integrator.t, fakeS;
-            dgrad = dgrad, dy = dy
-        )
+        vecjacobian!(dλ, y, λ, integrator.p, integrator.t, fakeS; dgrad, dy)
 
         # Since we differentiated the function that changes `p`, need to fix it again
         update_p = copy_to_integrator!(cb, y, integrator.p, indx, pos_neg)

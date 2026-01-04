@@ -68,7 +68,7 @@ function ODEInterpolatingAdjointSensitivityFunction(
                     sol.prob, tspan = interval, u0 = sol(interval[1]),
                     noise = forwardnoise
                 ),
-                sol.alg, save_noise = false; dt = dt, tstops = _ts[idx1:end],
+                sol.alg, save_noise = false; dt, tstops = _ts[idx1:end],
                 tols...
             )
         else
@@ -82,14 +82,13 @@ function ODEInterpolatingAdjointSensitivityFunction(
                     # callback might have changed p
                     _p = reset_p(sol.prob.kwargs[:callback], interval)
                     cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                        tstops = tstops,
-                        p = _p, sol.alg; tols...
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                        tstops, p = _p, sol.alg, tols...
                     )
                 else
                     cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                        tstops = tstops, sol.alg; tols...
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                        tstops, sol.alg, tols...
                     )
                 end
             end
@@ -102,7 +101,7 @@ function ODEInterpolatingAdjointSensitivityFunction(
     diffcache,
         y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-        quad = false, noiseterm = noiseterm
+        quad = false, noiseterm
     )
 
     return ODEInterpolatingAdjointSensitivityFunction(
@@ -116,7 +115,7 @@ end
 function findcursor(intervals, t)
     # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
     lt(x, t) = <(x[2], t)
-    return searchsortedfirst(intervals, t, lt = lt)
+    return searchsortedfirst(intervals, t; lt)
 end
 
 function choose_dt(dt, ts, interval)
@@ -142,16 +141,16 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
 
     if S.noiseterm
         if length(u) == length(du)
-            vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+            vecjacobian!(dλ, y, λ, p, t, S; dgrad)
         elseif length(u) != length(du) && SciMLBase.is_diagonal_noise(prob) &&
                 !isnoisemixing(S.sensealg)
             vecjacobian!(dλ, y, λ, p, t, S)
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad)
+            jacNoise!(λ, y, p, t, S; dgrad)
         else
-            jacNoise!(λ, y, p, t, S, dgrad = dgrad, dλ = dλ)
+            jacNoise!(λ, y, p, t, S; dgrad, dλ)
         end
     else
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad)
+        vecjacobian!(dλ, y, λ, p, t, S; dgrad)
     end
 
     dλ .*= -one(eltype(λ))
@@ -166,7 +165,7 @@ function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t, W)
 
     λ, grad, y, dλ, dgrad, dy = split_states(du, u, t, S)
 
-    vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, W = W)
+    vecjacobian!(dλ, y, λ, p, t, S; dgrad, W)
 
     dλ .*= -one(eltype(λ))
     dgrad .*= -one(eltype(dgrad))
@@ -233,7 +232,7 @@ function split_states(
                     )
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
                     cpsol′ = solve(
-                        prob′, sol.alg, save_noise = false; dt = dt,
+                        prob′, sol.alg, save_noise = false; dt,
                         tstops = _ts[idx1:idx2], checkpoint_sol.tols...
                     )
                 else
@@ -392,8 +391,8 @@ end
         g, sensealg, discrete, sol,
         dgdu_continuous, dgdp_continuous, f,
         alg, checkpoints,
-        (reltol = reltol, abstol = abstol),
-        tstops, tspan = tspan
+        (; reltol, abstol),
+        tstops; tspan
     )
 
     init_cb = (discrete || dgdu_discrete !== nothing)
@@ -522,11 +521,8 @@ end
         dgdu_continuous,
         dgdp_continuous, sol.prob.f,
         alg, checkpoints,
-        (
-            reltol = reltol,
-            abstol = abstol,
-        ),
-        tspan = tspan
+        (; reltol, abstol);
+        tspan
     )
 
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(
@@ -540,11 +536,8 @@ end
         dgdp_continuous,
         diffusion_function,
         alg, checkpoints,
-        (
-            reltol = reltol,
-            abstol = abstol,
-        );
-        tspan = tspan,
+        (; reltol, abstol);
+        tspan,
         noiseterm = true
     )
 
@@ -689,8 +682,8 @@ end
         g, sensealg, discrete, sol,
         dgdu_continuous, dgdp_continuous, f,
         alg, checkpoints,
-        (reltol = reltol, abstol = abstol),
-        tstops, tspan = tspan
+        (; reltol, abstol),
+        tstops; tspan
     )
 
     init_cb = (discrete || dgdu_discrete !== nothing) # && tspan[1] == t[end]

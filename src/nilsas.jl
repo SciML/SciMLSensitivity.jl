@@ -121,8 +121,8 @@ function NILSASProblem(
         dgdp_discrete,
         dgdu_continuous, dgdp_continuous,
         g;
-        checkpoints = checkpoints,
-        z0 = z0, M = M, nilss = nilss, tspan = tspan,
+        checkpoints,
+        z0, M, nilss, tspan,
         kwargs...
     )
 
@@ -240,7 +240,7 @@ function (NS::NILSASSensitivityFunction)(du, u, p, t)
     # loop over all adjoint states
     for j in 1:(M + 1)
         λ, _, _, dλ, dgrad, dy = split_states(du, u, t, NS, j)
-        vecjacobian!(dλ, y, λ, p, t, S, dgrad = dgrad, dy = dy)
+        vecjacobian!(dλ, y, λ, p, t, S; dgrad, dy)
         dλ .*= -1
         dgrad .*= -1
 
@@ -326,7 +326,7 @@ function adjoint_sense(prob::NILSASProblem, nilsas::NILSAS, alg; kwargs...)
             sol, adjoint_sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu, dgdp, g;
-            checkpoints = checkpoints, z0 = z0, M = M, nilss = nilss,
+            checkpoints, z0, M, nilss,
             tspan = (t1, t2), kwargs...
         )
         _sol = solve(
