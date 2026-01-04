@@ -1,6 +1,6 @@
 # [Getting Started with SciMLSensitivity: Differentiating ODE Solutions](@id auto_diff)
 
-!!! warn
+!!! warning
     
     This tutorial assumes familiarity with DifferentialEquations.jl.
     If you are not familiar with DifferentialEquations.jl, please consult
