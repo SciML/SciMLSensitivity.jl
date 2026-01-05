@@ -11,7 +11,7 @@ end
 prob = ODEProblem(dudt, u0, (0.0f0, 99.9f0))
 
 function predict_neuralode(p)
-    _prob = remake(prob, p = p)
+    _prob = remake(prob; p)
     return Array(solve(_prob, Tsit5(), saveat = 0.1))
 end
 

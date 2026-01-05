@@ -34,42 +34,29 @@ else
     function lotka_volterra_noise(u, p, t)
         return [0.01u[1], 0.01u[2]]
     end
-    prob = SDEProblem(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 10.0))
     p = [2.2, 1.0, 2.0, 0.4]
-    function predict_fd_sde(p)
-        return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = ForwardDiffSensitivity())[
-            1,
-            :,
-        ]
+    saveat = 0.0:0.1:0.5
+    function predict_fd_sde(prob, p)
+        return solve(prob, SOSRI(); p, saveat, sensealg = ForwardDiffSensitivity())[1, :]
     end
-    loss_fd_sde(p) = sum(abs2, x - 1 for x in predict_fd_sde(p))
+
+    prob = SDEProblem(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 10.0))
+    loss_fd_sde(p) = sum(abs2, x - 1 for x in predict_fd_sde(prob, p))
     loss_fd_sde(p)
 
     prob = SDEProblem{false}(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 10.0))
-    p = [2.2, 1.0, 2.0, 0.4]
-    function predict_fd_sde(p)
-        return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = ForwardDiffSensitivity())[
-            1,
-            :,
-        ]
-    end
-    loss_fd_sde(p) = sum(abs2, x - 1 for x in predict_fd_sde(p))
+    loss_fd_sde(p) = sum(abs2, x - 1 for x in predict_fd_sde(prob, p))
     loss_fd_sde(p)
 
     @test !iszero(compute_gradient(loss_fd_sde, p))
 
+    function predict_rd_sde(prob, p)
+        return solve(prob, SOSRI(); p, saveat, sensealg = TrackerAdjoint())[1, :]
+    end
     prob = SDEProblem(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 0.5))
-    function predict_rd_sde(p)
-        return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = TrackerAdjoint())[1, :]
-    end
-    loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(p))
-    @test !iszero(compute_gradient(loss_rd_sde, p))
-
+    loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(prob, p))
     prob = SDEProblem{false}(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 0.5))
-    function predict_rd_sde(p)
-        return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = TrackerAdjoint())[1, :]
-    end
-    loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(p))
+    loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(prob, p))
     @test !iszero(compute_gradient(loss_rd_sde, p))
 
 end  # VERSION < v"1.12" else block

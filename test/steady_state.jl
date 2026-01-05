@@ -96,7 +96,7 @@ end
 
         @info "Calculate adjoint sensitivities from autodiff & numerical diff"
         function G(p)
-            tmp_prob = remake(prob, u0 = convert.(eltype(p), prob.u0), p = p)
+            tmp_prob = remake(prob; u0 = convert.(eltype(p), prob.u0), p)
             sol = solve(tmp_prob, DynamicSS(Rodas5()); abstol = 1.0e-14, reltol = 1.0e-14)
             A = convert(Array, sol)
             g(A, p, nothing)
@@ -117,53 +117,43 @@ end
         sol1 = solve(prob1, DynamicSS(Rodas5()), reltol = 1.0e-14, abstol = 1.0e-14)
 
         res1a = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
-            dgdp = dgdp!, g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(), dgdu = dgdu!, dgdp = dgdp!
         )
         res1b = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint()
         )
         res1c = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autodiff = false),
-            g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false)
         )
         res1d = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-            g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP())
         )
         res1e = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-            g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())
         )
         # ZygoteVJP only available on Julia < 1.12 (Zygote has issues on 1.12+)
         res1f = if VERSION < v"1.12"
             adjoint_sensitivities(
-                sol1, DynamicSS(Rodas5()),
+                sol1, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                g = g
             )
         else
             nothing
         end
         res1g = adjoint_sensitivities(
-            sol1, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(
-                autodiff = false,
-                autojacvec = false
-            ),
-            g = g
+            sol1, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false, autojacvec = false)
         )
         # EnzymeVJP only available on Julia < 1.12 (Enzyme has issues on 1.12+)
         res1h = if ENZYME_AVAILABLE
             adjoint_sensitivities(
-                sol1, DynamicSS(Rodas5()),
+                sol1, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                g = g
             )
         else
             nothing
@@ -177,53 +167,44 @@ end
             reltol = 1.0e-14, abstol = 1.0e-14
         )
         res2a = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
-            dgdp = dgdp!, g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(),
+            dgdu = dgdu!, dgdp = dgdp!
         )
         res2b = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint()
         )
         res2c = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autodiff = false),
-            g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false)
         )
         res2d = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-            g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP())
         )
         res2e = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-            g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP())
         )
         # ZygoteVJP only available on Julia < 1.12 (Zygote has issues on 1.12+)
         res2f = if VERSION < v"1.12"
             adjoint_sensitivities(
-                sol2, DynamicSS(Rodas5()),
+                sol2, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                g = g
             )
         else
             nothing
         end
         res2g = adjoint_sensitivities(
-            sol2, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(
-                autodiff = false,
-                autojacvec = false
-            ),
-            g = g
+            sol2, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false, autojacvec = false)
         )
         # EnzymeVJP only available on Julia < 1.12 (Enzyme has issues on 1.12+)
         res2h = if ENZYME_AVAILABLE
             adjoint_sensitivities(
-                sol2, DynamicSS(Rodas5()),
+                sol2, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                g = g
             )
         else
             nothing
@@ -234,53 +215,44 @@ end
         prob3 = SteadyStateProblem(f3, u0, p)
         sol3 = solve(prob3, DynamicSS(Rodas5()), reltol = 1.0e-14, abstol = 1.0e-14)
         res3a = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
-            dgdp = dgdp!, g = g
+            sol3, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(),
+            dgdu = dgdu!, dgdp = dgdp!
         )
         res3b = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g
+            sol3, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint()
         )
         res3c = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
+            sol3, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autodiff = false),
-            g = g
         )
         res3d = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
+            sol3, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-            g = g
         )
         res3e = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
+            sol3, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-            g = g
         )
         # ZygoteVJP only available on Julia < 1.12 (Zygote has issues on 1.12+)
         res3f = if VERSION < v"1.12"
             adjoint_sensitivities(
-                sol3, DynamicSS(Rodas5()),
+                sol3, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                g = g
             )
         else
             nothing
         end
         res3g = adjoint_sensitivities(
-            sol3, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(
-                autodiff = false,
-                autojacvec = false
-            ),
-            g = g
+            sol3, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false, autojacvec = false),
         )
         # EnzymeVJP only available on Julia < 1.12 (Enzyme has issues on 1.12+)
         res3h = if ENZYME_AVAILABLE
             adjoint_sensitivities(
-                sol3, DynamicSS(Rodas5()),
+                sol3, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = EnzymeVJP()),
-                g = g
             )
         else
             nothing
@@ -330,54 +302,42 @@ end
         )
 
         res4a = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
+            soloop, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(), dgdu = dgdu!,
-            dgdp = dgdp!, g = g
+            dgdp = dgdp!
         )
         res4b = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g
+            soloop, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint()
         )
         res4c = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
+            soloop, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autodiff = false),
-            g = g
         )
         res4d = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
+            soloop, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autojacvec = TrackerVJP()),
-            g = g
         )
         res4e = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
+            soloop, DynamicSS(Rodas5()); g,
             sensealg = SteadyStateAdjoint(autojacvec = ReverseDiffVJP()),
-            g = g
         )
         # ZygoteVJP only available on Julia < 1.12 (Zygote has issues on 1.12+)
         res4f = if VERSION < v"1.12"
             adjoint_sensitivities(
-                soloop, DynamicSS(Rodas5()),
+                soloop, DynamicSS(Rodas5()); g,
                 sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP()),
-                g = g
             )
         else
             nothing
         end
         res4g = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(
-                autodiff = false,
-                autojacvec = false
-            ),
-            g = g
+            soloop, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = false, autojacvec = false),
         )
         res4h = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(
-                autodiff = true,
-                autojacvec = false
-            ),
-            g = g
+            soloop, DynamicSS(Rodas5()); g,
+            sensealg = SteadyStateAdjoint(autodiff = true, autojacvec = false),
         )
 
         @test norm(res_analytical' .- res4a) < 1.0e-7
@@ -393,7 +353,7 @@ end
 
     @testset "for u0: (should be zero, steady state does not depend on initial condition)" begin
         res5 = ForwardDiff.gradient(prob.u0) do u0
-            tmp_prob = remake(prob, u0 = u0)
+            tmp_prob = remake(prob; u0)
             sol = solve(tmp_prob, DynamicSS(Rodas5()))
             A = convert(Array, sol)
             g(A, p, nothing)
@@ -434,7 +394,7 @@ end
         dp1 = compute_gradient(
             p -> sum(
                 solve(
-                    prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    prob, DynamicSS(Rodas5()); u0, p,
                     sensealg = SteadyStateAdjoint()
                 )
             ),
@@ -445,7 +405,7 @@ end
                 (
                     2.0 .-
                         solve(
-                        prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                        prob, DynamicSS(Rodas5()); u0, p,
                         sensealg = SteadyStateAdjoint()
                     )
                 ) .^ 2
@@ -454,21 +414,12 @@ end
         )
 
         dp1d = compute_gradient(
-            p -> sum(solve(prob, DynamicSS(Rodas5()), u0 = u0, p = p)),
+            p -> sum(solve(prob, DynamicSS(Rodas5()); u0, p)),
             p
         )
         dp2d = compute_gradient(
             p -> sum(
-                (
-                    2.0 .-
-                        solve(
-                        prob,
-                        DynamicSS(Rodas5()),
-                        u0 = u0,
-                        p = p
-                    )
-                ) .^
-                    2
+                (2.0 .- solve(prob, DynamicSS(Rodas5()); u0, p)) .^ 2
             ) / 2.0,
             p
         )
@@ -482,8 +433,8 @@ end
             p -> sum(
                 Array(
                     solve(
-                        prob, DynamicSS(Rodas5()), u0 = u0,
-                        p = p, sensealg = SteadyStateAdjoint()
+                        prob, DynamicSS(Rodas5()); u0, p,
+                        sensealg = SteadyStateAdjoint()
                     )
                 )[1]
             ),
@@ -492,7 +443,7 @@ end
         dp1 = compute_gradient(
             p -> sum(
                 solve(
-                    prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    prob, DynamicSS(Rodas5()); u0, p,
                     save_idxs = 1:1,
                     sensealg = SteadyStateAdjoint()
                 )
@@ -501,7 +452,7 @@ end
         )
         dp2 = compute_gradient(
             p -> solve(
-                prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                prob, DynamicSS(Rodas5()); u0, p,
                 save_idxs = 1, sensealg = SteadyStateAdjoint()
             )[1],
             p
@@ -510,14 +461,14 @@ end
         dp1d = compute_gradient(
             p -> sum(
                 solve(
-                    prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    prob, DynamicSS(Rodas5()); u0, p,
                     save_idxs = 1:1
                 )
             ), p
         )
         dp2d = compute_gradient(
             p -> solve(
-                prob, DynamicSS(Rodas5()), u0 = u0, p = p,
+                prob, DynamicSS(Rodas5()); u0, p,
                 save_idxs = 1
             )[1], p
         )
@@ -551,8 +502,8 @@ end
             dp1oop = compute_gradient(
                 p -> sum(
                     solve(
-                        proboop, DynamicSS(Rodas5()), u0 = u0,
-                        p = p, sensealg = SteadyStateAdjoint()
+                        proboop, DynamicSS(Rodas5()); u0, p,
+                        sensealg = SteadyStateAdjoint()
                     )
                 ),
                 p
@@ -562,8 +513,8 @@ end
                     (
                         2.0 .-
                             solve(
-                            proboop, DynamicSS(Rodas5()), u0 = u0,
-                            p = p, sensealg = SteadyStateAdjoint()
+                            proboop, DynamicSS(Rodas5()); u0, p,
+                            sensealg = SteadyStateAdjoint()
                         )
                     ) .^
                         2
@@ -571,22 +522,12 @@ end
                 p
             )
             dp1oopd = compute_gradient(
-                p -> sum(
-                    solve(
-                        proboop, DynamicSS(Rodas5()), u0 = u0,
-                        p = p
-                    )
-                ), p
+                p -> sum(solve(proboop, DynamicSS(Rodas5()); u0, p)),
+                p
             )
             dp2oopd = compute_gradient(
                 p -> sum(
-                    (
-                        2.0 .-
-                            solve(
-                            proboop, DynamicSS(Rodas5()), u0 = u0,
-                            p = p
-                        )
-                    ) .^ 2
+                    (2.0 .- solve(proboop, DynamicSS(Rodas5()); u0, p)) .^ 2
                 ) / 2.0,
                 p
             )
@@ -600,8 +541,7 @@ end
                 p -> sum(
                     Array(
                         solve(
-                            proboop, DynamicSS(Rodas5()),
-                            u0 = u0, p = p,
+                            proboop, DynamicSS(Rodas5()); u0, p,
                             sensealg = SteadyStateAdjoint()
                         )
                     )[1]
@@ -611,8 +551,7 @@ end
             dp1oop = compute_gradient(
                 p -> sum(
                     solve(
-                        proboop, DynamicSS(Rodas5()), u0 = u0,
-                        p = p, save_idxs = 1:1,
+                        proboop, DynamicSS(Rodas5()); u0, p, save_idxs = 1:1,
                         sensealg = SteadyStateAdjoint()
                     )
                 ),
@@ -620,24 +559,20 @@ end
             )
             dp2oop = compute_gradient(
                 p -> solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    proboop, DynamicSS(Rodas5()); u0, p,
                     save_idxs = 1, sensealg = SteadyStateAdjoint()
                 )[1],
                 p
             )
             dp1oopd = compute_gradient(
                 p -> sum(
-                    solve(
-                        proboop, DynamicSS(Rodas5()), u0 = u0,
-                        p = p, save_idxs = 1:1
-                    )
+                    solve(proboop, DynamicSS(Rodas5()); u0, p, save_idxs = 1:1)
                 ),
                 p
             )
             dp2oopd = compute_gradient(
                 p -> solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
-                    save_idxs = 1
+                    proboop, DynamicSS(Rodas5()); u0, p, save_idxs = 1
                 )[1], p
             )
             @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-10
@@ -652,7 +587,7 @@ end
     prob = NonlinearProblem((du, u, p) -> du[1] = u[1] - p[1] + p[2], u0, p)
     prob2 = NonlinearProblem{false}((u, p) -> u .- p[1] .+ p[2], u0, p)
 
-    solve1 = solve(remake(prob, p = p), NewtonRaphson())
+    solve1 = solve(remake(prob; p), NewtonRaphson())
     solve2 = solve(prob2, NewtonRaphson())
     @test solve1.u == solve2.u
 
@@ -668,7 +603,7 @@ end
     prob6 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 51), p)
 
     function test_loss(p, prob, alg)
-        _prob = remake(prob, p = p)
+        _prob = remake(prob; p)
         sol = sum(
             solve(
                 _prob, alg,
@@ -728,7 +663,7 @@ end
         SciMLSensitivity.ZygoteVJP()
 
     function test_loss2(p, prob, alg)
-        _prob = remake(prob, p = p)
+        _prob = remake(prob; p)
         sol = solve(
             _prob, alg,
             sensealg = SteadyStateAdjoint(autojacvec = autojacvec_small)
@@ -775,13 +710,13 @@ end
         p = [2.0, 1.0]
 
         prob = NonlinearProblem((u, p) -> u .- p[1] .+ p[2], u0, p)
-        solve1 = solve(remake(prob, p = p), NewtonRaphson())
+        solve1 = solve(remake(prob; p), NewtonRaphson())
 
         # Use ZygoteVJP on older versions
         autojacvec_large = SciMLSensitivity.ZygoteVJP()
 
         function test_loss2(p, prob, alg)
-            _prob = remake(prob, p = p)
+            _prob = remake(prob; p)
             sol = sum(
                 solve(
                     _prob, alg,
@@ -842,12 +777,11 @@ if VERSION < v"1.12"
 
             # derivative with respect to u0 and p0
             function loss(u0, p; sensealg = nothing, save_start = false, save_everystep = false)
-                _prob = remake(prob, u0 = u0, p = p)
+                _prob = remake(prob; u0, p)
                 # saving arguments can have a huge influence here
                 sol = solve(
-                    _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
-                    callback = cb_t,
-                    save_start = save_start, save_everystep = save_everystep
+                    _prob, Tsit5(); reltol = tol, abstol = tol, sensealg,
+                    callback = cb_t, save_start, save_everystep
                 )
                 res = sol.u[end]
                 g(res, p, nothing)
@@ -983,11 +917,11 @@ if VERSION < v"1.12"
 
             function loss2(u0, p; sensealg = nothing, saveat = 1.0)
                 # remake tspan so saveat::Number makes sense
-                _prob = remake(prob, tspan = (0.0, 100.0), u0 = u0, p = p)
+                _prob = remake(prob, tspan = (0.0, 100.0); u0, p)
                 # saving arguments can have a huge influence here
                 sol = solve(
-                    _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
-                    callback = cb_t, saveat = saveat
+                    _prob, Tsit5(); reltol = tol, abstol = tol, sensealg,
+                    callback = cb_t, saveat
                 )
                 res = sol.u[end]
                 g(res, p, nothing)

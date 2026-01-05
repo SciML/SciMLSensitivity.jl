@@ -59,7 +59,7 @@ probIto = SDEProblem(
 )
 
 # solve Ito sense
-solIto = solve(probIto, EM(), dt = dt, adaptive = false, save_noise = true, saveat = dt)
+solIto = solve(probIto, EM(); dt, adaptive = false, save_noise = true, saveat = dt)
 
 # define problem in Stratonovich sense
 Random.seed!(seed)
@@ -71,7 +71,7 @@ probStrat = SDEProblem(
 # solve Strat sense
 solStrat = solve(
     probStrat,
-    RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich), dt = dt,
+    RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich); dt,
     adaptive = false, save_noise = true, saveat = dt
 )
 
@@ -85,20 +85,18 @@ solve with continuous adjoint sensitivity tools
 """
 
 # for Ito sense
-gs_u0,
-    gs_p = adjoint_sensitivities(
-    solIto, EM(), t = Array(t), dgdu_discrete = dg!,
-    dt = dt, adaptive = false,
+gs_u0, gs_p = adjoint_sensitivities(
+    solIto, EM(); t = Array(t), dgdu_discrete = dg!,
+    dt, adaptive = false,
     sensealg = BacksolveAdjoint(),
     corfunc_analytical = corfunc
 )
 
 @info gs_u0, gs_p
 
-gs_u0a,
-    gs_pa = adjoint_sensitivities(
-    solIto, EM(), t = Array(t), dgdu_discrete = dg!,
-    dt = dt, adaptive = false,
+gs_u0a, gs_pa = adjoint_sensitivities(
+    solIto, EM(); t = Array(t), dgdu_discrete = dg!,
+    dt, adaptive = false,
     sensealg = BacksolveAdjoint(autojacvec = SciMLSensitivity.ReverseDiffVJP())
 )
 
@@ -108,11 +106,10 @@ gs_u0a,
 @test isapprox(gs_p, gs_pa, rtol = 1.0e-8)
 
 # for Strat sense
-res_u0,
-    res_p = adjoint_sensitivities(
-    solStrat, EulerHeun(), t = Array(t),
+res_u0, res_p = adjoint_sensitivities(
+    solStrat, EulerHeun(); t = Array(t),
     dgdu_discrete = dg!,
-    dt = dt, adaptive = false,
+    dt, adaptive = false,
     sensealg = BacksolveAdjoint()
 )
 
@@ -126,13 +123,14 @@ Tests with respect to analytical result, forward and reverse mode AD
 
 function Gp(p; sensealg = ReverseDiffAdjoint())
     Random.seed!(seed)
-    tmp_prob = remake(probStrat, p = p)
+    tmp_prob = remake(probStrat; p)
     _sol = solve(
-        tmp_prob, EulerHeun(), dt = dt, adaptive = false, saveat = Array(t),
-        sensealg = sensealg
+        tmp_prob, EulerHeun(); dt, adaptive = false, saveat = Array(t),
+        sensealg
     )
     A = convert(Array, _sol)
-    return res = g(A, p, nothing)
+    res = g(A, p, nothing)
+    return res
 end
 
 res_forward = ForwardDiff.gradient(p -> Gp(p, sensealg = ForwardDiffSensitivity()), p)
@@ -159,13 +157,14 @@ resp = [resp1, resp2]
 
 function Gu0(u0; sensealg = ReverseDiffAdjoint())
     Random.seed!(seed)
-    tmp_prob = remake(probStrat, u0 = u0)
+    tmp_prob = remake(probStrat; u0)
     _sol = solve(
-        tmp_prob, EulerHeun(), dt = dt, adaptive = false, saveat = Array(t),
-        sensealg = sensealg
+        tmp_prob, EulerHeun(); dt, adaptive = false, saveat = Array(t),
+        sensealg
     )
     A = convert(Array, _sol)
-    return res = g(A, p, nothing)
+    res = g(A, p, nothing)
+    return res
 end
 
 res_forward = ForwardDiff.gradient(u0 -> Gu0(u0, sensealg = ForwardDiffSensitivity()), u0)
@@ -185,7 +184,7 @@ adj_probStrat = SDEAdjointProblem(
     EulerHeun(), t,
     dg!
 )
-adj_solStrat = solve(adj_probStrat, EulerHeun(), dt = dt)
+adj_solStrat = solve(adj_probStrat, EulerHeun(); dt)
 
 #@show adj_solStrat[end]
 
@@ -194,7 +193,7 @@ adj_probIto = SDEAdjointProblem(
     EulerHeun(), t, dg!,
     corfunc_analytical = corfunc
 )
-adj_solIto = solve(adj_probIto, EM(), dt = dt)
+adj_solIto = solve(adj_probIto, EM(); dt)
 
 @test isapprox(adj_solStrat[4, :], adj_solIto[4, :], rtol = 1.0e-3)
 

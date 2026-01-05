@@ -26,7 +26,7 @@ else
     p = [2.2, 1.0, 2.0, 0.4]
     function predict_fd_dde(p)
         return solve(
-            prob, MethodOfSteps(Tsit5()), p = p, saveat = 0.0:0.1:10.0, reltol = 1.0e-4,
+            prob, MethodOfSteps(Tsit5()); p, saveat = 0.0:0.1:10.0, reltol = 1.0e-4,
             sensealg = ForwardDiffSensitivity()
         )[1, :]
     end
@@ -36,12 +36,9 @@ else
 
     function predict_rd_dde(p)
         return solve(
-            prob, MethodOfSteps(Tsit5()), p = p, saveat = 0.1, reltol = 1.0e-4,
+            prob, MethodOfSteps(Tsit5()); p, saveat = 0.1, reltol = 1.0e-4,
             sensealg = TrackerAdjoint()
-        )[
-            1,
-            :,
-        ]
+        )[1, :]
     end
     loss_rd_dde(p) = sum(abs2, x - 1 for x in predict_rd_dde(p))
     loss_rd_dde(p)

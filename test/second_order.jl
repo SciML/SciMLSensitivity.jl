@@ -14,7 +14,7 @@ function jac(J, u, p, t)
     return J[2, 2] = c * -1 + x
 end
 
-f = ODEFunction(fb, jac = jac)
+f = ODEFunction(fb; jac)
 p = [1.5, 1.0, 3.0, 1.0];
 u0 = [1.0; 1.0];
 prob = ODEProblem(f, u0, (0.0, 10.0), p)
@@ -31,7 +31,7 @@ Hv = second_order_sensitivity_product(
 )
 
 function _loss(p)
-    return loss(solve(prob, Vern9(); u0 = u0, p = p, saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12))
+    return loss(solve(prob, Vern9(); u0, p, saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12))
 end
 H2 = ForwardDiff.hessian(_loss, p)
 H2v = H * v
@@ -55,7 +55,7 @@ Hv = second_order_sensitivity_product(
     loss, v, prob, Vern9(), saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12
 )
 forward_Hv = ForwardDiff.hessian(
-    p -> sum(solve(prob, Vern9(), p = p, saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12)),
+    p -> sum(solve(prob, Vern9(); p, saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12)),
     p
 ) * v
 @test Hv ≈ forward_Hv

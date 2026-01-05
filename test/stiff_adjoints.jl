@@ -23,7 +23,7 @@ prob0 = ODEProblem(lotka_volterra, u0, tspan, p0);
 target_data = solve(prob0, RadauIIA5(), saveat = 0:0.5:10.0);
 
 loss_function = function (p)
-    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, RadauIIA5(); saveat = 0.0:0.5:10.0, abstol = 1.0e-10,
         reltol = 1.0e-10
@@ -42,7 +42,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-5
 
 loss_function = function (p)
-    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, TRBDF2(); saveat = 0.0:0.5:10.0, abstol = 1.0e-10,
         reltol = 1.0e-10
@@ -59,7 +59,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-3
 
 loss_function = function (p)
-    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, Rosenbrock23(); saveat = 0.0:0.5:10.0, abstol = 1.0e-8,
         reltol = 1.0e-8
@@ -76,7 +76,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-3
 
 loss_function = function (p)
-    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol = 1.0e-8, reltol = 1.0e-8)
 
     tmpdata = prediction[[1, 2], :]
@@ -96,7 +96,7 @@ prob0_oop = ODEProblem{false}(lotka_volterra, u0, tspan, p0);
 target_data = solve(prob0, RadauIIA5(), saveat = 0:0.5:10.0);
 
 loss_function = function (p)
-    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, RadauIIA5(); saveat = 0.0:0.5:10.0, abstol = 1.0e-10,
         reltol = 1.0e-10
@@ -116,7 +116,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-4
 
 loss_function = function (p)
-    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, TRBDF2(); saveat = 0.0:0.5:10.0, abstol = 1.0e-10,
         reltol = 1.0e-10
@@ -133,7 +133,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-3
 
 loss_function = function (p)
-    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, Rosenbrock23(); saveat = 0.0:0.5:10.0, abstol = 1.0e-8,
         reltol = 1.0e-8
@@ -150,7 +150,7 @@ rdgrad = Zygote.gradient(loss_function, p)[1]
 @test fdgrad ≈ rdgrad rtol = 1.0e-4
 
 loss_function = function (p)
-    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p = p)
+    prob = remake(prob0_oop; u0 = convert.(eltype(p), prob0.u0), p)
     prediction = solve(
         prob, Rodas5(); saveat = 0.0:0.5:10.0, abstol = 1.0e-12,
         reltol = 1.0e-12
@@ -208,7 +208,7 @@ if VERSION >= v"1.7-"
         function loss(p, sensealg)
             prob = ODEProblem(dudt, [3.0, 2.0, 1.0], (0.0, 1.0), p)
             sol = solve(
-                prob, solver, dt = 0.01, saveat = 0.1, sensealg = sensealg,
+                prob, solver; dt = 0.01, saveat = 0.1, sensealg,
                 abstol = 1.0e-5, reltol = 1.0e-5
             )
             return sum(abs2, Array(sol))
@@ -259,8 +259,8 @@ if VERSION >= v"1.7-"
         _prob = ODEProblem(rober, x[1:3], (0.0, 1.0e4), x[4:end])
         return sum(
             solve(
-                _prob, Rodas5P(), reltol = 1.0e-12, abstol = 1.0e-12, saveat = 1,
-                sensealg = sensealg
+                _prob, Rodas5P(); reltol = 1.0e-12, abstol = 1.0e-12, saveat = 1,
+                sensealg
             )
         )
     end

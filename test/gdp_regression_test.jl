@@ -88,7 +88,7 @@ end
         u0 = pu0[7:7]
         Array(
             solve(
-                prob, Tsit5(); p = p, u0 = u0, saveat = 1.0:1.0:59.0, reltol = 1.0e-4,
+                prob, Tsit5(); p, u0, saveat = 1.0:1.0:59.0, reltol = 1.0e-4,
                 sensealg
             )
         )

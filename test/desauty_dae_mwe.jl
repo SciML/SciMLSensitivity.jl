@@ -57,13 +57,10 @@ else
 
     linsolve = LinearSolve.DefaultLinearSolver(LinearSolve.DefaultAlgorithmChoice.QRFactorization)
     sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP())
-    # sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP(), linsolve = linsolve)
+    # sensealg = SciMLSensitivity.SteadyStateAdjoint(autojacvec = SciMLSensitivity.ZygoteVJP(); linsolve)
     igs, = Zygote.gradient(tunables) do p
         iprob2 = remake(iprob, p = repack(p))
-        sol = solve(
-            iprob2,
-            sensealg = sensealg
-        )
+        sol = solve(iprob2; sensealg)
         sum(Array(sol))
     end
 

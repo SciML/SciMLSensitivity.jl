@@ -588,8 +588,7 @@ end
     function GSDE(p)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob, u0 = eltype(p).(prob.u0), p = p,
-            tspan = eltype(p).(prob.tspan)
+            prob; u0 = eltype(p).(prob.u0), p, tspan = eltype(p).(prob.tspan)
         )
         _sol = solve(tmp_prob, EulerHeun(), dt = dtmix, adaptive = false, saveat = Array(t))
         A = convert(Array, _sol)
@@ -603,8 +602,7 @@ end
     function GSDE2(u0)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob, u0 = u0, p = eltype(p).(prob.p),
-            tspan = eltype(p).(prob.tspan)
+            prob; u0, p = eltype(p).(prob.p), tspan = eltype(p).(prob.tspan)
         )
         _sol = solve(tmp_prob, EulerHeun(), dt = dtmix, adaptive = false, saveat = Array(t))
         A = convert(Array, _sol)
@@ -824,14 +822,14 @@ end
     )
 
     function loss(p; SDEprob = prob, sensealg = BacksolveAdjoint())
-        _prob = remake(SDEprob, p = p)
-        sol = solve(_prob, EulerHeun(), dt = 1.0e-5, sensealg = sensealg)
+        _prob = remake(SDEprob; p)
+        sol = solve(_prob, EulerHeun(); dt = 1.0e-5, sensealg)
         return sum(Array(sol))
     end
 
     function compute_dp(p, SDEprob, sensealg)
         Random.seed!(seed)
-        Zygote.gradient(p -> loss(p, SDEprob = SDEprob, sensealg = sensealg), p)[1]
+        Zygote.gradient(p -> loss(p; SDEprob, sensealg), p)[1]
     end
 
     # test mutating against non-mutating
@@ -885,31 +883,29 @@ end
         [dx; zeros(eltype(dx), 1, m)] # 1, m
     end
 
-    prob = SDEProblem(
-        b_system, σ_system, u0, tspan, p,
-        noise_rate_prototype = noise_rate_prototype
-    )
-    sol = solve(prob, EM(), dt = dt, save_noise = true)
+    prob = SDEProblem(b_system, σ_system, u0, tspan, p; noise_rate_prototype)
+    sol = solve(prob, EM(); dt, save_noise = true)
     ts = sol.t
     Ws = sol.W.W
     Z = DiffEqNoiseProcess.NoiseGrid(ts, Ws)
 
     function loss(p; sensealg = nothing, Z = nothing)
         _prob = remake(
-            prob,
+            prob;
             u0 = convert.(eltype(p), prob.u0),
-            p = p,
-            noise = Z            # noise_rate_prototype = noise_rate_prototype
+            p,
+            noise = Z,
+            # noise_rate_prototype,
         )
-        sol = solve(_prob, EulerHeun(), dt = dt, sensealg = sensealg)
+        sol = solve(_prob, EulerHeun(); dt, sensealg)
         sum(abs2, sol.u[end])
     end
 
-    loss(p, Z = Z)
+    loss(p; Z)
 
-    gFinD = FiniteDiff.finite_difference_gradient(p -> loss(p, Z = Z), p)
-    gFD = ForwardDiff.gradient(p -> loss(p, Z = Z), p)
-    gZy = Zygote.gradient(p -> loss(p, Z = Z), p)[1]
+    gFinD = FiniteDiff.finite_difference_gradient(p -> loss(p; Z), p)
+    gFD = ForwardDiff.gradient(p -> loss(p; Z), p)
+    gZy = Zygote.gradient(p -> loss(p; Z), p)[1]
 
     @test gFinD ≈ gFD rtol = 1.0e-4
     @test gFinD ≈ gZy rtol = 1.0e-4
@@ -920,7 +916,7 @@ end
     # ReverseDiffVJP(), ZygoteVJP()
     gZy = Zygote.gradient(
         p -> loss(
-            p, Z = Z,
+            p; Z,
             sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP())
         ),
         p
@@ -928,7 +924,7 @@ end
     @test gFinD ≈ gZy rtol = 1.0e-4
     gZy = Zygote.gradient(
         p -> loss(
-            p, Z = Z,
+            p; Z,
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
         ),
         p

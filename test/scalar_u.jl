@@ -13,7 +13,7 @@ prob_neuralode = ODEProblem(neural_ode, u0, tspan)
 function loss_neuralode(p)
     trial = Array(
         solve(
-            prob_neuralode, AutoTsit5(Rosenbrock23()), u0 = u0, p = p,
+            prob_neuralode, AutoTsit5(Rosenbrock23()); u0, p,
             saveat = t, abstol = 1.0e-6, reltol = 1.0e-6
         )
     )

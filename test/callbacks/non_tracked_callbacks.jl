@@ -15,7 +15,7 @@ reltol = 1.0e-12
     u0 = [1.0; 1.0]
     prob = ODEProblem(f, u0, (0.0, 10.0), p)
 
-    sol = solve(prob, Tsit5(), abstol = abstol, reltol = reltol)
+    sol = solve(prob, Tsit5(); abstol, reltol)
 
     # Do a discrete adjoint problem
     t = 0.0:0.5:10.0
@@ -27,14 +27,12 @@ reltol = 1.0e-12
     saved_values = SavedValues(Float64, Vector{Float64})
     cb = SavingCallback((u, t, integrator) -> copy(u[(end - 1):end]), saved_values)
 
-    _,
-        res = adjoint_sensitivities(
-        sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
+    _, res = adjoint_sensitivities(
+        sol, Tsit5(); sensealg = BacksolveAdjoint(), t,
         dgdu_discrete = dg, callback = cb
     )
-    _,
-        res2 = adjoint_sensitivities(
-        sol, Tsit5(), sensealg = BacksolveAdjoint(), t = t,
+    _, res2 = adjoint_sensitivities(
+        sol, Tsit5(); sensealg = BacksolveAdjoint(), t,
         dgdu_discrete = dg
     )
 

@@ -22,8 +22,8 @@ prob = ODEProblem(lotka_volterra!, u0, tspan, p)
 
 function loss(p)
     sol = solve(
-        prob, Tsit5(), p = p, save_idxs = [2], saveat = tsteps, abstol = 1.0e-14,
-        reltol = 1.0e-14
+        prob, Tsit5(); p, save_idxs = [2], saveat = tsteps,
+        abstol = 1.0e-14, reltol = 1.0e-14
     )
     loss = sum(abs2, sol .- 1)
     return loss

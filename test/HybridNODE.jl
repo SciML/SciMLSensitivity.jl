@@ -26,10 +26,7 @@ function test_hybridNODE(sensealg)
 
     function predict_n_ode(p)
         arr = Array(
-            solve(
-                prob, Tsit5(),
-                p = p, sensealg = sensealg, saveat = 2.0, callback = callback
-            )
+            solve(prob, Tsit5(); p, sensealg, saveat = 2.0, callback)
         )[1, 2:2:end]
         return arr[1:datalength]
     end
@@ -98,8 +95,8 @@ function test_hybridNODE2(sensealg)
     function predict_n_ode(ps)
         return Array(
             solve(
-                prob, Tsit5(), u0 = z0, p = ps, callback = cb, save_everystep = false,
-                save_start = true, sensealg = sensealg
+                prob, Tsit5(); u0 = z0, p = ps, callback = cb, save_everystep = false,
+                save_start = true, sensealg
             )
         )[1:2, :]
     end
@@ -169,7 +166,7 @@ function test_hybridNODE3(sensealg)
     end
 
     function predict_n_ode(p, true_data_0, callback_data, sense)
-        _prob = remake(prob, p = p, u0 = true_data_0)
+        _prob = remake(prob; p, u0 = true_data_0)
         return solve(
             _prob, Tsit5(), callback = callback_(callback_data), saveat = t,
             sensealg = sense

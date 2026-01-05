@@ -21,7 +21,7 @@ prob = ODEProblem(ODEFunction(f #=, jac_prototype = jac_proto =#), u0, (0.0, 1.0
 @time sol_true = solve(prob, Rodas4P(), saveat = 0.1)
 
 function loss(p)
-    _prob = remake(prob, p = p)
+    _prob = remake(prob; p)
     sol = solve(
         _prob, Rodas4P(autodiff = false), saveat = 0.1,
         sensealg = ForwardDiffSensitivity()

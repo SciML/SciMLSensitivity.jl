@@ -35,12 +35,12 @@ adj_sol3 = solve(adj_prob, KenCarp4(autodiff = false))
 @test abs(length(adj_sol.t) - length(adj_sol3.t)) < 20
 
 res2 = adjoint_sensitivities(
-    sol, KenCarp4(), dgdu_continuous = dg, g = g,
+    sol, KenCarp4(); dgdu_continuous = dg, g,
     abstol = 1.0e-6, reltol = 1.0e-6, sensealg = QuadratureAdjoint(autojacvec = ReverseDiffVJP(true))
 );
 
 res1 = adjoint_sensitivities(
-    sol, KenCarp4(), dgdu_continuous = dg, g = g,
+    sol, KenCarp4(); dgdu_continuous = dg, g,
     abstol = 1.0e-6, reltol = 1.0e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP())
 );
 

@@ -32,7 +32,7 @@ function test_SDE_callbacks()
     function predict_sde(p)
         return Array(
             solve(
-                prob_sde, EM(), p = p, saveat = savingtimes,
+                prob_sde, EM(); p, saveat = savingtimes,
                 sensealg = ForwardDiffSensitivity(), dt = 0.001, callback = cb
             )
         )

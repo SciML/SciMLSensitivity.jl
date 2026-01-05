@@ -22,7 +22,7 @@ p = [9.8, 0.8]
 prob = ODEProblem(f, eltype(p).([1.0, 0.0]), eltype(p).((0.0, 1.0)), copy(p))
 
 function test_f(p)
-    _prob = remake(prob, p = p)
+    _prob = remake(prob; p)
     return solve(
         _prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14, callback = cb,
         save_everystep = false
@@ -41,10 +41,10 @@ function test_f2(
         p, sensealg = ForwardDiffSensitivity(), controller = nothing,
         alg = Tsit5()
     )
-    _prob = remake(prob, p = p)
+    _prob = remake(prob; p)
     u = solve(
-        _prob, alg, sensealg = sensealg, controller = controller,
-        abstol = 1.0e-14, reltol = 1.0e-14, callback = cb, save_everystep = false
+        _prob, alg; sensealg, controller, abstol = 1.0e-14, reltol = 1.0e-14,
+        callback = cb, save_everystep = false
     )
     return u[end][end]
 end

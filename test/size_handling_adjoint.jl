@@ -18,7 +18,7 @@ sol = solve(prob, Tsit5())
 ps = [2.2 1.0; 2.0 0.4] # Tweaked Initial Parameter Array
 
 function predict_adjoint(p) # Our 1-layer neural network
-    return Array(solve(prob, Tsit5(), p = p, saveat = 0.0:0.1:10.0))
+    return Array(solve(prob, Tsit5(); p, saveat = 0.0:0.1:10.0))
 end
 
 loss_adjoint(p, _) = sum(abs2, x - 1 for x in predict_adjoint(p))

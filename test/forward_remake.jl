@@ -29,7 +29,7 @@ function fiip_expe_SciML_forw_sen_SciML()
     output_func = function (sol, i)
         return (g(sol), false)
     end
-    monte_prob = EnsembleProblem(prob; output_func = output_func, prob_func = prob_func)
+    monte_prob = EnsembleProblem(prob; output_func, prob_func)
     sol = solve(monte_prob, Tsit5(), EnsembleSerial(), trajectories = 100_000)
     return mean(sol.u)
 end

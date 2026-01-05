@@ -17,13 +17,16 @@ p = reshape(vcat(p, ones(100)), 4, 26)
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
+abstol = 1.0e-14
+reltol = 1.0e-14
+saveat = 0.1
 loss = (
     u0,
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1, sensealg = ForwardDiffSensitivity()
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
+        sensealg = ForwardDiffSensitivity()
     )
 )
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
@@ -33,8 +36,8 @@ loss = (
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1, sensealg = InterpolatingAdjoint()
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
+        sensealg = InterpolatingAdjoint()
     )
 )
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
@@ -44,8 +47,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1,
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity(chunk_size = 104)
     )
 )
@@ -66,8 +68,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity()
     )
 )
@@ -78,8 +79,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = InterpolatingAdjoint()
     )
 )
@@ -90,8 +90,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity(chunk_size = 104)
     )
 )
@@ -123,14 +122,17 @@ u0 = [1.0; 1.0];
 u0 = reshape(vcat(u0, ones(100)), 2, 51)
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
+abstol = 1.0e-14
+reltol = 1.0e-14
+saveat = 0.1
 
 loss = (
     u0,
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1, sensealg = ForwardDiffSensitivity()
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
+        sensealg = ForwardDiffSensitivity()
     )
 )
 @time du01, dp1 = Zygote.gradient(loss, u0, p)
@@ -140,8 +142,8 @@ loss = (
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1, sensealg = InterpolatingAdjoint()
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
+        sensealg = InterpolatingAdjoint()
     )
 )
 @time du02, dp2 = Zygote.gradient(loss, u0, p)
@@ -151,8 +153,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = 0.1,
+        prob, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity(chunk_size = 102)
     )
 )
@@ -173,8 +174,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity()
     )
 )
@@ -185,8 +185,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = InterpolatingAdjoint()
     )
 )
@@ -197,8 +196,7 @@ loss = (
     p,
 ) -> sum(
     solve(
-        proboop, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14,
-        reltol = 1.0e-14, saveat = 0.1,
+        proboop, Tsit5(); u0, p, abstol, reltol, saveat,
         sensealg = ForwardDiffSensitivity(chunk_size = 102)
     )
 )

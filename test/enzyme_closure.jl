@@ -154,29 +154,26 @@ else
     end
     refdp = ForwardDiff.gradient(gintegrate, p)
 
-    du1,
-        dp1 = adjoint_sensitivities(
-        sol, Tsit5(), g = g,
+    du1, dp1 = adjoint_sensitivities(
+        sol, Tsit5(); g,
         sensealg = BacksolveAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp1', refdp, atol = 1.0e-5)
-    du2,
-        dp2 = adjoint_sensitivities(
-        sol, Tsit5(), g = g, sensealg = GaussAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
+    du2, dp2 = adjoint_sensitivities(
+        sol, Tsit5(); g,
+        sensealg = GaussAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp2', refdp, atol = 1.0e-5)
-    du3,
-        dp3 = adjoint_sensitivities(
-        sol, Tsit5(), g = g,
+    du3, dp3 = adjoint_sensitivities(
+        sol, Tsit5(); g,
         sensealg = QuadratureAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp3', refdp, atol = 1.0e-5)
-    du4,
-        dp4 = adjoint_sensitivities(
-        sol, Tsit5(), g = g,
+    du4, dp4 = adjoint_sensitivities(
+        sol, Tsit5(); g,
         sensealg = InterpolatingAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )

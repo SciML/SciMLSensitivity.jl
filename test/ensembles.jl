@@ -25,7 +25,7 @@ else
         function model(p)
             prob = ODEProblem((u, p, t) -> 1.01u .* p, p[1:1], (0.0, 1.0), p[2:2])
 
-            ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+            ensemble_prob = EnsembleProblem(prob; prob_func)
             sim = solve(ensemble_prob, Tsit5(), alg, saveat = 0.1, trajectories = 100)
             return i == 3 ? sim.u : sim
         end
