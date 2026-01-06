@@ -2,7 +2,8 @@ using SciMLSensitivity, OrdinaryDiffEq, Zygote, Test, ForwardDiff
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * p[51] * p[75] * u[1] * u[2]
-    return du[2] = dy = -p[3] * p[81] * p[25] * u[2] + (sum(@view(p[4:end])) / 100) * u[1] * u[2]
+    du[2] = dy = -p[3] * p[81] * p[25] * u[2] + (sum(@view(p[4:end])) / 100) * u[1] * u[2]
+    return nothing
 end
 function foop(u, p, t)
     dx = p[1] * u[1] - p[2] * p[51] * p[75] * u[1] * u[2]

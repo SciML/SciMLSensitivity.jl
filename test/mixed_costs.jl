@@ -10,7 +10,8 @@ savingtimes = collect(1.0:9.0)
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    return nothing
 end
 
 ## Continuous cost functionals
@@ -41,13 +42,15 @@ sol = solve(prob, Tsit5(), reltol = reltol, abstol = abstol)
 g(u, p, t) = u[1]^2 + p[1]
 function dgdu(out, u, p, t)
     out[1] = 2u[1]
-    return out[2] = 0.0
+    out[2] = 0.0
+    return nothing
 end
 function dgdp(out, u, p, t)
     out[1] = 1.0
     out[2] = 0.0
     out[3] = 0.0
-    return out[4] = 0.0
+    out[4] = 0.0
+    return nothing
 end
 
 # BacksolveAdjoint, all vjps
@@ -220,13 +223,15 @@ dFiniteDiff = FiniteDiff.finite_difference_gradient(discrete_cost_forward, input
 
 function dgdu(out, u, p, t, i)
     out[1] = 2u[1]
-    return out[2] = 0.0
+    out[2] = 0.0
+    return nothing
 end
 function dgdp(out, u, p, t, i)
     out[1] = 1.0
     out[2] = 0.0
     out[3] = 0.0
-    return out[4] = 0.0
+    out[4] = 0.0
+    return nothing
 end
 
 # BacksolveAdjoint, all vjps
