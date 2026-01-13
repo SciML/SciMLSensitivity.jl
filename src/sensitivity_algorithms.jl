@@ -1320,6 +1320,29 @@ function setvjp(
     )
 end
 
+
+struct UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD, NL} <:
+       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    autojacvec::VJP
+    linsolve::LS
+    linsolve_kwargs::LK
+    objective_ad::OAD
+    nl_alg::NL
+end
+
+function UnconstrainedOptimizationAdjoint(; chunk_size = 0, autodiff = true,
+        diff_type = Val{:central}, objective_ad = true, autojacvec = nothing, linsolve = nothing, nl_alg = nothing,
+        linsolve_kwargs = (;))
+    return UnconstrainedOptimizationAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad), typeof(nl_alg)}(autojacvec, linsolve, linsolve_kwargs, objective_ad, nl_alg)
+end
+
+function setvjp(sensealg::UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD, NL},
+        vjp) where {CS, AD, FDT, VJP, LS, LK, OAD, NL}
+    return UnconstrainedOptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, OAD, NL}(vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs, sensealg.objective_ad, sensealg.nl_alg)
+end
+
 abstract type VJPChoice end
 
 """
