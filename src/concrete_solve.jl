@@ -2425,6 +2425,157 @@ function SciMLBase._concrete_solve_adjoint(
     return out, steadystatebackpass
 end
 
+function DiffEqBase._concrete_solve_adjoint(
+        prob::AbstractOptimizationProblem,
+        alg, sensealg::UnconstrainedOptimizationAdjoint,
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; save_idxs = nothing, kwargs...)
+    _prob = remake(prob, u0 = u0, p = p)
+
+    # Solve the optimization problem
+    opt_sol = solve(_prob, alg, args...; kwargs...)
+
+    # Construct a NonlinearProblem with the gradient as the function
+    opt_f = _prob.f
+
+    if opt_f.grad === nothing
+        # No gradient provided, use automatic differentiation from derivative_wrappers
+        if SciMLBase.isinplace(_prob)
+            # In-place version: grad_f!(du, u, p) computes gradient into du
+            function grad_f!(du, u, p)
+                # Wrapper that closes over p for gradient computation
+                f_u = u -> opt_f(u, p)
+                grad_config = build_grad_config(sensealg, f_u, u, p)
+                gradient!(du, f_u, u, sensealg, grad_config)
+                return nothing
+            end
+            nlprob = NonlinearProblem(grad_f!, opt_sol.u, p)
+        else
+            # Out-of-place version: grad_f(u, p) returns gradient
+            function grad_f(u, p)
+                # Wrapper that closes over p for gradient computation
+                f_u = u -> opt_f(u, p)
+                du = similar(u)
+                grad_config = build_grad_config(sensealg, f_u, u, p)
+                gradient!(du, f_u, u, sensealg, grad_config)
+                return du
+            end
+            nlprob = NonlinearProblem(grad_f, opt_sol.u, p)
+        end
+    else
+        # Use provided gradient function
+        if SciMLBase.isinplace(_prob)
+            # In-place version: grad_f!(du, u, p) computes gradient into du
+            nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
+        else
+            # Out-of-place version: grad_f(u, p) returns gradient
+            nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
+        end
+    end
+
+    nl_alg = sensealg.nl_alg
+    # Wrap the optimization solution in a NonlinearSolution with the gradient function
+    sol = SciMLBase.build_solution(nlprob, nl_alg, opt_sol.u, opt_sol.objective;
+                                    retcode = opt_sol.retcode,
+                                    original = opt_sol)
+
+    _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+
+    if save_idxs === nothing
+        out = sol
+    else
+        out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
+    end
+
+    _, repack_adjoint = if isscimlstructure(p)
+        Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+    elseif isfunctor(p)
+        ps, re = Functors.functor(p)
+        ps, x -> (re(x),)
+    else
+        nothing, x -> (x,)
+    end
+
+    function steadystatebackpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+        # Δ = dg/dx or diffcache.dg_val
+        # del g/del p = 0
+        function df(_out, u, p, t, i)
+            if _save_idxs isa Number
+                _out[_save_idxs] = Δ[_save_idxs]
+            elseif Δ isa Number
+                @. _out[_save_idxs] = Δ
+            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
+                   Δ isa AbstractArray
+                @. _out[_save_idxs] = Δ[_save_idxs]
+            elseif isnothing(_out)
+                _out
+            else
+                @. _out[_save_idxs] = Δ.u[_save_idxs]
+            end
+        end
+        # Convert UnconstrainedOptimizationAdjoint to SteadyStateAdjoint for the adjoint computation
+        steady_sensealg = SteadyStateAdjoint(
+            autojacvec = sensealg.autojacvec,
+            linsolve = sensealg.linsolve,
+            linsolve_kwargs = sensealg.linsolve_kwargs
+        )
+        dp = adjoint_sensitivities(sol, nl_alg; sensealg = steady_sensealg, dgdu = df)
+        dp,
+        Δtunables = if Δ isa AbstractArray || Δ isa Number
+            # if Δ isa AbstractArray, the gradients correspond to `u`
+            # this is something that needs changing in the future, but
+            # this is the applicable till the movement to structuaral
+            # tangents is completed
+            dp, Δtunables = if isscimlstructure(dp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, nothing
+            elseif isfunctor(dp)
+                dp, _ = Functors.functor(dp)
+                dp, nothing
+            else
+                dp, nothing
+            end
+        else
+            dp, Δtunables = if isscimlstructure(p)
+                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, nothing
+                else
+                    Δp = setproperties(dp, to_nt(Δ.prob.p))
+                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, Δtunables
+                end
+            elseif isfunctor(p)
+                dp, _ = Functors.functor(dp)
+                Δtunables, _ = Functors.functor(Δ.prob.p)
+                dp, Δtunables
+            else
+                dp, Δ.prob.p
+            end
+        end
+
+        dp = Zygote.accum(dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
+                              Δtunables)
+
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(),
+                NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+    out, steadystatebackpass
+end
+
+
 function fix_endpoints(sensealg, sol, ts)
     @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(last(current_time(sol))), ts[end]: $(ts[end])"
     ts = collect(ts)
