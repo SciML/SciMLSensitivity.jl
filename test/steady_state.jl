@@ -10,12 +10,23 @@ if VERSION >= v"1.12"
     function compute_gradient(f, x)
         return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
     end
+    function compute_gradient(f, x, y)
+        # For multi-argument functions, Mooncake needs special handling
+        # We compute gradient with respect to a tuple and unpack
+        g = (xy) -> f(xy[1], xy[2])
+        xy = (x, y)
+        grad = Mooncake.value_and_gradient!!(Mooncake.build_rrule(g, xy), g, xy)[2][2]
+        return grad[1], grad[2]
+    end
     const ENZYME_AVAILABLE = false
 else
     using Zygote
     using Enzyme
     function compute_gradient(f, x)
-        return compute_gradient(f, x)[1]
+        return Zygote.gradient(f, x)[1]
+    end
+    function compute_gradient(f, x, y)
+        return Zygote.gradient(f, x, y)
     end
     const ENZYME_AVAILABLE = true
 end

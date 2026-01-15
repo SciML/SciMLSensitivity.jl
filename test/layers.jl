@@ -7,7 +7,8 @@ if VERSION >= v"1.12"
     const AD_BACKEND = AutoMooncake()
     function compute_gradient(f, x, args...)
         return Mooncake.value_and_gradient!!(
-            Mooncake.build_rrule(u -> f(u, args...), x), u -> f(u, args...), x)[2][2]
+            Mooncake.build_rrule(u -> f(u, args...), x), u -> f(u, args...), x
+        )[2][2]
     end
 else
     using Zygote

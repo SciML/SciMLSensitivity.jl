@@ -75,6 +75,9 @@ const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
     # Zygote has issues with ZygoteAdjoint and MooncakeAdjoint
     ("Zygote", "ZygoteAdjoint") => :broken,
     ("Zygote", "MooncakeAdjoint") => :broken,
+    # ReverseDiff/Tracker with EnzymeAdjoint causes segfaults
+    ("ReverseDiff", "EnzymeAdjoint") => :skip,
+    ("Tracker", "EnzymeAdjoint") => :skip,
     # ForwardSensitivity is broken when perturbing u0 (only p works)
     ("ReverseDiff", "ForwardSensitivity") => :broken,
     ("Tracker", "ForwardSensitivity") => :broken,
