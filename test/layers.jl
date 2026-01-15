@@ -1,4 +1,21 @@
-using SciMLSensitivity, Zygote, OrdinaryDiffEq, Test, Optimization, OptimizationOptimisers
+using SciMLSensitivity, OrdinaryDiffEq, Test, Optimization, OptimizationOptimisers
+using ADTypes
+
+# Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
+if VERSION >= v"1.12"
+    using Mooncake
+    const AD_BACKEND = AutoMooncake()
+    function compute_gradient(f, x, args...)
+        return Mooncake.value_and_gradient!!(
+            Mooncake.build_rrule(u -> f(u, args...), x), u -> f(u, args...), x)[2][2]
+    end
+else
+    using Zygote
+    const AD_BACKEND = AutoZygote()
+    function compute_gradient(f, x, args...)
+        return Zygote.gradient(f, x, args...)[1]
+    end
+end
 
 function lotka_volterra(du, u, p, t)
     x, y = u
@@ -21,8 +38,8 @@ prob = ODEProblem(lotka_volterra, u0, (0.0, 10.0), p)
     end
     loss(pu0, _) = sum(abs2, x .- 1 for x in predict(pu0))
 
-    grads = Zygote.gradient(loss, [p; u0], nothing)
-    @test !iszero(grads[1])
+    grads = compute_gradient(loss, [p; u0], nothing)
+    @test !iszero(grads)
 
     cb = function (p, l)
         @info sensealg loss = l
@@ -33,7 +50,7 @@ prob = ODEProblem(lotka_volterra, u0, (0.0, 10.0), p)
     @show l1
     res = solve(
         OptimizationProblem(
-            OptimizationFunction(loss, AutoZygote()),
+            OptimizationFunction(loss, AD_BACKEND),
             [p; u0]
         ),
         Adam(0.1); callback = cb, maxiters = 100

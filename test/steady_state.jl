@@ -1,7 +1,24 @@
 using Test, LinearAlgebra
-using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve, Enzyme
-using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Zygote, Random
+using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
+using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Random
 Random.seed!(12345)
+
+# Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
+# Enzyme also has issues on Julia 1.12+
+if VERSION >= v"1.12"
+    using Mooncake
+    function compute_gradient(f, x)
+        return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+    end
+    const ENZYME_AVAILABLE = false
+else
+    using Zygote
+    using Enzyme
+    function compute_gradient(f, x)
+        return compute_gradient(f, x)[1]
+    end
+    const ENZYME_AVAILABLE = true
+end
 
 @testset "Adjoint sensitivities of steady state solver" begin
     function f!(du, u, p, t)
@@ -361,7 +378,7 @@ end
             sensealg = SteadyStateAdjoint(), g = g2
         )
 
-        dp1 = Zygote.gradient(
+        dp1 = compute_gradient(
             p -> sum(
                 solve(
                     prob, DynamicSS(Rodas5()), u0 = u0, p = p,
@@ -370,7 +387,7 @@ end
             ),
             p
         )
-        dp2 = Zygote.gradient(
+        dp2 = compute_gradient(
             p -> sum(
                 (
                     2.0 .-
@@ -383,11 +400,11 @@ end
             p
         )
 
-        dp1d = Zygote.gradient(
+        dp1d = compute_gradient(
             p -> sum(solve(prob, DynamicSS(Rodas5()), u0 = u0, p = p)),
             p
         )
-        dp2d = Zygote.gradient(
+        dp2d = compute_gradient(
             p -> sum(
                 (
                     2.0 .-
@@ -408,7 +425,7 @@ end
         @test res1 ≈ dp1d[1] rtol = 1.0e-12
         @test res2 ≈ dp2d[1] rtol = 1.0e-12
 
-        res1 = Zygote.gradient(
+        res1 = compute_gradient(
             p -> sum(
                 Array(
                     solve(
@@ -419,7 +436,7 @@ end
             ),
             p
         )
-        dp1 = Zygote.gradient(
+        dp1 = compute_gradient(
             p -> sum(
                 solve(
                     prob, DynamicSS(Rodas5()), u0 = u0, p = p,
@@ -429,7 +446,7 @@ end
             ),
             p
         )
-        dp2 = Zygote.gradient(
+        dp2 = compute_gradient(
             p -> solve(
                 prob, DynamicSS(Rodas5()), u0 = u0, p = p,
                 save_idxs = 1, sensealg = SteadyStateAdjoint()
@@ -437,7 +454,7 @@ end
             p
         )
 
-        dp1d = Zygote.gradient(
+        dp1d = compute_gradient(
             p -> sum(
                 solve(
                     prob, DynamicSS(Rodas5()), u0 = u0, p = p,
@@ -445,7 +462,7 @@ end
                 )
             ), p
         )
-        dp2d = Zygote.gradient(
+        dp2d = compute_gradient(
             p -> solve(
                 prob, DynamicSS(Rodas5()), u0 = u0, p = p,
                 save_idxs = 1
@@ -475,7 +492,7 @@ end
             sensealg = SteadyStateAdjoint(), g = g2
         )
 
-        dp1oop = Zygote.gradient(
+        dp1oop = compute_gradient(
             p -> sum(
                 solve(
                     proboop, DynamicSS(Rodas5()), u0 = u0,
@@ -484,7 +501,7 @@ end
             ),
             p
         )
-        dp2oop = Zygote.gradient(
+        dp2oop = compute_gradient(
             p -> sum(
                 (
                     2.0 .-
@@ -497,7 +514,7 @@ end
             ) / 2.0,
             p
         )
-        dp1oopd = Zygote.gradient(
+        dp1oopd = compute_gradient(
             p -> sum(
                 solve(
                     proboop, DynamicSS(Rodas5()), u0 = u0,
@@ -505,7 +522,7 @@ end
                 )
             ), p
         )
-        dp2oopd = Zygote.gradient(
+        dp2oopd = compute_gradient(
             p -> sum(
                 (
                     2.0 .-
@@ -523,7 +540,7 @@ end
         @test res1oop ≈ dp1oopd[1] rtol = 1.0e-8
         @test res2oop ≈ dp2oopd[1] rtol = 1.0e-8
 
-        res1oop = Zygote.gradient(
+        res1oop = compute_gradient(
             p -> sum(
                 Array(
                     solve(
@@ -535,7 +552,7 @@ end
             ),
             p
         )
-        dp1oop = Zygote.gradient(
+        dp1oop = compute_gradient(
             p -> sum(
                 solve(
                     proboop, DynamicSS(Rodas5()), u0 = u0,
@@ -545,14 +562,14 @@ end
             ),
             p
         )
-        dp2oop = Zygote.gradient(
+        dp2oop = compute_gradient(
             p -> solve(
                 proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
                 save_idxs = 1, sensealg = SteadyStateAdjoint()
             )[1],
             p
         )
-        dp1oopd = Zygote.gradient(
+        dp1oopd = compute_gradient(
             p -> sum(
                 solve(
                     proboop, DynamicSS(Rodas5()), u0 = u0,
@@ -561,7 +578,7 @@ end
             ),
             p
         )
-        dp2oopd = Zygote.gradient(
+        dp2oopd = compute_gradient(
             p -> solve(
                 proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
                 save_idxs = 1
@@ -610,42 +627,37 @@ end
     test_loss(p, prob4, DynamicSS(Rodas5()))
     test_loss(p, prob2, SimpleNewtonRaphson())
 
-    function enzyme_gradient(p, prob, alg)
-        dp = Enzyme.make_zero(p)
-        dprob = Enzyme.make_zero(prob)
-        Enzyme.autodiff(
-            Reverse, test_loss, Active, Duplicated(p, dp),
-            Duplicated(prob, dprob), Const(alg)
-        )
-        return dp
+    dp1 = compute_gradient(p -> test_loss(p, prob, NewtonRaphson()), p)[1]
+    dp2 = compute_gradient(p -> test_loss(p, prob2, NewtonRaphson()), p)[1]
+    dp3 = compute_gradient(p -> test_loss(p, prob3, DynamicSS(Rodas5())), p)[1]
+    dp4 = compute_gradient(p -> test_loss(p, prob4, DynamicSS(Rodas5())), p)[1]
+    dp5 = compute_gradient(p -> test_loss(p, prob2, SimpleNewtonRaphson()), p)[1]
+    dp6 = compute_gradient(p -> test_loss(p, prob2, Klement()), p)[1]
+    dp7 = compute_gradient(p -> test_loss(p, prob2, SimpleTrustRegion()), p)[1]
+    dp8 = compute_gradient(p -> test_loss(p, prob2, NLsolveJL()), p)[1]
+    dp9 = compute_gradient(p -> test_loss(p, prob, TrustRegion()), p)[1]
+
+    # Enzyme tests - only run on Julia <= 1.11 (Enzyme has issues on 1.12+)
+    # See: https://github.com/EnzymeAD/Enzyme.jl/issues/2699
+    if ENZYME_AVAILABLE
+        function enzyme_gradient(p, prob, alg)
+            dp = Enzyme.make_zero(p)
+            dprob = Enzyme.make_zero(prob)
+            Enzyme.autodiff(
+                Reverse, test_loss, Active, Duplicated(p, dp),
+                Duplicated(prob, dprob), Const(alg)
+            )
+            return dp
+        end
+        dp1_enzyme = enzyme_gradient(p, prob, NewtonRaphson())
+        @test dp1 ≈ dp1_enzyme rtol = 1.0e-10
+        dp2_enzyme = enzyme_gradient(p, prob2, NewtonRaphson())
+        @test dp2 ≈ dp2_enzyme rtol = 1.0e-10
+        dp6_enzyme = enzyme_gradient(p, prob2, Klement())
+        @test dp6 ≈ dp6_enzyme rtol = 1.0e-10
+        dp9_enzyme = enzyme_gradient(p, prob, TrustRegion())
+        @test dp9 ≈ dp9_enzyme rtol = 1.0e-10
     end
-    dp1 = Zygote.gradient(p -> test_loss(p, prob, NewtonRaphson()), p)[1]
-    dp1_enzyme = enzyme_gradient(p, prob, NewtonRaphson())
-    @test dp1 ≈ dp1_enzyme rtol = 1.0e-10
-    dp2 = Zygote.gradient(p -> test_loss(p, prob2, NewtonRaphson()), p)[1]
-    dp2_enzyme = enzyme_gradient(p, prob2, NewtonRaphson())
-    @test dp2 ≈ dp2_enzyme rtol = 1.0e-10
-    dp3 = Zygote.gradient(p -> test_loss(p, prob3, DynamicSS(Rodas5())), p)[1]
-    #dp3_enzyme = enzyme_gradient(p, prob3, DynamicSS(Rodas5()))
-    #@test dp3≈dp3_enzyme rtol=1e-10
-    dp4 = Zygote.gradient(p -> test_loss(p, prob4, DynamicSS(Rodas5())), p)[1]
-    #dp4_enzyme = enzyme_gradient(p, prob4, DynamicSS(Rodas5()))
-    #@test dp4≈dp4_enzyme rtol=1e-10
-    dp5 = Zygote.gradient(p -> test_loss(p, prob2, SimpleNewtonRaphson()), p)[1]
-    #dp5_enzyme = enzyme_gradient(p, prob2, SimpleNewtonRaphson())
-    #@test dp5≈dp5_enzyme rtol=1e-10
-    dp6 = Zygote.gradient(p -> test_loss(p, prob2, Klement()), p)[1]
-    dp6_enzyme = enzyme_gradient(p, prob2, Klement())
-    @test dp6 ≈ dp6_enzyme rtol = 1.0e-10
-    dp7 = Zygote.gradient(p -> test_loss(p, prob2, SimpleTrustRegion()), p)[1]
-    #dp7_enzyme = enzyme_gradient(p, prob2, SimpleTrustRegion())
-    #@test dp7≈dp7_enzyme rtol=1e-10
-    dp8 = Zygote.gradient(p -> test_loss(p, prob2, NLsolveJL()), p)[1]
-    #dp8_enzyme = enzyme_gradient(p, prob2, NLsolveJL())
-    #@test dp8≈dp8_enzyme rtol=1e-10
-    dp9 = Zygote.gradient(p -> test_loss(p, prob, TrustRegion()), p)[1]
-    dp9_enzyme = enzyme_gradient(p, prob, TrustRegion())
-    @test dp9 ≈ dp9_enzyme rtol = 1.0e-10
 
     function test_loss2(p, prob, alg)
         _prob = remake(prob, p = p)
@@ -656,8 +668,8 @@ end
         return sol.u[1]
     end
 
-    dp10 = Zygote.gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
-    dp11 = Zygote.gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
+    dp10 = compute_gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
+    dp11 = compute_gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
     dp12 = ForwardDiff.gradient(p -> test_loss2(p, prob6, Broyden()), p)
 
     @test dp1 ≈ dp2 rtol = 1.0e-10
@@ -679,34 +691,41 @@ end
     prob = NonlinearProblem((u, p) -> u .- p[1] .+ p[2], u0, p)
     solve1 = solve(remake(prob, p = p), NewtonRaphson())
 
+    # Use MooncakeVJP on Julia 1.12+, ZygoteVJP on older versions
+    autojacvec_large = VERSION >= v"1.12" ? MooncakeVJP() : ZygoteVJP()
+
     function test_loss2(p, prob, alg)
         _prob = remake(prob, p = p)
         sol = sum(
             solve(
                 _prob, alg,
-                sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP())
+                sensealg = SteadyStateAdjoint(autojacvec = autojacvec_large)
             )
         )
         return sol
     end
-    function enzyme_gradient2(p, prob, alg)
-        dp = Enzyme.make_zero(p)
-        dprob = Enzyme.make_zero(prob)
-        Enzyme.autodiff(
-            Reverse, test_loss2, Active, Duplicated(p, dp),
-            Duplicated(prob, dprob), Const(alg)
-        )
-        return dp
-    end
 
     test_loss2(p, prob, NewtonRaphson())
 
-    dp1 = Zygote.gradient(p -> test_loss2(p, prob, NewtonRaphson()), p)[1]
-    dp1_enzyme = enzyme_gradient2(p, prob, NewtonRaphson())
+    dp1 = compute_gradient(p -> test_loss2(p, prob, NewtonRaphson()), p)[1]
     @test dp1[1] ≈ 128
-    @test dp1_enzyme[1] ≈ 128
     @test dp1[2] ≈ -128
-    @test dp1_enzyme[2] ≈ -128
+
+    # Enzyme tests - only run on Julia <= 1.11
+    if ENZYME_AVAILABLE
+        function enzyme_gradient2(p, prob, alg)
+            dp = Enzyme.make_zero(p)
+            dprob = Enzyme.make_zero(prob)
+            Enzyme.autodiff(
+                Reverse, test_loss2, Active, Duplicated(p, dp),
+                Duplicated(prob, dprob), Const(alg)
+            )
+            return dp
+        end
+        dp1_enzyme = enzyme_gradient2(p, prob, NewtonRaphson())
+        @test dp1_enzyme[1] ≈ 128
+        @test dp1_enzyme[2] ≈ -128
+    end
 end
 
 @testset "Continuous sensitivity tools" begin
@@ -757,7 +776,7 @@ end
 
         # save_start = false, save_everystep=false
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(
                 u0, p,
                 sensealg = ForwardDiffSensitivity()
@@ -767,7 +786,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
             u0,
             p
@@ -775,7 +794,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(
                 u0, p,
                 sensealg = InterpolatingAdjoint()
@@ -787,7 +806,7 @@ end
 
         # save_start = true, save_everystep=false
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(
                 u0, p,
                 sensealg = ForwardDiffSensitivity(),
@@ -798,7 +817,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(
                 u0, p, sensealg = BacksolveAdjoint(),
                 save_start = true
@@ -807,7 +826,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss(
                 u0, p,
                 sensealg = InterpolatingAdjoint(),
@@ -820,7 +839,7 @@ end
 
         # save_start = true, save_everystep=true
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (
                 u0,
                 p,
@@ -836,7 +855,7 @@ end
         @test dp ≈ Zdp atol = 1.0e-4
 
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (
                 u0,
                 p,
@@ -850,7 +869,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (
                 u0,
                 p,
@@ -866,7 +885,7 @@ end
         @test dp ≈ Zdp atol = 1.0e-4
         # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (
                 u0,
                 p,
@@ -897,7 +916,7 @@ end
 
         # saveat::Number
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss2(
                 u0, p,
                 sensealg = ForwardDiffSensitivity()
@@ -907,7 +926,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
             u0,
             p
@@ -915,7 +934,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss2(
                 u0, p,
                 sensealg = InterpolatingAdjoint()
@@ -925,7 +944,7 @@ end
         @test du0 ≈ Zdu0 atol = 1.0e-4
         @test dp ≈ Zdp atol = 1.0e-4
         Zdu0,
-            Zdp = Zygote.gradient(
+            Zdp = compute_gradient(
             (u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
             u0, p
         )

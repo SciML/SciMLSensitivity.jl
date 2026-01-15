@@ -1,4 +1,17 @@
-using SciMLSensitivity, Zygote, StochasticDiffEq, Test
+using SciMLSensitivity, StochasticDiffEq, Test
+
+# Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
+if VERSION >= v"1.12"
+    using Mooncake
+    function compute_gradient(f, x)
+        return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+    end
+else
+    using Zygote
+    function compute_gradient(f, x)
+        return Zygote.gradient(f, x)[1]
+    end
+end
 
 function lotka_volterra(du, u, p, t)
     x, y = u
@@ -42,18 +55,18 @@ end
 loss_fd_sde(p) = sum(abs2, x - 1 for x in predict_fd_sde(p))
 loss_fd_sde(p)
 
-@test !iszero(Zygote.gradient(loss_fd_sde, p)[1])
+@test !iszero(compute_gradient(loss_fd_sde, p))
 
 prob = SDEProblem(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 0.5))
 function predict_rd_sde(p)
     return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = TrackerAdjoint())[1, :]
 end
 loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(p))
-@test !iszero(Zygote.gradient(loss_rd_sde, p)[1])
+@test !iszero(compute_gradient(loss_rd_sde, p))
 
 prob = SDEProblem{false}(lotka_volterra, lotka_volterra_noise, [1.0, 1.0], (0.0, 0.5))
 function predict_rd_sde(p)
     return solve(prob, SOSRI(), p = p, saveat = 0.0:0.1:0.5, sensealg = TrackerAdjoint())[1, :]
 end
 loss_rd_sde(p) = sum(abs2, x - 1 for x in predict_rd_sde(p))
-@test !iszero(Zygote.gradient(loss_rd_sde, p)[1])
+@test !iszero(compute_gradient(loss_rd_sde, p))

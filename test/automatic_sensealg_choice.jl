@@ -1,5 +1,10 @@
-using Lux, ComponentArrays, OrdinaryDiffEq, SciMLSensitivity, Zygote, Random, Test
+using Lux, ComponentArrays, OrdinaryDiffEq, SciMLSensitivity, Random, Test
 using SciMLStructures
+
+# Only import Zygote on Julia <= 1.11
+if VERSION <= v"1.11"
+    using Zygote
+end
 
 rng = Random.default_rng()
 tspan = (0.0f0, 8.0f0)
@@ -21,4 +26,13 @@ ts = Float32.(collect(0.0:0.01:tspan[2]))
 prob = ODEProblem(dxdt_, x0, tspan, θ)
 _, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 sensealg = SciMLSensitivity.automatic_sensealg_choice(prob, x0, θ, true, repack)
-@test sensealg isa GaussAdjoint && sensealg.autojacvec isa EnzymeVJP
+
+# On Julia 1.12+, Enzyme is not yet fully supported, so the automatic choice
+# will fall back to a different VJP. Mark this as broken until Enzyme v1.12 support lands.
+# See: https://github.com/EnzymeAD/Enzyme.jl/issues/2699
+if VERSION >= v"1.12"
+    @test sensealg isa GaussAdjoint
+    @test_broken sensealg.autojacvec isa EnzymeVJP
+else
+    @test sensealg isa GaussAdjoint && sensealg.autojacvec isa EnzymeVJP
+end

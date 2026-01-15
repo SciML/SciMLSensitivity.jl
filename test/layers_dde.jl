@@ -1,4 +1,17 @@
-using SciMLSensitivity, Zygote, DelayDiffEq, Test
+using SciMLSensitivity, DelayDiffEq, Test
+
+# Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
+if VERSION >= v"1.12"
+    using Mooncake
+    function compute_gradient(f, x)
+        return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+    end
+else
+    using Zygote
+    function compute_gradient(f, x)
+        return Zygote.gradient(f, x)[1]
+    end
+end
 
 ## Setup DDE to optimize
 function delay_lotka_volterra(du, u, h, p, t)
@@ -18,7 +31,7 @@ function predict_fd_dde(p)
 end
 loss_fd_dde(p) = sum(abs2, x - 1 for x in predict_fd_dde(p))
 loss_fd_dde(p)
-@test !iszero(Zygote.gradient(loss_fd_dde, p)[1])
+@test !iszero(compute_gradient(loss_fd_dde, p))
 
 function predict_rd_dde(p)
     return solve(
@@ -31,6 +44,6 @@ function predict_rd_dde(p)
 end
 loss_rd_dde(p) = sum(abs2, x - 1 for x in predict_rd_dde(p))
 loss_rd_dde(p)
-@test !iszero(Zygote.gradient(loss_rd_dde, p)[1])
+@test !iszero(compute_gradient(loss_rd_dde, p))
 
-@test Zygote.gradient(loss_fd_dde, p)[1] ≈ Zygote.gradient(loss_rd_dde, p)[1] rtol = 1.0e-2
+@test compute_gradient(loss_fd_dde, p) ≈ compute_gradient(loss_rd_dde, p) rtol = 1.0e-2
