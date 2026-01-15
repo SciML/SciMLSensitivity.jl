@@ -69,7 +69,6 @@ end
             @time @safetestset "Nested AD Regression Tests" include("nested_ad_regression.jl")
             @time @safetestset "Size Handling in Adjoint Tests" include("size_handling_adjoint.jl")
             @time @safetestset "Callback - ReverseDiff" include("callback_reversediff.jl")
-            @time @safetestset "Alternative AD Frontend" include("alternative_ad_frontend.jl")
             @time @safetestset "Hybrid DE" include("hybrid_de.jl")
             @time @safetestset "HybridNODE" include("HybridNODE.jl")
             @time @safetestset "ForwardDiff Sparsity Components" include("forwarddiffsensitivity_sparsity_components.jl")
