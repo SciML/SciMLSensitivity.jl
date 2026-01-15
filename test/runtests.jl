@@ -109,7 +109,7 @@ end
         end
     end
 
-    if GROUP == "All" || GROUP == "QA"
+    if GROUP == "QA"
         @time @safetestset "Quality Assurance" include("aqua.jl")
     end
 
