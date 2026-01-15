@@ -1,4 +1,14 @@
-using SciMLSensitivity, OrdinaryDiffEq, Optimization, OptimizationOptimisers, Test, Zygote
+using SciMLSensitivity, OrdinaryDiffEq, Optimization, OptimizationOptimisers, Test
+using ADTypes
+
+# Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
+if VERSION >= v"1.12"
+    using Mooncake
+    const AD_BACKEND = AutoMooncake()
+else
+    using Zygote
+    const AD_BACKEND = AutoZygote()
+end
 
 @testset "$(i): EnsembleAlg = $(alg)" for (i, alg) in enumerate(
         (
@@ -33,7 +43,7 @@ using SciMLSensitivity, OrdinaryDiffEq, Optimization, OptimizationOptimisers, Te
     @show l1
     res = solve(
         OptimizationProblem(
-            OptimizationFunction(loss, AutoZygote()),
+            OptimizationFunction(loss, AD_BACKEND),
             [1.0, 3.0]
         ),
         Adam(0.1); callback = cb, maxiters = 10
