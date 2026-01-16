@@ -527,119 +527,123 @@ end
         @test res1[1] ≈ dp2d[1] rtol = 1.0e-10
     end
 
-    @testset "oop" begin
-        function f(u, p, t)
-            dx = p[1] + p[2] * u[1]
-            dy = p[3] * u[1] + p[4] * u[2]
-            [dx, dy]
-        end
-        proboop = SteadyStateProblem(f, u0, p)
+    # oop tests use compute_gradient which on Julia 1.12+ uses Mooncake
+    # Mooncake has issues differentiating through NonlinearSolution types from SteadyStateDiffEq
+    if VERSION < v"1.12"
+        @testset "oop" begin
+            function f(u, p, t)
+                dx = p[1] + p[2] * u[1]
+                dy = p[3] * u[1] + p[4] * u[2]
+                [dx, dy]
+            end
+            proboop = SteadyStateProblem(f, u0, p)
 
-        soloop = solve(proboop, DynamicSS(Rodas5()))
-        res1oop = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g1
-        )
-        res2oop = adjoint_sensitivities(
-            soloop, DynamicSS(Rodas5()),
-            sensealg = SteadyStateAdjoint(), g = g2
-        )
+            soloop = solve(proboop, DynamicSS(Rodas5()))
+            res1oop = adjoint_sensitivities(
+                soloop, DynamicSS(Rodas5()),
+                sensealg = SteadyStateAdjoint(), g = g1
+            )
+            res2oop = adjoint_sensitivities(
+                soloop, DynamicSS(Rodas5()),
+                sensealg = SteadyStateAdjoint(), g = g2
+            )
 
-        dp1oop = compute_gradient(
-            p -> sum(
-                solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0,
-                    p = p, sensealg = SteadyStateAdjoint()
-                )
-            ),
-            p
-        )
-        dp2oop = compute_gradient(
-            p -> sum(
-                (
-                    2.0 .-
-                        solve(
+            dp1oop = compute_gradient(
+                p -> sum(
+                    solve(
                         proboop, DynamicSS(Rodas5()), u0 = u0,
                         p = p, sensealg = SteadyStateAdjoint()
                     )
-                ) .^
-                    2
-            ) / 2.0,
-            p
-        )
-        dp1oopd = compute_gradient(
-            p -> sum(
-                solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0,
-                    p = p
-                )
-            ), p
-        )
-        dp2oopd = compute_gradient(
-            p -> sum(
-                (
-                    2.0 .-
-                        solve(
+                ),
+                p
+            )
+            dp2oop = compute_gradient(
+                p -> sum(
+                    (
+                        2.0 .-
+                            solve(
+                            proboop, DynamicSS(Rodas5()), u0 = u0,
+                            p = p, sensealg = SteadyStateAdjoint()
+                        )
+                    ) .^
+                        2
+                ) / 2.0,
+                p
+            )
+            dp1oopd = compute_gradient(
+                p -> sum(
+                    solve(
                         proboop, DynamicSS(Rodas5()), u0 = u0,
                         p = p
                     )
-                ) .^ 2
-            ) / 2.0,
-            p
-        )
+                ), p
+            )
+            dp2oopd = compute_gradient(
+                p -> sum(
+                    (
+                        2.0 .-
+                            solve(
+                            proboop, DynamicSS(Rodas5()), u0 = u0,
+                            p = p
+                        )
+                    ) .^ 2
+                ) / 2.0,
+                p
+            )
 
-        @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-12
-        @test res2oop[1] ≈ dp2oop[1] rtol = 1.0e-12
-        @test res1oop[1] ≈ dp1oopd[1] rtol = 1.0e-8
-        @test res2oop[1] ≈ dp2oopd[1] rtol = 1.0e-8
+            @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-12
+            @test res2oop[1] ≈ dp2oop[1] rtol = 1.0e-12
+            @test res1oop[1] ≈ dp1oopd[1] rtol = 1.0e-8
+            @test res2oop[1] ≈ dp2oopd[1] rtol = 1.0e-8
 
-        res1oop = compute_gradient(
-            p -> sum(
-                Array(
+            res1oop = compute_gradient(
+                p -> sum(
+                    Array(
+                        solve(
+                            proboop, DynamicSS(Rodas5()),
+                            u0 = u0, p = p,
+                            sensealg = SteadyStateAdjoint()
+                        )
+                    )[1]
+                ),
+                p
+            )
+            dp1oop = compute_gradient(
+                p -> sum(
                     solve(
-                        proboop, DynamicSS(Rodas5()),
-                        u0 = u0, p = p,
+                        proboop, DynamicSS(Rodas5()), u0 = u0,
+                        p = p, save_idxs = 1:1,
                         sensealg = SteadyStateAdjoint()
                     )
-                )[1]
-            ),
-            p
-        )
-        dp1oop = compute_gradient(
-            p -> sum(
-                solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0,
-                    p = p, save_idxs = 1:1,
-                    sensealg = SteadyStateAdjoint()
-                )
-            ),
-            p
-        )
-        dp2oop = compute_gradient(
-            p -> solve(
-                proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
-                save_idxs = 1, sensealg = SteadyStateAdjoint()
-            )[1],
-            p
-        )
-        dp1oopd = compute_gradient(
-            p -> sum(
-                solve(
-                    proboop, DynamicSS(Rodas5()), u0 = u0,
-                    p = p, save_idxs = 1:1
-                )
-            ),
-            p
-        )
-        dp2oopd = compute_gradient(
-            p -> solve(
-                proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
-                save_idxs = 1
-            )[1], p
-        )
-        @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-10
-        @test res1oop[1] ≈ dp2oop[1] rtol = 1.0e-10
-    end
+                ),
+                p
+            )
+            dp2oop = compute_gradient(
+                p -> solve(
+                    proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    save_idxs = 1, sensealg = SteadyStateAdjoint()
+                )[1],
+                p
+            )
+            dp1oopd = compute_gradient(
+                p -> sum(
+                    solve(
+                        proboop, DynamicSS(Rodas5()), u0 = u0,
+                        p = p, save_idxs = 1:1
+                    )
+                ),
+                p
+            )
+            dp2oopd = compute_gradient(
+                p -> solve(
+                    proboop, DynamicSS(Rodas5()), u0 = u0, p = p,
+                    save_idxs = 1
+                )[1], p
+            )
+            @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-10
+            @test res1oop[1] ≈ dp2oop[1] rtol = 1.0e-10
+        end
+    end  # VERSION < v"1.12"
 end
 
 @testset "NonlinearProblem" begin
