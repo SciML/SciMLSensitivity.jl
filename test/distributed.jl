@@ -1,4 +1,4 @@
-using Test
+using Test, Distributed
 
 # These tests require AD differentiation through distributed ensemble solves
 # Mooncake doesn't have the necessary rules yet, and Zygote has compatibility
@@ -9,7 +9,7 @@ if VERSION >= v"1.12"
         @test_skip false
     end
 else
-    using Distributed, Optimization, OptimizationOptimisers
+    using Optimization, OptimizationOptimisers
     using ADTypes
 
     addprocs(2)
