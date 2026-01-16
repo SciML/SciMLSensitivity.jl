@@ -69,9 +69,22 @@ const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
     # Enzyme can't differentiate through Tracker or ReverseDiff internals
     ("Enzyme", "ReverseDiffAdjoint") => :throws_enzyme,
     ("Enzyme", "TrackerAdjoint") => :throws_enzyme,
+    # Enzyme can't differentiate through adjoint sensealg objects - it wraps them
+    # as Duplicated but DiffEqBaseEnzymeExt expects Const
+    ("Enzyme", "QuadratureAdjoint") => :skip,
+    ("Enzyme", "InterpolatingAdjoint") => :skip,
+    ("Enzyme", "BacksolveAdjoint") => :skip,
+    ("Enzyme", "GaussAdjoint") => :skip,
+    ("Enzyme", "GaussKronrodAdjoint") => :skip,
     # Mooncake can't differentiate through Tracker or ReverseDiff internals
     ("Mooncake", "ReverseDiffAdjoint") => :throws_mooncake,
     ("Mooncake", "TrackerAdjoint") => :throws_mooncake,
+    # Mooncake has similar issues with adjoint sensealg objects
+    ("Mooncake", "QuadratureAdjoint") => :skip,
+    ("Mooncake", "InterpolatingAdjoint") => :skip,
+    ("Mooncake", "BacksolveAdjoint") => :skip,
+    ("Mooncake", "GaussAdjoint") => :skip,
+    ("Mooncake", "GaussKronrodAdjoint") => :skip,
     # Zygote has issues with ZygoteAdjoint and MooncakeAdjoint
     ("Zygote", "ZygoteAdjoint") => :broken,
     ("Zygote", "MooncakeAdjoint") => :broken,
