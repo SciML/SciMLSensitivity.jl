@@ -150,19 +150,19 @@ u0 = [1.0; 1.0]
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
-sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
+sol = solve(prob, Tsit5(), abstol = 1.0e-10, reltol = 1.0e-10)
 @test sol isa ODESolution
 sumsol = sum(sol)
-@test sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14)) == sumsol
+@test sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10)) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
+        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = ForwardDiffSensitivity()
     )
 ) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
+        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = BacksolveAdjoint()
     )
 ) == sumsol
@@ -176,7 +176,7 @@ ForwardDiff is the most reliable reference for gradient computation.
 ref_loss_iip = u0p -> sum(
     solve(
         prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-        abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1
+        abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1
     )
 )
 u0p_iip = vcat(u0, p)
@@ -186,7 +186,7 @@ ref_grad_iip = ForwardDiff.gradient(ref_loss_iip, u0p_iip)
 ref_loss_oop = u0p -> sum(
     solve(
         proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-        abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1
+        abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1
     )
 )
 ref_grad_oop = ForwardDiff.gradient(ref_loss_oop, u0p_iip)
@@ -202,7 +202,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = QuadratureAdjoint()
             )
         )
@@ -213,7 +213,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = InterpolatingAdjoint()
             )
         )
@@ -224,7 +224,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = BacksolveAdjoint()
             )
         )
@@ -235,7 +235,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = TrackerAdjoint()
             )
         )
@@ -246,7 +246,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = ReverseDiffAdjoint()
             )
         )
@@ -257,7 +257,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = EnzymeAdjoint()
             )
         )
@@ -268,7 +268,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = GaussAdjoint()
             )
         )
@@ -279,7 +279,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = GaussKronrodAdjoint()
             )
         )
@@ -290,7 +290,7 @@ Main AD Backend × Sensealg Matrix Tests
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = ForwardDiffSensitivity()
             )
         )
@@ -307,7 +307,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = QuadratureAdjoint()
             )
         )
@@ -318,7 +318,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = InterpolatingAdjoint()
             )
         )
@@ -329,7 +329,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = BacksolveAdjoint()
             )
         )
@@ -340,7 +340,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = TrackerAdjoint()
             )
         )
@@ -351,7 +351,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = ReverseDiffAdjoint()
             )
         )
@@ -362,7 +362,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = EnzymeAdjoint()
             )
         )
@@ -373,7 +373,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = GaussAdjoint()
             )
         )
@@ -384,7 +384,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = GaussKronrodAdjoint()
             )
         )
@@ -395,7 +395,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = ForwardDiffSensitivity()
             )
         )
@@ -419,7 +419,7 @@ Tests callable structs with different AD backends
     end
     function (f::senseloss0)(u0p)
         prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
-        return sum(solve(prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12, saveat = 0.1))
+        return sum(solve(prob, Tsit5(), abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1))
     end
 
     u0p = [2.0, 3.0]
@@ -532,7 +532,7 @@ Additional Tests: save_idxs, save_everystep, etc.
         Array(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
                 sensealg = InterpolatingAdjoint()
             )
         )[1, :]
@@ -549,7 +549,7 @@ Additional Tests: save_idxs, save_everystep, etc.
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1, save_idxs = 1:1,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1, save_idxs = 1:1,
                 sensealg = InterpolatingAdjoint()
             )
         )
@@ -562,7 +562,7 @@ end
     ref_loss_end = u0p -> sum(
         solve(
             prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-            abstol = 1.0e-14, reltol = 1.0e-14,
+            abstol = 1.0e-10, reltol = 1.0e-10,
             save_everystep = false, save_start = false,
             sensealg = InterpolatingAdjoint()
         )
@@ -579,7 +579,7 @@ end
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14,
+                abstol = 1.0e-10, reltol = 1.0e-10,
                 save_everystep = false, save_start = false,
                 sensealg = InterpolatingAdjoint()
             )
@@ -594,7 +594,7 @@ end
     ref_loss_saveat = u0p -> sum(
         solve(
             proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-            abstol = 1.0e-14, reltol = 1.0e-14, saveat = 2.3,
+            abstol = 1.0e-10, reltol = 1.0e-10, saveat = 2.3,
             sensealg = ReverseDiffAdjoint()
         )
     )
@@ -610,7 +610,7 @@ end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
-                abstol = 1.0e-14, reltol = 1.0e-14, saveat = 2.3,
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 2.3,
                 sensealg = InterpolatingAdjoint()
             )
         )
@@ -624,7 +624,7 @@ end
         last(
             solve(
                 prob, Tsit5(), p = p, saveat = 10.0,
-                abstol = 1.0e-14, reltol = 1.0e-14
+                abstol = 1.0e-10, reltol = 1.0e-10
             )
         )
     )
