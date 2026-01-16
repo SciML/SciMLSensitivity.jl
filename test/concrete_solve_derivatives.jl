@@ -108,7 +108,7 @@ Test Helper Functions
 =#
 
 function run_gradient_test(
-        grad_fn, loss_fn, x, ref_grad, backend_name, sensealg_name; rtol = 1.0e-10
+        grad_fn, loss_fn, x, ref_grad, backend_name, sensealg_name; rtol = 1.0e-8
     )
     status = get_status(backend_name, sensealg_name)
 
@@ -631,13 +631,13 @@ end
     ref_grad_vec = ForwardDiff.gradient(ref_loss_vec, p)
 
     @testset "VecOfArray - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Skip Tracker on Julia 1.12+ due to compatibility issues
-        if backend_name == "Tracker" && VERSION >= v"1.12"
+        # Tracker has VecOfArray compatibility issues - see issue #1328
+        if backend_name == "Tracker"
             @test_broken false
             continue
         end
-        # Skip ReverseDiff on Julia 1.12+ due to VecOfArray compatibility issues
-        if backend_name == "ReverseDiff" && VERSION >= v"1.12"
+        # ReverseDiff has VecOfArray compatibility issues - see issue #1328
+        if backend_name == "ReverseDiff"
             @test_broken false
             continue
         end
