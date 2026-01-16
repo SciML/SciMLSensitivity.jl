@@ -1,4 +1,12 @@
 using Test
+using ModelingToolkit, OrdinaryDiffEq
+using ModelingToolkitStandardLibrary.Electrical
+using ModelingToolkitStandardLibrary.Blocks: Sine
+using NonlinearSolve
+import SciMLStructures as SS
+import SciMLSensitivity
+using SymbolicIndexingInterface
+import ModelingToolkit as MTK
 
 # These tests use Zygote and MTK extensively
 # and are skipped on Julia 1.12+ due to Zygote compatibility issues
@@ -8,14 +16,6 @@ if VERSION >= v"1.12"
         @test_skip false
     end
 else
-    using ModelingToolkit, OrdinaryDiffEq
-    using ModelingToolkitStandardLibrary.Electrical
-    using ModelingToolkitStandardLibrary.Blocks: Sine
-    using NonlinearSolve
-    import SciMLStructures as SS
-    import SciMLSensitivity
-    using SymbolicIndexingInterface
-    import ModelingToolkit as MTK
     using Zygote
 
     function create_model(; C₁ = 3.0e-5, C₂ = 1.0e-6)
