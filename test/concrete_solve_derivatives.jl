@@ -743,7 +743,10 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
             prob_ball; p = p, alg = solver_ball, saveat = tData,
             sensealg = ReverseDiffAdjoint(), abstol = 1.0e-10, reltol = 1.0e-10
         )
-        if !isa(solution, ReverseDiff.TrackedArray) && !isa(solution, Array)
+        # Check if solution is an ODESolution with .u field vs a tracked/plain array
+        if !isa(solution, ReverseDiff.TrackedArray) &&
+                !isa(solution, Tracker.TrackedArray) &&
+                !isa(solution, Array)
             return sum(abs.(collect(u[1] for u in solution.u)))
         else
             return sum(abs.(solution[1, :]))
