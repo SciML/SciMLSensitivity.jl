@@ -1554,6 +1554,7 @@ function get_autodiff_from_vjp(::ReverseDiffVJP{compile}) where {compile}
 end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
+get_autodiff_from_vjp(::MooncakeVJP) = AutoMooncake()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
 get_autodiff_from_vjp(::Nothing) = AutoZygote()
 get_autodiff_from_vjp(b::Bool) = ifelse(b, AutoForwardDiff(), AutoFiniteDiff())

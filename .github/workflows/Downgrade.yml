@@ -12,6 +12,8 @@ on:
       - 'docs/**'
 jobs:
   test:
+    # Temporarily disabled - see https://github.com/SciML/SciMLSensitivity.jl/issues/1326
+    if: false
     runs-on: ubuntu-latest
     strategy:
       matrix:

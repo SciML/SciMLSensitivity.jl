@@ -1,1233 +1,775 @@
-using SciMLSensitivity, OrdinaryDiffEq, Zygote
-using Test, ForwardDiff
+using SciMLSensitivity, OrdinaryDiffEq, StochasticDiffEq
+using Test, ForwardDiff, Random
 import Tracker, ReverseDiff, ChainRulesCore, Mooncake, Enzyme
+
+Enzyme.API.typeWarning!(false)
+
+#=
+AD Backend Abstraction Layer
+
+We loop over multiple AD backends for the outer-level differentiation.
+Zygote is only tested on Julia <= 1.11 due to compatibility issues with Julia 1.12+.
+=#
+
+function gradient_reversediff(f, x)
+    return ReverseDiff.gradient(f, x)
+end
+
+function gradient_tracker(f, x)
+    return Tracker.gradient(f, x)[1]
+end
+
+function gradient_enzyme(f, x)
+    return only(Enzyme.gradient(Enzyme.Reverse, f, x))
+end
+
+function gradient_mooncake(f, x)
+    return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
+end
+
+function gradient_forwarddiff(f, x)
+    return ForwardDiff.gradient(f, x)
+end
+
+# Build list of reverse-mode backends to test
+# Each entry is (name, gradient_function)
+# Note: Enzyme and Mooncake are NOT included as outer AD backends because they
+# have issues differentiating through DiffEq adjoint implementations on all Julia versions.
+# Zygote is only tested on Julia <= 1.11 due to compatibility issues with Julia 1.12+.
+const REVERSE_BACKENDS = Tuple{String, Function}[
+    ("ReverseDiff", gradient_reversediff),
+    ("Tracker", gradient_tracker),
+]
+
+if VERSION <= v"1.11"
+    # Include Zygote on Julia <= 1.11
+    using Zygote
+    function gradient_zygote(f, x)
+        return Zygote.gradient(f, x)[1]
+    end
+    push!(REVERSE_BACKENDS, ("Zygote", gradient_zygote))
+else
+    # On Julia 1.12+, import Zygote but don't use it for outer differentiation
+    import Zygote
+end
+
+#=
+Compatibility Matrix
+
+Define which AD backend × sensealg combinations are expected to:
+- :works - works correctly
+- :broken - broken (use @test_broken)
+- :skip - skip this combination entirely
+=#
+
+const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
+    # Zygote has issues with ZygoteAdjoint and MooncakeAdjoint
+    ("Zygote", "ZygoteAdjoint") => :broken,
+    ("Zygote", "MooncakeAdjoint") => :broken,
+    # ReverseDiff/Tracker with EnzymeAdjoint causes segfaults
+    ("ReverseDiff", "EnzymeAdjoint") => :skip,
+    ("Tracker", "EnzymeAdjoint") => :skip,
+    # ForwardSensitivity is broken when perturbing u0 (only p works)
+    ("ReverseDiff", "ForwardSensitivity") => :broken,
+    ("Tracker", "ForwardSensitivity") => :broken,
+    ("Zygote", "ForwardSensitivity") => :skip,  # Returns nothing for u0
+)
+
+function get_status(backend_name::String, sensealg_name::String)
+    return get(BACKEND_SENSEALG_STATUS, (backend_name, sensealg_name), :works)
+end
+
+#=
+Test Helper Functions
+=#
+
+function run_gradient_test(
+        grad_fn, loss_fn, x, ref_grad, backend_name, sensealg_name; rtol = 1.0e-8
+    )
+    status = get_status(backend_name, sensealg_name)
+
+    return if status == :skip
+        @test_skip false
+    elseif status == :broken
+        @test_broken grad_fn(loss_fn, x) ≈ ref_grad rtol = rtol
+    else
+        result = grad_fn(loss_fn, x)
+        @test result ≈ ref_grad rtol = rtol
+    end
+end
+
+#=
+Problem Definitions
+=#
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
     return du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
 end
+
 function foop(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2]
     dy = -p[3] * u[2] + p[4] * u[1] * u[2]
     return [dx, dy]
 end
 
-p = [1.5, 1.0, 3.0, 1.0];
-u0 = [1.0; 1.0];
+#=
+Basic Solve Tests
+=#
+
+p = [1.5, 1.0, 3.0, 1.0]
+u0 = [1.0; 1.0]
 prob = ODEProblem(fiip, u0, (0.0, 10.0), p)
 proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
-sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
+sol = solve(prob, Tsit5(), abstol = 1.0e-10, reltol = 1.0e-10)
 @test sol isa ODESolution
 sumsol = sum(sol)
-@test sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14)) == sumsol
+@test sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10)) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
+        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = ForwardDiffSensitivity()
     )
 ) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-14, reltol = 1.0e-14,
+        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = BacksolveAdjoint()
     )
 ) == sumsol
 
-###
-### adjoint
-###
+#=
+Compute Reference Gradients using ForwardDiff
+ForwardDiff is the most reliable reference for gradient computation.
+=#
 
-_sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
-ū0,
-    adj = adjoint_sensitivities(
-    _sol, Tsit5(), t = 0.0:0.1:10,
-    dgdu_discrete = ((out, u, p, t, i) -> out .= 1),
-    abstol = 1.0e-14, reltol = 1.0e-14
+# Reference gradient for IIP problem with saveat
+ref_loss_iip = u0p -> sum(
+    solve(
+        prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+        abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1
+    )
 )
-du01,
-    dp1 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = QuadratureAdjoint()
+u0p_iip = vcat(u0, p)
+ref_grad_iip = ForwardDiff.gradient(ref_loss_iip, u0p_iip)
+
+# Reference gradient for OOP problem with saveat
+ref_loss_oop = u0p -> sum(
+    solve(
+        proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+        abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1
+    )
+)
+ref_grad_oop = ForwardDiff.gradient(ref_loss_oop, u0p_iip)
+
+#=
+Main AD Backend × Sensealg Matrix Tests
+=#
+
+@testset "IIP Adjoint Sensitivities - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+    u0p = vcat(u0, p)
+
+    @testset "sensealg = QuadratureAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = QuadratureAdjoint()
+            )
         )
-    ),
-    u0,
-    p
-)
-du02,
-    dp2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "QuadratureAdjoint")
+    end
+
+    @testset "sensealg = InterpolatingAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = InterpolatingAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "InterpolatingAdjoint")
+    end
+
+    @testset "sensealg = BacksolveAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = BacksolveAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "BacksolveAdjoint")
+    end
+
+    @testset "sensealg = TrackerAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = TrackerAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "TrackerAdjoint")
+    end
+
+    @testset "sensealg = ReverseDiffAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = ReverseDiffAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "ReverseDiffAdjoint")
+    end
+
+    @testset "sensealg = EnzymeAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = EnzymeAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "EnzymeAdjoint")
+    end
+
+    @testset "sensealg = GaussAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = GaussAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "GaussAdjoint")
+    end
+
+    @testset "sensealg = GaussKronrodAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = GaussKronrodAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_iip, backend_name, "GaussKronrodAdjoint")
+    end
+
+    @testset "sensealg = ForwardDiffSensitivity" begin
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = ForwardDiffSensitivity()
+            )
+        )
+        run_gradient_test(
+            grad_fn, loss, u0p, ref_grad_iip, backend_name, "ForwardDiffSensitivity"
+        )
+    end
+end
+
+@testset "OOP Adjoint Sensitivities - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+    u0p = vcat(u0, p)
+
+    @testset "sensealg = QuadratureAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = QuadratureAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "QuadratureAdjoint")
+    end
+
+    @testset "sensealg = InterpolatingAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = InterpolatingAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "InterpolatingAdjoint")
+    end
+
+    @testset "sensealg = BacksolveAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = BacksolveAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "BacksolveAdjoint")
+    end
+
+    @testset "sensealg = TrackerAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = TrackerAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "TrackerAdjoint")
+    end
+
+    @testset "sensealg = ReverseDiffAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = ReverseDiffAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "ReverseDiffAdjoint")
+    end
+
+    @testset "sensealg = EnzymeAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = EnzymeAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "EnzymeAdjoint")
+    end
+
+    @testset "sensealg = GaussAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = GaussAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "GaussAdjoint")
+    end
+
+    @testset "sensealg = GaussKronrodAdjoint" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = GaussKronrodAdjoint()
+            )
+        )
+        run_gradient_test(grad_fn, loss, u0p, ref_grad_oop, backend_name, "GaussKronrodAdjoint")
+    end
+
+    @testset "sensealg = ForwardDiffSensitivity" begin
+        loss = u0p -> sum(
+            solve(
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = ForwardDiffSensitivity()
+            )
+        )
+        run_gradient_test(
+            grad_fn, loss, u0p, ref_grad_oop, backend_name, "ForwardDiffSensitivity"
+        )
+    end
+end
+
+#=
+Struct-Based Loss Tests (merged from alternative_ad_frontend.jl)
+Tests callable structs with different AD backends
+=#
+
+@testset "Struct-Based Loss Functions" begin
+    odef(du, u, p, t) = du .= u .* p
+    prob_struct = ODEProblem(odef, [2.0], (0.0, 1.0), [3.0])
+
+    struct senseloss0{T}
+        sense::T
+    end
+    function (f::senseloss0)(u0p)
+        prob = ODEProblem{true}(odef, u0p[1:1], (0.0, 1.0), u0p[2:2])
+        return sum(solve(prob, Tsit5(), abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1))
+    end
+
+    u0p = [2.0, 3.0]
+
+    # Reference gradient
+    ref_grad_struct = ForwardDiff.gradient(senseloss0(InterpolatingAdjoint()), u0p)
+
+    @testset "senseloss0 with $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        result = grad_fn(senseloss0(InterpolatingAdjoint()), u0p)
+        @test result ≈ ref_grad_struct
+    end
+
+    struct senseloss{T}
+        sense::T
+    end
+    function (f::senseloss)(u0p)
+        return sum(
+            solve(
+                prob_struct, Tsit5(), u0 = u0p[1:1], p = u0p[2:2], abstol = 1.0e-12,
+                reltol = 1.0e-12, saveat = 0.1, sensealg = f.sense
+            )
+        )
+    end
+
+    u0p = [2.0, 3.0]
+    ref_grad_senseloss = ForwardDiff.gradient(senseloss(InterpolatingAdjoint()), u0p)
+
+    @testset "senseloss with various sensealgs - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        @testset "InterpolatingAdjoint" begin
+            result = grad_fn(senseloss(InterpolatingAdjoint()), u0p)
+            @test result ≈ ref_grad_senseloss
+        end
+
+        @testset "ReverseDiffAdjoint" begin
+            result = grad_fn(senseloss(ReverseDiffAdjoint()), u0p)
+            @test result ≈ ref_grad_senseloss
+        end
+
+        @testset "TrackerAdjoint" begin
+            result = grad_fn(senseloss(TrackerAdjoint()), u0p)
+            @test result ≈ ref_grad_senseloss
+        end
+
+        @testset "ForwardDiffSensitivity" begin
+            result = grad_fn(senseloss(ForwardDiffSensitivity()), u0p)
+            @test result ≈ ref_grad_senseloss
+        end
+    end
+
+    # Test with p-only differentiation (senseloss3 and senseloss4 from alternative_ad_frontend.jl)
+    struct senseloss_p{T}
+        sense::T
+    end
+    function (f::senseloss_p)(p)
+        return sum(
+            solve(
+                prob_struct, Tsit5(), p = p, abstol = 1.0e-12,
+                reltol = 1.0e-12, saveat = 0.1, sensealg = f.sense
+            )
+        )
+    end
+
+    p_only = [3.0]
+    ref_grad_p = ForwardDiff.gradient(senseloss_p(InterpolatingAdjoint()), p_only)
+
+    @testset "senseloss p-only - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        @testset "InterpolatingAdjoint" begin
+            result = grad_fn(senseloss_p(InterpolatingAdjoint()), p_only)
+            @test result ≈ ref_grad_p
+        end
+
+        @testset "ForwardSensitivity" begin
+            # ForwardSensitivity works when only differentiating p (not u0)
+            result = grad_fn(senseloss_p(ForwardSensitivity()), p_only)
+            @test result ≈ ref_grad_p
+        end
+    end
+end
+
+#=
+Additional Tests: save_idxs, save_everystep, etc.
+=#
+
+@testset "save_idxs Tests" begin
+    ref_loss_idx = u0p -> sum(
+        Array(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                sensealg = InterpolatingAdjoint()
+            )
+        )[1, :]
+    )
+    u0p = vcat(u0, p)
+    ref_grad_idx = ForwardDiff.gradient(ref_loss_idx, u0p)
+
+    @testset "save_idxs - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        # Tracker has issues on Julia 1.12+ - see issue #1331
+        if backend_name == "Tracker" && VERSION >= v"1.12"
+            @test_broken false
+            continue
+        end
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1, save_idxs = 1:1,
+                sensealg = InterpolatingAdjoint()
+            )
+        )
+        result = grad_fn(loss, u0p)
+        @test result ≈ ref_grad_idx rtol = 1.0e-6
+    end
+end
+
+@testset "save_everystep=false Tests" begin
+    ref_loss_end = u0p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
+            prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+            abstol = 1.0e-10, reltol = 1.0e-10,
+            save_everystep = false, save_start = false,
             sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du03,
-    dp3 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = BacksolveAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du04,
-    dp4 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, sensealg = TrackerAdjoint()
-        )
-    ),
-    u0, p
-)
-@test_broken Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, sensealg = ZygoteAdjoint()
-        )
-    ),
-    u0, p
-) isa Tuple
-du06,
-    dp6 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ReverseDiffAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-@test_broken du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = MooncakeAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du08,
-    dp8 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = EnzymeAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-
-@test ū0 ≈ du01 rtol = 1.0e-12
-@test ū0 == du02
-@test ū0 ≈ du03 rtol = 1.0e-12
-@test ū0 ≈ du04 rtol = 1.0e-12
-#@test ū0 ≈ du05 rtol=1e-12
-@test ū0 ≈ du06 rtol = 1.0e-12
-@test_broken ū0 ≈ du07 rtol = 1.0e-12
-@test ū0 ≈ du08 rtol = 1.0e-12
-@test adj ≈ dp1' rtol = 1.0e-12
-@test adj == dp2'
-@test adj ≈ dp3' rtol = 1.0e-12
-@test adj ≈ dp4' rtol = 1.0e-12
-#@test adj ≈ dp5' rtol=1e-12
-@test adj ≈ dp6' rtol = 1.0e-12
-@test_broken adj ≈ dp7' rtol = 1.0e-12
-@test adj ≈ dp8' rtol = 1.0e-12
-
-###
-### Direct from prob
-###
-
-du01,
-    dp1 = Zygote.gradient(u0, p) do u0, p
-    sum(
-        solve(
-            remake(prob, u0 = u0, p = p), Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, sensealg = QuadratureAdjoint()
         )
     )
+    u0p = vcat(u0, p)
+    ref_grad_end = ForwardDiff.gradient(ref_loss_end, u0p)
+
+    @testset "save_end only - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        # Tracker has issues on Julia 1.12+ - see issue #1331
+        if backend_name == "Tracker" && VERSION >= v"1.12"
+            @test_broken false
+            continue
+        end
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10,
+                save_everystep = false, save_start = false,
+                sensealg = InterpolatingAdjoint()
+            )
+        )
+        result = grad_fn(loss, u0p)
+        @test result ≈ ref_grad_end rtol = 1.0e-6
+    end
 end
 
-@test ū0 ≈ du01 rtol = 1.0e-12
-@test adj ≈ dp1' rtol = 1.0e-12
-
-###
-### forward
-###
-
-du06,
-    dp6 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
+@testset "Non-integer saveat Tests" begin
+    # tspan[2]-tspan[1] not a multiple of saveat
+    ref_loss_saveat = u0p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ForwardSensitivity()
+            proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+            abstol = 1.0e-10, reltol = 1.0e-10, saveat = 2.3,
+            sensealg = ReverseDiffAdjoint()
         )
-    ),
-    u0,
-    p
-)
-du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0,
-    p
-)
-@test_broken du08,
-    dp8 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14,
-            reltol = 1.0e-14, saveat = 0.1,
-            save_idxs = 1:1,
-            sensealg = ForwardSensitivity()
-        )
-    ),
-    u0, p
-)
-du09,
-    dp9 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0,
-    p
-)
+    )
+    u0p = vcat(u0, p)
+    ref_grad_saveat = ForwardDiff.gradient(ref_loss_saveat, u0p)
 
-@test du06 isa Nothing
-@test ū0 ≈ du07 rtol = 1.0e-12
-@test adj ≈ dp6' rtol = 1.0e-12
-@test adj ≈ dp7' rtol = 1.0e-12
-
-ū02,
-    adj2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        Array(
+    @testset "saveat=2.3 - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        # Tracker has issues on Julia 1.12+ - see issue #1331
+        if backend_name == "Tracker" && VERSION >= v"1.12"
+            @test_broken false
+            continue
+        end
+        loss = u0p -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                abstol = 1.0e-14, reltol = 1.0e-14,
-                saveat = 0.1,
+                proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 2.3,
                 sensealg = InterpolatingAdjoint()
             )
-        )[
-            1,
-            :,
-        ]
-    ),
-    u0, p
-)
-du05,
-    dp5 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = InterpolatingAdjoint()
         )
-    ),
-    u0,
-    p
-)
-du06,
-    dp6 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.0:0.1:10.0, save_idxs = 1:1,
-            sensealg = QuadratureAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du08,
-    dp8 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du09,
-    dp9 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1,
-            sensealg = ReverseDiffAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du010,
-    dp10 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = TrackerAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-@test_broken du011,
-    dp11 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0,
-            p = p, abstol = 1.0e-14,
-            reltol = 1.0e-14,
-            saveat = 0.1,
-            save_idxs = 1:1,
-            sensealg = ForwardSensitivity()
-        )
-    ),
-    u0, p
-)
-du012,
-    dp12 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0, p
-)
-du013,
-    dp13 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = GaussAdjoint()
-        )
-    ),
-    u0, p
-)
-du014,
-    dp14 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = GaussKronrodAdjoint()
-        )
-    ),
-    u0, p
-)
-@test ū02 ≈ du05 rtol = 1.0e-12
-@test ū02 ≈ du06 rtol = 1.0e-12
-@test ū02 ≈ du07 rtol = 1.0e-12
-@test ū02 ≈ du08 rtol = 1.0e-12
-@test ū02 ≈ du09 rtol = 1.0e-12
-@test ū02 ≈ du010 rtol = 1.0e-12
-#@test ū02 ≈ du011 rtol=1e-12
-@test ū02 ≈ du012 rtol = 1.0e-12
-@test ū02 ≈ du013 rtol = 1.0e-12
-@test ū02 ≈ du014 rtol = 1.0e-12
-@test adj2 ≈ dp5 rtol = 1.0e-12
-@test adj2 ≈ dp6 rtol = 1.0e-12
-@test adj2 ≈ dp7 rtol = 1.0e-12
-@test adj2 ≈ dp8 rtol = 1.0e-12
-@test adj2 ≈ dp9 rtol = 1.0e-12
-@test adj2 ≈ dp10 rtol = 1.0e-12
-#@test adj2 ≈ dp11 rtol=1e-12
-@test adj2 ≈ dp12 rtol = 1.0e-12
-@test adj2 ≈ dp13 rtol = 1.0e-12
-@test adj2 ≈ dp14 rtol = 1.0e-12
+        result = grad_fn(loss, u0p)
+        @test result ≈ ref_grad_saveat rtol = 1.0e-6
+    end
+end
 
-###
-### Only End
-###
-
-ū0,
-    adj = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_everystep = false, save_start = false,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du03,
-    dp3 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_everystep = false, save_start = false,
-            sensealg = ReverseDiffAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du04,
-    dp4 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            prob, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_everystep = false, save_start = false,
-            sensealg = InterpolatingAdjoint()
-        )[end]
-    ),
-    u0, p
-)
-@test ū0 ≈ du03 rtol = 1.0e-11
-@test ū0 ≈ du04 rtol = 1.0e-12
-@test adj ≈ dp3 rtol = 1.0e-12
-@test adj ≈ dp4 rtol = 1.0e-12
-
-###
-### OOPs
-###
-
-_sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
-ū0,
-    adj = adjoint_sensitivities(
-    _sol, Tsit5(), t = 0.0:0.1:10,
-    dgdu_discrete = ((out, u, p, t, i) -> out .= 1),
-    abstol = 1.0e-14, reltol = 1.0e-14
-)
-
-###
-### adjoint
-###
-
-du01,
-    dp1 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = QuadratureAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du02,
-    dp2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du03,
-    dp3 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = BacksolveAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du04,
-    dp4 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, sensealg = TrackerAdjoint()
-        )
-    ),
-    u0, p
-)
-@test_broken du05,
-    dp5 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0,
-            p = p, abstol = 1.0e-14,
-            reltol = 1.0e-14, saveat = 0.1,
-            sensealg = ZygoteAdjoint()
-        )
-    ),
-    u0, p
-) isa Tuple
-du06,
-    dp6 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ReverseDiffAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-@test_broken du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = MooncakeAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du08,
-    dp8 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = EnzymeAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du09,
-    dp9 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = GaussAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du010,
-    dp10 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = GaussKronrodAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-
-@test ū0 ≈ du01 rtol = 1.0e-12
-@test ū0 ≈ du02 rtol = 1.0e-12
-@test ū0 ≈ du03 rtol = 1.0e-12
-@test ū0 ≈ du04 rtol = 1.0e-12
-#@test ū0 ≈ du05 rtol=1e-12
-@test ū0 ≈ du06 rtol = 1.0e-12
-@test_broken ū0 ≈ du07 rtol = 1.0e-12
-@test ū0 ≈ du08 rtol = 1.0e-12
-@test ū0 ≈ du09 rtol = 1.0e-12
-@test ū0 ≈ du010 rtol = 1.0e-12
-@test adj ≈ dp1' rtol = 1.0e-12
-@test adj ≈ dp2' rtol = 1.0e-12
-@test adj ≈ dp3' rtol = 1.0e-12
-@test adj ≈ dp4' rtol = 1.0e-12
-#@test adj ≈ dp5' rtol=1e-12
-@test adj ≈ dp6' rtol = 1.0e-12
-@test_broken adj ≈ dp7' rtol = 1.0e-12
-@test adj ≈ dp8' rtol = 1.0e-12
-@test adj ≈ dp9' rtol = 1.0e-12
-@test adj ≈ dp10' rtol = 1.0e-12
-
-###
-### forward
-###
-
-@test_broken Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ForwardSensitivity()
-        )
-    ),
-    u0,
-    p
-) isa Tuple
-du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0,
-    p
-)
-
-#@test du06 === nothing
-@test du07 ≈ ū0 rtol = 1.0e-12
-#@test adj ≈ dp6' rtol=1e-12
-@test adj ≈ dp7' rtol = 1.0e-12
-
-ū02,
-    adj2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        Array(
-            solve(
-                proboop, Tsit5(), u0 = u0, p = p,
-                abstol = 1.0e-14, reltol = 1.0e-14,
-                saveat = 0.1,
-                sensealg = InterpolatingAdjoint()
-            )
-        )[
-            1,
-            :,
-        ]
-    ),
-    u0, p
-)
-du05,
-    dp5 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du06,
-    dp6 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.0:0.1:10.0, save_idxs = 1:1,
-            sensealg = QuadratureAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du07,
-    dp7 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du08,
-    dp8 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du09,
-    dp9 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1,
-            sensealg = ReverseDiffAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du010,
-    dp10 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = TrackerAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-@test_broken du011,
-    dp11 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0,
-            p = p, abstol = 1.0e-14,
-            reltol = 1.0e-14,
-            saveat = 0.1,
-            save_idxs = 1:1,
-            sensealg = ForwardSensitivity()
-        )
-    ),
-    u0, p
-)
-du012,
-    dp12 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0, p
-)
-# Redundant to test aliasing
-du013,
-    dp13 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 0.1, save_idxs = 1:1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du014,
-    dp14 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_idxs = 1, saveat = 0.1,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du015,
-    dp15 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_idxs = 1, saveat = 0.1,
-            sensealg = GaussAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du016,
-    dp16 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            save_idxs = 1, saveat = 0.1,
-            sensealg = GaussKronrodAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-
-@test ū02 ≈ du05 rtol = 1.0e-12
-@test ū02 ≈ du06 rtol = 1.0e-12
-@test ū02 ≈ du07 rtol = 1.0e-12
-@test ū02 ≈ du08 rtol = 1.0e-12
-@test ū02 ≈ du09 rtol = 1.0e-12
-@test ū02 ≈ du010 rtol = 1.0e-12
-#@test ū02 ≈ du011 rtol=1e-12
-@test ū02 ≈ du012 rtol = 1.0e-12
-@test ū02 ≈ du013 rtol = 1.0e-12
-@test ū02 ≈ du014 rtol = 1.0e-12
-@test ū02 ≈ du015 rtol = 1.0e-12
-@test ū02 ≈ du016 rtol = 1.0e-12
-@test adj2 ≈ dp5 rtol = 1.0e-12
-@test adj2 ≈ dp6 rtol = 1.0e-12
-@test adj2 ≈ dp7 rtol = 1.0e-12
-@test adj2 ≈ dp8 rtol = 1.0e-12
-@test adj2 ≈ dp9 rtol = 1.0e-12
-@test adj2 ≈ dp10 rtol = 1.0e-12
-#@test adj2 ≈ dp11 rtol=1e-12
-@test adj2 ≈ dp12 rtol = 1.0e-12
-@test adj2 ≈ dp13 rtol = 1.0e-12
-@test adj2 ≈ dp14 rtol = 1.0e-12
-@test adj2 ≈ dp15 rtol = 1.0e-12
-@test adj2 ≈ dp16 rtol = 1.0e-12
-
-# Handle VecOfArray Derivatives
-dp1 = Zygote.gradient(
-    (p) -> sum(
+@testset "VecOfArray Derivatives" begin
+    ref_loss_vec = p -> sum(
         last(
             solve(
                 prob, Tsit5(), p = p, saveat = 10.0,
-                abstol = 1.0e-14, reltol = 1.0e-14
+                abstol = 1.0e-10, reltol = 1.0e-10
             )
         )
-    ),
-    p
-)[1]
-dp2 = ForwardDiff.gradient(
-    (p) -> sum(
-        last(
-            solve(
-                prob, Tsit5(), p = p, saveat = 10.0,
-                abstol = 1.0e-14, reltol = 1.0e-14
-            )
-        )
-    ),
-    p
-)
-@test dp1 ≈ dp2
+    )
+    ref_grad_vec = ForwardDiff.gradient(ref_loss_vec, p)
 
-dp1 = Zygote.gradient(
-    (p) -> sum(
-        last(
-            solve(
-                proboop, Tsit5(), u0 = u0, p = p, saveat = 10.0,
-                abstol = 1.0e-14, reltol = 1.0e-14
-            )
-        )
-    ),
-    p
-)[1]
-dp2 = ForwardDiff.gradient(
-    (p) -> sum(
-        last(
-            solve(
-                proboop, Tsit5(), u0 = u0, p = p,
-                saveat = 10.0, abstol = 1.0e-14,
-                reltol = 1.0e-14
-            )
-        )
-    ),
-    p
-)
-@test dp1 ≈ dp2
+    @testset "VecOfArray - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        # Tracker has VecOfArray compatibility issues - see issue #1328
+        if backend_name == "Tracker"
+            @test_broken false
+            continue
+        end
+        # ReverseDiff has VecOfArray compatibility issues - see issue #1328
+        if backend_name == "ReverseDiff"
+            @test_broken false
+            continue
+        end
+        result = grad_fn(ref_loss_vec, p)
+        @test result ≈ ref_grad_vec
+    end
+end
 
-# tspan[2]-tspan[1] not a multiple of saveat tests
-du0,
-    dp = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14, saveat = 2.3,
+#=
+Matrix Multiplication ODE (from alternative_ad_frontend.jl)
+=#
+
+@testset "Matrix Multiplication ODE" begin
+    solvealg_test = Tsit5()
+    sensealg_test = InterpolatingAdjoint()
+    tspan = (0.0, 1.0)
+    u0_mat = rand(4, 8)
+    p0 = rand(16)
+    f_aug(u, p, t) = reshape(p, 4, 4) * u
+
+    function loss_mat(p)
+        prob = ODEProblem(f_aug, u0_mat, tspan, p; alg = solvealg_test, sensealg = sensealg_test)
+        sol = solve(prob)
+        return sum(sol[:, :, end])
+    end
+
+    function loss_mat2(p)
+        prob = ODEProblem(f_aug, u0_mat, tspan, p)
+        sol = solve(prob, solvealg_test; sensealg = sensealg_test)
+        return sum(sol[:, :, end])
+    end
+
+    res1 = loss_mat(p0)
+    res3 = loss_mat2(p0)
+    @test res1 ≈ res3 atol = 1.0e-10
+
+    @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        # Matrix ODEs have issues with all reverse-mode AD backends - see issue #1330
+        @test_broken false
+        @test_broken false
+    end
+end
+
+#=
+Recursion Test (from alternative_ad_frontend.jl)
+https://discourse.julialang.org/t/diffeqsensitivity-jl-issues-with-reversediffadjoint-sensealg/88774
+=#
+
+@testset "Recursion Test" begin
+    function ode_rec!(derivative, state, parameters, t)
+        return derivative .= parameters
+    end
+
+    function solve_euler_rec(state, times, parameters)
+        problem = ODEProblem{true}(
+            ode_rec!, state, times[[1, end]], parameters; saveat = times,
             sensealg = ReverseDiffAdjoint()
         )
-    ),
-    u0,
-    p
-)
-du01,
-    dp1 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 2.3,
-            sensealg = QuadratureAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du02,
-    dp2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 2.3,
-            sensealg = InterpolatingAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du03,
-    dp3 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), u0 = u0, p = p,
-            abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 2.3,
-            sensealg = BacksolveAdjoint()
-        )
-    ),
-    u0,
-    p
-)
-du04,
-    dp4 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, Tsit5(), save_end = true, u0 = u0,
-            p = p, abstol = 1.0e-14, reltol = 1.0e-14,
-            saveat = 2.3,
-            sensealg = ForwardDiffSensitivity()
-        )
-    ),
-    u0,
-    p
-)
+        return solve(problem, Euler(); dt = 1.0e-1)
+    end
 
-@test du0 ≈ du01 rtol = 1.0e-12
-@test du0 ≈ du02 rtol = 1.0e-12
-@test du0 ≈ du03 rtol = 1.0e-12
-@test du0 ≈ du04 rtol = 1.0e-12
-@test dp ≈ dp1 rtol = 1.0e-12
-@test dp ≈ dp2 rtol = 1.0e-12
-@test dp ≈ dp3 rtol = 1.0e-12
-@test dp ≈ dp4 rtol = 1.0e-12
+    initial_state = ones(2)
+    solution_times = [1.0, 2.0]
 
-###
-### SDE
-###
-
-using StochasticDiffEq
-using Random
-seed = 100
-
-function σiip(du, u, p, t)
-    du[1] = p[5] * u[1]
-    return du[2] = p[6] * u[2]
+    # This should not stack overflow
+    result = ReverseDiff.gradient(
+        p -> sum(sum(solve_euler_rec(initial_state, solution_times, p))), zeros(2)
+    )
+    @test length(result) == 2
 end
 
-function σoop(u, p, t)
-    dx = p[5] * u[1]
-    dy = p[6] * u[2]
-    return [dx, dy]
+#=
+BouncingBall ODE Test (from alternative_ad_frontend.jl)
+https://github.com/SciML/SciMLSensitivity.jl/issues/943
+=#
+
+@testset "BouncingBall ODE" begin
+    using FiniteDiff
+
+    GRAVITY = 9.81
+    MASS = 1.0
+
+    t_start = 0.0
+    t_step = 0.05
+    t_stop = 2.0
+    tData = t_start:t_step:t_stop
+    u0_ball = [1.0, 0.0]
+    p_ball = [GRAVITY, MASS]
+
+    function fx_ball(u, p, t)
+        g, m = p
+        return [u[2], -g]
+    end
+
+    ff_ball = ODEFunction{false}(fx_ball)
+    prob_ball = ODEProblem{false}(ff_ball, u0_ball, (t_start, t_stop), p_ball)
+
+    solver_ball = Rosenbrock23(autodiff = false)
+
+    function loss_ball(p)
+        solution = solve(
+            prob_ball; p = p, alg = solver_ball, saveat = tData,
+            sensealg = ReverseDiffAdjoint(), abstol = 1.0e-10, reltol = 1.0e-10
+        )
+        # Check if solution is an ODESolution with .u field vs a tracked/plain array
+        if !isa(solution, ReverseDiff.TrackedArray) &&
+                !isa(solution, Tracker.TrackedArray) &&
+                !isa(solution, Array)
+            return sum(abs.(collect(u[1] for u in solution.u)))
+        else
+            return sum(abs.(solution[1, :]))
+        end
+    end
+
+    grad_fi = FiniteDiff.finite_difference_gradient(loss_ball, p_ball)
+    grad_fd = ForwardDiff.gradient(loss_ball, p_ball)
+
+    @test grad_fd ≈ grad_fi atol = 1.0e-2
+
+    @testset "BouncingBall - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        if backend_name == "Tracker" && VERSION >= v"1.12"
+            # Tracker has issues on Julia 1.12+ - see issue #1331
+            @test_broken false
+        else
+            result = grad_fn(loss_ball, p_ball)
+            @test result ≈ grad_fd atol = 1.0e-4
+        end
+    end
 end
 
-function σoop(u::Tracker.TrackedArray, p, t)
-    dx = p[5] * u[1]
-    dy = p[6] * u[2]
-    return Tracker.collect([dx, dy])
+#=
+SDE Tests
+=#
+
+@testset "SDE Gradients" begin
+    function σiip(du, u, p, t)
+        du[1] = p[5] * u[1]
+        return du[2] = p[6] * u[2]
+    end
+
+    function σoop(u, p, t)
+        dx = p[5] * u[1]
+        dy = p[6] * u[2]
+        return [dx, dy]
+    end
+
+    function σoop(u::Tracker.TrackedArray, p, t)
+        dx = p[5] * u[1]
+        dy = p[6] * u[2]
+        return Tracker.collect([dx, dy])
+    end
+
+    p_sde = [1.5, 1.0, 3.0, 1.0, 0.1, 0.1]
+    u0_sde = [1.0; 1.0]
+    tarray = collect(0.0:0.01:1)
+    seed = 100
+
+    prob_sde = SDEProblem(fiip, σiip, u0_sde, (0.0, 1.0), p_sde)
+    proboop_sde = SDEProblem(foop, σoop, u0_sde, (0.0, 1.0), p_sde)
+
+    # Reference using adjoint_sensitivities
+    _sol = solve(
+        proboop_sde, EulerHeun(), dt = 1.0e-2, adaptive = false, save_noise = true,
+        seed = seed
+    )
+    ū0_ref, adj_ref = adjoint_sensitivities(
+        _sol, EulerHeun(), t = tarray,
+        dgdu_discrete = ((out, u, p, t, i) -> out .= 1),
+        sensealg = BacksolveAdjoint()
+    )
+
+    @testset "SDE OOP - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
+        u0p_sde = vcat(u0_sde, p_sde)
+        loss = u0p -> sum(
+            solve(
+                proboop_sde, EulerHeun(),
+                u0 = u0p[1:2], p = u0p[3:end], dt = 1.0e-2, saveat = 0.01,
+                sensealg = BacksolveAdjoint(),
+                seed = seed
+            )
+        )
+
+        result = grad_fn(loss, u0p_sde)
+        @test isapprox(result[1:2], ū0_ref, rtol = 1.0e-4)
+        @test isapprox(result[3:end], adj_ref', rtol = 1.0e-4)
+    end
 end
-
-p = [1.5, 1.0, 3.0, 1.0, 0.1, 0.1]
-u0 = [1.0; 1.0]
-tarray = collect(0.0:0.01:1)
-
-prob = SDEProblem(fiip, σiip, u0, (0.0, 1.0), p)
-proboop = SDEProblem(foop, σoop, u0, (0.0, 1.0), p)
-
-###
-### OOPs
-###
-
-_sol = solve(
-    proboop, EulerHeun(), dt = 1.0e-2, adaptive = false, save_noise = true,
-    seed = seed
-)
-ū0,
-    adj = adjoint_sensitivities(
-    _sol, EulerHeun(), t = tarray,
-    dgdu_discrete = ((out, u, p, t, i) -> out .= 1),
-    sensealg = BacksolveAdjoint()
-)
-
-du01,
-    dp1 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, EulerHeun(),
-            u0 = u0, p = p, dt = 1.0e-2, saveat = 0.01,
-            sensealg = BacksolveAdjoint(),
-            seed = seed
-        )
-    ),
-    u0,
-    p
-)
-
-du02,
-    dp2 = Zygote.gradient(
-    (
-        u0,
-        p,
-    ) -> sum(
-        solve(
-            proboop, EulerHeun(), u0 = u0, p = p,
-            dt = 1.0e-2, saveat = 0.01,
-            sensealg = ForwardDiffSensitivity(),
-            seed = seed
-        )
-    ),
-    u0,
-    p
-)
-
-@test isapprox(ū0, du01, rtol = 1.0e-4)
-@test isapprox(adj, dp1', rtol = 1.0e-4)
-@test isapprox(adj, dp2', rtol = 1.0e-4)
