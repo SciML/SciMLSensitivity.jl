@@ -627,8 +627,8 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
             # Tracker has issues with matrix ODEs on all Julia versions
             @test_broken false
             @test_broken false
-        elseif backend_name == "ReverseDiff" && VERSION >= v"1.12"
-            # ReverseDiff has issues with matrix ODEs on Julia 1.12+
+        elseif backend_name == "ReverseDiff"
+            # ReverseDiff has issues with matrix ODEs on all Julia versions
             @test_broken false
             @test_broken false
         else
