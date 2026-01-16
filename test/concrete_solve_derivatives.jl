@@ -541,8 +541,8 @@ Additional Tests: save_idxs, save_everystep, etc.
     ref_grad_idx = ForwardDiff.gradient(ref_loss_idx, u0p)
 
     @testset "save_idxs - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues with save_idxs across Julia versions
-        if backend_name == "Tracker"
+        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
@@ -571,8 +571,8 @@ end
     ref_grad_end = ForwardDiff.gradient(ref_loss_end, u0p)
 
     @testset "save_end only - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues with save_everystep=false across Julia versions
-        if backend_name == "Tracker"
+        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
@@ -602,8 +602,8 @@ end
     ref_grad_saveat = ForwardDiff.gradient(ref_loss_saveat, u0p)
 
     @testset "saveat=2.3 - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues with non-integer saveat across Julia versions
-        if backend_name == "Tracker"
+        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
@@ -631,12 +631,13 @@ end
     ref_grad_vec = ForwardDiff.gradient(ref_loss_vec, p)
 
     @testset "VecOfArray - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # VecOfArray has compatibility issues with Tracker and ReverseDiff across Julia versions
-        if backend_name == "Tracker"
+        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
-        if backend_name == "ReverseDiff"
+        # Skip ReverseDiff on Julia 1.12+ due to VecOfArray compatibility issues
+        if backend_name == "ReverseDiff" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
@@ -677,12 +678,12 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
         if backend_name in ["Enzyme"]
             # Enzyme has issues with matrix ODEs
             @test_broken grad_fn(loss_mat, p0) ≈ ForwardDiff.gradient(loss_mat, p0)
-        elseif backend_name == "Tracker"
-            # Tracker has issues with matrix ODEs across Julia versions
+        elseif backend_name == "Tracker" && VERSION >= v"1.12"
+            # Tracker has issues on Julia 1.12+
             @test_broken false
             @test_broken false
-        elseif backend_name == "ReverseDiff"
-            # ReverseDiff has issues with matrix ODEs across Julia versions
+        elseif backend_name == "ReverseDiff" && VERSION >= v"1.12"
+            # ReverseDiff has issues with matrix ODEs on Julia 1.12+
             @test_broken false
             @test_broken false
         else
