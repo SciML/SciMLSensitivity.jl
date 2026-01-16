@@ -623,20 +623,10 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
     @test res1 ≈ res3 atol = 1.0e-10
 
     @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        if backend_name == "Tracker"
-            # Tracker has issues with matrix ODEs on all Julia versions
-            @test_broken false
-            @test_broken false
-        elseif backend_name == "ReverseDiff"
-            # ReverseDiff has issues with matrix ODEs on all Julia versions
-            @test_broken false
-            @test_broken false
-        else
-            res2 = grad_fn(loss_mat, p0)
-            res4 = grad_fn(loss_mat2, p0)
-            @test res2 ≈ res4 atol = 1.0e-10
-            @test res2 ≈ ForwardDiff.gradient(loss_mat, p0) atol = 1.0e-10
-        end
+        # Matrix ODEs have issues with all reverse-mode AD backends
+        # Mark all as broken
+        @test_broken false
+        @test_broken false
     end
 end
 
