@@ -670,17 +670,20 @@ end
         @test dp9 ≈ dp9_enzyme rtol = 1.0e-10
     end
 
+    # Use MooncakeVJP on Julia 1.12+, ZygoteVJP on older versions
+    autojacvec_small = VERSION >= v"1.12" ? MooncakeVJP() : ZygoteVJP()
+
     function test_loss2(p, prob, alg)
         _prob = remake(prob, p = p)
         sol = solve(
             _prob, alg,
-            sensealg = SteadyStateAdjoint(autojacvec = ZygoteVJP())
+            sensealg = SteadyStateAdjoint(autojacvec = autojacvec_small)
         )
         return sol.u[1]
     end
 
-    dp10 = compute_gradient(p -> test_loss2(p, prob5, Broyden()), p)[1]
-    dp11 = compute_gradient(p -> test_loss2(p, prob6, Broyden()), p)[1]
+    dp10 = compute_gradient(p -> test_loss2(p, prob5, Broyden()), p)
+    dp11 = compute_gradient(p -> test_loss2(p, prob6, Broyden()), p)
     dp12 = ForwardDiff.gradient(p -> test_loss2(p, prob6, Broyden()), p)
 
     @test dp1 ≈ dp2 rtol = 1.0e-10

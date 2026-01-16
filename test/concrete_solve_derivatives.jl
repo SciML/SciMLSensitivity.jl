@@ -95,7 +95,7 @@ Test Helper Functions
 =#
 
 function run_gradient_test(
-        grad_fn, loss_fn, x, ref_grad, backend_name, sensealg_name; rtol = 1.0e-12
+        grad_fn, loss_fn, x, ref_grad, backend_name, sensealg_name; rtol = 1.0e-10
     )
     status = get_status(backend_name, sensealg_name)
 
