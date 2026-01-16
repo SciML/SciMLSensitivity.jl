@@ -761,220 +761,220 @@ if VERSION < v"1.12"
             sum((2.0 .- u) .^ 2) / 2 + sum(p .^ 2) / 2
         end
 
-    u0 = zeros(2)
-    p = [2.0, -2.0, 1.0, -4.0]
-    prob = ODEProblem(f!, u0, (0, Inf), p)
+        u0 = zeros(2)
+        p = [2.0, -2.0, 1.0, -4.0]
+        prob = ODEProblem(f!, u0, (0, Inf), p)
 
-    tol = 1.0e-10
-    # steady state callback
-    function condition(u, t, integrator)
-        testval = first(get_tmp_cache(integrator))
-        DiffEqBase.get_du!(testval, integrator)
-        all(testval .< tol)
-    end
-    affect!(integrator) = terminate!(integrator)
-    cb_t1 = DiscreteCallback(condition, affect!, save_positions = (false, true))
-    cb_t2 = DiscreteCallback(condition, affect!, save_positions = (true, true))
-
-    for cb_t in (cb_t1, cb_t2)
-        sol = solve(
-            prob, Tsit5(), reltol = tol, abstol = tol, callback = cb_t,
-            save_start = false, save_everystep = false
-        )
-
-        # derivative with respect to u0 and p0
-        function loss(u0, p; sensealg = nothing, save_start = false, save_everystep = false)
-            _prob = remake(prob, u0 = u0, p = p)
-            # saving arguments can have a huge influence here
-            sol = solve(
-                _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
-                callback = cb_t,
-                save_start = save_start, save_everystep = save_everystep
-            )
-            res = sol.u[end]
-            g(res, p, nothing)
+        tol = 1.0e-10
+        # steady state callback
+        function condition(u, t, integrator)
+            testval = first(get_tmp_cache(integrator))
+            DiffEqBase.get_du!(testval, integrator)
+            all(testval .< tol)
         end
+        affect!(integrator) = terminate!(integrator)
+        cb_t1 = DiscreteCallback(condition, affect!, save_positions = (false, true))
+        cb_t2 = DiscreteCallback(condition, affect!, save_positions = (true, true))
 
-        du0 = ForwardDiff.gradient((u0) -> loss(u0, p), u0)
-        dp = ForwardDiff.gradient((p) -> loss(u0, p), p)
-
-        # save_start = false, save_everystep=false
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(
-                u0, p,
-                sensealg = ForwardDiffSensitivity()
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
-            u0,
-            p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(
-                u0, p,
-                sensealg = InterpolatingAdjoint()
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-
-        # save_start = true, save_everystep=false
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(
-                u0, p,
-                sensealg = ForwardDiffSensitivity(),
-                save_start = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(
-                u0, p, sensealg = BacksolveAdjoint(),
-                save_start = true
-            ), u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss(
-                u0, p,
-                sensealg = InterpolatingAdjoint(),
-                save_start = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-
-        # save_start = true, save_everystep=true
-        Zdu0,
-            Zdp = compute_gradient(
-            (
-                u0,
-                p,
-            ) -> loss(
-                u0, p,
-                sensealg = ForwardDiffSensitivity(),
-                save_start = true,
-                save_everystep = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-
-        Zdu0,
-            Zdp = compute_gradient(
-            (
-                u0,
-                p,
-            ) -> loss(
-                u0, p, sensealg = BacksolveAdjoint(),
-                save_start = true,
-                save_everystep = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (
-                u0,
-                p,
-            ) -> loss(
-                u0, p,
-                sensealg = InterpolatingAdjoint(),
-                save_start = true,
-                save_everystep = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
-        Zdu0,
-            Zdp = compute_gradient(
-            (
-                u0,
-                p,
-            ) -> loss(
-                u0, p, sensealg = QuadratureAdjoint(),
-                save_start = true,
-                save_everystep = true
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-
-        function loss2(u0, p; sensealg = nothing, saveat = 1.0)
-            # remake tspan so saveat::Number makes sense
-            _prob = remake(prob, tspan = (0.0, 100.0), u0 = u0, p = p)
-            # saving arguments can have a huge influence here
+        for cb_t in (cb_t1, cb_t2)
             sol = solve(
-                _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
-                callback = cb_t, saveat = saveat
+                prob, Tsit5(), reltol = tol, abstol = tol, callback = cb_t,
+                save_start = false, save_everystep = false
             )
-            res = sol.u[end]
-            g(res, p, nothing)
+
+            # derivative with respect to u0 and p0
+            function loss(u0, p; sensealg = nothing, save_start = false, save_everystep = false)
+                _prob = remake(prob, u0 = u0, p = p)
+                # saving arguments can have a huge influence here
+                sol = solve(
+                    _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
+                    callback = cb_t,
+                    save_start = save_start, save_everystep = save_everystep
+                )
+                res = sol.u[end]
+                g(res, p, nothing)
+            end
+
+            du0 = ForwardDiff.gradient((u0) -> loss(u0, p), u0)
+            dp = ForwardDiff.gradient((p) -> loss(u0, p), p)
+
+            # save_start = false, save_everystep=false
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(
+                    u0, p,
+                    sensealg = ForwardDiffSensitivity()
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(u0, p, sensealg = BacksolveAdjoint()),
+                u0,
+                p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(
+                    u0, p,
+                    sensealg = InterpolatingAdjoint()
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+
+            # save_start = true, save_everystep=false
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(
+                    u0, p,
+                    sensealg = ForwardDiffSensitivity(),
+                    save_start = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(
+                    u0, p, sensealg = BacksolveAdjoint(),
+                    save_start = true
+                ), u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss(
+                    u0, p,
+                    sensealg = InterpolatingAdjoint(),
+                    save_start = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+
+            # save_start = true, save_everystep=true
+            Zdu0,
+                Zdp = compute_gradient(
+                (
+                    u0,
+                    p,
+                ) -> loss(
+                    u0, p,
+                    sensealg = ForwardDiffSensitivity(),
+                    save_start = true,
+                    save_everystep = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+
+            Zdu0,
+                Zdp = compute_gradient(
+                (
+                    u0,
+                    p,
+                ) -> loss(
+                    u0, p, sensealg = BacksolveAdjoint(),
+                    save_start = true,
+                    save_everystep = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (
+                    u0,
+                    p,
+                ) -> loss(
+                    u0, p,
+                    sensealg = InterpolatingAdjoint(),
+                    save_start = true,
+                    save_everystep = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            # QuadratureAdjoint makes sense only in this case, otherwise Zdp fails
+            Zdu0,
+                Zdp = compute_gradient(
+                (
+                    u0,
+                    p,
+                ) -> loss(
+                    u0, p, sensealg = QuadratureAdjoint(),
+                    save_start = true,
+                    save_everystep = true
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+
+            function loss2(u0, p; sensealg = nothing, saveat = 1.0)
+                # remake tspan so saveat::Number makes sense
+                _prob = remake(prob, tspan = (0.0, 100.0), u0 = u0, p = p)
+                # saving arguments can have a huge influence here
+                sol = solve(
+                    _prob, Tsit5(), reltol = tol, abstol = tol, sensealg = sensealg,
+                    callback = cb_t, saveat = saveat
+                )
+                res = sol.u[end]
+                g(res, p, nothing)
+            end
+
+            du0 = ForwardDiff.gradient((u0) -> loss2(u0, p), u0)
+            dp = ForwardDiff.gradient((p) -> loss2(u0, p), p)
+
+            # saveat::Number
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss2(
+                    u0, p,
+                    sensealg = ForwardDiffSensitivity()
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
+                u0,
+                p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss2(
+                    u0, p,
+                    sensealg = InterpolatingAdjoint()
+                ),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
+            Zdu0,
+                Zdp = compute_gradient(
+                (u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
+                u0, p
+            )
+            @test du0 ≈ Zdu0 atol = 1.0e-4
+            @test dp ≈ Zdp atol = 1.0e-4
         end
-
-        du0 = ForwardDiff.gradient((u0) -> loss2(u0, p), u0)
-        dp = ForwardDiff.gradient((p) -> loss2(u0, p), p)
-
-        # saveat::Number
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss2(
-                u0, p,
-                sensealg = ForwardDiffSensitivity()
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss2(u0, p, sensealg = BacksolveAdjoint()),
-            u0,
-            p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss2(
-                u0, p,
-                sensealg = InterpolatingAdjoint()
-            ),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-        Zdu0,
-            Zdp = compute_gradient(
-            (u0, p) -> loss2(u0, p, sensealg = QuadratureAdjoint()),
-            u0, p
-        )
-        @test du0 ≈ Zdu0 atol = 1.0e-4
-        @test dp ≈ Zdp atol = 1.0e-4
-    end
     end
 else
     @info "Skipping Continuous sensitivity tools test on Julia 1.12+ due to Mooncake compatibility issues"
