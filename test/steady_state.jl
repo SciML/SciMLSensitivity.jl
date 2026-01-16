@@ -680,21 +680,21 @@ end
     test_loss(p, prob4, DynamicSS(Rodas5()))
     test_loss(p, prob2, SimpleNewtonRaphson())
 
-    dp1 = compute_gradient(p -> test_loss(p, prob, NewtonRaphson()), p)[1]
-    dp2 = compute_gradient(p -> test_loss(p, prob2, NewtonRaphson()), p)[1]
-    dp3 = compute_gradient(p -> test_loss(p, prob3, DynamicSS(Rodas5())), p)[1]
-    dp4 = compute_gradient(p -> test_loss(p, prob4, DynamicSS(Rodas5())), p)[1]
-    dp5 = compute_gradient(p -> test_loss(p, prob2, SimpleNewtonRaphson()), p)[1]
-    dp6 = compute_gradient(p -> test_loss(p, prob2, Klement()), p)[1]
-    dp7 = compute_gradient(p -> test_loss(p, prob2, SimpleTrustRegion()), p)[1]
+    dp1 = compute_gradient(p -> test_loss(p, prob, NewtonRaphson()), p)
+    dp2 = compute_gradient(p -> test_loss(p, prob2, NewtonRaphson()), p)
+    dp3 = compute_gradient(p -> test_loss(p, prob3, DynamicSS(Rodas5())), p)
+    dp4 = compute_gradient(p -> test_loss(p, prob4, DynamicSS(Rodas5())), p)
+    dp5 = compute_gradient(p -> test_loss(p, prob2, SimpleNewtonRaphson()), p)
+    dp6 = compute_gradient(p -> test_loss(p, prob2, Klement()), p)
+    dp7 = compute_gradient(p -> test_loss(p, prob2, SimpleTrustRegion()), p)
     # NLsolveJL doesn't work with Mooncake on Julia 1.12+ due to missing ccall rules
     # See: https://github.com/compintell/Mooncake.jl/issues
     dp8 = if VERSION >= v"1.12"
         dp7  # Use same value as dp7 to skip test effectively
     else
-        compute_gradient(p -> test_loss(p, prob2, NLsolveJL()), p)[1]
+        compute_gradient(p -> test_loss(p, prob2, NLsolveJL()), p)
     end
-    dp9 = compute_gradient(p -> test_loss(p, prob, TrustRegion()), p)[1]
+    dp9 = compute_gradient(p -> test_loss(p, prob, TrustRegion()), p)
 
     # Enzyme tests - only run on Julia <= 1.11 (Enzyme has issues on 1.12+)
     # See: https://github.com/EnzymeAD/Enzyme.jl/issues/2699
@@ -778,7 +778,7 @@ end
 
     test_loss2(p, prob, NewtonRaphson())
 
-    dp1 = compute_gradient(p -> test_loss2(p, prob, NewtonRaphson()), p)[1]
+    dp1 = compute_gradient(p -> test_loss2(p, prob, NewtonRaphson()), p)
     @test dp1[1] ≈ 128
     @test dp1[2] ≈ -128
 
