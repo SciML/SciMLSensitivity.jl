@@ -489,7 +489,7 @@ Additional Tests: save_idxs, save_everystep, etc.
     ref_grad_idx = ForwardDiff.gradient(ref_loss_idx, u0p)
 
     @testset "save_idxs - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        # Tracker has issues on Julia 1.12+ - see issue #1331
         if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
@@ -519,7 +519,7 @@ end
     ref_grad_end = ForwardDiff.gradient(ref_loss_end, u0p)
 
     @testset "save_end only - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        # Tracker has issues on Julia 1.12+ - see issue #1331
         if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
@@ -550,7 +550,7 @@ end
     ref_grad_saveat = ForwardDiff.gradient(ref_loss_saveat, u0p)
 
     @testset "saveat=2.3 - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Skip Tracker on Julia 1.12+ due to compatibility issues
+        # Tracker has issues on Julia 1.12+ - see issue #1331
         if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
@@ -623,8 +623,7 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
     @test res1 ≈ res3 atol = 1.0e-10
 
     @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Matrix ODEs have issues with all reverse-mode AD backends
-        # Mark all as broken
+        # Matrix ODEs have issues with all reverse-mode AD backends - see issue #1330
         @test_broken false
         @test_broken false
     end
@@ -708,7 +707,7 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
 
     @testset "BouncingBall - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
         if backend_name == "Tracker" && VERSION >= v"1.12"
-            # Tracker has issues on Julia 1.12+
+            # Tracker has issues on Julia 1.12+ - see issue #1331
             @test_broken false
         else
             result = grad_fn(loss_ball, p_ball)
