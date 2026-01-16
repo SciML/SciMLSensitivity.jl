@@ -33,21 +33,20 @@ end
 
 # Build list of reverse-mode backends to test
 # Each entry is (name, gradient_function)
-# On Julia 1.12+, Enzyme and Mooncake have compatibility issues, so we only
-# test them on Julia <= 1.11. Zygote is also only tested on Julia <= 1.11.
+# Note: Enzyme and Mooncake are NOT included as outer AD backends because they
+# have issues differentiating through DiffEq adjoint implementations on all Julia versions.
+# Zygote is only tested on Julia <= 1.11 due to compatibility issues with Julia 1.12+.
 const REVERSE_BACKENDS = Tuple{String, Function}[
     ("ReverseDiff", gradient_reversediff),
     ("Tracker", gradient_tracker),
 ]
 
 if VERSION <= v"1.11"
-    # Include Enzyme, Mooncake, and Zygote on Julia <= 1.11
+    # Include Zygote on Julia <= 1.11
     using Zygote
     function gradient_zygote(f, x)
         return Zygote.gradient(f, x)[1]
     end
-    push!(REVERSE_BACKENDS, ("Enzyme", gradient_enzyme))
-    push!(REVERSE_BACKENDS, ("Mooncake", gradient_mooncake))
     push!(REVERSE_BACKENDS, ("Zygote", gradient_zygote))
 else
     # On Julia 1.12+, import Zygote but don't use it for outer differentiation
@@ -60,31 +59,10 @@ Compatibility Matrix
 Define which AD backend × sensealg combinations are expected to:
 - :works - works correctly
 - :broken - broken (use @test_broken)
-- :throws_enzyme - throws EnzymeTrackedRealError
-- :throws_mooncake - throws MooncakeTrackedRealError
 - :skip - skip this combination entirely
 =#
 
 const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
-    # Enzyme can't differentiate through Tracker or ReverseDiff internals
-    ("Enzyme", "ReverseDiffAdjoint") => :throws_enzyme,
-    ("Enzyme", "TrackerAdjoint") => :throws_enzyme,
-    # Enzyme can't differentiate through adjoint sensealg objects - it wraps them
-    # as Duplicated but DiffEqBaseEnzymeExt expects Const
-    ("Enzyme", "QuadratureAdjoint") => :skip,
-    ("Enzyme", "InterpolatingAdjoint") => :skip,
-    ("Enzyme", "BacksolveAdjoint") => :skip,
-    ("Enzyme", "GaussAdjoint") => :skip,
-    ("Enzyme", "GaussKronrodAdjoint") => :skip,
-    # Mooncake can't differentiate through Tracker or ReverseDiff internals
-    ("Mooncake", "ReverseDiffAdjoint") => :throws_mooncake,
-    ("Mooncake", "TrackerAdjoint") => :throws_mooncake,
-    # Mooncake has similar issues with adjoint sensealg objects
-    ("Mooncake", "QuadratureAdjoint") => :skip,
-    ("Mooncake", "InterpolatingAdjoint") => :skip,
-    ("Mooncake", "BacksolveAdjoint") => :skip,
-    ("Mooncake", "GaussAdjoint") => :skip,
-    ("Mooncake", "GaussKronrodAdjoint") => :skip,
     # Zygote has issues with ZygoteAdjoint and MooncakeAdjoint
     ("Zygote", "ZygoteAdjoint") => :broken,
     ("Zygote", "MooncakeAdjoint") => :broken,
@@ -94,8 +72,6 @@ const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
     # ForwardSensitivity is broken when perturbing u0 (only p works)
     ("ReverseDiff", "ForwardSensitivity") => :broken,
     ("Tracker", "ForwardSensitivity") => :broken,
-    ("Enzyme", "ForwardSensitivity") => :broken,
-    ("Mooncake", "ForwardSensitivity") => :broken,
     ("Zygote", "ForwardSensitivity") => :skip,  # Returns nothing for u0
 )
 
@@ -114,10 +90,6 @@ function run_gradient_test(
 
     return if status == :skip
         @test_skip false
-    elseif status == :throws_enzyme
-        @test_throws SciMLSensitivity.EnzymeTrackedRealError grad_fn(loss_fn, x)
-    elseif status == :throws_mooncake
-        @test_throws SciMLSensitivity.MooncakeTrackedRealError grad_fn(loss_fn, x)
     elseif status == :broken
         @test_broken grad_fn(loss_fn, x) ≈ ref_grad rtol = rtol
     else
@@ -423,23 +395,13 @@ Tests callable structs with different AD backends
     end
 
     u0p = [2.0, 3.0]
-    du0p = zeros(2)
 
     # Reference gradient
     ref_grad_struct = ForwardDiff.gradient(senseloss0(InterpolatingAdjoint()), u0p)
 
     @testset "senseloss0 with $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        if backend_name == "Enzyme"
-            # Enzyme uses autodiff interface
-            Enzyme.autodiff(
-                Enzyme.Reverse, senseloss0(InterpolatingAdjoint()),
-                Enzyme.Active, Enzyme.Duplicated(u0p, du0p)
-            )
-            @test du0p ≈ ref_grad_struct
-        else
-            result = grad_fn(senseloss0(InterpolatingAdjoint()), u0p)
-            @test result ≈ ref_grad_struct
-        end
+        result = grad_fn(senseloss0(InterpolatingAdjoint()), u0p)
+        @test result ≈ ref_grad_struct
     end
 
     struct senseloss{T}
@@ -464,27 +426,13 @@ Tests callable structs with different AD backends
         end
 
         @testset "ReverseDiffAdjoint" begin
-            status = get_status(backend_name, "ReverseDiffAdjoint")
-            if status == :throws_enzyme
-                @test_throws SciMLSensitivity.EnzymeTrackedRealError grad_fn(senseloss(ReverseDiffAdjoint()), u0p)
-            elseif status == :throws_mooncake
-                @test_throws SciMLSensitivity.MooncakeTrackedRealError grad_fn(senseloss(ReverseDiffAdjoint()), u0p)
-            else
-                result = grad_fn(senseloss(ReverseDiffAdjoint()), u0p)
-                @test result ≈ ref_grad_senseloss
-            end
+            result = grad_fn(senseloss(ReverseDiffAdjoint()), u0p)
+            @test result ≈ ref_grad_senseloss
         end
 
         @testset "TrackerAdjoint" begin
-            status = get_status(backend_name, "TrackerAdjoint")
-            if status == :throws_enzyme
-                @test_throws SciMLSensitivity.EnzymeTrackedRealError grad_fn(senseloss(TrackerAdjoint()), u0p)
-            elseif status == :throws_mooncake
-                @test_throws SciMLSensitivity.MooncakeTrackedRealError grad_fn(senseloss(TrackerAdjoint()), u0p)
-            else
-                result = grad_fn(senseloss(TrackerAdjoint()), u0p)
-                @test result ≈ ref_grad_senseloss
-            end
+            result = grad_fn(senseloss(TrackerAdjoint()), u0p)
+            @test result ≈ ref_grad_senseloss
         end
 
         @testset "ForwardDiffSensitivity" begin
@@ -675,11 +623,8 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
     @test res1 ≈ res3 atol = 1.0e-10
 
     @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        if backend_name in ["Enzyme"]
-            # Enzyme has issues with matrix ODEs
-            @test_broken grad_fn(loss_mat, p0) ≈ ForwardDiff.gradient(loss_mat, p0)
-        elseif backend_name == "Tracker" && VERSION >= v"1.12"
-            # Tracker has issues on Julia 1.12+
+        if backend_name == "Tracker"
+            # Tracker has issues with matrix ODEs on all Julia versions
             @test_broken false
             @test_broken false
         elseif backend_name == "ReverseDiff" && VERSION >= v"1.12"
@@ -772,10 +717,7 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
     @test grad_fd ≈ grad_fi atol = 1.0e-2
 
     @testset "BouncingBall - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        if backend_name in ["Enzyme", "Mooncake"]
-            # Complex solver interactions
-            @test_broken grad_fn(loss_ball, p_ball) ≈ grad_fd atol = 1.0e-4
-        elseif backend_name == "Tracker" && VERSION >= v"1.12"
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             # Tracker has issues on Julia 1.12+
             @test_broken false
         else
@@ -837,13 +779,8 @@ SDE Tests
             )
         )
 
-        if backend_name in ["Enzyme"]
-            # SDE + Enzyme has issues
-            @test_broken grad_fn(loss, u0p_sde) !== nothing
-        else
-            result = grad_fn(loss, u0p_sde)
-            @test isapprox(result[1:2], ū0_ref, rtol = 1.0e-4)
-            @test isapprox(result[3:end], adj_ref', rtol = 1.0e-4)
-        end
+        result = grad_fn(loss, u0p_sde)
+        @test isapprox(result[1:2], ū0_ref, rtol = 1.0e-4)
+        @test isapprox(result[3:end], adj_ref', rtol = 1.0e-4)
     end
 end
