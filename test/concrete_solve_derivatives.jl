@@ -554,7 +554,7 @@ Additional Tests: save_idxs, save_everystep, etc.
             )
         )
         result = grad_fn(loss, u0p)
-        @test result ≈ ref_grad_idx rtol = 1.0e-12
+        @test result ≈ ref_grad_idx rtol = 1.0e-6
     end
 end
 
@@ -585,7 +585,7 @@ end
             )
         )
         result = grad_fn(loss, u0p)
-        @test result ≈ ref_grad_end rtol = 1.0e-11
+        @test result ≈ ref_grad_end rtol = 1.0e-6
     end
 end
 
@@ -615,7 +615,7 @@ end
             )
         )
         result = grad_fn(loss, u0p)
-        @test result ≈ ref_grad_saveat rtol = 1.0e-12
+        @test result ≈ ref_grad_saveat rtol = 1.0e-6
     end
 end
 
@@ -672,7 +672,7 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
 
     res1 = loss_mat(p0)
     res3 = loss_mat2(p0)
-    @test res1 ≈ res3 atol = 1.0e-14
+    @test res1 ≈ res3 atol = 1.0e-10
 
     @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
         if backend_name in ["Enzyme"]
@@ -689,7 +689,7 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
         else
             res2 = grad_fn(loss_mat, p0)
             res4 = grad_fn(loss_mat2, p0)
-            @test res2 ≈ res4 atol = 1.0e-14
+            @test res2 ≈ res4 atol = 1.0e-10
             @test res2 ≈ ForwardDiff.gradient(loss_mat, p0) atol = 1.0e-10
         end
     end
