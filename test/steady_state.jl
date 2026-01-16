@@ -431,10 +431,10 @@ end
             p
         )
 
-        @test res1 ≈ dp1[1] rtol = 1.0e-12
-        @test res2 ≈ dp2[1] rtol = 1.0e-12
-        @test res1 ≈ dp1d[1] rtol = 1.0e-12
-        @test res2 ≈ dp2d[1] rtol = 1.0e-12
+        @test res1[1] ≈ dp1[1] rtol = 1.0e-12
+        @test res2[1] ≈ dp2[1] rtol = 1.0e-12
+        @test res1[1] ≈ dp1d[1] rtol = 1.0e-12
+        @test res2[1] ≈ dp2d[1] rtol = 1.0e-12
 
         res1 = compute_gradient(
             p -> sum(
@@ -546,10 +546,10 @@ end
             p
         )
 
-        @test res1oop ≈ dp1oop[1] rtol = 1.0e-12
-        @test res2oop ≈ dp2oop[1] rtol = 1.0e-12
-        @test res1oop ≈ dp1oopd[1] rtol = 1.0e-8
-        @test res2oop ≈ dp2oopd[1] rtol = 1.0e-8
+        @test res1oop[1] ≈ dp1oop[1] rtol = 1.0e-12
+        @test res2oop[1] ≈ dp2oop[1] rtol = 1.0e-12
+        @test res1oop[1] ≈ dp1oopd[1] rtol = 1.0e-8
+        @test res2oop[1] ≈ dp2oopd[1] rtol = 1.0e-8
 
         res1oop = compute_gradient(
             p -> sum(
@@ -692,6 +692,11 @@ end
     dp11 = compute_gradient(p -> test_loss2(p, prob6, Broyden()), p)
     dp12 = ForwardDiff.gradient(p -> test_loss2(p, prob6, Broyden()), p)
 
+    # Helper to extract underlying array, working around RecursiveArrayTools isapprox issue
+    # See: https://github.com/SciML/RecursiveArrayTools.jl/issues/525
+    _unwrap_grad(x::AbstractArray) = collect(x)
+    _unwrap_grad(x) = hasproperty(x, :u) ? collect(x.u) : x
+
     @test dp1 ≈ dp2 rtol = 1.0e-10
     @test dp1 ≈ dp3 rtol = 1.0e-10
     @test dp1 ≈ dp4 rtol = 1.0e-10
@@ -700,9 +705,9 @@ end
     @test dp1 ≈ dp7 rtol = 1.0e-10
     @test dp1 ≈ dp8 rtol = 1.0e-10
     @test dp1 ≈ dp9 rtol = 1.0e-10
-    @test dp10 ≈ dp11 rtol = 1.0e-10
-    @test dp11 ≈ dp12 rtol = 1.0e-10
-    @test dp10 ≈ dp12 rtol = 1.0e-10
+    @test _unwrap_grad(dp10) ≈ _unwrap_grad(dp11) rtol = 1.0e-10
+    @test _unwrap_grad(dp11) ≈ _unwrap_grad(dp12) rtol = 1.0e-10
+    @test _unwrap_grad(dp10) ≈ _unwrap_grad(dp12) rtol = 1.0e-10
 
     # Larger Batched Problem: For testing the Iterative Solvers Path
     u0 = zeros(128)
