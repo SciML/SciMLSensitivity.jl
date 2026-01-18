@@ -568,24 +568,22 @@ end
 end
 
 @testset "VecOfArray Derivatives" begin
+    # Note: We use sol[:, end] instead of last(sol) because:
+    # - For ODESolution, last(sol) returns the last state vector (via custom method)
+    # - For TrackedArray (what ReverseDiff/Tracker return), last() returns the last element
+    #   in column-major order (a scalar), which is different behavior
+    # Using sol[:, end] works correctly for both cases, returning the final state vector
     ref_loss_vec = p -> sum(
-        last(
-            solve(
-                prob, Tsit5(), p = p, saveat = 10.0,
-                abstol = 1.0e-10, reltol = 1.0e-10
-            )
-        )
+        solve(
+            prob, Tsit5(), p = p, saveat = 10.0,
+            abstol = 1.0e-10, reltol = 1.0e-10
+        )[:, end]
     )
     ref_grad_vec = ForwardDiff.gradient(ref_loss_vec, p)
 
     @testset "VecOfArray - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has VecOfArray compatibility issues - see issue #1328
-        if backend_name == "Tracker"
-            @test_broken false
-            continue
-        end
-        # ReverseDiff has VecOfArray compatibility issues - see issue #1328
-        if backend_name == "ReverseDiff"
+        # Tracker has issues on Julia 1.12+ - see issue #1331
+        if backend_name == "Tracker" && VERSION >= v"1.12"
             @test_broken false
             continue
         end
