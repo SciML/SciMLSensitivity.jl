@@ -1,4 +1,4 @@
-using SciMLSensitivity, Aqua, SciMLBase, ExplicitImports
+using SciMLSensitivity, Aqua, SciMLBase, ExplicitImports, Zygote
 
 @testset "Aqua" begin
     Aqua.find_persistent_tasks_deps(SciMLSensitivity)
@@ -12,7 +12,9 @@ using SciMLSensitivity, Aqua, SciMLBase, ExplicitImports
         ]
     )
     Aqua.test_project_extras(SciMLSensitivity)
-    Aqua.test_stale_deps(SciMLSensitivity)
+    Aqua.test_stale_deps(SciMLSensitivity;
+        ignore = [:PreallocationTools]  # Used but detection fails
+    )
     Aqua.test_unbound_args(SciMLSensitivity)
     Aqua.test_undefined_exports(SciMLSensitivity)
 end
@@ -22,6 +24,6 @@ end
         SciMLSensitivity; skip = (Base, Core, SciMLBase)
     ) === nothing
     @test ExplicitImports.check_no_stale_explicit_imports(SciMLSensitivity) === nothing
-    @test ExplicitImports.check_all_qualified_accesses_via_owners(SciMLSensitivity) ===
-        nothing
+    @test ExplicitImports.check_all_qualified_accesses_via_owners(SciMLSensitivity;
+        skip = (Zygote => Zygote.ZygoteRules,)) === nothing
 end
