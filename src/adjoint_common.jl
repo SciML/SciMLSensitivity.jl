@@ -226,7 +226,7 @@ function adjointdiffcache(
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         if isscimlstructure(p)
-            unwrappedf = repack_ode_function(unwrappedf, repack)
+            unwrappedf = repack_ode_function(unwrappedf, repack, isinplace)
         end
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))

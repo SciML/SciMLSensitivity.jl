@@ -704,9 +704,15 @@ function gclosure2(f, du, u, p, t, W)
     return nothing
 end
 
-function repack_ode_function(f, repack)
-    f_repacked = function (du, u, p, t)
-        f(du, u, repack(p), t)
+function repack_ode_function(f, repack, isinplace::Bool)
+    if isinplace
+        f_repacked = function (du, u, p, t)
+            return f(du, u, repack(p), t)
+        end
+    else
+        f_repacked = function (u, p, t)
+            return f(u, repack(p), t)
+        end
     end
     return f_repacked
 end
