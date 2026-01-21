@@ -60,7 +60,7 @@ optprob = OPT.OptimizationProblem(optf, p)
 
 result_ode = OPT.solve(optprob, OPA.PolyOpt(),
     callback = callback,
-    maxiters = 100)
+    maxiters = 1000)
 ```
 
 ## Explanation
@@ -155,7 +155,7 @@ optprob = OPT.OptimizationProblem(optf, p)
 
 result_ode = OPT.solve(optprob, OPA.PolyOpt(),
     callback = callback,
-    maxiters = 100)
+    maxiters = 1000)
 ```
 
 In just seconds we found parameters which give a relative loss of `1e-16`! We can
