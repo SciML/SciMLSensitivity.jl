@@ -717,6 +717,8 @@ function _vecjacobian!(
     ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     f = unwrapped_f(S.f)
+    # pf is the cached function for Enzyme (already wrapped with repack for SciMLStructures)
+    pf = S.diffcache.pf
 
     prob = getprob(S)
 
@@ -767,10 +769,6 @@ function _vecjacobian!(
         Enzyme.Const(p)
     end
 
-    if is_sciml_struct
-        f = repack_ode_function(f, repack)
-    end
-
     Enzyme.remake_zero!(tmp3)
 
     vec(tmp4) .= vec(λ)
@@ -783,14 +781,14 @@ function _vecjacobian!(
             # Correctness over speed
             # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
             # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            _tmp6 = Enzyme.make_zero(SciMLBase.Void(f))
+            _tmp6 = Enzyme.make_zero(pf)
         else
             Enzyme.remake_zero!(_tmp6)
         end
 
         if W === nothing
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -798,7 +796,7 @@ function _vecjacobian!(
             )
         else
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -811,19 +809,19 @@ function _vecjacobian!(
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
-            _tmp6 = Enzyme.make_zero(f)
+            _tmp6 = Enzyme.make_zero(pf)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t)
             )
         else
-            _tmp6 = Enzyme.make_zero(f)
+            _tmp6 = Enzyme.make_zero(pf)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W)
