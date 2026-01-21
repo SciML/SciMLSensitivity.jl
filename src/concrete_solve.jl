@@ -447,11 +447,22 @@ function SciMLBase._concrete_solve_adjoint(
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
 end
 
-# SCCNonlinearProblem uses ForwardDiff to compute sensitivities through the solve.
-# SteadyStateAdjoint cannot work because f = Returns(nothing).
+# SCCNonlinearProblem with SteadyStateAdjoint is not supported.
+# SteadyStateAdjoint cannot work because f = Returns(nothing) for SCC problems.
 function SciMLBase._concrete_solve_adjoint(
         prob::SCCNonlinearProblem, alg,
-        sensealg::Union{Nothing, SteadyStateAdjoint, ForwardDiffSensitivity}, u0, p,
+        sensealg::SteadyStateAdjoint, u0, p,
+        originator::SciMLBase.ADOriginator, args...;
+        kwargs...)
+    throw(AdjointSteadyProblemPairingError(prob, sensealg))
+end
+
+# SCCNonlinearProblem uses ForwardDiff to compute sensitivities through the solve.
+# Note: sensealg::Nothing is handled by the AbstractNonlinearProblem method which
+# computes default_sensealg and redispatches here.
+function SciMLBase._concrete_solve_adjoint(
+        prob::SCCNonlinearProblem, alg,
+        sensealg::ForwardDiffSensitivity, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...)
     # Forward solve
@@ -2550,52 +2561,6 @@ function fix_endpoints(sensealg, sol, ts)
     return push!(ts, last(current_time(sol)))
 end
 
-# ChainRulesCore rrule for NonlinearSolution getindex with symbolic variables
-# This enables AD through isol[sym] for NonlinearSolution by computing gradients
-# directly through the observed function and using proper Tangent types.
-import SymbolicIndexingInterface: symbolic_type, NotSymbolic, variable_index
-
-# Zygote adjoint for NonlinearSolution getindex with symbolic variables
-# This enables AD through isol[sym] for NonlinearSolution by computing gradients
-# directly through the observed function.
-# Note: Due to issues with pullback chaining between Zygote @adjoint and ChainRulesCore rrule,
-# the gradient computed here may not flow back through solve's pullback correctly.
-# For now, use the Zygote.ignore() pattern for observed values as shown in the test.
-Zygote.@adjoint function Base.getindex(sol::SciMLBase.NonlinearSolution, sym)
-    val = sol[sym]
-
-    function NonlinearSolution_getindex_pullback(Δ)
-        # Check if sym is a symbolic variable
-        i = symbolic_type(sym) != NotSymbolic() ? variable_index(sol, sym) : sym
-
-        if i === nothing
-            # Observed variable - compute gradient through observed function
-            obsgetter = Zygote.ignore() do
-                SymbolicIndexingInterface.observed(sol.prob.f.sys, sym)
-            end
-            obsfn = obsgetter.f_oop
-
-            p_for_obs = sol.prob.p
-            u_for_obs = sol.u === nothing || isempty(sol.u) ? nothing : sol.u
-
-            # Compute gradient through the observed function
-            _, pullback = Zygote.pullback(obsfn, u_for_obs, p_for_obs)
-            du, dp = pullback(Δ)
-
-            # Return tangent for solve's pullback
-            Δsol = (u = du, prob = (p = dp,))
-            (Δsol, nothing)
-        else
-            # State variable
-            if sol.u === nothing || isempty(sol.u)
-                Δsol = (u = nothing, prob = (p = nothing,))
-            else
-                du = [k == i ? Δ : zero(sol.u[k]) for k in 1:length(sol.u)]
-                Δsol = (u = du, prob = (p = nothing,))
-            end
-            (Δsol, nothing)
-        end
-    end
-
-    val, NonlinearSolution_getindex_pullback
-end
+# Note: AD through isol[sym] for NonlinearSolution with observed variables
+# requires the Zygote.ignore() pattern as shown in parameter_initialization.jl tests.
+# Direct Zygote.@adjoint definitions cause type piracy issues.
