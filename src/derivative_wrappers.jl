@@ -752,9 +752,11 @@ function _vecjacobian!(
     Enzyme.remake_zero!(tmp1) # should be removed for dλ
     vec(ytmp) .= vec(y)
 
+    is_sciml_struct = isscimlstructure(p)
+
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         Enzyme.remake_zero!(tmp2)
-        if isscimlstructure(p)
+        if is_sciml_struct
             Enzyme.Duplicated(tunables, tmp2)
         else
             # Skip repack when it's just a simple vector - avoids unnecessary allocation
@@ -765,7 +767,7 @@ function _vecjacobian!(
         Enzyme.Const(p)
     end
 
-    if isscimlstructure(p)
+    if is_sciml_struct
         f = repack_ode_function(f, repack)
     end
 
