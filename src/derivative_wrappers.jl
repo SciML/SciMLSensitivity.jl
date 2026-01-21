@@ -724,7 +724,9 @@ function _vecjacobian!(
     (; sensealg) = S
     f = unwrapped_f(S.f)
     # pf is the cached function for Enzyme (already wrapped with repack for SciMLStructures)
-    pf = S.diffcache.pf
+    # For some code paths (e.g., QuadratureAdjoint), pf may be nothing
+    _pf = S.diffcache.pf
+    pf = _pf === nothing ? (inplace_sensitivity(S) ? SciMLBase.Void(f) : f) : _pf
 
     prob = getprob(S)
 
