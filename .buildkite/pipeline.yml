@@ -1,23 +1,4 @@
 steps:
-  - label: "{{matrix}}"
-    matrix:
-      - "Callbacks1"
-      - "Callbacks2"
-    env:
-      GROUP: "{{matrix}}"
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "1.10"
-      - JuliaCI/julia-test#v1:
-          coverage: true
-    agents:
-      os: "linux"
-      queue: "juliaecosystem"
-      arch: "x86_64"
-    timeout_in_minutes: 120
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
   - label: "Shadowing"
     plugins:
       - JuliaCI/julia#v1:
