@@ -720,9 +720,12 @@ function _vecjacobian!(
     end
 
     if _p === nothing || _p isa SciMLBase.NullParameters
-        tunables, repack = _p, identity
+        tunables, repack, trivial_repack = _p, identity, true
     else
-        tunables, repack, _ = canonicalize(Tunable(), _p)
+        tunables, repack, aliases = canonicalize(Tunable(), _p)
+        # When aliases is true and _p is a vector, repack is a no-op
+        # that still allocates. Skip it in this case.
+        trivial_repack = aliases && _p isa AbstractVector
     end
 
     _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
@@ -748,7 +751,9 @@ function _vecjacobian!(
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
-        Enzyme.Duplicated(p, repack(tmp2))
+        # Skip repack when it's just a simple vector - avoids unnecessary allocation
+        shadow_p = trivial_repack ? tmp2 : repack(tmp2)
+        Enzyme.Duplicated(p, shadow_p)
     else
         Enzyme.Const(p)
     end
