@@ -2427,6 +2427,15 @@ end
 
 function DiffEqBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
+        alg, sensealg::Nothing,
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; kwargs...)
+    DiffEqBase._concrete_solve_adjoint(prob, alg, UnconstrainedOptimizationAdjoint(),
+        u0, p, originator, args...; kwargs...)
+end
+
+function DiffEqBase._concrete_solve_adjoint(
+        prob::AbstractOptimizationProblem,
         alg, sensealg::UnconstrainedOptimizationAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...)
@@ -2442,34 +2451,29 @@ function DiffEqBase._concrete_solve_adjoint(
         # No gradient provided, use automatic differentiation from derivative_wrappers
         if SciMLBase.isinplace(_prob)
             # In-place version: grad_f!(du, u, p) computes gradient into du
-            function grad_f!(du, u, p)
-                # Wrapper that closes over p for gradient computation
+            nlprob = NonlinearProblem(opt_sol.u, p) do du, u, p
                 f_u = u -> opt_f(u, p)
                 grad_config = build_grad_config(sensealg, f_u, u, p)
                 gradient!(du, f_u, u, sensealg, grad_config)
                 return nothing
             end
-            nlprob = NonlinearProblem(grad_f!, opt_sol.u, p)
         else
             # Out-of-place version: grad_f(u, p) returns gradient
-            function grad_f(u, p)
-                # Wrapper that closes over p for gradient computation
+            nlprob = NonlinearProblem(opt_sol.u, p) do u, p
                 f_u = u -> opt_f(u, p)
                 du = similar(u)
                 grad_config = build_grad_config(sensealg, f_u, u, p)
                 gradient!(du, f_u, u, sensealg, grad_config)
                 return du
             end
-            nlprob = NonlinearProblem(grad_f, opt_sol.u, p)
         end
     else
         nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
     end
 
-    nl_alg = sensealg.nl_alg
     # Wrap the optimization solution in a NonlinearSolution with the gradient function
     # This is used internally for adjoint computation but not returned
-    sol = SciMLBase.build_solution(nlprob, nl_alg, opt_sol.u, opt_sol.objective;
+    sol = SciMLBase.build_solution(nlprob, nothing, opt_sol.u, opt_sol.objective;
                                     retcode = opt_sol.retcode,
                                     original = opt_sol)
 
@@ -2518,7 +2522,7 @@ function DiffEqBase._concrete_solve_adjoint(
             linsolve = sensealg.linsolve,
             linsolve_kwargs = sensealg.linsolve_kwargs
         )
-        dp = adjoint_sensitivities(sol, nl_alg; sensealg = steady_sensealg, dgdu = df)
+        dp = adjoint_sensitivities(sol, nothing; sensealg = steady_sensealg, dgdu = df)
         dp,
         Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
