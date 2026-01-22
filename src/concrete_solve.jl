@@ -2463,28 +2463,23 @@ function DiffEqBase._concrete_solve_adjoint(
             nlprob = NonlinearProblem(grad_f, opt_sol.u, p)
         end
     else
-        # Use provided gradient function
-        if SciMLBase.isinplace(_prob)
-            # In-place version: grad_f!(du, u, p) computes gradient into du
-            nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
-        else
-            # Out-of-place version: grad_f(u, p) returns gradient
-            nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
-        end
+        nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
     end
 
     nl_alg = sensealg.nl_alg
     # Wrap the optimization solution in a NonlinearSolution with the gradient function
+    # This is used internally for adjoint computation but not returned
     sol = SciMLBase.build_solution(nlprob, nl_alg, opt_sol.u, opt_sol.objective;
                                     retcode = opt_sol.retcode,
                                     original = opt_sol)
 
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
+    # Return the OptimizationSolution, not the NonlinearSolution wrapper
     if save_idxs === nothing
-        out = sol
+        out = opt_sol
     else
-        out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
+        out = SciMLBase.sensitivity_solution(opt_sol, opt_sol[_save_idxs])
     end
 
     _, repack_adjoint = if isscimlstructure(p)
