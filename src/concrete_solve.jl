@@ -2425,16 +2425,16 @@ function SciMLBase._concrete_solve_adjoint(
     return out, steadystatebackpass
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
         alg, sensealg::Nothing,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...)
-    DiffEqBase._concrete_solve_adjoint(prob, alg, UnconstrainedOptimizationAdjoint(),
+    SciMLBase._concrete_solve_adjoint(prob, alg, UnconstrainedOptimizationAdjoint(),
         u0, p, originator, args...; kwargs...)
 end
 
-function DiffEqBase._concrete_solve_adjoint(
+function SciMLBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
         alg, sensealg::UnconstrainedOptimizationAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
