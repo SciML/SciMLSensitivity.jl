@@ -1,5 +1,5 @@
 using Test, LinearAlgebra
-using SciMLSensitivity, Optimization, OptimizationOptimJL
+using SciMLSensitivity, Optimization, OptimizationOptimisers
 using SciMLSensitivity: MooncakeVJP
 using Zygote
 
@@ -24,7 +24,7 @@ using Zygote
         prob = OptimizationProblem(opt_f, u0, p)
 
         # Solve to get optimal solution
-        sol = solve(prob, NelderMead())
+        sol = solve(prob, Descent())
         u_star = sol.u[1]
 
         # Analytical gradient
@@ -33,7 +33,7 @@ using Zygote
                              (3 * p_val * u_star^2 + 3 * p_val^2 * u_star - 6)
 
         # Compute gradient using adjoint
-        g(p) = solve(prob, NelderMead(), p = p).u[1]
+        g(p) = solve(prob, Descent(), p = p).u[1]
 
         res_adj = Zygote.gradient(g, p)[1]
 
@@ -42,7 +42,7 @@ using Zygote
 
         # Test with explicit sensealg (default)
         res_adj_explicit = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
             sensealg = UnconstrainedOptimizationAdjoint()).u[1],
             p)[1]
 
@@ -51,19 +51,19 @@ using Zygote
         # Test with different VJP methods
 
         res_reversediff = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
             sensealg = UnconstrainedOptimizationAdjoint(autojacvec = ReverseDiffVJP())).u[1],
             p)[1]
         @test res_reversediff[1] ≈ g_prime_analytical
 
         res_enzyme = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
             sensealg = UnconstrainedOptimizationAdjoint(autojacvec = EnzymeVJP())).u[1],
             p)[1]
         @test res_enzyme[1] ≈ g_prime_analytical
 
         res_mooncake = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
             sensealg = UnconstrainedOptimizationAdjoint(autojacvec = MooncakeVJP())).u[1],
             p)[1]
         @test res_mooncake[1] ≈ g_prime_analytical
@@ -80,12 +80,12 @@ using Zygote
         p = [2.0]
 
         prob = OptimizationProblem(f, u0, p)
-        sol = solve(prob, NelderMead())
+        sol = solve(prob, Descent())
 
         @test sol.u[1] ≈ p[1] rtol=1e-2
 
         # Test gradient
-        g(p) = solve(prob, NelderMead(), p = p).u[1]
+        g(p) = solve(prob, Descent(), p = p).u[1]
 
         res_adj = Zygote.gradient(g, p)[1]
 
@@ -94,7 +94,7 @@ using Zygote
 
         # Test with explicit sensealg
         res_explicit = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
                       sensealg = UnconstrainedOptimizationAdjoint()).u[1],
             p)[1]
         @test res_explicit[1] ≈ 1.0 rtol=1e-2
@@ -110,13 +110,13 @@ using Zygote
         p = [1.0, 2.0, 3.0]
 
         prob = OptimizationProblem(f, u0, p)
-        sol = solve(prob, NelderMead())
+        sol = solve(prob, Descent())
 
         @test sol.u ≈ p rtol=1e-2
 
         # Test Jacobian: d(u*)/dp should be identity
         for i in 1:3
-            g(p) = solve(prob, NelderMead(), p = p).u[i]
+            g(p) = solve(prob, Descent(), p = p).u[i]
             res_adj = Zygote.gradient(g, p)[1]
 
             # Should be close to i-th unit vector
@@ -135,26 +135,26 @@ using Zygote
         p = [2.0]
 
         prob = OptimizationProblem(f, u0, p)
-        sol = solve(prob, NelderMead())
+        sol = solve(prob, Descent())
 
         # Optimal solution: u* = -p[1]/2
         @test sol.u[1] ≈ -p[1]/2 rtol=1e-2
 
         # Test gradient: d(u*)/dp = -1/2
-        g(p) = solve(prob, NelderMead(), p = p).u[1]
+        g(p) = solve(prob, Descent(), p = p).u[1]
         res_adj = Zygote.gradient(g, p)[1]
 
         @test res_adj[1] ≈ -0.5 rtol=1e-2
 
         # Test with different VJP methods
         res_enzyme = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
                       sensealg = UnconstrainedOptimizationAdjoint(autojacvec = EnzymeVJP())).u[1],
             p)[1]
         @test res_enzyme[1] ≈ -0.5 rtol=1e-2
 
         res_mooncake = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p,
+            p -> solve(prob, Descent(), p = p,
                       sensealg = UnconstrainedOptimizationAdjoint(autojacvec = MooncakeVJP())).u[1],
             p)[1]
         @test res_mooncake[1] ≈ -0.5 rtol=1e-2
@@ -171,14 +171,14 @@ using Zygote
 
         # Test with single index
         res1 = Zygote.gradient(
-            p -> solve(prob, NelderMead(), p = p, save_idxs = 1)[1],
+            p -> solve(prob, Descent(), p = p, save_idxs = 1)[1],
             p)[1]
         @test length(res1) == 3
         @test res1[1] ≈ 1.0 rtol=1e-2
 
         # Test with range
         res2 = Zygote.gradient(
-            p -> sum(solve(prob, NelderMead(), p = p, save_idxs = 1:2)),
+            p -> sum(solve(prob, Descent(), p = p, save_idxs = 1:2)),
             p)[1]
         @test length(res2) == 3
         @test res2[1] ≈ 1.0 rtol=1e-2
