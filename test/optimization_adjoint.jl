@@ -82,7 +82,7 @@ using Zygote
         prob = OptimizationProblem(f, u0, p)
         sol = solve(prob, Descent())
 
-        @test sol.u[1] ≈ p[1] rtol=1e-2
+        @test sol.u[1] ≈ p[1]
 
         # Test gradient
         g(p) = solve(prob, Descent(), p = p).u[1]
@@ -90,14 +90,14 @@ using Zygote
         res_adj = Zygote.gradient(g, p)[1]
 
         # Analytical: du*/dp = 1
-        @test res_adj[1] ≈ 1.0 rtol=1e-2
+        @test res_adj[1] ≈ 1.0 
 
         # Test with explicit sensealg
         res_explicit = Zygote.gradient(
             p -> solve(prob, Descent(), p = p,
                       sensealg = UnconstrainedOptimizationAdjoint()).u[1],
             p)[1]
-        @test res_explicit[1] ≈ 1.0 rtol=1e-2
+        @test res_explicit[1] ≈ 1.0
     end
 
     @testset "Multivariate quadratic" begin
@@ -122,7 +122,7 @@ using Zygote
             # Should be close to i-th unit vector
             expected = zeros(3)
             expected[i] = 1.0
-            @test res_adj ≈ expected rtol=1e-2
+            @test res_adj ≈ expected 
         end
     end
 
