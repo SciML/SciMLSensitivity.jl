@@ -665,6 +665,8 @@ function SciMLBase._concrete_solve_adjoint(
         only_end = length(ts) == 1 && ts[1] == _prob.tspan[2]
     end
 
+    @reset out.prob = prob
+
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
