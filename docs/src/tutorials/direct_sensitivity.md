@@ -107,7 +107,7 @@ and thus:
 dg(out, u, p, t, i) = (out .= u .- 1.0)
 ```
 
-Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`.
+Also, we can omit `dgdp`, because the cost function doesn't depend on `p`.
 If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
 sensitivities, call:
 
