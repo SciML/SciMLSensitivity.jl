@@ -5,7 +5,7 @@ automatic differentiation libraries, one can often times obtain more speed
 and flexibility with the direct sensitivity analysis interfaces. This tutorial
 demonstrates some of those functions.
 
-## Example using an ODEForwardSensitivityProblem
+## Example using an `ODEForwardSensitivityProblem`
 
 Forward sensitivity analysis is performed by defining and solving an augmented
 ODE. To define this augmented ODE, use the `ODEForwardSensitivityProblem` type
