@@ -26,6 +26,7 @@ end
             @time @safetestset "ReverseDiffAdjoint Output Type" include("reversediff_output_types.jl")
             @time @safetestset "Forward Remake" include("forward_remake.jl")
             @time @safetestset "Prob Kwargs" include("prob_kwargs.jl")
+            @time @safetestset "Mooncake VJP Prob Kwargs" include("mooncake_vjp_prob_kwargs.jl")
             @time @safetestset "DiscreteProblem Adjoints" include("discrete.jl")
             @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl")
             @time @safetestset "SciMLStructures Interface" include("scimlstructures_interface.jl")
