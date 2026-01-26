@@ -107,6 +107,7 @@ sol = ODE.solve(prob, ODE.Tsit5())
 # Plot the solution
 Plots.plot(sol)
 Plots.savefig("LV_ode.png")
+nothing # hide
 ```
 
 ![LV Solution Plot](https://user-images.githubusercontent.com/1814174/51388169-9a07f300-1af6-11e9-8c6c-83c41e81d11c.png)

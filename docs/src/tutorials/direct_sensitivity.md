@@ -5,7 +5,7 @@ automatic differentiation libraries, one can often times obtain more speed
 and flexibility with the direct sensitivity analysis interfaces. This tutorial
 demonstrates some of those functions.
 
-## Example using an ODEForwardSensitivityProblem
+## Example using an `ODEForwardSensitivityProblem`
 
 Forward sensitivity analysis is performed by defining and solving an augmented
 ODE. To define this augmented ODE, use the `ODEForwardSensitivityProblem` type
@@ -107,7 +107,7 @@ and thus:
 dg(out, u, p, t, i) = (out .= u .- 1.0)
 ```
 
-Also, we can omit `dgdp`, because the cost function doesn't dependent on `p`.
+Also, we can omit `dgdp`, because the cost function doesn't depend on `p`.
 If we had data, we'd just replace `1.0` with `data[i]`. To get the adjoint
 sensitivities, call:
 

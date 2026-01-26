@@ -37,8 +37,7 @@ function simulator(du, u, p, t) # Pendulum dynamics
     g = 9.82 # Gravitational constant
     L = p isa Number ? p : p[1] # Length of the pendulum
     gL = g / L
-    θ = u[1]
-    dθ = u[2]
+    θ, dθ = u
     du[1] = dθ
     du[2] = -gL * sin(θ)
 end
@@ -94,8 +93,7 @@ function predictor(du, u, p, t)
     g = 9.82
     L, K, y = p # pendulum length, observer gain and measurements
     gL = g / L
-    θ = u[1]
-    dθ = u[2]
+    θ, dθ = u
     yt = y(t)
     e = yt - θ
     du[1] = dθ + K * e
@@ -138,8 +136,7 @@ adtype = OPT.AutoForwardDiff()
 optf = OPT.OptimizationFunction((x, p) -> simloss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, L0)
 
-ressim = OPT.solve(optprob, OPA.PolyOpt(),
-    maxiters = 5000)
+ressim = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 5000)
 ysim = simulate(ressim.u)[1, :]
 
 Plots.plot(tsteps, [y ysim], label = ["Data" "Simulation model"])
@@ -148,8 +145,7 @@ p0 = [0.7, 1.0] # Initial guess of length and observer gain K
 optf2 = OPT.OptimizationFunction((p, _) -> predloss(p), adtype)
 optprob2 = OPT.OptimizationProblem(optf2, p0)
 
-respred = OPT.solve(optprob2, OPA.PolyOpt(),
-    maxiters = 5000)
+respred = OPT.solve(optprob2, OPA.PolyOpt(), maxiters = 5000)
 ypred = simulate(respred.u)[1, :]
 
 Plots.plot!(tsteps, ypred, label = "Prediction model")
@@ -177,8 +173,7 @@ y_int = DI.LinearInterpolation(yn, tsteps) # redefine the interpolator to contai
 optf = OPT.OptimizationFunction((x, p) -> predloss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p0)
 
-resprednoise = OPT.solve(optprob, OPA.PolyOpt(),
-    maxiters = 5000)
+resprednoise = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 5000)
 
 yprednoise = prediction(resprednoise.u)[1, :]
 Plots.plot!(tsteps, yprednoise, label = "Prediction model with noisy measurements")

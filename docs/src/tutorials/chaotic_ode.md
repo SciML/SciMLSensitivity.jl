@@ -77,7 +77,7 @@ computed one, see, e.g, the [blog post](https://frankschae.github.io/post/shadow
 Essentially, the idea is to replace the ill-conditioned ODE by a well-conditioned
 optimization problem. Shadowing methods use the shadowing theorem within a renormalization
 procedure to distill the long-time effect from the joint observation of the long-time
-and the butterfly effect. This allows us to accurately compute derivatives w.r.t.
+and the butterfly effect. This allows us to accurately compute derivatives with respect to
 the long-time average quantities.
 
 The following `sensealg` choices exist
