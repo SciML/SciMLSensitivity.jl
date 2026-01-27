@@ -56,7 +56,7 @@ We also define functions that simulate the system and calculate the loss, given 
 
 ```@example PEM
 function simulate(p)
-    _prob = ODE.remake(prob, p = p)
+    _prob = ODE.remake(prob; p)
     ODE.solve(_prob, ODE.Tsit5(), saveat = tsteps, abstol = 1e-8, reltol = 1e-8)
 end
 

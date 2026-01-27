@@ -36,14 +36,13 @@ function test_continuous_wrt_discrete_callback()
     condition2(u, t, integrator) = t == tstop
     cb2 = DiscreteCallback(condition2, affect!, save_positions = (false, false))
 
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -59,7 +58,7 @@ function test_continuous_wrt_discrete_callback()
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -86,14 +85,13 @@ function test_continuous_wrt_discrete_callback()
     @test dp2 ≈ dstuff[3:4]
 
     # no saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint by slicing
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = BacksolveAdjoint()
             )[end]
@@ -101,14 +99,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du02,
-        dp2 = Zygote.gradient(
+    du02, dp2 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = BacksolveAdjoint()
             )[end]
@@ -119,8 +116,7 @@ function test_continuous_wrt_discrete_callback()
     dstuff = ForwardDiff.gradient(
         (θ) -> sum(
             solve(
-                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4],
-                callback = cb
+                prob, Tsit5(), u0 = θ[1:2], p = θ[3:4], callback = cb
             )[end]
         ),
         [u0; p]
@@ -136,14 +132,13 @@ function test_continuous_wrt_discrete_callback()
     cb = ContinuousCallback(condition, affect!, save_positions = (true, true))
     cb2 = DiscreteCallback(condition2, affect!, save_positions = (true, true))
 
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -152,14 +147,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du02,
-        dp2 = Zygote.gradient(
+    du02, dp2 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -186,14 +180,13 @@ function test_continuous_wrt_discrete_callback()
     @test dp2 ≈ dstuff[3:4]
 
     # with saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint by slicing
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = BacksolveAdjoint()
             )[end]
@@ -208,7 +201,7 @@ function test_continuous_wrt_discrete_callback()
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = BacksolveAdjoint()
             )[end]
@@ -240,14 +233,13 @@ function test_continuous_wrt_discrete_callback()
 
     cb2 = DiscreteCallback(condition2, affect2!, save_positions = (true, true))
 
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -256,14 +248,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du02,
-        dp2 = Zygote.gradient(
+    du02, dp2 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = BacksolveAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -272,14 +263,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du03,
-        dp3 = Zygote.gradient(
+    du03, dp3 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = GaussAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -288,14 +278,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du04,
-        dp4 = Zygote.gradient(
+    du04, dp4 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = InterpolatingAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -311,7 +300,7 @@ function test_continuous_wrt_discrete_callback()
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb,
                 sensealg = QuadratureAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -320,14 +309,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du06,
-        dp6 = Zygote.gradient(
+    du06, dp6 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = GaussAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -336,14 +324,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du07,
-        dp7 = Zygote.gradient(
+    du07, dp7 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = InterpolatingAdjoint(),
                 saveat = tspan[2], save_start = false
@@ -352,14 +339,13 @@ function test_continuous_wrt_discrete_callback()
         u0, p
     )
 
-    du08,
-        dp8 = Zygote.gradient(
+    du08, dp8 = Zygote.gradient(
         (
             u0,
             p,
         ) -> sum(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
+                prob, Tsit5(); u0, p,
                 callback = cb2, tstops = [tstop],
                 sensealg = QuadratureAdjoint(),
                 saveat = tspan[2], save_start = false

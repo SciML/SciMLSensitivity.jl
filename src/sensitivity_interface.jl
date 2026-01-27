@@ -441,28 +441,28 @@ function _adjoint_sensitivities(
             sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
-            checkpoints = checkpoints,
-            callback = callback, no_start = no_start,
-            abstol = abstol, reltol = reltol, kwargs...
+            checkpoints,
+            callback, no_start,
+            abstol, reltol, kwargs...
         )
 
     elseif sol.prob isa SDEProblem
         adj_prob = SDEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g;
-            checkpoints = checkpoints,
-            callback = callback,
-            abstol = abstol, reltol = reltol,
-            corfunc_analytical = corfunc_analytical
+            checkpoints,
+            callback,
+            abstol, reltol,
+            corfunc_analytical
         )
     elseif sol.prob isa RODEProblem
         adj_prob = RODEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g;
-            checkpoints = checkpoints,
-            callback = callback,
-            abstol = abstol, reltol = reltol,
-            corfunc_analytical = corfunc_analytical
+            checkpoints,
+            callback,
+            abstol, reltol,
+            corfunc_analytical
         )
     else
         error("Continuous adjoint sensitivities are only supported for ODE/SDE/RODE problems.")
@@ -472,7 +472,7 @@ function _adjoint_sensitivities(
     adj_sol = solve(
         adj_prob, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
-        tstops = tstops, abstol = abstol, reltol = reltol, kwargs...
+        tstops, abstol, reltol, kwargs...
     )
 
     if mtkp === nothing || mtkp isa SciMLBase.NullParameters

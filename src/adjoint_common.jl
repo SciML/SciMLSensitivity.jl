@@ -217,15 +217,14 @@ function adjointdiffcache(
         else
             paramjac_config = get_paramjac_config(
                 autojacvec, p, unwrappedf, y, _p, _t;
-                isinplace = isinplace,
-                isRODE = isRODE, _W = _W
+                isinplace, isRODE, _W
             )
         end
 
         pf = nothing
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
-        pf = get_pf(autojacvec; _f = unwrappedf, isinplace = isinplace, isRODE = isRODE)
+        pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
     elseif autojacvec isa MooncakeVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
@@ -630,7 +629,7 @@ function (f::ReverseLossCallback)(integrator)
         @assert sensealg isa QuadratureAdjoint
         outtype = ArrayInterface.parameterless_type(λ)
         y = sol(t[cur_time[]])
-        gᵤ = dgdu(y, p, t[cur_time[]], cur_time[]; outtype = outtype)
+        gᵤ = dgdu(y, p, t[cur_time[]], cur_time[]; outtype)
     end
 
     if issemiexplicitdae

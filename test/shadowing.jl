@@ -29,16 +29,16 @@ using Zygote
             fill!(out, zero(eltype(u)))
             out[end] = one(eltype(u))
         end
-        lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(g = g))
+        lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(; g))
         lss_problem1a = ForwardLSSProblem(
-            sol_attractor, ForwardLSS(g = g),
+            sol_attractor, ForwardLSS(; g),
             dgdu_continuous = dg
         )
         lss_problem2 = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.Cos2Windowing(),
-                g = g
+                g
             )
         )
         lss_problem2a = ForwardLSSProblem(
@@ -48,32 +48,34 @@ using Zygote
         )
         lss_problem3 = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             )
         )
         lss_problem3a = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), dgdu_continuous = dg
+                g
+            ),
+            dgdu_continuous = dg
         ) #ForwardLSS with time dilation requires knowledge of g
 
         adjointlss_problem = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             )
         )
         adjointlss_problem_a = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), dgdu_continuous = dg
+                g
+            ),
+            dgdu_continuous = dg
         )
 
         res1 = shadow_forward(lss_problem1)
@@ -102,20 +104,21 @@ using Zygote
             saveat = 0.01
         )
         lss_problem1 = ForwardLSSProblem(
-            sol_attractor2, ForwardLSS(g = g),
+            sol_attractor2, ForwardLSS(; g),
             t = sol_attractor2.t
         )
         lss_problem1a = ForwardLSSProblem(
-            sol_attractor2, ForwardLSS(g = g),
+            sol_attractor2, ForwardLSS(; g),
             t = sol_attractor2.t,
             dgdu_discrete = dg
         )
         lss_problem2 = ForwardLSSProblem(
             sol_attractor2,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.Cos2Windowing(),
-                g = g
-            ), t = sol_attractor2.t
+                g
+            ),
+            t = sol_attractor2.t
         )
         lss_problem2a = ForwardLSSProblem(
             sol_attractor2,
@@ -124,33 +127,36 @@ using Zygote
         )
         lss_problem3 = ForwardLSSProblem(
             sol_attractor2,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             ), t = sol_attractor2.t
         )
         lss_problem3a = ForwardLSSProblem(
             sol_attractor2,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor2.t,
+                g
+            ),
+            t = sol_attractor2.t,
             dgdu_discrete = dg
         ) #ForwardLSS with time dilation requires knowledge of g
 
         adjointlss_problem = AdjointLSSProblem(
             sol_attractor2,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor2.t
+                g
+            ),
+            t = sol_attractor2.t
         )
         adjointlss_problem_a = AdjointLSSProblem(
             sol_attractor2,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor2.t,
+                g
+            ),
+            t = sol_attractor2.t,
             dgdu_discrete = dg
         )
 
@@ -174,11 +180,11 @@ using Zygote
         @test res3 ≈ res4 atol = 1.0e-10
         @test res3 ≈ res4a atol = 1.0e-10
 
-        function G(p; sensealg = ForwardLSS(g = g), dt = 0.01)
-            _prob = remake(prob_attractor, p = p)
+        function G(p; sensealg = ForwardLSS(; g), dt = 0.01)
+            _prob = remake(prob_attractor; p)
             _sol = solve(
-                _prob, Vern9(), abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
-                sensealg = sensealg
+                _prob, Vern9(); abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
+                sensealg
             )
             sum(getindex.(_sol.u, 3))
         end
@@ -198,9 +204,9 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = ForwardLSS(
+                sensealg = ForwardLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g
+                    g
                 )
             ),
             p
@@ -210,9 +216,9 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = AdjointLSS(
+                sensealg = AdjointLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g
+                    g
                 )
             ),
             p
@@ -250,31 +256,32 @@ using Zygote
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             )
         )
         lss_problem_a = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), dgdu_continuous = dgu,
+                g
+            ),
+            dgdu_continuous = dgu,
             dgdp_continuous = dgp
         )
         adjointlss_problem = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             )
         )
         adjointlss_problem_a = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             ),
             dgdu_continuous = dgu,
             dgdp_continuous = dgp
@@ -295,18 +302,19 @@ using Zygote
         )
         lss_problem = ForwardLSSProblem(
             sol_attractor2,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor2.t
+                g
+            ),
+            t = sol_attractor2.t
         )
         resfw = shadow_forward(lss_problem)
 
         function G(p; sensealg = ForwardLSS(), dt = 0.01)
-            _prob = remake(prob_attractor, p = p)
+            _prob = remake(prob_attractor; p)
             _sol = solve(
-                _prob, Vern9(), abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
-                sensealg = sensealg
+                _prob, Vern9(); abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
+                sensealg
             )
             sum(getindex.(_sol.u, 3)) + sum(p)
         end
@@ -314,9 +322,9 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = ForwardLSS(
+                sensealg = ForwardLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g
+                    g
                 )
             ),
             p
@@ -367,11 +375,11 @@ using Zygote
             fill!(out, one(eltype(p)))
         end
 
-        function G(p; sensealg = ForwardLSS(g = g), dt = 0.01)
-            _prob = remake(prob_attractor, p = p)
+        function G(p; sensealg = ForwardLSS(; g), dt = 0.01)
+            _prob = remake(prob_attractor; p)
             _sol = solve(
-                _prob, Vern9(), abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
-                sensealg = sensealg
+                _prob, Vern9(); abstol = 1.0e-14, reltol = 1.0e-14, saveat = dt,
+                sensealg
             )
             sum(getindex.(_sol.u, 3) .^ 2) / 2 + sum(p)
         end
@@ -380,10 +388,11 @@ using Zygote
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor.t
+                g
+            ),
+            t = sol_attractor.t
         )
         resfw = shadow_forward(lss_problem)
 
@@ -392,9 +401,9 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = ForwardLSS(
+                sensealg = ForwardLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g
+                    g
                 )
             ),
             p
@@ -403,13 +412,9 @@ using Zygote
 
         resfw = shadow_forward(
             lss_problem,
-            sensealg = ForwardLSS(
-                LSSregularizer = SciMLSensitivity.TimeDilation(
-                    10.0,
-                    10.0,
-                    5.0
-                ),
-                g = g
+            sensealg = ForwardLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0, 10.0, 5.0),
+                g
             )
         )
         resskip = deepcopy(resfw)
@@ -417,13 +422,11 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = ForwardLSS(
+                sensealg = ForwardLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(
-                        10.0,
-                        10.0,
-                        5.0
+                        10.0, 10.0, 5.0
                     ),
-                    g = g
+                    g
                 )
             ),
             p
@@ -436,10 +439,11 @@ using Zygote
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor.t,
+                g
+            ),
+            t = sol_attractor.t,
             dgdu_discrete = dgu,
             dgdp_discrete = dgp
         )
@@ -447,13 +451,9 @@ using Zygote
         @test res ≈ res2 atol = 1.0e-10
         res2 = shadow_forward(
             lss_problem,
-            sensealg = ForwardLSS(
-                LSSregularizer = SciMLSensitivity.TimeDilation(
-                    10.0,
-                    10.0,
-                    5.0
-                ),
-                g = g
+            sensealg = ForwardLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0, 10.0, 5.0),
+                g
             )
         )
         @test resskip ≈ res2 atol = 1.0e-10
@@ -462,22 +462,19 @@ using Zygote
 
         lss_problem = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor.t
+                g
+            ),
+            t = sol_attractor.t
         )
         res2 = shadow_adjoint(lss_problem)
         @test res ≈ res2 atol = 1.0e-10
         res2 = shadow_adjoint(
             lss_problem,
-            sensealg = AdjointLSS(
-                LSSregularizer = SciMLSensitivity.TimeDilation(
-                    10.0,
-                    10.0,
-                    5.0
-                ),
-                g = g
+            sensealg = AdjointLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0, 10.0, 5.0),
+                g
             )
         )
         @test_broken resskip ≈ res2 atol = 1.0e-10
@@ -485,9 +482,9 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = AdjointLSS(
+                sensealg = AdjointLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g = g
+                    g
                 )
             ),
             p
@@ -497,13 +494,11 @@ using Zygote
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
-                sensealg = AdjointLSS(
+                sensealg = AdjointLSS(;
                     LSSregularizer = SciMLSensitivity.TimeDilation(
-                        10.0,
-                        10.0,
-                        5.0
+                        10.0, 10.0, 5.0
                     ),
-                    g = g
+                    g
                 )
             ),
             p
@@ -514,10 +509,11 @@ using Zygote
 
         lss_problem = AdjointLSSProblem(
             sol_attractor,
-            AdjointLSS(
+            AdjointLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor.t,
+                g
+            ),
+            t = sol_attractor.t,
             dgdu_discrete = dgu,
             dgdp_discrete = dgp
         )
@@ -525,13 +521,9 @@ using Zygote
         @test res ≈ res2 atol = 1.0e-10
         res2 = shadow_adjoint(
             lss_problem,
-            sensealg = AdjointLSS(
-                LSSregularizer = SciMLSensitivity.TimeDilation(
-                    10.0,
-                    10.0,
-                    5.0
-                ),
-                g = g
+            sensealg = AdjointLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0, 10.0, 5.0),
+                g
             )
         )
         @test_broken resskip ≈ res2 atol = 1.0e-10
@@ -567,12 +559,12 @@ end
         # fix seed here for res1==res2 check, otherwise hom. tangent
         # are initialized randomly
         Random.seed!(1234)
-        nilss_prob1 = NILSSProblem(prob_attractor, NILSS(nseg, nstep, g = g))
+        nilss_prob1 = NILSSProblem(prob_attractor, NILSS(nseg, nstep; g))
         res1 = SciMLSensitivity.shadow_forward(nilss_prob1, Tsit5())
 
         Random.seed!(1234)
         nilss_prob2 = NILSSProblem(
-            prob_attractor, NILSS(nseg, nstep, g = g),
+            prob_attractor, NILSS(nseg, nstep; g),
             dgdu_continuous = dg
         )
         res2 = SciMLSensitivity.shadow_forward(nilss_prob2, Tsit5())
@@ -582,8 +574,8 @@ end
         @test res1 ≈ res2 atol = 1.0e-10
 
         function G(p; dt = nilss_prob1.dtsave)
-            _prob = remake(prob_attractor, p = p)
-            _sol = solve(_prob, Tsit5(), saveat = dt, sensealg = NILSS(nseg, nstep, g = g))
+            _prob = remake(prob_attractor; p)
+            _sol = solve(_prob, Tsit5(), saveat = dt, sensealg = NILSS(nseg, nstep; g))
             sum(getindex.(_sol.u, 3))
         end
 
@@ -618,9 +610,9 @@ end
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
+                g
             )
         )
 
@@ -737,16 +729,17 @@ end
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), dgdu_continuous = dg
+                g
+            ),
+            dgdu_continuous = dg
         )
         resfw = shadow_forward(lss_problem)
 
         @info resfw
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5())
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M; g), Tsit5())
         res = shadow_adjoint(nilsas_prob, Tsit5())
 
         @info res
@@ -754,7 +747,7 @@ end
         @test resfw ≈ res atol = 1.0e-1
 
         nilsas_prob = NILSASProblem(
-            sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5(),
+            sol_attractor, NILSAS(nseg, nstep, M; g), Tsit5(),
             dgdu_continuous = dg
         )
         res = shadow_adjoint(nilsas_prob, Tsit5())
@@ -804,10 +797,11 @@ end
 
         lss_problem = ForwardLSSProblem(
             sol_attractor,
-            ForwardLSS(
+            ForwardLSS(;
                 LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                g = g
-            ), t = sol_attractor.t,
+                g
+            ),
+            t = sol_attractor.t,
             dgdu_discrete = dgu,
             dgdp_discrete = dgp
         )
@@ -815,7 +809,7 @@ end
 
         @info resfw
 
-        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M, g = g), Tsit5())
+        nilsas_prob = NILSASProblem(sol_attractor, NILSAS(nseg, nstep, M; g), Tsit5())
         res = shadow_adjoint(nilsas_prob, Tsit5())
 
         @info res
@@ -824,7 +818,7 @@ end
 
         @test_throws ErrorException nilsas_prob = NILSASProblem(
             sol_attractor,
-            NILSAS(nseg, nstep, M, g = g),
+            NILSAS(nseg, nstep, M; g),
             Tsit5(),
             t = sol_attractor.t,
             dgdu_discrete = dgu,

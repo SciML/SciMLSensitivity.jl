@@ -15,7 +15,7 @@ utarget = [0.0 * im 1.0; 1.0 0.0]
 function loss_adjoint(p)
     ufinal = last(
         solve(
-            prob, Tsit5(), p = p, abstol = 1.0e-12, reltol = 1.0e-12,
+            prob, Tsit5(); p, abstol = 1.0e-12, reltol = 1.0e-12,
             sensealg = InterpolatingAdjoint()
         )
     )
@@ -41,7 +41,7 @@ function loss_fun(sol)
 end
 
 function inner_loop(prob, p, loss_fun; sensealg = InterpolatingAdjoint())
-    sol = solve(prob, Tsit5(), p = p, saveat = 0.1; sensealg)
+    sol = solve(prob, Tsit5(); p, saveat = 0.1, sensealg)
     err = loss_fun(sol)
     return err
 end
@@ -75,7 +75,7 @@ u0 = [1.0; 1.0];
 prob = ODEProblem(fiip, complex(u0), (0.0, 10.0), complex(p))
 
 function sum_of_solution(u0, p)
-    _prob = remake(prob, u0 = u0, p = p)
+    _prob = remake(prob; u0, p)
     return real(sum(solve(_prob, Tsit5(), reltol = 1.0e-6, abstol = 1.0e-6, saveat = 0.1)))
 end
 

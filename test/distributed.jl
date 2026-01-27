@@ -29,11 +29,12 @@ else
             return remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
         end
 
-        ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-        return sim = solve(
+        ensemble_prob = EnsembleProblem(prob; prob_func)
+        sim = solve(
             ensemble_prob, Tsit5(), EnsembleDistributed(), saveat = 0.1,
             trajectories = 100
         )
+        return sim
     end
 
     # loss function

@@ -25,7 +25,7 @@ ff = ODEFunction{false}(fx)
 prob = ODEProblem{false}(ff, u0, (t_start, t_stop), p)
 
 function mysolve(p; solver = nothing)
-    solution = solve(prob; p = p, alg = solver, saveat = t_start:t_step:t_stop)
+    solution = solve(prob; p, alg = solver, saveat = t_start:t_step:t_stop)
 
     us = solution
 
@@ -44,9 +44,9 @@ atol = 1.0e-2
 
 solvers = [Tsit5(), Rosenbrock23(autodiff = false), Rosenbrock23(autodiff = true)]
 for solver in solvers
-    loss = (p) -> sum(mysolve(p; solver = solver))
-    @test isapprox(FiniteDiff.finite_difference_gradient(loss, p), analyt_sol; atol = atol)
-    @test isapprox(ForwardDiff.gradient(loss, p), analyt_sol; atol = atol)
-    @test isapprox(Zygote.gradient(loss, p)[1], analyt_sol; atol = atol)
-    @test isapprox(ReverseDiff.gradient(loss, p), analyt_sol; atol = atol)
+    loss = (p) -> sum(mysolve(p; solver))
+    @test isapprox(FiniteDiff.finite_difference_gradient(loss, p), analyt_sol; atol)
+    @test isapprox(ForwardDiff.gradient(loss, p), analyt_sol; atol)
+    @test isapprox(Zygote.gradient(loss, p)[1], analyt_sol; atol)
+    @test isapprox(ReverseDiff.gradient(loss, p), analyt_sol; atol)
 end

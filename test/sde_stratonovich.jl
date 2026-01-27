@@ -39,22 +39,19 @@ p2 = [1.01, 0.87]
     # generate ODE adjoint results
 
     prob_oop_ode = ODEProblem(f_oop_linear, u₀, (tstart, tend), p)
-    sol_oop_ode = solve(prob_oop_ode, Tsit5(), saveat = t, abstol = abstol, reltol = reltol)
-    res_ode_u0,
-        res_ode_p = adjoint_sensitivities(
-        sol_oop_ode, Tsit5(), t = t,
-        dgdu_discrete = dg!, abstol = abstol,
-        reltol = reltol,
+    sol_oop_ode = solve(prob_oop_ode, Tsit5(); saveat = t, abstol, reltol)
+    res_ode_u0, res_ode_p = adjoint_sensitivities(
+        sol_oop_ode, Tsit5(); t,
+        dgdu_discrete = dg!, abstol, reltol,
         sensealg = BacksolveAdjoint()
     )
 
     function G(p)
         tmp_prob = remake(
-            prob_oop_ode, u0 = eltype(p).(prob_oop_ode.u0), p = p,
-            tspan = eltype(p).(prob_oop_ode.tspan), abstol = abstol,
-            reltol = reltol
+            prob_oop_ode; u0 = eltype(p).(prob_oop_ode.u0), p,
+            tspan = eltype(p).(prob_oop_ode.tspan), abstol, reltol
         )
-        sol = solve(tmp_prob, Tsit5(), saveat = tarray, abstol = abstol, reltol = reltol)
+        sol = solve(tmp_prob, Tsit5(); saveat = tarray, abstol, reltol)
         res = g(sol, p, nothing)
     end
     res_ode_forward = ForwardDiff.gradient(G, p)
@@ -72,21 +69,16 @@ p2 = [1.01, 0.87]
         prob_oop_sde, EulerHeun(), dt = 1.0e-4, adaptive = false,
         save_noise = true
     )
-    res_sde_u0,
-        res_sde_p = adjoint_sensitivities(
-        sol_oop_sde,
-        EulerHeun(), t = t, dgdu_discrete = dg!,
+    res_sde_u0, res_sde_p = adjoint_sensitivities(
+        sol_oop_sde, EulerHeun(); t, dgdu_discrete = dg!,
         dt = 1.0e-2, sensealg = BacksolveAdjoint()
     )
 
     @info res_sde_p
 
-    res_sde_u0a,
-        res_sde_pa = adjoint_sensitivities(
-        sol_oop_sde,
-        EulerHeun(), t = t, dgdu_discrete = dg!,
-        dt = 1.0e-2,
-        sensealg = InterpolatingAdjoint()
+    res_sde_u0a, res_sde_pa = adjoint_sensitivities(
+        sol_oop_sde, EulerHeun(); t, dgdu_discrete = dg!,
+        dt = 1.0e-2, sensealg = InterpolatingAdjoint()
     )
 
     @test isapprox(res_sde_u0, res_sde_u0a, rtol = 1.0e-6)
@@ -95,7 +87,7 @@ p2 = [1.01, 0.87]
     function GSDE1(p)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob_oop_sde, u0 = eltype(p).(prob_oop_sde.u0), p = p,
+            prob_oop_sde; u0 = eltype(p).(prob_oop_sde.u0), p,
             tspan = eltype(p).(prob_oop_sde.tspan)
         )
         sol = solve(
@@ -189,8 +181,8 @@ end
     function GSDE2(p)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob_oop_sde2, u0 = eltype(p).(prob_oop_sde2.u0), p = p,
-            tspan = eltype(p).(prob_oop_sde2.tspan)            #,abstol=abstol, reltol=reltol
+            prob_oop_sde2; u0 = eltype(p).(prob_oop_sde2.u0), p,
+            tspan = eltype(p).(prob_oop_sde2.tspan)         #, abstol, reltol
         )
         sol = solve(
             tmp_prob,
@@ -426,7 +418,7 @@ end
     function GSDE(p)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob_sde, u0 = eltype(p).(prob_sde.u0), p = p,
+            prob_sde; u0 = eltype(p).(prob_sde.u0), p,
             tspan = eltype(p).(prob_sde.tspan)
         )
         sol = solve(tmp_prob, EulerHeun(), dt = dt1, adaptive = false, saveat = tarray)
@@ -671,7 +663,7 @@ end
     function GSDE1(p)
         Random.seed!(seed)
         tmp_prob = remake(
-            prob_oop_sde, u0 = eltype(p).(prob_oop_sde.u0), p = p,
+            prob_oop_sde; u0 = eltype(p).(prob_oop_sde.u0), p,
             tspan = eltype(p).(prob_oop_sde.tspan)
         )
         sol = solve(
@@ -687,8 +679,7 @@ end
     res_sde_forward = ForwardDiff.gradient(GSDE1, p2)
 
     Random.seed!(seed)
-    res_sde_trackeru0,
-        res_sde_trackerp = Zygote.gradient(
+    res_sde_trackeru0, res_sde_trackerp = Zygote.gradient(
         (
             u0,
             p,
@@ -696,11 +687,10 @@ end
             Array(
                 solve(
                     prob_oop_sde,
-                    RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich),
+                    RKMil(interpretation = SciMLBase.AlgorithmInterpretation.Stratonovich);
                     dt = 5.0e-4,
                     adaptive = false,
-                    u0 = u0,
-                    p = p,
+                    u0, p,
                     saveat = tarray,
                     sensealg = TrackerAdjoint()
                 )
@@ -722,7 +712,7 @@ end
 
     function loss(p, u0, sensealg = InterpolatingAdjoint())
         prob = SDEProblem(ode, ode_noise, u0, (0.0, 1.0), p)
-        x = solve(prob, EulerHeun(), sensealg = sensealg, dt = 0.0001, saveat = 0:0.1:1)
+        x = solve(prob, EulerHeun(); sensealg, dt = 0.0001, saveat = 0:0.1:1)
         sum(abs2, x)
     end
 

@@ -51,7 +51,7 @@ else
 
     gt = rand(length(sol.u))
     dmtk, = Zygote.gradient(mtkparams) do p
-        new_sol = solve(prob, Tsit5(), p = p)
+        new_sol = solve(prob, Tsit5(); p)
         Zygote.ChainRules.ChainRulesCore.ignore_derivatives() do
             @test all(isapprox.(new_sol[x + y + z + 2 * β - w], 0, atol = 1.0e-12))
         end
@@ -160,7 +160,7 @@ else
         @show init
         u0 = prob.u0
         Zygote.gradient(u0, ps) do u0, p
-            new_prob = remake(prob, u0 = u0, p = p)
+            new_prob = remake(prob; u0, p)
             if init === nothing
                 new_sol = solve(new_prob, Rodas5P(); sensealg, abstol = 1.0e-6, reltol = 1.0e-3)
             else

@@ -161,13 +161,13 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = DNP.NoiseGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = CA.ComponentArray(p_nn = p_nn,
+p_all = CA.ComponentArray(; p_nn,
     myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 # define SDE problem
 prob = SDE.SDEProblem{true}(
     qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
-    p_all,
-    callback = callback, noise = NG)
+    p_all;
+    callback, noise = NG)
 
 #########################################
 # compute loss
@@ -181,7 +181,7 @@ function g(u, p, t)
 end
 
 function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
-    pars = CA.ComponentArray(p_nn = p_nn,
+    pars = CA.ComponentArray(; p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
@@ -191,21 +191,16 @@ function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec =
         W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = DNP.NoiseGrid(myparameters.ts, W1)
-        SDE.remake(prob,
-            u0 = u0tmp,
-            callback = callback,
-            noise = NG)
+        SDE.remake(prob; u0 = u0tmp, callback, noise = NG)
     end
     _prob = SDE.remake(prob, p = pars)
 
-    ensembleprob = SDE.EnsembleProblem(_prob,
-        prob_func = prob_func,
-        safetycopy = true)
+    ensembleprob = SDE.EnsembleProblem(_prob; prob_func, safetycopy = true)
 
-    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleSerial(),
-        sensealg = sensealg,
+    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleSerial();
+        sensealg,
         saveat = myparameters.tinterval,
-        dt = myparameters.dt,
+        myparameters.dt,
         adaptive = false,
         trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
     A = convert(Array, _sol)
@@ -219,7 +214,7 @@ end
 # visualization -- run for new batch
 function visualize(p_nn; alg = SDE.EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = CA.ComponentArray(p_nn = p_nn,
+    pars = CA.ComponentArray(; p_nn,
         myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 
     function prob_func(prob, i, repeat)
@@ -229,20 +224,14 @@ function visualize(p_nn; alg = SDE.EM())
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        SDE.remake(prob,
-            p = pars,
-            u0 = u0tmp,
-            callback = callback,
-            noise = NG)
+        SDE.remake(prob; p = pars, u0 = u0tmp, callback, noise = NG)
     end
 
-    ensembleprob = SDE.EnsembleProblem(prob,
-        prob_func = prob_func,
-        safetycopy = true)
+    ensembleprob = SDE.EnsembleProblem(prob; prob_func, safetycopy = true)
 
-    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
+    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads();
         saveat = myparameters.tinterval,
-        dt = myparameters.dt,
+        myparameters.dt,
         adaptive = false, #abstol=1e-6, reltol=1e-6,
         trajectories = myparameters.numtrajplot,
         batch_size = myparameters.numtrajplot)
@@ -501,13 +490,13 @@ W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
 NG = DNP.NoiseGrid(myparameters.ts, W1)
 
 # get control pulses
-p_all = CA.ComponentArray(p_nn = p_nn,
+p_all = CA.ComponentArray(; p_nn,
     myparameters = [myparameters.Δ; myparameters.Ωmax; myparameters.κ])
 # define SDE problem
 prob = SDE.SDEProblem{true}(
     qubit_drift!, qubit_diffusion!, vec(u0[:, 1]), myparameters.tspan,
-    p_all,
-    callback = callback, noise = NG)
+    p_all;
+    callback, noise = NG)
 ```
 
 ### Compute loss function
@@ -534,9 +523,8 @@ function g(u, p, t)
 end
 
 function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP()))
-    pars = CA.ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ, myparameters.Ωmax,
-            myparameters.κ])
+    pars = CA.ComponentArray(; p_nn,
+        myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
     u0 = prepare_initial(myparameters.dt, myparameters.numtraj)
 
     function prob_func(prob, i, repeat)
@@ -546,21 +534,15 @@ function loss(p_nn; alg = SDE.EM(), sensealg = SMS.BacksolveAdjoint(autojacvec =
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        SDE.remake(prob,
-            p = pars,
-            u0 = u0tmp,
-            callback = callback,
-            noise = NG)
+        SDE.remake(prob; p = pars, u0 = u0tmp, callback, noise = NG)
     end
 
-    ensembleprob = SDE.EnsembleProblem(prob,
-        prob_func = prob_func,
-        safetycopy = true)
+    ensembleprob = SDE.EnsembleProblem(prob; prob_func, safetycopy = true)
 
-    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
-        sensealg = sensealg,
+    _sol = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads();
+        sensealg,
         saveat = myparameters.tinterval,
-        dt = myparameters.dt,
+        myparameters.dt,
         adaptive = false,
         trajectories = myparameters.numtraj, batch_size = myparameters.numtraj)
     A = convert(Array, _sol)
@@ -580,9 +562,8 @@ a function of the time steps at which loss values are computed.
 ```@example sdecontrol
 function visualize(p_nn; alg = SDE.EM())
     u0 = prepare_initial(myparameters.dt, myparameters.numtrajplot)
-    pars = CA.ComponentArray(p_nn = p_nn,
-        myparameters = [myparameters.Δ, myparameters.Ωmax,
-            myparameters.κ])
+    pars = CA.ComponentArray(; p_nn,
+        myparameters = [myparameters.Δ, myparameters.Ωmax, myparameters.κ])
 
     function prob_func(prob, i, repeat)
         # prepare initial state and applied control pulse
@@ -591,20 +572,14 @@ function visualize(p_nn; alg = SDE.EM())
         W1 = cumsum([zero(myparameters.dt); W[1:(end - 1)]], dims = 1)
         NG = DNP.NoiseGrid(myparameters.ts, W1)
 
-        SDE.remake(prob,
-            p = pars,
-            u0 = u0tmp,
-            callback = callback,
-            noise = NG)
+        SDE.remake(prob; p = pars, u0 = u0tmp, callback, noise = NG)
     end
 
-    ensembleprob = SDE.EnsembleProblem(prob,
-        prob_func = prob_func,
-        safetycopy = true)
+    ensembleprob = SDE.EnsembleProblem(prob; prob_func, safetycopy = true)
 
-    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads(),
+    u = SDE.solve(ensembleprob, alg, SDE.EnsembleThreads();
         saveat = myparameters.tinterval,
-        dt = myparameters.dt,
+        myparameters.dt,
         adaptive = false, #abstol=1e-6, reltol=1e-6,
         trajectories = myparameters.numtrajplot,
         batch_size = myparameters.numtrajplot)

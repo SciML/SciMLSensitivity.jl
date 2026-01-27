@@ -23,7 +23,7 @@ prob = ODEProblem(func, x0, (0.0f0, 1.0f0))
 
 function evolve(p)
     return solve(
-        prob, Tsit5(), p = p, save_start = false,
+        prob, Tsit5(); p, save_start = false,
         save_everystep = false, abstol = 1.0e-4, reltol = 1.0e-4,
         sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())
     ).u[1]

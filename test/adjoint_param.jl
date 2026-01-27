@@ -12,31 +12,31 @@ x0 = [0.1, 0.0]
 tspan = (0.0, 10.0)
 p = [1.0, -24.05, -19.137]
 prob = ODEProblem(pendulum_eom, x0, tspan, p)
-sol = solve(prob, Vern9(), abstol = abstol, reltol = reltol)
+sol = solve(prob, Vern9(); abstol, reltol)
 
 g(x, p, t) = 1.0 * (x[1] - π)^2 + 1.0 * x[2]^2 + 5.0 * (-p[1] * sin(x[1]) + p[2] * x[2])^2
 dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
 res_interp = adjoint_sensitivities(
-    sol, Vern9(), dgdu_continuous = dgdu,
-    dgdp_continuous = dgdp, abstol = abstol,
-    reltol = reltol, sensealg = InterpolatingAdjoint()
+    sol, Vern9();
+    dgdu_continuous = dgdu, dgdp_continuous = dgdp, abstol, reltol,
+    sensealg = InterpolatingAdjoint()
 )
 res_quad = adjoint_sensitivities(
-    sol, Vern9(), dgdu_continuous = dgdu,
-    dgdp_continuous = dgdp, abstol = abstol,
-    reltol = reltol, sensealg = QuadratureAdjoint()
+    sol, Vern9();
+    dgdu_continuous = dgdu, dgdp_continuous = dgdp, abstol, reltol,
+    sensealg = QuadratureAdjoint()
 )
 res_back = adjoint_sensitivities(
-    sol, Vern9(), dgdu_continuous = dgdu,
-    dgdp_continuous = dgdp, abstol = abstol,
-    reltol = reltol, sensealg = BacksolveAdjoint(checkpointing = true)
+    sol, Vern9();
+    dgdu_continuous = dgdu, dgdp_continuous = dgdp, abstol, reltol,
+    sensealg = BacksolveAdjoint(checkpointing = true)
 )
 
 function G(p)
-    tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))
-    sol = solve(tmp_prob, Vern9(), abstol = abstol, reltol = reltol)
+    tmp_prob = remake(prob; p, u0 = convert.(eltype(p), prob.u0))
+    sol = solve(tmp_prob, Vern9(); abstol, reltol)
     res, err = quadgk((t) -> g(sol(t), p, t), 0.0, 10.0, atol = 1.0e-8, rtol = 1.0e-8)
     return res
 end
@@ -53,22 +53,21 @@ function f(du, u, p, t)
 end
 
 prob = ODEProblem(f, u0, (0.0, 1.0), p)
-sol = solve(prob, Tsit5(), abstol = abstol, reltol = reltol);
+sol = solve(prob, Tsit5(); abstol, reltol);
 
 g(u, p, t) = -u[1] * p[1] - p[2]
 
 dgdu(out, y, p, t) = ForwardDiff.gradient!(out, y -> g(y, p, t), y)
 dgdp(out, y, p, t) = ForwardDiff.gradient!(out, p -> g(y, p, t), p)
 
-du0,
-    dp = adjoint_sensitivities(
-    sol, Vern9(), dgdu_continuous = dgdu,
-    dgdp_continuous = dgdp; abstol = abstol, reltol = reltol
+du0, dp = adjoint_sensitivities(
+    sol, Vern9(); dgdu_continuous = dgdu,
+    dgdp_continuous = dgdp, abstol, reltol
 )
 
 function G(p)
-    tmp_prob = remake(prob, p = p, u0 = convert.(eltype(p), prob.u0))
-    sol = solve(tmp_prob, Vern9(), abstol = abstol, reltol = reltol)
+    tmp_prob = remake(prob; p, u0 = convert.(eltype(p), prob.u0))
+    sol = solve(tmp_prob, Vern9(); abstol, reltol)
     res, err = quadgk((t) -> g(sol(t), p, t), 0.0, 1.0, atol = 1.0e-8, rtol = 1.0e-8)
     return res
 end
@@ -91,16 +90,11 @@ function model(p, sensealg)
     end
 
     output = solve(
-        ODEProblem(
-            du!,
-            u0,
-            (0.0, 10.0),
-            p
-        ),
-        Tsit5(),
+        ODEProblem(du!, u0, (0.0, 10.0), p),
+        Tsit5();
         saveat = collect(0:0.1:7),
         sensealg = sensealg,
-        abstol = abstol, reltol = reltol
+        abstol, reltol
     )
     return Array(output[1, :, :]) # only return y, not y′
 end

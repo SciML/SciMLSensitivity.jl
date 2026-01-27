@@ -48,7 +48,7 @@ Now instead of the function `trueODE(u,p,t)` in the first code block, we pass th
 prob_nn = ODE.ODEProblem(f, u0, tspan)
 
 function predict_neuralode(p)
-    Array(ODE.solve(prob_nn, ODE.Tsit5(); p = p, saveat = tsteps,
+    Array(ODE.solve(prob_nn, ODE.Tsit5(); p, saveat = tsteps,
         sensealg = SMS.QuadratureAdjoint(autojacvec = SMS.ZygoteVJP())))
 end
 
@@ -77,9 +77,8 @@ callback = function (state, l; doplot = true)
     return false
 end
 
-optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x),
-    OPT.AutoZygote())
+optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), OPT.AutoZygote())
 optprob = OPT.OptimizationProblem(optf, p_nn)
 
-res = OPT.solve(optprob, OPO.Adam(0.05), callback = callback, maxiters = 300)
+res = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
 ```

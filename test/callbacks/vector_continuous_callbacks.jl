@@ -23,17 +23,14 @@ function test_vector_continuous_callback(cb, g)
         saveat = savingtimes
     )
 
-    du01,
-        dp1 = @time Zygote.gradient(
+    du01, dp1 = @time Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, abstol = abstol,
-                reltol = reltol,
-                saveat = savingtimes,
+                prob, Tsit5(); u0, p,
+                callback = cb, abstol, reltol, saveat = savingtimes,
                 sensealg = BacksolveAdjoint()
             )
         ),
@@ -47,10 +44,8 @@ function test_vector_continuous_callback(cb, g)
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, abstol = abstol,
-                reltol = reltol,
-                saveat = savingtimes,
+                prob, Tsit5(); u0, p,
+                callback = cb, abstol, reltol, saveat = savingtimes,
                 sensealg = GaussAdjoint()
             )
         ),
@@ -60,10 +55,8 @@ function test_vector_continuous_callback(cb, g)
     dstuff = @time ForwardDiff.gradient(
         (θ) -> g(
             solve(
-                prob, Tsit5(), u0 = θ[1:4],
-                p = θ[5:6], callback = cb,
-                abstol = abstol, reltol = reltol,
-                saveat = savingtimes
+                prob, Tsit5(); u0 = θ[1:4], p = θ[5:6],
+                callback = cb, abstol, reltol, saveat = savingtimes
             )
         ),
         [u0; p]

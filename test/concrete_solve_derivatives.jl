@@ -125,16 +125,16 @@ proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 sol = solve(prob, Tsit5(), abstol = 1.0e-10, reltol = 1.0e-10)
 @test sol isa ODESolution
 sumsol = sum(sol)
-@test sum(solve(prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10)) == sumsol
+@test sum(solve(prob, Tsit5(); u0, p, abstol = 1.0e-10, reltol = 1.0e-10)) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
+        prob, Tsit5(); u0, p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = ForwardDiffSensitivity()
     )
 ) == sumsol
 @test sum(
     solve(
-        prob, Tsit5(), u0 = u0, p = p, abstol = 1.0e-10, reltol = 1.0e-10,
+        prob, Tsit5(); u0, p, abstol = 1.0e-10, reltol = 1.0e-10,
         sensealg = BacksolveAdjoint()
     )
 ) == sumsol
@@ -448,7 +448,7 @@ Tests callable structs with different AD backends
     function (f::senseloss_p)(p)
         return sum(
             solve(
-                prob_struct, Tsit5(), p = p, abstol = 1.0e-12,
+                prob_struct, Tsit5(); p, abstol = 1.0e-12,
                 reltol = 1.0e-12, saveat = 0.1, sensealg = f.sense
             )
         )
@@ -575,7 +575,7 @@ end
     # Using sol[:, end] works correctly for both cases, returning the final state vector
     ref_loss_vec = p -> sum(
         solve(
-            prob, Tsit5(), p = p, saveat = 10.0,
+            prob, Tsit5(); p, saveat = 10.0,
             abstol = 1.0e-10, reltol = 1.0e-10
         )[:, end]
     )
@@ -685,7 +685,7 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
 
     function loss_ball(p)
         solution = solve(
-            prob_ball; p = p, alg = solver_ball, saveat = tData,
+            prob_ball; p, alg = solver_ball, saveat = tData,
             sensealg = ReverseDiffAdjoint(), abstol = 1.0e-10, reltol = 1.0e-10
         )
         # Check if solution is an ODESolution with .u field vs a tracked/plain array
@@ -746,8 +746,7 @@ SDE Tests
 
     # Reference using adjoint_sensitivities
     _sol = solve(
-        proboop_sde, EulerHeun(), dt = 1.0e-2, adaptive = false, save_noise = true,
-        seed = seed
+        proboop_sde, EulerHeun(); dt = 1.0e-2, adaptive = false, save_noise = true, seed
     )
     ū0_ref, adj_ref = adjoint_sensitivities(
         _sol, EulerHeun(), t = tarray,
@@ -759,10 +758,9 @@ SDE Tests
         u0p_sde = vcat(u0_sde, p_sde)
         loss = u0p -> sum(
             solve(
-                proboop_sde, EulerHeun(),
+                proboop_sde, EulerHeun();
                 u0 = u0p[1:2], p = u0p[3:end], dt = 1.0e-2, saveat = 0.01,
-                sensealg = BacksolveAdjoint(),
-                seed = seed
+                sensealg = BacksolveAdjoint(), seed
             )
         )
 

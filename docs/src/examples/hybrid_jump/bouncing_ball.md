@@ -32,7 +32,7 @@ u0 = [50.0, 0.0]
 tspan = (0.0, 15.0)
 p = [9.8, 0.8]
 prob = ODE.ODEProblem(f, u0, tspan, p)
-sol = ODE.solve(prob, ODE.Tsit5(), callback = callback)
+sol = ODE.solve(prob, ODE.Tsit5(); callback)
 ```
 
 Here we have a friction coefficient of `0.8`. We want to refine this
@@ -42,7 +42,7 @@ the value 20:
 
 ```@example bouncing_ball
 function loss(θ)
-    sol = ODE.solve(prob, ODE.Tsit5(), p = [9.8, θ[1]], callback = callback)
+    sol = ODE.solve(prob, ODE.Tsit5(), p = [9.8, θ[1]]; callback)
     target = 20.0
     abs2(sol[end][1] - target)
 end

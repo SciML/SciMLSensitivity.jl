@@ -26,13 +26,8 @@ probsteady = SteadyStateProblem(proboop)
         p,
     ) -> sum(
         solve(
-            probsteady,
-            DynamicSS(Tsit5()),
-            u0 = u0,
-            p = p,
-            abstol = 1.0e-14,
-            reltol = 1.0e-14,
-            saveat = 0.1,
+            probsteady, DynamicSS(Tsit5()); u0, p,
+            abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.1,
             sensealg = QuadratureAdjoint()
         )
     ),

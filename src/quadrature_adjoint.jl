@@ -47,7 +47,7 @@ function (S::ODEQuadratureAdjointSensitivityFunction)(u, p, t)
 
     λ, grad, y, dgrad, dy = split_states(u, t, S)
 
-    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad = dgrad, dy = dy)
+    dy, dλ, dgrad = vecjacobian(y, λ, p, t, S; dgrad, dy)
     dλ *= (-one(eltype(λ)))
 
     if !discrete
@@ -388,7 +388,7 @@ function _adjoint_sensitivities(
         callback, no_start
     )
     adj_sol = solve(
-        adj_prob, alg; abstol = abstol, reltol = reltol,
+        adj_prob, alg; abstol, reltol,
         save_everystep = true, save_start = true, kwargs...
     )
 
@@ -608,7 +608,7 @@ function _update_integrand_and_dgrad(
     # account for implicit events
 
     @. dλ = -dλ - integrand.λ
-    vecjacobian!(dλ, integrand.y, dλ, integrand.p, t, fakeS; dgrad = dgrad)
+    vecjacobian!(dλ, integrand.y, dλ, integrand.p, t, fakeS; dgrad)
     res .-= dgrad
     return integrand
 end

@@ -23,12 +23,11 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     proboop = ODEProblem(foop, u0, (0.0, 10.0), p)
 
     sol1 = solve(
-        prob, Tsit5(), u0 = u0, p = p, callback = cb, tstops = tstops,
-        abstol = abstol, reltol = reltol, saveat = savingtimes
+        prob, Tsit5(); u0, p, callback = cb, tstops,
+        abstol, reltol, saveat = savingtimes
     )
     sol2 = solve(
-        prob, Tsit5(), u0 = u0, p = p, tstops = tstops, abstol = abstol,
-        reltol = reltol, saveat = savingtimes
+        prob, Tsit5(); u0, p, tstops, abstol, reltol, saveat = savingtimes
     )
 
     if cb.save_positions == [1, 1]
@@ -37,16 +36,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         @test length(sol1.t) == length(sol2.t)
     end
 
-    du01,
-        dp1 = Zygote.gradient(
+    du01, dp1 = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                prob, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = BacksolveAdjoint()
             )
@@ -54,16 +52,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p
     )
 
-    du01b,
-        dp1b = Zygote.gradient(
+    du01b, dp1b = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                proboop, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                proboop, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = BacksolveAdjoint()
             )
@@ -71,16 +68,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p
     )
 
-    du01c,
-        dp1c = Zygote.gradient(
+    du01c, dp1c = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                proboop, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                proboop, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = BacksolveAdjoint(checkpointing = false)
             )
@@ -89,16 +85,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     )
 
     if cboop === nothing
-        du02,
-            dp2 = Zygote.gradient(
+        du02, dp2 = Zygote.gradient(
             (
                 u0,
                 p,
             ) -> g(
                 solve(
-                    prob, Tsit5(), u0 = u0, p = p,
-                    callback = cb, tstops = tstops,
-                    abstol = abstol, reltol = reltol,
+                    prob, Tsit5(); u0, p,
+                    callback = cb, tstops,
+                    abstol, reltol,
                     saveat = savingtimes,
                     sensealg = ReverseDiffAdjoint()
                 )
@@ -106,16 +101,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
             u0, p
         )
     else
-        du02,
-            dp2 = Zygote.gradient(
+        du02, dp2 = Zygote.gradient(
             (
                 u0,
                 p,
             ) -> g(
                 solve(
-                    prob, Tsit5(), u0 = u0, p = p,
-                    callback = cboop, tstops = tstops,
-                    abstol = abstol, reltol = reltol,
+                    prob, Tsit5(); u0, p,
+                    callback = cboop, tstops,
+                    abstol, reltol,
                     saveat = savingtimes,
                     sensealg = ReverseDiffAdjoint()
                 )
@@ -124,8 +118,7 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         )
     end
 
-    du03,
-        dp3 = Zygote.gradient(
+    du03, dp3 = Zygote.gradient(
         (
             u0,
             p,
@@ -141,16 +134,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p
     )
 
-    du03c,
-        dp3c = Zygote.gradient(
+    du03c, dp3c = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                prob, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = InterpolatingAdjoint(checkpointing = false)
             )
@@ -158,16 +150,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p
     )
 
-    du04,
-        dp4 = Zygote.gradient(
+    du04, dp4 = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                prob, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = QuadratureAdjoint()
             )
@@ -175,16 +166,15 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         u0, p
     )
 
-    du05,
-        dp5 = Zygote.gradient(
+    du05, dp5 = Zygote.gradient(
         (
             u0,
             p,
         ) -> g(
             solve(
-                prob, Tsit5(), u0 = u0, p = p,
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                prob, Tsit5(); u0, p,
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes,
                 sensealg = GaussAdjoint()
             )
@@ -195,9 +185,9 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
     dstuff = ForwardDiff.gradient(
         (θ) -> g(
             solve(
-                prob, Tsit5(), u0 = θ[1:2], p = θ[3:6],
-                callback = cb, tstops = tstops,
-                abstol = abstol, reltol = reltol,
+                prob, Tsit5(); u0 = θ[1:2], p = θ[3:6],
+                callback = cb, tstops,
+                abstol, reltol,
                 saveat = savingtimes
             )
         ),
@@ -244,19 +234,19 @@ function test_discrete_callback(cb, tstops, g, dg!, cboop = nothing, tprev = fal
         BacksolveAdjoint(autojacvec = ReverseDiffVJP())
     )
     sol_track = solve(
-        prob, Tsit5(), u0 = u0, p = p, callback = cb2, tstops = tstops,
-        abstol = abstol, reltol = reltol, saveat = savingtimes
+        prob, Tsit5(); u0, p, callback = cb2, tstops,
+        abstol, reltol, saveat = savingtimes
     )
     #cb_adj = SciMLSensitivity.setup_reverse_callbacks(cb2,BacksolveAdjoint())
 
     adj_prob = ODEAdjointProblem(
         sol_track, BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
         Tsit5(),
-        sol_track.t, dg!,
+        sol_track.t, dg!;
         callback = cb2,
-        abstol = abstol, reltol = reltol
+        abstol, reltol
     )
-    adj_sol = solve(adj_prob, Tsit5(), abstol = abstol, reltol = reltol)
+    adj_sol = solve(adj_prob, Tsit5(); abstol, reltol)
     @test du01 ≈ adj_sol[1:2, end]
     return @test dp1 ≈ adj_sol[3:6, end]
 end
@@ -421,7 +411,7 @@ end
             cb = DiscreteCallback(condition, affect)
 
             function loss(p)
-                _prob = remake(prob, p = p)
+                _prob = remake(prob; p)
                 _sol = solve(
                     _prob, Tsit5(); callback = cb,
                     abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],

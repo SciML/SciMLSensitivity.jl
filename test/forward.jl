@@ -21,7 +21,7 @@ function paramjac(pJ, u, p, t)
     return pJ[2, 3] = -t * y
 end
 
-f = ODEFunction(fb, jac = jac, paramjac = paramjac)
+f = ODEFunction(fb; jac, paramjac)
 p = [1.5, 1.0, 3.0]
 prob = ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 probInpl = ODEForwardSensitivityProblem(fb, [1.0; 1.0], (0.0, 10.0), p)
@@ -286,7 +286,7 @@ function jac_with_count(J, u, p, t)
     return J[2, 2] = t * c * -1 + t * x
 end
 
-f = ODEFunction(fb, jac = jac_with_count, paramjac = paramjac)
+f = ODEFunction(fb; jac = jac_with_count, paramjac)
 p = [1.5, 1.0, 3.0]
 absolutely_no_ad_sensealg = ForwardSensitivity(
     autodiff = false,

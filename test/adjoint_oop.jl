@@ -110,7 +110,7 @@ du1,
 ## with ForwardDiff and Zygote
 
 function G_p(p)
-    tmp_prob = remake(prob, u0 = convert.(eltype(p), prob.u0), p = p)
+    tmp_prob = remake(prob; u0 = convert.(eltype(p), prob.u0), p)
     sol = solve(
         tmp_prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14,
         sensealg = QuadratureAdjoint(
@@ -123,14 +123,14 @@ function G_p(p)
 end
 
 function G_u(u0)
-    tmp_prob = remake(prob, u0 = u0, p = prob.p)
+    tmp_prob = remake(prob; u0, prob.p)
     sol = solve(
         tmp_prob, Tsit5(), saveat = tsteps,
+        abstol = 1.0e-14, reltol = 1.0e-14,
         sensealg = QuadratureAdjoint(
             abstol = 1.0e-14, reltol = 1.0e-14,
             autojacvec = ZygoteVJP()
-        ), abstol = 1.0e-14,
-        reltol = 1.0e-14
+        )
     )
     u = Array(sol)
 
@@ -156,9 +156,8 @@ function dg(u, p, t)
     return u
 end
 
-du0,
-    dp = adjoint_sensitivities(
-    sol, Tsit5(); dgdu_continuous = dg, g = g,
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dg, g,
     sensealg = QuadratureAdjoint(abstol = 1.0e-14, reltol = 1.0e-14, autojacvec = ZygoteVJP())
 )
 
@@ -183,23 +182,21 @@ res, err = quadgk(integrand, 0.0, 5.0, atol = 1.0e-14, rtol = 1.0e-14)
 ##ForwardDiff
 
 function G_p(p)
-    tmp_prob = remake(prob, p = p)
+    tmp_prob = remake(prob; p)
     sol = solve(tmp_prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12)
-    res,
-        err = quadgk(
-        (t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0, atol = 1.0e-12,
-        rtol = 1.0e-12
+    res, err = quadgk(
+        (t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0,
+        atol = 1.0e-12, rtol = 1.0e-12
     )
     return res
 end
 
 function G_u(u0)
-    tmp_prob = remake(prob, u0 = u0)
+    tmp_prob = remake(prob; u0)
     sol = solve(tmp_prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12)
-    res,
-        err = quadgk(
-        (t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0, atol = 1.0e-12,
-        rtol = 1.0e-12
+    res, err = quadgk(
+        (t) -> (sum((sol(t) .^ 2) ./ 2)), 0.0, 5.0,
+        atol = 1.0e-12, rtol = 1.0e-12
     )
     return res
 end
@@ -212,14 +209,13 @@ f_dp = ForwardDiff.gradient(G_p, p)
 
 ## solve with u0, p
 
-du0,
-    dp = Zygote.gradient(
+du0, dp = Zygote.gradient(
     (
         u0,
         p,
     ) -> sum(
         solve(
-            prob, Tsit5(); u0 = u0, p = p,
+            prob, Tsit5(); u0, p,
             abstol = 1.0e-10, reltol = 1.0e-10, saveat = tsteps,
             sensealg = QuadratureAdjoint(
                 abstol = 1.0e-14, reltol = 1.0e-14,

@@ -155,7 +155,7 @@ function run_diff(ps, sensealg)
     u01 = [1.0, 0.0, 0.0]
     tspan = (0.0, 10.0)
     prob = ODEProblem(UDE_model!, u01, tspan, ps)
-    sol = solve(prob, Rosenbrock23(), saveat = 0.1, sensealg = sensealg)
+    sol = solve(prob, Rosenbrock23(); saveat = 0.1, sensealg)
     return sol.u |> last |> sum
 end
 

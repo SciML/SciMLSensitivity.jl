@@ -34,7 +34,7 @@ p = [1.5, 1.0, 3.0, 1.0];
 u0 = [1.0; 1.0];
 prob = ODE.ODEProblem(fiip, u0, (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.Tsit5())
-loss(u0, p) = sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1))
+loss(u0, p) = sum(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = 0.1))
 du0, dp = Zygote.gradient(loss, u0, p)
 ```
 
@@ -55,7 +55,7 @@ by which the derivative is computed. For example:
 
 ```julia
 function loss(u0, p)
-    sum(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = 0.1,
+    sum(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = 0.1,
         sensealg = SMS.ForwardSensitivity()))
 end
 du0, dp = Zygote.gradient(loss, u0, p)

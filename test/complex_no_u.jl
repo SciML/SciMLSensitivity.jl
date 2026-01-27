@@ -15,7 +15,7 @@ prob = ODEProblem(ode2!, Complex{Float64}[0; 0], tspan, ps)
 loss = function (p)
     sol = last(
         solve(
-            prob, Tsit5(), p = p,
+            prob, Tsit5(); p,
             sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP(allow_nothing = true))
         )
     )

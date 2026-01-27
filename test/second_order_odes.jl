@@ -7,8 +7,7 @@ t = range(tspan[1], tspan[2], length = 20)
 p = Float32[1.01, 0.9]
 ff(du, u, p, t) = -p .* u
 prob = SecondOrderODEProblem{false}(ff, du0, u0, tspan, p)
-ddu01, du01,
-    dp1 = Zygote.gradient(
+ddu01, du01, dp1 = Zygote.gradient(
     (
         du0,
         u0,
@@ -16,20 +15,15 @@ ddu01, du01,
     ) -> sum(
         Array(
             solve(
-                prob, Tsit5(),
-                u0 = ArrayPartition(
-                    du0,
-                    u0
-                ),
-                p = p, saveat = t,
+                prob, Tsit5();
+                u0 = ArrayPartition(du0, u0), p, saveat = t,
                 sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
             )
         )
     ),
     du0, u0, p
 )
-ddu02, du02,
-    dp2 = Zygote.gradient(
+ddu02, du02, dp2 = Zygote.gradient(
     (
         du0,
         u0,
@@ -37,20 +31,15 @@ ddu02, du02,
     ) -> sum(
         Array(
             solve(
-                prob, Tsit5(),
-                u0 = ArrayPartition(
-                    du0,
-                    u0
-                ),
-                p = p, saveat = t,
+                prob, Tsit5();
+                u0 = ArrayPartition(du0, u0), p, saveat = t,
                 sensealg = BacksolveAdjoint(autojacvec = ZygoteVJP())
             )
         )
     ),
     du0, u0, p
 )
-ddu03, du03,
-    dp3 = Zygote.gradient(
+ddu03, du03, dp3 = Zygote.gradient(
     (
         du0,
         u0,
@@ -58,20 +47,15 @@ ddu03, du03,
     ) -> sum(
         Array(
             solve(
-                prob, Tsit5(),
-                u0 = ArrayPartition(
-                    du0,
-                    u0
-                ),
-                p = p, saveat = t,
+                prob, Tsit5();
+                u0 = ArrayPartition(du0, u0), p, saveat = t,
                 sensealg = QuadratureAdjoint(autojacvec = ZygoteVJP())
             )
         )
     ),
     du0, u0, p
 )
-ddu04, du04,
-    dp4 = Zygote.gradient(
+ddu04, du04, dp4 = Zygote.gradient(
     (
         du0,
         u0,
@@ -79,12 +63,8 @@ ddu04, du04,
     ) -> sum(
         Array(
             solve(
-                prob, Tsit5(),
-                u0 = ArrayPartition(
-                    du0,
-                    u0
-                ),
-                p = p, saveat = t,
+                prob, Tsit5();
+                u0 = ArrayPartition(du0, u0), p, saveat = t,
                 sensealg = ForwardDiffSensitivity()
             )
         )

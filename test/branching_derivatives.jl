@@ -23,7 +23,7 @@ prob = ODEProblem(fiip, u0, (0.0, 4.0), p);
 dp1 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p,
+            prob, Tsit5(); u0, p,
             sensealg = ForwardDiffSensitivity(), saveat = 0.1,
             abstol = 1.0e-12, reltol = 1.0e-12
         )
@@ -33,7 +33,7 @@ dp1 = Zygote.gradient(
 dp2 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p,
+            prob, Tsit5(); u0, p,
             sensealg = ForwardDiffSensitivity(convert_tspan = true),
             saveat = 0.1, abstol = 1.0e-12, reltol = 1.0e-12
         )
@@ -43,7 +43,7 @@ dp2 = Zygote.gradient(
 dp3 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p,
+            prob, Tsit5(); u0, p,
             sensealg = ForwardSensitivity(), saveat = 0.1,
             abstol = 1.0e-12, reltol = 1.0e-12
         )
@@ -53,7 +53,7 @@ dp3 = Zygote.gradient(
 dp4 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+            prob, Tsit5(); u0, p, saveat = 0.1,
             abstol = 1.0e-12, reltol = 1.0e-12
         )
     ),
@@ -62,7 +62,7 @@ dp4 = Zygote.gradient(
 dp5 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+            prob, Tsit5(); u0, p, saveat = 0.1,
             abstol = 1.0e-12, reltol = 1.0e-12,
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
         )
@@ -72,7 +72,7 @@ dp5 = Zygote.gradient(
 dp6 = Zygote.gradient(
     p -> sum(
         solve(
-            prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+            prob, Tsit5(); u0, p, saveat = 0.1,
             abstol = 1.0e-12, reltol = 1.0e-12,
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))
         )

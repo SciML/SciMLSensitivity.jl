@@ -22,7 +22,7 @@ prob_ode = ODEProblem(f_nn, u0, tspan, ComponentArray(ip));
 
 function loss_adjoint(p; sensealg = nothing)
     local prediction = solve(
-        prob_ode, BS5(), p = p, abstol = 1.0e-13, reltol = 1.0e-13, sensealg = sensealg
+        prob_ode, BS5(); p, abstol = 1.0e-13, reltol = 1.0e-13, sensealg
     )
     local usol = last(prediction)
     local loss = abs(1.0 - abs(tr(usol * utarget') / 2))

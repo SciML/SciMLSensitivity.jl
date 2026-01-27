@@ -19,10 +19,10 @@ else
     f(u, p, t) = u .* p
     f(du, u, p, t) = (du .= u .* p)
     prob_ube = ODEProblem{false}(f, X, tspan, p)
-    Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(), u0 = X, p = p)), p)
+    Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(); u0 = X, p)), p)
 
     prob_ube = ODEProblem{true}(f, X, tspan, p)
-    Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(), u0 = X, p = p)), p)
+    Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(); u0 = X, p)), p)
 
     function aug_dynamics!(dz, z, K, t)
         x = @view z[2:end]

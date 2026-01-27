@@ -9,7 +9,7 @@ using Plots
 
 include("pages.jl")
 
-makedocs(
+makedocs(;
     sitename = "SciMLSensitivity.jl",
     authors = "Chris Rackauckas et al.",
     modules = [SciMLSensitivity],
@@ -19,7 +19,7 @@ makedocs(
         assets = ["assets/favicon.ico"],
         canonical = "https://docs.sciml.ai/SciMLSensitivity/stable/"
     ),
-    pages = pages
+    pages
 )
 
 deploydocs(

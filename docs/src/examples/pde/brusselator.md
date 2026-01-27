@@ -242,7 +242,7 @@ end
 Finally to run everything:
 
 ```@example bruss
-res = OPT.solve(optprob, OPO.Optimisers.Adam(0.01), callback = callback, maxiters = 100)
+res = OPT.solve(optprob, OPO.Optimisers.Adam(0.01); callback, maxiters = 100)
 ```
 
 ```@example bruss

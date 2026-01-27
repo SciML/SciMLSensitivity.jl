@@ -21,10 +21,10 @@ using Random, FiniteDiff, ForwardDiff, ReverseDiff, SciMLSensitivity, Zygote
     prob = ODEProblem(f, u0, (0.0, 1.0), p)
 
     function loss(u0, p; sensealg = nothing)
-        _prob = remake(prob, u0 = u0, p = p)
+        _prob = remake(prob; u0, p)
         _sol = solve(
-            _prob, Tsit5(), sensealg = sensealg, saveat = 0.1, abstol = 1.0e-14,
-            reltol = 1.0e-14
+            _prob, Tsit5(); sensealg, saveat = 0.1,
+            abstol = 1.0e-14, reltol = 1.0e-14
         )
         sum(abs2, _sol)
     end

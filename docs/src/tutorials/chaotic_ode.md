@@ -127,9 +127,9 @@ prob_attractor = ODE.ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
 g(u, p, t) = u[end]
 
 function G(p)
-    _prob = ODE.remake(prob_attractor, p = p)
+    _prob = ODE.remake(prob_attractor; p)
     _sol = ODE.solve(_prob, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-6, saveat = 0.01,
-        sensealg = SMS.ForwardLSS(g = g))
+        sensealg = SMS.ForwardLSS(; g))
     sum(getindex.(_sol.u, 3))
 end
 dp1 = Zygote.gradient(p -> G(p), p)
@@ -140,6 +140,6 @@ via `shadow_forward` as follows:
 
 ```@example chaosode
 sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4)
-lss_problem = SMS.ForwardLSSProblem(sol_attractor, SMS.ForwardLSS(g = g))
+lss_problem = SMS.ForwardLSSProblem(sol_attractor, SMS.ForwardLSS(; g))
 resfw = SMS.shadow_forward(lss_problem)
 ```
