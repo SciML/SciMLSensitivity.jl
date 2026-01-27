@@ -704,12 +704,29 @@ function gclosure2(f, du, u, p, t, W)
     return nothing
 end
 
+function repack_ode_function(f, repack, isinplace::Bool)
+    if isinplace
+        f_repacked = function (du, u, p, t)
+            return f(du, u, repack(p), t)
+        end
+    else
+        f_repacked = function (u, p, t)
+            return f(u, repack(p), t)
+        end
+    end
+    return f_repacked
+end
+
 function _vecjacobian!(
         dλ, y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
         W
     ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     f = unwrapped_f(S.f)
+    # pf is the cached function for Enzyme (already wrapped with repack for SciMLStructures)
+    # For some code paths (e.g., QuadratureAdjoint), pf may be nothing
+    _pf = S.diffcache.pf
+    pf = _pf === nothing ? (inplace_sensitivity(S) ? SciMLBase.Void(f) : f) : _pf
 
     prob = getprob(S)
 
@@ -745,25 +762,22 @@ function _vecjacobian!(
     Enzyme.remake_zero!(tmp1) # should be removed for dλ
     vec(ytmp) .= vec(y)
 
-    #if dgrad !== nothing
-    #  tmp2 = dgrad
-    #else
+    is_sciml_struct = isscimlstructure(p)
+
     dup = if !(tmp2 isa SciMLBase.NullParameters)
-        # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
-        # Skip repack when it's just a simple vector - avoids unnecessary allocation
-        shadow_p = trivial_repack ? tmp2 : repack(tmp2)
-        Enzyme.Duplicated(p, shadow_p)
+        if is_sciml_struct
+            Enzyme.Duplicated(tunables, tmp2)
+        else
+            # Skip repack when it's just a simple vector - avoids unnecessary allocation
+            shadow_p = trivial_repack ? tmp2 : repack(tmp2)
+            Enzyme.Duplicated(p, shadow_p)
+        end
     else
         Enzyme.Const(p)
     end
-    #end
 
-    #if dy !== nothing
-    #      tmp3 = dy
-    #else
     Enzyme.remake_zero!(tmp3)
-    #end
 
     vec(tmp4) .= vec(λ)
     isautojacvec = get_jacvec(sensealg)
@@ -775,14 +789,14 @@ function _vecjacobian!(
             # Correctness over speed
             # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
             # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            _tmp6 = Enzyme.make_zero(SciMLBase.Void(f))
+            _tmp6 = Enzyme.make_zero(pf)
         else
             Enzyme.remake_zero!(_tmp6)
         end
 
         if W === nothing
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -790,7 +804,7 @@ function _vecjacobian!(
             )
         else
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -803,19 +817,19 @@ function _vecjacobian!(
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
-            _tmp6 = Enzyme.make_zero(f)
+            _tmp6 = Enzyme.make_zero(pf)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t)
             )
         else
-            _tmp6 = Enzyme.make_zero(f)
+            _tmp6 = Enzyme.make_zero(pf)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                Enzyme.Duplicated(pf, _tmp6),
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W)
