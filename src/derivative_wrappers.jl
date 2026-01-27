@@ -731,10 +731,15 @@ function _vecjacobian!(
     _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
 
     if _tmp1 isa LazyBufferCache
-        tmp1 = get_tmp(_tmp1, dλ)
-        tmp3 = get_tmp(_tmp3, dλ)
-        tmp4 = get_tmp(_tmp4, dλ)
-        ytmp = get_tmp(_tmp5, dλ)
+        # Use a template that combines y's wrapper type (e.g., ComponentArray) with
+        # dλ's element type (e.g., Float64 or ForwardDiff.Dual). This ensures the
+        # LazyBufferCache creates buffers with the correct wrapper type for the user's
+        # ODE function while supporting ForwardDiff Dual element types.
+        _cache_tmpl = eltype(dλ) === eltype(y) ? y : similar(y, eltype(dλ))
+        tmp1 = get_tmp(_tmp1, _cache_tmpl)
+        tmp3 = get_tmp(_tmp3, _cache_tmpl)
+        tmp4 = get_tmp(_tmp4, _cache_tmpl)
+        ytmp = get_tmp(_tmp5, _cache_tmpl)
     else
         tmp1 = _tmp1
         tmp3 = _tmp3
