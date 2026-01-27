@@ -27,12 +27,5 @@ prob = ODEProblem(dxdt_, x0, tspan, θ)
 _, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), p)
 sensealg = SciMLSensitivity.automatic_sensealg_choice(prob, x0, θ, true, repack)
 
-# On Julia 1.12+, Enzyme is not yet fully supported, so the automatic choice
-# will fall back to a different VJP. Mark this as broken until Enzyme v1.12 support lands.
-# See: https://github.com/EnzymeAD/Enzyme.jl/issues/2699
-if VERSION >= v"1.12"
-    @test sensealg isa GaussAdjoint
-    @test_broken sensealg.autojacvec isa EnzymeVJP
-else
-    @test sensealg isa GaussAdjoint && sensealg.autojacvec isa EnzymeVJP
-end
+@test sensealg isa GaussAdjoint
+@test sensealg.autojacvec isa EnzymeVJP
