@@ -447,6 +447,77 @@ function SciMLBase._concrete_solve_adjoint(
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
 end
 
+# SCCNonlinearProblem with SteadyStateAdjoint is not supported.
+# SteadyStateAdjoint cannot work because f = Returns(nothing) for SCC problems.
+function SciMLBase._concrete_solve_adjoint(
+        prob::SCCNonlinearProblem, alg,
+        sensealg::SteadyStateAdjoint, u0, p,
+        originator::SciMLBase.ADOriginator, args...;
+        kwargs...)
+    throw(AdjointSteadyProblemPairingError(prob, sensealg))
+end
+
+# SCCNonlinearProblem uses ForwardDiff to compute sensitivities through the solve.
+# Note: sensealg::Nothing is handled by the AbstractNonlinearProblem method which
+# computes default_sensealg and redispatches here.
+function SciMLBase._concrete_solve_adjoint(
+        prob::SCCNonlinearProblem, alg,
+        sensealg::ForwardDiffSensitivity, u0, p,
+        originator::SciMLBase.ADOriginator, args...;
+        verbose = true, kwargs...)
+    # Forward solve
+    sol = solve(prob, alg; u0 = u0, p = p, sensealg = SensitivityADPassThrough(), kwargs...)
+
+    function scc_pullback(Δ)
+        # Use ForwardDiff to compute Jacobian of solution w.r.t. parameters
+        if p === nothing || p isa SciMLBase.NullParameters
+            dp = NoTangent()
+        else
+            function solve_for_p(_p)
+                _sol = solve(prob, alg; u0 = u0, p = _p,
+                    sensealg = SensitivityADPassThrough(), kwargs...)
+                _sol.u
+            end
+
+            # Compute J' * Δ using ForwardDiff
+            if p isa AbstractArray
+                # For array parameters, compute full Jacobian and multiply
+                J = ForwardDiff.jacobian(solve_for_p, p)
+                Δ_vec = Δ isa AbstractArray ? vec(Δ) : Δ
+                dp = reshape(J' * Δ_vec, size(p))
+            else
+                # For structured parameters, use gradient
+                dp = ForwardDiff.gradient(_p -> dot(solve_for_p(_p), Δ), p)
+            end
+        end
+
+        # Gradient w.r.t. u0
+        if u0 === nothing
+            du0 = NoTangent()
+        else
+            function solve_for_u0(_u0)
+                _sol = solve(prob, alg; u0 = _u0, p = p,
+                    sensealg = SensitivityADPassThrough(), kwargs...)
+                _sol.u
+            end
+            J_u0 = ForwardDiff.jacobian(solve_for_u0, u0)
+            Δ_vec = Δ isa AbstractArray ? vec(Δ) : Δ
+            du0 = reshape(J_u0' * Δ_vec, size(u0))
+        end
+
+        if originator isa SciMLBase.TrackerOriginator ||
+           originator isa SciMLBase.ReverseDiffOriginator
+            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        else
+            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...)
+        end
+    end
+
+    sol, scc_pullback
+end
+
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractODEProblem,
@@ -573,7 +644,21 @@ function SciMLBase._concrete_solve_adjoint(
                 sum(new_u0) + sum(new_tunables)
             end
         end
-        igs = back(one(iy))[1] .- one(eltype(tunables))
+        back_result = back(one(iy))[1]
+        # Handle case where gradient is nothing (no tunables or no gradient flow)
+        igs = if back_result === nothing
+            if isempty(tunables)
+                # No tunables, so no initialization gradient needed
+                nothing
+            else
+                @warn "Initialization gradient is nothing but tunables exist. " *
+                      "This may indicate a missing AD rule. tunables=$tunables, " *
+                      "prob type=$(typeof(_prob)), initializeprob type=$(typeof(initializeprob))"
+                nothing
+            end
+        else
+            back_result .- one(eltype(tunables))
+        end
 
         igs, new_u0, new_p, SciMLBase.CheckInit()
     else
@@ -1669,7 +1754,7 @@ function SciMLBase._concrete_solve_adjoint(
             )
         end
     end
-    return sol, enzyme_sensitivity_backpass
+    result, enzyme_sensitivity_backpass
 end
 
 const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
@@ -2281,6 +2366,102 @@ function SciMLBase._concrete_solve_adjoint(
         out = SciMLBase.sensitivity_solution(sol, sol[_save_idxs])
     end
 
+    # Handle trivial problems with no unknowns (u0 === nothing or empty u)
+    # In this case, gradients should flow through the observed function, not the solve
+    if u0 === nothing || isempty(sol.u)
+        # Set up the repack for parameter gradients
+        _, repack_trivial = if isscimlstructure(p)
+            Zygote.pullback(p) do p
+                t, _, _ = canonicalize(Tunable(), p)
+                t
+            end
+        elseif isfunctor(p)
+            ps, re = Functors.functor(p)
+            ps, x -> (re(x),)
+        else
+            nothing, x -> (x,)
+        end
+
+        function trivial_backpass(Δ)
+            Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+            # Extract gradient from structured tangent if present
+            # The gradient flows through observed function indexing
+            # Handle both ChainRulesCore.Tangent and NamedTuple formats
+            dp = if p === nothing || p isa SciMLBase.NullParameters
+                NoTangent()
+            elseif Δ isa Tangent
+                # ChainRulesCore Tangent type
+                prob_tangent = getproperty(Δ, :prob)
+                if prob_tangent !== nothing && !(prob_tangent isa NoTangent)
+                    Δp = if prob_tangent isa Tangent
+                        getproperty(prob_tangent, :p)
+                    else
+                        hasproperty(prob_tangent, :p) ? prob_tangent.p : NoTangent()
+                    end
+                    if Δp isa NamedTuple && hasproperty(Δp, :tunable) &&
+                       Δp.tunable !== nothing
+                        if isscimlstructure(p)
+                            replace(Tunable(), p, Δp.tunable)
+                        else
+                            Δp.tunable
+                        end
+                    elseif isscimlstructure(Δp)
+                        Δp
+                    else
+                        Δp
+                    end
+                else
+                    NoTangent()
+                end
+            elseif Δ isa NamedTuple && hasproperty(Δ, :prob) && Δ.prob !== nothing &&
+                   hasproperty(Δ.prob, :p) && Δ.prob.p !== nothing
+                # NamedTuple format (for Zygote @adjoint)
+                Δp = Δ.prob.p
+                if Δp isa NamedTuple && hasproperty(Δp, :tunable) && Δp.tunable !== nothing
+                    if isscimlstructure(p)
+                        replace(Tunable(), p, Δp.tunable)
+                    else
+                        Δp.tunable
+                    end
+                elseif isscimlstructure(Δp)
+                    Δp
+                else
+                    Δp
+                end
+            elseif Δ isa AbstractArray || Δ isa Number
+                # Gradient came from sol.u (but u is empty, so this shouldn't happen)
+                if isscimlstructure(p)
+                    zero(p)
+                else
+                    zero.(p)
+                end
+            else
+                NoTangent()
+            end
+
+            # Convert to tunable representation for return
+            dp_out = if dp isa NoTangent || dp === nothing
+                dp
+            elseif isscimlstructure(dp)
+                t, _, _ = canonicalize(Tunable(), dp)
+                repack_trivial(t)[1]
+            else
+                repack_trivial !== nothing ? repack_trivial(dp)[1] : dp
+            end
+
+            if originator isa SciMLBase.TrackerOriginator ||
+               originator isa SciMLBase.ReverseDiffOriginator
+                (NoTangent(), NoTangent(), NoTangent(), dp_out, NoTangent(),
+                    ntuple(_ -> NoTangent(), length(args))...)
+            else
+                (NoTangent(), NoTangent(), NoTangent(),
+                    NoTangent(), dp_out, NoTangent(),
+                    ntuple(_ -> NoTangent(), length(args))...)
+            end
+        end
+        return out, trivial_backpass
+    end
+
     _, repack_adjoint = if isscimlstructure(p)
         Zygote.pullback(p) do p
             t, _, _ = canonicalize(Tunable(), p)
@@ -2376,3 +2557,7 @@ function fix_endpoints(sensealg, sol, ts)
     ts = collect(ts)
     return push!(ts, last(current_time(sol)))
 end
+
+# Note: AD through isol[sym] for NonlinearSolution with observed variables
+# requires the Zygote.ignore() pattern as shown in parameter_initialization.jl tests.
+# Direct Zygote.@adjoint definitions cause type piracy issues.
