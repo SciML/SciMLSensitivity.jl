@@ -62,13 +62,11 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -&gt; loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
-result_neuralode = OPT.solve(optprob,
-    OPO.Adam(0.05), callback = callback,
-    maxiters = 300)
+result_neuralode = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
 
 pred = predict_neuralode(result_neuralode.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = &quot;data&quot;)
-Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="7abc02c7.svg" alt="Example block output"/><p>However, we&#39;ve now fallen into a trap of a local minimum. If the optimizer changes the parameters, so it dips early, it will increase the loss because there will be more error in the later parts of the time series. Thus it tends to just stay flat and never fit perfectly. This thus suggests strategies (2) and (3): do not allow the later parts of the time series to influence the fit until the later stages. Strategy (3) seems more robust, so this is what will be demonstrated.</p><p>Let&#39;s start by reducing the timespan to <code>(0,1.5)</code>:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="6ef3ac89.svg" alt="Example block output"/><p>However, we&#39;ve now fallen into a trap of a local minimum. If the optimizer changes the parameters, so it dips early, it will increase the loss because there will be more error in the later parts of the time series. Thus it tends to just stay flat and never fit perfectly. This thus suggests strategies (2) and (3): do not allow the later parts of the time series to influence the fit until the later stages. Strategy (3) seems more robust, so this is what will be demonstrated.</p><p>Let&#39;s start by reducing the timespan to <code>(0,1.5)</code>:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
     prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 1.5f0), p)
     sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
@@ -78,39 +76,33 @@ adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -&gt; loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
-result_neuralode2 = OPT.solve(optprob,
-    OPO.Adam(0.05), callback = callback,
-    maxiters = 300)
+result_neuralode2 = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
 
 pred = predict_neuralode(result_neuralode2.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = &quot;data&quot;)
-Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="581f90e0.svg" alt="Example block output"/><p>This fits beautifully. Now let&#39;s grow the timespan and utilize the parameters from our <code>(0,1.5)</code> fit as the initial condition to our next fit:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="05477ef7.svg" alt="Example block output"/><p>This fits beautifully. Now let&#39;s grow the timespan and utilize the parameters from our <code>(0,1.5)</code> fit as the initial condition to our next fit:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
     prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 3.0f0), p)
     sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
 optprob = OPT.OptimizationProblem(optf, result_neuralode2.u)
-result_neuralode3 = OPT.solve(optprob,
-    OPO.Adam(0.05), maxiters = 300,
-    callback = callback)
+result_neuralode3 = OPT.solve(optprob, OPO.Adam(0.05); maxiters = 300, callback)
 
 pred = predict_neuralode(result_neuralode3.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = &quot;data&quot;)
-Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="81ca4c50.svg" alt="Example block output"/><p>Once again, a great fit. Now we utilize these parameters as the initial condition to the full fit:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="6ef9d614.svg" alt="Example block output"/><p>Once again, a great fit. Now we utilize these parameters as the initial condition to the full fit:</p><pre><code class="language-julia hljs">function predict_neuralode(p)
     prob = ODE.ODEProblem(neuralode_f, u0, (0.0f0, 5.0f0), p)
     sol = ODE.solve(prob, ODE.Vern7(), saveat = tsteps, abstol = 1e-6, reltol = 1e-6)
     Array(sol)
 end
 
 optprob = OPT.OptimizationProblem(optf, result_neuralode3.u)
-result_neuralode4 = OPT.solve(optprob,
-    OPO.Adam(0.01), maxiters = 500,
-    callback = callback)
+result_neuralode4 = OPT.solve(optprob, OPO.Adam(0.01); maxiters = 500, callback)
 
 pred = predict_neuralode(result_neuralode4.u)
 plt = Plots.scatter(tsteps[1:size(pred, 2)], ode_data[1, 1:size(pred, 2)], label = &quot;data&quot;)
-Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="e2c32f51.svg" alt="Example block output"/><h2 id="Training-both-the-initial-conditions-and-the-parameters-to-start"><a class="docs-heading-anchor" href="#Training-both-the-initial-conditions-and-the-parameters-to-start">Training both the initial conditions and the parameters to start</a><a id="Training-both-the-initial-conditions-and-the-parameters-to-start-1"></a><a class="docs-heading-anchor-permalink" href="#Training-both-the-initial-conditions-and-the-parameters-to-start" title="Permalink"></a></h2><p>In this example, we will show how to use strategy (4) in order to accomplish the same goal, except rather than growing the trajectory iteratively, we can train on the whole trajectory. We do this by allowing the neural ODE to learn both the initial conditions and parameters to start, and then reset the initial conditions back and train only the parameters. Note: this strategy is demonstrated for the (0, 5) time span and (0, 10), any longer and more iterations will be required. Alternatively, one could use a mix of (3) and (4), or breaking up the trajectory into chunks and just (4).</p><pre><code class="language-julia hljs">import SciMLSensitivity as SMS
+Plots.scatter!(plt, tsteps[1:size(pred, 2)], pred[1, :], label = &quot;prediction&quot;)</code></pre><img src="de20d201.svg" alt="Example block output"/><h2 id="Training-both-the-initial-conditions-and-the-parameters-to-start"><a class="docs-heading-anchor" href="#Training-both-the-initial-conditions-and-the-parameters-to-start">Training both the initial conditions and the parameters to start</a><a id="Training-both-the-initial-conditions-and-the-parameters-to-start-1"></a><a class="docs-heading-anchor-permalink" href="#Training-both-the-initial-conditions-and-the-parameters-to-start" title="Permalink"></a></h2><p>In this example, we will show how to use strategy (4) in order to accomplish the same goal, except rather than growing the trajectory iteratively, we can train on the whole trajectory. We do this by allowing the neural ODE to learn both the initial conditions and parameters to start, and then reset the initial conditions back and train only the parameters. Note: this strategy is demonstrated for the (0, 5) time span and (0, 10), any longer and more iterations will be required. Alternatively, one could use a mix of (3) and (4), or breaking up the trajectory into chunks and just (4).</p><pre><code class="language-julia hljs">import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE,
        ComponentArrays as CA, Optimization as OPT, OptimizationOptimisers as OPO
 import Lux, Plots, Random, Zygote
@@ -139,7 +131,7 @@ prob = ODE.ODEProblem(dudt, u0, tspan)
 function predict_n_ode(pu0)
     u0 = pu0.u0
     p = pu0.p
-    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = tsteps))
 end
 
 function loss_n_ode(pu0, _)
@@ -161,17 +153,17 @@ function callback(state, l; doplot = true) #callback function to observe trainin
     return false
 end
 
-p_init = CA.ComponentArray(; u0 = u0, p = p)
+p_init = CA.ComponentArray(; u0, p)
 
 predict_n_ode(p_init)
 loss_n_ode(p_init, nothing)
 
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
-    OPO.Adam(0.05); callback = callback, maxiters = 1000)
+    OPO.Adam(0.05); callback, maxiters = 1000)
 
 function predict_n_ode2(p)
-    Array(ODE.solve(prob, ODE.Tsit5(), u0 = u0, p = p, saveat = tsteps))
+    Array(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = tsteps))
 end
 
 function loss_n_ode2(p, _)
@@ -214,12 +206,12 @@ p = CA.ComponentArray(ps)
 dudt(u, p, t) = first(dudt2(u, p, st))
 prob = ODE.ODEProblem(dudt, u0, tspan)
 
-p_init = CA.ComponentArray(; u0 = u0, p = p)
+p_init = CA.ComponentArray(; u0, p)
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()), p_init),
-    OPO.Adam(0.05); callback = callback, maxiters = 1000)
+    OPO.Adam(0.05); callback, maxiters = 1000)
 
 res = OPT.solve(
     OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoZygote()), p_init.p),
     OPO.Adam(0.05); callback = callback2, maxiters = 1000)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
-u: ComponentVector{Float32}(layer_1 = (weight = Float32[6.952819 5.314941; -0.88563627 -3.138054; … ; 3.4043496 9.991056; -3.9385126 -8.608429], bias = Float32[6.364619, -3.8587039, -1.3020636, 0.33627564, -2.602639, -1.51346, 0.53879637, 0.20450439, -4.995554, -2.3228106, 4.2951765, -1.9403458, 1.7731087, 2.5922995, -5.3802867, 4.7415466]), layer_2 = (weight = Float32[-0.5456612 0.6325339 … -2.6499586 1.0412416; 1.2769451 0.1214777 … 0.5102821 -0.42220247], bias = Float32[-0.796442, 0.121464886]))</code></pre><p>And there we go, a set of robust strategies for fitting an equation that would otherwise get stuck in local optima.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../chaotic_ode/">« Sensitivity analysis for chaotic systems (shadowing methods)</a><a class="docs-footer-nextpage" href="../divergence/">Handling Divergent and Unstable Trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 22 January 2026 00:46">Thursday 22 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+u: ComponentVector{Float32}(layer_1 = (weight = Float32[6.952819 5.314941; -0.88563627 -3.138054; … ; 3.4043496 9.991056; -3.9385126 -8.608429], bias = Float32[6.364619, -3.8587039, -1.3020636, 0.33627564, -2.602639, -1.51346, 0.53879637, 0.20450439, -4.995554, -2.3228106, 4.2951765, -1.9403458, 1.7731087, 2.5922995, -5.3802867, 4.7415466]), layer_2 = (weight = Float32[-0.5456612 0.6325339 … -2.6499586 1.0412416; 1.2769451 0.1214777 … 0.5102821 -0.42220247], bias = Float32[-0.796442, 0.121464886]))</code></pre><p>And there we go, a set of robust strategies for fitting an equation that would otherwise get stuck in local optima.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../chaotic_ode/">« Sensitivity analysis for chaotic systems (shadowing methods)</a><a class="docs-footer-nextpage" href="../divergence/">Handling Divergent and Unstable Trajectories »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 28 January 2026 00:01">Wednesday 28 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

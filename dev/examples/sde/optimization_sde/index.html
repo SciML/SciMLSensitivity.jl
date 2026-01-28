@@ -19,20 +19,20 @@ p = [1.5, 1.0, 3.0, 1.0, 0.3, 0.3]
 
 prob = SDE.SDEProblem(lotka_volterra!, multiplicative_noise!, u0, tspan, p)
 sol = SDE.solve(prob, SDE.SOSRI())
-Plots.plot(sol)</code></pre><img src="753c2700.svg" alt="Example block output"/><p><img src="https://user-images.githubusercontent.com/1814174/88511873-97bc0a00-cfb3-11ea-8cf5-5930b6575d9d.png" alt/></p><p>Let&#39;s assume that we are observing the seasonal behavior of this system and have 10,000 years of data, corresponding to 10,000 observations of this timeseries. We can utilize this to get the seasonal means and variances. To simulate that scenario, we will generate 10,000 trajectories from the SDE to build our dataset:</p><pre><code class="language-julia hljs">import Statistics
+Plots.plot(sol)</code></pre><img src="7e337510.svg" alt="Example block output"/><p><img src="https://user-images.githubusercontent.com/1814174/88511873-97bc0a00-cfb3-11ea-8cf5-5930b6575d9d.png" alt/></p><p>Let&#39;s assume that we are observing the seasonal behavior of this system and have 10,000 years of data, corresponding to 10,000 observations of this timeseries. We can utilize this to get the seasonal means and variances. To simulate that scenario, we will generate 10,000 trajectories from the SDE to build our dataset:</p><pre><code class="language-julia hljs">import Statistics
 ensembleprob = SDE.EnsembleProblem(prob)
 @time sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 10_000)
 truemean = Statistics.mean(sol, dims = 3)[:, :]
 truevar = Statistics.var(sol, dims = 3)[:, :]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×101 Matrix{Float64}:
- 0.0  0.0100402   0.0233981   …  9.47957  9.50561  9.76411  9.90964
- 0.0  0.00603254  0.00829337     4.84155  5.0181   5.08271  5.09798</code></pre><p>From here, we wish to utilize the method of moments to fit the SDE&#39;s parameters. Thus our loss function will be to solve the SDE a bunch of times and compute moment equations and use these as our loss against the original series. We then plot the evolution of the means and variances to verify the fit. For example:</p><pre><code class="language-julia hljs">arrsol = sol
+ 0.0  0.0102287   0.02381     …  9.61766  9.76117  9.91077  9.91411
+ 0.0  0.00601775  0.00813224     4.72133  4.87066  4.99869  5.1704</code></pre><p>From here, we wish to utilize the method of moments to fit the SDE&#39;s parameters. Thus our loss function will be to solve the SDE a bunch of times and compute moment equations and use these as our loss against the original series. We then plot the evolution of the means and variances to verify the fit. For example:</p><pre><code class="language-julia hljs">arrsol = sol
 currp = rand(length(p))
 function predict(p)
     if p == currp
         return arrsol
     end
     global currp = p
-    tmp_prob = SDE.remake(prob, p = p)
+    tmp_prob = SDE.remake(prob; p)
     ensembleprob = SDE.EnsembleProblem(tmp_prob)
     tmp_sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 1000)
     global arrsol = Array(tmp_sol)
@@ -64,12 +64,12 @@ optf = OPT.OptimizationFunction((x, p) -&gt; loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, pinit)
 @time res = OPT.solve(optprob, OPO.Adam(0.05), callback = cb2, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
 u: 6-element Vector{Float64}:
- 1.5174898479644272
- 1.004535082391362
- 2.875515588439155
- 0.9664739831043964
- 0.27446623000937187
- 0.3275678023413528</code></pre><p>Notice that <strong>both the parameters of the deterministic drift equations and the stochastic portion (the diffusion equation) are fit through this process!</strong> Also notice that the final fit of the moment equations is close:</p><p><img src="https://user-images.githubusercontent.com/1814174/88511872-97bc0a00-cfb3-11ea-9d44-a3ed96a77df9.png" alt/></p><p>The time for the full fitting process was:</p><pre><code class="nohighlight hljs">250.654845 seconds (4.69 G allocations: 104.868 GiB, 11.87% gc time)</code></pre><p>approximately 4 minutes.</p><h2 id="Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches"><a class="docs-heading-anchor" href="#Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches">Example 2: Fitting SDEs via Bayesian Quasi-Likelihood Approaches</a><a id="Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches-1"></a><a class="docs-heading-anchor-permalink" href="#Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches" title="Permalink"></a></h2><p>An inference method which can often be much more efficient is the quasi-likelihood approach. This approach matches the random likelihood of the SDE output with the random sampling of a Bayesian inference problem to more efficiently directly estimate the posterior distribution. For more information, please see <a href="https://turinglang.org/v0.29/tutorials/10-bayesian-differential-equations/">the Turing.jl Bayesian Differential Equations tutorial</a>.</p><h2 id="Example-3:-Controlling-SDEs-to-an-objective"><a class="docs-heading-anchor" href="#Example-3:-Controlling-SDEs-to-an-objective">Example 3: Controlling SDEs to an objective</a><a id="Example-3:-Controlling-SDEs-to-an-objective-1"></a><a class="docs-heading-anchor-permalink" href="#Example-3:-Controlling-SDEs-to-an-objective" title="Permalink"></a></h2><p>In this example, we will find the parameters of the SDE that force the solution to be close to the constant 1.</p><pre><code class="language-julia hljs">import StochasticDiffEq as SDE, Optimization as OPT, OptimizationOptimisers as OPO, Plots
+ 1.54788462852981
+ 1.0294733369833013
+ 2.9011512444420355
+ 0.9765507977304186
+ 0.3164272595892236
+ 0.3007586850433148</code></pre><p>Notice that <strong>both the parameters of the deterministic drift equations and the stochastic portion (the diffusion equation) are fit through this process!</strong> Also notice that the final fit of the moment equations is close:</p><p><img src="https://user-images.githubusercontent.com/1814174/88511872-97bc0a00-cfb3-11ea-9d44-a3ed96a77df9.png" alt/></p><p>The time for the full fitting process was:</p><pre><code class="nohighlight hljs">250.654845 seconds (4.69 G allocations: 104.868 GiB, 11.87% gc time)</code></pre><p>approximately 4 minutes.</p><h2 id="Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches"><a class="docs-heading-anchor" href="#Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches">Example 2: Fitting SDEs via Bayesian Quasi-Likelihood Approaches</a><a id="Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches-1"></a><a class="docs-heading-anchor-permalink" href="#Example-2:-Fitting-SDEs-via-Bayesian-Quasi-Likelihood-Approaches" title="Permalink"></a></h2><p>An inference method which can often be much more efficient is the quasi-likelihood approach. This approach matches the random likelihood of the SDE output with the random sampling of a Bayesian inference problem to more efficiently directly estimate the posterior distribution. For more information, please see <a href="https://turinglang.org/v0.29/tutorials/10-bayesian-differential-equations/">the Turing.jl Bayesian Differential Equations tutorial</a>.</p><h2 id="Example-3:-Controlling-SDEs-to-an-objective"><a class="docs-heading-anchor" href="#Example-3:-Controlling-SDEs-to-an-objective">Example 3: Controlling SDEs to an objective</a><a id="Example-3:-Controlling-SDEs-to-an-objective-1"></a><a class="docs-heading-anchor-permalink" href="#Example-3:-Controlling-SDEs-to-an-objective" title="Permalink"></a></h2><p>In this example, we will find the parameters of the SDE that force the solution to be close to the constant 1.</p><pre><code class="language-julia hljs">import StochasticDiffEq as SDE, Optimization as OPT, OptimizationOptimisers as OPO, Plots
 
 function lotka_volterra!(du, u, p, t)
     x, y = u
@@ -89,7 +89,7 @@ p = [2.2, 1.0, 2.0, 0.4]
 prob_sde = SDE.SDEProblem(lotka_volterra!, lotka_volterra_noise!, u0, tspan)
 
 function predict_sde(p)
-    return Array(SDE.solve(prob_sde, SDE.SOSRI(), p = p,
+    return Array(SDE.solve(prob_sde, SDE.SOSRI(); p,
         sensealg = SMS.ForwardDiffSensitivity(), saveat = 0.1))
 end
 
@@ -103,9 +103,9 @@ end</code></pre><pre class="documenter-example-output"><code class="nohighlight 
 optf = OPT.OptimizationFunction((x, p) -&gt; loss_sde(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)
-result_sde = OPT.solve(optprob, OPO.Adam(0.1), callback = callback, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
+result_sde = OPT.solve(optprob, OPO.Adam(0.1); callback, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Default
 u: 4-element Vector{Float64}:
- 2.7278995157404955
- 2.705114096512278
- 1.4467294383031555
- 1.3845855753654093</code></pre><p><img src="https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../neural_ode/simplechains/">« Faster Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../SDE_control/">Controlling Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 22 January 2026 00:46">Thursday 22 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 1.814847220054697
+ 1.7737601883961094
+ 1.372685682324525
+ 1.5136139745189834</code></pre><p><img src="https://user-images.githubusercontent.com/1814174/51399524-2c6abf80-1b14-11e9-96ae-0192f7debd03.gif" alt/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../neural_ode/simplechains/">« Faster Neural Ordinary Differential Equations with SimpleChains</a><a class="docs-footer-nextpage" href="../SDE_control/">Controlling Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 28 January 2026 00:01">Wednesday 28 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

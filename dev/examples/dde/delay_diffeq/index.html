@@ -28,8 +28,8 @@ prob_dde = DDE.DDEProblem(delay_lotka_volterra!, u0, h, (0.0, 10.0),
     constant_lags = [0.1])
 
 function predict_dde(p)
-    return Array(ODE.solve(prob_dde, DDE.MethodOfSteps(ODE.Tsit5()),
-        u0 = u0, p = p, saveat = 0.1, sensealg = SMS.ReverseDiffAdjoint()))
+    return Array(ODE.solve(prob_dde, DDE.MethodOfSteps(ODE.Tsit5());
+        u0, p, saveat = 0.1, sensealg = SMS.ReverseDiffAdjoint()))
 end
 
 loss_dde(p) = sum(abs2, x - 1 for x in predict_dde(p))
@@ -47,7 +47,7 @@ end
 adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -&gt; loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
-result_dde = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 300, callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+result_dde = OPT.solve(optprob, OPA.PolyOpt(); maxiters = 300, callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 4-element Vector{Float64}:
  1.5247375542690187
  1.5247375542644221
@@ -63,9 +63,9 @@ callback = function (state, l; doplot = false)
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">#8 (generic function with 1 method)</code></pre><p>We use <code>Optimization.solve</code> to optimize the parameters for our loss function:</p><pre><code class="language-julia hljs">adtype = OPT.AutoZygote()
 optf = OPT.OptimizationFunction((x, p) -&gt; loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
-result_dde = OPT.solve(optprob, OPA.PolyOpt(), callback = callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+result_dde = OPT.solve(optprob, OPA.PolyOpt(); callback)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 4-element Vector{Float64}:
  1.5247375542690187
  1.5247375542644221
  0.7311657359742096
- 0.7311657359760502</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../sde/SDE_control/">« Controlling Stochastic Differential Equations</a><a class="docs-footer-nextpage" href="../../pde/pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Thursday 22 January 2026 00:46">Thursday 22 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 0.7311657359760502</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../sde/SDE_control/">« Controlling Stochastic Differential Equations</a><a class="docs-footer-nextpage" href="../../pde/pde_constrained/">Partial Differential Equation (PDE) Constrained Optimization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 28 January 2026 00:01">Wednesday 28 January 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
