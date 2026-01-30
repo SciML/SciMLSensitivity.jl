@@ -10,7 +10,7 @@ using DifferentiationInterface
 using Test
 
 function f!(du, u, p, t)
-    du[1] = p[1] * u[1]
+    return du[1] = p[1] * u[1]
 end
 
 const u0 = [1.0]
@@ -42,4 +42,4 @@ prep2 = prepare_gradient(test_kwargs_in_prob, backend, p)
 grad2 = DifferentiationInterface.gradient(test_kwargs_in_prob, prep2, backend, p)
 
 # Both should give the same gradient
-@test grad1[1] ≈ grad2[1] rtol = 1e-10
+@test grad1[1] ≈ grad2[1] rtol = 1.0e-10
