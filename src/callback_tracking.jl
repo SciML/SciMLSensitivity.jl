@@ -455,57 +455,53 @@ function _setup_reverse_callbacks(
     return cb
 end
 
-function setup_w_wp(
-        cb::Union{DiscreteCallback, ContinuousCallback},
-        autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
-        tprev
-    )
-    w = let tprev = tprev, pos_neg = pos_neg
-        function (du, u, p, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
-            _affect!(fakeinteg)
-            du .= fakeinteg.u
-            return nothing
-        end
-    end
+mutable struct CallbackAffectWrapper{cbType, AJV, EI, T} <: Function
+    cb::cbType
+    autojacvec::AJV
+    pos_neg::Bool
+    event_idx::EI
+    tprev::T
+end
 
-    wp = let tprev = tprev, pos_neg = pos_neg
-        function (dp, p, u, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
-            _affect!(fakeinteg)
-            dp .= fakeinteg.p
-            return nothing
-        end
+function (ff::CallbackAffectWrapper)(du, u, p, t)
+    _affect! = get_affect!(ff.cb, ff.pos_neg)
+    fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
+    if ff.cb isa VectorContinuousCallback
+        _affect!(fakeinteg, ff.event_idx)
+    else
+        _affect!(fakeinteg)
     end
-    return w, wp
+    du .= fakeinteg.u
+    return nothing
+end
+
+mutable struct CallbackAffectPWrapper{cbType, AJV, EI, T} <: Function
+    cb::cbType
+    autojacvec::AJV
+    pos_neg::Bool
+    event_idx::EI
+    tprev::T
+end
+
+function (ff::CallbackAffectPWrapper)(dp, p, u, t)
+    _affect! = get_affect!(ff.cb, ff.pos_neg)
+    fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
+    if ff.cb isa VectorContinuousCallback
+        _affect!(fakeinteg, ff.event_idx)
+    else
+        _affect!(fakeinteg)
+    end
+    dp .= fakeinteg.p
+    return nothing
 end
 
 function setup_w_wp(
-        cb::VectorContinuousCallback,
+        cb::Union{DiscreteCallback, ContinuousCallback, VectorContinuousCallback},
         autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
         tprev
     )
-    w = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
-        function (du, u, p, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
-            _affect!(fakeinteg, event_idx)
-            du .= fakeinteg.u
-            return nothing
-        end
-    end
-
-    wp = let tprev = tprev, pos_neg = pos_neg, event_idx = event_idx
-        function (dp, p, u, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = get_FakeIntegrator(autojacvec, u, p, t, tprev)
-            _affect!(fakeinteg, event_idx)
-            dp .= fakeinteg.p
-            return nothing
-        end
-    end
+    w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
+    wp = CallbackAffectPWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
     return w, wp
 end
 

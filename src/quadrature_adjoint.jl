@@ -544,14 +544,7 @@ function _update_integrand_and_dgrad(
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
-    wp = let tprev = tprev, pos_neg = pos_neg
-        function (dp, p, u, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            _affect!(fakeinteg)
-            return dp .= fakeinteg.p
-        end
-    end
+    wp = CallbackAffectPWrapper(cb, ReverseDiffVJP(), pos_neg, nothing, tprev)
 
     _p = similar(integrand.p, size(integrand.p))
     _p .= false
@@ -585,14 +578,7 @@ function _update_integrand_and_dgrad(
         integrand = update_p_integrand(integrand, _p)
     end
 
-    w = let tprev = tprev, pos_neg = pos_neg
-        function (du, u, p, t)
-            _affect! = get_affect!(cb, pos_neg)
-            fakeinteg = FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-            _affect!(fakeinteg)
-            return du .= vec(fakeinteg.u)
-        end
-    end
+    w = CallbackAffectWrapper(cb, ReverseDiffVJP(), pos_neg, nothing, tprev)
 
     # Create a fake sensitivity function to do the vjps needs to be done
     # to account for parameter dependence of affect function
