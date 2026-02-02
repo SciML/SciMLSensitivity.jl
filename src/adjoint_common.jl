@@ -237,9 +237,21 @@ function adjointdiffcache(
         if isinplace &&
                 !(p === nothing || p === SciMLBase.NullParameters())
             if !isRODE
-                pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                if isscimlstructure(p)
+                    pf = SciMLBase.ParamJacobianWrapper(
+                        (du, u, p, t) -> unwrappedf(du, u, repack(p), t), _t, y
+                    )
+                else
+                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                end
             else
-                pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
+                if isscimlstructure(p)
+                    pf = RODEParamJacobianWrapper(
+                        (du, u, p, t, W) -> unwrappedf(du, u, repack(p), t, W), _t, y, _W
+                    )
+                else
+                    pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
+                end
             end
             paramjac_config = build_param_jac_config(
                 sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables)
@@ -325,7 +337,13 @@ function adjointdiffcache(
         elseif autojacvec isa Bool
             if isinplace
                 if SciMLBase.is_diagonal_noise(prob)
-                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                    if isscimlstructure(p)
+                        pf = SciMLBase.ParamJacobianWrapper(
+                            (du, u, p, t) -> unwrappedf(du, u, repack(p), t), _t, y
+                        )
+                    else
+                        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                    end
                     if isnoisemixing(sensealg)
                         uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
                         jac_noise_config = build_jac_config(sensealg, uf, u0)

@@ -324,9 +324,19 @@ function _vecjacobian!(
                 pf.t = t
                 pf.u = y
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    if isscimlstructure(p)
+                        tunables, _, _ = canonicalize(Tunable(), p)
+                        jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+                    else
+                        jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    end
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    if isscimlstructure(p)
+                        tunables, _, _ = canonicalize(Tunable(), p)
+                        temp = jacobian(pf, tunables, sensealg)
+                    else
+                        temp = jacobian(pf, p, sensealg)
+                    end
                     pJ .= temp
                 end
             end
@@ -339,9 +349,19 @@ function _vecjacobian!(
                 pf.u = y
                 pf.W = W
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    if isscimlstructure(p)
+                        tunables, _, _ = canonicalize(Tunable(), p)
+                        jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+                    else
+                        jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    end
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    if isscimlstructure(p)
+                        tunables, _, _ = canonicalize(Tunable(), p)
+                        temp = jacobian(pf, tunables, sensealg)
+                    else
+                        temp = jacobian(pf, p, sensealg)
+                    end
                     pJ .= temp
                 end
             end
@@ -874,10 +894,20 @@ function _jacNoise!(
             pf.t = t
             pf.u = y
             if inplace_sensitivity(S)
-                jacobian!(pJ, pf, p, nothing, sensealg, nothing)
+                if isscimlstructure(p)
+                    tunables, _, _ = canonicalize(Tunable(), p)
+                    jacobian!(pJ, pf, tunables, nothing, sensealg, nothing)
+                else
+                    jacobian!(pJ, pf, p, nothing, sensealg, nothing)
+                end
                 #jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_noise_config)
             else
-                temp = jacobian(pf, p, sensealg)
+                if isscimlstructure(p)
+                    tunables, _, _ = canonicalize(Tunable(), p)
+                    temp = jacobian(pf, tunables, sensealg)
+                else
+                    temp = jacobian(pf, p, sensealg)
+                end
                 pJ .= temp
             end
         end

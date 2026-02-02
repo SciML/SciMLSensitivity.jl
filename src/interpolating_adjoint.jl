@@ -509,11 +509,20 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
+    if p === nothing || p === SciMLBase.NullParameters()
+        numparams = 0
+        tunables = p
+    elseif isscimlstructure(p)
+        tunables, _, _ = canonicalize(Tunable(), p)
+        numparams = length(tunables)
+    else
+        tunables = p
+        numparams = length(p)
+    end
 
     len = numstates + numparams
 
-    λ = one(eltype(u0)) .* similar(p, len)
+    λ = one(eltype(u0)) .* similar(tunables, len)
     λ .= false
 
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(
@@ -670,12 +679,21 @@ end
     end
 
     numstates = length(u0)
-    numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(p)
+    if p === nothing || p === SciMLBase.NullParameters()
+        numparams = 0
+        tunables = p
+    elseif isscimlstructure(p)
+        tunables, _, _ = canonicalize(Tunable(), p)
+        numparams = length(tunables)
+    else
+        tunables = p
+        numparams = length(p)
+    end
 
     len = numstates + numparams
 
     λ = p === nothing || p === SciMLBase.NullParameters() ? similar(u0) :
-        one(eltype(u0)) .* similar(p, len)
+        one(eltype(u0)) .* similar(tunables, len)
     λ .= false
 
     sense = ODEInterpolatingAdjointSensitivityFunction(

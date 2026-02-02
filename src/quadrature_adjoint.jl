@@ -203,7 +203,14 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     (; f, tspan) = prob
     p = parameter_values(prob)
     u0 = state_values(prob)
-    numparams = length(p)
+    if isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+        numparams = length(tunables)
+    else
+        tunables = p
+        repack = identity
+        numparams = length(p)
+    end
     y = zero(state_values(prob))
     λ = zero(state_values(adj_prob))
     # we need to alias `y`
@@ -212,7 +219,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : zero(p)
+    dgdp_cache = dgdp === nothing ? nothing : zero(tunables)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
@@ -249,10 +256,16 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        if isscimlstructure(p)
+            pf = SciMLBase.ParamJacobianWrapper(
+                (du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y
+            )
+        else
+            pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        end
         pJ = similar(u0, length(u0), numparams)
         pJ .= false
-        paramjac_config = build_param_jac_config(sensealg, pf, y, p)
+        paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
     return AdjointSensitivityIntegrand(
         sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
@@ -279,7 +292,12 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         else
             pf.t = t
             pf.u = y
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+            if isscimlstructure(p)
+                tunables, _, _ = canonicalize(Tunable(), p)
+                jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+            else
+                jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+            end
         end
         mul!(out', λ', pJ)
     elseif sensealg.autojacvec isa ReverseDiffVJP
@@ -365,7 +383,12 @@ function (S::AdjointSensitivityIntegrand)(out, t)
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
-    out = similar(S.p)
+    if isscimlstructure(S.p)
+        tunables, _, _ = canonicalize(Tunable(), S.p)
+        out = similar(tunables)
+    else
+        out = similar(S.p)
+    end
     out .= false
     return S(out, t)
 end
@@ -404,7 +427,12 @@ function _adjoint_sensitivities(
                 atol = abstol, rtol = reltol
             )
         else
-            res = zero(integrand.p)'
+            if isscimlstructure(integrand.p)
+                tunables_res, _, _ = canonicalize(Tunable(), integrand.p)
+                res = zero(tunables_res)'
+            else
+                res = zero(integrand.p)'
+            end
 
             # handle discrete dgdp contributions
             if dgdp_discrete !== nothing
