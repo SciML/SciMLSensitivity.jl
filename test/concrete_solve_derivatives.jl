@@ -75,6 +75,12 @@ const BACKEND_SENSEALG_STATUS = Dict{Tuple{String, String}, Symbol}(
     ("Zygote", "ForwardSensitivity") => :skip,  # Returns nothing for u0
 )
 
+# Zygote + EnzymeAdjoint hits IllegalTypeAnalysisException on Julia 1.10 (LTS)
+# due to Union types in ODE solver internals triggering Enzyme strict aliasing
+if VERSION < v"1.11"
+    BACKEND_SENSEALG_STATUS[("Zygote", "EnzymeAdjoint")] = :broken
+end
+
 function get_status(backend_name::String, sensealg_name::String)
     return get(BACKEND_SENSEALG_STATUS, (backend_name, sensealg_name), :works)
 end
