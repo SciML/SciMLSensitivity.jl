@@ -49,6 +49,7 @@ end
             @time @safetestset "Default DiffEq Alg" include("default_alg_diff.jl")
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
             @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
+            @time @safetestset "GaussAdjoint ZygoteVJP In-Place" include("gauss_zygote_inplace.jl")
         end
     end
 
