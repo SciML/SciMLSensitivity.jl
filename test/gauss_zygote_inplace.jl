@@ -1,4 +1,4 @@
-using SciMLSensitivity, DifferentialEquations, Zygote
+using SciMLSensitivity, OrdinaryDiffEq, Zygote, SciMLBase
 using Test
 
 # Test for issue #1282: GaussAdjoint with ZygoteVJP should handle in-place ODE functions
@@ -21,11 +21,15 @@ using Test
     @test sol.retcode == ReturnCode.Success
 
     # Test that gradient computation with ZygoteVJP works
-    loss(u0,
-        p) = sum(solve(
-        prob, KenCarp4(), u0 = u0, p = p, saveat = 0.1,
-        sensealg = GaussAdjoint(autojacvec = ZygoteVJP())
-    ))
+    loss(
+        u0,
+        p
+    ) = sum(
+        solve(
+            prob, KenCarp4(), u0 = u0, p = p, saveat = 0.1,
+            sensealg = GaussAdjoint(autojacvec = ZygoteVJP())
+        )
+    )
 
     # This should not throw MethodError anymore
     du0, dp = Zygote.gradient(loss, u0, p)
@@ -37,8 +41,12 @@ using Test
 
     # Test with explicit ZygoteVJP specification
     (dp2,) = Zygote.gradient(p) do p
-        sum(solve(prob, KenCarp4(), p = p, saveat = 0.1,
-            sensealg = GaussAdjoint(autojacvec = ZygoteVJP())))
+        sum(
+            solve(
+                prob, KenCarp4(), p = p, saveat = 0.1,
+                sensealg = GaussAdjoint(autojacvec = ZygoteVJP())
+            )
+        )
     end
 
     @test dp2 !== nothing
@@ -58,11 +66,15 @@ end
     prob = ODEProblem(foop, u0, (0.0, 10.0), p)
 
     # Test that gradient computation with ZygoteVJP works for out-of-place
-    loss(u0,
-        p) = sum(solve(
-        prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
-        sensealg = GaussAdjoint(autojacvec = ZygoteVJP())
-    ))
+    loss(
+        u0,
+        p
+    ) = sum(
+        solve(
+            prob, Tsit5(), u0 = u0, p = p, saveat = 0.1,
+            sensealg = GaussAdjoint(autojacvec = ZygoteVJP())
+        )
+    )
 
     du0, dp = Zygote.gradient(loss, u0, p)
 
