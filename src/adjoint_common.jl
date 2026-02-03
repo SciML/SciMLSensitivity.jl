@@ -337,13 +337,7 @@ function adjointdiffcache(
         elseif autojacvec isa Bool
             if isinplace
                 if SciMLBase.is_diagonal_noise(prob)
-                    if isscimlstructure(p)
-                        pf = SciMLBase.ParamJacobianWrapper(
-                            (du, u, p, t) -> unwrappedf(du, u, repack(p), t), _t, y
-                        )
-                    else
-                        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
-                    end
+                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
                     if isnoisemixing(sensealg)
                         uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
                         jac_noise_config = build_jac_config(sensealg, uf, u0)
