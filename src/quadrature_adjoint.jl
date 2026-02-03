@@ -257,9 +257,15 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pJ = nothing
     else
         if isscimlstructure(p)
-            pf = SciMLBase.ParamJacobianWrapper(
-                (du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y
-            )
+            if DiffEqBase.isinplace(prob)
+                pf = SciMLBase.ParamJacobianWrapper(
+                    (du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y
+                )
+            else
+                pf = SciMLBase.ParamJacobianWrapper(
+                    (u, p, t) -> unwrappedf(u, repack(p), t), tspan[1], y
+                )
+            end
         else
             pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
         end
