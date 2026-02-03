@@ -81,6 +81,23 @@ function adjointdiffcache(
     # Remove any function wrappers: it breaks autodiff
     unwrappedf = unwrapped_f(f)
 
+    # Create wrapped function for SciMLStructures support
+    # Define once here so both drift and diffusion use the same function type
+    unwrappedf_repack = if repack === identity
+        unwrappedf
+    else
+        let f = unwrappedf, r = repack
+            (du, u, p, t) -> f(du, u, r(p), t)
+        end
+    end
+    unwrappedf_repack_rode = if repack === identity
+        unwrappedf
+    else
+        let f = unwrappedf, r = repack
+            (du, u, p, t, W) -> f(du, u, r(p), t, W)
+        end
+    end
+
     numparams = p === nothing || p === SciMLBase.NullParameters() ? 0 : length(tunables)
     numindvar = isnothing(u0) ? nothing : length(u0)
     isautojacvec = get_jacvec(sensealg)
@@ -237,21 +254,9 @@ function adjointdiffcache(
         if isinplace &&
                 !(p === nothing || p === SciMLBase.NullParameters())
             if !isRODE
-                if isscimlstructure(p)
-                    pf = SciMLBase.ParamJacobianWrapper(
-                        (du, u, p, t) -> unwrappedf(du, u, repack(p), t), _t, y
-                    )
-                else
-                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
-                end
+                pf = SciMLBase.ParamJacobianWrapper(unwrappedf_repack, _t, y)
             else
-                if isscimlstructure(p)
-                    pf = RODEParamJacobianWrapper(
-                        (du, u, p, t, W) -> unwrappedf(du, u, repack(p), t, W), _t, y, _W
-                    )
-                else
-                    pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
-                end
+                pf = RODEParamJacobianWrapper(unwrappedf_repack_rode, _t, y, _W)
             end
             paramjac_config = build_param_jac_config(
                 sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables)
@@ -337,20 +342,20 @@ function adjointdiffcache(
         elseif autojacvec isa Bool
             if isinplace
                 if SciMLBase.is_diagonal_noise(prob)
-                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                    pf = SciMLBase.ParamJacobianWrapper(unwrappedf_repack, _t, y)
                     if isnoisemixing(sensealg)
-                        uf = SciMLBase.UJacobianWrapper(unwrappedf, _t, p)
+                        uf = SciMLBase.UJacobianWrapper(unwrappedf_repack, _t, p)
                         jac_noise_config = build_jac_config(sensealg, uf, u0)
                     else
                         jac_noise_config = nothing
                     end
                 else
                     pf = ParamNonDiagNoiseJacobianWrapper(
-                        unwrappedf, _t, y,
+                        unwrappedf_repack, _t, y,
                         prob.noise_rate_prototype
                     )
                     uf = UNonDiagNoiseJacobianWrapper(
-                        unwrappedf, _t, p,
+                        unwrappedf_repack, _t, p,
                         prob.noise_rate_prototype
                     )
                     jac_noise_config = build_jac_config(sensealg, uf, u0)
