@@ -3,7 +3,8 @@ using Test
 
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    return nothing
 end
 
 function jac(J, u, p, t)
@@ -11,7 +12,8 @@ function jac(J, u, p, t)
     J[1, 1] = a + y * b * -1
     J[2, 1] = y
     J[1, 2] = b * x * -1
-    return J[2, 2] = c * -1 + x
+    J[2, 2] = c * -1 + x
+    return nothing
 end
 
 f = ODEFunction(fb; jac)

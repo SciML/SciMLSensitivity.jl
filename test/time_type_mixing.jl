@@ -5,7 +5,8 @@ p_model = [1.0f0]
 u0 = Float32.([0.0])
 
 function dudt(du, u, p, t)
-    return du[1] = p[1]
+    du[1] = p[1]
+    return nothing
 end
 
 prob = ODEProblem(dudt, u0, (0.0f0, 99.9f0))

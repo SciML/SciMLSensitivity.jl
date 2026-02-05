@@ -8,7 +8,8 @@ savingtimes = 0.5
 function test_continuous_callback(cb, g, dg!; only_backsolve = false)
     function fiip(du, u, p, t)
         du[1] = u[2]
-        return du[2] = -p[1]
+        du[2] = -p[1]
+        return nothing
     end
     function foop(u, p, t)
         dx = u[2]

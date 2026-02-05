@@ -41,7 +41,8 @@ ps = ComponentArray(ps)
 
 function dudt(du, u, p, t)
     du[1:2] .= -u[1:2]
-    return du[3:end] .= first(dudt2(u[1:2], p, st)) #re(p)(u[3:end])
+    du[3:end] .= first(dudt2(u[1:2], p, st)) #re(p)(u[3:end])
+    return nothing
 end
 z0 = Float32[u0; u0]
 prob = ODEProblem(dudt, z0, tspan)

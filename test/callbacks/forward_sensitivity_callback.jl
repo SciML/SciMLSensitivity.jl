@@ -10,7 +10,8 @@ savingtimes = 0.1
 function test_discrete_callback(cb, tstops, g)
     function fiip(du, u, p, t)
         #du[1] = dx = p[1]*u[1]
-        return du[:] .= p[1] * u
+        du[:] .= p[1] * u
+        return nothing
     end
 
     p = Float64[0.8123198]

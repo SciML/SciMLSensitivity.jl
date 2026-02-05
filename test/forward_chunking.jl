@@ -109,7 +109,8 @@ du0 = ForwardDiff.gradient(u0 -> loss(u0, p), u0)
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
     du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
-    return du[3:end] .= p[4]
+    du[3:end] .= p[4]
+    return nothing
 end
 function foop(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2]

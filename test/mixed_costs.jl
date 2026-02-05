@@ -365,23 +365,27 @@ dFiniteDiff = FiniteDiff.finite_difference_gradient(mixed_cost_forward, input)
 
 function dgdu_discrete(out, u, p, t, i)
     out[1] = 2u[1]
-    return out[2] = 0.0
+    out[2] = 0.0
+    return nothing
 end
 function dgdp_discrete(out, u, p, t, i)
     out[1] = 0.0
     out[2] = 1.0
     out[3] = 0.0
-    return out[4] = 0.0
+    out[4] = 0.0
+    return nothing
 end
 function dgdu_continuous(out, u, p, t)
     out[1] = 2u[1]
-    return out[2] = 0.0
+    out[2] = 0.0
+    return nothing
 end
 function dgdp_continuous(out, u, p, t)
     out[1] = 1.0
     out[2] = 0.0
     out[3] = 0.0
-    return out[4] = 0.0
+    out[4] = 0.0
+    return nothing
 end
 
 # BacksolveAdjoint, all vjps

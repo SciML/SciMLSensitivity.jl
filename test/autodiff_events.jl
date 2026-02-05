@@ -4,7 +4,8 @@ using Zygote
 
 function f(du, u, p, t)
     du[1] = u[2]
-    return du[2] = -p[1]
+    du[2] = -p[1]
+    return nothing
 end
 
 function condition(u, t, integrator) # Event when event_f(u,t) == 0
@@ -14,7 +15,8 @@ end
 function affect!(integrator)
     @show integrator.t
     println("bounced.")
-    return integrator.u[2] = -integrator.p[2] * integrator.u[2]
+    integrator.u[2] = -integrator.p[2] * integrator.u[2]
+    return nothing
 end
 
 cb = ContinuousCallback(condition, affect!)

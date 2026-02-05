@@ -2,14 +2,16 @@ using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus
 using Test
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -t * p[3] * u[2] + t * u[1] * u[2]
+    du[2] = dy = -t * p[3] * u[2] + t * u[1] * u[2]
+    return nothing
 end
 function jac(J, u, p, t)
     (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
     J[1, 1] = a + y * b * -1
     J[2, 1] = t * y
     J[1, 2] = b * x * -1
-    return J[2, 2] = t * c * -1 + t * x
+    J[2, 2] = t * c * -1 + t * x
+    return nothing
 end
 function paramjac(pJ, u, p, t)
     (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
@@ -18,7 +20,8 @@ function paramjac(pJ, u, p, t)
     pJ[1, 2] = -x * y
     pJ[2, 2] = 0.0
     pJ[1, 3] = 0.0
-    return pJ[2, 3] = -t * y
+    pJ[2, 3] = -t * y
+    return nothing
 end
 
 f = ODEFunction(fb; jac, paramjac)
@@ -248,7 +251,8 @@ sen_no_MM = extract_local_sensitivities(sol_no_MM, 10.0, true)
 
 function f32(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + u[1] * u[2]
+    return nothing
 end
 p = [1.5f0, 1.0f0, 3.0f0]
 prob = ODEForwardSensitivityProblem(f32, [1.0f0; 1.0f0], (0.0f0, 10.0f0), p)
@@ -283,7 +287,8 @@ function jac_with_count(J, u, p, t)
     J[1, 1] = a + y * b * -1
     J[2, 1] = t * y
     J[1, 2] = b * x * -1
-    return J[2, 2] = t * c * -1 + t * x
+    J[2, 2] = t * c * -1 + t * x
+    return nothing
 end
 
 f = ODEFunction(fb; jac = jac_with_count, paramjac)
