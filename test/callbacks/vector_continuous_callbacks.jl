@@ -11,7 +11,8 @@ function test_vector_continuous_callback(cb, g)
         du[1] = u[2]
         du[2] = -p[1]
         du[3] = u[4]
-        return du[4] = 0.0
+        du[4] = 0.0
+        return nothing
     end
 
     u0 = [50.0, 0.0, 0.0, 2.0]

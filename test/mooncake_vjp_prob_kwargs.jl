@@ -10,7 +10,8 @@ using DifferentiationInterface
 using Test
 
 function f!(du, u, p, t)
-    return du[1] = p[1] * u[1]
+    du[1] = p[1] * u[1]
+    return nothing
 end
 
 const u0 = [1.0]

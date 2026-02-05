@@ -104,7 +104,8 @@ Problem Definitions
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    return nothing
 end
 
 function foop(u, p, t)
@@ -721,7 +722,8 @@ SDE Tests
 @testset "SDE Gradients" begin
     function σiip(du, u, p, t)
         du[1] = p[5] * u[1]
-        return du[2] = p[6] * u[2]
+        du[2] = p[6] * u[2]
+        return nothing
     end
 
     function σoop(u, p, t)

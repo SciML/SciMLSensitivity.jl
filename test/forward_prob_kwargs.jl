@@ -9,7 +9,8 @@ u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0, 1.0]
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + p[4] * u[1] * u[2]
+    return nothing
 end
 
 prob = ODEProblem(

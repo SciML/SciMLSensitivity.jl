@@ -5,7 +5,8 @@ reltol = 1.0e-12
 
 function pendulum_eom(dx, x, p, t)
     dx[1] = p[1] * x[2]
-    return dx[2] = -sin(x[1]) + (-p[1] * sin(x[1]) + p[2] * x[2])  # Second term is a simple controller that stabilizes π
+    dx[2] = -sin(x[1]) + (-p[1] * sin(x[1]) + p[2] * x[2])  # Second term is a simple controller that stabilizes π
+    return nothing
 end
 
 x0 = [0.1, 0.0]
@@ -49,7 +50,8 @@ res2 = ForwardDiff.gradient(G, p)
 p = [2.0, 3.0]
 u0 = [2.0]
 function f(du, u, p, t)
-    return du[1] = -u[1] * p[1] - p[2]
+    du[1] = -u[1] * p[1] - p[2]
+    return nothing
 end
 
 prob = ODEProblem(f, u0, (0.0, 1.0), p)

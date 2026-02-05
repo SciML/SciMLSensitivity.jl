@@ -10,7 +10,8 @@ function test_continuous_wrt_discrete_callback()
     function f(du, u, p, t)
         #Bouncing Ball
         du[1] = u[2]
-        return du[2] = -p[1]
+        du[2] = -p[1]
+        return nothing
     end
 
     # no saving in Callbacks; prescribed vafter and vbefore; loss on the endpoint

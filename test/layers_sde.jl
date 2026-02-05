@@ -18,7 +18,8 @@ else
         x, y = u
         α, β, δ, γ = p
         du[1] = dx = α * x - β * x * y
-        return du[2] = dy = -δ * y + γ * x * y
+        du[2] = dy = -δ * y + γ * x * y
+        return nothing
     end
     function lotka_volterra(u, p, t)
         x, y = u
@@ -29,7 +30,8 @@ else
     end
     function lotka_volterra_noise(du, u, p, t)
         du[1] = 0.01u[1]
-        return du[2] = 0.01u[2]
+        du[2] = 0.01u[2]
+        return nothing
     end
     function lotka_volterra_noise(u, p, t)
         return [0.01u[1], 0.01u[2]]

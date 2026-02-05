@@ -4,7 +4,8 @@ using Test
 
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2] * t
-    return du[2] = dy = -p[3] * u[2] + t * p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + t * p[4] * u[1] * u[2]
+    return nothing
 end
 function foop(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2] * t
@@ -16,7 +17,8 @@ function jac(J, u, p, t)
     J[1, 1] = a + y * b * -1 * t
     J[2, 1] = t * y * d
     J[1, 2] = b * x * -1 * t
-    return J[2, 2] = c * -1 + t * x * d
+    J[2, 2] = c * -1 + t * x * d
+    return nothing
 end
 
 f = ODEFunction(fb; jac)
@@ -877,7 +879,8 @@ g(u, p, t) = (sum(u) .^ 2) ./ 2
 # Gradient of (u1 + u2)^2 / 2
 function dg(out, u, p, t)
     out[1] = u[1] + u[2]
-    return out[2] = u[1] + u[2]
+    out[2] = u[1] + u[2]
+    return nothing
 end
 
 adj_prob = ODEAdjointProblem(
@@ -1211,7 +1214,8 @@ params = [-0.4142135623730951, 0.0, -0.0, -0.4142135623730951, 0.0, 0.0]
 
 function dynamics!(du, u, p, t)
     du[1] = -u[1] + tanh(p[1] * u[1] + p[2] * u[2])
-    return du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
+    du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
+    return nothing
 end
 
 function backsolve_grad(sol, lqr_params, checkpointing)
@@ -1502,7 +1506,8 @@ end
 # u' = x = p * u
 function simple_linear_dae(du, u, p, t)
     du[1] = u[2]
-    return du[2] = u[2] - p[1] * u[1]
+    du[2] = u[2] - p[1] * u[1]
+    return nothing
 end
 p = [0.5]
 prob_singular_mm = ODEProblem(
@@ -1544,7 +1549,8 @@ end
 # u' = x = p * u^2
 function simple_nonlinear_dae(du, u, p, t)
     du[1] = u[2]
-    return du[2] = u[2] - p[1] * u[1]^2
+    du[2] = u[2] - p[1] * u[1]^2
+    return nothing
 end
 p = [0.5]
 prob_singular_mm = ODEProblem(
@@ -1596,7 +1602,8 @@ function pend(du, u, p, t)
     du[2] = T * x
     du[3] = dy
     du[4] = T * y - g
-    return du[5] = 2 * (dx^2 + dy^2 + y * (y * T - g) + T * x^2)
+    du[5] = 2 * (dx^2 + dy^2 + y * (y * T - g) + T * x^2)
+    return nothing
 end
 
 x0 = [1.0, 0, 0, 0, 0]

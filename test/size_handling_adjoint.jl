@@ -4,7 +4,8 @@ using Optimization, OptimizationOptimisers
 p = [1.5 1.0; 3.0 1.0]
 function lotka_volterra(du, u, p, t)
     du[1] = p[1, 1] * u[1] - p[1, 2] * u[1] * u[2]
-    return du[2] = -p[2, 1] * u[2] + p[2, 2] * u[1] * u[2]
+    du[2] = -p[2, 1] * u[2] + p[2, 2] * u[1] * u[2]
+    return nothing
 end
 
 u0 = [1.0, 1.0]
