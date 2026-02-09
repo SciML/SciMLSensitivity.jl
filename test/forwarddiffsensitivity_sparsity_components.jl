@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity
+using OrdinaryDiffEq, SciMLSensitivity, ADTypes
 using ComponentArrays, LinearAlgebra, Optimization, OptimizationOptimisers, Test
 
 const nknots = 10
@@ -23,7 +23,7 @@ prob = ODEProblem(ODEFunction(f #=, jac_prototype = jac_proto =#), u0, (0.0, 1.0
 function loss(p)
     _prob = remake(prob; p)
     sol = solve(
-        _prob, Rodas4P(autodiff = false), saveat = 0.1,
+        _prob, Rodas4P(autodiff = AutoFiniteDiff()), saveat = 0.1,
         sensealg = ForwardDiffSensitivity()
     )
     return sum((sol .- sol_true) .^ 2)

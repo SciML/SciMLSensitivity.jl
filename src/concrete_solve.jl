@@ -684,7 +684,7 @@ function SciMLBase._concrete_solve_adjoint(
                     ) &&
                         length(Δu) == 1 && i == 1
                     # user did sol[end] on only_end
-                    x = Δu isa AbstractVectorOfArray ? Δu[1] : Δu[1]
+                    x = Δu isa AbstractVectorOfArray ? Δu.u[1] : Δu[1]
                     if _save_idxs isa Number
                         vx = vec(x)
                         _out[_save_idxs] .= vx[_save_idxs]
@@ -710,7 +710,7 @@ function SciMLBase._concrete_solve_adjoint(
                 end
             else
                 !Base.isconcretetype(eltype(Δ)) &&
-                    (Δu[i] isa NoTangent || eltype(Δu) <: NoTangent) && return
+                    ((Δu isa AbstractVectorOfArray ? Δu.u[i] : Δu[i]) isa NoTangent || eltype(Δu) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
                         Δ isa Tangent
                     x = Δ isa AbstractVectorOfArray ? Δu.u[i] :
@@ -793,7 +793,7 @@ function SciMLBase._concrete_solve_adjoint(
                 end
             else
                 !Base.isconcretetype(eltype(Δ)) &&
-                    (Δ[i] isa NoTangent || eltype(Δ) <: NoTangent) && return
+                    ((Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]) isa NoTangent || eltype(Δ) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
                     x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
                     if _save_idxs isa Number
@@ -1903,7 +1903,7 @@ function SciMLBase._concrete_solve_adjoint(
                 (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
             end
             reduce(hcat, ut_)
-        elseif ybar[1] isa Array
+        elseif ybar.u[1] isa Array
             return Array(ybar)
         else
             tmp = vec(ybar.u[1])

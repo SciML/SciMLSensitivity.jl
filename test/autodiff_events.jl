@@ -28,7 +28,7 @@ function test_f(p)
     return solve(
         _prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14, callback = cb,
         save_everystep = false
-    )[end]
+    ).u[end]
 end
 findiff = Calculus.finite_difference_jacobian(test_f, p)
 findiff
@@ -48,10 +48,10 @@ function test_f2(
         _prob, alg; sensealg, controller, abstol = 1.0e-14, reltol = 1.0e-14,
         callback = cb, save_everystep = false
     )
-    return u[end][end]
+    return u.u[end][end]
 end
 
-@test test_f2(p) == test_f(p)[end]
+@test test_f2(p) == test_f(p)[end] # test_f returns a Vector, so [end] is fine here
 
 g1 = Zygote.gradient(θ -> test_f2(θ, ForwardDiffSensitivity()), p)
 g2 = Zygote.gradient(θ -> test_f2(θ, ReverseDiffAdjoint()), p)
