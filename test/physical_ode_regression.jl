@@ -2,7 +2,7 @@
 
 using OrdinaryDiffEq
 using ForwardDiff, ReverseDiff, Zygote, FiniteDiff
-using Test, SciMLSensitivity
+using Test, SciMLSensitivity, ADTypes
 
 # A falling mass (without contact, just gravity)
 GRAVITY = 9.81
@@ -42,7 +42,7 @@ end
 analyt_sol = [-27.675, 0.0]
 atol = 1.0e-2
 
-solvers = [Tsit5(), Rosenbrock23(autodiff = false), Rosenbrock23(autodiff = true)]
+solvers = [Tsit5(), Rosenbrock23(autodiff = AutoFiniteDiff()), Rosenbrock23(autodiff = AutoForwardDiff())]
 for solver in solvers
     loss = (p) -> sum(mysolve(p; solver))
     @test isapprox(FiniteDiff.finite_difference_gradient(loss, p), analyt_sol; atol)

@@ -1,4 +1,4 @@
-using SciMLSensitivity, OrdinaryDiffEq, StochasticDiffEq
+using SciMLSensitivity, OrdinaryDiffEq, StochasticDiffEq, ADTypes
 using Test, ForwardDiff, Random
 import Tracker, ReverseDiff, ChainRulesCore, Mooncake, Enzyme
 
@@ -682,7 +682,7 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
     ff_ball = ODEFunction{false}(fx_ball)
     prob_ball = ODEProblem{false}(ff_ball, u0_ball, (t_start, t_stop), p_ball)
 
-    solver_ball = Rosenbrock23(autodiff = false)
+    solver_ball = Rosenbrock23(autodiff = AutoFiniteDiff())
 
     function loss_ball(p)
         solution = solve(

@@ -1,5 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-    ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake
+    ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake, ADTypes
 using Test
 
 function fb(du, u, p, t)
@@ -1270,12 +1270,12 @@ using LinearAlgebra, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 function G(p, prob, ts, cost)
     tmp_prob_mm = remake(prob; u0 = convert.(eltype(p), prob.u0), p)
     sol = solve(
-        tmp_prob_mm, Rodas4(autodiff = false), abstol = 1.0e-14, reltol = 1.0e-14,
+        tmp_prob_mm, Rodas4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14,
         saveat = ts
     )
     return cost(sol)
 end
-alg = Rodas4(autodiff = false)
+alg = Rodas4(autodiff = AutoFiniteDiff())
 @info "discrete cost"
 A = [1 2 3; 4 5 6; 7 8 9]
 function foo(du, u, p, t)
@@ -1381,7 +1381,7 @@ function G_cont(p)
         tspan = eltype(p).(prob_mm.tspan)
     )
     sol = solve(
-        tmp_prob_mm, Rodas4(autodiff = false),
+        tmp_prob_mm, Rodas4(autodiff = AutoFiniteDiff()),
         abstol = 1.0e-14, reltol = 1.0e-14
     )
     res, err = quadgk(
@@ -1424,7 +1424,7 @@ for iip in [true, false]
 
     prob_singular_mm = ODEProblem(f, [1.0, 0.0, 1.0], (0.0, 100), p)
     sol_singular_mm = solve(
-        prob_singular_mm, FBDF(autodiff = false),
+        prob_singular_mm, FBDF(autodiff = AutoFiniteDiff()),
         reltol = 1.0e-12, abstol = 1.0e-12, initializealg = BrownFullBasicInit()
     )
     ts = [50, sol_singular_mm.t[end]]
@@ -1518,7 +1518,7 @@ prob_singular_mm = ODEProblem(
     [2.2, 1.1], (0.0, 1.5), p
 )
 sol_singular_mm = solve(
-    prob_singular_mm, Rodas4(autodiff = false),
+    prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
     reltol = 1.0e-14, abstol = 1.0e-14
 )
 ts = [0.01, 0.25, 0.5, 1.0, 1.5]
@@ -1561,7 +1561,7 @@ prob_singular_mm = ODEProblem(
     [1.0, 1.0], (0.0, 1), p
 )
 sol_singular_mm = solve(
-    prob_singular_mm, Rodas4(autodiff = false),
+    prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
     reltol = 1.0e-12, abstol = 1.0e-12
 )
 ts = [0.5, 1.0]
