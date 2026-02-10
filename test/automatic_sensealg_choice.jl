@@ -19,7 +19,8 @@ function dxdt_(dx, x, p, t)
     ps = ComponentArray(p, ax)
     x1, x2 = x
     dx[1] = x[2]
-    return dx[2] = first(ann([t], ps, st))[1]^3
+    dx[2] = first(ann([t], ps, st))[1]^3
+    return nothing
 end
 x0 = [-4.0f0, 0.0f0]
 ts = Float32.(collect(0.0:0.01:tspan[2]))

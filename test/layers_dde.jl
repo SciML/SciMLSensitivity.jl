@@ -19,7 +19,8 @@ else
         x, y = u
         α, β, δ, γ = p
         du[1] = dx = (α - β * y) * h(p, t - 0.1)[1]
-        return du[2] = dy = (δ * x - γ) * y
+        du[2] = dy = (δ * x - γ) * y
+        return nothing
     end
     h(p, t) = ones(eltype(p), 2)
     prob = DDEProblem(delay_lotka_volterra, [1.0, 1.0], h, (0.0, 10.0), constant_lags = [0.1])

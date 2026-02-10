@@ -10,12 +10,14 @@ function test_SDE_callbacks()
         x, y = u
         α, β, δ, γ = p
         du[1] = dx = α * x - β * x * y
-        return du[2] = dy = -δ * y + γ * x * y
+        du[2] = dy = -δ * y + γ * x * y
+        return nothing
     end
 
     function dW!(du, u, p, t)
         du[1] = 0.1u[1]
-        return du[2] = 0.1u[2]
+        du[2] = 0.1u[2]
+        return nothing
     end
 
     u0 = [1.0, 1.0]

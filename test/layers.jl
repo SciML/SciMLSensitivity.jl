@@ -20,7 +20,8 @@ else
         x, y = u
         α, β, δ, γ = p
         du[1] = dx = (α - β * y)x
-        return du[2] = dy = (δ * x - γ)y
+        du[2] = dy = (δ * x - γ)y
+        return nothing
     end
     p = [2.2, 1.0, 2.0, 0.4]
     u0 = [1.0, 1.0]

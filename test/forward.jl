@@ -1,15 +1,17 @@
-using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus
+using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus, ADTypes
 using Test
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -t * p[3] * u[2] + t * u[1] * u[2]
+    du[2] = dy = -t * p[3] * u[2] + t * u[1] * u[2]
+    return nothing
 end
 function jac(J, u, p, t)
     (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
     J[1, 1] = a + y * b * -1
     J[2, 1] = t * y
     J[1, 2] = b * x * -1
-    return J[2, 2] = t * c * -1 + t * x
+    J[2, 2] = t * c * -1 + t * x
+    return nothing
 end
 function paramjac(pJ, u, p, t)
     (x, y, a, b, c) = (u[1], u[2], p[1], p[2], p[3])
@@ -18,7 +20,8 @@ function paramjac(pJ, u, p, t)
     pJ[1, 2] = -x * y
     pJ[2, 2] = 0.0
     pJ[1, 3] = 0.0
-    return pJ[2, 3] = -t * y
+    pJ[2, 3] = -t * y
+    return nothing
 end
 
 f = ODEFunction(fb; jac, paramjac)
@@ -48,21 +51,21 @@ probvecmat = ODEForwardSensitivityProblem(
     )
 )
 
-# tests that the deprecated version still works
+# test with sensealg keyword argument
 dep_prob_const = ODEForwardSensitivityProblem(
-    fb, [1.0; 1.0], (0.0, 10.0), p, ForwardSensitivity()
+    fb, [1.0; 1.0], (0.0, 10.0), p, sensealg = ForwardSensitivity()
 )
 
 sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
 @test_broken solve(probInpl, KenCarp4(), abstol = 1.0e-14, reltol = 1.0e-14).retcode == :Success
-solInpl = solve(probInpl, KenCarp4(autodiff = false), abstol = 1.0e-14, reltol = 1.0e-14)
-solInpl2 = solve(probInpl, Rodas4(autodiff = false), abstol = 1.0e-10, reltol = 1.0e-10)
-solnoad = solve(probnoad, KenCarp4(autodiff = false), abstol = 1.0e-14, reltol = 1.0e-14)
+solInpl = solve(probInpl, KenCarp4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14)
+solInpl2 = solve(probInpl, Rodas4(autodiff = AutoFiniteDiff()), abstol = 1.0e-10, reltol = 1.0e-10)
+solnoad = solve(probnoad, KenCarp4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14)
 solnoadjacvec = solve(
-    probnoadjacvec, KenCarp4(autodiff = false), abstol = 1.0e-14,
+    probnoadjacvec, KenCarp4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14,
     reltol = 1.0e-14
 )
-solnoad2 = solve(probnoad, KenCarp4(autodiff = false), abstol = 1.0e-14, reltol = 1.0e-14)
+solnoad2 = solve(probnoad, KenCarp4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14)
 solvecmat = solve(probvecmat, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
 solve_dep_prob_const = solve(probvecmat, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
 
@@ -85,7 +88,7 @@ sense_res1 = [da[:, end] db[:, end] dc[:, end]]
 
 prob = ODEForwardSensitivityProblem(
     f.f, [1.0; 1.0], (0.0, 10.0), p,
-    ForwardSensitivity(autojacvec = true)
+    sensealg = ForwardSensitivity(autojacvec = true)
 )
 sol = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14, saveat = 0.01)
 x = sol[1:(sol.prob.f.numindvar), :]
@@ -213,7 +216,7 @@ prob_MM_ForwardSensitivity = ODEForwardSensitivityProblem(
     sensealg = ForwardSensitivity()
 )
 sol_MM_ForwardSensitivity = solve(
-    prob_MM_ForwardSensitivity, Rodas4(autodiff = false),
+    prob_MM_ForwardSensitivity, Rodas4(autodiff = AutoFiniteDiff()),
     reltol = 1.0e-14, abstol = 1.0e-14
 )
 
@@ -223,14 +226,14 @@ prob_MM_ForwardDiffSensitivity = ODEForwardSensitivityProblem(
 )
 sol_MM_ForwardDiffSensitivity = solve(
     prob_MM_ForwardDiffSensitivity,
-    Rodas4(autodiff = false), reltol = 1.0e-14,
+    Rodas4(autodiff = AutoFiniteDiff()), reltol = 1.0e-14,
     abstol = 1.0e-14
 )
 
 prob_no_MM = ODEForwardSensitivityProblem(
     f_no_MM, u0, tspan, p, sensealg = ForwardSensitivity()
 )
-sol_no_MM = solve(prob_no_MM, Rodas4(autodiff = false), reltol = 1.0e-14, abstol = 1.0e-14)
+sol_no_MM = solve(prob_no_MM, Rodas4(autodiff = AutoFiniteDiff()), reltol = 1.0e-14, abstol = 1.0e-14)
 
 sen_MM_ForwardSensitivity = extract_local_sensitivities(
     sol_MM_ForwardSensitivity, 10.0,
@@ -248,7 +251,8 @@ sen_no_MM = extract_local_sensitivities(sol_no_MM, 10.0, true)
 
 function f32(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
-    return du[2] = dy = -p[3] * u[2] + u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + u[1] * u[2]
+    return nothing
 end
 p = [1.5f0, 1.0f0, 3.0f0]
 prob = ODEForwardSensitivityProblem(f32, [1.0f0; 1.0f0], (0.0f0, 10.0f0), p)
@@ -283,7 +287,8 @@ function jac_with_count(J, u, p, t)
     J[1, 1] = a + y * b * -1
     J[2, 1] = t * y
     J[1, 2] = b * x * -1
-    return J[2, 2] = t * c * -1 + t * x
+    J[2, 2] = t * c * -1 + t * x
+    return nothing
 end
 
 f = ODEFunction(fb; jac = jac_with_count, paramjac)

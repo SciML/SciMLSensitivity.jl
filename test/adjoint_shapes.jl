@@ -28,7 +28,8 @@ else
         x = @view z[2:end]
         u = -K * x
         dz[1] = x' * x + u' * u
-        return dz[2:end] = x + u
+        dz[2:end] = x + u
+        return nothing
     end
 
     policy_params = ones(2, 2)
@@ -64,7 +65,8 @@ else
         x = @view z[2:end]
         u = -K * x
         dz[1] = x' * Q * x + u' * R * u
-        return dz[2:end] = A * x + B * u # or just `x + u`
+        dz[2:end] = A * x + B * u # or just `x + u`
+        return nothing
     end
 
     policy_params = ones(2, 2)

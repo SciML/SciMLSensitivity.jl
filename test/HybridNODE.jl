@@ -62,7 +62,8 @@ function test_hybridNODE2(sensealg)
         @views dx[1:2] .= x[1:2] + x[3:4]
         dx[1] += x[2]
         dx[2] += x[1]
-        return dx[3:4] .= 0.0f0
+        dx[3:4] .= 0.0f0
+        return nothing
     end
     cb_ = PeriodicCallback(
         trueaffect!, 0.1f0, save_positions = (true, true),
@@ -82,7 +83,8 @@ function test_hybridNODE2(sensealg)
     end
     function ODEfunc(dx, x, p, t)
         dx[1:2] .= first(dudt2(x, p, st))
-        return dx[3:4] .= 0.0f0
+        dx[3:4] .= 0.0f0
+        return nothing
     end
     z0 = u0
     prob = ODEProblem(ODEfunc, z0, tspan)

@@ -12,7 +12,8 @@ end
 function fiip(du, u, p, t)
     a = get_param([1.0, 2.0, 3.0], p[1:4], t)
     du[1] = dx = a * u[1] - u[1] * u[2]
-    return du[2] = dy = -a * u[2] + u[1] * u[2]
+    du[2] = dy = -a * u[2] + u[1] * u[2]
+    return nothing
 end
 
 p = [1.0, 1.0, 1.0, 1.0];

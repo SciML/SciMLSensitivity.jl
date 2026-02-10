@@ -1,10 +1,11 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
-    ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake
+    ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake, ADTypes
 using Test
 
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2] * t
-    return du[2] = dy = -p[3] * u[2] + t * p[4] * u[1] * u[2]
+    du[2] = dy = -p[3] * u[2] + t * p[4] * u[1] * u[2]
+    return nothing
 end
 function foop(u, p, t)
     dx = p[1] * u[1] - p[2] * u[1] * u[2] * t
@@ -16,7 +17,8 @@ function jac(J, u, p, t)
     J[1, 1] = a + y * b * -1 * t
     J[2, 1] = t * y * d
     J[1, 2] = b * x * -1 * t
-    return J[2, 2] = c * -1 + t * x * d
+    J[2, 2] = c * -1 + t * x * d
+    return nothing
 end
 
 f = ODEFunction(fb; jac)
@@ -877,7 +879,8 @@ g(u, p, t) = (sum(u) .^ 2) ./ 2
 # Gradient of (u1 + u2)^2 / 2
 function dg(out, u, p, t)
     out[1] = u[1] + u[2]
-    return out[2] = u[1] + u[2]
+    out[2] = u[1] + u[2]
+    return nothing
 end
 
 adj_prob = ODEAdjointProblem(
@@ -1211,7 +1214,8 @@ params = [-0.4142135623730951, 0.0, -0.0, -0.4142135623730951, 0.0, 0.0]
 
 function dynamics!(du, u, p, t)
     du[1] = -u[1] + tanh(p[1] * u[1] + p[2] * u[2])
-    return du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
+    du[2] = -u[2] + tanh(p[3] * u[1] + p[4] * u[2])
+    return nothing
 end
 
 function backsolve_grad(sol, lqr_params, checkpointing)
@@ -1266,12 +1270,12 @@ using LinearAlgebra, SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, QuadGK
 function G(p, prob, ts, cost)
     tmp_prob_mm = remake(prob; u0 = convert.(eltype(p), prob.u0), p)
     sol = solve(
-        tmp_prob_mm, Rodas4(autodiff = false), abstol = 1.0e-14, reltol = 1.0e-14,
+        tmp_prob_mm, Rodas4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14,
         saveat = ts
     )
     return cost(sol)
 end
-alg = Rodas4(autodiff = false)
+alg = Rodas4(autodiff = AutoFiniteDiff())
 @info "discrete cost"
 A = [1 2 3; 4 5 6; 7 8 9]
 function foo(du, u, p, t)
@@ -1377,7 +1381,7 @@ function G_cont(p)
         tspan = eltype(p).(prob_mm.tspan)
     )
     sol = solve(
-        tmp_prob_mm, Rodas4(autodiff = false),
+        tmp_prob_mm, Rodas4(autodiff = AutoFiniteDiff()),
         abstol = 1.0e-14, reltol = 1.0e-14
     )
     res, err = quadgk(
@@ -1420,7 +1424,7 @@ for iip in [true, false]
 
     prob_singular_mm = ODEProblem(f, [1.0, 0.0, 1.0], (0.0, 100), p)
     sol_singular_mm = solve(
-        prob_singular_mm, FBDF(autodiff = false),
+        prob_singular_mm, FBDF(autodiff = AutoFiniteDiff()),
         reltol = 1.0e-12, abstol = 1.0e-12, initializealg = BrownFullBasicInit()
     )
     ts = [50, sol_singular_mm.t[end]]
@@ -1502,7 +1506,8 @@ end
 # u' = x = p * u
 function simple_linear_dae(du, u, p, t)
     du[1] = u[2]
-    return du[2] = u[2] - p[1] * u[1]
+    du[2] = u[2] - p[1] * u[1]
+    return nothing
 end
 p = [0.5]
 prob_singular_mm = ODEProblem(
@@ -1513,7 +1518,7 @@ prob_singular_mm = ODEProblem(
     [2.2, 1.1], (0.0, 1.5), p
 )
 sol_singular_mm = solve(
-    prob_singular_mm, Rodas4(autodiff = false),
+    prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
     reltol = 1.0e-14, abstol = 1.0e-14
 )
 ts = [0.01, 0.25, 0.5, 1.0, 1.5]
@@ -1544,7 +1549,8 @@ end
 # u' = x = p * u^2
 function simple_nonlinear_dae(du, u, p, t)
     du[1] = u[2]
-    return du[2] = u[2] - p[1] * u[1]^2
+    du[2] = u[2] - p[1] * u[1]^2
+    return nothing
 end
 p = [0.5]
 prob_singular_mm = ODEProblem(
@@ -1555,7 +1561,7 @@ prob_singular_mm = ODEProblem(
     [1.0, 1.0], (0.0, 1), p
 )
 sol_singular_mm = solve(
-    prob_singular_mm, Rodas4(autodiff = false),
+    prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
     reltol = 1.0e-12, abstol = 1.0e-12
 )
 ts = [0.5, 1.0]
@@ -1596,7 +1602,8 @@ function pend(du, u, p, t)
     du[2] = T * x
     du[3] = dy
     du[4] = T * y - g
-    return du[5] = 2 * (dx^2 + dy^2 + y * (y * T - g) + T * x^2)
+    du[5] = 2 * (dx^2 + dy^2 + y * (y * T - g) + T * x^2)
+    return nothing
 end
 
 x0 = [1.0, 0, 0, 0, 0]

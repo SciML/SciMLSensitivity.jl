@@ -723,7 +723,7 @@ Compatible with a limited subset of `AbstractArray` types for `u0`, including `C
 
     TrackerAdjoint is incompatible with Stiff ODE solvers using forward-mode automatic
     differentiation for the Jacobians. Thus, for example, `TRBDF2()` will error. Instead,
-    use `autodiff=false`, i.e. `TRBDF2(autodiff=false)`. This will only remove the
+    use `autodiff=AutoFiniteDiff()`, i.e. `TRBDF2(autodiff=AutoFiniteDiff())`. This will only remove the
     forward-mode automatic differentiation of the Jacobian construction, not the reverse-mode
     AD usage, and thus performance will still be nearly the same, though Jacobian accuracy
     may suffer which could cause more steps to be required.
