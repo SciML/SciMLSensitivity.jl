@@ -7,14 +7,14 @@ solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t,
   author={Rackauckas, Christopher and Ma, Yingbo and Martensen, Julius and Warner, Collin and Zubov, Kirill and Supekar, Rohit and Skinner, Dominic and Ramadhan, Ali},
   journal={arXiv preprint arXiv:2001.04385},
   year={2020}
-}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-17/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
+}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-16/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
   <span class="sgr90">[49dc2e85] </span>Calculus v0.5.2
-  <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.31
+  <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.32
   <span class="sgr90">[82cc6244] </span>DataInterpolations v8.9.0
   <span class="sgr90">[bcd4f6db] </span>DelayDiffEq v5.68.0
   <span class="sgr90">[8bb1440f] </span>DelimitedFiles v1.9.1
   <span class="sgr90">[459566f4] </span>DiffEqCallbacks v4.12.0
-  <span class="sgr90">[77a26b50] </span>DiffEqNoiseProcess v5.26.0
+  <span class="sgr90">[77a26b50] </span>DiffEqNoiseProcess v5.27.0
   <span class="sgr90">[0c46a032] </span>DifferentialEquations v7.17.0
   <span class="sgr90">[e30172f5] </span>Documenter v1.16.1
   <span class="sgr90">[7da242da] </span>Enzyme v0.13.129
@@ -24,23 +24,24 @@ solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t,
   <span class="sgr90">[b2108857] </span>Lux v1.31.3
   <span class="sgr90">[d0bbae9a] </span>LuxCUDA v0.3.4
   <span class="sgr90">[f1d291b0] </span>MLUtils v0.4.8
-  <span class="sgr90">[7f7a1694] </span>Optimization v5.4.0
-  <span class="sgr90">[36348300] </span>OptimizationOptimJL v0.4.9
-  <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.3.15
-  <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.3.4
+  <span class="sgr90">[7f7a1694] </span>Optimization v5.5.0
+  <span class="sgr90">[36348300] </span>OptimizationOptimJL v0.4.10
+  <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.3.16
+  <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.3.5
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.108.0
   <span class="sgr90">[91a5bcdd] </span>Plots v1.41.5
   <span class="sgr90">[1fd47b50] </span>QuadGK v2.11.2
   <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.47.0
   <span class="sgr90">[37e2e3b7] </span>ReverseDiff v1.16.2
   <span class="sgr90">[0bca4576] </span>SciMLBase v2.138.0
-  <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.94.0
+<span class="sgr32">⌃</span> <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.94.0
   <span class="sgr90">[de6bee2f] </span>SimpleChains v0.4.8
   <span class="sgr90">[90137ffa] </span>StaticArrays v1.9.16
   <span class="sgr90">[789caeaf] </span>StochasticDiffEq v6.93.0
   <span class="sgr90">[9f7883ad] </span>Tracker v0.2.38
   <span class="sgr90">[e88e6eb3] </span>Zygote v0.7.10
-  <span class="sgr90">[10745b16] </span>Statistics v1.10.0</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre><code class="language-julia hljs">import InteractiveUtils</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.10.10
+  <span class="sgr90">[10745b16] </span>Statistics v1.10.0
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> have new versions available and may be upgradable.</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre><code class="language-julia hljs">import InteractiveUtils</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.10.10
 Commit 95f30e51f41 (2025-06-27 09:51 UTC)
 Build Info:
   Official https://julialang.org/ release
@@ -56,7 +57,7 @@ Environment:
   JULIA_DEBUG = Documenter
   JULIA_DEPOT_PATH = /root/.cache/julia-buildkite-plugin/depots/ea52448d-f230-4619-b27a-2d98107bd215:
   LD_LIBRARY_PATH = /usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64
-  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-17/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
+  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-16/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
   <span class="sgr90">[47edcb42] </span>ADTypes v1.21.0
   <span class="sgr90">[a4c015fc] </span>ANSIColoredPrinters v0.0.1
   <span class="sgr90">[621f4979] </span>AbstractFFTs v1.5.0
@@ -76,13 +77,13 @@ Environment:
   <span class="sgr90">[9718e550] </span>Baselet v0.1.1
   <span class="sgr90">[d1d4a3ce] </span>BitFlags v0.1.9
   <span class="sgr90">[62783981] </span>BitTwiddlingConvenienceFunctions v0.1.6
-  <span class="sgr90">[764a87c0] </span>BoundaryValueDiffEq v5.18.0
-  <span class="sgr90">[7227322d] </span>BoundaryValueDiffEqAscher v1.8.0
-  <span class="sgr90">[56b672f2] </span>BoundaryValueDiffEqCore v1.11.1
-  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.9.0
-  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.9.0
-  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.8.0
-  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.9.0
+  <span class="sgr90">[764a87c0] </span>BoundaryValueDiffEq v5.19.0
+  <span class="sgr90">[7227322d] </span>BoundaryValueDiffEqAscher v1.9.0
+<span class="sgr32">⌃</span> <span class="sgr90">[56b672f2] </span>BoundaryValueDiffEqCore v1.11.1
+  <span class="sgr90">[85d9eb09] </span>BoundaryValueDiffEqFIRK v1.10.0
+  <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.10.0
+  <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.9.0
+  <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.10.0
   <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.6.2
   <span class="sgr90">[fa961155] </span>CEnum v0.5.0
   <span class="sgr90">[2a0fbf3d] </span>CPUSummary v0.2.7
@@ -102,7 +103,7 @@ Environment:
   <span class="sgr90">[bbf7d656] </span>CommonSubexpressions v0.3.1
   <span class="sgr90">[f70d9fcc] </span>CommonWorldInvalidations v1.0.0
   <span class="sgr90">[34da2185] </span>Compat v4.18.1
-  <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.31
+  <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.32
   <span class="sgr90">[a33af91c] </span>CompositionsBase v0.1.2
   <span class="sgr90">[2569d6c7] </span>ConcreteStructs v0.2.3
   <span class="sgr90">[f0e56b4a] </span>ConcurrentUtilities v2.5.0
@@ -120,9 +121,9 @@ Environment:
   <span class="sgr90">[244e2a9f] </span>DefineSingletons v0.1.2
   <span class="sgr90">[bcd4f6db] </span>DelayDiffEq v5.68.0
   <span class="sgr90">[8bb1440f] </span>DelimitedFiles v1.9.1
-  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.200.0
+  <span class="sgr90">[2b5f629d] </span>DiffEqBase v6.202.0
   <span class="sgr90">[459566f4] </span>DiffEqCallbacks v4.12.0
-  <span class="sgr90">[77a26b50] </span>DiffEqNoiseProcess v5.26.0
+  <span class="sgr90">[77a26b50] </span>DiffEqNoiseProcess v5.27.0
   <span class="sgr90">[163ba53b] </span>DiffResults v1.1.0
   <span class="sgr90">[b552c78f] </span>DiffRules v1.15.1
   <span class="sgr90">[0c46a032] </span>DifferentialEquations v7.17.0
@@ -240,16 +241,16 @@ Environment:
   <span class="sgr90">[4d8831e6] </span>OpenSSL v1.6.1
   <span class="sgr90">[429524aa] </span>Optim v2.0.1
   <span class="sgr90">[3bd65402] </span>Optimisers v0.4.7
-  <span class="sgr90">[7f7a1694] </span>Optimization v5.4.0
-  <span class="sgr90">[bca83a33] </span>OptimizationBase v4.2.0
-  <span class="sgr90">[36348300] </span>OptimizationOptimJL v0.4.9
-  <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.3.15
-  <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.3.4
+  <span class="sgr90">[7f7a1694] </span>Optimization v5.5.0
+  <span class="sgr90">[bca83a33] </span>OptimizationBase v5.0.0
+  <span class="sgr90">[36348300] </span>OptimizationOptimJL v0.4.10
+  <span class="sgr90">[42dfb2eb] </span>OptimizationOptimisers v0.3.16
+  <span class="sgr90">[500b13db] </span>OptimizationPolyalgorithms v0.3.5
   <span class="sgr90">[bac558e1] </span>OrderedCollections v1.8.1
   <span class="sgr90">[1dea7af3] </span>OrdinaryDiffEq v6.108.0
   <span class="sgr90">[89bda076] </span>OrdinaryDiffEqAdamsBashforthMoulton v1.9.0
   <span class="sgr90">[6ad6398a] </span>OrdinaryDiffEqBDF v1.16.0
-  <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v3.4.2
+  <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v3.5.1
   <span class="sgr90">[50262376] </span>OrdinaryDiffEqDefault v1.12.0
   <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v2.0.0
   <span class="sgr90">[9286f039] </span>OrdinaryDiffEqExplicitRK v1.8.0
@@ -283,7 +284,7 @@ Environment:
   <span class="sgr90">[995b91a9] </span>PlotUtils v1.4.4
   <span class="sgr90">[91a5bcdd] </span>Plots v1.41.5
   <span class="sgr90">[e409e4f3] </span>PoissonRandom v0.4.7
-  <span class="sgr90">[f517fe37] </span>Polyester v0.7.18
+  <span class="sgr90">[f517fe37] </span>Polyester v0.7.19
   <span class="sgr90">[1d0040c9] </span>PolyesterWeave v0.2.2
   <span class="sgr90">[2dfb63ee] </span>PooledArrays v1.4.3
   <span class="sgr90">[85a6dd25] </span>PositiveFactorizations v0.2.4
@@ -318,7 +319,7 @@ Environment:
   <span class="sgr90">[a6db7da4] </span>SciMLLogging v1.8.0
   <span class="sgr90">[c0aeaf25] </span>SciMLOperators v1.15.1
   <span class="sgr90">[431bcebd] </span>SciMLPublic v1.0.1
-  <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.94.0
+<span class="sgr32">⌃</span> <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.94.0
   <span class="sgr90">[53ae85a6] </span>SciMLStructures v1.10.0
   <span class="sgr90">[7e506255] </span>ScopedValues v1.5.0
   <span class="sgr90">[6c6a2e73] </span>Scratch v1.3.0
@@ -520,4 +521,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.11.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr33">⌅</span> have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.94.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.94.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Tuesday 10 February 2026 18:32">Tuesday 10 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.95.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.95.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.16.1 on <span class="colophon-date" title="Wednesday 11 February 2026 18:48">Wednesday 11 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
