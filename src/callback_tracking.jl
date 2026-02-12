@@ -382,15 +382,15 @@ function _setup_reverse_callbacks(
 
                 if sensealg isa GaussAdjoint
                     vecjacobian!(
-                        dgrad, integrator.p,
+                        nothing, y,
                         integrator.f.f.integrating_cb.affect!.integrand_values.integrand,
-                        y, integrator.t, fakeSp; dgrad = nothing, dy = nothing
+                        integrator.p, integrator.t, fakeSp; dgrad = dgrad, dy = nothing
                     )
                     integrator.f.f.integrating_cb.affect!.integrand_values.integrand .= dgrad
                 else
                     vecjacobian!(
-                        dgrad, integrator.p, grad, y, integrator.t, fakeSp;
-                        dgrad = nothing, dy = nothing
+                        nothing, y, grad, integrator.p, integrator.t, fakeSp;
+                        dgrad = dgrad, dy = nothing
                     )
                     grad .= dgrad
                 end
@@ -483,7 +483,7 @@ mutable struct CallbackAffectPWrapper{cbType, AJV, EI, T} <: Function
     tprev::T
 end
 
-function (ff::CallbackAffectPWrapper)(dp, p, u, t)
+function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     _affect! = get_affect!(ff.cb, ff.pos_neg)
     fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
     if ff.cb isa VectorContinuousCallback
@@ -509,6 +509,30 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
     return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
+
+function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
+    return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))
+end
+
+function _get_wp_paramjac_config(autojacvec::ReverseDiffVJP, _p, wp, y, __p, _t)
+    if _p === nothing || _p isa SciMLBase.NullParameters
+        tunables, repack = _p, identity
+    else
+        tunables, repack, aliases = canonicalize(Tunable(), _p)
+    end
+    tunables_inner = tunables
+    tape = ReverseDiff.GradientTape((y, tunables_inner, [_t])) do u, p, t
+        dp1 = similar(p, length(p))
+        dp1 .= false
+        wp(dp1, u, repack(p), first(t))
+        return vec(dp1)
+    end
+    if compile_tape(autojacvec)
+        return ReverseDiff.compile(tape)
+    else
+        return tape
+    end
+end
 
 function get_cb_diffcaches(
         cb::Union{
@@ -562,11 +586,8 @@ function get_cb_diffcaches(
                     nothing, nothing, nothing, false
                 )
 
-                paramjac_config = get_paramjac_config(
-                    autojacvec, y, wp, _p, y, _t;
-                    numindvar = length(y), alg = nothing,
-                    isinplace = true, isRODE = false,
-                    _W = nothing
+                paramjac_config = _get_wp_paramjac_config(
+                    autojacvec, _p, wp, y, _p, _t
                 )
                 pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
                 if autojacvec isa EnzymeVJP
