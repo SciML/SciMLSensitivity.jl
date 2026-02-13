@@ -237,16 +237,18 @@ function adjointdiffcache(
         if isinplace &&
                 !(p === nothing || p === SciMLBase.NullParameters())
             if !isRODE
-                pf = SciMLBase.ParamJacobianWrapper(unwrappedf, _t, y)
+                pf = SciMLBase.ParamJacobianWrapper(
+                    (du, u, p, t) -> unwrappedf(du, u, repack(p), t), _t, y
+                )
             else
                 pf = RODEParamJacobianWrapper(unwrappedf, _t, y, _W)
             end
-            paramjac_config = build_param_jac_config(
-                sensealg, pf, y, SciMLStructures.replace(Tunable(), p, tunables)
-            )
+            paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
         else
             if !isRODE
-                pf = ParamGradientWrapper(unwrappedf, _t, y)
+                pf = ParamGradientWrapper(
+                    (u, p, t) -> unwrappedf(u, repack(p), t), _t, y
+                )
             else
                 pf = RODEParamGradientWrapper(unwrappedf, _t, y, _W)
             end

@@ -469,7 +469,8 @@ function SciMLBase._concrete_solve_adjoint(
         kwargs...
     )
     if !((sensealg isa GaussAdjoint)||(sensealg isa GaussKronrodAdjoint)) &&
-            !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) ||
+            !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) &&
+            !isscimlstructure(p) ||
             (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end

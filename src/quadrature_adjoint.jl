@@ -203,7 +203,16 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     (; f, tspan) = prob
     p = parameter_values(prob)
     u0 = state_values(prob)
-    numparams = length(p)
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
+    end
+
+    numparams = length(tunables)
     y = zero(state_values(prob))
     λ = zero(state_values(adj_prob))
     # we need to alias `y`
@@ -212,19 +221,25 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : zero(p)
+    dgdp_cache = dgdp === nothing ? nothing : zero(tunables)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                du1 = similar(p, size(u))
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(du1, u, p, first(t))
+                unwrappedf(
+                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
+                )
                 return vec(du1)
             end
         else
-            ReverseDiff.GradientTape((y, prob.p, [tspan[2]])) do u, p, t
-                vec(unwrappedf(u, p, first(t)))
+            ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
+                vec(
+                    unwrappedf(
+                        u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
+                    )
+                )
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -241,7 +256,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     elseif sensealg.autojacvec isa MooncakeVJP
         pf = get_pf(sensealg.autojacvec, prob, f)
         paramjac_config = get_paramjac_config(
-            MooncakeLoaded(), sensealg.autojacvec, pf, p, f, y, tspan[2]
+            MooncakeLoaded(), sensealg.autojacvec, pf, tunables, f, y, tspan[2]
         )
         pJ = nothing
     elseif isautojacvec # Zygote
@@ -249,10 +264,12 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper(unwrappedf, tspan[1], y)
+        pf = SciMLBase.ParamJacobianWrapper(
+            (du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y
+        )
         pJ = similar(u0, length(u0), numparams)
         pJ .= false
-        paramjac_config = build_param_jac_config(sensealg, pf, y, p)
+        paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
     return AdjointSensitivityIntegrand(
         sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
@@ -271,6 +288,14 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     f = sol.prob.f
     f = unwrapped_f(f)
 
+    if p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = Functors.functor(p)
+    end
+
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
     if !isautojacvec
@@ -279,7 +304,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         else
             pf.t = t
             pf.u = y
-            jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+            jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
         end
         mul!(out', λ', pJ)
     elseif sensealg.autojacvec isa ReverseDiffVJP
@@ -290,21 +315,29 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         ReverseDiff.unseed!(tp)
         ReverseDiff.unseed!(tt)
         ReverseDiff.value!(tu, y)
-        ReverseDiff.value!(tp, p)
+        ReverseDiff.value!(tp, tunables)
         ReverseDiff.value!(tt, [t])
         ReverseDiff.forward_pass!(tape)
         ReverseDiff.increment_deriv!(output, λ)
         ReverseDiff.reverse_pass!(tape)
         copyto!(vec(out), ReverseDiff.deriv(tp))
     elseif sensealg.autojacvec isa ZygoteVJP
-        _dy, back = Zygote.pullback(p) do p
-            vec(f(y, p, t))
+        if SciMLBase.isinplace(sol.prob.f)
+            _dy, back = Zygote.pullback(tunables) do tunables
+                du_buf = Zygote.Buffer(y)
+                f(du_buf, y, repack(tunables), t)
+                vec(copy(du_buf))
+            end
+        else
+            _dy, back = Zygote.pullback(tunables) do tunables
+                vec(f(y, repack(tunables), t))
+            end
         end
         tmp = back(λ)
         if tmp[1] === nothing
-            out[:] .= 0
+            recursive_copyto!(out, 0)
         else
-            out[:] .= vec(tmp[1])
+            recursive_copyto!(out, tmp[1])
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
@@ -317,9 +350,10 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         Enzyme.remake_zero!(tmp3)
         vtmp4 .= λ
 
+        _shadow_enzyme = nothing
         if !(p isa AbstractArray)
-            tunables, repack, _ = canonicalize(Tunable(), p)
-            dup = Enzyme.Duplicated(p, repack(out))
+            _shadow_enzyme = repack(out)
+            dup = Enzyme.Duplicated(p, _shadow_enzyme)
         else
             dup = Enzyme.Duplicated(p, out)
         end
@@ -327,7 +361,8 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         if SciMLBase.isinplace(sol.prob.f)
             Enzyme.remake_zero!(tmp6)
             Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
+                sensealg.autojacvec.mode,
+                Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), dup, Enzyme.Const(t)
             )
@@ -339,6 +374,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), dup, Enzyme.Const(t)
             )
+        end
+
+        if _shadow_enzyme !== nothing
+            grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            copyto!(out, grad_tunables)
         end
     end
 
@@ -365,7 +405,12 @@ function (S::AdjointSensitivityIntegrand)(out, t)
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
-    out = similar(S.p)
+    if isscimlstructure(S.p) && !(S.p isa AbstractArray)
+        _tunables, _, _ = canonicalize(Tunable(), S.p)
+        out = similar(_tunables)
+    else
+        out = similar(S.p)
+    end
     out .= false
     return S(out, t)
 end
@@ -404,7 +449,12 @@ function _adjoint_sensitivities(
                 atol = abstol, rtol = reltol
             )
         else
-            res = zero(integrand.p)'
+            if isscimlstructure(integrand.p) && !(integrand.p isa AbstractArray)
+                _tunables, _, _ = canonicalize(Tunable(), integrand.p)
+                res = zero(_tunables)'
+            else
+                res = zero(integrand.p)'
+            end
 
             # handle discrete dgdp contributions
             if dgdp_discrete !== nothing
