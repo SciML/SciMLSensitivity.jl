@@ -492,8 +492,10 @@ function _vecjacobian!(
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
             _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            _is_pswap = TS <: CallbackSensitivityFunctionPSwap
             tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
-                du1 = similar(u, size(u))
+                du1 = _is_pswap ? similar(p, length(p)) : similar(u, size(u))
+                du1 .= false
                 f(du1, u, _repack(p), first(t))
                 return vec(du1)
             end
