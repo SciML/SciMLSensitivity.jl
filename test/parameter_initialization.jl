@@ -21,7 +21,9 @@ eqs = [
     w ~ x + y + z + 2 * β,
 ]
 
-@mtkbuild sys = ODESystem(eqs, t, defaults = [ρ => missing], guesses = [ρ => 10.0])
+@mtkbuild sys = ODESystem(
+    eqs, t, __legacy_defaults__ = [ρ => missing], guesses = [ρ => 10.0],
+)
 
 u0 = [
     D(x) => 2.0,
