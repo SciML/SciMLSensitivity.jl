@@ -795,14 +795,7 @@ function _vecjacobian!(
     enzyme_mode = isautojacvec isa EnzymeVJP ? isautojacvec.mode : Enzyme.Reverse
 
     if inplace_sensitivity(S)
-        if S isa CallbackSensitivityFunction
-            # Correctness over speed
-            # TODO: Get a fix for `remake_zero!` to allow reusing zero'd memory
-            # https://github.com/EnzymeAD/Enzyme.jl/issues/2400
-            _tmp6 = Enzyme.make_zero(SciMLBase.Void(f))
-        else
-            Enzyme.remake_zero!(_tmp6)
-        end
+        Enzyme.remake_zero!(_tmp6)
 
         if W === nothing
             Enzyme.autodiff(
