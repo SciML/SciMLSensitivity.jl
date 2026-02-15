@@ -264,9 +264,11 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper(
-            (du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y
-        )
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        _pjac_f = _needs_repack ?
+            (du, u, p, t) -> unwrappedf(du, u, repack(p), t) :
+            unwrappedf
+        pf = SciMLBase.ParamJacobianWrapper(_pjac_f, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         pJ .= false
         paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
@@ -288,10 +290,10 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     f = sol.prob.f
     f = unwrapped_f(f)
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
-    elseif isscimlstructure(p)
+    if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif p === nothing || p isa SciMLBase.NullParameters
+        tunables, repack = p, identity
     else
         tunables, repack = Functors.functor(p)
     end

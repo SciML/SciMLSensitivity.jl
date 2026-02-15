@@ -317,10 +317,10 @@ function _vecjacobian!(
     if dgrad !== nothing && !isempty(dgrad)
         (; pJ, pf, paramjac_config) = S.diffcache
 
-        if p === nothing || p isa SciMLBase.NullParameters
-            _tunables_p = p
-        else
+        if isscimlstructure(p) && !(p isa AbstractArray)
             _tunables_p, _, _ = canonicalize(Tunable(), p)
+        else
+            _tunables_p = p
         end
 
         if W === nothing
@@ -606,10 +606,12 @@ function _vecjacobian!(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
-    else
+    _needs_repack = isscimlstructure(p) && !(p isa AbstractArray) &&
+        !(p === nothing || p isa SciMLBase.NullParameters)
+    if _needs_repack
         tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = p, identity
     end
 
     if inplace_sensitivity(S)
