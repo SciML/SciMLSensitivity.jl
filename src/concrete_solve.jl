@@ -453,7 +453,8 @@ function SciMLBase._concrete_solve_adjoint(
         prob::SCCNonlinearProblem, alg,
         sensealg::SteadyStateAdjoint, u0, p,
         originator::SciMLBase.ADOriginator, args...;
-        kwargs...)
+        kwargs...
+    )
     throw(AdjointSteadyProblemPairingError(prob, sensealg))
 end
 
@@ -464,7 +465,8 @@ function SciMLBase._concrete_solve_adjoint(
         prob::SCCNonlinearProblem, alg,
         sensealg::ForwardDiffSensitivity, u0, p,
         originator::SciMLBase.ADOriginator, args...;
-        verbose = true, kwargs...)
+        verbose = true, kwargs...
+    )
     # Forward solve
     sol = solve(prob, alg; u0 = u0, p = p, sensealg = SensitivityADPassThrough(), kwargs...)
 
@@ -474,9 +476,11 @@ function SciMLBase._concrete_solve_adjoint(
             dp = NoTangent()
         else
             function solve_for_p(_p)
-                _sol = solve(prob, alg; u0 = u0, p = _p,
-                    sensealg = SensitivityADPassThrough(), kwargs...)
-                _sol.u
+                _sol = solve(
+                    prob, alg; u0 = u0, p = _p,
+                    sensealg = SensitivityADPassThrough(), kwargs...
+                )
+                return _sol.u
             end
 
             # Compute J' * Δ using ForwardDiff
@@ -496,26 +500,32 @@ function SciMLBase._concrete_solve_adjoint(
             du0 = NoTangent()
         else
             function solve_for_u0(_u0)
-                _sol = solve(prob, alg; u0 = _u0, p = p,
-                    sensealg = SensitivityADPassThrough(), kwargs...)
-                _sol.u
+                _sol = solve(
+                    prob, alg; u0 = _u0, p = p,
+                    sensealg = SensitivityADPassThrough(), kwargs...
+                )
+                return _sol.u
             end
             J_u0 = ForwardDiff.jacobian(solve_for_u0, u0)
             Δ_vec = Δ isa AbstractArray ? vec(Δ) : Δ
             du0 = reshape(J_u0' * Δ_vec, size(u0))
         end
 
-        if originator isa SciMLBase.TrackerOriginator ||
-           originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), du0, dp, NoTangent(),
-                ntuple(_ -> NoTangent(), length(args))...)
+        return if originator isa SciMLBase.TrackerOriginator ||
+                originator isa SciMLBase.ReverseDiffOriginator
+            (
+                NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
         else
-            (NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
-                ntuple(_ -> NoTangent(), length(args))...)
+            (
+                NoTangent(), NoTangent(), NoTangent(), du0, dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
         end
     end
 
-    sol, scc_pullback
+    return sol, scc_pullback
 end
 
 function SciMLBase._concrete_solve_adjoint(
@@ -653,8 +663,8 @@ function SciMLBase._concrete_solve_adjoint(
                 nothing
             else
                 @warn "Initialization gradient is nothing but tunables exist. " *
-                      "This may indicate a missing AD rule. tunables=$tunables, " *
-                      "prob type=$(typeof(_prob)), initializeprob type=$(typeof(initializeprob))"
+                    "This may indicate a missing AD rule. tunables=$tunables, " *
+                    "prob type=$(typeof(_prob)), initializeprob type=$(typeof(initializeprob))"
                 nothing
             end
         else
@@ -1757,7 +1767,7 @@ function SciMLBase._concrete_solve_adjoint(
             )
         end
     end
-    result, enzyme_sensitivity_backpass
+    return result, enzyme_sensitivity_backpass
 end
 
 const ENZYME_TRACKED_REAL_ERROR_MESSAGE = """
@@ -2402,7 +2412,7 @@ function SciMLBase._concrete_solve_adjoint(
                         hasproperty(prob_tangent, :p) ? prob_tangent.p : NoTangent()
                     end
                     if Δp isa NamedTuple && hasproperty(Δp, :tunable) &&
-                       Δp.tunable !== nothing
+                            Δp.tunable !== nothing
                         if isscimlstructure(p)
                             replace(Tunable(), p, Δp.tunable)
                         else
@@ -2417,7 +2427,7 @@ function SciMLBase._concrete_solve_adjoint(
                     NoTangent()
                 end
             elseif Δ isa NamedTuple && hasproperty(Δ, :prob) && Δ.prob !== nothing &&
-                   hasproperty(Δ.prob, :p) && Δ.prob.p !== nothing
+                    hasproperty(Δ.prob, :p) && Δ.prob.p !== nothing
                 # NamedTuple format (for Zygote @adjoint)
                 Δp = Δ.prob.p
                 if Δp isa NamedTuple && hasproperty(Δp, :tunable) && Δp.tunable !== nothing
@@ -2452,14 +2462,18 @@ function SciMLBase._concrete_solve_adjoint(
                 repack_trivial !== nothing ? repack_trivial(dp)[1] : dp
             end
 
-            if originator isa SciMLBase.TrackerOriginator ||
-               originator isa SciMLBase.ReverseDiffOriginator
-                (NoTangent(), NoTangent(), NoTangent(), dp_out, NoTangent(),
-                    ntuple(_ -> NoTangent(), length(args))...)
+            return if originator isa SciMLBase.TrackerOriginator ||
+                    originator isa SciMLBase.ReverseDiffOriginator
+                (
+                    NoTangent(), NoTangent(), NoTangent(), dp_out, NoTangent(),
+                    ntuple(_ -> NoTangent(), length(args))...,
+                )
             else
-                (NoTangent(), NoTangent(), NoTangent(),
+                (
+                    NoTangent(), NoTangent(), NoTangent(),
                     NoTangent(), dp_out, NoTangent(),
-                    ntuple(_ -> NoTangent(), length(args))...)
+                    ntuple(_ -> NoTangent(), length(args))...,
+                )
             end
         end
         return out, trivial_backpass
