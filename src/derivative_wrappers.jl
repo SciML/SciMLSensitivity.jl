@@ -317,13 +317,7 @@ function _vecjacobian!(
     if dgrad !== nothing && !isempty(dgrad)
         (; pJ, pf, paramjac_config) = S.diffcache
 
-        if isscimlstructure(p) && !(p isa AbstractArray)
-            _tunables_p, _, _ = canonicalize(Tunable(), p)
-        elseif isfunctor(p)
-            _tunables_p, _ = Functors.functor(p)
-        else
-            _tunables_p = p
-        end
+        _tunables_p = S.diffcache.tunables
 
         if W === nothing
             if SciMLBase.has_paramjac(f)
@@ -482,17 +476,21 @@ function _vecjacobian!(
         _p = p
     end
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
-    elseif isscimlstructure(p) && !(p isa AbstractArray)
-        tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif isfunctor(p)
-        error(
-            "ReverseDiffVJP does not support Functors.jl parameter structs. " *
-                "Use ZygoteVJP() instead, or make `p` a SciMLStructure. See SciMLStructures.jl."
-        )
+    if TS <: CallbackSensitivityFunctionPSwap
+        if p === nothing || p isa SciMLBase.NullParameters
+            tunables, repack = p, identity
+        elseif isscimlstructure(p) && !(p isa AbstractArray)
+            tunables, repack, _ = canonicalize(Tunable(), p)
+        elseif isfunctor(p)
+            error(
+                "ReverseDiffVJP does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead, or make `p` a SciMLStructure. See SciMLStructures.jl."
+            )
+        else
+            tunables, repack = p, identity
+        end
     else
-        tunables, repack = p, identity
+        (; tunables, repack) = S.diffcache
     end
 
     u0 = state_values(prob)
@@ -623,16 +621,20 @@ function _vecjacobian!(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    _needs_repack = !(p === nothing || p isa SciMLBase.NullParameters) &&
-        ((isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p))
-    if _needs_repack
-        if isscimlstructure(p) && !(p isa AbstractArray)
-            tunables, repack, _ = canonicalize(Tunable(), p)
+    if TS <: CallbackSensitivityFunctionPSwap
+        _needs_repack = !(p === nothing || p isa SciMLBase.NullParameters) &&
+            ((isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p))
+        if _needs_repack
+            if isscimlstructure(p) && !(p isa AbstractArray)
+                tunables, repack, _ = canonicalize(Tunable(), p)
+            else
+                tunables, repack = Functors.functor(p)
+            end
         else
-            tunables, repack = Functors.functor(p)
+            tunables, repack = p, identity
         end
     else
-        tunables, repack = p, identity
+        (; tunables, repack) = S.diffcache
     end
 
     if inplace_sensitivity(S)
@@ -753,20 +755,25 @@ function _vecjacobian!(
 
     if TS <: CallbackSensitivityFunctionPSwap
         _p = p
+        if _p === nothing || _p isa SciMLBase.NullParameters
+            tunables, repack, trivial_repack = _p, identity, true
+        elseif isscimlstructure(_p) && !(_p isa AbstractArray)
+            tunables, repack, aliases = canonicalize(Tunable(), _p)
+            trivial_repack = aliases && _p isa AbstractVector
+        elseif isfunctor(_p)
+            tunables, repack = Functors.functor(_p)
+            trivial_repack = false
+        else
+            tunables, repack, trivial_repack = _p, identity, true
+        end
     else
         _p = parameter_values(prob)
+        (; tunables, repack) = S.diffcache
+        trivial_repack = _p === nothing || _p isa SciMLBase.NullParameters ||
+            (_p isa AbstractVector)
     end
 
-    if _p === nothing || _p isa SciMLBase.NullParameters
-        tunables, repack, trivial_repack = _p, identity, true
-    else
-        tunables, repack, aliases = canonicalize(Tunable(), _p)
-        # When aliases is true and _p is a vector, repack is a no-op
-        # that still allocates. Skip it in this case.
-        trivial_repack = aliases && _p isa AbstractVector
-    end
-
-    _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6 = S.diffcache.paramjac_config
+    _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _tmp6, _cached_shadow = S.diffcache.paramjac_config
 
     if _tmp1 isa LazyBufferCache
         # Use a template that combines y's wrapper type (e.g., ComponentArray) with
@@ -795,8 +802,12 @@ function _vecjacobian!(
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
-        # Skip repack when it's just a simple vector - avoids unnecessary allocation
-        _sp = trivial_repack ? tmp2 : repack(tmp2)
+        if _cached_shadow !== nothing
+            Enzyme.remake_zero!(_cached_shadow)
+            _sp = _cached_shadow
+        else
+            _sp = trivial_repack ? tmp2 : repack(tmp2)
+        end
         _shadow_p = _sp
         Enzyme.Duplicated(p, _sp)
     else
@@ -1048,13 +1059,7 @@ function _jacNoise!(
     ) where {TS <: SensitivityFunction}
     (; sensealg) = S
     prob = getprob(S)
-    p_ = parameter_values(prob)
-
-    if p_ === nothing || p_ isa SciMLBase.NullParameters
-        tunables, repack = p_, identity
-    else
-        tunables, repack, _ = canonicalize(Tunable(), p_)
-    end
+    (; tunables, repack) = S.diffcache
     f = unwrapped_f(S.f)
 
     # number of Wiener processes

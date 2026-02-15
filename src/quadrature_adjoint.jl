@@ -181,7 +181,7 @@ end
 
 struct AdjointSensitivityIntegrand{
         pType, uType, lType, rateType, S, AS, PF, PJC, PJT, DGP,
-        G,
+        G, tType, rType,
     }
     sol::S
     adj_sol::AS
@@ -195,6 +195,8 @@ struct AdjointSensitivityIntegrand{
     sensealg::QuadratureAdjoint
     dgdp_cache::DGP
     dgdp::G
+    tunables::tType
+    repack::rType
 end
 
 function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
@@ -267,7 +269,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     end
     return AdjointSensitivityIntegrand(
         sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp
+        sensealg, dgdp_cache, dgdp, tunables, repack
     )
 end
 
@@ -278,15 +280,9 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
-    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol) = S
+    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol, tunables, repack) = S
     f = sol.prob.f
     f = unwrapped_f(f)
-
-    if isscimlstructure(p) && !(p isa AbstractArray)
-        tunables, repack, _ = canonicalize(Tunable(), p)
-    else
-        tunables, repack = p, identity
-    end
 
     isautojacvec = get_jacvec(sensealg)
     # y is aliased
@@ -401,12 +397,7 @@ function (S::AdjointSensitivityIntegrand)(out, t)
 end
 
 function (S::AdjointSensitivityIntegrand)(t)
-    if isscimlstructure(S.p) && !(S.p isa AbstractArray)
-        _tunables, _, _ = canonicalize(Tunable(), S.p)
-        out = similar(_tunables)
-    else
-        out = similar(S.p)
-    end
+    out = similar(S.tunables)
     out .= false
     return S(out, t)
 end
@@ -445,12 +436,7 @@ function _adjoint_sensitivities(
                 atol = abstol, rtol = reltol
             )
         else
-            if isscimlstructure(integrand.p) && !(integrand.p isa AbstractArray)
-                _tunables, _, _ = canonicalize(Tunable(), integrand.p)
-                res = zero(_tunables)'
-            else
-                res = zero(integrand.p)'
-            end
+            res = zero(integrand.tunables)'
 
             # handle discrete dgdp contributions
             if dgdp_discrete !== nothing
@@ -546,9 +532,14 @@ function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
         sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp,
     ) = integrand
+    if isscimlstructure(p) && !(p isa AbstractArray)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = p, identity
+    end
     return AdjointSensitivityIntegrand(
         sol, adj_sol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp
+        sensealg, dgdp_cache, dgdp, tunables, repack
     )
 end
 
@@ -606,12 +597,16 @@ function _update_integrand_and_dgrad(
             cb_autojacvec, integrand.p, wp, integrand.y, integrand.p, t
         )
         pf = get_pf(cb_autojacvec; _f = wp, isinplace = true, isRODE = false)
+        if cb_autojacvec isa EnzymeVJP
+            paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
+        end
 
         diffcache_wp = AdjointDiffCache(
             nothing, pf, nothing, nothing, nothing,
             nothing, nothing, nothing, paramjac_config,
             nothing, nothing, nothing, nothing, nothing,
-            nothing, nothing, nothing, false
+            nothing, nothing, nothing, false,
+            nothing, identity
         )
 
         fakeSp = CallbackSensitivityFunctionPSwap(wp, cb_sensealg, diffcache_wp, sol.prob)

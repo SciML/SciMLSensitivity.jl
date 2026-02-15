@@ -585,14 +585,15 @@ function get_cb_diffcaches(
                 )
                 pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
                 if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
                 diffcache_w = AdjointDiffCache(
                     nothing, pf, nothing, nothing, nothing,
                     nothing, nothing, nothing, paramjac_config,
                     nothing, nothing, nothing, nothing, nothing,
-                    nothing, nothing, nothing, false
+                    nothing, nothing, nothing, false,
+                    nothing, identity
                 )
 
                 paramjac_config = _get_wp_paramjac_config(
@@ -600,14 +601,15 @@ function get_cb_diffcaches(
                 )
                 pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
                 if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
                 diffcache_wp = AdjointDiffCache(
                     nothing, pf, nothing, nothing, nothing,
                     nothing, nothing, nothing, paramjac_config,
                     nothing, nothing, nothing, nothing, nothing,
-                    nothing, nothing, nothing, false
+                    nothing, nothing, nothing, false,
+                    nothing, identity
                 )
 
                 push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))

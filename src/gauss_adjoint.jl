@@ -1,6 +1,6 @@
 mutable struct GaussIntegrand{
         pType, uType, lType, rateType, S, PF, PJC, PJT, DGP,
-        G, SAlg <: AbstractGAdjoint,
+        G, SAlg <: AbstractGAdjoint, tType, rType,
     }
     sol::S
     p::pType
@@ -13,6 +13,8 @@ mutable struct GaussIntegrand{
     sensealg::SAlg
     dgdp_cache::DGP
     dgdp::G
+    tunables::tType
+    repack::rType
 end
 
 struct ODEGaussAdjointSensitivityFunction{
@@ -500,7 +502,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     return GaussIntegrand(
         cpsol, p, y, λ, pf, f_cache, pJ, paramjac_config,
-        sensealg, dgdp_cache, dgdp
+        sensealg, dgdp_cache, dgdp, tunables, repack
     )
 end
 
@@ -511,20 +513,10 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
-    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol) = S
+    (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, tunables, repack) = S
     f = sol.prob.f
     f = unwrapped_f(f)
     isautojacvec = get_jacvec(sensealg)
-    # y is aliased
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
-    elseif isscimlstructure(p)
-        tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif isfunctor(p)
-        tunables, repack = Functors.functor(p)
-    else
-        tunables, repack = p, identity
-    end
 
     if !isautojacvec
         if SciMLBase.has_paramjac(f)
@@ -619,18 +611,7 @@ function (S::GaussIntegrand)(out, t, λ)
 end
 
 function (S::GaussIntegrand)(t, λ)
-    p = S.p
-    if p === nothing || p isa SciMLBase.NullParameters
-        out = allocate_zeros(p)
-    elseif isscimlstructure(p)
-        tunables, _, _ = canonicalize(Tunable(), p)
-        out = allocate_zeros(tunables)
-    elseif isfunctor(p)
-        tunables, _ = Functors.functor(p)
-        out = allocate_zeros(tunables)
-    else
-        out = allocate_zeros(p)
-    end
+    out = allocate_zeros(S.tunables)
     return S(out, t, λ)
 end
 
