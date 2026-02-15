@@ -316,6 +316,13 @@ function _vecjacobian!(
     end
     if dgrad !== nothing && !isempty(dgrad)
         (; pJ, pf, paramjac_config) = S.diffcache
+
+        if isscimlstructure(p) && !(p isa AbstractArray)
+            _tunables_p, _, _ = canonicalize(Tunable(), p)
+        else
+            _tunables_p = p
+        end
+
         if W === nothing
             if SciMLBase.has_paramjac(f)
                 # Calculate the parameter Jacobian into pJ
@@ -324,9 +331,9 @@ function _vecjacobian!(
                 pf.t = t
                 pf.u = y
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    jacobian!(pJ, pf, _tunables_p, f_cache, sensealg, paramjac_config)
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    temp = jacobian(pf, _tunables_p, sensealg)
                     pJ .= temp
                 end
             end
@@ -339,9 +346,9 @@ function _vecjacobian!(
                 pf.u = y
                 pf.W = W
                 if inplace_sensitivity(S)
-                    jacobian!(pJ, pf, p, f_cache, sensealg, paramjac_config)
+                    jacobian!(pJ, pf, _tunables_p, f_cache, sensealg, paramjac_config)
                 else
-                    temp = jacobian(pf, p, sensealg)
+                    temp = jacobian(pf, _tunables_p, sensealg)
                     pJ .= temp
                 end
             end
@@ -599,17 +606,25 @@ function _vecjacobian!(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
+    _needs_repack = isscimlstructure(p) && !(p isa AbstractArray) &&
+        !(p === nothing || p isa SciMLBase.NullParameters)
+    if _needs_repack
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    else
+        tunables, repack = p, identity
+    end
+
     if inplace_sensitivity(S)
         if W === nothing
-            _dy, back = Zygote.pullback(y, p) do u, p
+            _dy, back = Zygote.pullback(y, tunables) do u, tunables
                 out_ = Zygote.Buffer(similar(u))
-                f(out_, u, p, t)
+                f(out_, u, repack(tunables), t)
                 vec(copy(out_))
             end
         else
-            _dy, back = Zygote.pullback(y, p) do u, p
+            _dy, back = Zygote.pullback(y, tunables) do u, tunables
                 out_ = Zygote.Buffer(similar(u))
-                f(out_, u, p, t, W)
+                f(out_, u, repack(tunables), t, W)
                 vec(copy(out_))
             end
         end
@@ -628,12 +643,12 @@ function _vecjacobian!(
         end
     else
         if W === nothing
-            _dy, back = Zygote.pullback(y, p) do u, p
-                vec(f(u, p, t))
+            _dy, back = Zygote.pullback(y, tunables) do u, tunables
+                vec(f(u, repack(tunables), t))
             end
         else
-            _dy, back = Zygote.pullback(y, p) do u, p
-                vec(f(u, p, t, W))
+            _dy, back = Zygote.pullback(y, tunables) do u, tunables
+                vec(f(u, repack(tunables), t, W))
             end
         end
 
@@ -755,12 +770,14 @@ function _vecjacobian!(
     #if dgrad !== nothing
     #  tmp2 = dgrad
     #else
+    _shadow_p = nothing
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
         # Skip repack when it's just a simple vector - avoids unnecessary allocation
-        shadow_p = trivial_repack ? tmp2 : repack(tmp2)
-        Enzyme.Duplicated(p, shadow_p)
+        _sp = trivial_repack ? tmp2 : repack(tmp2)
+        _shadow_p = _sp
+        Enzyme.Duplicated(p, _sp)
     else
         Enzyme.Const(p)
     end
@@ -805,8 +822,14 @@ function _vecjacobian!(
             )
         end
         dλ !== nothing && recursive_copyto!(dλ, tmp1)
-        dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters) &&
-            recursive_copyto!(dgrad, tmp2)
+        if dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters)
+            if !trivial_repack && _shadow_p !== nothing
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_p)
+                recursive_copyto!(dgrad, grad_tunables)
+            else
+                recursive_copyto!(dgrad, tmp2)
+            end
+        end
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
         if W === nothing
@@ -837,8 +860,14 @@ function _vecjacobian!(
             recursive_copyto!(dy, out_)
         end
         dλ !== nothing && recursive_copyto!(dλ, tmp1)
-        dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters) &&
-            recursive_copyto!(dgrad, tmp2)
+        if dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters)
+            if !trivial_repack && _shadow_p !== nothing
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_p)
+                recursive_copyto!(dgrad, grad_tunables)
+            else
+                recursive_copyto!(dgrad, tmp2)
+            end
+        end
         dy !== nothing && recursive_copyto!(dy, tmp3)
     end
     return

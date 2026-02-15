@@ -162,3 +162,54 @@ end
 run_diff(initialize())
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint())[1].ps)
 @test !iszero(Zygote.gradient(run_diff, initialize(), GaussAdjoint(autojacvec = false))[1].ps)
+
+# Test with explicit solver to avoid stiff solver ForwardDiff complications
+function run_diff_explicit(ps, sensealg)
+    u01 = [1.0, 0.0, 0.0]
+    tspan = (0.0, 10.0)
+    prob = ODEProblem(UDE_model!, u01, tspan, ps)
+    sol = solve(prob, Tsit5(); saveat = 0.1, sensealg)
+    return sol.u |> last |> sum
+end
+
+# BacksolveAdjoint with SciMLStructures
+@test !iszero(Zygote.gradient(run_diff_explicit, initialize(), BacksolveAdjoint())[1].ps)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(), BacksolveAdjoint(autojacvec = false)
+    )[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP())
+    )[1].ps
+)
+
+# InterpolatingAdjoint with SciMLStructures
+@test !iszero(
+    Zygote.gradient(run_diff_explicit, initialize(), InterpolatingAdjoint())[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        InterpolatingAdjoint(autojacvec = false)
+    )[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        InterpolatingAdjoint(autojacvec = ZygoteVJP())
+    )[1].ps
+)
+
+# QuadratureAdjoint with SciMLStructures
+@test !iszero(
+    Zygote.gradient(run_diff_explicit, initialize(), QuadratureAdjoint())[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        QuadratureAdjoint(autojacvec = false)
+    )[1].ps
+)
