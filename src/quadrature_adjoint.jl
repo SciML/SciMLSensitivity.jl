@@ -204,12 +204,10 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     p = parameter_values(prob)
     u0 = state_values(prob)
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
-    elseif isscimlstructure(p)
+    if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
     else
-        tunables, repack = Functors.functor(p)
+        tunables, repack = p, identity
     end
 
     numparams = length(tunables)
@@ -292,10 +290,8 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
 
     if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
     else
-        tunables, repack = Functors.functor(p)
+        tunables, repack = p, identity
     end
 
     isautojacvec = get_jacvec(sensealg)
