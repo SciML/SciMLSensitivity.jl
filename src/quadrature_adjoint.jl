@@ -206,6 +206,8 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
 
     if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = functor_to_vec(p)
     else
         tunables, repack = p, identity
     end
@@ -226,18 +228,12 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
                 du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(
-                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                )
+                unwrappedf(du1, u, repack(tunables), first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                vec(
-                    unwrappedf(
-                        u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                    )
-                )
+                vec(unwrappedf(u, repack(tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -262,7 +258,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        _needs_repack = (isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p)
         _pjac_f = _needs_repack ?
             (du, u, p, t) -> unwrappedf(du, u, repack(p), t) :
             unwrappedf
@@ -290,6 +286,8 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
 
     if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = functor_to_vec(p)
     else
         tunables, repack = p, identity
     end
@@ -375,7 +373,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         end
 
         if _shadow_enzyme !== nothing
-            grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            if isscimlstructure(_shadow_enzyme)
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            else
+                grad_tunables, _ = functor_to_vec(_shadow_enzyme)
+            end
             copyto!(out, grad_tunables)
         end
     end
@@ -405,6 +407,9 @@ end
 function (S::AdjointSensitivityIntegrand)(t)
     if isscimlstructure(S.p) && !(S.p isa AbstractArray)
         _tunables, _, _ = canonicalize(Tunable(), S.p)
+        out = similar(_tunables)
+    elseif isfunctor(S.p)
+        _tunables, _ = functor_to_vec(S.p)
         out = similar(_tunables)
     else
         out = similar(S.p)
@@ -449,6 +454,9 @@ function _adjoint_sensitivities(
         else
             if isscimlstructure(integrand.p) && !(integrand.p isa AbstractArray)
                 _tunables, _, _ = canonicalize(Tunable(), integrand.p)
+                res = zero(_tunables)'
+            elseif isfunctor(integrand.p)
+                _tunables, _ = functor_to_vec(integrand.p)
                 res = zero(_tunables)'
             else
                 res = zero(integrand.p)'

@@ -30,6 +30,7 @@ end
             @time @safetestset "DiscreteProblem Adjoints" include("discrete.jl")
             @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl")
             @time @safetestset "SciMLStructures Interface" include("scimlstructures_interface.jl")
+            @time @safetestset "Functor Parameters" include("functor_params.jl")
         end
     end
 
