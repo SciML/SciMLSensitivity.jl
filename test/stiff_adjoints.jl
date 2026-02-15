@@ -287,7 +287,7 @@ if VERSION >= v"1.7-"
     #println("grad6")
     #grad6 = Zygote.gradient(x -> sum_of_solution_CASA(x, vjp = false), [u0; p])[1]
     println("grad7")
-    @test_throws Any Zygote.gradient(
+    grad7 = Zygote.gradient(
         x -> sum_of_solution_CASA(x, vjp = ZygoteVJP()),
         [u0; p]
     )[1]
@@ -302,4 +302,5 @@ if VERSION >= v"1.7-"
     @test grad1 ≈ grad4
     #@test grad1 ≈ grad5
     #@test grad1 ≈ grad6
+    @test grad1 ≈ grad7 rtol = 1.0e-2
 end
