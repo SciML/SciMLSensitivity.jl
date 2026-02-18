@@ -206,8 +206,6 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
 
     if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif isfunctor(p)
-        tunables, repack = functor_to_vec(p)
     else
         tunables, repack = p, identity
     end
@@ -258,7 +256,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        _needs_repack = (isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p)
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
         _pjac_f = _needs_repack ?
             (du, u, p, t) -> unwrappedf(du, u, repack(p), t) :
             unwrappedf
@@ -286,8 +284,6 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
 
     if isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    elseif isfunctor(p)
-        tunables, repack = functor_to_vec(p)
     else
         tunables, repack = p, identity
     end
@@ -376,7 +372,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             if isscimlstructure(_shadow_enzyme)
                 grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
             else
-                grad_tunables, _ = functor_to_vec(_shadow_enzyme)
+                grad_tunables = _shadow_enzyme
             end
             copyto!(out, grad_tunables)
         end
@@ -407,9 +403,6 @@ end
 function (S::AdjointSensitivityIntegrand)(t)
     if isscimlstructure(S.p) && !(S.p isa AbstractArray)
         _tunables, _, _ = canonicalize(Tunable(), S.p)
-        out = similar(_tunables)
-    elseif isfunctor(S.p)
-        _tunables, _ = functor_to_vec(S.p)
         out = similar(_tunables)
     else
         out = similar(S.p)
@@ -454,9 +447,6 @@ function _adjoint_sensitivities(
         else
             if isscimlstructure(integrand.p) && !(integrand.p isa AbstractArray)
                 _tunables, _, _ = canonicalize(Tunable(), integrand.p)
-                res = zero(_tunables)'
-            elseif isfunctor(integrand.p)
-                _tunables, _ = functor_to_vec(integrand.p)
                 res = zero(_tunables)'
             else
                 res = zero(integrand.p)'

@@ -84,17 +84,16 @@ parameters are tunable and how to canonicalize them into a flat vector. See
 [SciMLStructures documentation](https://docs.sciml.ai/SciMLStructures/stable/example/)
 for details.
 
-### 3. `Functors.jl` (for quadrature-based methods only)
+### 3. `Functors.jl` (for `GaussAdjoint` / `GaussKronrodAdjoint` only)
 
 If your parameter type is a `Functors.jl` functor (i.e., has `Functors.@functor` defined),
 you can use it directly with the following sensitivity algorithms:
 
-  - `QuadratureAdjoint`
   - `GaussAdjoint`
   - `GaussKronrodAdjoint`
 
-These algorithms compute parameter gradients via post-hoc quadrature rather than augmenting
-parameters into the ODE state, so they can handle arbitrary functor types.
+These algorithms compute parameter gradients via callbacks that work with structured types
+through `fmap`, so they can handle arbitrary functor types.
 
 The functor portion should contain **only the tunable parameters**. For example:
 
@@ -112,7 +111,7 @@ end
 Functors.@functor MyParams (weights, bias)
 ```
 
-Then use with a quadrature-based sensitivity algorithm:
+Then use with a supported sensitivity algorithm and `ZygoteVJP`:
 
 ```julia
 p = MyParams(randn(2, 2), randn(2), "model")
@@ -123,9 +122,8 @@ sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(autojacvec = ZygoteVJP()))
 You can check whether a sensitivity algorithm supports functor parameters using
 `SciMLSensitivity.supports_functor_params(sensealg)`.
 
-All VJP backends (ZygoteVJP, EnzymeVJP, ReverseDiffVJP, etc.) work with functor parameters.
-For backends that cannot natively differentiate through structured types (like ReverseDiffVJP),
-the parameters are automatically flattened to a vector internally.
+Note: Only VJP backends that support structured types (like `ZygoteVJP`) work with
+functor parameters. `ReverseDiffVJP` requires flat array parameters and is not compatible.
 
 ## When fitting a differential equation how do I visualize the fit during the optimization iterations?
 

@@ -320,7 +320,7 @@ function _vecjacobian!(
         if isscimlstructure(p) && !(p isa AbstractArray)
             _tunables_p, _, _ = canonicalize(Tunable(), p)
         elseif isfunctor(p)
-            _tunables_p, _ = functor_to_vec(p)
+            _tunables_p, _ = Functors.functor(p)
         else
             _tunables_p = p
         end
@@ -487,7 +487,10 @@ function _vecjacobian!(
     elseif isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        tunables, repack = functor_to_vec(p)
+        error(
+            "ReverseDiffVJP does not support Functors.jl parameter structs. " *
+                "Use ZygoteVJP() instead."
+        )
     else
         tunables, repack = p, identity
     end
@@ -506,8 +509,6 @@ function _vecjacobian!(
         if W === nothing
             if isscimlstructure(_p) && !(_p isa AbstractArray)
                 _tunables, _repack, _ = canonicalize(Tunable(), _p)
-            elseif isfunctor(_p)
-                _tunables, _repack = functor_to_vec(_p)
             else
                 _tunables, _repack = _p, identity
             end
@@ -533,8 +534,6 @@ function _vecjacobian!(
         if W === nothing
             if isscimlstructure(_p) && !(_p isa AbstractArray)
                 _tunables, _repack, _ = canonicalize(Tunable(), _p)
-            elseif isfunctor(_p)
-                _tunables, _repack = functor_to_vec(_p)
             else
                 _tunables, _repack = _p, identity
             end

@@ -41,8 +41,13 @@ function adjointdiffcache(
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        needs_vec = !supports_structured_vjp(sensealg.autojacvec)
-        tunables, repack = canonicalize_functor(p, needs_vec)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead."
+            )
+        end
+        tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
     end
@@ -410,7 +415,10 @@ function get_paramjac_config(
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        tunables, repack = functor_to_vec(p)
+        error(
+            "ReverseDiffVJP does not support Functors.jl parameter structs. " *
+                "Use ZygoteVJP() instead."
+        )
     else
         tunables, repack = p, identity
     end

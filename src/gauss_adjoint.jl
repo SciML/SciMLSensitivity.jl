@@ -430,8 +430,13 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        needs_vec = !supports_structured_vjp(sensealg.autojacvec)
-        tunables, repack = canonicalize_functor(p, needs_vec)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())."
+            )
+        end
+        tunables, repack = Functors.functor(p)
     else
         error(
             "Parameter type $(typeof(p)) is not supported by GaussAdjoint. " *
@@ -515,8 +520,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        needs_vec = !supports_structured_vjp(sensealg.autojacvec)
-        tunables, repack = canonicalize_functor(p, needs_vec)
+        tunables, repack = Functors.functor(p)
     else
         tunables, repack = p, identity
     end
@@ -621,8 +625,7 @@ function (S::GaussIntegrand)(t, λ)
         tunables, _, _ = canonicalize(Tunable(), p)
         out = allocate_zeros(tunables)
     elseif isfunctor(p)
-        needs_vec = !supports_structured_vjp(S.sensealg.autojacvec)
-        tunables, _ = canonicalize_functor(p, needs_vec)
+        tunables, _ = Functors.functor(p)
         out = allocate_zeros(tunables)
     else
         out = allocate_zeros(p)
@@ -654,8 +657,13 @@ function _adjoint_sensitivities(
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
-        needs_vec = !supports_structured_vjp(sensealg.autojacvec)
-        tunables, repack = canonicalize_functor(p, needs_vec)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())."
+            )
+        end
+        tunables, repack = Functors.functor(p)
     else
         tunables, repack = p, identity
     end

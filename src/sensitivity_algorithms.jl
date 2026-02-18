@@ -1525,11 +1525,12 @@ end
 Return `true` if the sensitivity algorithm supports Functors.jl parameter structs
 without requiring conversion to an AbstractArray or SciMLStructures interface.
 
-Only quadrature-based adjoint methods support this, because they compute parameter
-gradients via post-hoc quadrature rather than augmenting parameters into the ODE state.
+Only `GaussAdjoint` and `GaussKronrodAdjoint` support this, because they compute
+parameter gradients via callbacks that work with structured types through `fmap`.
+`QuadratureAdjoint` does not support functor params because it uses `quadgk` which
+requires flat array types.
 """
 supports_functor_params(::AbstractSensitivityAlgorithm) = false
-supports_functor_params(::QuadratureAdjoint) = true
 supports_functor_params(::GaussAdjoint) = true
 supports_functor_params(::GaussKronrodAdjoint) = true
 
@@ -1539,8 +1540,8 @@ supports_functor_params(::GaussKronrodAdjoint) = true
 Return `true` if the VJP backend can natively differentiate through structured
 (non-array) parameter types like NamedTuples from Functors.jl.
 
-When `false`, functor parameters are automatically flattened to a vector via
-`functor_to_vec` before being passed to the VJP backend.
+When `false`, Functors.jl parameter structs are not supported and an informative
+error will be thrown.
 """
 supports_structured_vjp(::ZygoteVJP) = true
 supports_structured_vjp(::EnzymeVJP) = true

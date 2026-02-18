@@ -18,9 +18,8 @@ to define the SciMLStructures.jl interface on that type. For more information, c
 https://docs.sciml.ai/SciMLStructures/stable/example/ for an example.
 
 Alternatively, if your parameter type is a Functors.jl functor (i.e., has `Functors.@functor`
-defined), you can use it directly with quadrature-based sensitivity algorithms:
-`QuadratureAdjoint`, `GaussAdjoint`, or `GaussKronrodAdjoint`. The functor portion should
-contain only the tunable parameters.
+defined), you can use it directly with `GaussAdjoint` or `GaussKronrodAdjoint` (with
+`ZygoteVJP`). The functor portion should contain only the tunable parameters.
 """
 
 struct AdjointSensitivityParameterCompatibilityError <: Exception end
