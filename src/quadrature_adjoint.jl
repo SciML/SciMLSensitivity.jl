@@ -226,18 +226,12 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
                 du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(
-                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                )
+                unwrappedf(du1, u, repack(tunables), first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                vec(
-                    unwrappedf(
-                        u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                    )
-                )
+                vec(unwrappedf(u, repack(tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -375,7 +369,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         end
 
         if _shadow_enzyme !== nothing
-            grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            if isscimlstructure(_shadow_enzyme)
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            else
+                grad_tunables = _shadow_enzyme
+            end
             copyto!(out, grad_tunables)
         end
     end

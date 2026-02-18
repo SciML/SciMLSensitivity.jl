@@ -108,6 +108,8 @@ export second_order_sensitivities, second_order_sensitivity_product
 
 export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
 
+export supports_functor_params
+
 export StochasticTransformedFunction
 
 end # module

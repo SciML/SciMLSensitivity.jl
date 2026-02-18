@@ -41,6 +41,12 @@ function adjointdiffcache(
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead."
+            )
+        end
         tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
@@ -234,7 +240,7 @@ function adjointdiffcache(
         paramjac_config = nothing
         pf = nothing
     else
-        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        _needs_repack = (isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p)
         if isinplace &&
                 !(p === nothing || p === SciMLBase.NullParameters())
             if !isRODE
@@ -406,13 +412,18 @@ function get_paramjac_config(
     # f = unwrappedf
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
+    elseif isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        error(
+            "ReverseDiffVJP does not support Functors.jl parameter structs. " *
+                "Use ZygoteVJP() instead or make `p` a SciMLStructure. See SciMLStructures.jl."
+        )
     else
-        tunables, repack, aliases = canonicalize(Tunable(), p)
+        tunables, repack = p, identity
     end
     if isinplace
         if !isRODE
-            __p = p isa SciMLBase.NullParameters ? _p :
-                SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                 du1 = (p !== nothing && p !== SciMLBase.NullParameters()) ?
                     similar(p, size(u)) : similar(u)
@@ -431,11 +442,6 @@ function get_paramjac_config(
         end
     else
         if !isRODE
-            # GradientTape doesn't handle NullParameters; hence _p isa zeros(...)
-            # Cannot define replace(Tunable(), ::NullParameters, ::Vector)
-            # because hasportion(Tunable(), NullParameters) == false
-            __p = p isa SciMLBase.NullParameters ? _p :
-                SciMLStructures.replace(Tunable(), p, _p)
             tape = ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                 vec(f(u, repack(p), first(t)))
             end

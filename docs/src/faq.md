@@ -61,6 +61,70 @@ end
 tmp1, tmp2 = back(λ)
 ```
 
+## How do I use custom parameter types with adjoint sensitivity analysis?
+
+There are three ways to use custom parameter types with adjoint sensitivity analysis:
+
+### 1. `AbstractArray` (simplest, works with all sensitivity algorithms)
+
+Wrap your parameters in an `AbstractArray` type like `ComponentArrays.jl`:
+
+```julia
+using ComponentArrays
+p = ComponentArray(layer_1 = (weight = randn(2, 2), bias = randn(2)),
+                   layer_2 = (weight = randn(2, 2), bias = randn(2)))
+```
+
+This works with all sensitivity algorithms since `ComponentArray` is an `AbstractArray`.
+
+### 2. `SciMLStructures.jl` (most flexible, works with all sensitivity algorithms)
+
+Define the `SciMLStructures.jl` interface on your type. This lets you declare which
+parameters are tunable and how to canonicalize them into a flat vector. See
+[SciMLStructures documentation](https://docs.sciml.ai/SciMLStructures/stable/example/)
+for details.
+
+### 3. `Functors.jl` (for `GaussAdjoint` / `GaussKronrodAdjoint` only)
+
+If your parameter type is a `Functors.jl` functor (i.e., has `Functors.@functor` defined),
+you can use it directly with the following sensitivity algorithms:
+
+  - `GaussAdjoint`
+  - `GaussKronrodAdjoint`
+
+These algorithms compute parameter gradients via callbacks that work with structured types
+through `fmap`, so they can handle arbitrary functor types.
+
+The functor portion should contain **only the tunable parameters**. For example:
+
+```julia
+using Functors
+
+struct MyParams
+    weights::Matrix{Float64}
+    bias::Vector{Float64}
+    # non-tunable fields are not included in @functor
+    name::String
+end
+
+# Only declare tunable fields
+Functors.@functor MyParams (weights, bias)
+```
+
+Then use with a supported sensitivity algorithm and `ZygoteVJP`:
+
+```julia
+p = MyParams(randn(2, 2), randn(2), "model")
+prob = ODEProblem(f, u0, tspan, p)
+sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(autojacvec = ZygoteVJP()))
+```
+
+You can check whether a sensitivity algorithm supports functor parameters using
+`SciMLSensitivity.supports_functor_params(sensealg)`.
+
+Note: Only VJP backends that support structured types (like `ZygoteVJP`) work with
+functor parameters. `ReverseDiffVJP` requires flat array parameters and is not compatible.
+
 ## When fitting a differential equation how do I visualize the fit during the optimization iterations?
 
 The `Optimization.jl` package has a callback function that can be used to visualize the

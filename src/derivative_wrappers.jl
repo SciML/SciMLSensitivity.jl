@@ -319,6 +319,8 @@ function _vecjacobian!(
 
         if isscimlstructure(p) && !(p isa AbstractArray)
             _tunables_p, _, _ = canonicalize(Tunable(), p)
+        elseif isfunctor(p)
+            _tunables_p, _ = Functors.functor(p)
         else
             _tunables_p = p
         end
@@ -482,8 +484,15 @@ function _vecjacobian!(
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
+    elseif isscimlstructure(p) && !(p isa AbstractArray)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        error(
+            "ReverseDiffVJP does not support Functors.jl parameter structs. " *
+                "Use ZygoteVJP() instead, or make `p` a SciMLStructure. See SciMLStructures.jl."
+        )
     else
-        tunables, repack, aliases = canonicalize(Tunable(), p)
+        tunables, repack = p, identity
     end
 
     u0 = state_values(prob)
@@ -498,7 +507,11 @@ function _vecjacobian!(
     elseif inplace_sensitivity(S)
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            if isscimlstructure(_p) && !(_p isa AbstractArray)
+                _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            else
+                _tunables, _repack = _p, identity
+            end
             _is_pswap = TS <: CallbackSensitivityFunctionPSwap
             tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
                 du1 = _is_pswap ? similar(p, length(p)) : similar(u, size(u))
@@ -519,7 +532,11 @@ function _vecjacobian!(
     else
         _y = eltype(y) === eltype(λ) ? y : convert.(promote_type(eltype(y), eltype(λ)), y)
         if W === nothing
-            _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            if isscimlstructure(_p) && !(_p isa AbstractArray)
+                _tunables, _repack, _ = canonicalize(Tunable(), _p)
+            else
+                _tunables, _repack = _p, identity
+            end
             tape = ReverseDiff.GradientTape((_y, _tunables, [t])) do u, p, t
                 vec(f(u, _repack(p), first(t)))
             end
@@ -606,10 +623,14 @@ function _vecjacobian!(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    _needs_repack = isscimlstructure(p) && !(p isa AbstractArray) &&
-        !(p === nothing || p isa SciMLBase.NullParameters)
+    _needs_repack = !(p === nothing || p isa SciMLBase.NullParameters) &&
+        ((isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p))
     if _needs_repack
-        tunables, repack, _ = canonicalize(Tunable(), p)
+        if isscimlstructure(p) && !(p isa AbstractArray)
+            tunables, repack, _ = canonicalize(Tunable(), p)
+        else
+            tunables, repack = Functors.functor(p)
+        end
     else
         tunables, repack = p, identity
     end

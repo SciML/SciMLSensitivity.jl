@@ -154,8 +154,16 @@ function automatic_sensealg_choice(
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
+    elseif isfunctor(p)
+        tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
+    end
+
+    # For functor params, always choose GaussAdjoint with ZygoteVJP.
+    # ZygoteVJP is the only VJP that natively supports structured parameter types.
+    if isfunctor(p) && !(p isa AbstractArray) && !isscimlstructure(p)
+        return GaussAdjoint(autojacvec = ZygoteVJP())
     end
 
     default_sensealg = if p !== SciMLBase.NullParameters() &&
@@ -468,18 +476,28 @@ function SciMLBase._concrete_solve_adjoint(
         initializealg_default = SciMLBase.OverrideInit(; abstol = 1.0e-6, reltol = 1.0e-3),
         kwargs...
     )
-    if !((sensealg isa GaussAdjoint)||(sensealg isa GaussKronrodAdjoint)) &&
+    if !supports_functor_params(sensealg) &&
             !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) &&
             !isscimlstructure(p) ||
             (p isa AbstractArray && !Base.isconcretetype(eltype(p)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
 
+    # Check VJP compatibility for functor params
+    if supports_functor_params(sensealg) && isfunctor(p) &&
+            !supports_structured_vjp(sensealg.autojacvec)
+        error(
+            "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                "Use ZygoteVJP() instead, e.g., $(nameof(typeof(sensealg)))(autojacvec=ZygoteVJP())" *
+                "or make `p` a SciMLStructure. See SciMLStructures.jl."
+        )
+    end
+
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, aliases = canonicalize(Tunable(), p)
-    elseif sensealg isa Union{QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint}
+    elseif supports_functor_params(sensealg) && isfunctor(p)
         tunables, repack = Functors.functor(p)
     else
         throw(SciMLStructuresCompatibilityError())
@@ -874,20 +892,31 @@ function SciMLBase._concrete_solve_adjoint(
 
         du0 = reshape(du0, size(u0))
 
-        dp = p === nothing || p === SciMLBase.NullParameters() ? nothing :
-            dp isa AbstractArray ? reshape(dp', size(tunables)) : dp
+        dp = if p === nothing || p === SciMLBase.NullParameters()
+            nothing
+        elseif dp isa AbstractArray
+            reshape(dp', size(tunables))
+        else
+            dp
+        end
 
         dp = Zygote.accum(dp, igs)
 
         _,
-            repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
-                !isscimlstructure(p)
+            repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
             nothing, x -> (x,)
-        else
+        elseif isscimlstructure(p)
             Zygote.pullback(p) do p
                 t, _, _ = canonicalize(Tunable(), p)
                 t
             end
+        elseif isfunctor(p) && supports_functor_params(sensealg)
+            Zygote.pullback(p) do p
+                t, _ = Functors.functor(p)
+                t
+            end
+        else
+            nothing, x -> (x,)
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
@@ -1476,11 +1505,13 @@ function SciMLBase._concrete_solve_adjoint(
             repack_adjoint = if p === nothing || p === SciMLBase.NullParameters() ||
                 !isscimlstructure(p)
             nothing, x -> (x,)
-        else
+        elseif isscimlstructure(p)
             Zygote.pullback(p) do p
                 t, _, _ = canonicalize(Tunable(), p)
                 t
             end
+        else
+            nothing, x -> (x,)
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
@@ -1953,6 +1984,10 @@ const SCIMLSTRUCTURES_ERROR_MESSAGE = """
 `p` is not a SciMLStructure. This is required for adjoint sensitivity analysis. For more information,
 see the documentation on SciMLStructures.jl for the definition of the SciMLStructures interface.
 In particular, adjoint sensitivities only applies to `Tunable`.
+
+Alternatively, if your parameter type is a Functors.jl functor (i.e., has `Functors.@functor`
+defined), you can use it directly with `GaussAdjoint` or `GaussKronrodAdjoint` (with
+`ZygoteVJP`). The functor portion should contain only the tunable parameters.
 """
 
 struct SciMLStructuresCompatibilityError <: Exception

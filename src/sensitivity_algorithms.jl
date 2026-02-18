@@ -1520,6 +1520,37 @@ end
 @inline compile_tape(autojacvec::Bool) = false
 
 """
+    supports_functor_params(sensealg) -> Bool
+
+Return `true` if the sensitivity algorithm supports Functors.jl parameter structs
+without requiring conversion to an AbstractArray or SciMLStructures interface.
+
+Only `GaussAdjoint` and `GaussKronrodAdjoint` support this, because they compute
+parameter gradients via callbacks that work with structured types through `fmap`.
+`QuadratureAdjoint` does not support functor params because it uses `quadgk` which
+requires flat array types.
+"""
+supports_functor_params(::AbstractSensitivityAlgorithm) = false
+supports_functor_params(::GaussAdjoint) = true
+supports_functor_params(::GaussKronrodAdjoint) = true
+
+"""
+    supports_structured_vjp(autojacvec) -> Bool
+
+Return `true` if the VJP backend can natively differentiate through structured
+(non-array) parameter types like NamedTuples from Functors.jl.
+
+When `false`, Functors.jl parameter structs are not supported and an informative
+error will be thrown.
+"""
+supports_structured_vjp(::ZygoteVJP) = true
+supports_structured_vjp(::EnzymeVJP) = true
+supports_structured_vjp(::MooncakeVJP) = true
+supports_structured_vjp(::ReverseDiffVJP) = false
+supports_structured_vjp(::Bool) = false
+supports_structured_vjp(::Nothing) = false
+
+"""
 ```julia
 ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
 ```

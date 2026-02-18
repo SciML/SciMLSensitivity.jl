@@ -1,5 +1,5 @@
 function isfunctor(x)
-    return !isempty(Functors.children(x))
+    return !(x isa AbstractArray) && !isscimlstructure(x) && !isempty(Functors.children(x))
 end
 
 function to_nt(s::T) where {T}

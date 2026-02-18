@@ -16,6 +16,10 @@ or ComponentArrays.jl so that `p` is an `AbstractArray` with a concrete element 
 If you have a non-standard type you wish to work with adjoint differentiation, you need
 to define the SciMLStructures.jl interface on that type. For more information, check out
 https://docs.sciml.ai/SciMLStructures/stable/example/ for an example.
+
+Alternatively, if your parameter type is a Functors.jl functor (i.e., has `Functors.@functor`
+defined), you can use it directly with `GaussAdjoint` or `GaussKronrodAdjoint` (with
+`ZygoteVJP`). The functor portion should contain only the tunable parameters.
 """
 
 struct AdjointSensitivityParameterCompatibilityError <: Exception end

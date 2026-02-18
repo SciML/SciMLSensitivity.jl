@@ -429,8 +429,20 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    else
+    elseif isfunctor(p)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())" *
+                    "or make `p` a SciMLStructure. See SciMLStructures.jl."
+            )
+        end
         tunables, repack = Functors.functor(p)
+    else
+        error(
+            "Parameter type $(typeof(p)) is not supported by GaussAdjoint. " *
+                "Use an AbstractArray, SciMLStructures, or Functors.jl functor. See SciMLStructures.jl"
+        )
     end
 
     numparams = length(tunables)
@@ -442,25 +454,19 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : zero(p)
+    dgdp_cache = dgdp === nothing ? nothing : allocate_zeros(tunables)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
                 du1 = similar(tunables, size(u))
                 du1 .= false
-                unwrappedf(
-                    du1, u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                )
+                unwrappedf(du1, u, repack(tunables), first(t))
                 return vec(du1)
             end
         else
             ReverseDiff.GradientTape((y, tunables, [tspan[2]])) do u, tunables, t
-                vec(
-                    unwrappedf(
-                        u, SciMLStructures.replace(Tunable(), p, tunables), first(t)
-                    )
-                )
+                vec(unwrappedf(u, repack(tunables), first(t)))
             end
         end
         if compile_tape(sensealg.autojacvec)
@@ -514,8 +520,10 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
-    else
+    elseif isfunctor(p)
         tunables, repack = Functors.functor(p)
+    else
+        tunables, repack = p, identity
     end
 
     if !isautojacvec
@@ -611,7 +619,18 @@ function (S::GaussIntegrand)(out, t, λ)
 end
 
 function (S::GaussIntegrand)(t, λ)
-    out = allocate_zeros(S.p)
+    p = S.p
+    if p === nothing || p isa SciMLBase.NullParameters
+        out = allocate_zeros(p)
+    elseif isscimlstructure(p)
+        tunables, _, _ = canonicalize(Tunable(), p)
+        out = allocate_zeros(tunables)
+    elseif isfunctor(p)
+        tunables, _ = Functors.functor(p)
+        out = allocate_zeros(tunables)
+    else
+        out = allocate_zeros(p)
+    end
     return S(out, t, λ)
 end
 
@@ -629,7 +648,8 @@ function _adjoint_sensitivities(
         kwargs...
     )
     p = SymbolicIndexingInterface.parameter_values(sol)
-    if !isscimlstructure(p) && !isfunctor(p)
+    if !isscimlstructure(p) && !isfunctor(p) &&
+            !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray})
         throw(SciMLStructuresCompatibilityError())
     end
 
@@ -638,9 +658,16 @@ function _adjoint_sensitivities(
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
+        if !supports_structured_vjp(sensealg.autojacvec)
+            error(
+                "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
+                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())" *
+                    "or make `p` a SciMLStructure. See SciMLStructures.jl."
+            )
+        end
         tunables, repack = Functors.functor(p)
     else
-        throw(SciMLStructuresCompatibilityError())
+        tunables, repack = p, identity
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
