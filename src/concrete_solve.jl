@@ -488,7 +488,8 @@ function SciMLBase._concrete_solve_adjoint(
             !supports_structured_vjp(sensealg.autojacvec)
         error(
             "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
-                "Use ZygoteVJP() instead, e.g., $(nameof(typeof(sensealg)))(autojacvec=ZygoteVJP())."
+                "Use ZygoteVJP() instead, e.g., $(nameof(typeof(sensealg)))(autojacvec=ZygoteVJP())" *
+                "or make `p` a SciMLStructure. See SciMLStructures.jl."
         )
     end
 
