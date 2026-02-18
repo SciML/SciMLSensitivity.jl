@@ -268,7 +268,7 @@ Base.@pure function BacksolveAdjoint(;
     )
 end
 
-function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
+function setvjp(sensealg::BacksolveAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
     return BacksolveAdjoint{CS, AD, FDT, typeof(vjp)}(
         vjp, sensealg.checkpointing,
         sensealg.noisemixing
@@ -391,7 +391,7 @@ Base.@pure function InterpolatingAdjoint(;
 end
 
 function setvjp(
-        sensealg::InterpolatingAdjoint{CS, AD, FDT, Nothing},
+        sensealg::InterpolatingAdjoint{CS, AD, FDT},
         vjp
     ) where {CS, AD, FDT}
     return InterpolatingAdjoint{CS, AD, FDT, typeof(vjp)}(
@@ -495,7 +495,7 @@ Base.@pure function QuadratureAdjoint(;
     )
 end
 
-function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
+function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
     return QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(
         vjp, sensealg.abstol,
         sensealg.reltol
@@ -595,7 +595,7 @@ Base.@pure function GaussAdjoint(;
     )
 end
 
-function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, Nothing}, vjp) where {CS, AD, FDT}
+function setvjp(sensealg::GaussAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
     return GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
 end
 
@@ -689,7 +689,7 @@ Base.@pure function GaussKronrodAdjoint(;
     )
 end
 
-function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT, Nothing}, vjp) where {
+function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT}, vjp) where {
         CS, AD, FDT,
     }
     return GaussKronrodAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)

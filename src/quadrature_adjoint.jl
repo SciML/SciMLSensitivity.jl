@@ -592,7 +592,12 @@ function _update_integrand_and_dgrad(
     indx, pos_neg = get_indx(cb, t)
     tprev = get_tprev(cb, indx, pos_neg)
 
-    wp = CallbackAffectPWrapper(cb, ReverseDiffVJP(), pos_neg, nothing, tprev)
+    # Callbacks always use ReverseDiffVJP for their VJP computations,
+    # independent of the ODE adjoint's autojacvec choice.
+    cb_autojacvec = ReverseDiffVJP()
+    cb_sensealg = setvjp(sensealg, cb_autojacvec)
+
+    wp = CallbackAffectPWrapper(cb, cb_autojacvec, pos_neg, nothing, tprev)
 
     _p = similar(integrand.p, size(integrand.p))
     _p .= false
@@ -600,12 +605,9 @@ function _update_integrand_and_dgrad(
 
     if _p != integrand.p
         paramjac_config = _get_wp_paramjac_config(
-            sensealg.autojacvec, integrand.p, wp, integrand.y, integrand.p, t
+            cb_autojacvec, integrand.p, wp, integrand.y, integrand.p, t
         )
-        pf = get_pf(sensealg.autojacvec; _f = wp, isinplace = true, isRODE = false)
-        if sensealg.autojacvec isa EnzymeVJP
-            paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
-        end
+        pf = get_pf(cb_autojacvec; _f = wp, isinplace = true, isRODE = false)
 
         diffcache_wp = AdjointDiffCache(
             nothing, pf, nothing, nothing, nothing,
@@ -614,7 +616,7 @@ function _update_integrand_and_dgrad(
             nothing, nothing, nothing, false
         )
 
-        fakeSp = CallbackSensitivityFunctionPSwap(wp, sensealg, diffcache_wp, sol.prob)
+        fakeSp = CallbackSensitivityFunctionPSwap(wp, cb_sensealg, diffcache_wp, sol.prob)
         #vjp with Jacobin given by dw/dp before event and vector given by grad
         vecjacobian!(
             nothing, integrand.y, res, integrand.p, t, fakeSp;
@@ -623,11 +625,11 @@ function _update_integrand_and_dgrad(
         integrand = update_p_integrand(integrand, _p)
     end
 
-    w = CallbackAffectWrapper(cb, ReverseDiffVJP(), pos_neg, nothing, tprev)
+    w = CallbackAffectWrapper(cb, cb_autojacvec, pos_neg, nothing, tprev)
 
     # Create a fake sensitivity function to do the vjps needs to be done
     # to account for parameter dependence of affect function
-    fakeS = CallbackSensitivityFunction(w, sensealg, adj_prob.f.f.diffcache, sol.prob)
+    fakeS = CallbackSensitivityFunction(w, cb_sensealg, adj_prob.f.f.diffcache, sol.prob)
     if dgdu !== nothing # discrete cost
         dgdu(dλ, integrand.y, integrand.p, t, cur_time)
     else
