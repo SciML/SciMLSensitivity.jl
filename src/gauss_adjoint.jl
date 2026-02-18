@@ -660,7 +660,8 @@ function _adjoint_sensitivities(
         if !supports_structured_vjp(sensealg.autojacvec)
             error(
                 "$(typeof(sensealg.autojacvec)) does not support Functors.jl parameter structs. " *
-                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())."
+                    "Use ZygoteVJP() instead, e.g., GaussAdjoint(autojacvec=ZygoteVJP())" *
+                    "or make `p` a SciMLStructure. See SciMLStructures.jl."
             )
         end
         tunables, repack = Functors.functor(p)
