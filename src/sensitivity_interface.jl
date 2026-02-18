@@ -405,12 +405,21 @@ function adjoint_sensitivities(
         return try
             _adjoint_sensitivities(sol, _sensealg, args...; verbose, kwargs...)
         catch e
-            verbose &&
-                @warn "Automatic AD choice of autojacvec failed in ODE adjoint, failing back to ODE adjoint + numerical vjp"
-            _adjoint_sensitivities(
-                sol, setvjp(sensealg, false), args...; verbose,
-                kwargs...
-            )
+            if has_cb
+                verbose &&
+                    @warn "Automatic AD choice of autojacvec failed in ODE adjoint with callbacks, failing back to ReverseDiffVJP()"
+                _adjoint_sensitivities(
+                    sol, setvjp(sensealg, ReverseDiffVJP()), args...; verbose,
+                    kwargs...
+                )
+            else
+                verbose &&
+                    @warn "Automatic AD choice of autojacvec failed in ODE adjoint, failing back to ODE adjoint + numerical vjp"
+                _adjoint_sensitivities(
+                    sol, setvjp(sensealg, false), args...; verbose,
+                    kwargs...
+                )
+            end
         end
     else
         return _adjoint_sensitivities(sol, sensealg, args...; verbose, kwargs...)

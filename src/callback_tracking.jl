@@ -283,8 +283,14 @@ function _setup_reverse_callbacks(
     # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Therefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
-    !(sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}) &&
-        error("Only `ReverseDiffVJP` and `EnzymeVJP` are currently compatible with continuous adjoint sensitivity methods for hybrid DEs. Please select `ReverseDiffVJP` or `EnzymeVJP` as `autojacvec`.")
+    if !(sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP})
+        error(
+            "Only `ReverseDiffVJP` and `EnzymeVJP` are currently compatible with " *
+            "continuous adjoint sensitivity methods for hybrid DEs. " *
+            "Please select `ReverseDiffVJP` or `EnzymeVJP` as `autojacvec`. " *
+            "Got autojacvec=$(sensealg.autojacvec) ($(typeof(sensealg.autojacvec)))."
+        )
+    end
 
     # event times
     times = if cb isa DiscreteCallback
