@@ -3,6 +3,11 @@
 # Here is where we can add a default algorithm for computing sensitivities
 # Based on problem information!
 
+# Use a narrow union instead of AbstractNonlinearProblem so that composite problem
+# types like SCCNonlinearProblem (which should differentiate through their individual
+# NonlinearProblem sub-solves) don't accidentally match these dispatches.
+const ConcreteNonlinearProblem = Union{NonlinearProblem, SciMLBase.SteadyStateProblem}
+
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
@@ -300,7 +305,7 @@ function automatic_sensealg_choice(
 end
 
 function automatic_sensealg_choice(
-        prob::AbstractNonlinearProblem, u0, p,
+        prob::ConcreteNonlinearProblem, u0, p,
         verbose, repack
     )
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
@@ -360,7 +365,7 @@ function SciMLBase._concrete_solve_adjoint(
 end
 
 function SciMLBase._concrete_solve_adjoint(
-        prob::AbstractNonlinearProblem, alg,
+        prob::ConcreteNonlinearProblem, alg,
         sensealg::Nothing, u0, p,
         originator::SciMLBase.ADOriginator, args...;
         verbose = true, kwargs...
@@ -433,7 +438,7 @@ end
 
 # Also include AbstractForwardSensitivityAlgorithm until a dispatch is made!
 function SciMLBase._concrete_solve_adjoint(
-        prob::AbstractNonlinearProblem, alg,
+        prob::ConcreteNonlinearProblem, alg,
         sensealg::Union{
             AbstractAdjointSensitivityAlgorithm,
             AbstractForwardSensitivityAlgorithm,
@@ -1532,7 +1537,7 @@ end
 
 # NOTE: This is needed to prevent a method ambiguity error
 function SciMLBase._concrete_solve_adjoint(
-        prob::AbstractNonlinearProblem, alg, sensealg::ZygoteAdjoint,
+        prob::ConcreteNonlinearProblem, alg, sensealg::ZygoteAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...
     )
@@ -1625,7 +1630,7 @@ end
 
 # NOTE: This is needed to prevent a method ambiguity error
 function SciMLBase._concrete_solve_adjoint(
-        prob::AbstractNonlinearProblem, alg, sensealg::EnzymeAdjoint,
+        prob::ConcreteNonlinearProblem, alg, sensealg::EnzymeAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...
     )
@@ -2268,7 +2273,7 @@ function SciMLBase._concrete_solve_adjoint(
 end
 
 function SciMLBase._concrete_solve_adjoint(
-        prob::AbstractNonlinearProblem,
+        prob::ConcreteNonlinearProblem,
         alg, sensealg::SteadyStateAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...
