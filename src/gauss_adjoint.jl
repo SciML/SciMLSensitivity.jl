@@ -441,7 +441,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     else
         error(
             "Parameter type $(typeof(p)) is not supported by GaussAdjoint. " *
-                "Use an AbstractArray, SciMLStructures, or Functors.jl functor."
+                "Use an AbstractArray, SciMLStructures, or Functors.jl functor. See SciMLStructures.jl"
         )
     end
 
