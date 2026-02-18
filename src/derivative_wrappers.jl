@@ -489,7 +489,7 @@ function _vecjacobian!(
     elseif isfunctor(p)
         error(
             "ReverseDiffVJP does not support Functors.jl parameter structs. " *
-                "Use ZygoteVJP() instead."
+                "Use ZygoteVJP() instead, or make `p` a SciMLStructure. See SciMLStructures.jl."
         )
     else
         tunables, repack = p, identity
