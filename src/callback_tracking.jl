@@ -283,8 +283,17 @@ function _setup_reverse_callbacks(
     # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Therefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
-    !(sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}) &&
-        error("Only `ReverseDiffVJP` and `EnzymeVJP` are currently compatible with continuous adjoint sensitivity methods for hybrid DEs. Please select `ReverseDiffVJP` or `EnzymeVJP` as `autojacvec`.")
+    # Callbacks require ReverseDiffVJP or EnzymeVJP for their own VJP computations.
+    # The ODE adjoint may use a different autojacvec (even numerical/false), but the
+    # callback affect functions (CallbackAffectWrapper) are separate and typically work
+    # with ReverseDiff even when the ODE function doesn't.
+    cb_autojacvec = if sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}
+        sensealg.autojacvec
+    else
+        @warn "autojacvec=$(sensealg.autojacvec) is not compatible with callbacks, using ReverseDiffVJP() for callback VJPs"
+        ReverseDiffVJP()
+    end
+    cb_sensealg = setvjp(sensealg, cb_autojacvec)
 
     # event times
     times = if cb isa DiscreteCallback
@@ -294,7 +303,7 @@ function _setup_reverse_callbacks(
     end
 
     # precompute w and wp to generate a tape
-    cb_diffcaches = get_cb_diffcaches(cb, sensealg.autojacvec)
+    cb_diffcaches = get_cb_diffcaches(cb, cb_autojacvec)
 
     function affect!(integrator)
         indx, pos_neg = get_indx(cb, integrator.t)
@@ -303,13 +312,13 @@ function _setup_reverse_callbacks(
             nothing
 
         # update diffcache here to use the correct precompiled callback tape
-        w, wp = setup_w_wp(cb, sensealg.autojacvec, pos_neg, event_idx, tprev)
+        w, wp = setup_w_wp(cb, cb_autojacvec, pos_neg, event_idx, tprev)
         diffcaches = cb_diffcaches[pos_neg, event_idx]
 
         S = integrator.f.f # get the sensitivity function
 
         # Create a fake sensitivity function to do the vjps
-        fakeS = CallbackSensitivityFunction(w, sensealg, diffcaches[1], integrator.sol.prob)
+        fakeS = CallbackSensitivityFunction(w, cb_sensealg, diffcaches[1], integrator.sol.prob)
 
         du = first(get_tmp_cache(integrator))
         λ, grad, y, dλ, dgrad, dy = split_states(du, integrator.u, integrator.t, S)
@@ -375,7 +384,7 @@ function _setup_reverse_callbacks(
                 # reinit diffcache struct
                 #diffcache(t2)
                 fakeSp = CallbackSensitivityFunctionPSwap(
-                    wp, sensealg, diffcaches[2],
+                    wp, cb_sensealg, diffcaches[2],
                     integrator.sol.prob
                 )
                 #vjp with Jacobin given by dw/dp before event and vector given by grad
