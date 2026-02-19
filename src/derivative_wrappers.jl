@@ -317,7 +317,21 @@ function _vecjacobian!(
     if dgrad !== nothing && !isempty(dgrad)
         (; pJ, pf, paramjac_config) = S.diffcache
 
-        _tunables_p = S.diffcache.tunables
+        if TS <: Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
+            if isscimlstructure(p) && !(p isa AbstractArray)
+                _tunables_p, _, _ = canonicalize(Tunable(), p)
+            elseif isfunctor(p)
+                _tunables_p, _ = Functors.functor(p)
+            else
+                _tunables_p = p
+            end
+        elseif p isa AbstractArray
+            # ForwardDiff/FiniteDiff need p in its original shape (e.g. Matrix);
+            # canonicalize may flatten non-vector arrays, so use p directly.
+            _tunables_p = p
+        else
+            _tunables_p = S.diffcache.tunables
+        end
 
         if W === nothing
             if SciMLBase.has_paramjac(f)
@@ -476,7 +490,7 @@ function _vecjacobian!(
         _p = p
     end
 
-    if TS <: CallbackSensitivityFunctionPSwap
+    if TS <: Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
         if p === nothing || p isa SciMLBase.NullParameters
             tunables, repack = p, identity
         elseif isscimlstructure(p) && !(p isa AbstractArray)
@@ -621,7 +635,7 @@ function _vecjacobian!(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    if TS <: CallbackSensitivityFunctionPSwap
+    if TS <: Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
         _needs_repack = !(p === nothing || p isa SciMLBase.NullParameters) &&
             ((isscimlstructure(p) && !(p isa AbstractArray)) || isfunctor(p))
         if _needs_repack
@@ -753,7 +767,7 @@ function _vecjacobian!(
 
     prob = getprob(S)
 
-    if TS <: CallbackSensitivityFunctionPSwap
+    if TS <: Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
         _p = p
         if _p === nothing || _p isa SciMLBase.NullParameters
             tunables, repack, trivial_repack = _p, identity, true
