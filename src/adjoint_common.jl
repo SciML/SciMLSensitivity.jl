@@ -1,7 +1,7 @@
 struct AdjointDiffCache{
         UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
         DG2, DI,
-        AI, FM,
+        AI, FM, tType, rType,
     }
     uf::UF
     pf::PF
@@ -21,6 +21,8 @@ struct AdjointDiffCache{
     algevar_idxs::AI
     factorized_mass_matrix::FM
     issemiexplicitdae::Bool
+    tunables::tType
+    repack::rType
 end
 
 """
@@ -231,7 +233,10 @@ function adjointdiffcache(
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
-        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf))
+        _needs_shadow = !(p isa SciMLBase.NullParameters) &&
+            isscimlstructure(p) && !(p isa AbstractArray)
+        _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
+        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), _shadow_p)
     elseif autojacvec isa MooncakeVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
@@ -398,7 +403,8 @@ function adjointdiffcache(
         jac_config, pg_config, paramjac_config,
         jac_noise_config, paramjac_noise_config,
         f_cache, dgdu, dgdp, diffvar_idxs, algevar_idxs,
-        factorized_mass_matrix, issemiexplicitdae
+        factorized_mass_matrix, issemiexplicitdae,
+        tunables, repack
     )
 
     return adjoint_cache, y
