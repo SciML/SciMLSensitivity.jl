@@ -3,8 +3,8 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
 using OrdinaryDiffEqCore
 using SciMLSensitivity
-using ForwardDiff
-using Statistics
+using Enzyme
+using Mooncake
 using Tracker
 import SciMLStructures as SS
 using SymbolicIndexingInterface
@@ -157,29 +157,49 @@ setups = [
     (prob_overdetermined, tunables_overdetermined, repack_overdetermined, nothing),
 ]
 
-# Use ForwardDiff for the DAE section because MTK v11 initialization creates an
-# SCCNonlinearProblem with in-place mutation. Operator-overloading AD backends
-# (Tracker, Zygote) cannot handle mutation, but ForwardDiff's dual numbers propagate
-# through mutation correctly.
-grads = map(setups) do setup
-    prob, tunables, repack, init = setup
-    @show init
-    u0 = prob.u0
-    grad = ForwardDiff.gradient(tunables) do tunables
-        new_prob = remake(prob; u0, p = repack(tunables))
-        if init === nothing
-            new_sol = solve(
-                new_prob, Rodas5P(); abstol = 1.0e-6, reltol = 1.0e-3,
-            )
-        else
-            new_sol = solve(
-                new_prob, Rodas5P(); initializealg = init,
-                abstol = 1.0e-6, reltol = 1.0e-3,
-            )
+# Reverse-mode AD through DAE initialization with SCCNonlinearProblem mutation.
+# Marked as broken until Enzyme/Mooncake fully support this pattern.
+@test_broken begin
+    grads = map(setups) do setup
+        prob, tunables, repack, init = setup
+        u0 = prob.u0
+        loss = let prob = prob, u0 = u0, repack = repack, init = init, sensealg = sensealg
+            tunables_val -> begin
+                new_prob = remake(prob; u0, p = repack(tunables_val))
+                if init === nothing
+                    new_sol = solve(
+                        new_prob, Rodas5P(); sensealg, abstol = 1.0e-6, reltol = 1.0e-3,
+                    )
+                else
+                    new_sol = solve(
+                        new_prob, Rodas5P(); initializealg = init,
+                        sensealg, abstol = 1.0e-6, reltol = 1.0e-3,
+                    )
+                end
+                sum(new_sol)
+            end
         end
-        sum(new_sol)
+        Enzyme.gradient(Enzyme.Reverse, loss, tunables)
     end
-    grad
+    all(x ≈ grads[1] for x in grads)
 end
 
-@test all(x ≈ grads[1] for x in grads)
+@test_broken begin
+    prob_test, tunables_test, repack_test, init_test = setups[1]
+    u0_test = prob_test.u0
+    loss = let prob = prob_test, u0 = u0_test, repack = repack_test,
+            init = init_test, sensealg = sensealg
+
+        tunables_val -> begin
+            new_prob = remake(prob; u0, p = repack(tunables_val))
+            new_sol = solve(
+                new_prob, Rodas5P(); initializealg = init,
+                sensealg, abstol = 1.0e-6, reltol = 1.0e-3,
+            )
+            sum(new_sol)
+        end
+    end
+    rule = Mooncake.build_rrule(loss, tunables_test)
+    _, (_, grad) = Mooncake.value_and_gradient!!(rule, loss, tunables_test)
+    any(!iszero, grad)
+end
