@@ -2444,29 +2444,10 @@ function SciMLBase._concrete_solve_adjoint(
     # Solve the optimization problem
     opt_sol = solve(_prob, alg, args...; kwargs...)
 
-    # Construct a NonlinearProblem with the gradient as the function
     opt_f = _prob.f
 
     if opt_f.grad === nothing
-        # No gradient provided, use automatic differentiation from derivative_wrappers
-        if SciMLBase.isinplace(_prob)
-            # In-place version: grad_f!(du, u, p) computes gradient into du
-            nlprob = NonlinearProblem(opt_sol.u, p) do du, u, p
-                f_u = u -> opt_f(u, p)
-                grad_config = build_grad_config(sensealg, f_u, u, p)
-                gradient!(du, f_u, u, sensealg, grad_config)
-                return nothing
-            end
-        else
-            # Out-of-place version: grad_f(u, p) returns gradient
-            nlprob = NonlinearProblem(opt_sol.u, p) do u, p
-                f_u = u -> opt_f(u, p)
-                du = similar(u)
-                grad_config = build_grad_config(sensealg, f_u, u, p)
-                gradient!(du, f_u, u, sensealg, grad_config)
-                return du
-            end
-        end
+        nlprob = NonlinearProblem(OptimizationGradientWrapper(opt_f, sensealg), opt_sol.u, p)
     else
         nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
     end
