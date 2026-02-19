@@ -128,6 +128,15 @@ function (ff::OptimizationGradientWrapper)(u, p)
     end
 end
 
+function (ff::OptimizationGradientWrapper)(out, u, p)
+    f_u = u -> ff.f(u, p)
+    if ff.sensealg.objective_ad
+        ForwardDiff.gradient!(out, f_u, u)
+    else
+        FiniteDiff.finite_difference_gradient!(out, f_u, u)
+    end
+end
+
 function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
     return determine_chunksize(u, get_chunksize(alg))
 end
