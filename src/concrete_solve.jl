@@ -6,7 +6,9 @@
 # Use a narrow union instead of AbstractNonlinearProblem so that composite problem
 # types like SCCNonlinearProblem (which should differentiate through their individual
 # NonlinearProblem sub-solves) don't accidentally match these dispatches.
-const ConcreteNonlinearProblem = Union{NonlinearProblem, SciMLBase.SteadyStateProblem}
+const ConcreteNonlinearProblem = Union{
+    NonlinearProblem, SciMLBase.ImmutableNonlinearProblem, SciMLBase.SteadyStateProblem,
+}
 
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
