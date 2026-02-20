@@ -14,7 +14,7 @@ import SciMLSensitivity: get_paramjac_config, reactant_run_ad!, ReactantVJP, Rea
 # The function must be captured (not passed as argument) because Reactant
 # can only trace through functions whose identity is encoded in the closure type.
 function _make_vjp_kernel(raw_f, isinplace::Bool)
-    return function(dy_buf, u, p, t, λ)
+    return function (dy_buf, u, p, t, λ)
         du_shadow = zero(u)
         dp_shadow = zero(p)
         dλ_seed = copy(λ)
@@ -56,7 +56,7 @@ end
 # Variant for NullParameters: params are Const (not differentiated).
 # Returns only (dy_buf, du_shadow) since there is no param gradient.
 function _make_vjp_kernel_nullparams(raw_f, isinplace::Bool)
-    return function(dy_buf, u, t, λ)
+    return function (dy_buf, u, t, λ)
         du_shadow = zero(u)
         dλ_seed = copy(λ)
 
@@ -96,17 +96,21 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     raw_f = SciMLBase.unwrapped_f(f)
     iip = SciMLBase.isinplace(f)
 
+    # Steady-state problems pass _t = nothing; use 0.0 as a placeholder.
+    t_val = _t === nothing ? 0.0 : Float64(_t)
+
     if p === nothing || p isa SciMLBase.NullParameters
         # NullParameters: compile a kernel that doesn't differentiate w.r.t. p.
         vjp_kernel = _make_vjp_kernel_nullparams(raw_f, iip)
 
         dy_buf = ConcreteRArray(zero(y))
         u_ra = ConcreteRArray(zero(y))
-        t_ra = Reactant.to_rarray(Float64(_t))
+        t_ra = Reactant.to_rarray(t_val)
         λ_ra = ConcreteRArray(zero(y))
 
         compiled_fn = Reactant.@allowscalar Reactant.compile(
-            vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra))
+            vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra)
+        )
 
         y_cache = zero(y)
         λ_cache = zero(y)
@@ -115,8 +119,10 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
         ygrad_result = zero(y)
 
         # :nullparams tag in slot 2 signals reactant_run_ad! to use the nullparams path
-        return (compiled_fn, :nullparams, y_cache, nothing, λ_cache, dy_cache,
-            dy_result, ygrad_result, nothing)
+        return (
+            compiled_fn, :nullparams, y_cache, nothing, λ_cache, dy_cache,
+            dy_result, ygrad_result, nothing,
+        )
     end
 
     # Create a VJP kernel that captures raw_f in its closure type
@@ -126,7 +132,7 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     dy_buf = ConcreteRArray(zero(y))
     u_ra = ConcreteRArray(zero(y))
     p_ra = ConcreteRArray(zero(p))
-    t_ra = Reactant.to_rarray(Float64(_t))
+    t_ra = Reactant.to_rarray(t_val)
     λ_ra = ConcreteRArray(zero(y))
 
     # Pre-compile the VJP kernel once. Reactant traces through the closure
@@ -135,7 +141,8 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     # Allow scalar indexing during tracing so that ODE functions with scalar
     # operations (e.g. x, y = u) can be compiled.
     compiled_fn = Reactant.@allowscalar Reactant.compile(
-        vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra))
+        vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra)
+    )
 
     # Pre-allocate cached buffers to avoid per-call allocations.
     # Input caches: reused via copyto! to handle SubArrays/views.
@@ -148,13 +155,15 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     ygrad_result = zero(y)
     pgrad_result = zero(p)
 
-    return (compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache,
-        dy_result, ygrad_result, pgrad_result)
+    return (
+        compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache,
+        dy_result, ygrad_result, pgrad_result,
+    )
 end
 
 function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
     compiled_fn, tag, y_cache, p_cache, λ_cache, dy_cache,
-    dy_result, ygrad_result, pgrad_result = paramjac_config
+        dy_result, ygrad_result, pgrad_result = paramjac_config
 
     if tag === :nullparams
         # NullParameters path: kernel takes (dy_buf, u, t, λ) — no p argument
@@ -165,7 +174,8 @@ function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
         y_ra = ConcreteRArray(y_cache)
         λ_ra = ConcreteRArray(λ_cache)
         dy_ra = ConcreteRArray(dy_cache)
-        t_ra = Reactant.to_rarray(Float64(t))
+        t_val = t === nothing ? 0.0 : Float64(t)
+        t_ra = Reactant.to_rarray(t_val)
 
         dy_out, y_grad = compiled_fn(dy_ra, y_ra, t_ra, λ_ra)
 
@@ -187,7 +197,8 @@ function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
     p_ra = ConcreteRArray(p_cache)
     λ_ra = ConcreteRArray(λ_cache)
     dy_ra = ConcreteRArray(dy_cache)
-    t_ra = Reactant.to_rarray(Float64(t))
+    t_val = t === nothing ? 0.0 : Float64(t)
+    t_ra = Reactant.to_rarray(t_val)
 
     dy_out, y_grad, p_grad = compiled_fn(dy_ra, y_ra, p_ra, t_ra, λ_ra)
 
@@ -221,7 +232,7 @@ function _make_cb_state_vjp_kernel(raw_affect, event_idx)
         return nothing
     end
 
-    return function(out_buf, u, p, t, tprev, λ)
+    return function (out_buf, u, p, t, tprev, λ)
         du_shadow = zero(u)
         dp_shadow = zero(p)
         dλ_seed = copy(λ)
@@ -257,7 +268,7 @@ function _make_cb_param_vjp_kernel(raw_affect, event_idx)
         return nothing
     end
 
-    return function(out_buf, u, p, t, tprev, λ)
+    return function (out_buf, u, p, t, tprev, λ)
         du_shadow = zero(u)
         dp_shadow = zero(p)
         dλ_seed = copy(λ)
@@ -278,7 +289,8 @@ function _make_cb_param_vjp_kernel(raw_affect, event_idx)
 end
 
 function get_cb_paramjac_config(
-        ::ReactantLoaded, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode)
+        ::ReactantLoaded, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode
+    )
     if mode === :state
         kernel = _make_cb_state_vjp_kernel(raw_affect, event_idx)
         out_example = ConcreteRArray(zero(y))
@@ -297,25 +309,29 @@ function get_cb_paramjac_config(
         ygrad_result = zero(y)
     end
 
+    cb_t_val = _t === nothing ? 0.0 : Float64(_t)
     u_ra = ConcreteRArray(zero(y))
     p_ra = ConcreteRArray(zero(p))
-    t_ra = Reactant.to_rarray(Float64(_t))
-    tprev_ra = Reactant.to_rarray(Float64(_t))
+    t_ra = Reactant.to_rarray(cb_t_val)
+    tprev_ra = Reactant.to_rarray(cb_t_val)
 
     compiled_fn = Reactant.@allowscalar Reactant.compile(
-        kernel, (out_example, u_ra, p_ra, t_ra, tprev_ra, λ_example))
+        kernel, (out_example, u_ra, p_ra, t_ra, tprev_ra, λ_example)
+    )
 
     y_cache = zero(y)
     p_cache = zero(p)
     pgrad_result = zero(p)
 
-    return (compiled_fn, nothing, y_cache, p_cache, λ_cache, out_cache,
-        out_result, ygrad_result, pgrad_result)
+    return (
+        compiled_fn, nothing, y_cache, p_cache, λ_cache, out_cache,
+        out_result, ygrad_result, pgrad_result,
+    )
 end
 
 function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, tprev, λ)
     compiled_fn, _, y_cache, p_cache, λ_cache, out_cache,
-    out_result, ygrad_result, pgrad_result = paramjac_config
+        out_result, ygrad_result, pgrad_result = paramjac_config
 
     if compiled_fn === nothing
         error("ReactantVJP callback config not initialized")
@@ -331,8 +347,10 @@ function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, tp
     p_ra = ConcreteRArray(p_cache)
     λ_ra = ConcreteRArray(λ_cache)
     out_ra = ConcreteRArray(out_cache)
-    t_ra = Reactant.to_rarray(Float64(t))
-    tprev_ra = Reactant.to_rarray(Float64(tprev))
+    t_val = t === nothing ? 0.0 : Float64(t)
+    tprev_val = tprev === nothing ? 0.0 : Float64(tprev)
+    t_ra = Reactant.to_rarray(t_val)
+    tprev_ra = Reactant.to_rarray(tprev_val)
 
     _out, y_grad, p_grad = compiled_fn(out_ra, y_ra, p_ra, t_ra, tprev_ra, λ_ra)
 

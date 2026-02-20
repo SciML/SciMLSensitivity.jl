@@ -13,6 +13,8 @@ const ConcreteNonlinearProblem = Union{
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
+_is_reactant_loaded() = Base.get_extension(@__MODULE__, :SciMLSensitivityReactantExt) !== nothing
+
 """
     _get_sensitivity_vjp_verbose(verbose)
 
@@ -42,6 +44,11 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     _verbose = _get_sensitivity_vjp_verbose(verbose)
     # Get time value - NonlinearProblems don't have tspan
     t0 = prob isa AbstractNonlinearProblem ? nothing : prob.tspan[1]
+
+    # Prefer ReactantVJP when Reactant extension is loaded
+    if _is_reactant_loaded()
+        return ReactantVJP()
+    end
 
     ez = try
         f = unwrapped_f(prob.f)
@@ -181,35 +188,42 @@ function automatic_sensealg_choice(
             length(u0) + length(tunables) <= 100
         ForwardDiffSensitivity()
     elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
-        # only Zygote is GPU compatible and fast
-        # so if out-of-place, try Zygote
-
-        vjp = try
-            p = prob.p
-            y = prob.u0
-            f = prob.f
-            t = prob.tspan[1]
-            λ = zero(prob.u0)
-
-            if p === nothing || p isa SciMLBase.NullParameters
-                _dy, back = Zygote.pullback(y) do u
-                    vec(f(u, p, t))
-                end
-                tmp1 = back(λ)
-            else
-                _dy, back = Zygote.pullback(y, p) do u, p
-                    vec(f(u, p, t))
-                end
-                tmp1, tmp2 = back(λ)
-            end
-            ZygoteVJP()
-        catch e
-            if _verbose
-                @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
-                STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
-                println()
-            end
+        # Prefer ReactantVJP when Reactant extension is loaded
+        vjp = if _is_reactant_loaded()
+            ReactantVJP()
+        else
             false
+        end
+
+        # Fall back to Zygote (GPU compatible and fast for OOP)
+        if vjp == false
+            vjp = try
+                p = prob.p
+                y = prob.u0
+                f = prob.f
+                t = prob.tspan[1]
+                λ = zero(prob.u0)
+
+                if p === nothing || p isa SciMLBase.NullParameters
+                    _dy, back = Zygote.pullback(y) do u
+                        vec(f(u, p, t))
+                    end
+                    tmp1 = back(λ)
+                else
+                    _dy, back = Zygote.pullback(y, p) do u, p
+                        vec(f(u, p, t))
+                    end
+                    tmp1, tmp2 = back(λ)
+                end
+                ZygoteVJP()
+            catch e
+                if _verbose
+                    @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+                    STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
+                    println()
+                end
+                false
+            end
         end
 
         if vjp == false

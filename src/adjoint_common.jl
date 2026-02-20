@@ -243,7 +243,8 @@ function adjointdiffcache(
     elseif autojacvec isa ReactantVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(
-            ReactantLoaded(), autojacvec, pf, p, f, y, _t)
+            ReactantLoaded(), autojacvec, pf, p, f, y, _t
+        )
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
             autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -527,7 +528,7 @@ end
 
 function get_paramjac_config(::Any, ::ReactantVJP, pf, p, f, y, _t)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
-          "`using Reactant` to use this functionality"
+        "`using Reactant` to use this functionality"
     error(msg)
 end
 
@@ -606,19 +607,19 @@ end
 
 function reactant_run_ad!(dλ, dgrad, dy, paramjac_config, y, p, t, λ)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
-          "`using Reactant` to use this functionality"
+        "`using Reactant` to use this functionality"
     error(msg)
 end
 
 function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config, y, p, t, tprev, λ)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
-          "`using Reactant` to use this functionality"
+        "`using Reactant` to use this functionality"
     error(msg)
 end
 
 function get_cb_paramjac_config(::Any, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
-          "`using Reactant` to use this functionality"
+        "`using Reactant` to use this functionality"
     error(msg)
 end
 
