@@ -364,7 +364,7 @@ function SciMLBase._concrete_solve_adjoint(
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm &&
-            !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP})
+            !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP, ReactantVJP})
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     return SciMLBase._concrete_solve_adjoint(
