@@ -142,6 +142,8 @@ BacksolveAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -315,6 +317,8 @@ InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -445,6 +449,8 @@ QuadratureAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -547,6 +553,8 @@ GaussAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -641,6 +649,8 @@ GaussKronrodAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -1165,6 +1175,8 @@ NILSAS(nseg, nstep, M = nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
           * `TrackerVJP`: Uses Tracker.jl for the vjp.
           * `ZygoteVJP`: Uses Zygote.jl for the vjp.
           * `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+          * `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+            Requires `using Reactant`.
           * `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
             is a boolean for whether to precompile the tape, which should only be done
             if there are no branches (`if` or `while` statements) in the `f` function.
@@ -1263,6 +1275,8 @@ SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
       + `TrackerVJP`: Uses Tracker.jl for the vjp.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReactantVJP`: Uses Reactant.jl-compiled Enzyme.jl for the vjp.
+        Requires `using Reactant`.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
         is a boolean for whether to precompile the tape, which should only be done
         if there are no branches (`if` or `while` statements) in the `f` function.
@@ -1456,6 +1470,25 @@ MooncakeVJP()
 """
 struct MooncakeVJP <: VJPChoice end
 
+"""
+```julia
+ReactantVJP <: VJPChoice
+```
+
+Uses Reactant.jl to compile Enzyme.jl's reverse-mode automatic differentiation into
+XLA/HLO for hardware-accelerated vector-Jacobian product computation. The entire
+Enzyme reverse pass is compiled by Reactant and can execute on CPU, GPU, or TPU.
+
+Requires `using Reactant` to be loaded.
+
+## Constructor
+
+```julia
+ReactantVJP()
+```
+"""
+struct ReactantVJP <: VJPChoice end
+
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing
 @inline function alg_autodiff(
@@ -1546,6 +1579,7 @@ error will be thrown.
 supports_structured_vjp(::ZygoteVJP) = true
 supports_structured_vjp(::EnzymeVJP) = true
 supports_structured_vjp(::MooncakeVJP) = true
+supports_structured_vjp(::ReactantVJP) = true
 supports_structured_vjp(::ReverseDiffVJP) = false
 supports_structured_vjp(::Bool) = false
 supports_structured_vjp(::Nothing) = false
@@ -1586,6 +1620,7 @@ end
 get_autodiff_from_vjp(::ZygoteVJP) = AutoZygote()
 get_autodiff_from_vjp(::EnzymeVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::MooncakeVJP) = AutoMooncake()
+get_autodiff_from_vjp(::ReactantVJP) = AutoEnzyme()
 get_autodiff_from_vjp(::TrackerVJP) = AutoTracker()
 get_autodiff_from_vjp(::Nothing) = AutoZygote()
 get_autodiff_from_vjp(b::Bool) = ifelse(b, AutoForwardDiff(), AutoFiniteDiff())
