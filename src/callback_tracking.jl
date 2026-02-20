@@ -287,13 +287,8 @@ function _setup_reverse_callbacks(
     # The ODE adjoint may use a different autojacvec (even numerical/false), but the
     # callback affect functions (CallbackAffectWrapper) are separate and typically work
     # with ReverseDiff even when the ODE function doesn't.
-    cb_autojacvec = if sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}
+    cb_autojacvec = if sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP}
         sensealg.autojacvec
-    elseif sensealg.autojacvec isa ReactantVJP
-        # ReactantVJP delegates to EnzymeVJP for callback affect VJPs.
-        # Callbacks are called infrequently (only at event times) so there is
-        # no benefit from Reactant compilation here.
-        EnzymeVJP()
     else
         @warn "autojacvec=$(sensealg.autojacvec) is not compatible with callbacks, using ReverseDiffVJP() for callback VJPs"
         ReverseDiffVJP()
@@ -511,7 +506,7 @@ end
 
 function setup_w_wp(
         cb::Union{DiscreteCallback, ContinuousCallback, VectorContinuousCallback},
-        autojacvec::Union{ReverseDiffVJP, EnzymeVJP}, pos_neg, event_idx,
+        autojacvec::Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP}, pos_neg, event_idx,
         tprev
     )
     w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
@@ -523,6 +518,7 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
     return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
+get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
     return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))
@@ -580,42 +576,71 @@ function get_cb_diffcaches(
                     _t = cb.affect_neg!.tprev[end]
                 end
 
-                w, wp = setup_w_wp(cb, autojacvec, pos_neg, event_idx, _t)
+                if autojacvec isa ReactantVJP
+                    # ReactantVJP: compile callback affect functions through Reactant
+                    raw_affect = get_affect!(cb, pos_neg)
 
-                paramjac_config = get_paramjac_config(
-                    autojacvec, _p, w, y, _p, _t;
-                    numindvar = length(y), alg = nothing,
-                    isinplace = true, isRODE = false,
-                    _W = nothing
-                )
-                pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
-                if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
+                    w_paramjac = get_cb_paramjac_config(
+                        ReactantLoaded(), autojacvec, raw_affect,
+                        event_idx, y, _p, _t, :state
+                    )
+                    diffcache_w = AdjointDiffCache(
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, w_paramjac,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
+
+                    wp_paramjac = get_cb_paramjac_config(
+                        ReactantLoaded(), autojacvec, raw_affect,
+                        event_idx, y, _p, _t, :param
+                    )
+                    diffcache_wp = AdjointDiffCache(
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, wp_paramjac,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
+                else
+                    w, wp = setup_w_wp(cb, autojacvec, pos_neg, event_idx, _t)
+
+                    paramjac_config = get_paramjac_config(
+                        autojacvec, _p, w, y, _p, _t;
+                        numindvar = length(y), alg = nothing,
+                        isinplace = true, isRODE = false,
+                        _W = nothing
+                    )
+                    pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
+                    if autojacvec isa EnzymeVJP
+                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
+                    end
+
+                    diffcache_w = AdjointDiffCache(
+                        nothing, pf, nothing, nothing, nothing,
+                        nothing, nothing, nothing, paramjac_config,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
+
+                    paramjac_config = _get_wp_paramjac_config(
+                        autojacvec, _p, wp, y, _p, _t
+                    )
+                    pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
+                    if autojacvec isa EnzymeVJP
+                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
+                    end
+
+                    diffcache_wp = AdjointDiffCache(
+                        nothing, pf, nothing, nothing, nothing,
+                        nothing, nothing, nothing, paramjac_config,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
                 end
-
-                diffcache_w = AdjointDiffCache(
-                    nothing, pf, nothing, nothing, nothing,
-                    nothing, nothing, nothing, paramjac_config,
-                    nothing, nothing, nothing, nothing, nothing,
-                    nothing, nothing, nothing, false,
-                    nothing, identity
-                )
-
-                paramjac_config = _get_wp_paramjac_config(
-                    autojacvec, _p, wp, y, _p, _t
-                )
-                pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
-                if autojacvec isa EnzymeVJP
-                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
-                end
-
-                diffcache_wp = AdjointDiffCache(
-                    nothing, pf, nothing, nothing, nothing,
-                    nothing, nothing, nothing, paramjac_config,
-                    nothing, nothing, nothing, nothing, nothing,
-                    nothing, nothing, nothing, false,
-                    nothing, identity
-                )
 
                 push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
             end
