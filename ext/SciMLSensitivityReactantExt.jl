@@ -53,14 +53,71 @@ function _make_vjp_kernel(raw_f, isinplace::Bool)
     end
 end
 
-function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
-    if p === nothing || p isa SciMLBase.NullParameters
-        return (nothing, pf)
-    end
+# Variant for NullParameters: params are Const (not differentiated).
+# Returns only (dy_buf, du_shadow) since there is no param gradient.
+function _make_vjp_kernel_nullparams(raw_f, isinplace::Bool)
+    return function(dy_buf, u, t, λ)
+        du_shadow = zero(u)
+        dλ_seed = copy(λ)
 
+        if isinplace
+            Enzyme.autodiff(
+                Enzyme.Reverse,
+                Enzyme.Const(raw_f),
+                Enzyme.Const,
+                Enzyme.Duplicated(dy_buf, dλ_seed),
+                Enzyme.Duplicated(u, du_shadow),
+                Enzyme.Const(SciMLBase.NullParameters()),
+                Enzyme.Const(t)
+            )
+        else
+            function oop_wrapper(dy_buf, u, t)
+                result = raw_f(u, SciMLBase.NullParameters(), t)
+                copyto!(dy_buf, result)
+                return nothing
+            end
+
+            Enzyme.autodiff(
+                Enzyme.Reverse,
+                Enzyme.Const(oop_wrapper),
+                Enzyme.Const,
+                Enzyme.Duplicated(dy_buf, dλ_seed),
+                Enzyme.Duplicated(u, du_shadow),
+                Enzyme.Const(t)
+            )
+        end
+
+        return dy_buf, du_shadow
+    end
+end
+
+function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     # Extract the raw ODE function for direct use in the kernel
     raw_f = SciMLBase.unwrapped_f(f)
     iip = SciMLBase.isinplace(f)
+
+    if p === nothing || p isa SciMLBase.NullParameters
+        # NullParameters: compile a kernel that doesn't differentiate w.r.t. p.
+        vjp_kernel = _make_vjp_kernel_nullparams(raw_f, iip)
+
+        dy_buf = ConcreteRArray(zero(y))
+        u_ra = ConcreteRArray(zero(y))
+        t_ra = Reactant.to_rarray(Float64(_t))
+        λ_ra = ConcreteRArray(zero(y))
+
+        compiled_fn = Reactant.@allowscalar Reactant.compile(
+            vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra))
+
+        y_cache = zero(y)
+        λ_cache = zero(y)
+        dy_cache = zero(y)
+        dy_result = zero(y)
+        ygrad_result = zero(y)
+
+        # :nullparams tag in slot 2 signals reactant_run_ad! to use the nullparams path
+        return (compiled_fn, :nullparams, y_cache, nothing, λ_cache, dy_cache,
+            dy_result, ygrad_result, nothing)
+    end
 
     # Create a VJP kernel that captures raw_f in its closure type
     vjp_kernel = _make_vjp_kernel(raw_f, iip)
@@ -96,14 +153,31 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
 end
 
 function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
-    compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache,
+    compiled_fn, tag, y_cache, p_cache, λ_cache, dy_cache,
     dy_result, ygrad_result, pgrad_result = paramjac_config
 
-    if compiled_fn === nothing
-        error("ReactantVJP does not support NullParameters")
+    if tag === :nullparams
+        # NullParameters path: kernel takes (dy_buf, u, t, λ) — no p argument
+        copyto!(y_cache, y)
+        copyto!(λ_cache, λ)
+        fill!(dy_cache, zero(eltype(dy_cache)))
+
+        y_ra = ConcreteRArray(y_cache)
+        λ_ra = ConcreteRArray(λ_cache)
+        dy_ra = ConcreteRArray(dy_cache)
+        t_ra = Reactant.to_rarray(Float64(t))
+
+        dy_out, y_grad = compiled_fn(dy_ra, y_ra, t_ra, λ_ra)
+
+        copyto!(dy_result, dy_out)
+        copyto!(ygrad_result, y_grad)
+        dy !== nothing && copyto!(dy, dy_result)
+        dλ !== nothing && copyto!(dλ, ygrad_result)
+        # dgrad stays untouched — no param gradient for NullParameters
+        return nothing
     end
 
-    # Copy into pre-allocated input buffers (handles SubArrays/views)
+    # Normal path with parameters
     copyto!(y_cache, y)
     copyto!(p_cache, p)
     copyto!(λ_cache, λ)
@@ -117,7 +191,6 @@ function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
 
     dy_out, y_grad, p_grad = compiled_fn(dy_ra, y_ra, p_ra, t_ra, λ_ra)
 
-    # Device-to-host into pre-allocated result caches, then into caller's buffers
     copyto!(dy_result, dy_out)
     copyto!(ygrad_result, y_grad)
     copyto!(pgrad_result, p_grad)
