@@ -604,13 +604,13 @@ function get_pf(::ReactantVJP, prob, _f)
     end
 end
 
-function reactant_run_ad(paramjac_config, y, p, t, λ)
+function reactant_run_ad!(dλ, dgrad, dy, paramjac_config, y, p, t, λ)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
           "`using Reactant` to use this functionality"
     error(msg)
 end
 
-function reactant_run_cb_ad(paramjac_config, y, p, t, tprev, λ)
+function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config, y, p, t, tprev, λ)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
           "`using Reactant` to use this functionality"
     error(msg)

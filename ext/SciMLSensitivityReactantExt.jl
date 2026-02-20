@@ -3,8 +3,8 @@ module SciMLSensitivityReactantExt
 using SciMLSensitivity: SciMLSensitivity, SciMLBase, FakeIntegrator
 using Reactant: Reactant, ConcreteRArray
 using Enzyme: Enzyme
-import SciMLSensitivity: get_paramjac_config, reactant_run_ad, ReactantVJP, ReactantLoaded,
-    get_cb_paramjac_config, reactant_run_cb_ad
+import SciMLSensitivity: get_paramjac_config, reactant_run_ad!, ReactantVJP, ReactantLoaded,
+    get_cb_paramjac_config, reactant_run_cb_ad!
 
 # =============================================================================
 # ODE VJP kernels
@@ -80,24 +80,30 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     compiled_fn = Reactant.@allowscalar Reactant.compile(
         vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra))
 
-    # Pre-allocate cached buffers to avoid per-call allocations in reactant_run_ad.
-    # These are reused via copyto! instead of allocating new arrays each VJP call.
+    # Pre-allocate cached buffers to avoid per-call allocations.
+    # Input caches: reused via copyto! to handle SubArrays/views.
+    # Result caches: landing zone for device-to-host transfer from ConcreteRArray.
     y_cache = zero(y)
     p_cache = zero(p)
     λ_cache = zero(y)
     dy_cache = zero(y)
+    dy_result = zero(y)
+    ygrad_result = zero(y)
+    pgrad_result = zero(p)
 
-    return (compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache)
+    return (compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache,
+        dy_result, ygrad_result, pgrad_result)
 end
 
-function reactant_run_ad(paramjac_config::Tuple, y, p, t, λ)
-    compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache = paramjac_config
+function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
+    compiled_fn, pf, y_cache, p_cache, λ_cache, dy_cache,
+    dy_result, ygrad_result, pgrad_result = paramjac_config
 
     if compiled_fn === nothing
         error("ReactantVJP does not support NullParameters")
     end
 
-    # Copy into pre-allocated buffers (handles SubArrays/views without allocating)
+    # Copy into pre-allocated input buffers (handles SubArrays/views)
     copyto!(y_cache, y)
     copyto!(p_cache, p)
     copyto!(λ_cache, λ)
@@ -109,9 +115,16 @@ function reactant_run_ad(paramjac_config::Tuple, y, p, t, λ)
     dy_ra = ConcreteRArray(dy_cache)
     t_ra = Reactant.to_rarray(Float64(t))
 
-    dy, y_grad, p_grad = compiled_fn(dy_ra, y_ra, p_ra, t_ra, λ_ra)
+    dy_out, y_grad, p_grad = compiled_fn(dy_ra, y_ra, p_ra, t_ra, λ_ra)
 
-    return Array(dy), Array(y_grad), Array(p_grad)
+    # Device-to-host into pre-allocated result caches, then into caller's buffers
+    copyto!(dy_result, dy_out)
+    copyto!(ygrad_result, y_grad)
+    copyto!(pgrad_result, p_grad)
+    dy !== nothing && copyto!(dy, dy_result)
+    dλ !== nothing && copyto!(dλ, ygrad_result)
+    dgrad !== nothing && copyto!(dgrad, pgrad_result)
+    return nothing
 end
 
 # =============================================================================
@@ -199,12 +212,16 @@ function get_cb_paramjac_config(
         λ_example = ConcreteRArray(zero(y))
         out_cache = zero(y)
         λ_cache = zero(y)
+        out_result = zero(y)
+        ygrad_result = zero(y)
     else # :param
         kernel = _make_cb_param_vjp_kernel(raw_affect, event_idx)
         out_example = ConcreteRArray(zero(p))
         λ_example = ConcreteRArray(zero(p))
         out_cache = zero(p)
         λ_cache = zero(p)
+        out_result = zero(p)
+        ygrad_result = zero(y)
     end
 
     u_ra = ConcreteRArray(zero(y))
@@ -217,18 +234,21 @@ function get_cb_paramjac_config(
 
     y_cache = zero(y)
     p_cache = zero(p)
+    pgrad_result = zero(p)
 
-    return (compiled_fn, nothing, y_cache, p_cache, λ_cache, out_cache)
+    return (compiled_fn, nothing, y_cache, p_cache, λ_cache, out_cache,
+        out_result, ygrad_result, pgrad_result)
 end
 
-function reactant_run_cb_ad(paramjac_config::Tuple, y, p, t, tprev, λ)
-    compiled_fn, _, y_cache, p_cache, λ_cache, out_cache = paramjac_config
+function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, tprev, λ)
+    compiled_fn, _, y_cache, p_cache, λ_cache, out_cache,
+    out_result, ygrad_result, pgrad_result = paramjac_config
 
     if compiled_fn === nothing
         error("ReactantVJP callback config not initialized")
     end
 
-    # Copy into pre-allocated buffers
+    # Copy into pre-allocated input buffers
     copyto!(y_cache, y)
     copyto!(p_cache, p)
     copyto!(λ_cache, λ)
@@ -243,7 +263,14 @@ function reactant_run_cb_ad(paramjac_config::Tuple, y, p, t, tprev, λ)
 
     _out, y_grad, p_grad = compiled_fn(out_ra, y_ra, p_ra, t_ra, tprev_ra, λ_ra)
 
-    return Array(_out), Array(y_grad), Array(p_grad)
+    # Device-to-host into pre-allocated result caches, then into caller's buffers
+    copyto!(out_result, _out)
+    copyto!(ygrad_result, y_grad)
+    copyto!(pgrad_result, p_grad)
+    dy !== nothing && copyto!(dy, out_result)
+    dλ !== nothing && copyto!(dλ, ygrad_result)
+    dgrad !== nothing && copyto!(dgrad, pgrad_result)
+    return nothing
 end
 
 end # module
