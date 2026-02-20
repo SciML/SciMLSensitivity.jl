@@ -240,6 +240,10 @@ function adjointdiffcache(
     elseif autojacvec isa MooncakeVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
+    elseif autojacvec isa ReactantVJP
+        pf = get_pf(autojacvec, prob, unwrappedf)
+        paramjac_config = get_paramjac_config(
+            ReactantLoaded(), autojacvec, pf, p, f, y, _t)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
             autojacvec isa EnzymeVJP
         paramjac_config = nothing
@@ -514,9 +518,16 @@ end
 
 # Dispatched on inside extension.
 struct MooncakeLoaded end
+struct ReactantLoaded end
 
 function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
     msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
+    error(msg)
+end
+
+function get_paramjac_config(::Any, ::ReactantVJP, pf, p, f, y, _t)
+    msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
+          "`using Reactant` to use this functionality"
     error(msg)
 end
 
@@ -562,6 +573,40 @@ end
 
 function mooncake_run_ad(paramjac_config, y, p, t, λ)
     msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
+    error(msg)
+end
+
+function get_pf(::ReactantVJP, prob, _f)
+    isinplace = DiffEqBase.isinplace(prob)
+    isRODE = isa(prob, RODEProblem)
+    return pf = let f = _f
+        if isinplace && isRODE
+            function (out, u, _p, t, W)
+                f(out, u, _p, t, W)
+                return out
+            end
+        elseif isinplace
+            function (out, u, _p, t)
+                f(out, u, _p, t)
+                return out
+            end
+        elseif !isinplace && isRODE
+            function (out, u, _p, t, W)
+                out .= f(u, _p, t, W)
+                return out
+            end
+        else
+            function (out, u, _p, t)
+                out .= f(u, _p, t)
+                return out
+            end
+        end
+    end
+end
+
+function reactant_run_ad(paramjac_config, y, p, t, λ)
+    msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
+          "`using Reactant` to use this functionality"
     error(msg)
 end
 
