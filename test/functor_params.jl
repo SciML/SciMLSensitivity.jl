@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, Zygote, Test
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, Test, Reactant
 using Functors: Functors, @functor
 using LinearAlgebra: mul!
 
@@ -54,6 +54,7 @@ end
 
         @test SciMLSensitivity.supports_structured_vjp(ZygoteVJP()) == true
         @test SciMLSensitivity.supports_structured_vjp(EnzymeVJP()) == true
+        @test SciMLSensitivity.supports_structured_vjp(ReactantVJP()) == true
         @test SciMLSensitivity.supports_structured_vjp(ReverseDiffVJP()) == false
         @test SciMLSensitivity.supports_structured_vjp(false) == false
         @test SciMLSensitivity.supports_structured_vjp(true) == false

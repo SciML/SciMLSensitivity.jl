@@ -1,6 +1,6 @@
 using Zygote, SciMLSensitivity
 println("Starting tests")
-using OrdinaryDiffEq, ForwardDiff, Test
+using OrdinaryDiffEq, ForwardDiff, Test, Reactant
 
 function lotka_volterra(u, p, t)
     x, y = u
@@ -227,11 +227,18 @@ if VERSION >= v"1.7-"
             @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p
             )[1] isa Vector
+            @test Zygote.gradient(
+                p -> loss(p, QuadratureAdjoint(autojacvec = ReactantVJP())), p
+            )[1] isa Vector
             @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
                 Vector
         else
             dp1 = Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p
+            )[1]
+            @test dp ≈ dp1 rtol = 1.0e-2
+            dp1 = Zygote.gradient(
+                p -> loss(p, QuadratureAdjoint(autojacvec = ReactantVJP())), p
             )[1]
             @test dp ≈ dp1 rtol = 1.0e-2
             dp1 = Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
@@ -296,6 +303,11 @@ if VERSION >= v"1.7-"
         x -> sum_of_solution_CASA(x, vjp = TrackerVJP()),
         [u0; p]
     )[1]
+    println("grad9")
+    grad9 = Zygote.gradient(
+        x -> sum_of_solution_CASA(x, vjp = ReactantVJP()),
+        [u0; p]
+    )[1]
 
     @test grad1 ≈ grad2
     @test grad1 ≈ grad3
@@ -303,4 +315,5 @@ if VERSION >= v"1.7-"
     #@test grad1 ≈ grad5
     #@test grad1 ≈ grad6
     @test grad1 ≈ grad7 rtol = 1.0e-2
+    @test grad1 ≈ grad9
 end

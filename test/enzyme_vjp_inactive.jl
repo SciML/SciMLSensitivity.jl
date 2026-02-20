@@ -1,4 +1,4 @@
-using Test, SciMLSensitivity, Enzyme
+using Test, SciMLSensitivity, Enzyme, Reactant
 
 # Test that VJP choice types are treated as inactive by Enzyme
 # This addresses issue #1225 where sensealg in ODEProblem constructor would fail
@@ -28,7 +28,7 @@ using Test, SciMLSensitivity, Enzyme
 
     # Test 2: Test different VJP choice types are inactive
     @testset "Different VJP types inactive" begin
-        vjp_types = [EnzymeVJP(), ZygoteVJP(), ReverseDiffVJP(), TrackerVJP()]
+        vjp_types = [EnzymeVJP(), ZygoteVJP(), ReverseDiffVJP(), TrackerVJP(), ReactantVJP()]
 
         for vjp in vjp_types
             function test_func(x)

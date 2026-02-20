@@ -3,6 +3,7 @@ using OrdinaryDiffEq
 using ForwardDiff, FiniteDiff, Zygote
 using QuadGK
 using Test
+using Reactant
 
 abstol = 1.0e-14
 reltol = 1.0e-14
@@ -64,6 +65,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); dgdu_continuous = dgdu,
     dgdp_continuous = dgdp, g,
+    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dgdu,
+    dgdp_continuous = dgdp, g,
     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -106,6 +115,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); dgdu_continuous = dgdu,
     dgdp_continuous = dgdp, g,
+    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dgdu,
+    dgdp_continuous = dgdp, g,
     sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -141,6 +158,14 @@ du0, dp = adjoint_sensitivities(
     sol, Tsit5(); dgdu_continuous = dgdu,
     dgdp_continuous = dgdp, g,
     sensealg = QuadratureAdjoint(; autojacvec = EnzymeVJP(), abstol, reltol),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dgdu,
+    dgdp_continuous = dgdp, g,
+    sensealg = QuadratureAdjoint(; autojacvec = ReactantVJP(), abstol, reltol),
     abstol, reltol
 )
 @test du0 ≈ dForwardDiff[1:2]
@@ -219,6 +244,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete = dgdp,
+    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete = dgdp,
     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -261,6 +294,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete = dgdp,
+    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete = dgdp,
     sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -296,6 +337,14 @@ du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete = dgdp,
     sensealg = QuadratureAdjoint(; autojacvec = EnzymeVJP(), abstol, reltol),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete = dgdp,
+    sensealg = QuadratureAdjoint(; autojacvec = ReactantVJP(), abstol, reltol),
     abstol, reltol
 )
 @test du0 ≈ dForwardDiff[1:2]
@@ -400,6 +449,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete, dgdu_continuous, dgdp_continuous,
+    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete, dgdu_continuous, dgdp_continuous,
     sensealg = BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -442,6 +499,14 @@ du0, dp = adjoint_sensitivities(
 du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete, dgdu_continuous, dgdp_continuous,
+    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP()),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete, dgdu_continuous, dgdp_continuous,
     sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
     abstol, reltol
 )
@@ -477,6 +542,14 @@ du0, dp = adjoint_sensitivities(
     sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
     dgdp_discrete, dgdu_continuous, dgdp_continuous,
     sensealg = QuadratureAdjoint(; autojacvec = EnzymeVJP(), abstol, reltol),
+    abstol, reltol
+)
+@test du0 ≈ dForwardDiff[1:2]
+@test dp' ≈ dForwardDiff[3:6]
+du0, dp = adjoint_sensitivities(
+    sol, Tsit5(); t = savingtimes, dgdu_discrete = dgdu,
+    dgdp_discrete, dgdu_continuous, dgdp_continuous,
+    sensealg = QuadratureAdjoint(; autojacvec = ReactantVJP(), abstol, reltol),
     abstol, reltol
 )
 @test du0 ≈ dForwardDiff[1:2]
