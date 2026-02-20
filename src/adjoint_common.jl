@@ -610,6 +610,18 @@ function reactant_run_ad(paramjac_config, y, p, t, λ)
     error(msg)
 end
 
+function reactant_run_cb_ad(paramjac_config, y, p, t, tprev, λ)
+    msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
+          "`using Reactant` to use this functionality"
+    error(msg)
+end
+
+function get_cb_paramjac_config(::Any, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode)
+    msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
+          "`using Reactant` to use this functionality"
+    error(msg)
+end
+
 function getprob(S::SensitivityFunction)
     return (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 end

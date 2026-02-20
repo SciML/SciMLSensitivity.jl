@@ -921,7 +921,13 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, 
 end
 
 function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::ReactantVJP, dgrad, dy, W)
-    _dy, y_grad, p_grad = reactant_run_ad(S.diffcache.paramjac_config, y, p, t, λ)
+    if S isa Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
+        tprev = S.f.tprev
+        _dy, y_grad, p_grad = reactant_run_cb_ad(
+            S.diffcache.paramjac_config, y, p, t, tprev, λ)
+    else
+        _dy, y_grad, p_grad = reactant_run_ad(S.diffcache.paramjac_config, y, p, t, λ)
+    end
     dy !== nothing && recursive_copyto!(dy, _dy)
     dλ !== nothing && recursive_copyto!(dλ, y_grad)
     dgrad !== nothing && recursive_copyto!(dgrad, p_grad)
