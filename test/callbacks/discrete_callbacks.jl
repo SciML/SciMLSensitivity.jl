@@ -425,36 +425,32 @@ end
             gZy = Zygote.gradient(loss, p)[1]
             @test gFD ≈ gZy
         end
-        # ReactantVJP: f and callbacks use scalar indexing (D[1], u[1], p[1], etc.)
-        # which can fail during Reactant tracing (upstream limitation).
         @testset "Dosing example ReactantVJP" begin
-            @test_broken begin
-                N0 = [0.0]
-                p_dose = [100.0, 50.0]
-                tspan_dose = (0.0, 10.0)
-                f_dose(D, u, p, t) = (D[1] = p[1] - u[1])
+            N0 = [0.0]
+            p_dose = [100.0, 50.0]
+            tspan_dose = (0.0, 10.0)
+            f_dose(D, u, p, t) = (D[1] = p[1] - u[1])
 
-                prob_dose = ODEProblem(f_dose, N0, tspan_dose, p_dose)
+            prob_dose = ODEProblem(f_dose, N0, tspan_dose, p_dose)
 
-                tinject = 8.0
-                condition_dose(u, t, integrator) = t == tinject
-                affect_dose(integrator) = integrator.u[1] += integrator.p[2]
-                cb_dose = DiscreteCallback(condition_dose, affect_dose)
+            tinject = 8.0
+            condition_dose(u, t, integrator) = t == tinject
+            affect_dose(integrator) = integrator.u[1] += integrator.p[2]
+            cb_dose = DiscreteCallback(condition_dose, affect_dose)
 
-                function loss_dose(p)
-                    _prob = remake(prob_dose; p)
-                    _sol = solve(
-                        _prob, Tsit5(); callback = cb_dose,
-                        abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],
-                        sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())
-                    )
-                    _sol.u[end][1]
-                end
-
-                gFD_dose = ForwardDiff.gradient(loss_dose, p_dose)
-                gZy_dose = Zygote.gradient(loss_dose, p_dose)[1]
-                gFD_dose ≈ gZy_dose
+            function loss_dose(p)
+                _prob = remake(prob_dose; p)
+                _sol = solve(
+                    _prob, Tsit5(); callback = cb_dose,
+                    abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],
+                    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())
+                )
+                _sol.u[end][1]
             end
+
+            gFD_dose = ForwardDiff.gradient(loss_dose, p_dose)
+            gZy_dose = Zygote.gradient(loss_dose, p_dose)[1]
+            @test gFD_dose ≈ gZy_dose
         end
     end
 end
