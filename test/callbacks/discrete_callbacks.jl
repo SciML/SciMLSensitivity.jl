@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Zygote
+using OrdinaryDiffEq, Zygote, Reactant
 using SciMLSensitivity, Test, ForwardDiff
 
 abstol = 1.0e-12
@@ -417,6 +417,34 @@ end
                     _prob, Tsit5(); callback = cb,
                     abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],
                     sensealg = BacksolveAdjoint(autojacvec = EnzymeVJP())
+                )
+                _sol.u[end][1]
+            end
+
+            gFD = ForwardDiff.gradient(loss, p)
+            gZy = Zygote.gradient(loss, p)[1]
+            @test gFD ≈ gZy
+        end
+        @testset "Dosing example ReactantVJP" begin
+            N0 = [0.0] # initial population
+            p = [100.0, 50.0] # steady-state pop., M
+            tspan = (0.0, 10.0) # integration time
+            f(D, u, p, t) = (D[1] = p[1] - u[1]) # system
+
+            prob = ODEProblem(f, N0, tspan, p)
+
+            # at time tinject1 we inject M1 cells
+            tinject = 8.0
+            condition(u, t, integrator) = t == tinject
+            affect(integrator) = integrator.u[1] += integrator.p[2]
+            cb = DiscreteCallback(condition, affect)
+
+            function loss(p)
+                _prob = remake(prob; p)
+                _sol = solve(
+                    _prob, Tsit5(); callback = cb,
+                    abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],
+                    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())
                 )
                 _sol.u[end][1]
             end

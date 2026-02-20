@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, Test, ADTypes
+using OrdinaryDiffEq, SciMLSensitivity, Test, ADTypes, Reactant
 function f!(du, u::AbstractArray{T}, p, x) where {T}
     du[1] = -p[1] * exp((x - 8)) * u[1]
     return nothing
@@ -45,5 +45,12 @@ res1 = adjoint_sensitivities(
     abstol = 1.0e-6, reltol = 1.0e-6, sensealg = QuadratureAdjoint(autojacvec = EnzymeVJP())
 );
 
+res3 = adjoint_sensitivities(
+    sol, KenCarp4(); dgdu_continuous = dg, g,
+    abstol = 1.0e-6, reltol = 1.0e-6, sensealg = QuadratureAdjoint(autojacvec = ReactantVJP())
+);
+
 @test res1[1] ≈ res2[1]
 @test res1[2] ≈ res2[2]
+@test res1[1] ≈ res3[1]
+@test res1[2] ≈ res3[2]

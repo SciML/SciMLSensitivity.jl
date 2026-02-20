@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, Zygote
+using OrdinaryDiffEq, Zygote, Reactant
 using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
 
 abstol = 1.0e-12
@@ -351,6 +351,14 @@ println("Continuous Callbacks")
         @test gFD ≈ gZy rtol = 1.0e-10
 
         sensealg = GaussAdjoint(autojacvec = EnzymeVJP())
+        gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+        @test gFD ≈ gZy rtol = 1.0e-10
+
+        sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+        gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+        @test gFD ≈ gZy rtol = 1.0e-10
+
+        sensealg = GaussAdjoint(autojacvec = ReactantVJP())
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD ≈ gZy rtol = 1.0e-10
     end
