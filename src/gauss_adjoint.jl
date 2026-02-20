@@ -594,8 +594,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
         out .= p_grad
     elseif sensealg.autojacvec isa ReactantVJP
-        _, _, p_grad = reactant_run_ad(paramjac_config, y, p, t, λ)
-        out .= p_grad
+        reactant_run_ad!(nothing, out, nothing, paramjac_config, y, p, t, λ)
     else
         error("autojacvec choice $(sensealg.autojacvec) is not supported by GaussAdjoint")
     end
