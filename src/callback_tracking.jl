@@ -289,6 +289,11 @@ function _setup_reverse_callbacks(
     # with ReverseDiff even when the ODE function doesn't.
     cb_autojacvec = if sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP}
         sensealg.autojacvec
+    elseif sensealg.autojacvec isa ReactantVJP
+        # ReactantVJP delegates to EnzymeVJP for callback affect VJPs.
+        # Callbacks are called infrequently (only at event times) so there is
+        # no benefit from Reactant compilation here.
+        EnzymeVJP()
     else
         @warn "autojacvec=$(sensealg.autojacvec) is not compatible with callbacks, using ReverseDiffVJP() for callback VJPs"
         ReverseDiffVJP()
