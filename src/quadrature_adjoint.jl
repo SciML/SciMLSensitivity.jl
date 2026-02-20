@@ -337,8 +337,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
         out .= p_grad
     elseif sensealg.autojacvec isa ReactantVJP
-        _, _, p_grad = reactant_run_ad(paramjac_config, y, p, t, λ)
-        out .= p_grad
+        reactant_run_ad!(nothing, out, nothing, paramjac_config, y, p, t, λ)
     elseif sensealg.autojacvec isa EnzymeVJP
         tmp3, tmp4, tmp6 = paramjac_config
         vtmp4 = vec(tmp4)
