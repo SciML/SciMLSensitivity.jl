@@ -14,7 +14,7 @@ const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 _is_reactant_loaded() = Base.get_extension(@__MODULE__, :SciMLSensitivityReactantExt) !== nothing
-_reactant_compatible_p(p) = p === nothing || p isa SciMLBase.NullParameters || p isa Array
+_reactant_compatible_p(p) = p === nothing || p isa SciMLBase.NullParameters || p isa Array{Float64}
 
 """
     _get_sensitivity_vjp_verbose(verbose)
@@ -45,13 +45,6 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     _verbose = _get_sensitivity_vjp_verbose(verbose)
     # Get time value - NonlinearProblems don't have tspan
     t0 = prob isa AbstractNonlinearProblem ? nothing : prob.tspan[1]
-
-    # Prefer ReactantVJP when Reactant extension is loaded and types are compatible.
-    # ReactantVJP requires plain Array u0/p (not ComponentArrays, GPU arrays, etc.)
-    # since Reactant.ConcreteRArray can only wrap standard dense arrays.
-    if _is_reactant_loaded() && u0 isa Array && _reactant_compatible_p(p)
-        return ReactantVJP()
-    end
 
     ez = try
         f = unwrapped_f(prob.f)
@@ -192,8 +185,8 @@ function automatic_sensealg_choice(
         ForwardDiffSensitivity()
     elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
         # Prefer ReactantVJP when Reactant extension is loaded and types are compatible.
-        # ReactantVJP requires plain Array u0/p (not ComponentArrays, GPU arrays, etc.)
-        vjp = if _is_reactant_loaded() && u0 isa Array && _reactant_compatible_p(prob.p)
+        # ReactantVJP requires plain Array{Float64} u0/p (not ComponentArrays, GPU arrays, etc.)
+        vjp = if _is_reactant_loaded() && u0 isa Array{Float64} && _reactant_compatible_p(prob.p)
             ReactantVJP()
         else
             false
@@ -306,7 +299,12 @@ function automatic_sensealg_choice(
             end
         end
     else
-        vjp = inplace_vjp(prob, u0, p, verbose, repack)
+        # Prefer ReactantVJP for IIP problems when Reactant is loaded and types are compatible
+        vjp = if _is_reactant_loaded() && u0 isa Array{Float64} && _reactant_compatible_p(p)
+            ReactantVJP()
+        else
+            inplace_vjp(prob, u0, p, verbose, repack)
+        end
         if vjp isa Bool
             if _verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
