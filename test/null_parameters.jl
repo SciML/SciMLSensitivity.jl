@@ -1,7 +1,7 @@
 import OrdinaryDiffEq: ODEProblem, solve, Tsit5
 import Zygote
 import ForwardDiff
-using SciMLSensitivity, Test
+using SciMLSensitivity, Reactant, Test
 
 dynamics = (x, _p, _t) -> x
 
@@ -51,6 +51,16 @@ function loss5(params)
     rollout = solve(
         problem, Tsit5(); u0, p = params,
         sensealg = InterpolatingAdjoint(autojacvec = EnzymeVJP())
+    )
+    return sum(Array(rollout)[:, end])
+end
+
+function loss5r(params)
+    u0 = zeros(2)
+    problem = ODEProblem(dynamics, u0, (0.0, 1.0))
+    rollout = solve(
+        problem, Tsit5(); u0, p = params,
+        sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
     )
     return sum(Array(rollout)[:, end])
 end
@@ -129,6 +139,7 @@ end
 @test_broken Zygote.gradient(loss3, nothing)
 @test Zygote.gradient(loss4, nothing)[1] === nothing
 @test Zygote.gradient(loss5, nothing)[1] === nothing
+@test Zygote.gradient(loss5r, nothing)[1] === nothing
 @test Zygote.gradient(loss6, nothing)[1] === nothing
 @test Zygote.gradient(loss7, nothing)[1] === nothing
 @test Zygote.gradient(loss8, nothing)[1] === nothing
@@ -140,6 +151,7 @@ end
 @test Zygote.gradient(loss3, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss4, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss5, zeros(123))[1] == zeros(123)
+@test Zygote.gradient(loss5r, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss6, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss7, zeros(123))[1] == zeros(123)
 @test Zygote.gradient(loss8, zeros(123))[1] == zeros(123)
@@ -312,6 +324,12 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
+# ReactantVJP: IIP dynamics uses .= broadcasting which hits a Reactant compilation bug
+# (Reactant produces zeros for Enzyme.autodiff when the function uses .= broadcasting)
+@test_broken Zygote.gradient(
+    u0 -> loss_iip(u0, sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())),
+    u0
+)[1] ≈ Fdu0
 
 # InterpolatingAdjoint
 du0 = Zygote.gradient(
@@ -353,6 +371,10 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
+@test_broken Zygote.gradient(
+    u0 -> loss_iip(u0, sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())),
+    u0
+)[1] ≈ Fdu0
 
 # QuadratureAdjoint
 du0 = Zygote.gradient(
@@ -391,6 +413,10 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
+@test_broken Zygote.gradient(
+    u0 -> loss_iip(u0, sensealg = QuadratureAdjoint(autojacvec = ReactantVJP())),
+    u0
+)[1] ≈ Fdu0
 
 # ForwardDiffSensitivity
 du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = ForwardDiffSensitivity()), u0)[1]

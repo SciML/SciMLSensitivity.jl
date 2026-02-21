@@ -1,6 +1,6 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff
 using SciMLStructures
-using Test
+using Test, Reactant
 
 # This test uses Zygote and inplace_vjp which selects EnzymeVJP on Julia 1.12
 # Enzyme has issues on Julia 1.12+, so skip these tests
@@ -23,6 +23,39 @@ else
 
     prob_ube = ODEProblem{true}(f, X, tspan, p)
     Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(); u0 = X, p)), p)
+
+    # ReactantVJP with matrix-shaped parameters
+    # Reactant tracing of Enzyme.autodiff can trigger scalar indexing errors
+    # on matrix-shaped arrays (upstream Reactant limitation).
+    @test_broken begin
+        prob_oop_r = ODEProblem{false}(f, X, tspan, p)
+        g_default = Zygote.gradient(p -> sum(solve(prob_oop_r, Midpoint(); u0 = X, p)), p)[1]
+        g_reactant = Zygote.gradient(
+            p -> sum(
+                solve(
+                    prob_oop_r, Midpoint(); u0 = X, p,
+                    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+                )
+            ), p
+        )[1]
+        g_default ≈ g_reactant
+    end
+
+    @test_broken begin
+        prob_iip_r = ODEProblem{true}(f, X, tspan, p)
+        g_default_iip = Zygote.gradient(
+            p -> sum(solve(prob_iip_r, Midpoint(); u0 = X, p)), p
+        )[1]
+        g_reactant_iip = Zygote.gradient(
+            p -> sum(
+                solve(
+                    prob_iip_r, Midpoint(); u0 = X, p,
+                    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+                )
+            ), p
+        )[1]
+        g_default_iip ≈ g_reactant_iip
+    end
 
     function aug_dynamics!(dz, z, K, t)
         x = @view z[2:end]

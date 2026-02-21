@@ -920,6 +920,16 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::MooncakeVJP, 
     return
 end
 
+function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::ReactantVJP, dgrad, dy, W)
+    if S isa Union{CallbackSensitivityFunction, CallbackSensitivityFunctionPSwap}
+        tprev = S.f.tprev
+        reactant_run_cb_ad!(dλ, dgrad, dy, S.diffcache.paramjac_config, y, p, t, tprev, λ)
+    else
+        reactant_run_ad!(dλ, dgrad, dy, S.diffcache.paramjac_config, y, p, t, λ)
+    end
+    return
+end
+
 function jacNoise!(
         λ, y, p, t, S::SensitivityFunction;
         dgrad = nothing, dλ = nothing, dy = nothing

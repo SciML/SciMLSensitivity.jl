@@ -106,7 +106,7 @@ export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
 
 export second_order_sensitivities, second_order_sensitivity_product
 
-export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP
+export TrackerVJP, ZygoteVJP, EnzymeVJP, ReverseDiffVJP, ReactantVJP
 
 export supports_functor_params
 
