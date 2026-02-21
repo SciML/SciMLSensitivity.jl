@@ -13,8 +13,6 @@ const ConcreteNonlinearProblem = Union{
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
-_is_reactant_loaded() = Base.get_extension(@__MODULE__, :SciMLSensitivityReactantExt) !== nothing
-_reactant_compatible_p(p) = p === nothing || p isa SciMLBase.NullParameters || p isa Array{Float64}
 
 """
     _get_sensitivity_vjp_verbose(verbose)
@@ -184,43 +182,35 @@ function automatic_sensealg_choice(
             length(u0) + length(tunables) <= 100
         ForwardDiffSensitivity()
     elseif u0 isa GPUArraysCore.AbstractGPUArray || !DiffEqBase.isinplace(prob)
-        # Prefer ReactantVJP when Reactant extension is loaded and types are compatible.
-        # ReactantVJP requires plain Array{Float64} u0/p (not ComponentArrays, GPU arrays, etc.)
-        vjp = if _is_reactant_loaded() && u0 isa Array{Float64} && _reactant_compatible_p(prob.p)
-            ReactantVJP()
-        else
-            false
-        end
+        # only Zygote is GPU compatible and fast
+        # so if out-of-place, try Zygote
 
-        # Fall back to Zygote (GPU compatible and fast for OOP)
-        if vjp == false
-            vjp = try
-                p = prob.p
-                y = prob.u0
-                f = prob.f
-                t = prob.tspan[1]
-                λ = zero(prob.u0)
+        vjp = try
+            p = prob.p
+            y = prob.u0
+            f = prob.f
+            t = prob.tspan[1]
+            λ = zero(prob.u0)
 
-                if p === nothing || p isa SciMLBase.NullParameters
-                    _dy, back = Zygote.pullback(y) do u
-                        vec(f(u, p, t))
-                    end
-                    tmp1 = back(λ)
-                else
-                    _dy, back = Zygote.pullback(y, p) do u, p
-                        vec(f(u, p, t))
-                    end
-                    tmp1, tmp2 = back(λ)
+            if p === nothing || p isa SciMLBase.NullParameters
+                _dy, back = Zygote.pullback(y) do u
+                    vec(f(u, p, t))
                 end
-                ZygoteVJP()
-            catch e
-                if _verbose
-                    @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
-                    STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
-                    println()
+                tmp1 = back(λ)
+            else
+                _dy, back = Zygote.pullback(y, p) do u, p
+                    vec(f(u, p, t))
                 end
-                false
+                tmp1, tmp2 = back(λ)
             end
+            ZygoteVJP()
+        catch e
+            if _verbose
+                @warn "Potential performance improvement omitted. ZygoteVJP tried and failed in the automated AD choice algorithm. To show the stack trace, set SciMLSensitivity.STACKTRACE_WITH_VJPWARN[] = true. To turn off this printing, add `verbose = false` to the `solve` call.\n"
+                STACKTRACE_WITH_VJPWARN[] && showerror(stderr, e)
+                println()
+            end
+            false
         end
 
         if vjp == false
@@ -299,12 +289,7 @@ function automatic_sensealg_choice(
             end
         end
     else
-        # Prefer ReactantVJP for IIP problems when Reactant is loaded and types are compatible
-        vjp = if _is_reactant_loaded() && u0 isa Array{Float64} && _reactant_compatible_p(p)
-            ReactantVJP()
-        else
-            inplace_vjp(prob, u0, p, verbose, repack)
-        end
+        vjp = inplace_vjp(prob, u0, p, verbose, repack)
         if vjp isa Bool
             if _verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
