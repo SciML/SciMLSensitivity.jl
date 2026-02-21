@@ -355,11 +355,11 @@ println("Continuous Callbacks")
         @test gFD ≈ gZy rtol = 1.0e-10
 
         # ReactantVJP with callbacks
-        sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+        sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD ≈ gZy rtol = 1.0e-10
 
-        sensealg = GaussAdjoint(autojacvec = ReactantVJP())
+        sensealg = GaussAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD ≈ gZy rtol = 1.0e-10
     end

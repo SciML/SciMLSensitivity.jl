@@ -443,7 +443,7 @@ end
                 _sol = solve(
                     _prob, Tsit5(); callback = cb_dose,
                     abstol = 1.0e-14, reltol = 1.0e-14, tstops = [tinject],
-                    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())
+                    sensealg = BacksolveAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
                 )
                 _sol.u[end][1]
             end

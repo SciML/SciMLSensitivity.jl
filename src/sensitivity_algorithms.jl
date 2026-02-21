@@ -1484,10 +1484,19 @@ Requires `using Reactant` to be loaded.
 ## Constructor
 
 ```julia
-ReactantVJP()
+ReactantVJP(; allow_scalar = false)
 ```
+
+## Keyword Arguments
+
+- `allow_scalar`: If `true`, wraps Reactant compilation in `Reactant.@allowscalar`
+  to permit scalar indexing during tracing. Required for ODE functions that use
+  scalar indexing (e.g. `du[1] = ...`). Defaults to `false`.
 """
-struct ReactantVJP <: VJPChoice end
+struct ReactantVJP <: VJPChoice
+    allow_scalar::Bool
+    ReactantVJP(; allow_scalar = false) = new(allow_scalar)
+end
 
 @inline convert_tspan(::ForwardDiffSensitivity{CS, CTS}) where {CS, CTS} = CTS
 @inline convert_tspan(::Any) = nothing

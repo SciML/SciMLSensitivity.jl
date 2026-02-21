@@ -6,6 +6,15 @@ using Enzyme: Enzyme
 import SciMLSensitivity: get_paramjac_config, reactant_run_ad!, ReactantVJP, ReactantLoaded,
     get_cb_paramjac_config, reactant_run_cb_ad!
 
+# Helper: conditionally wrap Reactant.compile in @allowscalar
+function _reactant_compile(kernel, args, allow_scalar::Bool)
+    if allow_scalar
+        return Reactant.@allowscalar Reactant.compile(kernel, args)
+    else
+        return Reactant.compile(kernel, args)
+    end
+end
+
 # =============================================================================
 # ODE VJP kernels
 # =============================================================================
@@ -91,7 +100,7 @@ function _make_vjp_kernel_nullparams(raw_f, isinplace::Bool)
     end
 end
 
-function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
+function get_paramjac_config(::ReactantLoaded, vjp::ReactantVJP, pf, p, f, y, _t)
     # Extract the raw ODE function for direct use in the kernel
     raw_f = SciMLBase.unwrapped_f(f)
     iip = SciMLBase.isinplace(f)
@@ -108,8 +117,8 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
         t_ra = Reactant.to_rarray(t_val)
         λ_ra = ConcreteRArray(zero(y))
 
-        compiled_fn = Reactant.@allowscalar Reactant.compile(
-            vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra)
+        compiled_fn = _reactant_compile(
+            vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra), vjp.allow_scalar
         )
 
         y_cache = zero(y)
@@ -138,10 +147,8 @@ function get_paramjac_config(::ReactantLoaded, ::ReactantVJP, pf, p, f, y, _t)
     # Pre-compile the VJP kernel once. Reactant traces through the closure
     # (including Enzyme.autodiff) and compiles to XLA/HLO. The compiled function
     # is cached and reused for every subsequent VJP call during the solve.
-    # Allow scalar indexing during tracing so that ODE functions with scalar
-    # operations (e.g. x, y = u) can be compiled.
-    compiled_fn = Reactant.@allowscalar Reactant.compile(
-        vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra)
+    compiled_fn = _reactant_compile(
+        vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra), vjp.allow_scalar
     )
 
     # Pre-allocate cached buffers to avoid per-call allocations.
@@ -289,7 +296,7 @@ function _make_cb_param_vjp_kernel(raw_affect, event_idx)
 end
 
 function get_cb_paramjac_config(
-        ::ReactantLoaded, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode
+        ::ReactantLoaded, vjp::ReactantVJP, raw_affect, event_idx, y, p, _t, mode
     )
     if mode === :state
         kernel = _make_cb_state_vjp_kernel(raw_affect, event_idx)
@@ -315,8 +322,8 @@ function get_cb_paramjac_config(
     t_ra = Reactant.to_rarray(cb_t_val)
     tprev_ra = Reactant.to_rarray(cb_t_val)
 
-    compiled_fn = Reactant.@allowscalar Reactant.compile(
-        kernel, (out_example, u_ra, p_ra, t_ra, tprev_ra, λ_example)
+    compiled_fn = _reactant_compile(
+        kernel, (out_example, u_ra, p_ra, t_ra, tprev_ra, λ_example), vjp.allow_scalar
     )
 
     y_cache = zero(y)
