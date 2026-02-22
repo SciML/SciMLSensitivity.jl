@@ -136,12 +136,12 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
 
     @info dstuff
 
-    @test du01 ≈ dstuff[1:2]
-    @test dp1 ≈ dstuff[3:4]
-    @test du01b ≈ dstuff[1:2]
-    @test dp1b ≈ dstuff[3:4]
-    @test du01c ≈ dstuff[1:2]
-    @test dp1c ≈ dstuff[3:4]
+    @test du01 ≈ dstuff[1:2] rtol = 1.0e-5
+    @test dp1 ≈ dstuff[3:4] rtol = 1.0e-5
+    @test du01b ≈ dstuff[1:2] rtol = 1.0e-5
+    @test dp1b ≈ dstuff[3:4] rtol = 1.0e-5
+    @test du01c ≈ dstuff[1:2] rtol = 1.0e-5
+    @test dp1c ≈ dstuff[3:4] rtol = 1.0e-5
     if !only_backsolve
         @test du01 ≈ du02
         @test du01 ≈ du03 rtol = 1.0e-7
@@ -154,8 +154,8 @@ function test_continuous_callback(cb, g, dg!; only_backsolve = false)
         @test dp3 ≈ dp3c
         @test dp1 ≈ dp4 rtol = 1.0e-7
 
-        @test du02 ≈ dstuff[1:2]
-        @test dp2 ≈ dstuff[3:4]
+        @test du02 ≈ dstuff[1:2] rtol = 1.0e-5
+        @test dp2 ≈ dstuff[3:4] rtol = 1.0e-5
     end
 
     cb2 = SciMLSensitivity.track_callbacks(

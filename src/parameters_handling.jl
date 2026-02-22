@@ -97,4 +97,3 @@ recursive_adjoint(y::AbstractArray) = adjoint(y)
 recursive_adjoint(y::Tuple) = recursive_adjoint.(y)
 recursive_adjoint(y::NamedTuple{F}) where {F} = NamedTuple{F}(recursive_adjoint.(values(y)))
 recursive_adjoint(y) = fmap(recursive_adjoint, y)
-
