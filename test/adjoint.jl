@@ -1,5 +1,4 @@
-using SciMLSensitivity, OrdinaryDiffEq, OrdinaryDiffEqNonlinearSolve,
-    RecursiveArrayTools, DiffEqBase,
+using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
     ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake, ADTypes
 using Test
 
