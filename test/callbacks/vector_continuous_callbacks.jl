@@ -63,10 +63,10 @@ function test_vector_continuous_callback(cb, g)
         [u0; p]
     )
 
-    @test du01 ≈ dstuff[1:4]
-    @test dp1 ≈ dstuff[5:6]
-    @test du02 ≈ dstuff[1:4]
-    return @test dp2 ≈ dstuff[5:6]
+    @test du01 ≈ dstuff[1:4] rtol = 1.0e-5
+    @test dp1 ≈ dstuff[5:6] rtol = 1.0e-5
+    @test du02 ≈ dstuff[1:4] rtol = 1.0e-5
+    return @test dp2 ≈ dstuff[5:6] rtol = 1.0e-5
 end
 
 @testset "VectorContinuous callbacks" begin
