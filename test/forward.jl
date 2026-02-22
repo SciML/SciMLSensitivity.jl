@@ -1,4 +1,5 @@
-using SciMLSensitivity, OrdinaryDiffEq, ForwardDiff, Calculus, ADTypes
+using SciMLSensitivity, OrdinaryDiffEq, OrdinaryDiffEqNonlinearSolve, ForwardDiff,
+    Calculus, ADTypes
 using Test
 function fb(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
