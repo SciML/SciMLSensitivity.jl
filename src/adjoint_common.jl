@@ -242,9 +242,35 @@ function adjointdiffcache(
         paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
     elseif autojacvec isa ReactantVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
-        paramjac_config = get_paramjac_config(
+        _reactant_config = get_paramjac_config(
             ReactantLoaded(), autojacvec, pf, p, f, y, _t
         )
+        # Enzyme fallback buffers for ForwardDiff.Dual inputs (stiff solvers).
+        # When a stiff solver uses ForwardDiff internally for Jacobians, Dual numbers
+        # flow into the VJP. Reactant/ConcreteRArray only supports Float64, so we
+        # fall back to Enzyme which handles Dual types natively.
+        if alg !== nothing && SciMLBase.forwarddiffs_model(alg)
+            _ef_bufs = (
+                LazyBufferCache(),
+                (_p isa SciMLBase.NullParameters ? _p : zero(_p)),
+                LazyBufferCache(),
+                LazyBufferCache(),
+                LazyBufferCache(),
+            )
+        else
+            _ef_bufs = (
+                zero(y),
+                (_p isa SciMLBase.NullParameters ? _p : zero(_p)),
+                zero(y), zero(y), zero(y),
+            )
+        end
+        _ef_f_shadow = isinplace ?
+            Enzyme.make_zero(SciMLBase.Void(unwrappedf)) : nothing
+        _needs_shadow = !(p isa SciMLBase.NullParameters) &&
+            isscimlstructure(p) && !(p isa AbstractArray)
+        _ef_p_shadow = _needs_shadow ? repack(zero(tunables)) : nothing
+        _enzyme_fallback = (_ef_bufs..., _ef_f_shadow, _ef_p_shadow)
+        paramjac_config = (_reactant_config, _enzyme_fallback)
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
             autojacvec isa EnzymeVJP
         paramjac_config = nothing
