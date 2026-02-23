@@ -925,7 +925,136 @@ function _vecjacobian!(dλ, y, λ, p, t, S::SensitivityFunction, ::ReactantVJP, 
         tprev = S.f.tprev
         reactant_run_cb_ad!(dλ, dgrad, dy, S.diffcache.paramjac_config, y, p, t, tprev, λ)
     else
-        reactant_run_ad!(dλ, dgrad, dy, S.diffcache.paramjac_config, y, p, t, λ)
+        reactant_config, enzyme_fallback = S.diffcache.paramjac_config
+        # Stiff solvers use ForwardDiff internally for Jacobians, pushing Dual numbers
+        # through the VJP. Reactant/ConcreteRArray only supports Float64, so fall back
+        # to Enzyme which handles Dual types natively.
+        _has_duals = eltype(y) <: ForwardDiff.Dual ||
+            (dλ !== nothing && eltype(dλ) <: ForwardDiff.Dual)
+        if _has_duals
+            _reactant_enzyme_fallback!(
+                dλ, y, λ, p, t, S, enzyme_fallback, dgrad, dy, W
+            )
+        else
+            reactant_run_ad!(dλ, dgrad, dy, reactant_config, y, p, t, λ)
+        end
+    end
+    return
+end
+
+# Enzyme fallback for ReactantVJP when ForwardDiff.Dual types are present.
+# Mirrors the EnzymeVJP _vecjacobian! logic with LazyBufferCache-adapted buffers.
+function _reactant_enzyme_fallback!(dλ, y, λ, p, t, S, enzyme_fallback, dgrad, dy, W)
+    f = unwrapped_f(S.f)
+    prob = getprob(S)
+    _p = parameter_values(prob)
+    (; tunables, repack) = S.diffcache
+    trivial_repack = _p === nothing || _p isa SciMLBase.NullParameters ||
+        (_p isa AbstractVector)
+
+    _tmp1, tmp2, _tmp3, _tmp4, _tmp5, _f_shadow, _cached_shadow = enzyme_fallback
+
+    if _tmp1 isa LazyBufferCache
+        _cache_tmpl = eltype(dλ) === eltype(y) ? y : similar(y, eltype(dλ))
+        tmp1 = get_tmp(_tmp1, _cache_tmpl)
+        tmp3 = get_tmp(_tmp3, _cache_tmpl)
+        tmp4 = get_tmp(_tmp4, _cache_tmpl)
+        ytmp = get_tmp(_tmp5, _cache_tmpl)
+    else
+        tmp1 = _tmp1
+        tmp3 = _tmp3
+        tmp4 = _tmp4
+        ytmp = _tmp5
+    end
+
+    Enzyme.remake_zero!(tmp1)
+    vec(ytmp) .= vec(y)
+
+    _shadow_p = nothing
+    dup = if !(tmp2 isa SciMLBase.NullParameters)
+        Enzyme.remake_zero!(tmp2)
+        if _cached_shadow !== nothing
+            Enzyme.remake_zero!(_cached_shadow)
+            _sp = _cached_shadow
+        else
+            _sp = trivial_repack ? tmp2 : repack(tmp2)
+        end
+        _shadow_p = _sp
+        Enzyme.Duplicated(p, _sp)
+    else
+        Enzyme.Const(p)
+    end
+
+    Enzyme.remake_zero!(tmp3)
+    vec(tmp4) .= vec(λ)
+
+    if inplace_sensitivity(S)
+        _f_shadow !== nothing && Enzyme.remake_zero!(_f_shadow)
+        if W === nothing
+            Enzyme.autodiff(
+                Enzyme.Reverse,
+                Enzyme.Duplicated(SciMLBase.Void(f), _f_shadow),
+                Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Duplicated(ytmp, tmp1),
+                dup,
+                Enzyme.Const(t)
+            )
+        else
+            Enzyme.autodiff(
+                Enzyme.Reverse,
+                Enzyme.Duplicated(SciMLBase.Void(f), _f_shadow),
+                Enzyme.Const,
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Duplicated(ytmp, tmp1),
+                dup,
+                Enzyme.Const(t), Enzyme.Const(W)
+            )
+        end
+        dλ !== nothing && recursive_copyto!(dλ, tmp1)
+        if dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters)
+            if !trivial_repack && _shadow_p !== nothing
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_p)
+                recursive_copyto!(dgrad, grad_tunables)
+            else
+                recursive_copyto!(dgrad, tmp2)
+            end
+        end
+        dy !== nothing && recursive_copyto!(dy, tmp3)
+    else
+        if W === nothing
+            _oop_shadow = Enzyme.make_zero(f)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Const(gclosure1), Enzyme.Const,
+                Enzyme.Duplicated(f, _oop_shadow),
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Duplicated(ytmp, tmp1),
+                dup, Enzyme.Const(t)
+            )
+        else
+            _oop_shadow = Enzyme.make_zero(f)
+            Enzyme.autodiff(
+                Enzyme.Reverse, Enzyme.Const(gclosure2), Enzyme.Const,
+                Enzyme.Duplicated(f, _oop_shadow),
+                Enzyme.Duplicated(tmp3, tmp4),
+                Enzyme.Duplicated(ytmp, tmp1),
+                dup, Enzyme.Const(t), Enzyme.Const(W)
+            )
+        end
+        if dy !== nothing
+            out_ = W === nothing ? f(y, p, t) : f(y, p, t, W)
+            recursive_copyto!(dy, out_)
+        end
+        dλ !== nothing && recursive_copyto!(dλ, tmp1)
+        if dgrad !== nothing && !(tmp2 isa SciMLBase.NullParameters)
+            if !trivial_repack && _shadow_p !== nothing
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_p)
+                recursive_copyto!(dgrad, grad_tunables)
+            else
+                recursive_copyto!(dgrad, tmp2)
+            end
+        end
+        dy !== nothing && recursive_copyto!(dy, tmp3)
     end
     return
 end
