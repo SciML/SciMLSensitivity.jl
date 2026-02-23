@@ -69,9 +69,5 @@ dp6 = Zygote.pullback(x -> loss(x; vjp = false), p0)[2](1)[1]
 @test dp1 ≈ dp5
 @test dp1 ≈ dp6
 
-# ReactantVJP: scalar indexing in rhs! (for-loop over matrix indices)
-# fails during Reactant tracing (upstream limitation).
-@test_broken begin
-    dp7 = Zygote.pullback(x -> loss(x; vjp = ReactantVJP()), p0)[2](1)[1]
-    dp1 ≈ dp7
-end
+dp7 = Zygote.pullback(x -> loss(x; vjp = ReactantVJP(allow_scalar = true)), p0)[2](1)[1]
+@test dp1 ≈ dp7

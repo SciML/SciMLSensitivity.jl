@@ -186,8 +186,10 @@ function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
 
         dy_out, y_grad = compiled_fn(dy_ra, y_ra, t_ra, λ_ra)
 
-        copyto!(dy_result, dy_out)
-        copyto!(ygrad_result, y_grad)
+        # Use Array() for device-to-host transfer (copyto! from ConcreteRArray
+        # fails on multidimensional arrays due to Reactant's compile-based copyto!)
+        copyto!(dy_result, Array(dy_out))
+        copyto!(ygrad_result, Array(y_grad))
         dy !== nothing && copyto!(dy, dy_result)
         dλ !== nothing && copyto!(dλ, ygrad_result)
         # dgrad stays untouched — no param gradient for NullParameters
@@ -209,9 +211,11 @@ function reactant_run_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, λ)
 
     dy_out, y_grad, p_grad = compiled_fn(dy_ra, y_ra, p_ra, t_ra, λ_ra)
 
-    copyto!(dy_result, dy_out)
-    copyto!(ygrad_result, y_grad)
-    copyto!(pgrad_result, p_grad)
+    # Use Array() for device-to-host transfer (copyto! from ConcreteRArray
+    # fails on multidimensional arrays due to Reactant's compile-based copyto!)
+    copyto!(dy_result, Array(dy_out))
+    copyto!(ygrad_result, Array(y_grad))
+    copyto!(pgrad_result, Array(p_grad))
     dy !== nothing && copyto!(dy, dy_result)
     dλ !== nothing && copyto!(dλ, ygrad_result)
     dgrad !== nothing && copyto!(dgrad, pgrad_result)
@@ -362,9 +366,11 @@ function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, tp
     _out, y_grad, p_grad = compiled_fn(out_ra, y_ra, p_ra, t_ra, tprev_ra, λ_ra)
 
     # Device-to-host into pre-allocated result caches, then into caller's buffers
-    copyto!(out_result, _out)
-    copyto!(ygrad_result, y_grad)
-    copyto!(pgrad_result, p_grad)
+    # Use Array() for device-to-host transfer (copyto! from ConcreteRArray
+    # fails on multidimensional arrays due to Reactant's compile-based copyto!)
+    copyto!(out_result, Array(_out))
+    copyto!(ygrad_result, Array(y_grad))
+    copyto!(pgrad_result, Array(p_grad))
     dy !== nothing && copyto!(dy, out_result)
     dλ !== nothing && copyto!(dλ, ygrad_result)
     dgrad !== nothing && copyto!(dgrad, pgrad_result)

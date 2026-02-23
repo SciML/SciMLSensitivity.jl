@@ -24,23 +24,25 @@ else
     prob_ube = ODEProblem{true}(f, X, tspan, p)
     Zygote.gradient(p -> sum(solve(prob_ube, Midpoint(); u0 = X, p)), p)
 
-    # ReactantVJP with matrix-shaped parameters
-    # Reactant tracing of Enzyme.autodiff can trigger scalar indexing errors
-    # on matrix-shaped arrays (upstream Reactant limitation).
-    @test_broken begin
+    # ReactantVJP with matrix-shaped parameters (OOP)
+    begin
         prob_oop_r = ODEProblem{false}(f, X, tspan, p)
         g_default = Zygote.gradient(p -> sum(solve(prob_oop_r, Midpoint(); u0 = X, p)), p)[1]
         g_reactant = Zygote.gradient(
             p -> sum(
                 solve(
                     prob_oop_r, Midpoint(); u0 = X, p,
-                    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+                    sensealg = InterpolatingAdjoint(
+                        autojacvec = ReactantVJP(allow_scalar = true)
+                    )
                 )
             ), p
         )[1]
-        g_default ≈ g_reactant
+        @test g_default ≈ g_reactant rtol = 1.0e-2
     end
 
+    # ReactantVJP with matrix-shaped parameters (IIP)
+    # IIP .= broadcasting returns zeros (upstream Reactant.jl#2502)
     @test_broken begin
         prob_iip_r = ODEProblem{true}(f, X, tspan, p)
         g_default_iip = Zygote.gradient(
@@ -50,7 +52,9 @@ else
             p -> sum(
                 solve(
                     prob_iip_r, Midpoint(); u0 = X, p,
-                    sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())
+                    sensealg = InterpolatingAdjoint(
+                        autojacvec = ReactantVJP(allow_scalar = true)
+                    )
                 )
             ), p
         )[1]
