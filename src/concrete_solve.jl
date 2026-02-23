@@ -13,6 +13,7 @@ const ConcreteNonlinearProblem = Union{
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
+
 """
     _get_sensitivity_vjp_verbose(verbose)
 
@@ -364,7 +365,7 @@ function SciMLBase._concrete_solve_adjoint(
 
     default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm &&
-            !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP})
+            !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP, ReactantVJP})
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
     end
     return SciMLBase._concrete_solve_adjoint(

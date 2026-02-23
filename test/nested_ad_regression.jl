@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, Test, ADTypes
+using OrdinaryDiffEq, SciMLSensitivity, Test, ADTypes, Reactant
 function f!(du, u::AbstractArray{T}, p, x) where {T}
     du[1] = -p[1] * exp((x - 8)) * u[1]
     return nothing
@@ -47,3 +47,14 @@ res1 = adjoint_sensitivities(
 
 @test res1[1] ≈ res2[1]
 @test res1[2] ≈ res2[2]
+
+# ReactantVJP: KenCarp4 uses ForwardDiff for internal Jacobian, which pushes Dual numbers
+# through reactant_run_ad! — ConcreteRArray/Float64 conversions don't support Dual types.
+@test_broken begin
+    res3 = adjoint_sensitivities(
+        sol, KenCarp4(); dgdu_continuous = dg, g,
+        abstol = 1.0e-6, reltol = 1.0e-6,
+        sensealg = QuadratureAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
+    )
+    res1[1] ≈ res3[1] && res1[2] ≈ res3[2]
+end

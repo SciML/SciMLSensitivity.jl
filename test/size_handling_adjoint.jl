@@ -1,4 +1,4 @@
-using SciMLSensitivity, Zygote, OrdinaryDiffEq, Test
+using SciMLSensitivity, Zygote, OrdinaryDiffEq, Test, Reactant
 using Optimization, OptimizationOptimisers
 
 p = [1.5 1.0; 3.0 1.0]
@@ -68,3 +68,6 @@ dp6 = Zygote.pullback(x -> loss(x; vjp = false), p0)[2](1)[1]
 @test dp1 ≈ dp4
 @test dp1 ≈ dp5
 @test dp1 ≈ dp6
+
+dp7 = Zygote.pullback(x -> loss(x; vjp = ReactantVJP(allow_scalar = true)), p0)[2](1)[1]
+@test dp1 ≈ dp7
