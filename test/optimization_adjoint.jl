@@ -9,12 +9,15 @@ function build_opt_adjoint_sol(prob, alg, sensealg; kwargs...)
     opt_sol = solve(prob, alg; kwargs...)
     opt_f = prob.f
     nlprob = NonlinearProblem(OptimizationGradientWrapper(opt_f, sensealg), opt_sol.u, prob.p)
-    sol = SciMLBase.build_solution(nlprob, nothing, opt_sol.u, opt_sol.objective;
-        retcode = opt_sol.retcode)
+    sol = SciMLBase.build_solution(
+        nlprob, nothing, opt_sol.u, opt_sol.objective;
+        retcode = opt_sol.retcode
+    )
     steady_sensealg = SteadyStateAdjoint(
         autojacvec = sensealg.autojacvec,
         linsolve = sensealg.linsolve,
-        linsolve_kwargs = sensealg.linsolve_kwargs)
+        linsolve_kwargs = sensealg.linsolve_kwargs
+    )
     return sol, steady_sensealg
 end
 
@@ -43,7 +46,7 @@ end
 
         p_val = p[1]
         g_prime_analytical = -(u_star^3 + 3 * p_val * u_star^2) /
-                             (3 * p_val * u_star^2 + 3 * p_val^2 * u_star - 6)
+            (3 * p_val * u_star^2 + 3 * p_val^2 * u_star - 6)
 
         # dgdu for selecting u[1]: dg/du = e_1
         function dgdu!(out, _, _, _, _)
@@ -51,31 +54,36 @@ end
         end
 
         # Default sensealg
-        sol, steady = build_opt_adjoint_sol(prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
-            maxiters = 10000)
+        sol, steady = build_opt_adjoint_sol(
+            prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ g_prime_analytical rtol = 1e-3
+        @test dp[1] ≈ g_prime_analytical rtol = 1.0e-3
 
         # ReverseDiffVJP
         sol, steady = build_opt_adjoint_sol(
             prob, Descent(0.01), UnconstrainedOptimizationAdjoint(autojacvec = ReverseDiffVJP());
-            maxiters = 10000)
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ g_prime_analytical rtol = 1e-3
+        @test dp[1] ≈ g_prime_analytical rtol = 1.0e-3
 
         # EnzymeVJP
         sol, steady = build_opt_adjoint_sol(
             prob, Descent(0.01), UnconstrainedOptimizationAdjoint(autojacvec = EnzymeVJP());
-            maxiters = 10000)
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ g_prime_analytical rtol = 1e-3
+        @test dp[1] ≈ g_prime_analytical rtol = 1.0e-3
 
         # MooncakeVJP
         sol, steady = build_opt_adjoint_sol(
             prob, Descent(0.01), UnconstrainedOptimizationAdjoint(autojacvec = MooncakeVJP());
-            maxiters = 10000)
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ g_prime_analytical rtol = 1e-3
+        @test dp[1] ≈ g_prime_analytical rtol = 1.0e-3
     end
 
     @testset "Simple quadratic problem" begin
@@ -96,8 +104,10 @@ end
             out[1] = 1.0
         end
 
-        sol, steady = build_opt_adjoint_sol(prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
-            maxiters = 10000)
+        sol, steady = build_opt_adjoint_sol(
+            prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
         @test dp[1] ≈ 1.0
     end
@@ -114,10 +124,12 @@ end
         opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff())
         prob = OptimizationProblem(opt_f, u0, p)
         opt_sol = solve(prob, Descent(0.01); maxiters = 10000)
-        @test opt_sol.u ≈ p rtol = 1e-2
+        @test opt_sol.u ≈ p rtol = 1.0e-2
 
-        sol, steady = build_opt_adjoint_sol(prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
-            maxiters = 10000)
+        sol, steady = build_opt_adjoint_sol(
+            prob, Descent(0.01), UnconstrainedOptimizationAdjoint();
+            maxiters = 10000
+        )
 
         for i in 1:3
             function dgdu!(out, _, _, _, _)
@@ -128,7 +140,7 @@ end
 
             expected = zeros(3)
             expected[i] = 1.0
-            @test dp ≈ expected rtol = 1e-2
+            @test dp ≈ expected rtol = 1.0e-2
         end
     end
 
@@ -144,7 +156,7 @@ end
         opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff())
         prob = OptimizationProblem(opt_f, u0, p)
         opt_sol = solve(prob, Descent(0.01); maxiters = 10000)
-        @test opt_sol.u[1] ≈ -p[1] / 2 rtol = 1e-2
+        @test opt_sol.u[1] ≈ -p[1] / 2 rtol = 1.0e-2
 
         function dgdu!(out, _, _, _, _)
             out[1] = 1.0
@@ -153,15 +165,17 @@ end
         # EnzymeVJP
         sol, steady = build_opt_adjoint_sol(
             prob, Descent(0.01), UnconstrainedOptimizationAdjoint(autojacvec = EnzymeVJP());
-            maxiters = 10000)
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ -0.5 rtol = 1e-2
+        @test dp[1] ≈ -0.5 rtol = 1.0e-2
 
         # MooncakeVJP
         sol, steady = build_opt_adjoint_sol(
             prob, Descent(0.01), UnconstrainedOptimizationAdjoint(autojacvec = MooncakeVJP());
-            maxiters = 10000)
+            maxiters = 10000
+        )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady, dgdu = dgdu!)
-        @test dp[1] ≈ -0.5 rtol = 1e-2
+        @test dp[1] ≈ -0.5 rtol = 1.0e-2
     end
 end
