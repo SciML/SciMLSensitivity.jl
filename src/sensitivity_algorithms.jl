@@ -1381,24 +1381,32 @@ Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
 struct UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
     objective_ad::OAD
 end
 
-function UnconstrainedOptimizationAdjoint(; chunk_size = 0, autodiff = true,
+function UnconstrainedOptimizationAdjoint(;
+        chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, objective_ad = true, autojacvec = nothing, linsolve = nothing,
-        linsolve_kwargs = (;))
-    return UnconstrainedOptimizationAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad)}(autojacvec, linsolve, linsolve_kwargs, objective_ad)
+        linsolve_kwargs = (;)
+    )
+    return UnconstrainedOptimizationAdjoint{
+        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad),
+    }(autojacvec, linsolve, linsolve_kwargs, objective_ad)
 end
 
-function setvjp(sensealg::UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD},
-        vjp) where {CS, AD, FDT, VJP, LS, LK, OAD}
-    return UnconstrainedOptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, OAD}(vjp, sensealg.linsolve,
-        sensealg.linsolve_kwargs, sensealg.objective_ad)
+function setvjp(
+        sensealg::UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD},
+        vjp
+    ) where {CS, AD, FDT, VJP, LS, LK, OAD}
+    return UnconstrainedOptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, OAD}(
+        vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs, sensealg.objective_ad
+    )
 end
 
 abstract type VJPChoice end

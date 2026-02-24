@@ -2429,16 +2429,20 @@ function SciMLBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
         alg, sensealg::Nothing,
         u0, p, originator::SciMLBase.ADOriginator,
-        args...; kwargs...)
-    SciMLBase._concrete_solve_adjoint(prob, alg, UnconstrainedOptimizationAdjoint(),
-        u0, p, originator, args...; kwargs...)
+        args...; kwargs...
+    )
+    return SciMLBase._concrete_solve_adjoint(
+        prob, alg, UnconstrainedOptimizationAdjoint(),
+        u0, p, originator, args...; kwargs...
+    )
 end
 
 function SciMLBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
         alg, sensealg::UnconstrainedOptimizationAdjoint,
         u0, p, originator::SciMLBase.ADOriginator,
-        args...; save_idxs = nothing, kwargs...)
+        args...; save_idxs = nothing, kwargs...
+    )
     _prob = remake(prob, u0 = u0, p = p)
 
     # Solve the optimization problem
@@ -2454,9 +2458,11 @@ function SciMLBase._concrete_solve_adjoint(
 
     # Wrap the optimization solution in a NonlinearSolution with the gradient function
     # This is used internally for adjoint computation but not returned
-    sol = SciMLBase.build_solution(nlprob, nothing, opt_sol.u, opt_sol.objective;
-                                    retcode = opt_sol.retcode,
-                                    original = opt_sol)
+    sol = SciMLBase.build_solution(
+        nlprob, nothing, opt_sol.u, opt_sol.objective;
+        retcode = opt_sol.retcode,
+        original = opt_sol
+    )
 
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
@@ -2484,12 +2490,12 @@ function SciMLBase._concrete_solve_adjoint(
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
-            if _save_idxs isa Number
+            return if _save_idxs isa Number
                 _out[_save_idxs] = Δ[_save_idxs]
             elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
             elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
-                   Δ isa AbstractArray
+                    Δ isa AbstractArray
                 @. _out[_save_idxs] = Δ[_save_idxs]
             elseif isnothing(_out)
                 _out
@@ -2505,7 +2511,7 @@ function SciMLBase._concrete_solve_adjoint(
         )
         dp = adjoint_sensitivities(sol, nothing; sensealg = steady_sensealg, dgdu = df)
         dp,
-        Δtunables = if Δ isa AbstractArray || Δ isa Number
+            Δtunables = if Δ isa AbstractArray || Δ isa Number
             # if Δ isa AbstractArray, the gradients correspond to `u`
             # this is something that needs changing in the future, but
             # this is the applicable till the movement to structuaral
@@ -2539,20 +2545,26 @@ function SciMLBase._concrete_solve_adjoint(
             end
         end
 
-        dp = Zygote.accum(dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
-                              Δtunables)
+        dp = Zygote.accum(
+            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
+                Δtunables
+        )
 
-        if originator isa SciMLBase.TrackerOriginator ||
-           originator isa SciMLBase.ReverseDiffOriginator
-            (NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
-                ntuple(_ -> NoTangent(), length(args))...)
+        return if originator isa SciMLBase.TrackerOriginator ||
+                originator isa SciMLBase.ReverseDiffOriginator
+            (
+                NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
         else
-            (NoTangent(), NoTangent(), NoTangent(),
+            (
+                NoTangent(), NoTangent(), NoTangent(),
                 NoTangent(), repack_adjoint(dp)[1], NoTangent(),
-                ntuple(_ -> NoTangent(), length(args))...)
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
         end
     end
-    out, steadystatebackpass
+    return out, steadystatebackpass
 end
 
 
