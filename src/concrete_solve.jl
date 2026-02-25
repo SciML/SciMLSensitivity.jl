@@ -2451,7 +2451,12 @@ function SciMLBase._concrete_solve_adjoint(
     opt_f = _prob.f
 
     if opt_f.grad === nothing
-        nlprob = NonlinearProblem(OptimizationGradientWrapper(opt_f, sensealg), opt_sol.u, p)
+        grad_fn = if sensealg.objective_ad isa Bool && !sensealg.objective_ad
+            (u, p) -> FiniteDiff.finite_difference_gradient(Base.Fix2(opt_f, p), u)
+        else
+            (u, p) -> ForwardDiff.gradient(Base.Fix2(opt_f, p), u)
+        end
+        nlprob = NonlinearProblem(grad_fn, opt_sol.u, p)
     else
         nlprob = NonlinearProblem(opt_f.grad, opt_sol.u, p)
     end

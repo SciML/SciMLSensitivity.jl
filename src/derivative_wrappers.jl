@@ -114,28 +114,6 @@ function (ff::RODEParamJacobianWrapper)(p)
     return du1
 end
 
-struct OptimizationGradientWrapper{fType, SType} <: Function
-    f::fType
-    sensealg::SType
-end
-
-function (ff::OptimizationGradientWrapper)(u, p)
-    f_u = u -> ff.f(u, p)
-    return if ff.sensealg.objective_ad
-        ForwardDiff.gradient(f_u, u)
-    else
-        FiniteDiff.finite_difference_gradient(f_u, u)
-    end
-end
-
-function (ff::OptimizationGradientWrapper)(out, u, p)
-    f_u = u -> ff.f(u, p)
-    return if ff.sensealg.objective_ad
-        ForwardDiff.gradient!(out, f_u, u)
-    else
-        FiniteDiff.finite_difference_gradient!(out, f_u, u)
-    end
-end
 
 function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
     return determine_chunksize(u, get_chunksize(alg))
