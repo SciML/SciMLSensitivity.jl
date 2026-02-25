@@ -1,14 +1,19 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, Optimization, OptimizationOptimisers, SciMLBase
-using Mooncake
-using SciMLSensitivity: MooncakeVJP, OptimizationGradientWrapper, UnconstrainedOptimizationAdjoint
+using Mooncake, ForwardDiff
+using SciMLSensitivity: MooncakeVJP
 
 # Helper: build a NonlinearSolution from an optimization solve using the gradient as the residual,
 # and the corresponding SteadyStateAdjoint, matching what _concrete_solve_adjoint does internally.
 function build_opt_adjoint_sol(prob, alg, sensealg; kwargs...)
     opt_sol = solve(prob, alg; kwargs...)
     opt_f = prob.f
-    nlprob = NonlinearProblem(OptimizationGradientWrapper(opt_f, sensealg), opt_sol.u, prob.p)
+    grad_fn = if sensealg.objective_ad isa Bool && !sensealg.objective_ad
+        (u, p) -> FiniteDiff.finite_difference_gradient(Base.Fix2(opt_f, p), u)
+    else
+        (u, p) -> ForwardDiff.gradient(Base.Fix2(opt_f, p), u)
+    end
+    nlprob = NonlinearProblem(grad_fn, opt_sol.u, prob.p)
     sol = SciMLBase.build_solution(
         nlprob, nothing, opt_sol.u, opt_sol.objective;
         retcode = opt_sol.retcode

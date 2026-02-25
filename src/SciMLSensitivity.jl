@@ -102,7 +102,7 @@ export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
     TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
     EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
     ForwardDiffOverAdjoint,
-    SteadyStateAdjoint,
+    SteadyStateAdjoint, UnconstrainedOptimizationAdjoint,
     ForwardLSS, AdjointLSS, NILSS, NILSAS
 
 export second_order_sensitivities, second_order_sensitivity_product
