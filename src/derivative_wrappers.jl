@@ -114,7 +114,6 @@ function (ff::RODEParamJacobianWrapper)(p)
     return du1
 end
 
-
 function determine_chunksize(u, alg::AbstractOverloadingSensitivityAlgorithm)
     return determine_chunksize(u, get_chunksize(alg))
 end
