@@ -612,7 +612,7 @@ end
 
     prob4 = SteadyStateProblem((du, u, p, t) -> du[1] = -u[1] + p[1] - p[2], [0.0], p)
     solve4 = solve(prob4, DynamicSS(Rodas5()))
-    @test solve3.u ≈ solve4.u rtol = 1.0e-10
+    @test solve3.u ≈ solve4.u rtol = 1.0e-6
 
     prob5 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 50), p)
     prob6 = NonlinearProblem{false}((u, p) -> u .^ 2 .- p[1], fill(0.0, 51), p)

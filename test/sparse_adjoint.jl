@@ -19,7 +19,7 @@ function g_helper(p; alg = Rosenbrock23(linsolve = QRFactorization()))
     prob = ODEProblem(odef, u0, tspan, p)
     soln = Array(
         solve(
-            prob, alg; prob.u0, prob.p, abstol = 1.0e-4, reltol = 1.0e-4,
+            prob, alg; prob.u0, prob.p, abstol = 1.0e-6, reltol = 1.0e-6,
             sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
         )
     )[:, end]
