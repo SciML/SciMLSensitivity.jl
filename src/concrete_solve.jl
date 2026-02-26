@@ -973,7 +973,15 @@ function SciMLBase._concrete_solve_adjoint(
             prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                 SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize
         )
-        ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
+        ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f);
+            mass_matrix = prob.f.mass_matrix,
+            analytic = prob.f.analytic,
+            tgrad = prob.f.tgrad,
+            jac = prob.f.jac,
+            jac_prototype = prob.f.jac_prototype,
+            sparsity = prob.f.sparsity,
+            paramjac = prob.f.paramjac,
+            colorvec = prob.f.colorvec)
     else
         prob.f
     end
