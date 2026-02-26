@@ -28,31 +28,31 @@ Interpolation: specialized 4th order &quot;free&quot; interpolation
 t: 13-element Vector{Float64}:
   0.0
   0.00010203877555101957
-  0.0011224265310612151
-  0.011326304086163171
-  0.11336507963718272
-  1.1337528351473782
-  3.194382824999678
-  3.194382824999678
-  8.30539534499913
-  8.30539534499913
- 12.39420536099869
- 12.39420536099869
+  0.003741629868249876
+  0.04013754079523844
+  0.404096650065124
+  3.1943828249997113
+  3.1943828249997113
+  6.833973917698566
+  8.305395344999233
+  8.305395344999233
+ 12.39420536099885
+ 12.39420536099885
  15.0
 u: 13-element Vector{Vector{Float64}}:
  [50.0, 0.0]
  [49.99999994898163, -0.0009999800003999914]
- [49.99999382677754, -0.010999780004399906]
- [49.99937140269516, -0.11099778004439904]
- [49.93702695772239, -1.1109777804443903]
- [43.7015620930969, -11.110777784444302]
- [6.46684556581833e-14, -31.304951684996833]
- [6.46684556581833e-14, 25.043961347997467]
- [7.420324978387619e-13, -25.04396134799707]
- [7.420324978387619e-13, 20.035169078397658]
- [2.1218093781563423e-13, -20.035169078397942]
- [2.1218093781563423e-13, 16.028135262718354]
- [8.494217007604645, -9.508652199494476]</code></pre><p>Here we have a friction coefficient of <code>0.8</code>. We want to refine this coefficient to find the value so that the predicted height of the ball at the endpoint is 20. We do this by minimizing a loss function against the value 20:</p><pre><code class="language-julia hljs">function loss(θ)
+ [49.99993140100905, -0.03666797270884877]
+ [49.99210599131266, -0.39334789979333656]
+ [49.19985889729011, -3.960147170638214]
+ [1.5710491893934946e-13, -31.304951684997068]
+ [1.5710491893934946e-13, 25.043961347997655]
+ [26.241324370008172, -10.624031360451118]
+ [4.173967044330642e-14, -25.043961347997662]
+ [4.173967044330642e-14, 20.03516907839813]
+ [2.2651286529623685e-13, -20.035169078398038]
+ [2.2651286529623685e-13, 16.028135262718433]
+ [8.494217007606391, -9.50865219949283]</code></pre><p>Here we have a friction coefficient of <code>0.8</code>. We want to refine this coefficient to find the value so that the predicted height of the ball at the endpoint is 20. We do this by minimizing a loss function against the value 20:</p><pre><code class="language-julia hljs">function loss(θ)
     sol = ODE.solve(prob, ODE.Tsit5(), p = [9.8, θ[1]]; callback)
     target = 20.0
     abs2(sol[end][1] - target)
@@ -64,4 +64,4 @@ optf = OPT.OptimizationFunction((x, p) -&gt; loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, [0.8])
 @time res = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 300)
 @show res.u # [0.866554105436901]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1-element Vector{Float64}:
- 0.8665541045425506</code></pre><p>This runs in about <code>0.091215 seconds (533.45 k allocations: 80.717 MiB)</code> and finds an optimal drag coefficient.</p><h2 id="Note-on-Sensitivity-Methods"><a class="docs-heading-anchor" href="#Note-on-Sensitivity-Methods">Note on Sensitivity Methods</a><a id="Note-on-Sensitivity-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-Sensitivity-Methods" title="Permalink"></a></h2><p>The continuous adjoint sensitivities <code>BacksolveAdjoint</code>, <code>InterpolatingAdjoint</code>, and <code>QuadratureAdjoint</code> are compatible with events for ODEs. <code>BacksolveAdjoint</code> and <code>InterpolatingAdjoint</code> can also handle events for SDEs. Use <code>BacksolveAdjoint</code> if the event terminates the time evolution and several states are saved. Currently, the continuous adjoint sensitivities do not support multiple events per time point.</p><p>All methods based on discrete sensitivity analysis via automatic differentiation, like <code>ReverseDiffAdjoint</code>, <code>TrackerAdjoint</code>, or <code>ForwardDiffSensitivity</code> are the methods to use (and <code>ReverseDiffAdjoint</code> is demonstrated above), are compatible with events. This applies to SDEs, DAEs, and DDEs as well.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hybrid_diffeq/">« Training Neural Networks in Hybrid Differential Equations</a><a class="docs-footer-nextpage" href="../../bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 23 February 2026 07:51">Monday 23 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 0.8665540997266085</code></pre><p>This runs in about <code>0.091215 seconds (533.45 k allocations: 80.717 MiB)</code> and finds an optimal drag coefficient.</p><h2 id="Note-on-Sensitivity-Methods"><a class="docs-heading-anchor" href="#Note-on-Sensitivity-Methods">Note on Sensitivity Methods</a><a id="Note-on-Sensitivity-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Note-on-Sensitivity-Methods" title="Permalink"></a></h2><p>The continuous adjoint sensitivities <code>BacksolveAdjoint</code>, <code>InterpolatingAdjoint</code>, and <code>QuadratureAdjoint</code> are compatible with events for ODEs. <code>BacksolveAdjoint</code> and <code>InterpolatingAdjoint</code> can also handle events for SDEs. Use <code>BacksolveAdjoint</code> if the event terminates the time evolution and several states are saved. Currently, the continuous adjoint sensitivities do not support multiple events per time point.</p><p>All methods based on discrete sensitivity analysis via automatic differentiation, like <code>ReverseDiffAdjoint</code>, <code>TrackerAdjoint</code>, or <code>ForwardDiffSensitivity</code> are the methods to use (and <code>ReverseDiffAdjoint</code> is demonstrated above), are compatible with events. This applies to SDEs, DAEs, and DDEs as well.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../hybrid_diffeq/">« Training Neural Networks in Hybrid Differential Equations</a><a class="docs-footer-nextpage" href="../../bayesian/turing_bayesian/">Bayesian Estimation of Differential Equations with Probabilistic Programming »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 26 February 2026 21:02">Thursday 26 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

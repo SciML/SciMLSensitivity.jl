@@ -11,48 +11,48 @@ p = [1.5, 1.0, 3.0]
 prob = SMS.ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.DP8())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 7th order interpolation
-t: 29-element Vector{Float64}:
+t: 26-element Vector{Float64}:
   0.0
   0.0008156803234081559
-  0.005709762263857092
-  0.0350742539065507
-  0.21126120376271237
-  0.7310736576107115
-  1.540222712617339
-  1.8813610466661779
-  2.152579392464959
-  2.4063311841696478
+  0.13314742476303504
+  0.5992722542904694
+  1.296777986919614
+  1.7697282230179567
+  2.0512894196280724
+  2.3338828544347523
+  2.6549899616286297
+  2.9644437633117526
   ⋮
-  7.063355055637446
-  7.725935939669195
-  8.248979441432317
-  8.558003582514011
-  8.826370842927059
-  9.171011754187145
-  9.493946497917326
-  9.834929283472757
+  6.356283357888258
+  6.853081922165654
+  7.491911500970179
+  8.37451400756696
+  8.774043416581982
+  9.060817301488559
+  9.347249853590675
+  9.736513025774284
  10.0
-u: 29-element Vector{Vector{Float64}}:
+u: 26-element Vector{Vector{Float64}}:
  [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
  [1.000408588538797, 0.9983701355642965, 0.000816013510644824, 3.322154010506493e-7, -0.0008153483114736799, -3.320348233838799e-7, 3.3244140163739216e-7, -0.0008143507848015046]
- [1.0028915156848317, 0.9886535575433295, 0.005726241237749595, 1.6146661657253676e-5, -0.005693685298331232, -1.6085381411877104e-5, 1.622392391840203e-5, -0.005644946211107334]
- [1.0189121274128703, 0.9325571368196612, 0.035730565614057214, 0.0005806610224735032, -0.034509633035320036, -0.0005673264615114402, 0.0005982168608307318, -0.03270217921302392]
- [1.1547444753248808, 0.6650474487943194, 0.24252997273953153, 0.01620058797923608, -0.198498945739975, -0.014142604007354084, 0.019606496433572655, -0.13955624899729338]
- [1.9959026411822718, 0.30725094819300236, 1.3911332658550328, 0.12370946057242008, -0.7599570019860626, -0.07996649485520504, 0.22938885567774317, -0.20775306589835096]
- [5.30194567946053, 0.4275038176301537, 6.007173244666811, 1.378441778030569, -2.283870425183431, -0.623462248893163, 1.6987114297214083, -0.3708646913283792]
- [6.8702723310901295, 1.2712401591810842, 2.482449626359105, 6.439151700037799, -1.3710505647874744, -2.7849768648683777, 3.2715017511539424, -0.46731359361629526]
- [5.679446513843018, 3.3399703081159786, -12.310270279196507, 12.730860582111236, 2.90563205459914, -6.735838408409488, 2.6735629496567994, 0.8629101364446949]
- [2.8838282002507136, 4.57403857987998, -11.50192475754792, 1.5722474815418457, 3.149560282389645, -5.129125042632567, 0.2620888410181659, 1.5914280086423986]
+ [1.0861535422147492, 0.770287968362288, 0.1442537827545717, 0.007188515918928648, -0.12682329595014163, -0.006591470767819423, 0.008086875225914544, -0.10227971507390746]
+ [1.7108459578522144, 0.35759761944656293, 0.9906984182866775, 0.08822143045607608, -0.5927129032939902, -0.061284175918845926, 0.15022526515938842, -0.20352278745432117]
+ [4.000926772313155, 0.2871833644789737, 4.426478593869834, 0.5576690101185721, -1.7952223230458968, -0.27514131034224165, 0.9749959461201123, -0.2705498608287697]
+ [6.524091530442202, 0.838912132799637, 5.312938694112952, 3.86505667309359, -2.1354023371986584, -1.6682519519785741, 2.746128057362827, -0.4975631939119911]
+ [6.532524772642264, 2.4291308133854423, -6.580557957685715, 11.62321157472541, 1.1848549077910944, -5.411292362802907, 3.389187426923438, 0.11508471342643965]
+ [3.5986513505385154, 4.4986901755001165, -13.677301773530385, 5.669497969025561, 3.6427866250060705, -6.157953041232652, 0.7659057765199381, 1.7299843073199737]
+ [1.4742533443541568, 3.619802745580277, -4.413179581147858, -5.602788215786948, 1.338994711475883, -2.1071829817622247, -0.21591185733602042, 0.28113817374892025]
+ [0.987055935950869, 2.0521965132620887, -0.9697188165626281, -4.678375821751777, 0.42479151043042374, -0.690717316875896, -0.06930213046267536, -0.5738853989278269]
  ⋮
- [1.4188559373191922, 0.45747117721990466, 4.0345730575991805, -1.6292340104788547, -0.02328531538568726, -0.22674039853297237, 0.9917652543963326, -0.638337264202254]
- [3.105286408605591, 0.25723901264027416, 12.030706505671914, 0.3657288649741977, -0.3594670814358994, -0.1562962149538488, 2.9860724103159155, -0.2135072543485681]
- [5.721950106631197, 0.5147791449780601, 19.322713832885665, 5.150407774561523, -0.8979267203135737, -0.4767887879979121, 5.4868266280623645, 0.4525830529452884]
- [6.9045644791116585, 1.4959711323293163, 0.8111460438513347, 21.257023017125366, -0.885529900291283, -1.837556476410295, 3.431317057907666, 3.210786998858488]
- [5.251408633416557, 3.677081894045012, -40.30711600763158, 31.383646964911545, 0.415505603414129, -4.822192363404264, -4.808988602487445, 6.282699534622149]
- [1.9684993733166822, 4.224446642146764, -19.72010623548457, -13.790594696972407, 0.6970930173849572, -4.432962960251689, -3.4673013009932574, -1.767994652510742]
- [1.0719720028424078, 2.5266939022673727, -4.294296713681639, -16.729797806817487, 0.3407022900162246, -2.2485501409033666, -0.8127688495258327, -3.42797696441485]
- [0.9574127494597999, 1.2680817248527774, 0.6626271434785644, -9.021542819507147, 0.21249816908491037, -1.0143392771168123, 0.21400382117613845, -2.2552162974026566]
- [1.026505547286025, 0.9095251254958595, 2.1626974566892803, -6.256489916332188, 0.1883893214244694, -0.6976152811241049, 0.5638188536930522, -1.7090441864606456]</code></pre><p>gives a continuous solution <code>sol(t)</code> with the derivative at each time point. This can then be used to define a continuous cost function via <a href="https://docs.sciml.ai/Integrals/stable/">Integrals.jl</a>, though the derivative would need to be manually defined using the extra sensitivity terms.</p><h2 id="Example:-Continuous-Adjoints-on-an-Energy-Functional"><a class="docs-heading-anchor" href="#Example:-Continuous-Adjoints-on-an-Energy-Functional">Example: Continuous Adjoints on an Energy Functional</a><a id="Example:-Continuous-Adjoints-on-an-Energy-Functional-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Continuous-Adjoints-on-an-Energy-Functional" title="Permalink"></a></h2><p>Continuous adjoints on a continuous functional are more automatic than forward mode. In this case, we&#39;d like to calculate the adjoint sensitivity of the scalar energy functional:</p><p class="math-container">\[G(u,p)=\int_{0}^{T}\frac{\sum_{i=1}^{n}u_{i}^{2}(t)}{2}dt\]</p><p>which is:</p><pre><code class="language-julia hljs">g(u, p, t) = sum(u .^ 2) ./ 2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">g (generic function with 1 method)</code></pre><p>Notice that the gradient of this function with respect to the state <code>u</code> is:</p><pre><code class="language-julia hljs">function dg(out, u, p, t)
+ [0.957785889269983, 1.7645834681483876, -0.8504029208423062, -8.309536784275908, 0.28741701787924334, -1.0114726775415805, -0.10241480217476871, -1.7455055251556577]
+ [1.16153378789228, 0.6566311220038955, 2.528603279870994, -2.788111788766408, 0.04858845939213533, -0.32728270076957244, 0.6268818107447461, -0.888941855225229]
+ [2.324413937629262, 0.2762599334838954, 8.481063517912235, -0.26592638737286867, -0.20764048358550583, -0.1497793284457043, 2.0881517561796548, -0.32737529357625145]
+ [6.387651743830172, 0.7562556701028562, 16.747303189305104, 9.313041027730412, -1.008228959318263, -0.7912148012416063, 5.535384780346421, 1.0983731109042143]
+ [5.81616192600429, 3.2195571673193624, -34.92939634308265, 33.860672826955316, 0.12312746914739615, -4.268088745398067, -3.384321449091972, 6.367171298150579]
+ [2.715105240387116, 4.555994057726285, -30.115993282303094, -2.446989120774606, 0.8406540322753098, -5.170492870306152, -4.969968473681714, 0.7135334639810751]
+ [1.3172532557368841, 3.300393062252516, -8.945200412853852, -18.75452944649713, 0.46440679137256796, -3.130143863827725, -1.6722782360307835, -3.4086356091043912]
+ [0.9484290574804369, 1.5514465794657442, -0.3736767296449594, -11.061003190615127, 0.2355612596934972, -1.2752592096116484, -0.01630823594676538, -2.621949864730573]
+ [1.0264374386172586, 0.9095107693944036, 2.160666166615102, -6.2563543178398335, 0.18870668412408131, -0.6976348561570298, 0.5629015584778372, -1.7092062389111575]</code></pre><p>gives a continuous solution <code>sol(t)</code> with the derivative at each time point. This can then be used to define a continuous cost function via <a href="https://docs.sciml.ai/Integrals/stable/">Integrals.jl</a>, though the derivative would need to be manually defined using the extra sensitivity terms.</p><h2 id="Example:-Continuous-Adjoints-on-an-Energy-Functional"><a class="docs-heading-anchor" href="#Example:-Continuous-Adjoints-on-an-Energy-Functional">Example: Continuous Adjoints on an Energy Functional</a><a id="Example:-Continuous-Adjoints-on-an-Energy-Functional-1"></a><a class="docs-heading-anchor-permalink" href="#Example:-Continuous-Adjoints-on-an-Energy-Functional" title="Permalink"></a></h2><p>Continuous adjoints on a continuous functional are more automatic than forward mode. In this case, we&#39;d like to calculate the adjoint sensitivity of the scalar energy functional:</p><p class="math-container">\[G(u,p)=\int_{0}^{T}\frac{\sum_{i=1}^{n}u_{i}^{2}(t)}{2}dt\]</p><p>which is:</p><pre><code class="language-julia hljs">g(u, p, t) = sum(u .^ 2) ./ 2</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">g (generic function with 1 method)</code></pre><p>Notice that the gradient of this function with respect to the state <code>u</code> is:</p><pre><code class="language-julia hljs">function dg(out, u, p, t)
     out[1] = u[1]
     out[2] = u[2]
 end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">dg (generic function with 1 method)</code></pre><p>To get the adjoint sensitivities, we call:</p><pre><code class="language-julia hljs">prob = ODE.ODEProblem(f, [1.0; 1.0], (0.0, 10.0), p)
@@ -72,4 +72,4 @@ res2 = FD.gradient(G, [1.5, 1.0, 3.0])
 res3 = Calculus.gradient(G, [1.5, 1.0, 3.0])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3-element Vector{Float64}:
    3.6235383803359924
  -55.2370917145497
-  51.574083403143234</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../direct_sensitivity/">« Direct Sensitivity Analysis Functionality</a><a class="docs-footer-nextpage" href="../data_parallel/">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 23 February 2026 07:51">Monday 23 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  51.574083403143234</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../direct_sensitivity/">« Direct Sensitivity Analysis Functionality</a><a class="docs-footer-nextpage" href="../data_parallel/">Data-Parallel Multithreaded, Distributed, and Multi-GPU Batching »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Thursday 26 February 2026 21:02">Thursday 26 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
