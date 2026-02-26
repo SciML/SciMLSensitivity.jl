@@ -324,12 +324,12 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
-# ReactantVJP: IIP dynamics uses .= broadcasting which hits a Reactant compilation bug
-# (Reactant produces zeros for Enzyme.autodiff when the function uses .= broadcasting)
-@test_broken Zygote.gradient(
+# ReactantVJP: IIP dynamics with .= broadcasting (fixed in Reactant.jl#2512)
+du0 = Zygote.gradient(
     u0 -> loss_iip(u0, sensealg = BacksolveAdjoint(autojacvec = ReactantVJP())),
     u0
-)[1] ≈ Fdu0
+)[1]
+@test Fdu0 ≈ du0
 
 # InterpolatingAdjoint
 du0 = Zygote.gradient(
@@ -371,10 +371,11 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
-@test_broken Zygote.gradient(
+du0 = Zygote.gradient(
     u0 -> loss_iip(u0, sensealg = InterpolatingAdjoint(autojacvec = ReactantVJP())),
     u0
-)[1] ≈ Fdu0
+)[1]
+@test Fdu0 ≈ du0
 
 # QuadratureAdjoint
 du0 = Zygote.gradient(
@@ -413,10 +414,11 @@ du0 = Zygote.gradient(
     u0
 )[1]
 @test Fdu0 ≈ du0 rtol = 1.0e-10
-@test_broken Zygote.gradient(
+du0 = Zygote.gradient(
     u0 -> loss_iip(u0, sensealg = QuadratureAdjoint(autojacvec = ReactantVJP())),
     u0
-)[1] ≈ Fdu0
+)[1]
+@test Fdu0 ≈ du0
 
 # ForwardDiffSensitivity
 du0 = Zygote.gradient(u0 -> loss_iip(u0, sensealg = ForwardDiffSensitivity()), u0)[1]
