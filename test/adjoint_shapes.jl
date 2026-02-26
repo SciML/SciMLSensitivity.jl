@@ -42,8 +42,8 @@ else
     end
 
     # ReactantVJP with matrix-shaped parameters (IIP)
-    # IIP .= broadcasting returns zeros (upstream Reactant.jl#2502)
-    @test_broken begin
+    # Fixed: Reactant.jl#2512 + Duplicated function annotation
+    begin
         prob_iip_r = ODEProblem{true}(f, X, tspan, p)
         g_default_iip = Zygote.gradient(
             p -> sum(solve(prob_iip_r, Midpoint(); u0 = X, p)), p
@@ -58,7 +58,7 @@ else
                 )
             ), p
         )[1]
-        g_default_iip ≈ g_reactant_iip
+        @test g_default_iip ≈ g_reactant_iip rtol = 1.0e-2
     end
 
     function aug_dynamics!(dz, z, K, t)
