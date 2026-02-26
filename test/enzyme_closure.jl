@@ -9,7 +9,7 @@ if VERSION >= v"1.12"
         @test_skip false
     end
 else
-    using Enzyme, Zygote, Reactant
+    using Enzyme, Zygote, Reactant, Lux, ComponentArrays, Random
 
     import Base.zero
 
@@ -160,56 +160,82 @@ else
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp1', refdp, atol = 1.0e-5)
-    # ReactantVJP: closure-based ODE with set_params(.=) hits Reactant _copyto! limitation
-    @test_broken begin
-        du1r, dp1r = adjoint_sensitivities(
-            sol, Tsit5(); g,
-            sensealg = BacksolveAdjoint(autodiff = true, autojacvec = ReactantVJP()),
-            abstol = 1.0e-12, reltol = 1.0e-12
-        )
-        isapprox(dp1r', refdp, atol = 1.0e-5)
-    end
     du2, dp2 = adjoint_sensitivities(
         sol, Tsit5(); g,
         sensealg = GaussAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp2', refdp, atol = 1.0e-5)
-    @test_broken begin
-        du2r, dp2r = adjoint_sensitivities(
-            sol, Tsit5(); g,
-            sensealg = GaussAdjoint(autodiff = true, autojacvec = ReactantVJP()),
-            abstol = 1.0e-12, reltol = 1.0e-12
-        )
-        isapprox(dp2r', refdp, atol = 1.0e-5)
-    end
     du3, dp3 = adjoint_sensitivities(
         sol, Tsit5(); g,
         sensealg = QuadratureAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp3', refdp, atol = 1.0e-5)
-    @test_broken begin
-        du3r, dp3r = adjoint_sensitivities(
-            sol, Tsit5(); g,
-            sensealg = QuadratureAdjoint(autodiff = true, autojacvec = ReactantVJP()),
-            abstol = 1.0e-12, reltol = 1.0e-12
-        )
-        isapprox(dp3r', refdp, atol = 1.0e-5)
-    end
     du4, dp4 = adjoint_sensitivities(
         sol, Tsit5(); g,
         sensealg = InterpolatingAdjoint(autodiff = true, autojacvec = EnzymeVJP()),
         abstol = 1.0e-12, reltol = 1.0e-12
     )
     @test isapprox(dp4', refdp, atol = 1.0e-5)
-    @test_broken begin
-        du4r, dp4r = adjoint_sensitivities(
-            sol, Tsit5(); g,
-            sensealg = InterpolatingAdjoint(autodiff = true, autojacvec = ReactantVJP()),
-            abstol = 1.0e-12, reltol = 1.0e-12
-        )
-        isapprox(dp4r', refdp, atol = 1.0e-5)
+
+    # ReactantVJP tests using Lux (functional parameters, no mutable closure state).
+    # Reactant's ahead-of-time compilation cannot track mutations to closure-captured
+    # state, so the Flux-style set_params(.=) pattern above doesn't work with ReactantVJP.
+    # Using Lux, parameters are passed explicitly through the ODE function argument `p`,
+    # so Reactant can trace the dependency correctly.
+    # See: https://github.com/EnzymeAD/Reactant.jl/issues/2555
+
+    lux_model = Chain(Lux.Dense(4, 10, tanh), Lux.Dense(10, 4))
+    lux_rng = Xoshiro(42)
+    lux_ps, lux_st = Lux.setup(lux_rng, lux_model)
+    lux_ps_ca = ComponentArray(lux_ps)
+    lux_ax = getaxes(lux_ps_ca)
+
+    function dfunc_lux!(dstate, state, p, t)
+        dstate[impart] .= -1.0 .*
+            (H_0 * state[repart] .+ cos(2.0 * t) .* H_D * state[repart])
+        dstate[repart] .= H_0 * state[impart] .+ cos(2.0 * t) .* H_D * state[impart]
+        nn_out, _ = lux_model(dstate, ComponentArray(p, lux_ax), lux_st)
+        dstate .+= nn_out
+        return nothing
     end
+
+    lux_p = Vector(lux_ps_ca) .* 1.0e-3
+    lux_prob = ODEProblem{true}(dfunc_lux!, y0, tspan, lux_p)
+    lux_sol = solve(lux_prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12)
+
+    function gintegrate_lux(p)
+        prob = ODEProblem{true}(dfunc_lux!, y0, tspan, p)
+        sol = solve(prob, Tsit5(), abstol = 1.0e-12, reltol = 1.0e-12)
+        integral, error = quadgk((t) -> (g(sol(t), p, t)), tspan...)
+        return integral
+    end
+    refdp_lux = ForwardDiff.gradient(gintegrate_lux, lux_p)
+
+    du1r, dp1r = adjoint_sensitivities(
+        lux_sol, Tsit5(); g,
+        sensealg = BacksolveAdjoint(autodiff = true, autojacvec = ReactantVJP()),
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    @test isapprox(dp1r', refdp_lux, atol = 1.0e-5)
+    du2r, dp2r = adjoint_sensitivities(
+        lux_sol, Tsit5(); g,
+        sensealg = GaussAdjoint(autodiff = true, autojacvec = ReactantVJP()),
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    @test isapprox(dp2r', refdp_lux, atol = 1.0e-5)
+    du3r, dp3r = adjoint_sensitivities(
+        lux_sol, Tsit5(); g,
+        sensealg = QuadratureAdjoint(autodiff = true, autojacvec = ReactantVJP()),
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    @test isapprox(dp3r', refdp_lux, atol = 1.0e-5)
+    du4r, dp4r = adjoint_sensitivities(
+        lux_sol, Tsit5(); g,
+        sensealg = InterpolatingAdjoint(autodiff = true, autojacvec = ReactantVJP()),
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    @test isapprox(dp4r', refdp_lux, atol = 1.0e-5)
 
 end  # VERSION < v"1.12" else block
