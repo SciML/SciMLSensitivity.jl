@@ -607,13 +607,13 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
 
     function loss_mat(p)
         prob = ODEProblem(f_aug, u0_mat, tspan, p; alg = solvealg_test, sensealg = sensealg_test)
-        sol = solve(prob)
+        sol = solve(prob; abstol = 1e-12, reltol = 1e-12)
         return sum(sol[:, :, end])
     end
 
     function loss_mat2(p)
         prob = ODEProblem(f_aug, u0_mat, tspan, p)
-        sol = solve(prob, solvealg_test; sensealg = sensealg_test)
+        sol = solve(prob, solvealg_test; sensealg = sensealg_test, abstol = 1e-12, reltol = 1e-12)
         return sum(sol[:, :, end])
     end
 
@@ -622,9 +622,12 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
     @test res1 ≈ res3 atol = 1.0e-10
 
     @testset "Matrix ODE - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Matrix ODEs have issues with all reverse-mode AD backends - see issue #1330
-        @test_broken false
-        @test_broken false
+        # collect() needed because Tracker.gradient returns TrackedArray for matrix ODEs,
+        # and isapprox(::TrackedArray, ...; atol) is not defined
+        res2 = collect(grad_fn(loss_mat, p0))
+        res4 = collect(grad_fn(loss_mat2, p0))
+        @test res2 ≈ res4 atol = 1.0e-10
+        @test res2 ≈ ForwardDiff.gradient(loss_mat, p0) atol = 1.0e-10
     end
 end
 
