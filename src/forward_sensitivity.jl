@@ -103,7 +103,7 @@ end
 Base.propertynames(f::ODEForwardSensitivityFunction) = (:observed, fieldnames(typeof(f)))
 SciMLBase.has_observed(f::ODEForwardSensitivityFunction) = SciMLBase.has_observed(f.f)
 
-function SciMLBase.ConstructionBase.setproperties(
+function ConstructionBase.setproperties(
         obj::ODEForwardSensitivityFunction{iip}, patch::NamedTuple
     ) where {iip}
     get_or(name) = haskey(patch, name) ? patch[name] : getfield(obj, name)
