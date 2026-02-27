@@ -243,7 +243,8 @@ function adjointdiffcache(
     elseif autojacvec isa ReactantVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(
-            ReactantLoaded(), autojacvec, pf, p, f, y, _t
+            ReactantLoaded(), autojacvec, pf, p, f, y, _t;
+            numindvar = numindvar, alg = alg
         )
     elseif SciMLBase.has_paramjac(f) || quad || !(autojacvec isa Bool) ||
             autojacvec isa EnzymeVJP
@@ -520,13 +521,24 @@ end
 # Dispatched on inside extension.
 struct MooncakeLoaded end
 struct ReactantLoaded end
+struct ReactantDualTag end
+
+struct ReactantVJPConfig{FK, DK, FC, DC}
+    float_kernel::FK
+    dual_kernel::DK
+    float_caches::FC
+    dual_caches::DC
+    is_nullparams::Bool
+    chunk_size::Int
+end
 
 function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
     msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
     error(msg)
 end
 
-function get_paramjac_config(::Any, ::ReactantVJP, pf, p, f, y, _t)
+function get_paramjac_config(::Any, ::ReactantVJP, pf, p, f, y, _t;
+        numindvar = nothing, alg = nothing)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
         "`using Reactant` to use this functionality"
     error(msg)
@@ -606,6 +618,12 @@ function get_pf(::ReactantVJP, prob, _f)
 end
 
 function reactant_run_ad!(dλ, dgrad, dy, paramjac_config, y, p, t, λ)
+    msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
+        "`using Reactant` to use this functionality"
+    error(msg)
+end
+
+function reactant_run_dual_ad!(dλ, dgrad, dy, config, y, p, t, λ)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
         "`using Reactant` to use this functionality"
     error(msg)

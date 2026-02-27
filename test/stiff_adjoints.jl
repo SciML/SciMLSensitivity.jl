@@ -227,9 +227,7 @@ if VERSION >= v"1.7-"
             @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p
             )[1] isa Vector
-            # ReactantVJP: stiff solvers push ForwardDiff.Dual through reactant_run_ad!,
-            # which can't convert Dual → Float64 for ConcreteRArray.
-            @test_broken Zygote.gradient(
+            @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = ReactantVJP())), p
             )[1] isa Vector
             @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
