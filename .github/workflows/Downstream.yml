@@ -18,7 +18,7 @@ jobs:
         os: [ubuntu-latest]
         package:
           - {user: SciML, repo: DiffEqFlux.jl, group: All}
-          - {user: SciML, repo: DeepEquilibriumNetworks.jl, group: ALL}
+          - {user: SciML, repo: DeepEquilibriumNetworks.jl, group: CPU}
 
     steps:
       - uses: actions/checkout@v6
