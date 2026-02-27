@@ -287,8 +287,19 @@ end
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol, tunables, repack) = S
-    f = sol.prob.f
-    f = unwrapped_f(f)
+    _odef = sol.prob.f
+    f = unwrapped_f(_odef)
+
+    # Priority: use user-provided paramjac if available, regardless of autojacvec.
+    if SciMLBase.has_paramjac(_odef)
+        _pJ = pJ
+        if _pJ === nothing
+            _pJ = similar(y, length(y), length(out))
+        end
+        _odef.paramjac(_pJ, y, p, t)
+        mul!(out', λ', _pJ)
+        return out
+    end
 
     isautojacvec = get_jacvec(sensealg)
     # y is aliased

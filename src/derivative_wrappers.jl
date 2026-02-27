@@ -254,7 +254,11 @@ function vecjacobian!(
         dgrad = nothing, dy = nothing,
         W = nothing
     ) where {TS <: SensitivityFunction}
-    _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    if SciMLBase.has_vjp(S.f)
+        _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
+    else
+        _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    end
     return
 end
 
@@ -263,7 +267,69 @@ function vecjacobian(
         dgrad = nothing, dy = nothing,
         W = nothing
     ) where {TS <: SensitivityFunction}
-    return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    if SciMLBase.has_vjp(S.f)
+        return _vecjacobian_vjp(y, λ, p, t, S, dgrad, dy, W)
+    else
+        return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    end
+end
+
+# Use user-provided VJP from ODEFunction for state vector-Jacobian product.
+# For parameter gradients (dgrad) and forward evaluation (dy), fall back to
+# the AD-based autojacvec dispatch.
+function _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
+    f = S.f
+
+    # Compute dλ = (df/du)^T λ via user-provided VJP
+    if dλ !== nothing
+        if inplace_sensitivity(S)
+            if W === nothing
+                f.vjp(dλ, λ, y, p, t)
+            else
+                f.vjp(dλ, λ, y, p, t, W)
+            end
+        else
+            if W === nothing
+                recursive_copyto!(dλ, f.vjp(λ, y, p, t))
+            else
+                recursive_copyto!(dλ, f.vjp(λ, y, p, t, W))
+            end
+        end
+    end
+
+    # Compute parameter gradient and/or forward evaluation via existing dispatch.
+    # The autojacvec backends all guard dλ writes with `dλ !== nothing` checks,
+    # so passing dλ = nothing avoids redundant state VJP computation.
+    if (dgrad !== nothing && !isempty(dgrad)) || dy !== nothing
+        _vecjacobian!(nothing, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    end
+    return
+end
+
+function _vecjacobian_vjp(y, λ, p, t, S, dgrad, dy, W)
+    f = S.f
+
+    # Compute dλ = (df/du)^T λ via user-provided VJP
+    if inplace_sensitivity(S)
+        dλ = similar(y)
+        if W === nothing
+            f.vjp(dλ, λ, y, p, t)
+        else
+            f.vjp(dλ, λ, y, p, t, W)
+        end
+    else
+        if W === nothing
+            dλ = vec(f.vjp(λ, y, p, t))
+        else
+            dλ = vec(f.vjp(λ, y, p, t, W))
+        end
+    end
+
+    # Compute parameter gradient and/or forward evaluation via existing dispatch.
+    if (dgrad !== nothing && !isempty(dgrad)) || dy !== nothing
+        _, _, dgrad = _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
+    end
+    return dy, dλ, dgrad
 end
 
 function _vecjacobian!(
