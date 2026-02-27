@@ -38,7 +38,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
     RODEFunction, RODEProblem, ReturnCode, SDEFunction,
     SDEProblem, VectorContinuousCallback, deleteat!,
     get_tmp_cache, has_adjoint, isinplace, reinit!, remake,
-    solve, u_modified!, LinearAliasSpecifier, OverrideInit
+    solve, u_modified!, LinearAliasSpecifier, OverrideInit, AbstractOptimizationProblem
 
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
     default_nlsolve, has_autodiff
@@ -102,7 +102,7 @@ export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
     TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
     EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
     ForwardDiffOverAdjoint,
-    SteadyStateAdjoint,
+    SteadyStateAdjoint, UnconstrainedOptimizationAdjoint,
     ForwardLSS, AdjointLSS, NILSS, NILSAS
 
 export second_order_sensitivities, second_order_sensitivity_product
