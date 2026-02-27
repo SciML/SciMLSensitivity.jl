@@ -290,8 +290,11 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     _odef = sol.prob.f
     f = unwrapped_f(_odef)
 
-    # Priority: use user-provided paramjac if available, regardless of autojacvec.
-    if SciMLBase.has_paramjac(_odef)
+    # Priority: vjp_p > paramjac > autojacvec dispatch.
+    if SciMLBase.has_vjp_p(_odef)
+        _odef.vjp_p(out, λ, y, p, t)
+        return out
+    elseif SciMLBase.has_paramjac(_odef)
         _pJ = pJ
         if _pJ === nothing
             _pJ = similar(y, length(y), length(out))
