@@ -103,6 +103,52 @@ end
 Base.propertynames(f::ODEForwardSensitivityFunction) = (:observed, fieldnames(typeof(f)))
 SciMLBase.has_observed(f::ODEForwardSensitivityFunction) = SciMLBase.has_observed(f.f)
 
+function ConstructionBase.setproperties(
+        obj::ODEForwardSensitivityFunction{iip}, patch::NamedTuple
+    ) where {iip}
+    get_or(name) = haskey(patch, name) ? patch[name] : getfield(obj, name)
+    f = get_or(:f)
+    analytic = get_or(:analytic)
+    tgrad = get_or(:tgrad)
+    original_jac = get_or(:original_jac)
+    jac = get_or(:jac)
+    jac_prototype = get_or(:jac_prototype)
+    sparsity = get_or(:sparsity)
+    paramjac = get_or(:paramjac)
+    Wfact = get_or(:Wfact)
+    Wfact_t = get_or(:Wfact_t)
+    uf = get_or(:uf)
+    pf = get_or(:pf)
+    J = get_or(:J)
+    pJ = get_or(:pJ)
+    jac_config = get_or(:jac_config)
+    paramjac_config = get_or(:paramjac_config)
+    alg = get_or(:alg)
+    numparams = get_or(:numparams)
+    numindvar = get_or(:numindvar)
+    f_cache = get_or(:f_cache)
+    mass_matrix = get_or(:mass_matrix)
+    isautojacvec = get_or(:isautojacvec)
+    isautojacmat = get_or(:isautojacmat)
+    colorvec = get_or(:colorvec)
+
+    return ODEForwardSensitivityFunction{
+        iip, typeof(f), typeof(analytic), typeof(tgrad),
+        typeof(original_jac), typeof(jac), typeof(jac_prototype),
+        typeof(sparsity), typeof(paramjac), typeof(Wfact),
+        typeof(Wfact_t), typeof(uf), typeof(pf),
+        typeof(jac_config), typeof(paramjac_config), typeof(alg),
+        typeof(f_cache), typeof(J), typeof(pJ),
+        typeof(mass_matrix), typeof(colorvec),
+    }(
+        f, analytic, tgrad, original_jac, jac,
+        jac_prototype, sparsity, paramjac, Wfact, Wfact_t,
+        uf, pf, J, pJ, jac_config, paramjac_config, alg,
+        numparams, numindvar, f_cache, mass_matrix,
+        isautojacvec, isautojacmat, colorvec,
+    )
+end
+
 function (S::ODEForwardSensitivityFunction)(du, u, p, t)
     y = @view u[1:(S.numindvar)] # These are the independent variables
     dy = @view du[1:(S.numindvar)]
@@ -469,15 +515,65 @@ function _ODEForwardSensitivityProblem(
         end
     end
 
+    # Construct extended jac_prototype for the sensitivity system.
+    # The extended Jacobian has block structure:
+    # [J    0    0   ...  0  ]   (block row 0: original ODE)
+    # [H_1  J    0   ...  0  ]   (block row i: sensitivity eq for param i)
+    # [H_2  0    J   ...  0  ]   (H_i involves Hessian terms d(J*s_i)/dy)
+    # [H_n  0    0   ...  J  ]
+    # Use J's sparsity pattern for both diagonal and first-column blocks.
+    if f.jac_prototype !== nothing &&
+            f.jac_prototype isa SparseArrays.AbstractSparseMatrixCSC
+        jp = f.jac_prototype
+        nn = size(jp, 1)
+        np = length(p)
+        N = (np + 1) * nn
+
+        I_orig, J_orig, V_orig = SparseArrays.findnz(jp)
+        nz = length(I_orig)
+        # Total nonzeros: (np+1) diagonal blocks + np first-column off-diagonal blocks
+        total_nz = nz * (np + 1) + nz * np
+        Is = Vector{Int}(undef, total_nz)
+        Js = Vector{Int}(undef, total_nz)
+        Vs = Vector{eltype(jp)}(undef, total_nz)
+
+        idx = 1
+        for b in 0:np
+            # Diagonal block b
+            for k in 1:nz
+                Is[idx] = b * nn + I_orig[k]
+                Js[idx] = b * nn + J_orig[k]
+                Vs[idx] = V_orig[k]
+                idx += 1
+            end
+            # First column off-diagonal block (for b > 0, conservative H_i pattern)
+            if b > 0
+                for k in 1:nz
+                    Is[idx] = b * nn + I_orig[k]
+                    Js[idx] = J_orig[k]
+                    Vs[idx] = V_orig[k]
+                    idx += 1
+                end
+            end
+        end
+
+        extended_jac_prototype = SparseArrays.sparse(Is, Js, Vs, N, N)
+        # Original colorvec is invalid for the extended system; let solver recompute
+        extended_colorvec = nothing
+    else
+        extended_jac_prototype = nothing
+        extended_colorvec = f.colorvec
+    end
+
     # TODO: Use user tgrad. iW can be safely ignored here.
     sense = ODEForwardSensitivityFunction(
         f, f.analytic, nothing, f.jac, nothing,
-        nothing, nothing, f.paramjac,
+        extended_jac_prototype, nothing, f.paramjac,
         nothing, nothing,
         uf, pf, u0, jac_config,
         paramjac_config, alg,
         p, zero(u0), mm,
-        isautojacvec, isautojacmat, f.colorvec, nus
+        isautojacvec, isautojacmat, extended_colorvec, nus
     )
 
     if !SciMLBase.isinplace(sense)

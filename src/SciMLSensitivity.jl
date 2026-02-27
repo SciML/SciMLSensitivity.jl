@@ -52,7 +52,7 @@ using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
-using SciMLBase.ConstructionBase: setproperties
+using ConstructionBase: ConstructionBase, setproperties
 
 # Std Libs
 using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
@@ -60,6 +60,7 @@ using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
     norm, normalize!, qr, transpose
 using Markdown: Markdown, @doc_str
 using Random: Random, rand!
+using SparseArrays: SparseArrays
 using Statistics: Statistics, mean
 
 abstract type SensitivityFunction end
