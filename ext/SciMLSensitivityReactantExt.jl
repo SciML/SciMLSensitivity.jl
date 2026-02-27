@@ -23,26 +23,40 @@ end
 # The function must be captured (not passed as argument) because Reactant
 # can only trace through functions whose identity is encoded in the closure type.
 function _make_vjp_kernel(raw_f, isinplace::Bool)
-    return function (dy_buf, u, p, t, λ)
-        du_shadow = zero(u)
-        dp_shadow = zero(p)
-        dλ_seed = copy(λ)
+    if isinplace
+        # Wrap in SciMLBase.Void so the in-place function returns nothing
+        # (matching EnzymeVJP's approach). Pass as Duplicated so Enzyme can
+        # differentiate through mutable state captured in the closure.
+        void_f = SciMLBase.Void(raw_f)
+        f_shadow = Enzyme.make_zero(void_f)
+        return function (dy_buf, u, p, t, λ)
+            du_shadow = zero(u)
+            dp_shadow = zero(p)
+            dλ_seed = copy(λ)
 
-        if isinplace
             Enzyme.autodiff(
                 Enzyme.Reverse,
-                Enzyme.Const(raw_f),
+                Enzyme.Duplicated(void_f, f_shadow),
                 Enzyme.Const,
                 Enzyme.Duplicated(dy_buf, dλ_seed),
                 Enzyme.Duplicated(u, du_shadow),
                 Enzyme.Duplicated(p, dp_shadow),
                 Enzyme.Const(t)
             )
-        else
-            # For out-of-place functions: f(u, p, t) -> dy
-            # We wrap it so Enzyme can differentiate through the copyto!
-            function oop_wrapper(dy_buf, u, p, t)
-                result = raw_f(u, p, t)
+
+            return dy_buf, du_shadow, dp_shadow
+        end
+    else
+        # For out-of-place functions: use a fixed wrapper (Const) and pass
+        # raw_f as a Duplicated argument so Enzyme tracks its captured state.
+        f_shadow = Enzyme.make_zero(raw_f)
+        return function (dy_buf, u, p, t, λ)
+            du_shadow = zero(u)
+            dp_shadow = zero(p)
+            dλ_seed = copy(λ)
+
+            function oop_wrapper(f, dy_buf, u, p, t)
+                result = f(u, p, t)
                 copyto!(dy_buf, result)
                 return nothing
             end
@@ -51,37 +65,48 @@ function _make_vjp_kernel(raw_f, isinplace::Bool)
                 Enzyme.Reverse,
                 Enzyme.Const(oop_wrapper),
                 Enzyme.Const,
+                Enzyme.Duplicated(raw_f, f_shadow),
                 Enzyme.Duplicated(dy_buf, dλ_seed),
                 Enzyme.Duplicated(u, du_shadow),
                 Enzyme.Duplicated(p, dp_shadow),
                 Enzyme.Const(t)
             )
-        end
 
-        return dy_buf, du_shadow, dp_shadow
+            return dy_buf, du_shadow, dp_shadow
+        end
     end
 end
 
 # Variant for NullParameters: params are Const (not differentiated).
 # Returns only (dy_buf, du_shadow) since there is no param gradient.
 function _make_vjp_kernel_nullparams(raw_f, isinplace::Bool)
-    return function (dy_buf, u, t, λ)
-        du_shadow = zero(u)
-        dλ_seed = copy(λ)
+    if isinplace
+        void_f = SciMLBase.Void(raw_f)
+        f_shadow = Enzyme.make_zero(void_f)
+        return function (dy_buf, u, t, λ)
+            du_shadow = zero(u)
+            dλ_seed = copy(λ)
 
-        if isinplace
             Enzyme.autodiff(
                 Enzyme.Reverse,
-                Enzyme.Const(raw_f),
+                Enzyme.Duplicated(void_f, f_shadow),
                 Enzyme.Const,
                 Enzyme.Duplicated(dy_buf, dλ_seed),
                 Enzyme.Duplicated(u, du_shadow),
                 Enzyme.Const(SciMLBase.NullParameters()),
                 Enzyme.Const(t)
             )
-        else
-            function oop_wrapper(dy_buf, u, t)
-                result = raw_f(u, SciMLBase.NullParameters(), t)
+
+            return dy_buf, du_shadow
+        end
+    else
+        f_shadow = Enzyme.make_zero(raw_f)
+        return function (dy_buf, u, t, λ)
+            du_shadow = zero(u)
+            dλ_seed = copy(λ)
+
+            function oop_wrapper(f, dy_buf, u, t)
+                result = f(u, SciMLBase.NullParameters(), t)
                 copyto!(dy_buf, result)
                 return nothing
             end
@@ -90,13 +115,14 @@ function _make_vjp_kernel_nullparams(raw_f, isinplace::Bool)
                 Enzyme.Reverse,
                 Enzyme.Const(oop_wrapper),
                 Enzyme.Const,
+                Enzyme.Duplicated(raw_f, f_shadow),
                 Enzyme.Duplicated(dy_buf, dλ_seed),
                 Enzyme.Duplicated(u, du_shadow),
                 Enzyme.Const(t)
             )
-        end
 
-        return dy_buf, du_shadow
+            return dy_buf, du_shadow
+        end
     end
 end
 
