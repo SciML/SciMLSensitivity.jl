@@ -19,16 +19,6 @@ function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     return cache, pf, λ_mem, dy_mem
 end
 
-# Mooncake returns Mooncake.Tangent for struct-based array types (e.g. ComponentVector).
-# Extract the underlying array data for compatibility with recursive_copyto!.
-_unwrap_tangent(x) = x
-function _unwrap_tangent(t::Mooncake.Tangent)
-    for v in values(t.fields)
-        v isa AbstractArray && return v
-    end
-    return t
-end
-
 function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
     cache, pf, λ_mem, dy_mem = paramjac_config
     λ_mem .= λ
@@ -41,8 +31,18 @@ function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
         p
     end
     dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, _p, t)
-    y_grad = _unwrap_tangent(cache.tangents[3])
-    p_grad = _unwrap_tangent(cache.tangents[4])
+    y_grad = cache.tangents[3]
+    p_grad_raw = cache.tangents[4]
+    # For struct-based array types (e.g. ComponentArray), Mooncake returns a
+    # Mooncake.Tangent instead of a plain array. Use tangent_to_primal!! to
+    # convert back to the primal type so downstream recursive_copyto! works.
+    # (Mooncake.Config(friendly_tangents=true) would do this automatically for
+    # all arguments, but currently fails on complex closure types in pf.)
+    p_grad = if p_grad_raw isa Mooncake.Tangent
+        Mooncake.tangent_to_primal!!(zero(_p), p_grad_raw)
+    else
+        p_grad_raw
+    end
     return dy, y_grad, p_grad
 end
 
