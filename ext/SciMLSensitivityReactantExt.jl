@@ -1,7 +1,7 @@
 module SciMLSensitivityReactantExt
 
 using SciMLSensitivity: SciMLSensitivity, SciMLBase, FakeIntegrator
-using Reactant: Reactant, ConcreteRArray
+using Reactant: Reactant
 using Enzyme: Enzyme
 using ForwardDiff: ForwardDiff
 import SciMLSensitivity: get_paramjac_config, reactant_run_ad!, reactant_run_dual_ad!,
@@ -134,20 +134,20 @@ end
 
 function _compile_float_kernel(raw_f, iip, vjp, y, p, t_val)
     vjp_kernel = _make_vjp_kernel(raw_f, iip)
-    dy_buf = ConcreteRArray(zero(y))
-    u_ra = ConcreteRArray(zero(y))
-    p_ra = ConcreteRArray(zero(p))
+    dy_buf = Reactant.to_rarray(zero(y))
+    u_ra = Reactant.to_rarray(zero(y))
+    p_ra = Reactant.to_rarray(zero(p))
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
-    λ_ra = ConcreteRArray(zero(y))
+    λ_ra = Reactant.to_rarray(zero(y))
     return _reactant_compile(vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra), vjp.allow_scalar)
 end
 
 function _compile_float_kernel_nullparams(raw_f, iip, vjp, y, t_val)
     vjp_kernel = _make_vjp_kernel_nullparams(raw_f, iip)
-    dy_buf = ConcreteRArray(zero(y))
-    u_ra = ConcreteRArray(zero(y))
+    dy_buf = Reactant.to_rarray(zero(y))
+    u_ra = Reactant.to_rarray(zero(y))
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
-    λ_ra = ConcreteRArray(zero(y))
+    λ_ra = Reactant.to_rarray(zero(y))
     return _reactant_compile(vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra), vjp.allow_scalar)
 end
 
@@ -508,9 +508,9 @@ function _run_single_float_call!(
     copyto!(fc.λ_cache, λ_float)
     fill!(fc.dy_cache, zero(Float64))
 
-    y_ra = ConcreteRArray(fc.y_cache)
-    λ_ra = ConcreteRArray(fc.λ_cache)
-    dy_ra = ConcreteRArray(fc.dy_cache)
+    y_ra = Reactant.to_rarray(fc.y_cache)
+    λ_ra = Reactant.to_rarray(fc.λ_cache)
+    dy_ra = Reactant.to_rarray(fc.dy_cache)
     t_val = t_float === nothing ? 0.0 : Float64(t_float)
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
 
@@ -520,7 +520,7 @@ function _run_single_float_call!(
         copyto!(ygrad_out, Array(y_grad))
     else
         copyto!(fc.p_cache, p)
-        p_ra = ConcreteRArray(fc.p_cache)
+        p_ra = Reactant.to_rarray(fc.p_cache)
         dy_result, y_grad, p_grad = config.float_kernel(dy_ra, y_ra, p_ra, t_ra, λ_ra)
         copyto!(dy_out, Array(dy_result))
         copyto!(ygrad_out, Array(y_grad))
@@ -606,16 +606,16 @@ function get_cb_paramjac_config(
     )
     if mode === :state
         kernel = _make_cb_state_vjp_kernel(raw_affect, event_idx)
-        out_example = ConcreteRArray(zero(y))
-        λ_example = ConcreteRArray(zero(y))
+        out_example = Reactant.to_rarray(zero(y))
+        λ_example = Reactant.to_rarray(zero(y))
         out_cache = zero(y)
         λ_cache = zero(y)
         out_result = zero(y)
         ygrad_result = zero(y)
     else # :param
         kernel = _make_cb_param_vjp_kernel(raw_affect, event_idx)
-        out_example = ConcreteRArray(zero(p))
-        λ_example = ConcreteRArray(zero(p))
+        out_example = Reactant.to_rarray(zero(p))
+        λ_example = Reactant.to_rarray(zero(p))
         out_cache = zero(p)
         λ_cache = zero(p)
         out_result = zero(p)
@@ -623,8 +623,8 @@ function get_cb_paramjac_config(
     end
 
     cb_t_val = _t === nothing ? 0.0 : Float64(_t)
-    u_ra = ConcreteRArray(zero(y))
-    p_ra = ConcreteRArray(zero(p))
+    u_ra = Reactant.to_rarray(zero(y))
+    p_ra = Reactant.to_rarray(zero(p))
     t_ra = Reactant.to_rarray(cb_t_val; track_numbers = true)
     tprev_ra = Reactant.to_rarray(cb_t_val; track_numbers = true)
 
@@ -655,10 +655,10 @@ function reactant_run_cb_ad!(dλ, dgrad, dy, paramjac_config::Tuple, y, p, t, tp
     copyto!(λ_cache, λ)
     fill!(out_cache, zero(eltype(out_cache)))
 
-    y_ra = ConcreteRArray(y_cache)
-    p_ra = ConcreteRArray(p_cache)
-    λ_ra = ConcreteRArray(λ_cache)
-    out_ra = ConcreteRArray(out_cache)
+    y_ra = Reactant.to_rarray(y_cache)
+    p_ra = Reactant.to_rarray(p_cache)
+    λ_ra = Reactant.to_rarray(λ_cache)
+    out_ra = Reactant.to_rarray(out_cache)
     t_val = t === nothing ? 0.0 : Float64(t)
     tprev_val = tprev === nothing ? 0.0 : Float64(tprev)
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
