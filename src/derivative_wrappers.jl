@@ -249,12 +249,16 @@ function jacobianmat!(
     end
     return nothing
 end
+function _f_has_vjp(f)
+    return f isa SciMLBase.AbstractSciMLFunction && SciMLBase.has_vjp(f)
+end
+
 function vecjacobian!(
         dλ, y, λ, p, t, S::TS;
         dgrad = nothing, dy = nothing,
         W = nothing
     ) where {TS <: SensitivityFunction}
-    if SciMLBase.has_vjp(S.f)
+    if _f_has_vjp(S.f)
         _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
     else
         _vecjacobian!(dλ, y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
@@ -267,7 +271,7 @@ function vecjacobian(
         dgrad = nothing, dy = nothing,
         W = nothing
     ) where {TS <: SensitivityFunction}
-    if SciMLBase.has_vjp(S.f)
+    if _f_has_vjp(S.f)
         return _vecjacobian_vjp(y, λ, p, t, S, dgrad, dy, W)
     else
         return _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
