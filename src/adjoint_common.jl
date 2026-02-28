@@ -238,8 +238,26 @@ function adjointdiffcache(
         _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), _shadow_p)
     elseif autojacvec isa MooncakeVJP
-        pf = get_pf(autojacvec, prob, unwrappedf)
-        paramjac_config = get_paramjac_config(MooncakeLoaded(), autojacvec, pf, p, f, y, _t)
+        _pf = get_pf(autojacvec, prob, unwrappedf)
+        # Wrap pf to accept flat tunables and repack to full parameter struct,
+        # matching how ReverseDiff handles structured parameters.
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        pf = if _needs_repack
+            if isRODE
+                let _pf = _pf, repack = repack
+                    (out, u, _tunables, t, W) -> _pf(out, u, repack(_tunables), t, W)
+                end
+            else
+                let _pf = _pf, repack = repack
+                    (out, u, _tunables, t) -> _pf(out, u, repack(_tunables), t)
+                end
+            end
+        else
+            _pf
+        end
+        paramjac_config = get_paramjac_config(
+            MooncakeLoaded(), autojacvec, pf, tunables, f, y, _t
+        )
     elseif autojacvec isa ReactantVJP
         pf = get_pf(autojacvec, prob, unwrappedf)
         paramjac_config = get_paramjac_config(

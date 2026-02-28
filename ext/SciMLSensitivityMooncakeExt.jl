@@ -22,7 +22,15 @@ end
 function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
     cache, pf, λ_mem, dy_mem = paramjac_config
     λ_mem .= λ
-    dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, p, t)
+    # The Mooncake cache is built with flat tunables (Vector), but callers like
+    # _vecjacobian! and vec_pjac! may pass the full structured parameter object.
+    # Extract flat tunables when p is a structured type to match the cache.
+    _p = if !(p isa AbstractArray) && p !== nothing && !(p isa SciMLBase.NullParameters)
+        first(canonicalize(Tunable(), p))
+    else
+        p
+    end
+    dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, _p, t)
     y_grad = cache.tangents[3]
     p_grad = cache.tangents[4]
     return dy, y_grad, p_grad
