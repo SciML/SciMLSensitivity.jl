@@ -16,15 +16,33 @@ function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     dy_mem = zero(y)
     λ_mem = zero(y)
     cache = Mooncake.prepare_pullback_cache(pf, dy_mem, y, p, _t)
-    return cache, pf, λ_mem, dy_mem
+    # Pre-allocate buffer for tangent_to_primal!! conversion of struct-based
+    # array types (e.g. ComponentArray) whose Mooncake tangent is Mooncake.Tangent.
+    # (Mooncake.Config(friendly_tangents=true) would avoid this, but currently
+    # fails on complex closure types captured by pf.)
+    p_grad_buf = p isa AbstractArray && !(p isa Array) ? similar(p) : nothing
+    return cache, pf, λ_mem, dy_mem, p_grad_buf
 end
 
 function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
-    cache, pf, λ_mem, dy_mem = paramjac_config
+    cache, pf, λ_mem, dy_mem, p_grad_buf = paramjac_config
     λ_mem .= λ
-    dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, p, t)
+    # The Mooncake cache is built with flat tunables (Vector), but callers like
+    # _vecjacobian! and vec_pjac! may pass the full structured parameter object.
+    # Extract flat tunables when p is a structured type to match the cache.
+    _p = if !(p isa AbstractArray) && p !== nothing && !(p isa SciMLBase.NullParameters)
+        first(canonicalize(Tunable(), p))
+    else
+        p
+    end
+    dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, _p, t)
     y_grad = cache.tangents[3]
-    p_grad = cache.tangents[4]
+    p_grad_raw = cache.tangents[4]
+    p_grad = if p_grad_buf !== nothing && p_grad_raw isa Mooncake.Tangent
+        Mooncake.tangent_to_primal!!(p_grad_buf, p_grad_raw)
+    else
+        p_grad_raw
+    end
     return dy, y_grad, p_grad
 end
 

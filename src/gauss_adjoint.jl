@@ -483,7 +483,16 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
-        pf = get_pf(sensealg.autojacvec, prob, f)
+        _pf = get_pf(sensealg.autojacvec, prob, f)
+        # Wrap pf to accept flat tunables and repack to full parameter struct
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        pf = if _needs_repack
+            let _pf = _pf, repack = repack
+                (out, u, _tunables, t) -> _pf(out, u, repack(_tunables), t)
+            end
+        else
+            _pf
+        end
         paramjac_config = get_paramjac_config(
             MooncakeLoaded(), sensealg.autojacvec, pf, tunables, f, y, tspan[2]
         )
