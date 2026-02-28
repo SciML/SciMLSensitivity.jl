@@ -78,26 +78,26 @@ optprob2 = OPT.OptimizationProblem(optf, res1.u)
 res2 = OPT.solve(
     optprob2, OOJ.BFGS(), callback = cb, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 1153-element Vector{Float32}:
-  2.4246545
-  0.676312
- -1.5333155
- -2.5433755
-  0.40561843
- -0.24349792
-  0.079961605
- -0.9929089
- -2.6225398
-  2.443298
+  2.6747694
+ -2.7705429
+ -0.4405577
+ -1.6622632
+  1.5203818
+  1.328718
+  2.704059
+  2.6983652
+  2.221129
+  0.45602408
   ⋮
- -0.01710144
- -0.23508453
-  0.03234239
-  0.14291507
- -0.27278733
- -0.16274565
-  0.113770664
- -0.105410494
-  0.06271099</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
+  0.056642205
+ -0.17035434
+  0.08308309
+  0.06394916
+ -0.14752194
+  0.23294088
+  0.21552962
+ -0.00026605948
+  0.122801945</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = CA.ComponentArray(θ, ax)
     Statistics.mean(abs2, 4.0 .- x[1, :]) + 2Statistics.mean(abs2, x[2, :]) +
@@ -108,28 +108,28 @@ optf3 = OPT.OptimizationFunction((x, p) -&gt; loss_adjoint(x), adtype)
 optprob3 = OPT.OptimizationProblem(optf3, res2.u)
 res3 = OPT.solve(optprob3, OOJ.BFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 1153-element Vector{Float32}:
-  2.4246545
-  0.676312
- -1.5333155
- -2.5433755
-  0.40561843
- -0.24349792
-  0.079961605
- -0.9929089
- -2.6225398
-  2.443298
+  2.6745174
+ -2.8195958
+ -0.44522524
+ -1.7631865
+  1.4651448
+  1.4991558
+  2.7897356
+  2.8025458
+  2.2772658
+  0.4826841
   ⋮
- -0.01710144
- -0.23508453
-  0.03234239
-  0.14291507
- -0.27278733
- -0.16274565
-  0.113770664
- -0.105410494
-  0.06271099</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
+  0.099411055
+ -0.33467364
+  0.22713375
+  0.19628845
+  0.047414508
+  0.77519375
+  0.1999058
+  0.04420574
+  0.39776093</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
 cb(res3, l)
 p = Plots.plot(ODE.solve(ODE.remake(prob, p = res3.u), ODE.Tsit5(), saveat = 0.01), ylim = (
     -6, 6), lw = 3)
 Plots.plot!(p, ts, [first(first(ann([t], CA.ComponentArray(res3.u, ax), st))) for t in ts],
-    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="07ece145.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 27 February 2026 11:34">Friday 27 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="9b56aa60.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 10:02">Saturday 28 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
