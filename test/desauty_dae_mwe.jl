@@ -5,6 +5,7 @@ import SciMLStructures as SS
 import SciMLSensitivity
 using SymbolicIndexingInterface
 using FiniteDiff
+using ForwardDiff
 using Tracker
 using Enzyme
 using Mooncake
@@ -91,6 +92,25 @@ eqs = [
 
         fd_init_grad = FiniteDiff.finite_difference_gradient(init_loss, itunables)
         @test any(!iszero, fd_init_grad)
+
+        @testset "ForwardDiff through init" begin
+            if use_scc
+                @test_broken begin
+                    fwd_init = ForwardDiff.gradient(init_loss, itunables)
+                    isapprox(fwd_init, fd_init_grad, rtol = 0.05)
+                end
+            else
+                fwd_init = ForwardDiff.gradient(init_loss, itunables)
+                @test isapprox(fwd_init, fd_init_grad, rtol = 0.05)
+            end
+        end
+
+        @testset "ForwardDiff through ODE solve" begin
+            @test_broken begin
+                fwd_grad = ForwardDiff.gradient(loss, tunables)
+                isapprox(fwd_grad, fd_grad, rtol = 0.05)
+            end
+        end
 
         @testset "Enzyme through init" begin
             @test_broken begin
