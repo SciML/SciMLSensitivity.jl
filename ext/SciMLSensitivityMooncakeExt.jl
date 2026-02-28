@@ -16,11 +16,16 @@ function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     dy_mem = zero(y)
     λ_mem = zero(y)
     cache = Mooncake.prepare_pullback_cache(pf, dy_mem, y, p, _t)
-    return cache, pf, λ_mem, dy_mem
+    # Pre-allocate buffer for tangent_to_primal!! conversion of struct-based
+    # array types (e.g. ComponentArray) whose Mooncake tangent is Mooncake.Tangent.
+    # (Mooncake.Config(friendly_tangents=true) would avoid this, but currently
+    # fails on complex closure types captured by pf.)
+    p_grad_buf = p isa AbstractArray && !(p isa Array) ? similar(p) : nothing
+    return cache, pf, λ_mem, dy_mem, p_grad_buf
 end
 
 function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
-    cache, pf, λ_mem, dy_mem = paramjac_config
+    cache, pf, λ_mem, dy_mem, p_grad_buf = paramjac_config
     λ_mem .= λ
     # The Mooncake cache is built with flat tunables (Vector), but callers like
     # _vecjacobian! and vec_pjac! may pass the full structured parameter object.
@@ -33,13 +38,8 @@ function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
     dy, _ = Mooncake.value_and_pullback!!(cache, λ_mem, pf, dy_mem, y, _p, t)
     y_grad = cache.tangents[3]
     p_grad_raw = cache.tangents[4]
-    # For struct-based array types (e.g. ComponentArray), Mooncake returns a
-    # Mooncake.Tangent instead of a plain array. Use tangent_to_primal!! to
-    # convert back to the primal type so downstream recursive_copyto! works.
-    # (Mooncake.Config(friendly_tangents=true) would do this automatically for
-    # all arguments, but currently fails on complex closure types in pf.)
-    p_grad = if p_grad_raw isa Mooncake.Tangent
-        Mooncake.tangent_to_primal!!(zero(_p), p_grad_raw)
+    p_grad = if p_grad_buf !== nothing && p_grad_raw isa Mooncake.Tangent
+        Mooncake.tangent_to_primal!!(p_grad_buf, p_grad_raw)
     else
         p_grad_raw
     end
