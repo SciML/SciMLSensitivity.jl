@@ -86,8 +86,10 @@ using OrdinaryDiffEq
 using Random, Lux
 using ComponentArrays
 using SciMLSensitivity
+using SciMLSensitivity: MooncakeVJP
 import SciMLStructures as SS
 using Zygote
+using Mooncake
 using ADTypes
 using Test
 
@@ -211,5 +213,33 @@ end
     Zygote.gradient(
         run_diff_explicit, initialize(),
         QuadratureAdjoint(autojacvec = false)
+    )[1].ps
+)
+
+# MooncakeVJP with SciMLStructures — all adjoint methods
+# Uses Tsit5 (non-stiff) since MooncakeVJP is not compatible with
+# ForwardDiff Jacobians needed by stiff backward solvers.
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        BacksolveAdjoint(autojacvec = MooncakeVJP())
+    )[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        InterpolatingAdjoint(autojacvec = MooncakeVJP())
+    )[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        GaussAdjoint(autojacvec = MooncakeVJP())
+    )[1].ps
+)
+@test !iszero(
+    Zygote.gradient(
+        run_diff_explicit, initialize(),
+        QuadratureAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
