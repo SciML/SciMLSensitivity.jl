@@ -1,71 +1,146 @@
 using Test
 using ModelingToolkit, OrdinaryDiffEq
-using ModelingToolkitStandardLibrary.Electrical
-using ModelingToolkitStandardLibrary.Blocks: Sine
-using NonlinearSolve
+using ModelingToolkit: t_nounits as t, D_nounits as D
 import SciMLStructures as SS
 import SciMLSensitivity
 using SymbolicIndexingInterface
-import ModelingToolkit as MTK
+using FiniteDiff
+using ForwardDiff
+using Tracker
 using Enzyme
 using Mooncake
 
-function create_model(; C₁ = 3.0e-5, C₂ = 1.0e-6)
-    @variables t
-    @named resistor1 = Resistor(R = 5.0)
-    @named resistor2 = Resistor(R = 2.0)
-    @named capacitor1 = Capacitor(C = C₁)
-    @named capacitor2 = Capacitor(C = C₂)
-    @named source = Voltage()
-    @named input_signal = Sine(frequency = 100.0)
-    @named ground = Ground()
-    @named ampermeter = CurrentSensor()
+# DAE with nonlinear algebraic constraints forming an SCC chain.
+# Inspired by the De Sauty bridge DAE but written as a flat system
+# (no ModelingToolkitStandardLibrary dependency).
+#
+# D(x) = a*x + y + z        (ODE)
+# 0 = y^3 + y - b*x         (algebraic: y from x, parameter b)
+# 0 = z^3 + z - c*y         (algebraic: z from y, parameter c)
+#
+# The cubic equations can't be eliminated by structural_simplify.
+# With use_scc=true: init is SCCNonlinearProblem with 2 sub-problems
+# With use_scc=false: init is NonlinearProblem
+#
+# Exact initial values with x(0)=1, b=2, c=1.5:
+#   y^3 + y = 2 → y = 1 (exact)
+#   z^3 + z = 1.5 → z ≈ 0.8612
 
-    eqs = [
-        connect(input_signal.output, source.V)
-        connect(source.p, capacitor1.n, capacitor2.n)
-        connect(source.n, resistor1.p, resistor2.p, ground.g)
-        connect(resistor1.n, capacitor1.p, ampermeter.n)
-        connect(resistor2.n, capacitor2.p, ampermeter.p)
-    ]
+@parameters a b c
+@variables x(t) y(t) z(t)
 
-    return @named circuit_model = ODESystem(
-        eqs, t,
-        systems = [
-            resistor1, resistor2, capacitor1, capacitor2,
-            source, input_signal, ground, ampermeter,
-        ],
-    )
-end
+eqs = [
+    D(x) ~ a * x + y + z,
+    0 ~ y^3 + y - b * x,
+    0 ~ z^3 + z - c * y,
+]
 
-desauty_model = create_model()
-sys = structural_simplify(desauty_model)
+@mtkbuild sys = ODESystem(eqs, t)
 
-prob = ODEProblem(sys, [sys.resistor1.v => 1.0], (0.0, 0.1))
-iprob = prob.f.initialization_data.initializeprob
-isys = iprob.f.sys
+@testset "DAE with SCC Initialization" begin
+    @testset "use_scc = $use_scc" for use_scc in (false, true)
+        prob = ODEProblem(
+            sys,
+            [x => 1.0],
+            (0.0, 0.1),
+            [a => -0.5, b => 2.0, c => 1.5],
+            guesses = [y => 1.0, z => 0.5];
+            use_scc,
+        )
 
-tunables, repack, aliases = SS.canonicalize(SS.Tunable(), parameter_values(iprob))
+        # Verify initialization problem type
+        idata = prob.f.initialization_data
+        init_type_str = string(typeof(idata.initializeprob))
+        if use_scc
+            @test occursin("SCC", init_type_str)
+        else
+            @test !occursin("SCC", init_type_str)
+        end
 
-# The initialization problem is an SCCNonlinearProblem with in-place mutation.
-# Reverse-mode AD through SCCNonlinearProblem mutation is not yet fully supported.
-# These tests document the expected behavior and will start passing when
-# Enzyme/Mooncake support for this pattern improves.
-loss_desauty = let iprob = iprob, repack = repack
-    p -> begin
-        iprob2 = remake(iprob, p = repack(p))
-        sol = solve(iprob2)
-        sum(sol.u)
+        # Forward solve
+        sol = solve(prob, Rodas5P(); abstol = 1e-12, reltol = 1e-12)
+        @test SciMLBase.successful_retcode(sol)
+        @test sol[y, 1]≈1.0 atol=1e-8
+        @test 0.85 < sol[z, 1] < 0.87
+
+        tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
+
+        # FiniteDiff ground truth for full ODE solve
+        loss = let prob = prob, repack = repack
+            p -> begin
+                new_prob = remake(prob; p = repack(p))
+                sol = solve(new_prob, Rodas5P(); abstol = 1e-12, reltol = 1e-12)
+                sum(sol)
+            end
+        end
+        fd_grad = FiniteDiff.finite_difference_gradient(loss, tunables)
+        @test any(!iszero, fd_grad)
+
+        # Direct init problem differentiation
+        iprob = idata.initializeprob
+        itunables, irepack, _ = SS.canonicalize(
+            SS.Tunable(), parameter_values(iprob),
+        )
+
+        init_loss = let iprob = iprob, irepack = irepack
+            p -> begin
+                iprob2 = remake(iprob, p = irepack(p))
+                sol = solve(iprob2)
+                sum(sol.u)
+            end
+        end
+
+        fd_init_grad = FiniteDiff.finite_difference_gradient(init_loss, itunables)
+        @test any(!iszero, fd_init_grad)
+
+        @testset "ForwardDiff through init" begin
+            if use_scc
+                @test_broken begin
+                    fwd_init = ForwardDiff.gradient(init_loss, itunables)
+                    isapprox(fwd_init, fd_init_grad, rtol = 0.05)
+                end
+            else
+                fwd_init = ForwardDiff.gradient(init_loss, itunables)
+                @test isapprox(fwd_init, fd_init_grad, rtol = 0.05)
+            end
+        end
+
+        @testset "ForwardDiff through ODE solve" begin
+            @test_broken begin
+                fwd_grad = ForwardDiff.gradient(loss, tunables)
+                isapprox(fwd_grad, fd_grad, rtol = 0.05)
+            end
+        end
+
+        @testset "Enzyme through init" begin
+            @test_broken begin
+                igs = Enzyme.gradient(Enzyme.Reverse, init_loss, itunables)
+                !iszero(sum(igs))
+            end
+        end
+
+        @testset "Mooncake through init" begin
+            @test_broken begin
+                rule = Mooncake.build_rrule(init_loss, itunables)
+                _, (_, igs) = Mooncake.value_and_gradient!!(
+                    rule, init_loss, itunables,
+                )
+                !iszero(sum(igs))
+            end
+        end
+
+        @testset "Tracker + GaussAdjoint through ODE solve" begin
+            sensealg = SciMLSensitivity.GaussAdjoint(
+                autojacvec = SciMLSensitivity.EnzymeVJP(),
+            )
+            @test_broken begin
+                gs = Tracker.gradient(tunables) do tunables
+                    new_prob = remake(prob; p = repack(tunables))
+                    sol = solve(new_prob, Rodas5P(); sensealg)
+                    sum(sol)
+                end
+                any(!iszero, gs[1])
+            end
+        end
     end
-end
-
-@test_broken begin
-    igs = Enzyme.gradient(Enzyme.Reverse, loss_desauty, tunables)
-    !iszero(sum(igs))
-end
-
-@test_broken begin
-    rule = Mooncake.build_rrule(loss_desauty, tunables)
-    _, (_, igs) = Mooncake.value_and_gradient!!(rule, loss_desauty, tunables)
-    !iszero(sum(igs))
 end
