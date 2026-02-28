@@ -7,7 +7,7 @@ solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t,
   author={Rackauckas, Christopher and Ma, Yingbo and Martensen, Julius and Warner, Collin and Zubov, Kirill and Supekar, Rohit and Skinner, Dominic and Ramadhan, Ali},
   journal={arXiv preprint arXiv:2001.04385},
   year={2020}
-}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-9/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
+}</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-17/julialang/scimlsensitivity-dot-jl/docs/Project.toml`
   <span class="sgr90">[49dc2e85] </span>Calculus v0.5.2
   <span class="sgr90">[b0b7db55] </span>ComponentArrays v0.15.32
   <span class="sgr90">[82cc6244] </span>DataInterpolations v8.9.0
@@ -33,7 +33,7 @@ solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t,
   <span class="sgr90">[1fd47b50] </span>QuadGK v2.11.2
   <span class="sgr90">[731186ca] </span>RecursiveArrayTools v3.48.0
   <span class="sgr90">[37e2e3b7] </span>ReverseDiff v1.16.2
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.147.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.148.0
 <span class="sgr32">⌃</span> <span class="sgr90">[1ed8b502] </span>SciMLSensitivity v7.94.0
   <span class="sgr90">[de6bee2f] </span>SimpleChains v0.4.8
   <span class="sgr90">[90137ffa] </span>StaticArrays v1.9.17
@@ -57,7 +57,7 @@ Environment:
   JULIA_DEBUG = Documenter
   JULIA_DEPOT_PATH = /root/.cache/julia-buildkite-plugin/depots/ea52448d-f230-4619-b27a-2d98107bd215:
   LD_LIBRARY_PATH = /usr/local/nvidia/lib:/usr/local/nvidia/lib64:/usr/local/cuda/lib64
-  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-9/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
+  JULIA_PKG_SERVER =</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">Status</span></span> `/var/lib/buildkite-agent/builds/gpuci-17/julialang/scimlsensitivity-dot-jl/docs/Manifest.toml`
   <span class="sgr90">[47edcb42] </span>ADTypes v1.21.0
   <span class="sgr90">[a4c015fc] </span>ANSIColoredPrinters v0.0.1
   <span class="sgr90">[621f4979] </span>AbstractFFTs v1.5.0
@@ -84,7 +84,7 @@ Environment:
   <span class="sgr90">[1a22d4ce] </span>BoundaryValueDiffEqMIRK v1.11.0
   <span class="sgr90">[9255f1d6] </span>BoundaryValueDiffEqMIRKN v1.10.0
   <span class="sgr90">[ed55bfe0] </span>BoundaryValueDiffEqShooting v1.11.0
-  <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.10.0
+  <span class="sgr90">[70df07ce] </span>BracketingNonlinearSolve v1.11.0
   <span class="sgr90">[fa961155] </span>CEnum v0.5.0
   <span class="sgr90">[2a0fbf3d] </span>CPUSummary v0.2.7
   <span class="sgr90">[052768ef] </span>CUDA v5.9.7
@@ -204,7 +204,7 @@ Environment:
   <span class="sgr90">[2d8b4e74] </span>LevyArea v1.0.0
   <span class="sgr90">[87fe0de2] </span>LineSearch v0.1.6
   <span class="sgr90">[d3d80556] </span>LineSearches v7.6.0
-  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.60.0
+  <span class="sgr90">[7ed4a6bd] </span>LinearSolve v3.61.0
   <span class="sgr90">[2ab3a3ac] </span>LogExpFunctions v0.3.29
   <span class="sgr90">[e6f89c97] </span>LoggingExtras v1.2.0
   <span class="sgr90">[bdcacae8] </span>LoopVectorization v0.12.173
@@ -255,7 +255,7 @@ Environment:
   <span class="sgr90">[6ad6398a] </span>OrdinaryDiffEqBDF v1.22.0
   <span class="sgr90">[bbf590c4] </span>OrdinaryDiffEqCore v3.11.0
   <span class="sgr90">[50262376] </span>OrdinaryDiffEqDefault v1.13.0
-  <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v2.1.0
+  <span class="sgr90">[4302a76b] </span>OrdinaryDiffEqDifferentiation v2.2.0
   <span class="sgr90">[9286f039] </span>OrdinaryDiffEqExplicitRK v1.9.0
   <span class="sgr90">[e0540318] </span>OrdinaryDiffEqExponentialRK v1.13.0
   <span class="sgr90">[becaefa8] </span>OrdinaryDiffEqExtrapolation v1.16.0
@@ -318,7 +318,7 @@ Environment:
   <span class="sgr90">[7e49a35a] </span>RuntimeGeneratedFunctions v0.5.17
   <span class="sgr90">[94e857df] </span>SIMDTypes v0.1.0
   <span class="sgr90">[476501e8] </span>SLEEFPirates v0.6.43
-  <span class="sgr90">[0bca4576] </span>SciMLBase v2.147.0
+  <span class="sgr90">[0bca4576] </span>SciMLBase v2.148.0
   <span class="sgr90">[19f34311] </span>SciMLJacobianOperators v0.1.12
   <span class="sgr90">[a6db7da4] </span>SciMLLogging v1.9.1
   <span class="sgr90">[c0aeaf25] </span>SciMLOperators v1.15.1
@@ -525,4 +525,4 @@ Environment:
   <span class="sgr90">[8e850b90] </span>libblastrampoline_jll v5.11.0+0
   <span class="sgr90">[8e850ede] </span>nghttp2_jll v1.52.0+1
   <span class="sgr90">[3f19e933] </span>p7zip_jll v17.4.0+2
-<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.97.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.97.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 11:33">Saturday 28 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<span class="sgr36"><span class="sgr1">Info</span></span> Packages marked with <span class="sgr32">⌃</span> and <span class="sgr33">⌅</span> have new versions available. Those with <span class="sgr32">⌃</span> may be upgradable, but those with <span class="sgr33">⌅</span> are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.97.0/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/SciMLSensitivity.jl/tree/gh-pages/v7.97.0/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with SciMLSensitivity: Differentiating ODE Solutions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Saturday 28 February 2026 23:20">Saturday 28 February 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
