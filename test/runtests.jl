@@ -52,6 +52,7 @@ end
             @time @safetestset "Adjoint Sensitivity" include("adjoint.jl")
             @time @safetestset "automatic sensealg choice" include("automatic_sensealg_choice.jl")
             @time @safetestset "GaussAdjoint ZygoteVJP In-Place" include("gauss_zygote_inplace.jl")
+            @time @safetestset "User-provided VJP" include("user_vjp.jl")
         end
     end
 
