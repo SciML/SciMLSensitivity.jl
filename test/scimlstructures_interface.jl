@@ -91,6 +91,7 @@ import SciMLStructures as SS
 using Zygote
 using Mooncake
 using ADTypes
+using StableRNGs
 using Test
 
 mutable struct myparam{M, P, S}
@@ -121,10 +122,9 @@ function SS.replace!(::SS.Tunable, p::myparam, newbuffer)
     p.ps = newbuffer
     return p
 end
-function initialize()
+function initialize(rng = Random.GLOBAL_RNG)
     # Defining the neural network
     U = Lux.Chain(Lux.Dense(3, 30, tanh), Lux.Dense(30, 30, tanh), Lux.Dense(30, 1))
-    rng = Random.GLOBAL_RNG
     _para, st = Lux.setup(rng, U)
     _para = ComponentArray(_para)
     # Setting the parameters
@@ -219,31 +219,30 @@ end
 # MooncakeVJP with SciMLStructures — all adjoint methods
 # Uses Tsit5 (non-stiff) since MooncakeVJP is not compatible with
 # ForwardDiff Jacobians needed by stiff backward solvers.
-# Seed RNG for deterministic initialization — unseeded GLOBAL_RNG state
-# varies across Julia versions and can produce weights that lead to
-# numerically unstable backward ODE integration.
-Random.seed!(12345)
+# Use StableRNG for deterministic initialization across Julia versions —
+# GLOBAL_RNG state varies across versions and can produce weights that
+# lead to numerically unstable backward ODE integration.
 @test !iszero(
     Zygote.gradient(
-        run_diff_explicit, initialize(),
+        run_diff_explicit, initialize(StableRNG(12345)),
         BacksolveAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
 @test !iszero(
     Zygote.gradient(
-        run_diff_explicit, initialize(),
+        run_diff_explicit, initialize(StableRNG(12345)),
         InterpolatingAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
 @test !iszero(
     Zygote.gradient(
-        run_diff_explicit, initialize(),
+        run_diff_explicit, initialize(StableRNG(12345)),
         GaussAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
 @test !iszero(
     Zygote.gradient(
-        run_diff_explicit, initialize(),
+        run_diff_explicit, initialize(StableRNG(12345)),
         QuadratureAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
