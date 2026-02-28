@@ -219,6 +219,10 @@ end
 # MooncakeVJP with SciMLStructures — all adjoint methods
 # Uses Tsit5 (non-stiff) since MooncakeVJP is not compatible with
 # ForwardDiff Jacobians needed by stiff backward solvers.
+# Seed RNG for deterministic initialization — unseeded GLOBAL_RNG state
+# varies across Julia versions and can produce weights that lead to
+# numerically unstable backward ODE integration.
+Random.seed!(12345)
 @test !iszero(
     Zygote.gradient(
         run_diff_explicit, initialize(),
