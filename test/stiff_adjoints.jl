@@ -310,13 +310,9 @@ if VERSION >= v"1.7-"
     #@test grad1 ≈ grad6
     @test grad1 ≈ grad7 rtol = 1.0e-2
 
-    # ReactantVJP: Rodas5P uses ForwardDiff for the adjoint ODE Jacobian, which pushes
-    # Dual numbers through reactant_run_ad! — ConcreteRArray doesn't support Dual types.
-    @test_broken begin
-        grad9 = Zygote.gradient(
-            x -> sum_of_solution_CASA(x, vjp = ReactantVJP(allow_scalar = true)),
-            [u0; p]
-        )[1]
-        grad1 ≈ grad9
-    end
+    grad9 = Zygote.gradient(
+        x -> sum_of_solution_CASA(x, vjp = ReactantVJP(allow_scalar = true)),
+        [u0; p]
+    )[1]
+    @test grad1 ≈ grad9
 end

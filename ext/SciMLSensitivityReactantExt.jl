@@ -155,8 +155,10 @@ end
 # get_paramjac_config — returns ReactantVJPConfig
 # =============================================================================
 
-function get_paramjac_config(::ReactantLoaded, vjp::ReactantVJP, pf, p, f, y, _t;
-        numindvar = nothing, alg = nothing)
+function get_paramjac_config(
+        ::ReactantLoaded, vjp::ReactantVJP, pf, p, f, y, _t;
+        numindvar = nothing, alg = nothing
+    )
     raw_f = SciMLBase.unwrapped_f(f)
     iip = SciMLBase.isinplace(f)
     t_val = _t === nothing ? 0.0 : Float64(_t)
@@ -172,21 +174,21 @@ function get_paramjac_config(::ReactantLoaded, vjp::ReactantVJP, pf, p, f, y, _t
 
     float_caches = if is_nullparams
         (
-            y_cache = zeros(Float64, N),
-            λ_cache = zeros(Float64, N),
-            dy_cache = zeros(Float64, N),
-            dy_result = zeros(Float64, N),
-            ygrad_result = zeros(Float64, N),
+            y_cache = zero(y),
+            λ_cache = zero(y),
+            dy_cache = zero(y),
+            dy_result = zero(y),
+            ygrad_result = zero(y),
         )
     else
         (
-            y_cache = zeros(Float64, N),
-            p_cache = zeros(Float64, NP),
-            λ_cache = zeros(Float64, N),
-            dy_cache = zeros(Float64, N),
-            dy_result = zeros(Float64, N),
-            ygrad_result = zeros(Float64, N),
-            pgrad_result = zeros(Float64, NP),
+            y_cache = zero(y),
+            p_cache = zero(p),
+            λ_cache = zero(y),
+            dy_cache = zero(y),
+            dy_result = zero(y),
+            ygrad_result = zero(y),
+            pgrad_result = zero(p),
         )
     end
 
@@ -230,8 +232,10 @@ function get_paramjac_config(::ReactantLoaded, vjp::ReactantVJP, pf, p, f, y, _t
         nothing, 0
     end
 
-    return ReactantVJPConfig(float_kernel, nothing, float_caches, dual_caches,
-        is_nullparams, CS)
+    return ReactantVJPConfig(
+        float_kernel, nothing, float_caches, dual_caches,
+        is_nullparams, CS
+    )
 end
 
 # =============================================================================
@@ -256,8 +260,10 @@ end
 
 function _run_float_nullparams!(dλ, dgrad, dy, config, y, t, λ)
     fc = config.float_caches
-    _run_single_float_call!(fc.ygrad_result, fc.dy_result, nothing,
-        config, y, nothing, t, λ)
+    _run_single_float_call!(
+        fc.ygrad_result, fc.dy_result, nothing,
+        config, y, nothing, t, λ
+    )
     dy !== nothing && copyto!(dy, fc.dy_result)
     dλ !== nothing && copyto!(dλ, fc.ygrad_result)
     return nothing
@@ -265,8 +271,10 @@ end
 
 function _run_float_params!(dλ, dgrad, dy, config, y, p, t, λ)
     fc = config.float_caches
-    _run_single_float_call!(fc.ygrad_result, fc.dy_result, fc.pgrad_result,
-        config, y, p, t, λ)
+    _run_single_float_call!(
+        fc.ygrad_result, fc.dy_result, fc.pgrad_result,
+        config, y, p, t, λ
+    )
     dy !== nothing && copyto!(dy, fc.dy_result)
     dλ !== nothing && copyto!(dλ, fc.ygrad_result)
     dgrad !== nothing && copyto!(dgrad, fc.pgrad_result)
@@ -303,11 +311,15 @@ function reactant_run_dual_ad!(dλ, dgrad, dy, config::ReactantVJPConfig, y, p, 
     dc = config.dual_caches
     # Use pre-allocated caches if available and chunk size matches
     if dc !== nothing && config.chunk_size == CS
-        _reactant_run_dual_preallocated!(dλ, dgrad, dy, config, dc, y, p,
-            t_float, λ, DualType, N, CS)
+        _reactant_run_dual_preallocated!(
+            dλ, dgrad, dy, config, dc, y, p,
+            t_float, λ, DualType, N, CS
+        )
     else
-        _reactant_run_dual_fallback!(dλ, dgrad, dy, config, y, p,
-            t_float, λ, DualType, N, CS)
+        _reactant_run_dual_fallback!(
+            dλ, dgrad, dy, config, y, p,
+            t_float, λ, DualType, N, CS
+        )
     end
 
     return nothing
@@ -316,7 +328,8 @@ end
 # Fast path: use pre-allocated dual caches
 function _reactant_run_dual_preallocated!(
         dλ, dgrad, dy, config, dc, y, p, t_float, λ,
-        ::Type{DualType}, N, CS) where {DualType}
+        ::Type{DualType}, N, CS
+    ) where {DualType}
     y_float = dc.y_float_cache
     if eltype(y) <: ForwardDiff.Dual
         for i in 1:N
@@ -360,8 +373,10 @@ function _reactant_run_dual_preallocated!(
                 λ_part[i] = ForwardDiff.partials(λ[i], j)
             end
 
-            _run_single_float_call!(single_ygrad, single_dy, single_pgrad,
-                config, y_float, p, t_float, λ_part)
+            _run_single_float_call!(
+                single_ygrad, single_dy, single_pgrad,
+                config, y_float, p, t_float, λ_part
+            )
 
             for i in 1:N
                 dλ_parts[i, j] = single_ygrad[i]
@@ -376,15 +391,18 @@ function _reactant_run_dual_preallocated!(
         end
     end
 
-    _reconstruct_dual_outputs!(dλ, dy, dgrad, dλ_val, dy_v, pgrad_v,
-        dλ_parts, dy_parts, pgrad_parts, DualType, config.is_nullparams)
+    _reconstruct_dual_outputs!(
+        dλ, dy, dgrad, dλ_val, dy_v, pgrad_v,
+        dλ_parts, dy_parts, pgrad_parts, DualType, config.is_nullparams
+    )
     return nothing
 end
 
 # Fallback path: allocate temporaries when pre-allocated caches don't match
 function _reactant_run_dual_fallback!(
         dλ, dgrad, dy, config, y, p, t_float, λ,
-        ::Type{DualType}, N, CS) where {DualType}
+        ::Type{DualType}, N, CS
+    ) where {DualType}
     y_float = Vector{Float64}(undef, N)
     if eltype(y) <: ForwardDiff.Dual
         for i in 1:N
@@ -407,8 +425,10 @@ function _reactant_run_dual_fallback!(
     dy_val_buf = Vector{Float64}(undef, N)
     NP = config.is_nullparams ? 0 : length(p)
     pgrad_val_buf = config.is_nullparams ? nothing : Vector{Float64}(undef, NP)
-    _run_single_float_call!(dλ_val_buf, dy_val_buf, pgrad_val_buf,
-        config, y_float, p, t_float, λ_val)
+    _run_single_float_call!(
+        dλ_val_buf, dy_val_buf, pgrad_val_buf,
+        config, y_float, p, t_float, λ_val
+    )
 
     dλ_parts = zeros(Float64, N, CS)
     dy_parts = zeros(Float64, N, CS)
@@ -425,8 +445,10 @@ function _reactant_run_dual_fallback!(
                 λ_part[i] = ForwardDiff.partials(λ[i], j)
             end
 
-            _run_single_float_call!(s_ygrad, s_dy, s_pgrad,
-                config, y_float, p, t_float, λ_part)
+            _run_single_float_call!(
+                s_ygrad, s_dy, s_pgrad,
+                config, y_float, p, t_float, λ_part
+            )
 
             for i in 1:N
                 dλ_parts[i, j] = s_ygrad[i]
@@ -440,8 +462,10 @@ function _reactant_run_dual_fallback!(
         end
     end
 
-    _reconstruct_dual_outputs!(dλ, dy, dgrad, dλ_val_buf, dy_val_buf, pgrad_val_buf,
-        dλ_parts, dy_parts, pgrad_parts, DualType, config.is_nullparams)
+    _reconstruct_dual_outputs!(
+        dλ, dy, dgrad, dλ_val_buf, dy_val_buf, pgrad_val_buf,
+        dλ_parts, dy_parts, pgrad_parts, DualType, config.is_nullparams
+    )
     return nothing
 end
 
@@ -450,7 +474,8 @@ end
 function _reconstruct_dual_outputs!(
         dλ, dy, dgrad, dλ_val, dy_val, pgrad_val,
         dλ_parts, dy_parts, pgrad_parts,
-        ::Type{ForwardDiff.Dual{Tag, V, N}}, is_nullparams) where {Tag, V, N}
+        ::Type{ForwardDiff.Dual{Tag, V, N}}, is_nullparams
+    ) where {Tag, V, N}
     if dλ !== nothing
         for i in eachindex(dλ_val)
             p = ForwardDiff.Partials(ntuple(j -> dλ_parts[i, j], Val(N)))
@@ -474,8 +499,10 @@ end
 
 # Helper: run a single Float64 kernel call, writing results into provided buffers.
 # ygrad_out receives ∂L/∂u, dy_out receives f(u,p,t), pgrad_out receives ∂L/∂p.
-function _run_single_float_call!(ygrad_out, dy_out, pgrad_out, config, y_float, p,
-        t_float, λ_float)
+function _run_single_float_call!(
+        ygrad_out, dy_out, pgrad_out, config, y_float, p,
+        t_float, λ_float
+    )
     fc = config.float_caches
     copyto!(fc.y_cache, y_float)
     copyto!(fc.λ_cache, λ_float)

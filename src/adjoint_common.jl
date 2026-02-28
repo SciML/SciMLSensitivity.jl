@@ -537,8 +537,10 @@ function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
     error(msg)
 end
 
-function get_paramjac_config(::Any, ::ReactantVJP, pf, p, f, y, _t;
-        numindvar = nothing, alg = nothing)
+function get_paramjac_config(
+        ::Any, ::ReactantVJP, pf, p, f, y, _t;
+        numindvar = nothing, alg = nothing
+    )
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
         "`using Reactant` to use this functionality"
     error(msg)
