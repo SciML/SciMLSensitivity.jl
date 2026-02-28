@@ -49,12 +49,12 @@ res1 = adjoint_sensitivities(
 @test res1[2] ≈ res2[2]
 
 # ReactantVJP: KenCarp4 uses ForwardDiff for internal Jacobian, which pushes Dual numbers
-# through reactant_run_ad! — ConcreteRArray/Float64 conversions don't support Dual types.
-@test_broken begin
-    res3 = adjoint_sensitivities(
-        sol, KenCarp4(); dgdu_continuous = dg, g,
-        abstol = 1.0e-6, reltol = 1.0e-6,
-        sensealg = QuadratureAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
-    )
-    res1[1] ≈ res3[1] && res1[2] ≈ res3[2]
-end
+# through reactant_run_ad!. The dual path decomposes Duals, calls the Float64 kernel
+# (1+CS) times exploiting linearity of the VJP in λ, then reconstructs Dual outputs.
+res3 = adjoint_sensitivities(
+    sol, KenCarp4(); dgdu_continuous = dg, g,
+    abstol = 1.0e-6, reltol = 1.0e-6,
+    sensealg = QuadratureAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
+)
+@test res1[1] ≈ res3[1]
+@test res1[2] ≈ res3[2]
