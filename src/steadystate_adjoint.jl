@@ -28,7 +28,7 @@ function SteadyStateAdjointSensitivityFunction(
 
     λ = zero(y)
     linsolve = needs_jac ? nothing : sensealg.linsolve
-    vjp = allocate_vjp(λ, p)
+    vjp = allocate_vjp(λ, diffcache.tunables)
 
     return SteadyStateAdjointSensitivityFunction(
         diffcache, sensealg, y, sol, f, colorvec,
