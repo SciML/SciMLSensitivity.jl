@@ -542,10 +542,12 @@ function SciMLBase._concrete_solve_adjoint(
     }(values(kwargs))
 
     # Capture the callback_adj for the reverse pass and remove both callbacks
+    # Also remove save_everystep since each adjoint method sets its own
+    # (e.g. GaussAdjoint uses save_everystep=false, QuadratureAdjoint uses true)
     kwargs_adj = NamedTuple{
         Base.diff_names(
             Base._nt_names(values(kwargs)),
-            (:callback_adj, :callback)
+            (:callback_adj, :callback, :save_everystep)
         ),
     }(values(kwargs))
     isq = sensealg isa QuadratureAdjoint

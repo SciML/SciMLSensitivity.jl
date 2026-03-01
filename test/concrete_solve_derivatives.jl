@@ -774,3 +774,42 @@ SDE Tests
         @test isapprox(result[3:end], adj_ref', rtol = 1.0e-4)
     end
 end
+
+#=
+Test: save_everystep kwarg doesn't leak to adjoint solve for GaussAdjoint/GaussKronrodAdjoint
+
+When a user passes save_everystep=false to the outer solve, it should not propagate
+to the inner adjoint solve (which sets its own save_everystep). Previously this could
+cause duplicate keyword argument errors.
+=#
+@testset "save_everystep filtered from adjoint kwargs" begin
+    ref_loss = u0p -> sum(
+        solve(
+            prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+            abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+            sensealg = GaussAdjoint()
+        )
+    )
+    u0p = vcat(u0, p)
+    ref_grad = ForwardDiff.gradient(ref_loss, u0p)
+
+    # Test that explicit save_everystep=false doesn't cause errors with GaussAdjoint
+    @testset "GaussAdjoint save_everystep=$sev - $backend_name" for sev in [true, false],
+            (backend_name, grad_fn) in REVERSE_BACKENDS
+
+        if backend_name == "Tracker" && VERSION >= v"1.12"
+            @test_broken false
+            continue
+        end
+        loss = u0p -> sum(
+            solve(
+                prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
+                abstol = 1.0e-10, reltol = 1.0e-10, saveat = 0.1,
+                save_everystep = sev,
+                sensealg = GaussAdjoint()
+            )
+        )
+        result = grad_fn(loss, u0p)
+        @test result ≈ ref_grad rtol = 1.0e-4
+    end
+end
