@@ -8,6 +8,11 @@ import SciMLSensitivity: get_paramjac_config, reactant_run_ad!, reactant_run_dua
     ReactantVJP, ReactantLoaded, ReactantVJPConfig, ReactantDualTag,
     get_cb_paramjac_config, reactant_run_cb_ad!
 
+# Global cache for compiled Reactant kernels. Keyed by
+# (typeof(raw_f), iip, allow_scalar, length(y), typeof(p), length(p))
+# so that repeated gradient calls with the same ODE function skip recompilation.
+const _REACTANT_KERNEL_CACHE = Ref(Dict{Any, Any}())
+
 # Helper: conditionally wrap Reactant.compile in @allowscalar
 function _reactant_compile(kernel, args, allow_scalar::Bool)
     if allow_scalar
@@ -133,22 +138,32 @@ end
 # =============================================================================
 
 function _compile_float_kernel(raw_f, iip, vjp, y, p, t_val)
+    key = (typeof(raw_f), iip, vjp.allow_scalar, length(y), typeof(p), length(p))
+    cached = get(_REACTANT_KERNEL_CACHE[], key, nothing)
+    cached !== nothing && return cached
     vjp_kernel = _make_vjp_kernel(raw_f, iip)
     dy_buf = Reactant.to_rarray(zero(y))
     u_ra = Reactant.to_rarray(zero(y))
     p_ra = Reactant.to_rarray(zero(p))
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
     λ_ra = Reactant.to_rarray(zero(y))
-    return _reactant_compile(vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra), vjp.allow_scalar)
+    compiled = _reactant_compile(vjp_kernel, (dy_buf, u_ra, p_ra, t_ra, λ_ra), vjp.allow_scalar)
+    _REACTANT_KERNEL_CACHE[][key] = compiled
+    return compiled
 end
 
 function _compile_float_kernel_nullparams(raw_f, iip, vjp, y, t_val)
+    key = (typeof(raw_f), iip, vjp.allow_scalar, length(y), :nullparams)
+    cached = get(_REACTANT_KERNEL_CACHE[], key, nothing)
+    cached !== nothing && return cached
     vjp_kernel = _make_vjp_kernel_nullparams(raw_f, iip)
     dy_buf = Reactant.to_rarray(zero(y))
     u_ra = Reactant.to_rarray(zero(y))
     t_ra = Reactant.to_rarray(t_val; track_numbers = true)
     λ_ra = Reactant.to_rarray(zero(y))
-    return _reactant_compile(vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra), vjp.allow_scalar)
+    compiled = _reactant_compile(vjp_kernel, (dy_buf, u_ra, t_ra, λ_ra), vjp.allow_scalar)
+    _REACTANT_KERNEL_CACHE[][key] = compiled
+    return compiled
 end
 
 # =============================================================================
