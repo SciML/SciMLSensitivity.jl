@@ -78,26 +78,26 @@ optprob2 = OPT.OptimizationProblem(optf, res1.u)
 res2 = OPT.solve(
     optprob2, OOJ.BFGS(), callback = cb, maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 u: 1153-element Vector{Float32}:
- -0.39549366
-  1.1559583
-  2.1439521
-  0.4154828
- -1.2701397
- -2.1129208
- -2.5182395
-  2.0576453
-  0.16378994
-  2.4834127
+ -2.4878008
+  0.076572895
+ -0.1567581
+  1.4340309
+  2.09379
+  1.9720162
+ -1.6905297
+ -1.908942
+  0.503938
+ -0.8562094
   ⋮
- -0.2932409
-  0.087251745
-  0.039973684
-  0.081728905
- -0.016927246
- -0.026617082
-  0.06329146
- -0.223192
- -0.13611421</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
+  0.14500308
+  0.19435874
+  0.15726563
+ -0.22409159
+ -0.06302813
+  0.085527375
+ -0.19257133
+  0.23127869
+  0.09363277</code></pre><p>Now that the system is in a better behaved part of parameter space, we return to the original loss function to finish the optimization:</p><pre><code class="language-julia hljs">function loss_adjoint(θ)
     x = predict_adjoint(θ)
     ps = CA.ComponentArray(θ, ax)
     Statistics.mean(abs2, 4.0 .- x[1, :]) + 2Statistics.mean(abs2, x[2, :]) +
@@ -108,28 +108,28 @@ optf3 = OPT.OptimizationFunction((x, p) -&gt; loss_adjoint(x), adtype)
 optprob3 = OPT.OptimizationProblem(optf3, res2.u)
 res3 = OPT.solve(optprob3, OOJ.BFGS(), maxiters = 100)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Failure
 u: 1153-element Vector{Float32}:
- -0.44670922
-  1.1387792
-  2.4680312
-  0.35264388
- -1.6712426
- -3.2007427
- -2.9115558
-  2.4319403
- -0.0846431
-  2.4779701
+ -3.2929506
+  0.63935477
+  0.0067666383
+  2.0642562
+  2.7337956
+  2.8666801
+ -2.1922033
+ -2.619147
+  0.14874265
+ -1.5997936
   ⋮
- -1.2548963
-  3.210447
-  0.11526438
- -0.05066029
- -0.35492676
- -0.777065
- -1.1144992
- -1.650089
-  0.7802306</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
+ -0.40893602
+  2.2131197
+  1.0425303
+ -1.1746503
+  0.0848138
+ -0.8673789
+ -0.52025354
+  1.7199713
+  1.0427014</code></pre><p>Now let&#39;s see what we received:</p><pre><code class="language-julia hljs">l = loss_adjoint(res3.u)
 cb(res3, l)
 p = Plots.plot(ODE.solve(ODE.remake(prob, p = res3.u), ODE.Tsit5(), saveat = 0.01), ylim = (
     -6, 6), lw = 3)
 Plots.plot!(p, ts, [first(first(ann([t], CA.ComponentArray(res3.u, ax), st))) for t in ts],
-    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="bf3937ff.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 1 March 2026 03:36">Sunday 1 March 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    label = &quot;u(t)&quot;, lw = 3)</code></pre><img src="4f0f8830.svg" alt="Example block output"/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../bayesian/turing_bayesian/">« Bayesian Estimation of Differential Equations with Probabilistic Programming</a><a class="docs-footer-nextpage" href="../feedback_control/">Universal Differential Equations for Neural Feedback Control »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 1 March 2026 13:31">Sunday 1 March 2026</span>. Using Julia version 1.10.10.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
