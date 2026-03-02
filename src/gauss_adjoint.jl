@@ -457,8 +457,18 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     u0 = state_values(prob)
     p = parameter_values(prob)
 
-    if p === nothing || p isa SciMLBase.NullParameters
+    # if p === nothing || p isa SciMLBase.NullParameters
+    #     tunables, repack = p, identity
+
+    # minimal fix 4 for #995
+    #---------------------------------------------------
+    if p === nothing
+        tunables = Float64[]          # 0-length, Functors-safe
+        repack = _ -> nothing         # preserve original semantics
+    elseif p isa SciMLBase.NullParameters
         tunables, repack = p, identity
+    #----------------------------------------------------
+    
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
