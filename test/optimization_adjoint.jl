@@ -13,6 +13,7 @@ function build_opt_adjoint_sol(prob, alg, sensealg; kwargs...)
     else
         (u, p) -> ForwardDiff.gradient(Base.Fix2(opt_f, p), u)
     end
+    
     nlprob = NonlinearProblem(grad_fn, opt_sol.u, prob.p)
     sol = SciMLBase.build_solution(
         nlprob, nothing, opt_sol.u, opt_sol.objective;
