@@ -457,8 +457,17 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     u0 = state_values(prob)
     p = parameter_values(prob)
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+    # if p === nothing || p isa SciMLBase.NullParameters
+    #     tunables, repack = p, identity
+    # ----------------------------------------------
+    # fix 0:
+    if p === nothing
+        tunables = SciMLBase.NullParameters()
+        repack = _ -> nothing
+    elseif p isa SciMLBase.NullParameters
+        tunables = p
+        repack = identity
+    # ----------------------------------------------
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
@@ -477,7 +486,11 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         )
     end
 
-    numparams = length(tunables)
+    #--------------------------------------------
+    # fix 1:
+    numparams = (tunables === nothing || tunables isa SciMLBase.NullParameters) ? 0 : length(tunables)
+    #--------------------------------------------
+    # numparams = length(tunables)
     y = zero(state_values(prob))
     λ = zero(state_values(prob))
     # we need to alias `y`
@@ -558,6 +571,12 @@ end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
+    #---------------------------------------------
+    # fix 5:
+    if S.tunables isa SciMLBase.NullParameters
+        return out   # should already be length-0 / zeros
+    end
+    #---------------------------------------------
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, tunables, repack) = S
     _odef = sol.prob.f
     f = unwrapped_f(_odef)
@@ -695,8 +714,17 @@ function _adjoint_sensitivities(
         throw(SciMLStructuresCompatibilityError())
     end
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+    # if p === nothing || p isa SciMLBase.NullParameters
+    #     tunables, repack = p, identity
+    # ----------------------------------------------
+    # fix 0:
+    if p === nothing
+        tunables = SciMLBase.NullParameters()
+        repack = _ -> nothing
+    elseif p isa SciMLBase.NullParameters
+        tunables = p
+        repack = identity
+    # ----------------------------------------------
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
@@ -714,15 +742,23 @@ function _adjoint_sensitivities(
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
     if sensealg isa GaussAdjoint
+        # cb = IntegratingSumCallback(
+        #     (out, u, t, integrator) -> integrand(out, t, u),
+        #     integrand_values, allocate_vjp(tunables)
+        # )
+        #----------------------------------------------
+        # fix 4:
         cb = IntegratingSumCallback(
-            (out, u, t, integrator) -> integrand(out, t, u),
+            (out, t, integrator) -> integrand(out, t, integrator.u),
             integrand_values, allocate_vjp(tunables)
         )
+        #----------------------------------------------
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback(
             (out, u, t, integrator) -> integrand(out, t, u),
             integrand_values, allocate_vjp(tunables)
         )
+        
     end
     rcb = nothing
     cb2 = nothing
