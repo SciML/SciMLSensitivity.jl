@@ -1346,7 +1346,6 @@ UnconstrainedOptimizationAdjoint(; chunk_size = 0, autodiff = true,
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
     if the Jacobian needs to be constructed. Defaults to `true`.
-
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
     choice of chunk size.
