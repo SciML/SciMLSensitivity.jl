@@ -69,5 +69,8 @@ dp6 = Zygote.pullback(x -> loss(x; vjp = false), p0)[2](1)[1]
 @test dp1 ≈ dp5
 @test dp1 ≈ dp6
 
-dp7 = Zygote.pullback(x -> loss(x; vjp = ReactantVJP(allow_scalar = true)), p0)[2](1)[1]
-@test dp1 ≈ dp7
+# Skipped: ReactantVJP hangs due to upstream Reactant MLIR compiler bug
+# (infinite loop in ReduceMulToDotGeneral pattern rewrite).
+# See https://github.com/EnzymeAD/Reactant.jl/issues/2652
+#dp7 = Zygote.pullback(x -> loss(x; vjp = ReactantVJP(allow_scalar = true)), p0)[2](1)[1]
+#@test dp1 ≈ dp7
