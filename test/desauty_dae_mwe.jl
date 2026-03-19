@@ -58,9 +58,9 @@ eqs = [
         end
 
         # Forward solve
-        sol = solve(prob, Rodas5P(); abstol = 1e-12, reltol = 1e-12)
+        sol = solve(prob, Rodas5P(); abstol = 1.0e-12, reltol = 1.0e-12)
         @test SciMLBase.successful_retcode(sol)
-        @test sol[y, 1]≈1.0 atol=1e-8
+        @test sol[y, 1] ≈ 1.0 atol = 1.0e-8
         @test 0.85 < sol[z, 1] < 0.87
 
         tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
@@ -69,7 +69,7 @@ eqs = [
         loss = let prob = prob, repack = repack
             p -> begin
                 new_prob = remake(prob; p = repack(p))
-                sol = solve(new_prob, Rodas5P(); abstol = 1e-12, reltol = 1e-12)
+                sol = solve(new_prob, Rodas5P(); abstol = 1.0e-12, reltol = 1.0e-12)
                 sum(sol)
             end
         end

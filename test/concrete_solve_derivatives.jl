@@ -607,13 +607,13 @@ Matrix Multiplication ODE (from alternative_ad_frontend.jl)
 
     function loss_mat(p)
         prob = ODEProblem(f_aug, u0_mat, tspan, p; alg = solvealg_test, sensealg = sensealg_test)
-        sol = solve(prob; abstol = 1e-12, reltol = 1e-12)
+        sol = solve(prob; abstol = 1.0e-12, reltol = 1.0e-12)
         return sum(sol[:, :, end])
     end
 
     function loss_mat2(p)
         prob = ODEProblem(f_aug, u0_mat, tspan, p)
-        sol = solve(prob, solvealg_test; sensealg = sensealg_test, abstol = 1e-12, reltol = 1e-12)
+        sol = solve(prob, solvealg_test; sensealg = sensealg_test, abstol = 1.0e-12, reltol = 1.0e-12)
         return sum(sol[:, :, end])
     end
 

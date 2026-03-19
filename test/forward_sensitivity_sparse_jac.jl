@@ -27,15 +27,19 @@ sense_alg = ForwardSensitivity(autodiff = true, autojacvec = true)
 
 function loss_sparse(p)
     new_prob = remake(prob_sparse, p = p)
-    sol = solve(new_prob, FBDF(autodiff = false, linsolve = UMFPACKFactorization()),
-        abstol = 1e-8, reltol = 1e-6, saveat = 1.0, sensealg = sense_alg)
+    sol = solve(
+        new_prob, FBDF(autodiff = false, linsolve = UMFPACKFactorization()),
+        abstol = 1.0e-8, reltol = 1.0e-6, saveat = 1.0, sensealg = sense_alg
+    )
     return sum(sum.(sol.u))
 end
 
 function loss_dense(p)
     new_prob = remake(prob_dense, p = p)
-    sol = solve(new_prob, FBDF(autodiff = false),
-        abstol = 1e-8, reltol = 1e-6, saveat = 1.0, sensealg = sense_alg)
+    sol = solve(
+        new_prob, FBDF(autodiff = false),
+        abstol = 1.0e-8, reltol = 1.0e-6, saveat = 1.0, sensealg = sense_alg
+    )
     return sum(sum.(sol.u))
 end
 
