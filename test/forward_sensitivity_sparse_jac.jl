@@ -46,4 +46,4 @@ end
 grad_sparse = Zygote.gradient(loss_sparse, params)[1]
 grad_dense = Zygote.gradient(loss_dense, params)[1]
 
-@test grad_sparse≈grad_dense rtol=1e-6
+@test grad_sparse ≈ grad_dense rtol = 1.0e-6
