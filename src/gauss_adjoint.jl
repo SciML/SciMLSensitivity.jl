@@ -573,7 +573,8 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             _pJ = similar(y, length(y), length(out))
         end
         _odef.paramjac(_pJ, y, p, t)
-        mul!(out', λ', _pJ)
+        # Use _pJ' * λ instead of out' = λ' * _pJ to avoid GPU scalar indexing
+        mul!(vec(out), _pJ', λ)
         return out
     end
 
@@ -585,7 +586,8 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             pf.u = y
             jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
         end
-        mul!(out', λ', pJ)
+        # Use pJ' * λ instead of out' = λ' * pJ to avoid GPU scalar indexing
+        mul!(vec(out), pJ', λ)
     elseif sensealg.autojacvec isa ReverseDiffVJP
         tape = paramjac_config
         tu, tp, tt = ReverseDiff.input_hook(tape)
