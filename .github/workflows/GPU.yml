@@ -40,7 +40,7 @@ jobs:
 
   gpu-tests:
     name: "GPU Tests"
-    runs-on: [self-hosted, Linux, X64, gpu]
+    runs-on: [self-hosted, Linux, X64, gpu-t4]
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v6
@@ -60,8 +60,8 @@ jobs:
 
   gpu-docs:
     name: "Documentation"
-    runs-on: [self-hosted, Linux, X64, gpu]
-    timeout-minutes: 240
+    runs-on: [self-hosted, gpu-v100]
+    timeout-minutes: 360
     if: github.event_name == 'push' || !github.event.pull_request.draft
     steps:
       - uses: actions/checkout@v6
