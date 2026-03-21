@@ -1,5 +1,7 @@
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDA_Driver_jll = "4ee394cb-3365-5eb0-8335-949819d2adfc"
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
 DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 DiffEqFlux = "aae7a2af-3d4f-5e19-a356-7da93b79d9d0"
 LuxCUDA = "d0bbae9a-e099-4d5b-a835-1c6931763bda"
