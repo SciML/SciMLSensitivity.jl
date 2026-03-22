@@ -159,6 +159,10 @@ setups = [
 
 # Reverse-mode AD through DAE initialization with SCCNonlinearProblem mutation.
 # Marked as broken until Enzyme/Mooncake fully support this pattern.
+# Enzyme blockers (see NonlinearSolve.jl#869, issue #1358):
+# - Julia 1.12: LLVM crash (Enzyme rules disabled by VERSION < v"1.12" guard)
+# - Julia 1.10: EnzymeMutabilityException in remake, MixedReturnException with
+#   default PolyAlgorithm, NamedTuple broadcast error with MTKParameters
 @test_broken begin
     grads = map(setups) do setup
         prob, tunables, repack, init = setup

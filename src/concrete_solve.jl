@@ -6,6 +6,14 @@
 # Use a narrow union instead of AbstractNonlinearProblem so that composite problem
 # types like SCCNonlinearProblem (which should differentiate through their individual
 # NonlinearProblem sub-solves) don't accidentally match these dispatches.
+#
+# NOTE: SCCNonlinearProblem is intentionally excluded. Its ChainRules rrule
+# (in SCCNonlinearSolveChainRulesCoreExt) calls _concrete_solve_adjoint, but no
+# dispatch exists here for it. This means reverse-mode AD through SCCNonlinearProblem
+# currently falls through to the SciMLBase stub error. See issue #1358.
+# A dedicated _concrete_solve_adjoint for SCCNonlinearProblem would need to handle
+# the SCC block structure (sub-problem solves + explicitfuns!) rather than treating
+# it as a monolithic nonlinear system.
 const ConcreteNonlinearProblem = Union{
     NonlinearProblem, SciMLBase.ImmutableNonlinearProblem, SciMLBase.SteadyStateProblem,
 }
