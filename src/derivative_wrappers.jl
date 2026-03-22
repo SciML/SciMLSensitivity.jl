@@ -328,7 +328,9 @@ function _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
             else
                 f.paramjac(pJ, y, p, t, W)
             end
-            mul!(dgrad', λ', pJ)
+            # Use pJ' * λ instead of dgrad' = λ' * pJ to avoid GPU scalar indexing
+            # with Adjoint wrappers on vectors
+            mul!(vec(dgrad), pJ', λ)
         else
             # AD backends compute dλ and dgrad jointly; pass dλ=nothing to skip
             # redundant state VJP (already computed above).
@@ -398,7 +400,9 @@ function _vecjacobian_vjp(y, λ, p, t, S, dgrad, dy, W)
             else
                 f.paramjac(pJ, y, p, t, W)
             end
-            mul!(dgrad', λ', pJ)
+            # Use pJ' * λ instead of dgrad' = λ' * pJ to avoid GPU scalar indexing
+            # with Adjoint wrappers on vectors
+            mul!(vec(dgrad), pJ', λ)
         else
             _, _, dgrad = _vecjacobian(y, λ, p, t, S, S.sensealg.autojacvec, dgrad, dy, W)
             dy = nothing  # dy handled by the fallback
@@ -474,7 +478,9 @@ function _vecjacobian!(
                 jacobian!(J, uf, y, f_cache, sensealg, jac_config)
             end
         end
-        mul!(dλ', λ', J)
+        # Use J' * λ instead of dλ' = λ' * J to avoid GPU scalar indexing
+        # with Adjoint wrappers on vectors
+        mul!(vec(dλ), J', λ)
     end
     if dgrad !== nothing && !isempty(dgrad)
         (; pJ, pf, paramjac_config) = S.diffcache
@@ -525,7 +531,9 @@ function _vecjacobian!(
                 end
             end
         end
-        mul!(dgrad', λ', pJ)
+        # Use pJ' * λ instead of dgrad' = λ' * pJ to avoid GPU scalar indexing
+        # with Adjoint wrappers on vectors
+        mul!(vec(dgrad), pJ', λ)
     end
     if dy !== nothing
         if W === nothing
