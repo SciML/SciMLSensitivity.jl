@@ -2418,16 +2418,26 @@ function SciMLBase._concrete_solve_adjoint(
                 Δtunables
         )
 
+        # For Enzyme with SciMLStructure parameters, return the tunable gradient
+        # vector directly instead of the Zygote-repacked NamedTuple. The Enzyme
+        # reverse rule in NonlinearSolveBaseEnzymeExt uses
+        # SciMLStructures.replace! to accumulate it into the parameter shadow.
+        dp_tangent = if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
+            dp
+        else
+            repack_adjoint(dp)[1]
+        end
+
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
-                NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), NoTangent(), NoTangent(), dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
