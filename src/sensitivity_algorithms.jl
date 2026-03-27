@@ -1293,30 +1293,42 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
+struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
+    diff_tunables::DT
 end
 
+"""
+    SteadyStateAdjoint(; autojacvec=nothing, linsolve=nothing, diff_tunables=Val(true), ...)
+
+When `diff_tunables = Val(true)` (default), the parameter VJP is computed
+w.r.t. the tunable portion of `p` only. When `diff_tunables = Val(false)`,
+the VJP is computed w.r.t. the full parameter object (including caches,
+initials, etc.). This is needed for SCCNonlinearProblem where `explicitfuns!`
+write active data into non-tunable components. Requires an `autojacvec`
+backend that supports structured parameters (ZygoteVJP, EnzymeVJP,
+MooncakeVJP, ReactantVJP).
+"""
 Base.@pure function SteadyStateAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-        linsolve_kwargs = (;)
+        linsolve_kwargs = (;), diff_tunables = Val(true)
     )
     return SteadyStateAdjoint{
         chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs),
-    }(autojacvec, linsolve, linsolve_kwargs)
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(diff_tunables),
+    }(autojacvec, linsolve, linsolve_kwargs, diff_tunables)
 end
 function setvjp(
-        sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
+        sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK, DT},
         vjp
-    ) where {CS, AD, FDT, VJP, LS, LK}
-    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
+    ) where {CS, AD, FDT, VJP, LS, LK, DT}
+    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, DT}(
         vjp, sensealg.linsolve,
-        sensealg.linsolve_kwargs
+        sensealg.linsolve_kwargs, sensealg.diff_tunables
     )
 end
 

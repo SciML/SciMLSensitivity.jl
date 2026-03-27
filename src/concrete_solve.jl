@@ -324,17 +324,27 @@ function automatic_sensealg_choice(
 end
 
 function automatic_sensealg_choice(
-        prob::ConcreteNonlinearProblem, u0, p,
-        verbose, repack
+        prob::ConcreteNonlinearProblem, u0, tunables,
+        verbose, repack, original_p = tunables
     )
+    # Check if the original parameter has non-tunable active components
+    # (e.g. caches from SCCNonlinearProblem explicitfuns!).
+    _has_caches = isscimlstructure(original_p) && !(original_p isa AbstractArray) &&
+        hasfield(typeof(original_p), :caches) && !isempty(original_p.caches)
+    _diff_tunables = _has_caches ? Val(false) : Val(true)
+
     default_sensealg = if u0 isa GPUArraysCore.AbstractGPUArray ||
             !DiffEqBase.isinplace(prob)
-        # autodiff = false because forwarddiff fails on many GPU kernels
-        # this only effects the Jacobian calculation and is same computation order
-        SteadyStateAdjoint(autodiff = false, autojacvec = ZygoteVJP())
+        SteadyStateAdjoint(
+            autodiff = false, autojacvec = ZygoteVJP(),
+            diff_tunables = _diff_tunables,
+        )
     else
-        vjp = inplace_vjp(prob, u0, p, verbose, repack)
-        SteadyStateAdjoint(autojacvec = vjp)
+        vjp = inplace_vjp(prob, u0, tunables, verbose, repack)
+        if _diff_tunables isa Val{false} && !supports_structured_vjp(vjp)
+            vjp = ZygoteVJP()
+        end
+        SteadyStateAdjoint(autojacvec = vjp, diff_tunables = _diff_tunables)
     end
     return default_sensealg
 end
@@ -371,7 +381,7 @@ function SciMLBase._concrete_solve_adjoint(
         throw(SciMLStructuresCompatibilityError())
     end
 
-    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
+    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack, p)
     if has_cb && default_sensealg isa AbstractAdjointSensitivityAlgorithm &&
             !(typeof(default_sensealg.autojacvec) <: Union{EnzymeVJP, ReverseDiffVJP, ReactantVJP})
         default_sensealg = setvjp(default_sensealg, ReverseDiffVJP())
@@ -404,7 +414,7 @@ function SciMLBase._concrete_solve_adjoint(
     end
 
     u0 = state_values(prob) === nothing ? Float64[] : u0
-    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack)
+    default_sensealg = automatic_sensealg_choice(prob, u0, tunables, verbose, repack, p)
     return SciMLBase._concrete_solve_adjoint(
         prob, alg, default_sensealg, u0, p,
         originator::SciMLBase.ADOriginator, args...; verbose,
@@ -2376,56 +2386,49 @@ function SciMLBase._concrete_solve_adjoint(
             end
         end
 
-        dp = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
+        dp_full = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
 
-        dp,
-            Δtunables = if Δ isa AbstractArray || Δ isa Number
-            # if Δ isa AbstractArray, the gradients correspond to `u`
-            # this is something that needs changing in the future, but
-            # this is the applicable till the movement to structuaral
-            # tangents is completed
-            dp, Δtunables = if isscimlstructure(dp)
-                dp, _, _ = canonicalize(Tunable(), dp)
-                dp, nothing
-            elseif isfunctor(dp)
-                dp, _ = Functors.functor(dp)
-                dp, nothing
-            else
-                dp, nothing
-            end
+        # When diff_tunables=Val(false), dp_full is the full parameter
+        # gradient (SciMLStructure). For Enzyme, return it directly so
+        # the reverse rule can accumulate into all shadow components
+        # (including caches for SCCNonlinearProblem).
+        dp_tangent = if originator isa SciMLBase.EnzymeOriginator &&
+                sensealg.diff_tunables isa Val{false} &&
+                isscimlstructure(dp_full)
+            dp_full
         else
-            dp, Δtunables = if isscimlstructure(p)
-                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
-                    dp, _, _ = canonicalize(Tunable(), dp)
-                    dp, nothing
+            dp = if isscimlstructure(dp_full)
+                canonicalize(Tunable(), dp_full)[1]
+            elseif isfunctor(dp_full)
+                Functors.functor(dp_full)[1]
+            else
+                dp_full
+            end
+
+            Δtunables = if !(Δ isa AbstractArray || Δ isa Number)
+                if isscimlstructure(p) &&
+                        !(Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
+                    Δp = setproperties(dp_full, to_nt(Δ.prob.p))
+                    canonicalize(Tunable(), Δp)[1]
+                elseif isfunctor(p)
+                    Functors.functor(Δ.prob.p)[1]
                 else
-                    Δp = setproperties(dp, to_nt(Δ.prob.p))
-                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
-                    dp, _, _ = canonicalize(Tunable(), dp)
-                    dp, Δtunables
+                    nothing
                 end
-            elseif isfunctor(p)
-                dp, _ = Functors.functor(dp)
-                Δtunables, _ = Functors.functor(Δ.prob.p)
-                dp, Δtunables
             else
-                dp, Δ.prob.p
+                nothing
             end
-        end
 
-        dp = Zygote.accum(
-            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
-                Δtunables
-        )
+            dp = Zygote.accum(
+                dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
+                    Δtunables
+            )
 
-        # For Enzyme with SciMLStructure parameters, return the tunable gradient
-        # vector directly instead of the Zygote-repacked NamedTuple. The Enzyme
-        # reverse rule in NonlinearSolveBaseEnzymeExt uses
-        # SciMLStructures.replace! to accumulate it into the parameter shadow.
-        dp_tangent = if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
-            dp
-        else
-            repack_adjoint(dp)[1]
+            if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
+                dp
+            else
+                repack_adjoint(dp)[1]
+            end
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||

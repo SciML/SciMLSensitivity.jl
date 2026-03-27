@@ -20,10 +20,14 @@ function SteadyStateAdjointSensitivityFunction(
     )
     (; p, u0) = sol.prob
 
+    # When diff_tunables = Val(false), use the full parameter object so
+    # the VJP includes gradients w.r.t. all parameter components.
+    _use_full_p = sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
     diffcache,
         y = adjointdiffcache(
         g, sensealg, false, sol, dgdu, dgdp, f, alg;
-        quad = false, needs_jac
+        quad = false, needs_jac, use_full_p = _use_full_p
     )
 
     λ = zero(y)
@@ -168,6 +172,7 @@ end
             throw(e)
         end
     end
+
 
     if g !== nothing || dgdp !== nothing
         # compute del g/del p
