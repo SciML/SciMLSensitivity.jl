@@ -483,28 +483,29 @@ arXiv:1812.01892
 Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
-struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
+struct QuadratureAdjoint{CS, AD, FDT, VJP, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     abstol::Float64
     reltol::Float64
+    diff_tunables::DT
 end
 Base.@pure function QuadratureAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing, abstol = 1.0e-6,
-        reltol = 1.0e-3
+        reltol = 1.0e-3, diff_tunables = Val(true)
     )
-    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
         autojacvec,
-        abstol, reltol
+        abstol, reltol, diff_tunables
     )
 end
 
-function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
-    return QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(
+function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, VJP, DT}, vjp) where {CS, AD, FDT, VJP, DT}
+    return QuadratureAdjoint{CS, AD, FDT, typeof(vjp), DT}(
         vjp, sensealg.abstol,
-        sensealg.reltol
+        sensealg.reltol, sensealg.diff_tunables
     )
 end
 
@@ -587,24 +588,26 @@ arXiv:1812.01892
 Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
-struct GaussAdjoint{CS, AD, FDT, VJP} <:
+struct GaussAdjoint{CS, AD, FDT, VJP, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
+    diff_tunables::DT
 end
 Base.@pure function GaussAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = false
+        checkpointing = false,
+        diff_tunables = Val(true)
     )
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
-        autojacvec, checkpointing
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
+        autojacvec, checkpointing, diff_tunables
     )
 end
 
-function setvjp(sensealg::GaussAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
-    return GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
+function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, VJP, DT}, vjp) where {CS, AD, FDT, VJP, DT}
+    return GaussAdjoint{CS, AD, FDT, typeof(vjp), DT}(vjp, sensealg.checkpointing, sensealg.diff_tunables)
 end
 
 """
