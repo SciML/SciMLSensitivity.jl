@@ -18,12 +18,12 @@ import SciMLStructures as SS
 # dloss/dp[2] = sqrt(p[1])
 
 function f1(du, u, p)
-    du[1] = u[1]^2 - p[1]
+    return du[1] = u[1]^2 - p[1]
 end
 explicitfun1!(p, sols) = nothing
 
 function f2(du, u, p)
-    du[1] = u[1] - p[1] * p[2]
+    return du[1] = u[1] - p[1] * p[2]
 end
 function explicitfun2!(p, sols)
     p[1] = sols[1].u[1]
@@ -48,7 +48,7 @@ alg = SCCNonlinearSolve.SCCAlg(nlalg = NewtonRaphson())
 function loss(p_val)
     sccprob = make_scc(p_val)
     sol = solve(sccprob, alg)
-    sum(sol.u)
+    return sum(sol.u)
 end
 
 p_test = [4.0, 3.0]
