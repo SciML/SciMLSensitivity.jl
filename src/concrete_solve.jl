@@ -161,7 +161,7 @@ function automatic_sensealg_choice(
             SciMLBase.AbstractODEProblem,
             SciMLBase.AbstractSDEProblem,
         },
-        u0, p, verbose, repack
+        u0, p, verbose, repack, original_p = p
     )
     # Get verbosity for sensitivity VJP choice warnings
     _verbose = _get_sensitivity_vjp_verbose(verbose)
@@ -181,6 +181,12 @@ function automatic_sensealg_choice(
     if isfunctor(p) && !(p isa AbstractArray) && !isscimlstructure(p)
         return GaussAdjoint(autojacvec = ZygoteVJP())
     end
+
+    # Check if the original parameter has non-tunable active components
+    # (e.g. caches from SCCNonlinearProblem explicitfuns!).
+    _has_caches = isscimlstructure(original_p) && !(original_p isa AbstractArray) &&
+        hasfield(typeof(original_p), :caches) && !isempty(original_p.caches)
+    _diff_tunables = _has_caches ? Val(false) : Val(true)
 
     default_sensealg = if p !== SciMLBase.NullParameters() &&
             !(eltype(u0) <: ForwardDiff.Dual) &&
@@ -279,9 +285,9 @@ function automatic_sensealg_choice(
             if p === nothing || p === SciMLBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp, diff_tunables = _diff_tunables)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autodiff = false, autojacvec = vjp)
+                GaussAdjoint(autodiff = false, autojacvec = vjp, diff_tunables = _diff_tunables)
             else
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
@@ -289,32 +295,35 @@ function automatic_sensealg_choice(
             if p === nothing || p === SciMLBase.NullParameters()
                 # QuadratureAdjoint skips all p calculations until the end
                 # So it's the fastest when there are no parameters
-                QuadratureAdjoint(autojacvec = vjp)
+                QuadratureAdjoint(autojacvec = vjp, diff_tunables = _diff_tunables)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autojacvec = vjp)
+                GaussAdjoint(autojacvec = vjp, diff_tunables = _diff_tunables)
             else
                 InterpolatingAdjoint(autojacvec = vjp)
             end
         end
     else
         vjp = inplace_vjp(prob, u0, p, verbose, repack)
+        if _diff_tunables isa Val{false} && !supports_structured_vjp(vjp)
+            vjp = ZygoteVJP()
+        end
         if vjp isa Bool
             if _verbose
                 @warn "Reverse-Mode AD VJP choices all failed. Falling back to numerical VJPs"
             end
             # If reverse-mode isn't working, just fallback to numerical vjps
             if p === nothing || p === SciMLBase.NullParameters()
-                QuadratureAdjoint(autodiff = false, autojacvec = vjp)
+                QuadratureAdjoint(autodiff = false, autojacvec = vjp, diff_tunables = _diff_tunables)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autodiff = false, autojacvec = vjp)
+                GaussAdjoint(autodiff = false, autojacvec = vjp, diff_tunables = _diff_tunables)
             else
                 InterpolatingAdjoint(autodiff = false, autojacvec = vjp)
             end
         else
             if p === nothing || p === SciMLBase.NullParameters()
-                QuadratureAdjoint(autojacvec = vjp)
+                QuadratureAdjoint(autojacvec = vjp, diff_tunables = _diff_tunables)
             elseif prob isa ODEProblem && !(vjp isa TrackerVJP)
-                GaussAdjoint(autojacvec = vjp)
+                GaussAdjoint(autojacvec = vjp, diff_tunables = _diff_tunables)
             else
                 InterpolatingAdjoint(autojacvec = vjp)
             end
@@ -918,7 +927,7 @@ function SciMLBase._concrete_solve_adjoint(
 
         du0 = reshape(du0, size(u0))
 
-        dp = if p === nothing || p === SciMLBase.NullParameters()
+        dp_full = if p === nothing || p === SciMLBase.NullParameters()
             nothing
         elseif dp isa AbstractArray
             reshape(dp', size(tunables))
@@ -926,35 +935,52 @@ function SciMLBase._concrete_solve_adjoint(
             dp
         end
 
-        dp = Zygote.accum(dp, igs)
-
-        _,
-            repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
-            nothing, x -> (x,)
-        elseif isscimlstructure(p)
-            Zygote.pullback(p) do p
-                t, _, _ = canonicalize(Tunable(), p)
-                t
-            end
-        elseif isfunctor(p) && supports_functor_params(sensealg)
-            Zygote.pullback(p) do p
-                t, _ = Functors.functor(p)
-                t
-            end
+        # When diff_tunables=Val(false), dp_full is the full parameter
+        # gradient (SciMLStructure). For Enzyme, return it directly so
+        # the reverse rule can accumulate into all shadow components.
+        _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+            sensealg.diff_tunables isa Val{false}
+        dp_tangent = if _use_full_p &&
+                originator isa SciMLBase.EnzymeOriginator &&
+                isscimlstructure(dp_full)
+            Zygote.accum(dp_full, igs)
         else
-            nothing, x -> (x,)
+            dp = Zygote.accum(dp_full, igs)
+
+            _,
+                repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
+                nothing, x -> (x,)
+            elseif isscimlstructure(p)
+                Zygote.pullback(p) do p
+                    t, _, _ = canonicalize(Tunable(), p)
+                    t
+                end
+            elseif isfunctor(p) && supports_functor_params(sensealg)
+                Zygote.pullback(p) do p
+                    t, _ = Functors.functor(p)
+                    t
+                end
+            else
+                nothing, x -> (x,)
+            end
+
+            if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
+                dp
+            else
+                repack_adjoint(dp)[1]
+            end
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
-                NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), NoTangent(), du0, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                du0, repack_adjoint(dp)[1], NoTangent(),
+                du0, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
