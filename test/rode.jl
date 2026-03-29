@@ -162,21 +162,76 @@ end
     @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 
     ###
-    ## InterpolatingAdjoint (dense=true, no checkpointing)
+    ## InterpolatingAdjoint
     ###
-    # Broken: RODE dense interpolation produces empty ks (derivative stages),
-    # causing BoundsError in OrdinaryDiffEqCore.ode_interpolation!
-    # See upstream issue with RandomEM + dense=true.
-    @test_broken begin
-        Random.seed!(seed)
-        sol_dense = solve(prob, RandomEM(); dt, save_noise = true, dense = true)
-        du0, dp = adjoint_sensitivities(
-            sol_dense, RandomEM(); t = Array(t), dgdu_discrete = dg!,
-            dt, adaptive = false,
-            sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
-        )
-        du0ReverseDiff ≈ du0 && vec(dpReverseDiff) ≈ vec(dp')
-    end
+
+    # test gradients with dense solution and no checkpointing
+    Random.seed!(seed)
+    sol = solve(prob, RandomEM(); dt, save_noise = true, dense = true)
+
+    # ReverseDiff
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # ReverseDiff with compiled tape
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # Zygote
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # Tracker
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # isautojacvec = false
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # isautojacvec = false and with jac and paramjac
+    Random.seed!(seed)
+    faug = RODEFunction(f; jac, paramjac)
+    prob_aug = RODEProblem{true}(faug, u0, tspan, p)
+    sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, dense = true)
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 
     # test gradients with saveat solution and checkpointing
     # need to simulate for dt beyond last tspan to avoid errors in NoiseGrid
@@ -430,21 +485,76 @@ end
     @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 
     ###
-    ## InterpolatingAdjoint (dense=true, no checkpointing)
+    ## InterpolatingAdjoint
     ###
-    # Broken: RODE dense interpolation produces empty ks (derivative stages),
-    # causing BoundsError in OrdinaryDiffEqCore.ode_interpolation!
-    # See upstream issue with RandomEM + dense=true.
-    @test_broken begin
-        Random.seed!(seed)
-        sol_dense = solve(prob, RandomEM(); dt, save_noise = true, dense = true)
-        du0, dp = adjoint_sensitivities(
-            sol_dense, RandomEM(); t = Array(t), dgdu_discrete = dg!,
-            dt, adaptive = false,
-            sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
-        )
-        du0ReverseDiff ≈ du0 && vec(dpReverseDiff) ≈ vec(dp')
-    end
+
+    # test gradients with dense solution and no checkpointing
+    Random.seed!(seed)
+    sol = solve(prob, RandomEM(); dt, save_noise = true, dense = true)
+
+    # ReverseDiff
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # ReverseDiff with compiled tape
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # Zygote
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # Tracker
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = TrackerVJP())
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # isautojacvec = false
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
+
+    # isautojacvec = false and with jac and paramjac
+    Random.seed!(seed)
+    faug = RODEFunction(f; jac, paramjac)
+    prob_aug = RODEProblem{false}(faug, u0, tspan, p)
+    sol = solve(prob_aug, RandomEM(), dt = dt, save_noise = true, dense = true)
+    du0, dp = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(t), dgdu_discrete = dg!,
+        dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = false)
+    )
+
+    @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
+    @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 
     # test gradients with saveat solution and checkpointing
     # need to simulate for dt beyond last tspan to avoid errors in NoiseGrid

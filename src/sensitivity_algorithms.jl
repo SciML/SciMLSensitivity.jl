@@ -1635,11 +1635,20 @@ end
 end
 @inline ischeckpointing(alg::AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense ||
+    _has_empty_ks(sol)
+# RODE/SDE solvers set dense=true but never populate the derivative stages (ks),
+# causing BoundsError in ode_interpolation!. Fall back to checkpointing in this case.
+@inline function _has_empty_ks(sol)
+    return hasproperty(sol, :interp) && hasproperty(sol.interp, :ks) &&
+        isempty(sol.interp.ks)
+end
 @inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense ||
+    _has_empty_ks(sol)
 @inline ischeckpointing(alg::GaussKronrodAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::GaussKronrodAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::GaussKronrodAdjoint, sol) = alg.checkpointing || !sol.dense ||
+    _has_empty_ks(sol)
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
 @inline isnoisemixing(alg::AbstractSensitivityAlgorithm) = false
