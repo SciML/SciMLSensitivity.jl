@@ -89,6 +89,13 @@ allocate_vjp(λ::AbstractArray, x) = fmap(Base.Fix1(allocate_vjp, λ), x)
 allocate_vjp(λ::AbstractArray{T}, x::Number) where {T} = zero(T)
 allocate_vjp(::AbstractArray, x::_NonDiffLeaf) = x
 
+# ---------------------------------------------
+# fix 3: make allocate_vjp safe on "no params"
+allocate_vjp(x::Nothing) = nothing
+allocate_vjp(x::SciMLBase.NullParameters) = nothing
+allocate_vjp(::AbstractArray, ::Nothing) = nothing
+allocate_vjp(::AbstractArray, ::SciMLBase.NullParameters) = nothing
+# ---------------------------------------------
 allocate_vjp(x::AbstractArray) = zero(x) # similar(x)
 allocate_vjp(x::Tuple) = allocate_vjp.(x)
 allocate_vjp(x::NamedTuple{F}) where {F} = NamedTuple{F}(allocate_vjp.(values(x)))
@@ -101,6 +108,11 @@ allocate_vjp(x::_NonDiffLeaf) = x
 
 `zero.(x)` for generic `x`. This is used to handle non-array parameters!
 """
+#---------------------------------------------
+# fix 2:
+allocate_zeros(::Nothing) = nothing
+allocate_zeros(::SciMLBase.NullParameters) = SciMLBase.NullParameters()
+#---------------------------------------------
 allocate_zeros(x::AbstractArray) = zero.(x)
 allocate_zeros(x::Tuple) = allocate_zeros.(x)
 allocate_zeros(x::NamedTuple{F}) where {F} = NamedTuple{F}(allocate_zeros.(values(x)))
@@ -113,6 +125,10 @@ allocate_zeros(x::_NonDiffLeaf) = x
 
 `adjoint(y)` for generic `y`. This is used to handle non-array parameters!
 """
+#---------------------------------------------
+# fix 3: make recursive_adjoint safe on "no params"
+recursive_adjoint(::Nothing) = nothing
+#---------------------------------------------
 recursive_adjoint(y::AbstractArray) = adjoint(y)
 recursive_adjoint(y::Tuple) = recursive_adjoint.(y)
 recursive_adjoint(y::NamedTuple{F}) where {F} = NamedTuple{F}(recursive_adjoint.(values(y)))
