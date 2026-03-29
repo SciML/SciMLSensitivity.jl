@@ -26,93 +26,74 @@ using Zygote
             fill!(out, zero(eltype(u)))
             out[end] = one(eltype(u))
         end
-        # ForwardLSSProblem/SchurLU can produce Infs/NaNs on some platforms
-        # due to numerical instability in the Schur decomposition for chaotic
-        # Lorenz trajectories. Skip remaining tests if construction fails.
-        lss_construction_ok = true
-        local lss_problem1, lss_problem1a, lss_problem2, lss_problem2a
-        local lss_problem3, lss_problem3a, adjointlss_problem, adjointlss_problem_a
-        try
-            lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(; g))
-            lss_problem1a = ForwardLSSProblem(
-                sol_attractor, ForwardLSS(; g),
-                dgdu_continuous = dg
+        lss_problem1 = ForwardLSSProblem(sol_attractor, ForwardLSS(; g))
+        lss_problem1a = ForwardLSSProblem(
+            sol_attractor, ForwardLSS(; g),
+            dgdu_continuous = dg
+        )
+        lss_problem2 = ForwardLSSProblem(
+            sol_attractor,
+            ForwardLSS(;
+                LSSregularizer = SciMLSensitivity.Cos2Windowing(),
+                g
             )
-            lss_problem2 = ForwardLSSProblem(
-                sol_attractor,
-                ForwardLSS(;
-                    LSSregularizer = SciMLSensitivity.Cos2Windowing(),
-                    g
-                )
+        )
+        lss_problem2a = ForwardLSSProblem(
+            sol_attractor,
+            ForwardLSS(LSSregularizer = SciMLSensitivity.Cos2Windowing()),
+            dgdu_continuous = dg
+        )
+        lss_problem3 = ForwardLSSProblem(
+            sol_attractor,
+            ForwardLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
+                g
             )
-            lss_problem2a = ForwardLSSProblem(
-                sol_attractor,
-                ForwardLSS(LSSregularizer = SciMLSensitivity.Cos2Windowing()),
-                dgdu_continuous = dg
-            )
-            lss_problem3 = ForwardLSSProblem(
-                sol_attractor,
-                ForwardLSS(;
-                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g
-                )
-            )
-            lss_problem3a = ForwardLSSProblem(
-                sol_attractor,
-                ForwardLSS(;
-                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g
-                ),
-                dgdu_continuous = dg
-            ) #ForwardLSS with time dilation requires knowledge of g
+        )
+        lss_problem3a = ForwardLSSProblem(
+            sol_attractor,
+            ForwardLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
+                g
+            ),
+            dgdu_continuous = dg
+        ) #ForwardLSS with time dilation requires knowledge of g
 
-            adjointlss_problem = AdjointLSSProblem(
-                sol_attractor,
-                AdjointLSS(;
-                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g
-                )
+        adjointlss_problem = AdjointLSSProblem(
+            sol_attractor,
+            AdjointLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
+                g
             )
-            adjointlss_problem_a = AdjointLSSProblem(
-                sol_attractor,
-                AdjointLSS(;
-                    LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
-                    g
-                ),
-                dgdu_continuous = dg
-            )
-        catch e
-            if e isa ArgumentError && occursin("Infs or NaNs", e.msg)
-                @warn "LSS Schur decomposition produced Infs/NaNs, skipping tests" e
-                lss_construction_ok = false
-            else
-                rethrow(e)
-            end
-        end
+        )
+        adjointlss_problem_a = AdjointLSSProblem(
+            sol_attractor,
+            AdjointLSS(;
+                LSSregularizer = SciMLSensitivity.TimeDilation(10.0),
+                g
+            ),
+            dgdu_continuous = dg
+        )
 
-        if lss_construction_ok
-            res1 = shadow_forward(lss_problem1)
-            res1a = shadow_forward(lss_problem1a)
-            res2 = shadow_forward(lss_problem2)
-            res2a = shadow_forward(lss_problem2a)
-            res3 = shadow_forward(lss_problem3)
-            res3a = shadow_forward(lss_problem3a)
+        res1 = shadow_forward(lss_problem1)
+        res1a = shadow_forward(lss_problem1a)
+        res2 = shadow_forward(lss_problem2)
+        res2a = shadow_forward(lss_problem2a)
+        res3 = shadow_forward(lss_problem3)
+        res3a = shadow_forward(lss_problem3a)
 
-            res4 = shadow_adjoint(adjointlss_problem)
-            res4a = shadow_adjoint(adjointlss_problem_a)
+        res4 = shadow_adjoint(adjointlss_problem)
+        res4a = shadow_adjoint(adjointlss_problem_a)
 
-            @test res1[1] ≈ 1 atol = 1.0e-1
-            @test res2[1] ≈ 1 atol = 2.0e-1
-            @test res3[1] ≈ 1 atol = 5.0e-2
+        @test res1[1] ≈ 1 atol = 1.0e-1
+        @test res2[1] ≈ 1 atol = 2.0e-1
+        @test res3[1] ≈ 1 atol = 5.0e-2
 
-            @test res1 ≈ res1a atol = 1.0e-10
-            @test res2 ≈ res2a atol = 1.0e-10
-            @test res3 ≈ res3a atol = 1.0e-10
-            @test res3 ≈ res4 atol = 1.0e-10
-            @test res3 ≈ res4a atol = 1.0e-10
-        else
-            @test_broken false
-        end
+        @test res1 ≈ res1a atol = 1.0e-10
+        @test res2 ≈ res2a atol = 1.0e-10
+        @test res3 ≈ res3a atol = 1.0e-10
+        @test res3 ≈ res4 atol = 1.0e-10
+        @test res3 ≈ res4a atol = 1.0e-10
 
         # discrete API with explicit time grid
         lss_problem1 = ForwardLSSProblem(
