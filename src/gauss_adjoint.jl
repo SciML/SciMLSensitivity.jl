@@ -93,10 +93,14 @@ function ODEGaussAdjointSensitivityFunction(
     else
         nothing
     end
+    p = sol.prob.p
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
     diffcache,
         y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, f, alg;
-        quad = true
+        quad = true, use_full_p = _use_full_p
     )
     return ODEGaussAdjointSensitivityFunction(
         diffcache, sensealg, discrete,
@@ -457,7 +461,12 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     u0 = state_values(prob)
     p = parameter_values(prob)
 
-    if p === nothing || p isa SciMLBase.NullParameters
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
+    if _use_full_p
+        tunables, repack = p, identity
+    elseif p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
@@ -697,7 +706,12 @@ function _adjoint_sensitivities(
         throw(SciMLStructuresCompatibilityError())
     end
 
-    if p === nothing || p isa SciMLBase.NullParameters
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
+    if _use_full_p
+        tunables, repack = p, identity
+    elseif p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
