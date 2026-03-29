@@ -1,6 +1,6 @@
 using Zygote, SciMLSensitivity
 println("Starting tests")
-using OrdinaryDiffEq, ForwardDiff, Test, Reactant
+using OrdinaryDiffEq, ForwardDiff, Test, Reactant, Random
 
 function lotka_volterra(u, p, t)
     x, y = u
@@ -190,6 +190,7 @@ if VERSION >= v"1.7-"
         ROCK4(),
     ]
 
+    Random.seed!(1234)
     p = rand(3)
 
     function dudt(u, p, t)
