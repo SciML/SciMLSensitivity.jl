@@ -190,7 +190,7 @@ if VERSION >= v"1.7-"
         ROCK4(),
     ]
 
-    p = rand(3)
+    p = [0.6, 0.4, 0.2]
 
     function dudt(u, p, t)
         return u .* p
