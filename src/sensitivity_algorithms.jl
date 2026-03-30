@@ -1423,6 +1423,36 @@ function setvjp(
     )
 end
 
+struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD, AT} <:
+       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    autojacvec::VJP
+    linsolve::LS
+    linsolve_kwargs::LK
+    objective_ad::OAD
+    active_tol::AT  # tolerance for active inequality constraint detection; nothing = sqrt(eps(eltype(x*)))
+end
+
+function OptimizationAdjoint(;
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central}, objective_ad = true, autojacvec = nothing,
+        linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
+    )
+    return OptimizationAdjoint{
+        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad), typeof(active_tol),
+    }(autojacvec, linsolve, linsolve_kwargs, objective_ad, active_tol)
+end
+
+function setvjp(
+        sensealg::OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD, AT},
+        vjp
+    ) where {CS, AD, FDT, VJP, LS, LK, OAD, AT}
+    return OptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, OAD, AT}(
+        vjp, sensealg.linsolve, sensealg.linsolve_kwargs, sensealg.objective_ad,
+        sensealg.active_tol
+    )
+end
+
 abstract type VJPChoice end
 
 """

@@ -2813,6 +2813,101 @@ function SciMLBase._concrete_solve_adjoint(
     return out, steadystatebackpass
 end
 
+function SciMLBase._concrete_solve_adjoint(
+        prob::AbstractOptimizationProblem,
+        alg, sensealg::OptimizationAdjoint{CS, AD, FDT},
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; save_idxs = nothing, kwargs...
+    ) where {CS, AD, FDT}
+    if prob.lcons === nothing
+        error("OptimizationAdjoint requires a constrained OptimizationProblem (lcons/ucons). " *
+              "For unconstrained problems, use UnconstrainedOptimizationAdjoint instead.")
+    end
+
+    _prob = remake(prob, u0 = u0, p = p)
+    opt_sol = solve(_prob, alg, args...; kwargs...)
+    x_star = opt_sol.u
+
+    _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+    out = if save_idxs === nothing
+        opt_sol
+    else
+        SciMLBase.sensitivity_solution(opt_sol, opt_sol[_save_idxs])
+    end
+
+    Jpx = OptimizationAdjointProblem(_prob, opt_sol, sensealg, p)
+
+    _, repack_adjoint = if isscimlstructure(p)
+        Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+    elseif isfunctor(p)
+        ps, re = Functors.functor(p)
+        ps, x -> (re(x),)
+    else
+        nothing, x -> (x,)
+    end
+
+    function optimizationbackpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+        Δu = if Δ isa AbstractArray
+            Δ
+        else
+            Δ.u
+        end
+        dp = Jpx' * Δu[_save_idxs]
+
+        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
+            dp, Δtunables = if isscimlstructure(dp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, nothing
+            elseif isfunctor(dp)
+                dp, _ = Functors.functor(dp)
+                dp, nothing
+            else
+                dp, nothing
+            end
+        else
+            dp, Δtunables = if isscimlstructure(p)
+                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, nothing
+                else
+                    Δp = setproperties(dp, to_nt(Δ.prob.p))
+                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                    dp, _, _ = canonicalize(Tunable(), dp)
+                    dp, Δtunables
+                end
+            elseif isfunctor(p)
+                dp, _ = Functors.functor(dp)
+                Δtunables, _ = Functors.functor(Δ.prob.p)
+                dp, Δtunables
+            else
+                dp, Δ.prob.p
+            end
+        end
+
+        dp = Zygote.accum(
+            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables)
+
+        return if originator isa SciMLBase.TrackerOriginator ||
+                  originator isa SciMLBase.ReverseDiffOriginator
+            (
+                NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        else
+            (
+                NoTangent(), NoTangent(), NoTangent(),
+                NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        end
+    end
+
+    return out, optimizationbackpass
+end
 
 function fix_endpoints(sensealg, sol, ts)
     @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(last(current_time(sol))), ts[end]: $(ts[end])"
