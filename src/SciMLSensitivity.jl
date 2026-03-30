@@ -285,6 +285,7 @@ include("quadrature_adjoint.jl")
 include("gauss_adjoint.jl")
 include("dae_adjoint.jl")
 include("callback_tracking.jl")
+include("optimization_adjoint.jl")
 include("concrete_solve.jl")
 include("second_order.jl")
 include("steadystate_adjoint.jl")
@@ -312,7 +313,7 @@ export BacksolveAdjoint, QuadratureAdjoint, GaussAdjoint, GaussKronrodAdjoint,
     TrackerAdjoint, ZygoteAdjoint, ReverseDiffAdjoint, MooncakeAdjoint,
     EnzymeAdjoint, ForwardSensitivity, ForwardDiffSensitivity,
     ForwardDiffOverAdjoint,
-    SteadyStateAdjoint, UnconstrainedOptimizationAdjoint,
+    SteadyStateAdjoint, UnconstrainedOptimizationAdjoint, OptimizationAdjoint,
     ForwardLSS, AdjointLSS, NILSS, NILSAS
 
 export second_order_sensitivities, second_order_sensitivity_product
