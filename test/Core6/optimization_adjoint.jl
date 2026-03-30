@@ -285,6 +285,179 @@ end
         end
     end
 
+    @testset "p only in objective (sensitivity via ∇²_xp L, J_p g = 0)" begin
+        let
+            # Minimize p[1]*u[1] + u[1]^2 + u[2]^2  s.t.  u[1] + u[2] = 1  (no p in constraint)
+            # J_p g = 0; sensitivity flows entirely through ∇²_xp L = [1, 0].
+            # KKT → u1* = (2 - p[1])/4,  u2* = (2 + p[1])/4
+            # du1*/dp[1] = -1/4,  du2*/dp[1] = 1/4
+            f    = (u, p) -> p[1] * u[1] + u[1]^2 + u[2]^2
+            cons = (res, u, p) -> (res[1] = u[1] + u[2] - 1)
+
+            p  = [2.0]
+            u0 = [0.0, 1.0]   # feasible: u1+u2 = 1, equals u* at p[1]=2
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob  = OptimizationProblem(opt_f, u0, p; lcons = [0.0], ucons = [0.0])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ (2 - p[1]) / 4 rtol = 1e-4
+            @test opt_sol.u[2] ≈ (2 + p[1]) / 4 rtol = 1e-4
+            @test opt_sol.u[1] + opt_sol.u[2] ≈ 1.0 rtol = 1e-6
+
+            dp1 = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[1]
+            end[1]
+            @test dp1[1] ≈ -0.25 rtol = 1e-3
+
+            dp2 = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[2]
+            end[1]
+            @test dp2[1] ≈ 0.25 rtol = 1e-3
+        end
+    end
+
+    @testset "Inactive inequality constraint" begin
+        let
+            # Minimize (u - p[1])^2  s.t.  u <= p[2]  where p[2] > p[1] (constraint NOT active)
+            # Optimal solution: u* = p[1] (unconstrained min, inequality slack)
+            # du*/dp[1] = 1,  du*/dp[2] = 0
+            f    = (u, p) -> (u[1] - p[1])^2
+            cons = (res, u, p) -> (res[1] = u[1] - p[2])
+
+            p  = [1.0, 5.0]   # unconstrained min at u=1, well inside bound u<=5
+            u0 = [0.0]
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob  = OptimizationProblem(opt_f, u0, p; lcons = [-Inf], ucons = [0.0])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ p[1] rtol = 1e-4
+            @test opt_sol.u[1] <= p[2] + 1e-6  # constraint satisfied (slack)
+
+            dp = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[1]
+            end[1]
+            @test dp[1] ≈ 1.0 rtol = 1e-3   # u* = p[1], so du*/dp[1] = 1
+            @test dp[2] ≈ 0.0 atol = 1e-3   # inactive constraint, no dependence on p[2]
+        end
+    end
+
+    @testset "Mixed equality + active inequality" begin
+        let
+            # Minimize (u1-3)^2 + (u2-3)^2  s.t.  u1+u2 = p[1]  and  u1 <= p[2]
+            # At p=[4,1]: unconstrained-on-line solution is u1=u2=2, but u1<=1 is active
+            # → u1* = p[2] = 1,  u2* = p[1] - p[2] = 3
+            # du1*/dp[1] = 0, du1*/dp[2] = 1
+            # du2*/dp[1] = 1, du2*/dp[2] = -1
+            f    = (u, p) -> (u[1] - 3)^2 + (u[2] - 3)^2
+            cons = (res, u, p) -> (res[1] = u[1] + u[2] - p[1]; res[2] = u[1] - p[2])
+
+            p  = [4.0, 1.0]
+            u0 = [1.0, 3.0]   # feasible: u1+u2=4, u1=1<=1
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob  = OptimizationProblem(opt_f, u0, p; lcons = [0.0, -Inf], ucons = [0.0, 0.0])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ p[2] rtol = 1e-4
+            @test opt_sol.u[2] ≈ p[1] - p[2] rtol = 1e-4
+            @test opt_sol.u[1] + opt_sol.u[2] ≈ p[1] rtol = 1e-6  # equality satisfied
+            @test opt_sol.u[1] <= p[2] + 1e-6                      # inequality satisfied
+
+            dp = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[1]
+            end[1]
+            @test dp[1] ≈ 0.0 atol = 1e-3
+            @test dp[2] ≈ 1.0 rtol = 1e-3
+
+            dp2 = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[2]
+            end[1]
+            @test dp2[1] ≈ 1.0 rtol = 1e-3
+            @test dp2[2] ≈ -1.0 rtol = 1e-3
+        end
+    end
+
+    @testset "Multiple equality constraints" begin
+        let
+            # Minimize (1/2)||u||^2  s.t.  u1+u2 = p[1],  u2+u3 = p[2]
+            # Analytical solution: u* = [(2p[1]-p[2])/3, (p[1]+p[2])/3, (-p[1]+2p[2])/3]
+            # Jacobian: du_i/dp_j — 3x2 matrix
+            f    = (u, p) -> sum(u .^ 2) / 2
+            cons = (res, u, p) -> (res[1] = u[1] + u[2] - p[1]; res[2] = u[2] + u[3] - p[2])
+
+            p  = [1.0, 1.0]
+            u0 = [1.0 / 3, 2.0 / 3, 1.0 / 3]   # feasible
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob  = OptimizationProblem(opt_f, u0, p; lcons = [0.0, 0.0], ucons = [0.0, 0.0])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ (2p[1] - p[2]) / 3 rtol = 1e-4
+            @test opt_sol.u[2] ≈ (p[1] + p[2]) / 3 rtol = 1e-4
+            @test opt_sol.u[3] ≈ (-p[1] + 2p[2]) / 3 rtol = 1e-4
+            @test opt_sol.u[1] + opt_sol.u[2] ≈ p[1] rtol = 1e-6
+            @test opt_sol.u[2] + opt_sol.u[3] ≈ p[2] rtol = 1e-6
+
+            # du1/dp = [2/3, -1/3],  du2/dp = [1/3, 1/3],  du3/dp = [-1/3, 2/3]
+            expected = [[2/3, -1/3], [1/3, 1/3], [-1/3, 2/3]]
+            for i in 1:3
+                dp = Zygote.gradient(p) do p
+                    _prob = remake(prob; p = p)
+                    sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                    sol.u[i]
+                end[1]
+                @test dp ≈ expected[i] rtol = 1e-3
+            end
+        end
+    end
+
+    @testset "p in both objective and constraint (both ∇²_xp L and J_p g nonzero)" begin
+        let
+            # Minimize (u1 - p[1])^2 + u2^2  s.t.  u1 + u2 = p[2]
+            # KKT → u1* = (p[1]+p[2])/2,  u2* = (p[2]-p[1])/2
+            # du1*/dp = [1/2, 1/2],  du2*/dp = [-1/2, 1/2]
+            f    = (u, p) -> (u[1] - p[1])^2 + u[2]^2
+            cons = (res, u, p) -> (res[1] = u[1] + u[2] - p[2])
+
+            p  = [1.0, 3.0]
+            u0 = [1.5, 1.5]   # feasible: u1+u2 = 3 = p[2]
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob  = OptimizationProblem(opt_f, u0, p; lcons = [0.0], ucons = [0.0])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ (p[1] + p[2]) / 2 rtol = 1e-4
+            @test opt_sol.u[2] ≈ (p[2] - p[1]) / 2 rtol = 1e-4
+            @test opt_sol.u[1] + opt_sol.u[2] ≈ p[2] rtol = 1e-6
+
+            dp1 = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[1]
+            end[1]
+            @test dp1 ≈ [0.5, 0.5] rtol = 1e-3
+
+            dp2 = Zygote.gradient(p) do p
+                _prob = remake(prob; p = p)
+                sol = solve(_prob, NLopt.LD_SLSQP(); sensealg = OptimizationAdjoint())
+                sol.u[2]
+            end[1]
+            @test dp2 ≈ [-0.5, 0.5] rtol = 1e-3
+        end
+    end
+
     @testset "Lemma 4.2 (Gould et al.): L2 projection onto hyperplane" begin
         let
             # Minimize (1/2)||u - p||^2  s.t.  u1 + u2 + u3 = 1
