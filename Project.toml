@@ -148,6 +148,7 @@ NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 SCCNonlinearSolve = "9dfe8606-65a1-4bb3-9748-cb89d1561431"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimisers = "42dfb2eb-d2b4-4451-abcd-913932933ac1"
+OptimizationNLopt = "4e6fcdb7-1186-4e1f-a706-475e75c168bb"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 OrdinaryDiffEqFIRK = "5960d6e9-dd7a-4743-88e7-cf307b64f125"
 OrdinaryDiffEqLowOrderRK = "1344f307-1e59-4825-a18e-ace9aa3fa4c6"
@@ -164,4 +165,4 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["AlgebraicMultigrid", "Aqua", "Calculus", "ComponentArrays", "DelayDiffEq", "DifferentiationInterface", "Distributed", "ExplicitImports", "Lux", "ModelingToolkit", "Mooncake", "NLsolve", "NonlinearSolve", "Optimization", "OptimizationOptimisers", "OrdinaryDiffEq", "OrdinaryDiffEqFIRK", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqStabilizedRK", "Reactant", "SCCNonlinearSolve", "SafeTestsets", "SciMLTesting", "SparseArrays", "StableRNGs", "SteadyStateDiffEq", "StochasticDiffEq", "Test"]
+test = ["AlgebraicMultigrid", "Aqua", "Calculus", "ComponentArrays", "DelayDiffEq", "DifferentiationInterface", "Distributed", "ExplicitImports", "Lux", "ModelingToolkit", "Mooncake", "NLsolve", "NonlinearSolve", "Optimization", "OptimizationOptimisers", "OptimizationNLopt", "OrdinaryDiffEq", "OrdinaryDiffEqFIRK", "OrdinaryDiffEqLowOrderRK", "OrdinaryDiffEqNonlinearSolve", "OrdinaryDiffEqRosenbrock", "OrdinaryDiffEqSDIRK", "OrdinaryDiffEqStabilizedRK", "Reactant", "SCCNonlinearSolve", "SafeTestsets", "SciMLTesting", "SparseArrays", "StableRNGs", "SteadyStateDiffEq", "StochasticDiffEq", "Test"]
