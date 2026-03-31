@@ -16,6 +16,37 @@ function _optimization_hess(f, x, ::Val{false}, ::FDT) where {FDT}
         y -> FiniteDiff.finite_difference_gradient(f, y, FDT()), x, FDT())
 end
 
+# Evaluate OptimizationFunction auxiliary fields (grad, hess, cons_j, lag_h).
+# Dispatched on:
+#   Val{iip}   — from OptimizationFunction{iip}: true = in-place (leading buffer), false = oop
+#   Val{has_p} — true = AbstractOptimizationProblem (p explicit), false = OptimizationCache (p baked in)
+function _opt_eval_vec(fn, n, x, p, ::Val{true}, ::Val{true})
+    out = zeros(eltype(x), n); fn(out, x, p); out
+end
+function _opt_eval_vec(fn, n, x, _, ::Val{true}, ::Val{false})
+    out = zeros(eltype(x), n); fn(out, x); out
+end
+_opt_eval_vec(fn, _, x, p, ::Val{false}, ::Val{true})  = fn(x, p)
+_opt_eval_vec(fn, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
+
+function _opt_eval_mat(fn, m, n, x, p, ::Val{true}, ::Val{true})
+    out = zeros(eltype(x), m, n); fn(out, x, p); out
+end
+function _opt_eval_mat(fn, m, n, x, _, ::Val{true}, ::Val{false})
+    out = zeros(eltype(x), m, n); fn(out, x); out
+end
+_opt_eval_mat(fn, _, _, x, p, ::Val{false}, ::Val{true})  = fn(x, p)
+_opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
+
+function _opt_eval_lag_h(fn, n, x, σ, μ, p, ::Val{true}, ::Val{true})
+    H = zeros(eltype(x), n, n); fn(H, x, σ, μ, p); H
+end
+function _opt_eval_lag_h(fn, n, x, σ, μ, _, ::Val{true}, ::Val{false})
+    H = zeros(eltype(x), n, n); fn(H, x, σ, μ); H
+end
+_opt_eval_lag_h(fn, _, x, σ, μ, p, ::Val{false}, ::Val{true})  = fn(x, σ, μ, p)
+_opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
+
 """
     OptimizationAdjointProblem(prob, opt_sol, sensealg, p) -> Jpx
 
@@ -97,15 +128,35 @@ function OptimizationAdjointProblem(
 
     n_eq  = length(eq_idx)
     n_act = length(active_lb) + length(active_ub)
+    n_x   = length(x_star)
+    opt_f = prob.f
+    iip_val   = Val{SciMLBase.isinplace(opt_f)}()
+    has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
 
-    # Jacobians of constraints w.r.t. x (needed for dual variables and KKT matrix)
-    Jxg  = isempty(eq_idx) ? zeros(eltype(x_star), 0, length(x_star)) :
-           _optimization_jac(x -> g(x, p),   x_star, ad_val, fdt_val)
-    Jxhι = n_act == 0      ? zeros(eltype(x_star), 0, length(x_star)) :
-           _optimization_jac(x -> h_I(x, p), x_star, ad_val, fdt_val)
+    # ---- ∇f at x_star: use stored gradient if available ----
+    ∇f = if opt_f.grad !== nothing
+        _opt_eval_vec(opt_f.grad, n_x, x_star, p, iip_val, has_p_val)
+    else
+        _optimization_grad(x -> prob.f(x, p), x_star, ad_val, fdt_val)
+    end
+
+    # ---- Constraint Jacobians w.r.t. x: use cons_j if available ----
+    # cons_j gives the full (n_cons × n_x) Jacobian in one call; slice for eq/active ineq.
+    # Sign convention: active_lb rows are negated because h_lb = lcons - cons(x,p).
+    if has_cons && opt_f.cons_j !== nothing
+        J_full = _opt_eval_mat(opt_f.cons_j, n_cons, n_x, x_star, p, iip_val, has_p_val)
+        Jxg  = isempty(eq_idx) ? zeros(eltype(x_star), 0, n_x) : J_full[eq_idx, :]
+        Jxhι = n_act == 0      ? zeros(eltype(x_star), 0, n_x) :
+               vcat(isempty(active_lb) ? zeros(eltype(x_star), 0, n_x) : -J_full[active_lb, :],
+                    isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) :  J_full[active_ub, :])
+    else
+        Jxg  = isempty(eq_idx) ? zeros(eltype(x_star), 0, n_x) :
+               _optimization_jac(x -> g(x, p),   x_star, ad_val, fdt_val)
+        Jxhι = n_act == 0      ? zeros(eltype(x_star), 0, n_x) :
+               _optimization_jac(x -> h_I(x, p), x_star, ad_val, fdt_val)
+    end
 
     # Dual variables from stationarity condition: constraint_jac^T * [y*; z_I*] = -∇f(x*)
-    ∇f = _optimization_grad(x -> prob.f(x, p), x_star, ad_val, fdt_val)
     constraint_jac = vcat(Jxg, Jxhι)   # (n_eq + n_act) × n_x
     # Solve overdetermined stationarity system via QR (n_x equations, n_eq+n_act unknowns)
     dual_vars = if n_eq + n_act == 0
@@ -117,19 +168,33 @@ function OptimizationAdjointProblem(
     y_star  = n_eq  > 0 ? dual_vars[1:n_eq]        : eltype(x_star)[]
     zI_star = n_act > 0 ? dual_vars[(n_eq + 1):end] : eltype(x_star)[]
 
-    # Lagrangian with fixed multipliers
-    function L(x, q)
+    # Lagrangian with fixed multipliers (used for p-derivative computations below)
+    L = function(x, q)
         val = prob.f(x, q)
         n_eq  > 0 && (val += dot(y_star,  g(x, q)))
         n_act > 0 && (val += dot(zI_star, h_I(x, q)))
         return val
     end
 
-    # Assemble KKT matrix
-    Lxx = _optimization_hess(x -> L(x, p), x_star, ad_val, fdt_val)
+    # ---- Lagrangian Hessian w.r.t. x: use lag_h if available, else hess (unconstrained), else AD ----
+    # lag_h(H, u, σ, μ, p) computes Hessian of σ*f + Σ μᵢ*consᵢ.
+    # Mapping from our dual vars to the full μ vector:
+    #   μ[eq_idx[j]]    =  y_star[j]               (g = cons[eq] - lcons, same sign as cons)
+    #   μ[active_lb[j]] = -zI_star[j]              (h_lb = lcons - cons  → -cons contribution)
+    #   μ[active_ub[j]] =  zI_star[n_lb + j]       (h_ub = cons - ucons  → +cons contribution)
+    Lxx = if opt_f.lag_h !== nothing
+        mu_full = zeros(eltype(x_star), n_cons)
+        for (j, i) in enumerate(eq_idx);    mu_full[i]  = y_star[j]                          end
+        for (j, i) in enumerate(active_lb); mu_full[i] -= zI_star[j]                          end
+        for (j, i) in enumerate(active_ub); mu_full[i] += zI_star[length(active_lb) + j]      end
+        _opt_eval_lag_h(opt_f.lag_h, n_x, x_star, one(eltype(x_star)), mu_full, p, iip_val, has_p_val)
+    elseif !has_cons && opt_f.hess !== nothing
+        _opt_eval_mat(opt_f.hess, n_x, n_x, x_star, p, iip_val, has_p_val)
+    else
+        _optimization_hess(x -> L(x, p), x_star, ad_val, fdt_val)
+    end
 
-    n_x = length(x_star)
-    N   = n_x + n_eq + n_act
+    N = n_x + n_eq + n_act
     KKT = zeros(eltype(x_star), N, N)
     KKT[1:n_x, 1:n_x] = Lxx
     if n_eq > 0
