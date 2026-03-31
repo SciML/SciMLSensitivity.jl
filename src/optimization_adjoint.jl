@@ -32,7 +32,7 @@ where g are equality constraints, h_I are active inequality constraints, and
 y*, z_I* are the corresponding dual variables.
 """
 function OptimizationAdjointProblem(
-        prob::AbstractOptimizationProblem,
+        prob,
         opt_sol,
         sensealg::OptimizationAdjoint{CS, AD, FDT},
         p
@@ -43,20 +43,39 @@ function OptimizationAdjointProblem(
 
     lcons = prob.lcons
     ucons = prob.ucons
-    n_cons = length(lcons)
+    has_cons = lcons !== nothing && ucons !== nothing
 
     # Wrap in-place cons!(res, x, p) into an out-of-place helper.
     # promote_type handles ForwardDiff Dual propagation when either x or q contains duals.
-    function eval_cons(x, q)
-        T = promote_type(eltype(x), eltype(q))
-        res = zeros(T, n_cons)
-        prob.f.cons(res, x, q)
-        return res
+    # When prob is an OptimizationCache, prob.f.cons is a 2-arg closure
+    # `(res, x) -> f.cons(res, x, captured_p)` from OptimizationBase.instantiate_function.
+    # The captured field names are mangled (e.g. `#95#f`), so we search by type to find
+    # the captured OptimizationFunction, regardless of field ordering.
+    if has_cons
+        n_cons = length(lcons)
+        _cons3 = if applicable(prob.f.cons, zeros(n_cons), x_star, p)
+            prob.f.cons              # AbstractOptimizationProblem: already (res, x, p)
+        else
+            captured_f = let cl = prob.f.cons
+                getfield(cl, only(fname for fname in fieldnames(typeof(cl))
+                                  if getfield(cl, fname) isa SciMLBase.AbstractOptimizationFunction))
+            end
+            captured_f.cons
+        end
+        eval_cons = function (x, q)
+            T = promote_type(eltype(x), eltype(q))
+            res = zeros(T, n_cons)
+            _cons3(res, x, q)
+            return res
+        end
+    else
+        n_cons = 0
+        eval_cons = (_, _) -> eltype(x_star)[]
     end
 
     # Classify constraints: equality where lcons[i] == ucons[i]
-    eq_idx   = findall(i -> lcons[i] == ucons[i], eachindex(lcons))
-    ineq_idx = findall(i -> lcons[i] != ucons[i], eachindex(lcons))
+    eq_idx   = has_cons ? findall(i -> lcons[i] == ucons[i], eachindex(lcons)) : Int[]
+    ineq_idx = has_cons ? findall(i -> lcons[i] != ucons[i], eachindex(lcons)) : Int[]
 
     # Evaluate constraints at solution
     c_val = eval_cons(x_star, p)

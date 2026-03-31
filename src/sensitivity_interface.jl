@@ -423,6 +423,28 @@ function adjoint_sensitivities(
     end
 end
 
+function adjoint_sensitivities(
+        sol::SciMLBase.AbstractOptimizationSolution,
+        alg::Nothing, args...;
+        sensealg::OptimizationAdjoint,
+        verbose = true, kwargs...
+    )
+    return _adjoint_sensitivities(sol, sensealg, alg, args...; verbose, kwargs...)
+end
+
+function _adjoint_sensitivities(
+        sol, sensealg::OptimizationAdjoint, ::Nothing;
+        dgdu = nothing, kwargs...
+    )
+    dgdu === nothing &&
+        error("dgdu must be specified for OptimizationAdjoint")
+    p = SymbolicIndexingInterface.parameter_values(sol)
+    Jpx = OptimizationAdjointProblem(sol.prob, sol, sensealg, p)
+    Δu = zero(sol.u)
+    dgdu(Δu, sol.u, p, nothing, nothing)
+    return Jpx' * Δu
+end
+
 function _adjoint_sensitivities(
         sol, sensealg, alg;
         t = nothing,
@@ -524,6 +546,20 @@ function _adjoint_sensitivities(
         kwargs...
     )
     return SteadyStateAdjointProblem(sol, sensealg, alg, dgdu, dgdp, g; kwargs...)
+end
+
+function _adjoint_sensitivities(
+        sol, sensealg::OptimizationAdjoint, alg;
+        dgdu = nothing, kwargs...
+    )
+    dgdu === nothing &&
+        error("dgdu must be specified for OptimizationAdjoint")
+    prob = sol.prob
+    p = prob.p
+    Jpx = OptimizationAdjointProblem(prob, sol, sensealg, p)
+    Δu = zero(sol.u)
+    dgdu(Δu, sol.u, p, nothing, nothing)
+    return Jpx' * Δu
 end
 
 @doc doc"""

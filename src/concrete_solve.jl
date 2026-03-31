@@ -2826,7 +2826,6 @@ function SciMLBase._concrete_solve_adjoint(
 
     _prob = remake(prob, u0 = u0, p = p)
     opt_sol = solve(_prob, alg, args...; kwargs...)
-    x_star = opt_sol.u
 
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
     out = if save_idxs === nothing
@@ -2834,8 +2833,6 @@ function SciMLBase._concrete_solve_adjoint(
     else
         SciMLBase.sensitivity_solution(opt_sol, opt_sol[_save_idxs])
     end
-
-    Jpx = OptimizationAdjointProblem(_prob, opt_sol, sensealg, p)
 
     _, repack_adjoint = if isscimlstructure(p)
         Zygote.pullback(p) do p
@@ -2851,12 +2848,20 @@ function SciMLBase._concrete_solve_adjoint(
 
     function optimizationbackpass(Δ)
         Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
-        Δu = if Δ isa AbstractArray
-            Δ
-        else
-            Δ.u
+        function df(_out, _u, _p, _t, _i)
+            if _save_idxs isa Number
+                _out[_save_idxs] = Δ isa AbstractArray ? Δ[_save_idxs] : Δ.u[_save_idxs]
+            elseif Δ isa Number
+                @. _out[_save_idxs] = Δ
+            elseif Δ isa AbstractArray
+                @. _out[_save_idxs] = Δ[_save_idxs]
+            elseif isnothing(_out)
+                _out
+            else
+                @. _out[_save_idxs] = Δ.u[_save_idxs]
+            end
         end
-        dp = Jpx' * Δu[_save_idxs]
+        dp = adjoint_sensitivities(opt_sol, nothing; sensealg = sensealg, dgdu = df)
 
         dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
             dp, Δtunables = if isscimlstructure(dp)
