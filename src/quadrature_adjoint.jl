@@ -16,10 +16,14 @@ function ODEQuadratureAdjointSensitivityFunction(
         g, sensealg, discrete, sol, dgdu, dgdp,
         alg
     )
+    p = sol.prob.p
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
     diffcache,
         y = adjointdiffcache(
         g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
-        quad = true
+        quad = true, use_full_p = _use_full_p
     )
     return ODEQuadratureAdjointSensitivityFunction(
         diffcache, sensealg, discrete,
@@ -236,7 +240,12 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     p = parameter_values(prob)
     u0 = state_values(prob)
 
-    if isscimlstructure(p) && !(p isa AbstractArray)
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
+    if _use_full_p
+        tunables, repack = p, identity
+    elseif isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
     else
         tunables, repack = p, identity
@@ -427,8 +436,10 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             )
         end
 
-        if _shadow_enzyme !== nothing
-            if isscimlstructure(_shadow_enzyme)
+        if _shadow_enzyme !== nothing && _shadow_enzyme !== out
+            _use_full_p_enzyme = hasproperty(sensealg, :diff_tunables) &&
+                sensealg.diff_tunables isa Val{false}
+            if !_use_full_p_enzyme && isscimlstructure(_shadow_enzyme)
                 grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
             else
                 grad_tunables = _shadow_enzyme
@@ -595,7 +606,12 @@ function update_p_integrand(integrand::AdjointSensitivityIntegrand, p)
         sol, adj_sol, y, λ, pf, f_cache, pJ, paramjac_config,
         sensealg, dgdp_cache, dgdp,
     ) = integrand
-    if isscimlstructure(p) && !(p isa AbstractArray)
+    _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+        sensealg.diff_tunables isa Val{false} &&
+        isscimlstructure(p) && !(p isa AbstractArray)
+    if _use_full_p
+        tunables, repack = p, identity
+    elseif isscimlstructure(p) && !(p isa AbstractArray)
         tunables, repack, _ = canonicalize(Tunable(), p)
     else
         tunables, repack = p, identity

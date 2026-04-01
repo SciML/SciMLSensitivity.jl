@@ -112,6 +112,7 @@ end
             @time @safetestset "Adjoints through NonlinearProblem" include("parameter_initialization.jl")
             @time @safetestset "Initialization with MTK" include("desauty_dae_mwe.jl")
             @time @safetestset "MTK Forward Mode" include("mtk.jl")
+            @time @safetestset "SCCNonlinearProblem" include("scc_nonlinearsolve.jl")
         end
     end
 

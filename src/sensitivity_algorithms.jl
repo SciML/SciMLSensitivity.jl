@@ -483,28 +483,29 @@ arXiv:1812.01892
 Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
-struct QuadratureAdjoint{CS, AD, FDT, VJP} <:
+struct QuadratureAdjoint{CS, AD, FDT, VJP, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     abstol::Float64
     reltol::Float64
+    diff_tunables::DT
 end
 Base.@pure function QuadratureAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing, abstol = 1.0e-6,
-        reltol = 1.0e-3
+        reltol = 1.0e-3, diff_tunables = Val(true)
     )
-    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
         autojacvec,
-        abstol, reltol
+        abstol, reltol, diff_tunables
     )
 end
 
-function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
-    return QuadratureAdjoint{CS, AD, FDT, typeof(vjp)}(
+function setvjp(sensealg::QuadratureAdjoint{CS, AD, FDT, VJP, DT}, vjp) where {CS, AD, FDT, VJP, DT}
+    return QuadratureAdjoint{CS, AD, FDT, typeof(vjp), DT}(
         vjp, sensealg.abstol,
-        sensealg.reltol
+        sensealg.reltol, sensealg.diff_tunables
     )
 end
 
@@ -587,24 +588,26 @@ arXiv:1812.01892
 Kim, S., Ji, W., Deng, S., Ma, Y., & Rackauckas, C. (2021). Stiff neural ordinary
 differential equations. Chaos: An Interdisciplinary Journal of Nonlinear Science, 31(9), 093122.
 """
-struct GaussAdjoint{CS, AD, FDT, VJP} <:
+struct GaussAdjoint{CS, AD, FDT, VJP, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     checkpointing::Bool
+    diff_tunables::DT
 end
 Base.@pure function GaussAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
         autojacvec = nothing,
-        checkpointing = false
+        checkpointing = false,
+        diff_tunables = Val(true)
     )
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
-        autojacvec, checkpointing
+    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
+        autojacvec, checkpointing, diff_tunables
     )
 end
 
-function setvjp(sensealg::GaussAdjoint{CS, AD, FDT}, vjp) where {CS, AD, FDT}
-    return GaussAdjoint{CS, AD, FDT, typeof(vjp)}(vjp, sensealg.checkpointing)
+function setvjp(sensealg::GaussAdjoint{CS, AD, FDT, VJP, DT}, vjp) where {CS, AD, FDT, VJP, DT}
+    return GaussAdjoint{CS, AD, FDT, typeof(vjp), DT}(vjp, sensealg.checkpointing, sensealg.diff_tunables)
 end
 
 """
@@ -1293,30 +1296,42 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
+struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
+    diff_tunables::DT
 end
 
+"""
+    SteadyStateAdjoint(; autojacvec=nothing, linsolve=nothing, diff_tunables=Val(true), ...)
+
+When `diff_tunables = Val(true)` (default), the parameter VJP is computed
+w.r.t. the tunable portion of `p` only. When `diff_tunables = Val(false)`,
+the VJP is computed w.r.t. the full parameter object (including caches,
+initials, etc.). This is needed for SCCNonlinearProblem where `explicitfuns!`
+write active data into non-tunable components. Requires an `autojacvec`
+backend that supports structured parameters (ZygoteVJP, EnzymeVJP,
+MooncakeVJP, ReactantVJP).
+"""
 Base.@pure function SteadyStateAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-        linsolve_kwargs = (;)
+        linsolve_kwargs = (;), diff_tunables = Val(true)
     )
     return SteadyStateAdjoint{
         chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs),
-    }(autojacvec, linsolve, linsolve_kwargs)
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(diff_tunables),
+    }(autojacvec, linsolve, linsolve_kwargs, diff_tunables)
 end
 function setvjp(
-        sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
+        sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK, DT},
         vjp
-    ) where {CS, AD, FDT, VJP, LS, LK}
-    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
+    ) where {CS, AD, FDT, VJP, LS, LK, DT}
+    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, DT}(
         vjp, sensealg.linsolve,
-        sensealg.linsolve_kwargs
+        sensealg.linsolve_kwargs, sensealg.diff_tunables
     )
 end
 
