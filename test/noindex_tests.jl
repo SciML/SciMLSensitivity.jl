@@ -111,7 +111,7 @@ for alg in algs
             ca0, tspan, p
         )
         sol = solve(prob, alg; save_everystep = false)
-        return 1 - norm(sol[end])^2
+        return 1 - norm(sol.u[end])^2
     end
     @test_nowarn Zygote.gradient(cost, par)
 end
