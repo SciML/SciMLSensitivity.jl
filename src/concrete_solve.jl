@@ -709,7 +709,7 @@ function SciMLBase._concrete_solve_adjoint(
                         Δu isa AbstractArray{<:AbstractArray} ||
                             Δu isa AbstractVectorOfArray
                     ) &&
-                        length(Δu) == 1 && i == 1
+                        (Δu isa AbstractVectorOfArray ? length(Δu.u) : length(Δu)) == 1 && i == 1
                     # user did sol[end] on only_end
                     x = Δu isa AbstractVectorOfArray ? Δu.u[1] : Δu[1]
                     if _save_idxs isa Number
@@ -795,7 +795,7 @@ function SciMLBase._concrete_solve_adjoint(
             if only_end
                 eltype(Δ) <: NoTangent && return
                 if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
-                        length(Δ) == 1 && i == 1
+                        (Δ isa AbstractVectorOfArray ? length(Δ.u) : length(Δ)) == 1 && i == 1
                     # user did sol[end] on only_end
                     x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
                     if _save_idxs isa Number
