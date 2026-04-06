@@ -382,6 +382,29 @@ end
         end
     end
 
+    @testset "Active variable bound (lb/ub)" begin
+        let
+            # Minimize (u - p[1])^2  s.t.  u >= p[2]  where p[2] > p[1] (lb active)
+            # Optimal solution: u* = p[2]
+            # du*/dp[1] = 0,  du*/dp[2] = 1
+            f = (u, p) -> (u[1] - p[1])^2
+
+            p  = [1.0, 3.0]  # unconstrained min at u=1, lb forces u>=3
+            u0 = [3.0]
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff())
+            prob  = OptimizationProblem(opt_f, u0, p; lb = [p[2]], ub = [Inf])
+
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+            @test opt_sol.u[1] ≈ p[2] rtol = 1e-4
+
+            dgdu!(out, _, _, _, _) = (out[1] = 1.0)
+            dp = adjoint_sensitivities(opt_sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu!)
+            @test dp[1] ≈ 0.0 atol = 1e-4   # du*/dp[1] = 0
+            @test dp[2] ≈ 1.0 rtol = 1e-4   # du*/dp[2] = 1
+        end
+    end
+
     @testset "p in both objective and constraint (both ∇²_xp L and J_p g nonzero)" begin
         let
             # Minimize (u1 - p[1])^2 + u2^2  s.t.  u1 + u2 = p[2]

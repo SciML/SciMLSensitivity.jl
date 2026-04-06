@@ -129,6 +129,15 @@ function OptimizationAdjointProblem(
     n_eq  = length(eq_idx)
     n_act = length(active_lb) + length(active_ub)
     n_x   = length(x_star)
+
+    # Variable bounds (lb/ub) as additional active inequality constraints.
+    # h_lb_var: lb[i] - x[i] = 0  when active  →  ∂/∂x = -e_i,  ∂/∂p = 0
+    # h_ub_var: x[i] - ub[i] = 0  when active  →  ∂/∂x = +e_i,  ∂/∂p = 0
+    lb = prob.lb
+    ub = prob.ub
+    active_lb_var = lb !== nothing ? findall(i -> abs(x_star[i] - lb[i]) <= atol, 1:n_x) : Int[]
+    active_ub_var = ub !== nothing ? findall(i -> abs(x_star[i] - ub[i]) <= atol, 1:n_x) : Int[]
+    n_bound = length(active_lb_var) + length(active_ub_var)
     opt_f = prob.f
     iip_val   = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
@@ -156,17 +165,30 @@ function OptimizationAdjointProblem(
                _optimization_jac(x -> h_I(x, p), x_star, ad_val, fdt_val)
     end
 
-    # Dual variables from stationarity condition: constraint_jac^T * [y*; z_I*] = -∇f(x*)
-    constraint_jac = vcat(Jxg, Jxhι)   # (n_eq + n_act) × n_x
-    # Solve overdetermined stationarity system via QR (n_x equations, n_eq+n_act unknowns)
-    dual_vars = if n_eq + n_act == 0
+    # Append trivial Jacobian rows for active variable bounds
+    if n_bound > 0
+        Jx_bound = zeros(eltype(x_star), n_bound, n_x)
+        for (j, i) in enumerate(active_lb_var)
+            Jx_bound[j, i] = -one(eltype(x_star))
+        end
+        for (j, i) in enumerate(active_ub_var)
+            Jx_bound[length(active_lb_var) + j, i] = one(eltype(x_star))
+        end
+        Jxhι = vcat(Jxhι, Jx_bound)
+    end
+    n_act_total = n_act + n_bound
+
+    # Dual variables from stationarity condition: constraint_jac^T * [y*; z_I*; z_bound] = -∇f(x*)
+    constraint_jac = vcat(Jxg, Jxhι)   # (n_eq + n_act_total) × n_x
+    # Solve overdetermined stationarity system via QR (n_x equations, n_eq+n_act_total unknowns)
+    dual_vars = if n_eq + n_act_total == 0
         eltype(x_star)[]
     else
         dual_prob = LinearProblem(Matrix(constraint_jac'), -∇f)
         solve(dual_prob, LinearSolve.QRFactorization(); sensealg.linsolve_kwargs...).u
     end
-    y_star  = n_eq  > 0 ? dual_vars[1:n_eq]        : eltype(x_star)[]
-    zI_star = n_act > 0 ? dual_vars[(n_eq + 1):end] : eltype(x_star)[]
+    y_star  = n_eq  > 0 ? dual_vars[1:n_eq]                    : eltype(x_star)[]
+    zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
 
     # Lagrangian with fixed multipliers (used for p-derivative computations below)
     L = function(x, q)
@@ -194,26 +216,27 @@ function OptimizationAdjointProblem(
         _optimization_hess(x -> L(x, p), x_star, ad_val, fdt_val)
     end
 
-    N = n_x + n_eq + n_act
+    N = n_x + n_eq + n_act_total
     KKT = zeros(eltype(x_star), N, N)
     KKT[1:n_x, 1:n_x] = Lxx
     if n_eq > 0
         KKT[1:n_x, (n_x + 1):(n_x + n_eq)]  = Jxg'
         KKT[(n_x + 1):(n_x + n_eq), 1:n_x]  = Jxg
     end
-    if n_act > 0
+    if n_act_total > 0
         KKT[1:n_x, (n_x + n_eq + 1):N]      = Jxhι'
         KKT[(n_x + n_eq + 1):N, 1:n_x]      = Jxhι
     end
 
     # RHS: parameter Jacobians
+    # Variable bounds don't depend on p, so their p-Jacobian rows are zero.
     Lxp  = _optimization_jac(
         q -> _optimization_grad(x -> L(x, q), x_star, ad_val, fdt_val), p, ad_val, fdt_val)
     Jpg  = n_eq  > 0 ? _optimization_jac(q -> g(x_star, q),   p, ad_val, fdt_val) :
                        zeros(eltype(x_star), 0, length(p))
     Jphι = n_act > 0 ? _optimization_jac(q -> h_I(x_star, q), p, ad_val, fdt_val) :
                        zeros(eltype(x_star), 0, length(p))
-    RHS_p = vcat(Lxp, Jpg, Jphι)   # (N × n_p)
+    RHS_p = vcat(Lxp, Jpg, Jphι, zeros(eltype(x_star), n_bound, length(p)))   # (N × n_p)
 
     # Solve KKT system column-by-column, reusing the factorization via the cache interface
     n_p = size(RHS_p, 2)
