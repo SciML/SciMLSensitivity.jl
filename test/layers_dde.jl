@@ -1,4 +1,4 @@
-using SciMLSensitivity, DelayDiffEq, Test
+using SciMLSensitivity, DelayDiffEq, OrdinaryDiffEq, Test
 
 # These tests require AD differentiation through DDE solve
 # Mooncake doesn't have the necessary rules yet, and Zygote has compatibility
