@@ -189,13 +189,13 @@ function (S::ODEForwardSensitivityFunction)(du, u, p, t)
             ),
         ]
         mul!(dp, S.J, Sj)
-        @.. dp += S.pJ
+        dp .+= S.pJ
     elseif S.isautojacmat
         S.uf.t = t
         Sj = @view u[reshape((S.numindvar + 1):end, S.numindvar, S.numparams)]
         dp = @view du[reshape((S.numindvar + 1):end, S.numindvar, S.numparams)]
         jacobianmat!(dp, S.uf, y, Sj, S.alg, S.jac_config)
-        @.. dp += S.pJ
+        dp .+= S.pJ
     else
         S.uf.t = t
         for i in eachindex(p)

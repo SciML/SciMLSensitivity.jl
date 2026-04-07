@@ -15,7 +15,7 @@ using FunctionProperties: hasbranching
 using FunctionWrappersWrappers: FunctionWrappersWrappers
 using GPUArraysCore: GPUArraysCore
 using LinearSolve: LinearSolve
-using PreallocationTools: PreallocationTools, dualcache, get_tmp, DiffCache,
+using PreallocationTools: PreallocationTools, get_tmp, DiffCache,
     LazyBufferCache
 using RandomNumbers: Xorshifts
 using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
