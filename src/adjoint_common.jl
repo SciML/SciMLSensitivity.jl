@@ -132,7 +132,7 @@ function adjointdiffcache(
                 # 1 chunk is fine because it's only t
                 _J = similar(u0, numindvar, numindvar)
                 _J .= 0
-                J = dualcache(_J, ForwardDiff.pickchunksize(length(u0)))
+                J = DiffCache(_J, ForwardDiff.pickchunksize(length(u0)))
             else
                 J = nothing
             end

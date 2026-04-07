@@ -46,7 +46,15 @@ end
     ) where {DG1, DG2, G}
     (; f, p, u0) = sol.prob
 
-    sol.prob isa AbstractNonlinearProblem && (f = ODEFunction(f))
+    if sol.prob isa AbstractNonlinearProblem
+        # Strip FunctionWrappers (AutoSpecializeCallable) from NonlinearFunction
+        # before converting to ODEFunction, since the wrapped function only supports
+        # pre-compiled type combinations and breaks autodiff with Dual types.
+        if hasproperty(f.f, :orig)
+            f = unwrapped_f(f, f.f.orig)
+        end
+        f = ODEFunction(f)
+    end
 
     dgdu === nothing && dgdp === nothing && g === nothing &&
         error("Either `dgdu`, `dgdp`, or `g` must be specified.")
