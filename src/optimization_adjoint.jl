@@ -185,7 +185,7 @@ function OptimizationAdjointProblem(
         eltype(x_star)[]
     else
         dual_prob = LinearProblem(Matrix(constraint_jac'), -∇f)
-        solve(dual_prob, LinearSolve.QRFactorization(); sensealg.linsolve_kwargs...).u
+        solve(dual_prob, LinearSolve.QRFactorization()).u
     end
     y_star  = n_eq  > 0 ? dual_vars[1:n_eq]                    : eltype(x_star)[]
     zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
