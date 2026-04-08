@@ -384,24 +384,27 @@ end
 
     @testset "Active variable bound (lb/ub)" begin
         let
-            # Minimize (u - p[1])^2  s.t.  u >= p[2]  where p[2] > p[1] (lb active)
-            # Optimal solution: u* = p[2]
-            # du*/dp[1] = 0,  du*/dp[2] = 1
-            f = (u, p) -> (u[1] - p[1])^2
+            # Minimize (u1-p)^2 + (u2-p)^2  s.t.  u1 >= 2 (active lb, since p=0 < 2), u2 free
+            # u1* = 2 (pinned at bound) → du1*/dp = 0  (without lb in KKT this incorrectly gives 1)
+            # u2* = p = 0 (unconstrained) → du2*/dp = 1
+            f = (u, p) -> (u[1] - p[1])^2 + (u[2] - p[1])^2
 
-            p  = [1.0, 3.0]  # unconstrained min at u=1, lb forces u>=3
-            u0 = [3.0]
+            p  = [0.0]
+            u0 = [2.0, 0.0]
 
             opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff())
-            prob  = OptimizationProblem(opt_f, u0, p; lb = [p[2]], ub = [Inf])
+            prob  = OptimizationProblem(opt_f, u0, p; lb = [2.0, -Inf], ub = [Inf, Inf])
 
             opt_sol = solve(prob, NLopt.LD_SLSQP())
-            @test opt_sol.u[1] ≈ p[2] rtol = 1e-4
+            @test opt_sol.u[1] ≈ 2.0 rtol = 1e-4   # pinned at lb
+            @test opt_sol.u[2] ≈ p[1] rtol = 1e-4  # free, at unconstrained min
 
-            dgdu!(out, _, _, _, _) = (out[1] = 1.0)
-            dp = adjoint_sensitivities(opt_sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu!)
-            @test dp[1] ≈ 0.0 atol = 1e-4   # du*/dp[1] = 0
-            @test dp[2] ≈ 1.0 rtol = 1e-4   # du*/dp[2] = 1
+            dgdu1!(out, _, _, _, _) = (out[1] = 1.0; out[2] = 0.0)
+            dgdu2!(out, _, _, _, _) = (out[1] = 0.0; out[2] = 1.0)
+            dp1 = adjoint_sensitivities(opt_sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu1!)
+            dp2 = adjoint_sensitivities(opt_sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu2!)
+            @test dp1[1] ≈ 0.0 atol = 1e-4   # du1*/dp = 0 (pinned at bound)
+            @test dp2[1] ≈ 1.0 rtol = 1e-4   # du2*/dp = 1 (free variable)
         end
     end
 
