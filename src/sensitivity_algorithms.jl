@@ -1293,30 +1293,31 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK} <:
+struct SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK, DT <: Val} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
+    diff_tunables::DT
 end
 
 Base.@pure function SteadyStateAdjoint(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
-        linsolve_kwargs = (;)
+        linsolve_kwargs = (;), diff_tunables = Val(true)
     )
     return SteadyStateAdjoint{
         chunk_size, autodiff, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs),
-    }(autojacvec, linsolve, linsolve_kwargs)
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(diff_tunables),
+    }(autojacvec, linsolve, linsolve_kwargs, diff_tunables)
 end
 function setvjp(
         sensealg::SteadyStateAdjoint{CS, AD, FDT, VJP, LS, LK},
         vjp
     ) where {CS, AD, FDT, VJP, LS, LK}
-    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
+    return SteadyStateAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, typeof(sensealg.diff_tunables)}(
         vjp, sensealg.linsolve,
-        sensealg.linsolve_kwargs
+        sensealg.linsolve_kwargs, sensealg.diff_tunables
     )
 end
 

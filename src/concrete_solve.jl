@@ -900,7 +900,7 @@ function SciMLBase._concrete_solve_adjoint(
 
         du0 = reshape(du0, size(u0))
 
-        dp = if p === nothing || p === SciMLBase.NullParameters()
+        dp_full = if p === nothing || p === SciMLBase.NullParameters()
             nothing
         elseif dp isa AbstractArray
             reshape(dp', size(tunables))
@@ -908,35 +908,47 @@ function SciMLBase._concrete_solve_adjoint(
             dp
         end
 
-        dp = Zygote.accum(dp, igs)
-
-        _,
-            repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
-            nothing, x -> (x,)
-        elseif isscimlstructure(p)
-            Zygote.pullback(p) do p
-                t, _, _ = canonicalize(Tunable(), p)
-                t
-            end
-        elseif isfunctor(p) && supports_functor_params(sensealg)
-            Zygote.pullback(p) do p
-                t, _ = Functors.functor(p)
-                t
-            end
+        # When diff_tunables=Val(false), dp_full is the full parameter
+        # gradient (SciMLStructure). Return it directly so the AD
+        # reverse rule can accumulate into all shadow components
+        # (including caches for SCCNonlinearProblem).
+        _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+            sensealg.diff_tunables isa Val{false}
+        dp_tangent = if _use_full_p && isscimlstructure(dp_full)
+            Zygote.accum(dp_full, igs)
         else
-            nothing, x -> (x,)
+            dp = Zygote.accum(dp_full, igs)
+
+            _,
+                repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
+                nothing, x -> (x,)
+            elseif isscimlstructure(p)
+                Zygote.pullback(p) do p
+                    t, _, _ = canonicalize(Tunable(), p)
+                    t
+                end
+            elseif isfunctor(p) && supports_functor_params(sensealg)
+                Zygote.pullback(p) do p
+                    t, _ = Functors.functor(p)
+                    t
+                end
+            else
+                nothing, x -> (x,)
+            end
+
+            repack_adjoint(dp)[1]
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
-                NoTangent(), NoTangent(), du0, repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), NoTangent(), du0, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                du0, repack_adjoint(dp)[1], NoTangent(),
+                du0, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
@@ -2368,58 +2380,65 @@ function SciMLBase._concrete_solve_adjoint(
             end
         end
 
-        dp = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
+        dp_full = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
 
-        dp,
-            Δtunables = if Δ isa AbstractArray || Δ isa Number
-            # if Δ isa AbstractArray, the gradients correspond to `u`
-            # this is something that needs changing in the future, but
-            # this is the applicable till the movement to structuaral
-            # tangents is completed
-            dp, Δtunables = if isscimlstructure(dp)
-                dp, _, _ = canonicalize(Tunable(), dp)
-                dp, nothing
-            elseif isfunctor(dp)
-                dp, _ = Functors.functor(dp)
-                dp, nothing
-            else
-                dp, nothing
-            end
+        # When diff_tunables=Val(false), dp_full is the full parameter
+        # gradient. Return it directly so AD can accumulate into all
+        # shadow components (including caches for SCCNonlinearProblem).
+        _use_full_p = hasproperty(sensealg, :diff_tunables) &&
+            sensealg.diff_tunables isa Val{false}
+        dp_tangent = if _use_full_p && isscimlstructure(dp_full)
+            dp_full
         else
-            dp, Δtunables = if isscimlstructure(p)
-                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
-                    dp, _, _ = canonicalize(Tunable(), dp)
+            dp,
+                Δtunables = if Δ isa AbstractArray || Δ isa Number
+                dp, Δtunables = if isscimlstructure(dp_full)
+                    dp, _, _ = canonicalize(Tunable(), dp_full)
+                    dp, nothing
+                elseif isfunctor(dp_full)
+                    dp, _ = Functors.functor(dp_full)
                     dp, nothing
                 else
-                    Δp = setproperties(dp, to_nt(Δ.prob.p))
-                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
-                    dp, _, _ = canonicalize(Tunable(), dp)
-                    dp, Δtunables
+                    dp_full, nothing
                 end
-            elseif isfunctor(p)
-                dp, _ = Functors.functor(dp)
-                Δtunables, _ = Functors.functor(Δ.prob.p)
-                dp, Δtunables
             else
-                dp, Δ.prob.p
+                dp, Δtunables = if isscimlstructure(p)
+                    if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
+                        dp, _, _ = canonicalize(Tunable(), dp_full)
+                        dp, nothing
+                    else
+                        Δp = setproperties(dp_full, to_nt(Δ.prob.p))
+                        Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                        dp, _, _ = canonicalize(Tunable(), dp_full)
+                        dp, Δtunables
+                    end
+                elseif isfunctor(p)
+                    dp, _ = Functors.functor(dp_full)
+                    Δtunables, _ = Functors.functor(Δ.prob.p)
+                    dp, Δtunables
+                else
+                    dp_full, Δ.prob.p
+                end
             end
-        end
 
-        dp = Zygote.accum(
-            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
-                Δtunables
-        )
+            dp = Zygote.accum(
+                dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
+                    Δtunables
+            )
+
+            repack_adjoint(dp)[1]
+        end
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
-                NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), NoTangent(), NoTangent(), dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                NoTangent(), dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
