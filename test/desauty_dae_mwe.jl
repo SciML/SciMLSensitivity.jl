@@ -8,6 +8,7 @@ using FiniteDiff
 using ForwardDiff
 using Tracker
 using Enzyme
+using Mooncake
 
 # DAE with nonlinear algebraic constraints forming an SCC chain.
 # Inspired by the De Sauty bridge DAE but written as a flat system
@@ -128,6 +129,25 @@ eqs = [
             @test_broken begin
                 igs = Enzyme.gradient(Enzyme.Reverse, init_loss, itunables)
                 !iszero(sum(igs))
+            end
+        end
+
+        @testset "Mooncake through init" begin
+            if use_scc
+                @test_broken begin
+                    rule = Mooncake.build_rrule(init_loss, itunables)
+                    _, (_, igs) = Mooncake.value_and_gradient!!(
+                        rule, init_loss, itunables,
+                    )
+                    !iszero(sum(igs))
+                end
+            else
+                rule = Mooncake.build_rrule(init_loss, itunables)
+                _, (_, igs) = Mooncake.value_and_gradient!!(
+                    rule, init_loss, itunables,
+                )
+                @test !iszero(sum(igs))
+                @test isapprox(igs, fd_init_grad, rtol = 0.05)
             end
         end
 
