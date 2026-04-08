@@ -120,7 +120,7 @@ eqs = [
         end
 
         @testset "Mooncake through init" begin
-            @test_broken begin
+            @test begin
                 rule = Mooncake.build_rrule(init_loss, itunables)
                 _, (_, igs) = Mooncake.value_and_gradient!!(
                     rule, init_loss, itunables,
