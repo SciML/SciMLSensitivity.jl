@@ -86,7 +86,8 @@ differentiation). Generally:
 
 For an analysis of which methods will be most efficient for computing the
 solution derivatives for a given problem, consult our analysis
-[in this arXiv paper](https://arxiv.org/abs/1812.01892). A general rule of thumb
+[in this arXiv paper](https://arxiv.org/abs/1812.01892) and
+[this review paper](https://arxiv.org/abs/2406.09699). A general rule of thumb
 is:
 
   - `ForwardDiffSensitivity` is the fastest for differential equations with small
