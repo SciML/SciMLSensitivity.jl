@@ -115,7 +115,7 @@ is:
     avoided if possible. When solving non-ODEs with lots of parameters, using
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
 
-![Comparison in performance and cost of solver-based methods implemented in SciMLSensitivity in terms of running time, memory, and compatibility. Methods that can be checkpointed are indicated with the symbol ``\blacktriangleleft``, with ``K`` the total number of checkpoints. Table 1 from [Sapienza et al. (2024)](https://arxiv.org/abs/2406.09699).](../assets/table_sensitivity_methods.png)
+![Comparison in performance and cost of solver-based methods implemented in SciMLSensitivity in terms of running stability, performance, and memory. Methods that can be checkpointed are indicated with the symbol ``\blacktriangleleft``, with ``K`` the total number of checkpoints. Table 1 from [Sapienza et al. (2024)](https://arxiv.org/abs/2406.09699).](../assets/table_sensitivity_methods.png)
 
 !!! note
     
