@@ -67,9 +67,10 @@ pullbacks, effectively creating an algorithm that mixes forward and reverse diff
 
 ## Choosing a Sensitivity Algorithm
 
-There are two classes of algorithms: the continuous sensitivity analysis
-methods, and the discrete sensitivity analysis methods (direct automatic
-differentiation). Generally:
+There are two classes of algorithms along two axes: continuous vs. discrete
+sensitivity analysis, and forward vs. reverse mode. Generally:
+
+![Classification of sensitivity methods into forward/reverse and discrete/continuous. Figure 1 from [Sapienza et al. (2024)](https://arxiv.org/abs/2406.09699).](../assets/figure_sensitivity_methods.png)
 
   - [Continuous sensitivity analysis are more efficient while the discrete
     sensitivity analysis is more stable](https://arxiv.org/abs/2001.04385)
@@ -113,6 +114,8 @@ is:
     `f(du,u,p,t)` mutating `du`. The latter has much more overhead, and should be
     avoided if possible. When solving non-ODEs with lots of parameters, using
     `TrackerAdjoint` with an out-of-place definition may currently be the best option.
+
+![Comparison in performance and cost of solver-based methods implemented in SciMLSensitivity in terms of running time, memory, and compatibility. Methods that can be checkpointed are indicated with the symbol ``\blacktriangleleft``, with ``K`` the total number of checkpoints. Table 1 from [Sapienza et al. (2024)](https://arxiv.org/abs/2406.09699).](../assets/table_sensitivity_methods.png)
 
 !!! note
     
