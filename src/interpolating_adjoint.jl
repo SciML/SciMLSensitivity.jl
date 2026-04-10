@@ -132,6 +132,19 @@ function choose_dt(dt, ts, interval)
     return dt
 end
 
+# Compute a safe initial dt from a checkpoint solution's time vector. The
+# checkpoint solution may contain only a single saved point (e.g. when an
+# adaptive forward solve takes one step that already reaches the interval
+# end), in which case `cpsol_t[end - 1]` would be a `BoundsError`. Fall back
+# to the interval width in that case.
+function checkpoint_dt(cpsol_t, interval)
+    if length(cpsol_t) >= 2
+        return abs(cpsol_t[end] - cpsol_t[end - 1])
+    else
+        return abs(interval[2] - interval[1])
+    end
+end
+
 # u = λ'
 # add tstop on all the checkpoints
 function (S::ODEInterpolatingAdjointSensitivityFunction)(du, u, p, t)
@@ -230,7 +243,11 @@ function split_states(
                         prob, tspan = intervals[cursor′], u0 = y,
                         noise = forwardnoise
                     )
-                    dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
+                    dt = if length(cpsol_t) >= 2
+                        choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
+                    else
+                        abs(interval[2] - interval[1])
+                    end
                     cpsol′ = solve(
                         prob′, sol.alg, save_noise = false; dt,
                         tstops = _ts[idx1:idx2], checkpoint_sol.tols...
@@ -240,7 +257,7 @@ function split_states(
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(
                             prob′, sol.alg;
-                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            dt = checkpoint_dt(cpsol_t, interval),
                             checkpoint_sol.tols...
                         )
                     else
@@ -250,7 +267,7 @@ function split_states(
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(
                                 prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                dt = checkpoint_dt(cpsol_t, interval),
                                 tstops = checkpoint_sol.tstops,
                                 checkpoint_sol.tols...
                             )
@@ -258,7 +275,7 @@ function split_states(
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                             cpsol′ = solve(
                                 prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                dt = checkpoint_dt(cpsol_t, interval),
                                 tstops = checkpoint_sol.tstops,
                                 checkpoint_sol.tols...
                             )
