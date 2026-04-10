@@ -1515,24 +1515,36 @@ for iip in [true, false]
     )
     @test res_interp2 ≈ res rtol = 1.0e-5
 
-    # backsolve doesn't work
-    _,
-        res_bs = adjoint_sensitivities(
-        sol_singular_mm, alg, t = ts,
-        dgdu_discrete = dg_singular, abstol = 1.0e-8,
-        reltol = 1.0e-8,
-        sensealg = BacksolveAdjoint(checkpointing = false)
-    )
-    @test_broken res_bs ≈ res rtol = 1.0e-5
-    _,
-        res_bs2 = adjoint_sensitivities(
-        sol_singular_mm, alg, t = ts,
-        dgdu_discrete = dg_singular, abstol = 1.0e-8,
-        reltol = 1.0e-8,
-        sensealg = BacksolveAdjoint(checkpointing = true),
-        checkpoints = sol_singular_mm.t
-    )
-    @test_broken res_bs2 ≈ res rtol = 1.0e-5
+    # backsolve doesn't work: BacksolveAdjoint is documented to fail on
+    # semi-explicit DAEs, and depending on Julia/LAPACK version the augmented
+    # Rodas4 W-matrix can become exactly singular and throw rather than
+    # returning a wrong result. Wrap in try/catch so @test_broken records it
+    # as broken either way instead of erroring the testset.
+    @test_broken try
+        _,
+            res_bs = adjoint_sensitivities(
+            sol_singular_mm, alg, t = ts,
+            dgdu_discrete = dg_singular, abstol = 1.0e-8,
+            reltol = 1.0e-8,
+            sensealg = BacksolveAdjoint(checkpointing = false)
+        )
+        isapprox(res_bs, res; rtol = 1.0e-5)
+    catch
+        false
+    end
+    @test_broken try
+        _,
+            res_bs2 = adjoint_sensitivities(
+            sol_singular_mm, alg, t = ts,
+            dgdu_discrete = dg_singular, abstol = 1.0e-8,
+            reltol = 1.0e-8,
+            sensealg = BacksolveAdjoint(checkpointing = true),
+            checkpoints = sol_singular_mm.t
+        )
+        isapprox(res_bs2, res; rtol = 1.0e-5)
+    catch
+        false
+    end
 end
 
 # u' = x = p * u
