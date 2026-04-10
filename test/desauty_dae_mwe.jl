@@ -95,6 +95,9 @@ eqs = [
 
         @testset "ForwardDiff through init" begin
             if use_scc
+                # Broken: SCCNonlinearProblem solver doesn't support ForwardDiff.Dual numbers.
+                # Error: MethodError: no method matching Float64(::ForwardDiff.Dual{...})
+                # in the explicit parameter propagation between sub-problem solves.
                 @test_broken begin
                     fwd_init = ForwardDiff.gradient(init_loss, itunables)
                     isapprox(fwd_init, fd_init_grad, rtol = 0.05)
@@ -106,6 +109,9 @@ eqs = [
         end
 
         @testset "ForwardDiff through ODE solve" begin
+            # Broken: ForwardDiff through full ODE solve with DAE initialization
+            # fails for both use_scc cases due to type promotion issues in
+            # the initialization path.
             @test_broken begin
                 fwd_grad = ForwardDiff.gradient(loss, tunables)
                 isapprox(fwd_grad, fd_grad, rtol = 0.05)
@@ -113,6 +119,13 @@ eqs = [
         end
 
         @testset "Enzyme through init" begin
+            # Broken due to multiple upstream Enzyme/NonlinearSolve issues:
+            # - Julia 1.12: NonlinearSolveBaseEnzymeExt rules disabled (VERSION < v"1.12" guard)
+            #   causing LLVM crash in GC invariant verifier
+            # - Julia 1.10: EnzymeMutabilityException from MTK's remake (mutable closure),
+            #   MixedReturnException with default PolyAlgorithm, and NamedTuple broadcasting
+            #   error in NonlinearSolveBaseEnzymeExt reverse rule with MTKParameters
+            # See: NonlinearSolve.jl#869, Enzyme.jl#2699
             @test_broken begin
                 igs = Enzyme.gradient(Enzyme.Reverse, init_loss, itunables)
                 !iszero(sum(igs))
@@ -120,16 +133,28 @@ eqs = [
         end
 
         @testset "Mooncake through init" begin
-            @test_broken begin
+            if use_scc
+                @test_broken begin
+                    rule = Mooncake.build_rrule(init_loss, itunables)
+                    _, (_, igs) = Mooncake.value_and_gradient!!(
+                        rule, init_loss, itunables,
+                    )
+                    !iszero(sum(igs))
+                end
+            else
                 rule = Mooncake.build_rrule(init_loss, itunables)
                 _, (_, igs) = Mooncake.value_and_gradient!!(
                     rule, init_loss, itunables,
                 )
-                !iszero(sum(igs))
+                @test !iszero(sum(igs))
+                @test isapprox(igs, fd_init_grad, rtol = 0.05)
             end
         end
 
         @testset "Tracker + GaussAdjoint through ODE solve" begin
+            # Broken: MTK's GetUpdatedU0 can't handle TrackedReal{Float64} in remake path.
+            # Error: MethodError: no method matching Float64(::Tracker.TrackedReal{Float64})
+            # in copyto_unaliased! when updating u0 from parameter initials.
             sensealg = SciMLSensitivity.GaussAdjoint(
                 autojacvec = SciMLSensitivity.EnzymeVJP(),
             )

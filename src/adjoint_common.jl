@@ -33,12 +33,17 @@ return (AdjointDiffCache, y)
 function adjointdiffcache(
         g::G, sensealg, discrete, sol, dgdu::DG1, dgdp::DG2, f, alg;
         quad = false,
-        noiseterm = false, needs_jac = false
+        noiseterm = false, needs_jac = false, use_full_p = false
     ) where {G, DG1, DG2}
     prob = sol.prob
     u0 = state_values(prob)
     p = parameter_values(prob)
-    if p === nothing || p isa SciMLBase.NullParameters
+    if use_full_p && p !== nothing && !(p isa SciMLBase.NullParameters)
+        # Use full parameter object (including caches) for VJP computation.
+        # Required for SCCNonlinearProblem where explicitfuns! write active
+        # data into non-tunable parameter components.
+        tunables, repack = p, identity
+    elseif p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
