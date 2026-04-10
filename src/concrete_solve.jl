@@ -367,15 +367,37 @@ rrule.
 
 Used by the DAE/ODE initialization adjoint path to differentiate
 `get_initial_values` w.r.t. the tunable parameters. The default
-implementation uses Zygote (which composes with all
-ChainRules-aware originators including `EnzymeOriginator`,
-`ReverseDiffOriginator`, `TrackerOriginator`, and `ChainRulesOriginator`).
-A `MooncakeOriginator` method lives in `ext/SciMLSensitivityMooncakeExt.jl`
-so Mooncake-driven differentiation does not pull in Zygote at this point.
+implementation uses Zygote (which composes with all remaining
+ChainRules-aware originators: `ChainRulesOriginator`, `ReverseDiffOriginator`,
+`TrackerOriginator`). The `EnzymeOriginator` and `MooncakeOriginator`
+methods use the corresponding native AD so the rrule does not pull in
+Zygote when those backends are driving differentiation. The Mooncake
+method lives in `ext/SciMLSensitivityMooncakeExt.jl`.
 """
 function _init_originator_gradient(::SciMLBase.ADOriginator, f, tunables)
     iy, back = Zygote.pullback(f, tunables)
     return back(one(iy))[1]
+end
+
+# Enzyme-native init-path gradient. `Const(f)` is required because the
+# closure built by the caller captures references to `_prob` / `repack` /
+# `kwargs_init`, which Enzyme would otherwise reject with
+# `EnzymeMutabilityException` ("Function argument passed to autodiff
+# cannot be proven readonly").
+#
+# Note: this routes the init-step gradient through Enzyme's reverse mode
+# even when the user is only using Enzyme indirectly (e.g. via
+# `InterpolatingAdjoint(autojacvec = EnzymeVJP())` driven by Zygote). The
+# Mooncake-equivalent path is restricted to true `MooncakeOriginator`
+# callers; here we trust that anyone whose rrule was reached with
+# `originator::EnzymeOriginator` is in fact running Enzyme on the outside
+# and would prefer Enzyme-native errors over silently routing through
+# Zygote. Upstream Enzyme/NonlinearSolve issues affecting DAE
+# initialization (NonlinearSolve.jl#869, Enzyme.jl#2699) may surface here
+# for problems that previously succeeded via the Zygote fallback —
+# see #1415 for context.
+function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
+    return Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), tunables)[1]
 end
 
 function SciMLBase._concrete_solve_adjoint(
