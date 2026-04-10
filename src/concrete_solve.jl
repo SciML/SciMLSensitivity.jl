@@ -730,7 +730,7 @@ function SciMLBase._concrete_solve_adjoint(
     elseif isempty(saveat)
         no_start = !save_start
         no_end = !save_end
-        sol_idxs = 1:length(sol)
+        sol_idxs = 1:length(sol.u)
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
@@ -1099,7 +1099,7 @@ function SciMLBase._concrete_solve_adjoint(
             J = du[i]
             if Δ isa AbstractVector
                 v = Δ[i]
-            elseif Δ isa DESolution || Δ isa AbstractVectorOfArray
+            elseif Δ isa AbstractTimeseriesSolution || Δ isa AbstractVectorOfArray
                 v = Δ.u[i]
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
@@ -1149,7 +1149,7 @@ function SciMLBase._concrete_solve_forward(
     uf = getu(sol, _save_idxs)
     out = SciMLBase.sensitivity_solution(
         sol,
-        ForwardDiff.value.(uf(sol, 1:length(sol))), ts
+        ForwardDiff.value.(uf(sol, 1:length(sol.u))), ts
     )
     function _concrete_solve_pushforward(Δself, ::Nothing, ::Nothing, x3, Δp, args...)
         x3 !== nothing && error("Pushforward currently requires no u0 derivatives")
@@ -2017,7 +2017,7 @@ function SciMLBase._concrete_solve_adjoint(
             return Array(sol)
         else
             tmp = vec(state_values(sol, 1))
-            for i in 2:length(sol)
+            for i in 2:length(sol.u)
                 tmp = hcat(tmp, vec(state_values(sol, i)))
             end
             return reshape(tmp, size(sol))
@@ -2285,7 +2285,7 @@ function SciMLBase._concrete_solve_adjoint(
             )
         else
             outuf = getu(_out, save_idxs)
-            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
+            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out.u)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
@@ -2293,7 +2293,7 @@ function SciMLBase._concrete_solve_adjoint(
     elseif isempty(saveat)
         no_start = !save_start
         no_end = !save_end
-        sol_idxs = 1:length(sol)
+        sol_idxs = 1:length(sol.u)
         no_start && (sol_idxs = sol_idxs[2:end])
         no_end && (sol_idxs = sol_idxs[1:(end - 1)])
         only_end = length(sol_idxs) <= 1
@@ -2310,7 +2310,7 @@ function SciMLBase._concrete_solve_adjoint(
             out = SciMLBase.sensitivity_solution(sol, state_values(_out), ts)
         else
             outuf = getu(_out, save_idxs)
-            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out)), ts)
+            out = SciMLBase.sensitivity_solution(sol, outuf(_out, 1:length(_out.u)), ts)
         end
         # only_end
         (length(ts) == 1 && ts[1] == _prob.tspan[2]) &&
