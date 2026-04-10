@@ -119,13 +119,25 @@ eqs = [
         end
 
         @testset "Enzyme through init" begin
-            # Broken due to multiple upstream Enzyme/NonlinearSolve issues:
-            # - Julia 1.12: NonlinearSolveBaseEnzymeExt rules disabled (VERSION < v"1.12" guard)
-            #   causing LLVM crash in GC invariant verifier
-            # - Julia 1.10: EnzymeMutabilityException from MTK's remake (mutable closure),
-            #   MixedReturnException with default PolyAlgorithm, and NamedTuple broadcasting
-            #   error in NonlinearSolveBaseEnzymeExt reverse rule with MTKParameters
-            # See: NonlinearSolve.jl#869, Enzyme.jl#2699
+            # Status (verified 2026-04-10 with Enzyme 0.13, NonlinearSolve
+            # 4.17, SciMLBase 2.153, ModelingToolkit current release):
+            #
+            #   * Julia 1.10 (LTS): hits an `EnzymeMutabilityException` because
+            #     the closure capturing `iprob`/`irepack` cannot be proven
+            #     read-only. Wrapping `init_loss` in `Const(...)` advances past
+            #     the activity check but then crashes the LLVM GC invariant
+            #     verifier with `Illegal inttoptr` during `MTK.remake`/
+            #     `SciMLStructures.replace`. Even calling
+            #     `Enzyme.set_runtime_activity(Reverse)` produces the same
+            #     LLVM crash. The issue reproduces equally for `use_scc=false`
+            #     and `use_scc=true` and is independent of SCCNonlinearSolve.
+            #   * Julia 1.11+: same crashes plus a separate
+            #     `IllegalTypeAnalysisException` on `Base._typed_vcat!` inside
+            #     SCCNonlinearSolve's solution assembly.
+            #
+            # Tracking issues: NonlinearSolve.jl#869, Enzyme.jl#2699,
+            # Enzyme.jl#3021 (vcat type analysis), and the upstream MTK
+            # remake/Enzyme interaction.
             @test_broken begin
                 igs = Enzyme.gradient(Enzyme.Reverse, init_loss, itunables)
                 !iszero(sum(igs))
