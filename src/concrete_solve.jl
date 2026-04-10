@@ -936,14 +936,15 @@ function SciMLBase._concrete_solve_adjoint(
         end
 
         # When diff_tunables=Val(false), dp_full is the full parameter
-        # gradient (SciMLStructure). For Enzyme, return it directly so
-        # the reverse rule can accumulate into all shadow components.
+        # gradient (SciMLStructure). Return it as a NamedTuple tangent so
+        # the AD reverse rule can accumulate into all shadow components.
+        # This applies to all originators — diff_tunables=Val(false) is
+        # itself opt-in.
         _use_full_p = hasproperty(sensealg, :diff_tunables) &&
             sensealg.diff_tunables isa Val{false}
-        dp_tangent = if _use_full_p &&
-                originator isa SciMLBase.EnzymeOriginator &&
-                isscimlstructure(dp_full)
-            Zygote.accum(dp_full, igs)
+        dp_tangent = if _use_full_p && isscimlstructure(dp_full)
+            accumulated = Zygote.accum(dp_full, igs)
+            originator isa SciMLBase.EnzymeOriginator ? accumulated : to_nt(accumulated)
         else
             dp = Zygote.accum(dp_full, igs)
 
@@ -2415,13 +2416,14 @@ function SciMLBase._concrete_solve_adjoint(
         dp_full = adjoint_sensitivities(sol, alg; sensealg, dgdu = df)
 
         # When diff_tunables=Val(false), dp_full is the full parameter
-        # gradient (SciMLStructure). For Enzyme, return it directly so
-        # the reverse rule can accumulate into all shadow components
-        # (including caches for SCCNonlinearProblem).
-        dp_tangent = if originator isa SciMLBase.EnzymeOriginator &&
+        # gradient (SciMLStructure). Return it as a NamedTuple tangent so
+        # the AD reverse rule can accumulate into all shadow components
+        # (including caches for SCCNonlinearProblem). This applies to all
+        # originators — diff_tunables=Val(false) is itself opt-in.
+        dp_tangent = if hasproperty(sensealg, :diff_tunables) &&
                 sensealg.diff_tunables isa Val{false} &&
                 isscimlstructure(dp_full)
-            dp_full
+            originator isa SciMLBase.EnzymeOriginator ? dp_full : to_nt(dp_full)
         else
             dp = if isscimlstructure(dp_full)
                 canonicalize(Tunable(), dp_full)[1]

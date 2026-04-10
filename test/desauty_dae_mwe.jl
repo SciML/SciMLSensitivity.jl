@@ -133,22 +133,12 @@ eqs = [
         end
 
         @testset "Mooncake through init" begin
-            if use_scc
-                @test_broken begin
-                    rule = Mooncake.build_rrule(init_loss, itunables)
-                    _, (_, igs) = Mooncake.value_and_gradient!!(
-                        rule, init_loss, itunables,
-                    )
-                    !iszero(sum(igs))
-                end
-            else
-                rule = Mooncake.build_rrule(init_loss, itunables)
-                _, (_, igs) = Mooncake.value_and_gradient!!(
-                    rule, init_loss, itunables,
-                )
-                @test !iszero(sum(igs))
-                @test isapprox(igs, fd_init_grad, rtol = 0.05)
-            end
+            rule = Mooncake.build_rrule(init_loss, itunables)
+            _, (_, igs) = Mooncake.value_and_gradient!!(
+                rule, init_loss, itunables,
+            )
+            @test !iszero(sum(igs))
+            @test isapprox(igs, fd_init_grad, rtol = 0.05)
         end
 
         @testset "Tracker + GaussAdjoint through ODE solve" begin
