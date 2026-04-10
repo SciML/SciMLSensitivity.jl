@@ -358,6 +358,26 @@ function automatic_sensealg_choice(
     return default_sensealg
 end
 
+"""
+    _init_originator_gradient(originator, f, tunables)
+
+Compute `∂(f(tunables))/∂tunables` for a *scalar-valued* `f`, dispatched on
+the AD originator that triggered the surrounding `_concrete_solve_adjoint`
+rrule.
+
+Used by the DAE/ODE initialization adjoint path to differentiate
+`get_initial_values` w.r.t. the tunable parameters. The default
+implementation uses Zygote (which composes with all
+ChainRules-aware originators including `EnzymeOriginator`,
+`ReverseDiffOriginator`, `TrackerOriginator`, and `ChainRulesOriginator`).
+A `MooncakeOriginator` method lives in `ext/SciMLSensitivityMooncakeExt.jl`
+so Mooncake-driven differentiation does not pull in Zygote at this point.
+"""
+function _init_originator_gradient(::SciMLBase.ADOriginator, f, tunables)
+    iy, back = Zygote.pullback(f, tunables)
+    return back(one(iy))[1]
+end
+
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractODEProblem,
@@ -592,8 +612,6 @@ function SciMLBase._concrete_solve_adjoint(
             SciMLBase.has_initialization_data(_prob.f) &&
                 initializealg isa default_inits
         )
-        local new_u0
-        local new_p
         initializeprob = prob.f.initialization_data.initializeprob
         iu0 = state_values(initializeprob)
         isAD = if iu0 === nothing
@@ -609,25 +627,47 @@ function SciMLBase._concrete_solve_adjoint(
         initializealg = initializealg isa Union{Nothing, DefaultInit} ?
             initializealg_default : initializealg
 
-        iy,
-            back = Zygote.pullback(tunables) do tunables
-            new_prob = remake(_prob, p = repack(tunables))
-            new_u0, new_p,
-                _ = SciMLBase.get_initial_values(
-                new_prob, new_prob, new_prob.f, initializealg, Val(isinplace(new_prob));
-                sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
-                nlsolve_alg,
-                kwargs_init...
-            )
-            new_tunables, _,
-                _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), new_p)
-            if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
-                sum(new_tunables)
-            else
-                sum(new_u0) + sum(new_tunables)
+        # Forward: actually compute the initial values once outside any AD
+        # call. This avoids depending on side-effect capture of `new_u0` /
+        # `new_p` from inside an AD-traced closure, which is unsafe for
+        # backends like Mooncake/Enzyme that build a separate trace.
+        new_u0, new_p,
+            _ = SciMLBase.get_initial_values(
+            _prob, _prob, _prob.f, initializealg, Val(isinplace(_prob));
+            sensealg = SteadyStateAdjoint(autojacvec = sensealg.autojacvec),
+            nlsolve_alg,
+            kwargs_init...
+        )
+
+        # Reverse: gradient of `sum(new_u0)` w.r.t. tunables, treating the
+        # initialization map `tunables -> new_u0` as a function. The
+        # OVERDETERMINED case has no contribution. The non-OVERDETERMINED
+        # case dispatches to the AD backend that triggered this rrule via
+        # `_init_originator_gradient`, so Mooncake-driven AD does not pull
+        # in Zygote at this point.
+        igs = if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
+            zero(tunables)
+        else
+            init_loss = let _prob = _prob, repack = repack,
+                    initializealg = initializealg, nlsolve_alg = nlsolve_alg,
+                    sensealg = sensealg, kwargs_init = kwargs_init
+                function (t)
+                    new_prob_t = remake(_prob, p = repack(t))
+                    nu0, _,
+                        _ = SciMLBase.get_initial_values(
+                        new_prob_t, new_prob_t, new_prob_t.f, initializealg,
+                        Val(isinplace(new_prob_t));
+                        sensealg = SteadyStateAdjoint(
+                            autojacvec = sensealg.autojacvec,
+                        ),
+                        nlsolve_alg,
+                        kwargs_init...,
+                    )
+                    return sum(nu0)
+                end
             end
+            _init_originator_gradient(originator, init_loss, tunables)
         end
-        igs = back(one(iy))[1] .- one(eltype(tunables))
 
         igs, new_u0, new_p, SciMLBase.CheckInit()
     else

@@ -3,7 +3,7 @@ module SciMLSensitivityMooncakeExt
 using SciMLSensitivity: SciMLSensitivity
 using Mooncake: Mooncake
 import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded,
-    DiffEqBase, MooncakeAdjoint
+    DiffEqBase, MooncakeAdjoint, _init_originator_gradient
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
@@ -11,6 +11,17 @@ using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, issci
 using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
 using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
 using Accessors: @reset
+
+# Mooncake-native gradient for the DAE/ODE init path. Avoids pulling Zygote
+# into the rrule when the user is differentiating with Mooncake. The default
+# (Zygote-based) implementation lives in src/concrete_solve.jl.
+function _init_originator_gradient(
+        ::SciMLBase.MooncakeOriginator, f, tunables,
+    )
+    rule = Mooncake.build_rrule(f, tunables)
+    _, (_, igs) = Mooncake.value_and_gradient!!(rule, f, tunables)
+    return igs
+end
 
 function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     dy_mem = zero(y)
