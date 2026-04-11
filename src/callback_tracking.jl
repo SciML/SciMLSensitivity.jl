@@ -283,11 +283,12 @@ function _setup_reverse_callbacks(
     # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Therefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
-    # Callbacks require ReverseDiffVJP or EnzymeVJP for their own VJP computations.
-    # The ODE adjoint may use a different autojacvec (even numerical/false), but the
-    # callback affect functions (CallbackAffectWrapper) are separate and typically work
-    # with ReverseDiff even when the ODE function doesn't.
-    cb_autojacvec = if sensealg.autojacvec isa Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP}
+    # Callbacks require ReverseDiffVJP, EnzymeVJP, ReactantVJP, or MooncakeVJP for
+    # their own VJP computations. The ODE adjoint may use a different autojacvec
+    # (even numerical/false), but the callback affect functions (CallbackAffectWrapper)
+    # are separate and typically work with ReverseDiff even when the ODE function doesn't.
+    cb_autojacvec = if sensealg.autojacvec isa
+            Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP, MooncakeVJP}
         sensealg.autojacvec
     else
         @warn "autojacvec=$(sensealg.autojacvec) is not compatible with callbacks, using ReverseDiffVJP() for callback VJPs"
@@ -506,8 +507,8 @@ end
 
 function setup_w_wp(
         cb::Union{DiscreteCallback, ContinuousCallback, VectorContinuousCallback},
-        autojacvec::Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP}, pos_neg, event_idx,
-        tprev
+        autojacvec::Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP, MooncakeVJP}, pos_neg,
+        event_idx, tprev
     )
     w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
     wp = CallbackAffectPWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
@@ -519,6 +520,9 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
+function get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev)
+    return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
+end
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
     return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))
@@ -599,6 +603,104 @@ function get_cb_diffcaches(
                     diffcache_wp = AdjointDiffCache(
                         nothing, nothing, nothing, nothing, nothing,
                         nothing, nothing, nothing, wp_paramjac,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
+                elseif autojacvec isa MooncakeVJP
+                    # MooncakeVJP: build Mooncake pullback caches for the
+                    # state-affect and parameter-affect callback wrappers.
+                    # Mooncake can't trace through the recursive TrackedAffect
+                    # unwrapping in `CallbackAffectWrapper` (it trips on the
+                    # `Base.argument_datatype` ccall that surfaces during the
+                    # dispatch), so we mirror the ReactantVJP path and build a
+                    # flat closure that bakes `raw_affect` directly in. The
+                    # state-output closure has y-sized output; the parameter-
+                    # output closure has (flat) tunables-sized output.
+                    raw_affect = get_affect!(cb, pos_neg)
+                    _has_event_idx = event_idx !== nothing
+                    _ev = event_idx
+                    _tprev0 = _t
+
+                    cb_state_fn = let raw = raw_affect, ev = _ev, tprev = _tprev0,
+                            has_ev = _has_event_idx
+
+                        (out, u, p, t) -> begin
+                            fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
+                            if has_ev
+                                raw(fakeinteg, ev)
+                            else
+                                raw(fakeinteg)
+                            end
+                            copyto!(out, fakeinteg.u)
+                            return out
+                        end
+                    end
+
+                    cb_param_fn = let raw = raw_affect, ev = _ev, tprev = _tprev0,
+                            has_ev = _has_event_idx
+
+                        (out, u, p, t) -> begin
+                            fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
+                            if has_ev
+                                raw(fakeinteg, ev)
+                            else
+                                raw(fakeinteg)
+                            end
+                            copyto!(out, fakeinteg.p)
+                            return out
+                        end
+                    end
+
+                    if _p === nothing || _p isa SciMLBase.NullParameters
+                        tunables, repack = _p, identity
+                    else
+                        tunables, repack, _ = canonicalize(Tunable(), _p)
+                    end
+                    _needs_repack = !(
+                        _p === nothing ||
+                            _p isa SciMLBase.NullParameters
+                    ) &&
+                        isscimlstructure(_p) && !(_p isa AbstractArray)
+
+                    pf_w = if _needs_repack
+                        let f = cb_state_fn, repack = repack
+                            (out, u, _tunables, t) -> f(out, u, repack(_tunables), t)
+                        end
+                    else
+                        cb_state_fn
+                    end
+
+                    pf_wp = if _needs_repack
+                        let f = cb_param_fn, repack = repack
+                            (out, u, _tunables, t) -> f(out, u, repack(_tunables), t)
+                        end
+                    else
+                        cb_param_fn
+                    end
+
+                    paramjac_config_w = get_paramjac_config(
+                        MooncakeLoaded(), autojacvec, pf_w, tunables, cb_state_fn, y, _t
+                    )
+                    # For wp, the output is parameter-sized (flat tunables) rather
+                    # than state-sized, so pass `out_sample = tunables` to size the
+                    # Mooncake cotangent/output buffers correctly.
+                    paramjac_config_wp = get_paramjac_config(
+                        MooncakeLoaded(), autojacvec, pf_wp, tunables, cb_param_fn,
+                        y, _t; out_sample = tunables
+                    )
+
+                    diffcache_w = AdjointDiffCache(
+                        nothing, pf_w, nothing, nothing, nothing,
+                        nothing, nothing, nothing, paramjac_config_w,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, false,
+                        nothing, identity
+                    )
+
+                    diffcache_wp = AdjointDiffCache(
+                        nothing, pf_wp, nothing, nothing, nothing,
+                        nothing, nothing, nothing, paramjac_config_wp,
                         nothing, nothing, nothing, nothing, nothing,
                         nothing, nothing, nothing, false,
                         nothing, identity

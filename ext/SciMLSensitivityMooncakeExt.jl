@@ -23,9 +23,16 @@ function _init_originator_gradient(
     return igs
 end
 
-function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
-    dy_mem = zero(y)
-    λ_mem = zero(y)
+function get_paramjac_config(
+        ::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t; out_sample = nothing
+    )
+    # `out_sample` lets callers size the output/cotangent buffers for functions
+    # whose output is not state-sized (e.g. the parameter-affect callback wrapper
+    # whose output has the shape of the flat tunables). Defaults to `y` which is
+    # correct for the usual ODE/state-output case.
+    _out_sample = out_sample === nothing ? y : out_sample
+    dy_mem = zero(_out_sample)
+    λ_mem = zero(_out_sample)
     cache = Mooncake.prepare_pullback_cache(pf, dy_mem, y, p, _t)
     # Pre-allocate buffer for tangent_to_primal!! conversion of struct-based
     # array types (e.g. ComponentArray) whose Mooncake tangent is Mooncake.Tangent.

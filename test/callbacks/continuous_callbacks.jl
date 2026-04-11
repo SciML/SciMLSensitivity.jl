@@ -1,5 +1,6 @@
-using OrdinaryDiffEq, Zygote, Reactant
+using OrdinaryDiffEq, Zygote, Reactant, Mooncake
 using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
+using SciMLSensitivity: MooncakeVJP
 
 abstol = 1.0e-12
 reltol = 1.0e-12
@@ -360,6 +361,15 @@ println("Continuous Callbacks")
         @test gFD ≈ gZy rtol = 1.0e-10
 
         sensealg = GaussAdjoint(autojacvec = ReactantVJP(allow_scalar = true))
+        gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+        @test gFD ≈ gZy rtol = 1.0e-10
+
+        # MooncakeVJP with callbacks
+        sensealg = InterpolatingAdjoint(autojacvec = MooncakeVJP())
+        gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
+        @test gFD ≈ gZy rtol = 1.0e-10
+
+        sensealg = GaussAdjoint(autojacvec = MooncakeVJP())
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD ≈ gZy rtol = 1.0e-10
     end
