@@ -283,12 +283,12 @@ function _setup_reverse_callbacks(
     # if save_positions = [1,0] the gradient contribution is added before, and in principle we would need to correct the adjoint state again. Therefore,
 
     cb.save_positions == [1, 0] && error("save_positions=[1,0] is currently not supported.")
-    # Callbacks require ReverseDiffVJP, EnzymeVJP, ReactantVJP, or MooncakeVJP for
-    # their own VJP computations. The ODE adjoint may use a different autojacvec
-    # (even numerical/false), but the callback affect functions (CallbackAffectWrapper)
-    # are separate and typically work with ReverseDiff even when the ODE function doesn't.
-    cb_autojacvec = if sensealg.autojacvec isa
-            Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP, MooncakeVJP}
+    # Callback affect functions (CallbackAffectWrapper) are traced separately
+    # from the ODE function, so the ODE adjoint may use a different autojacvec
+    # (even numerical/false) while the callback path uses its own compatible
+    # backend. The `supports_callback_vjp` trait marks which VJP backends have
+    # a dedicated callback path; anything else falls back to ReverseDiffVJP.
+    cb_autojacvec = if supports_callback_vjp(sensealg.autojacvec)
         sensealg.autojacvec
     else
         @warn "autojacvec=$(sensealg.autojacvec) is not compatible with callbacks, using ReverseDiffVJP() for callback VJPs"
@@ -507,9 +507,10 @@ end
 
 function setup_w_wp(
         cb::Union{DiscreteCallback, ContinuousCallback, VectorContinuousCallback},
-        autojacvec::Union{ReverseDiffVJP, EnzymeVJP, ReactantVJP, MooncakeVJP}, pos_neg,
-        event_idx, tprev
+        autojacvec, pos_neg, event_idx, tprev
     )
+    supports_callback_vjp(autojacvec) ||
+        error("setup_w_wp called with a VJP backend that does not support callbacks: $(autojacvec). This is an internal error — the callback path should have redirected to a compatible backend in `_setup_reverse_callbacks`.")
     w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
     wp = CallbackAffectPWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
     return w, wp
@@ -520,9 +521,7 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
-function get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev)
-    return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
-end
+get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
     return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))

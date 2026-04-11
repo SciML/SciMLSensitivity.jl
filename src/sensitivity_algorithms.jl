@@ -1697,6 +1697,23 @@ supports_structured_vjp(::Bool) = false
 supports_structured_vjp(::Nothing) = false
 
 """
+    supports_callback_vjp(autojacvec) -> Bool
+
+Return `true` if the VJP backend can differentiate the affect functions of
+tracked callbacks (i.e. has a dedicated branch in `get_cb_diffcaches` and a
+`_vecjacobian!` path that works with `CallbackSensitivityFunction`).
+
+When `false`, the callback adjoint code falls back to `ReverseDiffVJP()` for
+its own VJP computations — the ODE adjoint may still use the user-requested
+backend, since the callback affect functions are traced separately.
+"""
+supports_callback_vjp(::ReverseDiffVJP) = true
+supports_callback_vjp(::EnzymeVJP) = true
+supports_callback_vjp(::ReactantVJP) = true
+supports_callback_vjp(::MooncakeVJP) = true
+supports_callback_vjp(::Any) = false
+
+"""
 ```julia
 ForwardDiffOverAdjoint{A} <: AbstractSecondOrderSensitivityAlgorithm{nothing, true, nothing}
 ```
