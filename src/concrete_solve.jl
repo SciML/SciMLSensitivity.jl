@@ -1847,9 +1847,9 @@ function Base.showerror(io::IO, e::EnzymeTrackedRealError)
 end
 
 const MOONCAKE_TRACKED_REAL_ERROR_MESSAGE = """
-`Mooncake` is not compatible with `ReverseDiffAdjoint` nor with `TrackerAdjoint`.
-Either choose a different adjoint method like `GaussAdjoint`,
-or use a different AD system like `ReverseDiff`.
+`Mooncake` is not compatible with `TrackerAdjoint`.
+Either choose a different adjoint method like `GaussAdjoint` or
+`ReverseDiffAdjoint`, or use a different AD system like `ReverseDiff`.
 For more details, on these methods see
 https://docs.sciml.ai/SciMLSensitivity/stable/.
 """
@@ -2148,10 +2148,6 @@ function SciMLBase._concrete_solve_adjoint(
         throw(EnzymeTrackedRealError())
     end
 
-    if originator isa SciMLBase.MooncakeOriginator
-        throw(MooncakeTrackedRealError())
-    end
-
     t = eltype(prob.tspan)[]
     u = typeof(u0)[]
 
@@ -2275,6 +2271,63 @@ function SciMLBase._concrete_solve_adjoint(
         ReverseDiff.value.(state_values(sol))
     return SciMLBase.sensitivity_solution(sol, u, ReverseDiff.value.(current_time(sol))),
         reversediff_adjoint_backpass
+end
+
+# Mooncake-specific `ReverseDiffAdjoint` path. The main `ReverseDiffAdjoint`
+# method above returns `SciMLBase.sensitivity_solution(sol, …)` where `sol`
+# still carries `ReverseDiff.TrackedReal` / `TrackedArray` type parameters in
+# nested fields (`interp`, `prob`, `alg`, …). ChainRules / Zygote don't
+# inspect the primal's type parameters, so they don't care. Mooncake's
+# `@from_rrule` plumbing, on the other hand, calls
+# `zero_tangent(y_primal)` and therefore recursively computes `tangent_type`
+# for every nested field of the returned solution; that recursion fails on
+# the tracked type parameters with either a `TypeError` or an unhelpful
+# tangent-type error, which is what the `hybrid_diffeq` tutorial and
+# PR #1419 ran into.
+#
+# This method delegates the tape construction (and hence the whole backward
+# pass) to the `ChainRulesOriginator` path, then replaces the primal with
+# a fresh plain-arithmetic solve of the same problem. This keeps the
+# outward-facing return type identical to what the non-sensitivity solve
+# would return (i.e. `InterpolationData` and `DEStats`, not the
+# `LinearInterpolation` / `Nothing` shape `build_solution` would produce),
+# which is important because Mooncake's `DerivedRule` specialises on the
+# inferred return type of the underlying `solve_up` call — that inference
+# does not narrow through the `originator` kwarg, so the compiled rule
+# expects the *main* method's return shape even on the Mooncake dispatch.
+#
+# The tape's tracked forward pass and this plain forward pass can differ
+# by a handful of ULPs (ReverseDiff operator overloading reorders some
+# arithmetic), which propagates a ~1e-5 relative error into the pullback.
+# That's below the inherent accuracy of `ReverseDiffAdjoint` vs. a
+# first-principles gradient, so tests should compare against
+# `ForwardDiff.gradient` at `rtol = 1e-4` rather than bitwise matching
+# the Zygote path.
+function SciMLBase._concrete_solve_adjoint(
+        prob::Union{
+            SciMLBase.AbstractDiscreteProblem,
+            SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractDAEProblem,
+            SciMLBase.AbstractDDEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractSDDEProblem,
+            SciMLBase.AbstractRODEProblem,
+        },
+        alg, sensealg::ReverseDiffAdjoint,
+        u0, p, originator::SciMLBase.MooncakeOriginator,
+        args...; kwargs...
+    )
+    _, backpass = SciMLBase._concrete_solve_adjoint(
+        prob, alg, sensealg, u0, p,
+        SciMLBase.ChainRulesOriginator(), args...; kwargs...
+    )
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+    primal = solve(
+        remake(prob; u0, p), alg, args...;
+        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        kwargs_filtered...
+    )
+    return primal, backpass
 end
 
 function SciMLBase._concrete_solve_adjoint(
