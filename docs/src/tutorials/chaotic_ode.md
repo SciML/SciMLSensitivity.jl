@@ -133,7 +133,7 @@ function G(p)
         sensealg = SMS.ForwardLSS(; g))
     sum(getindex.(_sol.u, 3))
 end
-dp1 = DI.gradient(p -> G(p), DI.AutoMooncake(; config = nothing), p)
+dp1 = DI.gradient(p -> G(p), DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true)), p)
 ```
 
 Alternatively, we can define the `ForwardLSSProblem` and solve it

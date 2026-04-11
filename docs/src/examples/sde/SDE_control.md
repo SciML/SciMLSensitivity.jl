@@ -24,7 +24,7 @@ follow a full explanation of the definition and training process:
     currently fails on `EnsembleProblem.__solve`
     (`Mooncake.MooncakeRuleCompilationError` / stack overflow).
     Once Mooncake supports `EnsembleProblem`, switch the AD frontend
-    to `OPT.AutoMooncake(; config = nothing)` and replace
+    to `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))` and replace
     `Zygote.@nograd CreateGrid` with
     `Mooncake.@zero_adjoint Mooncake.DefaultCtx Tuple{typeof(CreateGrid), Any, Any}`.
 

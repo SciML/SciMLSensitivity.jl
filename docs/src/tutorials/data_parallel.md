@@ -95,7 +95,7 @@ Distributed and GPU minibatching are described below.
     compiler currently fails on `EnsembleProblem`'s `__solve`
     (`Mooncake.MooncakeRuleCompilationError` / stack overflow).
     Once Mooncake supports `EnsembleProblem`, the recommended
-    AD frontend will switch to `OPT.AutoMooncake(; config = nothing)`
+    AD frontend will switch to `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`
     to match the rest of the tutorials.
 
 ```@example dataparallel

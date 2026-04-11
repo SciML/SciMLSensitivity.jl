@@ -96,7 +96,7 @@ function sum_of_solution(p)
     _prob = ODE.remake(prob; p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
 end
-backend = DI.AutoMooncake(; config = nothing)
+backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 dp1 = DI.gradient(sum_of_solution, backend, p)
 ```
 

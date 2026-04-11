@@ -8,7 +8,7 @@
     cotangent layout that hits the missing
     `increment_and_get_rdata!` method in ComponentArrays' Mooncake extension).
     Once the upstream fix lands, the recommended frontend will switch to
-    `OPT.AutoMooncake(; config = nothing)`.
+    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 ## Introduction
 

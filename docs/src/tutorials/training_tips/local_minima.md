@@ -75,7 +75,7 @@ function callback(state, l; doplot = false)
     return false
 end
 
-adtype = OPT.AutoMooncake(; config = nothing)
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
@@ -102,7 +102,7 @@ function predict_neuralode(p)
     Array(sol)
 end
 
-adtype = OPT.AutoMooncake(; config = nothing)
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
@@ -217,7 +217,7 @@ predict_n_ode(p_init)
 loss_n_ode(p_init, nothing)
 
 res = OPT.solve(
-    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoMooncake(; config = nothing)), p_init),
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))), p_init),
     OPO.Adam(0.05); callback, maxiters = 1000)
 
 function predict_n_ode2(p)
@@ -246,7 +246,7 @@ end
 #Here we reset the IC back to the original and train only the NODE parameters
 u0 = Float32[2.0; 0.0]
 res = OPT.solve(
-    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoMooncake(; config = nothing)), p_init.p),
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))), p_init.p),
     OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 
 #Now use the same technique for a longer tspan (0, 10)
@@ -266,11 +266,11 @@ prob = ODE.ODEProblem(dudt, u0, tspan)
 
 p_init = CA.ComponentArray(; u0, p)
 res = OPT.solve(
-    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoMooncake(; config = nothing)), p_init),
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))), p_init),
     OPO.Adam(0.05); callback, maxiters = 1000)
 
 res = OPT.solve(
-    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoMooncake(; config = nothing)), p_init.p),
+    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode2, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))), p_init.p),
     OPO.Adam(0.05); callback = callback2, maxiters = 1000)
 ```
 

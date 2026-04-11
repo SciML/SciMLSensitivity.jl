@@ -27,7 +27,7 @@ An example of training a neural network on a second order ODE is as follows:
     `increment_and_get_rdata!` method in ComponentArrays' Mooncake extension.
     Once that method is added (or `friendly_tangent_cache` is defined for
     `ComponentVector`), the recommended frontend will switch to
-    `OPT.AutoMooncake(; config = nothing)`.
+    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 ```@example secondorderneural
 import SciMLSensitivity as SMS

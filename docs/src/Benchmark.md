@@ -81,7 +81,7 @@ for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
         return loss
     end
 
-    backend = DI.AutoMooncake(; config = nothing)
+    backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
     loss_ps = p -> loss_neuralode(u0, p, st)
     t = BenchmarkTools.@belapsed DI.gradient($loss_ps, $backend, $ps)
     println("$(sensealg) took $(t)s")

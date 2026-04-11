@@ -103,7 +103,7 @@ We can then use `Optimization.solve` to fit the SDE.
     estimate the SDE expectation), raising a
     `Mooncake.MooncakeRuleCompilationError`.  Once Mooncake supports
     `EnsembleProblem`, switch the AD frontend to
-    `OPT.AutoMooncake(; config = nothing)`.
+    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 ```@example sde
 import Optimization as OPT, Zygote, OptimizationOptimisers as OPO
@@ -188,7 +188,7 @@ Let's optimize
 
 ```@example sde
 import Mooncake
-adtype = OPT.AutoMooncake(; config = nothing)
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)

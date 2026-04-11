@@ -7,7 +7,7 @@
     `CoDual` type expectations (`TypeError` during pullback compilation).
     Once Mooncake gains compatibility with `ReverseDiffAdjoint` (or this
     tutorial switches to a Mooncake-friendly inner adjoint), the recommended
-    AD frontend will switch to `OPT.AutoMooncake(; config = nothing)`.
+    AD frontend will switch to `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 Hybrid differential equations are differential equations with implicit or
 explicit discontinuities as specified by

@@ -36,7 +36,7 @@ u0 = [1.0; 1.0];
 prob = ODE.ODEProblem(fiip, u0, (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.Tsit5())
 loss(p) = sum(ODE.solve(prob, ODE.Tsit5(); p, saveat = 0.1))
-backend = DI.AutoMooncake(; config = nothing)
+backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 dp = DI.gradient(loss, backend, p)
 ```
 

@@ -78,7 +78,7 @@ callback(θ, l) = begin
     end
     false
 end
-adtype = OPT.AutoMooncake(; config = nothing)
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)

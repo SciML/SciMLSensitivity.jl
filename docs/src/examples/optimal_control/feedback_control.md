@@ -12,7 +12,7 @@ simultaneously!
     the nested layout currently raises a `MooncakeRuleCompilationError`.
     Once Mooncake/ComponentArrays support nested `ComponentVector` cotangents,
     the recommended frontend will switch to
-    `OPT.AutoMooncake(; config = nothing)`.
+    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 We will assume that we know the dynamics of the second equation
 (linear dynamics), and our goal is to find a neural network that is dependent

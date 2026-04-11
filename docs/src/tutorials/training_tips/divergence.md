@@ -66,7 +66,7 @@ function loss(p)
 end
 
 pinit = [1.2, 0.8, 2.5, 0.8]
-adtype = OPT.AutoMooncake(; config = nothing)
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
