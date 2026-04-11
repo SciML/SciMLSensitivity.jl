@@ -1160,6 +1160,19 @@ end
 # `TrackerAdjoint` do. Delegate to the `ChainRulesOriginator` path for the
 # sensitivity tape and re-solve the plain problem for the primal.
 #
+# A tempting alternative is to walk the returned `primal` and strip
+# tracked / augmented types via `SciMLBase.value` recursively. That
+# approach *almost* works but fails on one specific slot: `solve()` wraps
+# `prob.f` in a `FunctionWrappersWrappers.FunctionWrappersWrapper` during
+# `get_concrete_problem`, and the resulting `FunctionWrapper` has no
+# public positional constructor for `ConstructionBase.setproperties`, so a
+# generic walker can't rebuild it. Mooncake's `@from_rrule` type
+# inference nonetheless expects the `FunctionWrapper` version (because
+# that's what `solve()` returns), so anything less than actually invoking
+# `solve()` produces a type mismatch on the `DerivedRule` assertion.
+# A truly general `strip_values(sol)` in SciMLBase would need the same
+# `solve()` round-trip internally, so the cost is unavoidable here.
+#
 # Additionally, the main `forward_sensitivity_backpass` returns `du0 =
 # @not_implemented(...)` because `ForwardSensitivity` can't differentiate
 # w.r.t. `u0`. Mooncake's `@from_rrule` plumbing then tries to convert that
@@ -2354,14 +2367,25 @@ end
 #
 # This method delegates the tape construction (and hence the whole backward
 # pass) to the `ChainRulesOriginator` path, then replaces the primal with
-# a fresh plain-arithmetic solve of the same problem. This keeps the
-# outward-facing return type identical to what the non-sensitivity solve
-# would return (i.e. `InterpolationData` and `DEStats`, not the
-# `LinearInterpolation` / `Nothing` shape `build_solution` would produce),
-# which is important because Mooncake's `DerivedRule` specialises on the
-# inferred return type of the underlying `solve_up` call — that inference
-# does not narrow through the `originator` kwarg, so the compiled rule
-# expects the *main* method's return shape even on the Mooncake dispatch.
+# a fresh plain-arithmetic solve of the same problem. The obvious
+# alternative — walking the returned primal and stripping tracked scalars
+# via `SciMLBase.value` recursively — *almost* works but fails on one
+# specific slot: `solve()` wraps `prob.f` in a
+# `FunctionWrappersWrappers.FunctionWrappersWrapper` during
+# `get_concrete_problem`, and the resulting `FunctionWrapper` has no
+# public positional constructor for `ConstructionBase.setproperties`, so a
+# generic walker can't rebuild it. Mooncake's `@from_rrule` type
+# inference nonetheless expects the `FunctionWrapper` version (because
+# that's what `solve()` normally returns from a plain-arithmetic solve),
+# so anything short of actually invoking `solve()` produces a type
+# mismatch on the `DerivedRule` assertion. A truly general
+# `strip_values(sol)` in SciMLBase would need the same `solve()`
+# round-trip internally, so the cost is unavoidable here.
+#
+# Keeping this in a dedicated method dispatched on `MooncakeOriginator`
+# stops Julia type inference from joining two different return shapes
+# into a `Union{ODESolution{tracked…}, ODESolution{plain…}}`, which would
+# otherwise trip Mooncake's `DerivedRule` type assertion.
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractDiscreteProblem,
