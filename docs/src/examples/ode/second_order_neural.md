@@ -20,29 +20,6 @@ neural network by the mass!)
 
 An example of training a neural network on a second order ODE is as follows:
 
-!!! note
-    
-    This example still uses Zygote because of a `SciMLSensitivity` adjoint
-    backpass bug — not a missing rule.  `SecondOrderODEProblem` is just an
-    `ODEProblem` wrapping a `DynamicalODEFunction`, so it dispatches through
-    the existing `_concrete_solve_adjoint(::AbstractODEProblem, …)` methods
-    fine.  The issue is that the state is an
-    `RecursiveArrayTools.ArrayPartition{Tuple{Vector, Vector}}`, and the
-    Mooncake-originated cotangent that flows back into `df_iip` /
-    `df_oop` (in `src/concrete_solve.jl`) is shaped as
-    `ChainRulesCore.Tangent{NamedTuple{x::Tangent{Tuple{Vector, Vector}}}}`.
-    The current `df_iip` calls `vec(x)` on this nested `Tangent` and raises
-    `MethodError: no method matching vec(::ChainRulesCore.Tangent)`.
-    Zygote happens to produce a different (recursively-array-shaped)
-    cotangent that flows through cleanly, which is why the tutorial works
-    on the `AutoZygote` path.
-    
-    Fixing this requires a small `df_iip`/`df_oop` patch in
-    `SciMLSensitivity` that unwraps `Tangent` cotangents into their
-    underlying `ArrayPartition` shape before the `vec(x)` call.  Once
-    that lands, the recommended frontend will switch to
-    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
-
 ```@example secondorderneural
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE
@@ -52,6 +29,7 @@ import OptimizationOptimisers as OPO
 import RecursiveArrayTools
 import Random
 import ComponentArrays as CA
+import Mooncake
 
 u0 = Float32[0.0; 2.0]
 du0 = Float32[0.0; 0.0]
@@ -84,7 +62,7 @@ callback = function (state, l)
     l < 0.01
 end
 
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
 optprob = OPT.OptimizationProblem(optf, ps)
 
