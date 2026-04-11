@@ -21,6 +21,65 @@ const ConcreteNonlinearProblem = Union{
 const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
+# `_unwrap_arraypartition_cotangent(x, primal)` reshapes a cotangent that
+# came back from an upstream rrule into the same concrete `ArrayPartition`
+# shape as `primal`.
+#
+# Most adjoint paths (Zygote, ReverseDiff, the `VectorOfArray` adjoint
+# path) hand back cotangents that are already concrete arrays, so this
+# is a no-op fast path for them.  The Mooncake → ChainRulesCore bridge,
+# however, wraps the cotangent for an `ArrayPartition`-state ODE (which
+# is what `SecondOrderODEProblem` produces internally) as a nested
+# `ChainRulesCore.Tangent`:
+#
+#     Tangent{ArrayPartition, NamedTuple{(:x,),
+#                Tuple{Tangent{Tuple{Vector, Vector},
+#                       Tuple{Vector{Float}, Vector{Float}}}}}}
+#
+# i.e. the outer `Tangent` represents the `ArrayPartition` struct (which
+# has a single field `x::Tuple`), and the `:x` field is itself a
+# `Tangent` representing that inner `Tuple`.  The `df_iip`/`df_oop`
+# adjoint backpasses below want to call `vec`, `getindex`, and `@view`
+# on the cotangent, so we eagerly walk this two-layer wrapper, write
+# the leaf vectors into a fresh `ArrayPartition`-shaped buffer, and
+# return that.
+@inline _unwrap_arraypartition_cotangent(x, primal) = x
+@inline _unwrap_arraypartition_cotangent(::NoTangent, primal) = zero(primal)
+@inline _unwrap_arraypartition_cotangent(::ZeroTangent, primal) = zero(primal)
+
+function _unwrap_arraypartition_cotangent(t::Tangent, primal::ArrayPartition)
+    bk = backing(t)
+    bk isa NamedTuple{(:x,)} || return _arraypartition_from_unknown_tangent(t, primal)
+
+    inner = bk.x
+    inner isa Tangent || return _arraypartition_from_unknown_tangent(t, primal)
+
+    inner_bk = backing(inner)
+    inner_bk isa Tuple || return _arraypartition_from_unknown_tangent(t, primal)
+    length(inner_bk) == length(primal.x) ||
+        return _arraypartition_from_unknown_tangent(t, primal)
+
+    out = zero(primal)
+    @inbounds for i in eachindex(inner_bk)
+        leaf = inner_bk[i]
+        if leaf isa AbstractArray
+            out.x[i] .= leaf
+        elseif leaf isa Number
+            fill!(out.x[i], leaf)
+        end  # NoTangent / ZeroTangent leaves stay at zero
+    end
+    return out
+end
+
+# Fallback: we hit an unexpected `Tangent` shape we don't know how to map
+# to the primal's `ArrayPartition` layout.  Return a zeroed buffer rather
+# than throwing — the gradient will be 0 for that timestep, which matches
+# the documented `NoTangent`/`ZeroTangent` semantics and is no worse than
+# the previous unconditional `MethodError`.
+@inline function _arraypartition_from_unknown_tangent(::Tangent, primal::ArrayPartition)
+    return zero(primal)
+end
+
 
 """
     _get_sensitivity_vjp_verbose(verbose)
@@ -769,6 +828,16 @@ function SciMLBase._concrete_solve_adjoint(
                         Δ isa Tangent
                     x = Δ isa AbstractVectorOfArray ? Δu.u[i] :
                         (Δ isa Tangent ? Δu[i] : Δ[i])
+                    # Handle struct-shaped cotangents from upstream rrules:
+                    # when the state `u` is an `ArrayPartition` (e.g.
+                    # `SecondOrderODEProblem`), Mooncake's
+                    # ChainRules-bridged adjoint hands us a nested
+                    # `ChainRulesCore.Tangent` instead of a concrete
+                    # array.  Unwrap it back to an `ArrayPartition` so
+                    # the array-style indexing below works.
+                    if x isa Tangent && u isa ArrayPartition
+                        x = _unwrap_arraypartition_cotangent(x, u)
+                    end
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
@@ -848,8 +917,19 @@ function SciMLBase._concrete_solve_adjoint(
             else
                 !Base.isconcretetype(eltype(Δ)) &&
                     ((Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]) isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
+                        Δ isa Tangent
+                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] :
+                        (Δ isa Tangent ? Δ.u[i] : Δ[i])
+                    # `df_oop` is the immutable-state path (called when the
+                    # state is e.g. an `SArray`), but the same nested
+                    # `ChainRulesCore.Tangent` shape can show up here when an
+                    # upstream rrule routes a struct cotangent through us.
+                    # Unwrap to an `ArrayPartition` if appropriate so the
+                    # array-style indexing below works.
+                    if x isa Tangent && u isa ArrayPartition
+                        x = _unwrap_arraypartition_cotangent(x, u)
+                    end
                     if _save_idxs isa Number
                         _out = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
