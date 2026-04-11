@@ -666,6 +666,12 @@ function get_cb_paramjac_config(::Any, ::ReactantVJP, raw_affect, event_idx, y, 
     error(msg)
 end
 
+function get_cb_paramjac_config(::Any, ::MooncakeVJP, raw_affect, event_idx, y, p, _t, mode)
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+        "`using Mooncake` to use this functionality"
+    error(msg)
+end
+
 function getprob(S::SensitivityFunction)
     return (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 end

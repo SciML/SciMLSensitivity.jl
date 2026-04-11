@@ -1,8 +1,9 @@
 module SciMLSensitivityMooncakeExt
 
-using SciMLSensitivity: SciMLSensitivity
+using SciMLSensitivity: SciMLSensitivity, FakeIntegrator
 using Mooncake: Mooncake
-import SciMLSensitivity: get_paramjac_config, mooncake_run_ad, MooncakeVJP, MooncakeLoaded,
+import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_run_ad,
+    MooncakeVJP, MooncakeLoaded,
     DiffEqBase, MooncakeAdjoint, _init_originator_gradient
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
@@ -31,6 +32,68 @@ function get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, pf, p, f, y, _t)
     # array types (e.g. ComponentArray) whose Mooncake tangent is Mooncake.Tangent.
     # (Mooncake.Config(friendly_tangents=true) would avoid this, but currently
     # fails on complex closure types captured by pf.)
+    p_grad_buf = p isa AbstractArray && !(p isa Array) ? similar(p) : nothing
+    return cache, pf, λ_mem, dy_mem, p_grad_buf
+end
+
+"""
+    get_cb_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, raw_affect, event_idx, y, p, _t, mode)
+
+Build a Mooncake pullback cache for a tracked callback affect function. Mirrors
+the `get_cb_paramjac_config(::ReactantLoaded, ::ReactantVJP, ...)` entry point:
+`raw_affect` is extracted upfront (`get_affect!(cb, pos_neg)` at the call site)
+so the Mooncake-traced closure does not need to recursively unwrap
+`TrackedAffect`, which would otherwise trip on the `Base.argument_datatype`
+ccall surfaced by that dispatch.
+
+`mode === :state` builds a cache for the state-affect closure (state-sized
+output); `mode === :param` builds one for the parameter-affect closure
+(parameter-sized output) so its Mooncake cotangent/output buffers match the
+flat tunables shape rather than the state shape. The returned 5-tuple has the
+same layout as `get_paramjac_config(::MooncakeLoaded, ::MooncakeVJP, ...)` so
+`_vecjacobian!(::MooncakeVJP)` / `mooncake_run_ad` can consume it unchanged.
+"""
+function get_cb_paramjac_config(
+        ::MooncakeLoaded, ::MooncakeVJP, raw_affect, event_idx, y, p, _t, mode
+    )
+    has_event_idx = event_idx !== nothing
+    tprev0 = _t
+
+    if mode === :state
+        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0, has_ev = has_event_idx
+            (out, u, p, t) -> begin
+                fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
+                if has_ev
+                    raw(fakeinteg, ev)
+                else
+                    raw(fakeinteg)
+                end
+                copyto!(out, fakeinteg.u)
+                return out
+            end
+        end
+        out_sample = y
+    elseif mode === :param
+        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0, has_ev = has_event_idx
+            (out, u, p, t) -> begin
+                fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
+                if has_ev
+                    raw(fakeinteg, ev)
+                else
+                    raw(fakeinteg)
+                end
+                copyto!(out, fakeinteg.p)
+                return out
+            end
+        end
+        out_sample = p
+    else
+        error("get_cb_paramjac_config: unknown mode $(mode); expected :state or :param")
+    end
+
+    dy_mem = zero(out_sample)
+    λ_mem = zero(out_sample)
+    cache = Mooncake.prepare_pullback_cache(pf, dy_mem, y, p, _t)
     p_grad_buf = p isa AbstractArray && !(p isa Array) ? similar(p) : nothing
     return cache, pf, λ_mem, dy_mem, p_grad_buf
 end
