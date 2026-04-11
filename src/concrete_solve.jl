@@ -1121,7 +1121,8 @@ function SciMLBase._concrete_solve_adjoint(
             J = du[i]
             if Δ isa AbstractVector
                 v = Δ[i]
-            elseif Δ isa AbstractTimeseriesSolution || Δ isa AbstractVectorOfArray
+            elseif Δ isa AbstractTimeseriesSolution || Δ isa AbstractVectorOfArray ||
+                    Δ isa Tangent
                 v = Δ.u[i]
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
@@ -1147,6 +1148,56 @@ function SciMLBase._concrete_solve_adjoint(
         end
     end
     return out, forward_sensitivity_backpass
+end
+
+# Mooncake-specific `ForwardSensitivity` path. The main method builds an
+# `ODEForwardSensitivityProblem` whose `f` is an
+# `ODEForwardSensitivityFunction` carrying ForwardDiff internals
+# (`ForwardDiff.JacobianConfig`, `Dual` caches, …) in its type parameters.
+# The returned `sensitivity_solution(augmented_sol, u, ts)` inherits those
+# types in `sol.prob.f`, which confuses Mooncake's `@from_rrule` tangent
+# recursion the same way the tracked types in `ReverseDiffAdjoint` /
+# `TrackerAdjoint` do. Delegate to the `ChainRulesOriginator` path for the
+# sensitivity tape and re-solve the plain problem for the primal.
+#
+# Additionally, the main `forward_sensitivity_backpass` returns `du0 =
+# @not_implemented(...)` because `ForwardSensitivity` can't differentiate
+# w.r.t. `u0`. Mooncake's `@from_rrule` plumbing then tries to convert that
+# `ChainRulesCore.NotImplemented` tangent back through
+# `increment_and_get_rdata!` against the `Vector{Float64}` fdata of `u0`,
+# and Mooncake doesn't have a method for that combination (only scalar
+# `IEEEFloat` + `NotImplemented` is handled). Since Mooncake will dutifully
+# thread the cotangent of *every* argument through `increment_and_get_rdata!`
+# regardless of whether the caller is actually differentiating `u0`, we
+# replace the `du0` slot in the delegated ChainRules pullback with
+# `NoTangent()` so the Mooncake conversion has a shape it understands. Any
+# caller that genuinely differentiates `u0` while using `ForwardSensitivity`
+# is already using the wrong sensealg (the main method's error message says
+# as much).
+function SciMLBase._concrete_solve_adjoint(
+        prob::SciMLBase.AbstractODEProblem, alg,
+        sensealg::ForwardSensitivity,
+        u0, p, originator::SciMLBase.MooncakeOriginator,
+        args...; kwargs...
+    )
+    _, backpass = SciMLBase._concrete_solve_adjoint(
+        prob, alg, sensealg, u0, p,
+        SciMLBase.ChainRulesOriginator(), args...; kwargs...
+    )
+    # ChainRules branch of `forward_sensitivity_backpass` returns
+    # `(NoTangent(), NoTangent(), NoTangent(), du0, adj, NoTangent(), rest...)`.
+    # Replace position 4 (`du0`) with `NoTangent()`.
+    function mooncake_forward_sensitivity_backpass(Δ)
+        cr = backpass(Δ)
+        return (cr[1], cr[2], cr[3], NoTangent(), cr[5:end]...)
+    end
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+    primal = solve(
+        remake(prob; u0, p), alg, args...;
+        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        kwargs_filtered...
+    )
+    return primal, mooncake_forward_sensitivity_backpass
 end
 
 function SciMLBase._concrete_solve_forward(
@@ -1846,21 +1897,6 @@ function Base.showerror(io::IO, e::EnzymeTrackedRealError)
     return println(io, ENZYME_TRACKED_REAL_ERROR_MESSAGE)
 end
 
-const MOONCAKE_TRACKED_REAL_ERROR_MESSAGE = """
-`Mooncake` is not compatible with `TrackerAdjoint`.
-Either choose a different adjoint method like `GaussAdjoint` or
-`ReverseDiffAdjoint`, or use a different AD system like `ReverseDiff`.
-For more details, on these methods see
-https://docs.sciml.ai/SciMLSensitivity/stable/.
-"""
-
-struct MooncakeTrackedRealError <: Exception
-end
-
-function Base.showerror(io::IO, e::MooncakeTrackedRealError)
-    return println(io, MOONCAKE_TRACKED_REAL_ERROR_MESSAGE)
-end
-
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractDiscreteProblem,
@@ -1879,10 +1915,6 @@ function SciMLBase._concrete_solve_adjoint(
     local sol
     if originator isa SciMLBase.EnzymeOriginator
         throw(EnzymeTrackedRealError())
-    end
-
-    if originator isa SciMLBase.MooncakeOriginator
-        throw(MooncakeTrackedRealError())
     end
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
@@ -2091,6 +2123,41 @@ function SciMLBase._concrete_solve_adjoint(
         Tracker.data.(Tracker.data.(state_values(sol)))
     return SciMLBase.sensitivity_solution(sol, u, Tracker.data.(current_time(sol))),
         tracker_adjoint_backpass
+end
+
+# Mooncake-specific `TrackerAdjoint` path. Same reasoning as the
+# `ReverseDiffAdjoint` + `MooncakeOriginator` method below: the main method
+# returns `sensitivity_solution(tracked_sol, …)` with `Tracker.TrackedReal` /
+# `TrackedArray` type parameters embedded in `tracked_sol.interp` / `.prob`
+# / `.alg`, and Mooncake's `@from_rrule` plumbing chokes when recursively
+# computing `tangent_type` on those fields. Delegate the tape to the
+# `ChainRulesOriginator` path and re-solve with `SensitivityADPassThrough`
+# for the primal.
+function SciMLBase._concrete_solve_adjoint(
+        prob::Union{
+            SciMLBase.AbstractDiscreteProblem,
+            SciMLBase.AbstractODEProblem,
+            SciMLBase.AbstractDAEProblem,
+            SciMLBase.AbstractDDEProblem,
+            SciMLBase.AbstractSDEProblem,
+            SciMLBase.AbstractSDDEProblem,
+            SciMLBase.AbstractRODEProblem,
+        },
+        alg, sensealg::TrackerAdjoint,
+        u0, p, originator::SciMLBase.MooncakeOriginator,
+        args...; kwargs...
+    )
+    _, backpass = SciMLBase._concrete_solve_adjoint(
+        prob, alg, sensealg, u0, p,
+        SciMLBase.ChainRulesOriginator(), args...; kwargs...
+    )
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+    primal = solve(
+        remake(prob; u0, p), alg, args...;
+        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        kwargs_filtered...
+    )
+    return primal, backpass
 end
 
 const REVERSEDIFF_ADJOINT_GPU_COMPATIBILITY_MESSAGE = """

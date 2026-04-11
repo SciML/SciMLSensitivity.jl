@@ -443,11 +443,16 @@ Tests callable structs with different AD backends
     end
 
     # Mooncake is not in `REVERSE_BACKENDS` because it doesn't yet compose
-    # with every sensealg, but it does compose with `ReverseDiffAdjoint` via
-    # the dedicated `MooncakeOriginator` dispatch added in #1420 (the
-    # hybrid_diffeq.md pattern from #1419).
+    # with every sensealg, but it does compose with `ReverseDiffAdjoint` and
+    # `TrackerAdjoint` via the dedicated `MooncakeOriginator` dispatches
+    # added in #1420 (the hybrid_diffeq.md pattern from #1419).
     @testset "Mooncake with ReverseDiffAdjoint" begin
         result = gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p)
+        @test result ≈ ref_grad_senseloss
+    end
+
+    @testset "Mooncake with TrackerAdjoint" begin
+        result = gradient_mooncake(senseloss(TrackerAdjoint()), u0p)
         @test result ≈ ref_grad_senseloss
     end
 
@@ -478,6 +483,16 @@ Tests callable structs with different AD backends
             result = grad_fn(senseloss_p(ForwardSensitivity()), p_only)
             @test result ≈ ref_grad_p
         end
+    end
+
+    # Mooncake + `ForwardSensitivity` via the dedicated `MooncakeOriginator`
+    # dispatch added in #1420. p-only because `ForwardSensitivity` can't
+    # differentiate `u0`, and the Mooncake dispatch rewrites the `du0`
+    # slot to `NoTangent()` so Mooncake's cotangent threading doesn't trip
+    # on the main method's `@not_implemented` stub for `du0`.
+    @testset "Mooncake with ForwardSensitivity (p-only)" begin
+        result = gradient_mooncake(senseloss_p(ForwardSensitivity()), p_only)
+        @test result ≈ ref_grad_p
     end
 end
 
