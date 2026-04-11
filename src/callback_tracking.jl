@@ -608,98 +608,35 @@ function get_cb_diffcaches(
                     )
                 elseif autojacvec isa MooncakeVJP
                     # MooncakeVJP: build Mooncake pullback caches for the
-                    # state-affect and parameter-affect callback wrappers.
-                    # Mooncake can't trace through the recursive TrackedAffect
-                    # unwrapping in `CallbackAffectWrapper` (it trips on the
-                    # `Base.argument_datatype` ccall that surfaces during the
-                    # dispatch), so we mirror the ReactantVJP path and build a
-                    # flat closure that bakes `raw_affect` directly in. The
-                    # state-output closure has y-sized output; the parameter-
-                    # output closure has (flat) tunables-sized output.
+                    # state-affect and parameter-affect callback wrappers via
+                    # `get_cb_paramjac_config` in the Mooncake extension, mirroring
+                    # the ReactantVJP branch above. Mooncake can't trace through
+                    # the recursive TrackedAffect unwrapping in
+                    # `CallbackAffectWrapper` (it trips on the
+                    # `Base.argument_datatype` ccall surfaced by that dispatch),
+                    # so the extension hoists `raw_affect` out and bakes it into
+                    # a flat (out, u, p, t) closure before preparing the cache.
                     raw_affect = get_affect!(cb, pos_neg)
-                    _has_event_idx = event_idx !== nothing
-                    _ev = event_idx
-                    _tprev0 = _t
 
-                    cb_state_fn = let raw = raw_affect, ev = _ev, tprev = _tprev0,
-                            has_ev = _has_event_idx
-
-                        (out, u, p, t) -> begin
-                            fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-                            if has_ev
-                                raw(fakeinteg, ev)
-                            else
-                                raw(fakeinteg)
-                            end
-                            copyto!(out, fakeinteg.u)
-                            return out
-                        end
-                    end
-
-                    cb_param_fn = let raw = raw_affect, ev = _ev, tprev = _tprev0,
-                            has_ev = _has_event_idx
-
-                        (out, u, p, t) -> begin
-                            fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-                            if has_ev
-                                raw(fakeinteg, ev)
-                            else
-                                raw(fakeinteg)
-                            end
-                            copyto!(out, fakeinteg.p)
-                            return out
-                        end
-                    end
-
-                    if _p === nothing || _p isa SciMLBase.NullParameters
-                        tunables, repack = _p, identity
-                    else
-                        tunables, repack, _ = canonicalize(Tunable(), _p)
-                    end
-                    _needs_repack = !(
-                        _p === nothing ||
-                            _p isa SciMLBase.NullParameters
-                    ) &&
-                        isscimlstructure(_p) && !(_p isa AbstractArray)
-
-                    pf_w = if _needs_repack
-                        let f = cb_state_fn, repack = repack
-                            (out, u, _tunables, t) -> f(out, u, repack(_tunables), t)
-                        end
-                    else
-                        cb_state_fn
-                    end
-
-                    pf_wp = if _needs_repack
-                        let f = cb_param_fn, repack = repack
-                            (out, u, _tunables, t) -> f(out, u, repack(_tunables), t)
-                        end
-                    else
-                        cb_param_fn
-                    end
-
-                    paramjac_config_w = get_paramjac_config(
-                        MooncakeLoaded(), autojacvec, pf_w, tunables, cb_state_fn, y, _t
+                    w_paramjac = get_cb_paramjac_config(
+                        MooncakeLoaded(), autojacvec, raw_affect,
+                        event_idx, y, _p, _t, :state
                     )
-                    # For wp, the output is parameter-sized (flat tunables) rather
-                    # than state-sized, so pass `out_sample = tunables` to size the
-                    # Mooncake cotangent/output buffers correctly.
-                    paramjac_config_wp = get_paramjac_config(
-                        MooncakeLoaded(), autojacvec, pf_wp, tunables, cb_param_fn,
-                        y, _t; out_sample = tunables
-                    )
-
                     diffcache_w = AdjointDiffCache(
-                        nothing, pf_w, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config_w,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, w_paramjac,
                         nothing, nothing, nothing, nothing, nothing,
                         nothing, nothing, nothing, false,
                         nothing, identity
                     )
 
+                    wp_paramjac = get_cb_paramjac_config(
+                        MooncakeLoaded(), autojacvec, raw_affect,
+                        event_idx, y, _p, _t, :param
+                    )
                     diffcache_wp = AdjointDiffCache(
-                        nothing, pf_wp, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config_wp,
+                        nothing, nothing, nothing, nothing, nothing,
+                        nothing, nothing, nothing, wp_paramjac,
                         nothing, nothing, nothing, nothing, nothing,
                         nothing, nothing, nothing, false,
                         nothing, identity

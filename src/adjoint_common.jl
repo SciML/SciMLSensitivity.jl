@@ -555,7 +555,7 @@ struct ReactantVJPConfig{FK, DK, FC, DC}
     chunk_size::Int
 end
 
-function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t; out_sample = nothing)
+function get_paramjac_config(::Any, ::MooncakeVJP, pf, p, f, y, _t)
     msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " * "`using Mooncake` to use this functionality"
     error(msg)
 end
@@ -663,6 +663,12 @@ end
 function get_cb_paramjac_config(::Any, ::ReactantVJP, raw_affect, event_idx, y, p, _t, mode)
     msg = "ReactantVJP requires Reactant.jl is loaded. Install the package and do " *
         "`using Reactant` to use this functionality"
+    error(msg)
+end
+
+function get_cb_paramjac_config(::Any, ::MooncakeVJP, raw_affect, event_idx, y, p, _t, mode)
+    msg = "MooncakeVJP requires Mooncake.jl is loaded. Install the package and do " *
+        "`using Mooncake` to use this functionality"
     error(msg)
 end
 
