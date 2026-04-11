@@ -2,11 +2,33 @@
 
 !!! note
     
-    This example still uses Zygote because the `QuadratureAdjoint(ZygoteVJP)`
-    pullback emits cotangents whose `tangent_type` is incompatible with
-    Mooncake's `CoDual` expectations for the SimpleChains+`StaticArrays`
-    out-of-place flow.  Once Mooncake gains a working path through
-    `QuadratureAdjoint(ZygoteVJP)`, the recommended frontend will switch to
+    This example still uses Zygote because **SimpleChains + `StaticArrays`
+    have no working Mooncake path right now**, regardless of which
+    sensealg is selected:
+    
+      - **Default sensealg** picks `GaussAdjoint`, which hits an
+        `@assert sensealg isa QuadratureAdjoint` in
+        `SciMLSensitivity.adjoint_common.jl` because `u::SVector` is
+        immutable and only `QuadratureAdjoint` is wired up for the
+        immutable-state path.
+      - `QuadratureAdjoint(autojacvec = ZygoteVJP())` (the explicit choice
+        below) emits a `ChainRulesCore.Tangent` cotangent that
+        `SciMLSensitivity`'s `df_iip`/`df_oop` adjoint backpass can't
+        unwrap (`BoundsError` accessing the inner `Tangent` fields) when
+        the AD originator is Mooncake — Zygote produces a different
+        cotangent shape that flows through cleanly.
+      - `QuadratureAdjoint(autojacvec = MooncakeVJP())` and
+        `GaussAdjoint(autojacvec = MooncakeVJP())` both fail with
+        `setindex!(::SVector, ...)` because `MooncakeVJP` mutates the
+        cotangent buffer in place, which is a no-op API for `StaticArrays`.
+      - `InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))` fails
+        with `conversion to pointer not defined for ReverseDiff.TrackedArray`
+        — `SimpleChains` reaches into raw pointer storage which is
+        incompatible with `ReverseDiff`-tracked types.
+    
+    Once one of these layers grows the missing dispatch (a `df_iip`/`df_oop`
+    Tangent unwrap, or `MooncakeVJP` support for immutable `setindex!`),
+    the recommended frontend will switch to
     `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 [SimpleChains](https://github.com/PumasAI/SimpleChains.jl) has demonstrated performance boosts of ~5x and ~30x when compared to other mainstream deep learning frameworks like Pytorch for the training and evaluation in the specific case of small neural networks. For the nitty-gritty details, as well as, some SciML related videos around the need and applications of such a library, we can refer to this [blogpost](https://julialang.org/blog/2022/04/simple-chains/). As for doing Scientific Machine Learning, how do we even begin with training neural ODEs with any generic deep learning library?

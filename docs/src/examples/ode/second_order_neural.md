@@ -22,11 +22,25 @@ An example of training a neural network on a second order ODE is as follows:
 
 !!! note
     
-    This example still uses Zygote because the `SecondOrderODEProblem` adjoint
-    path currently produces `ComponentVector` cotangents that hit a missing
-    `increment_and_get_rdata!` method in ComponentArrays' Mooncake extension.
-    Once that method is added (or `friendly_tangent_cache` is defined for
-    `ComponentVector`), the recommended frontend will switch to
+    This example still uses Zygote because of a `SciMLSensitivity` adjoint
+    backpass bug — not a missing rule.  `SecondOrderODEProblem` is just an
+    `ODEProblem` wrapping a `DynamicalODEFunction`, so it dispatches through
+    the existing `_concrete_solve_adjoint(::AbstractODEProblem, …)` methods
+    fine.  The issue is that the state is an
+    `RecursiveArrayTools.ArrayPartition{Tuple{Vector, Vector}}`, and the
+    Mooncake-originated cotangent that flows back into `df_iip` /
+    `df_oop` (in `src/concrete_solve.jl`) is shaped as
+    `ChainRulesCore.Tangent{NamedTuple{x::Tangent{Tuple{Vector, Vector}}}}`.
+    The current `df_iip` calls `vec(x)` on this nested `Tangent` and raises
+    `MethodError: no method matching vec(::ChainRulesCore.Tangent)`.
+    Zygote happens to produce a different (recursively-array-shaped)
+    cotangent that flows through cleanly, which is why the tutorial works
+    on the `AutoZygote` path.
+    
+    Fixing this requires a small `df_iip`/`df_oop` patch in
+    `SciMLSensitivity` that unwraps `Tangent` cotangents into their
+    underlying `ArrayPartition` shape before the `vec(x)` call.  Once
+    that lands, the recommended frontend will switch to
     `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 ```@example secondorderneural
