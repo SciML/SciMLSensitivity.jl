@@ -2295,14 +2295,6 @@ end
 # inferred return type of the underlying `solve_up` call — that inference
 # does not narrow through the `originator` kwarg, so the compiled rule
 # expects the *main* method's return shape even on the Mooncake dispatch.
-#
-# The tape's tracked forward pass and this plain forward pass can differ
-# by a handful of ULPs (ReverseDiff operator overloading reorders some
-# arithmetic), which propagates a ~1e-5 relative error into the pullback.
-# That's below the inherent accuracy of `ReverseDiffAdjoint` vs. a
-# first-principles gradient, so tests should compare against
-# `ForwardDiff.gradient` at `rtol = 1e-4` rather than bitwise matching
-# the Zygote path.
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
             SciMLBase.AbstractDiscreteProblem,

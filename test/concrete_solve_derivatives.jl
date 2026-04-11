@@ -442,6 +442,15 @@ Tests callable structs with different AD backends
         end
     end
 
+    # Mooncake is not in `REVERSE_BACKENDS` because it doesn't yet compose
+    # with every sensealg, but it does compose with `ReverseDiffAdjoint` via
+    # the dedicated `MooncakeOriginator` dispatch added in #1420 (the
+    # hybrid_diffeq.md pattern from #1419).
+    @testset "Mooncake with ReverseDiffAdjoint" begin
+        result = gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p)
+        @test result ≈ ref_grad_senseloss
+    end
+
     # Test with p-only differentiation (senseloss3 and senseloss4 from alternative_ad_frontend.jl)
     struct senseloss_p{T}
         sense::T
