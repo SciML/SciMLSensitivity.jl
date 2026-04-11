@@ -8,11 +8,25 @@ simultaneously!
     
     This example still uses Zygote because the optimization variable here
     nests an `u0` `ComponentVector` inside a larger `ComponentVector`
-    (`θ = CA.ComponentArray(; u0, p_all)`), and Mooncake's rrule pullback for
-    the nested layout currently raises a `MooncakeRuleCompilationError`.
-    Once Mooncake/ComponentArrays support nested `ComponentVector` cotangents,
-    the recommended frontend will switch to
-    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
+    (`θ = CA.ComponentArray(; u0, p_all)`), and the SubArray-backed sub-CV
+    `θ.p_all` does **not** fully cover its parent (it spans positions
+    2:340 of the length-340 parent, skipping position 1 = `u0`).  As of
+    ComponentArrays v0.15.35 (SciML/ComponentArrays.jl#352) the Mooncake
+    extension explicitly errors on this case rather than silently
+    corrupting gradients:
+    
+    ```
+    ArgumentError: ComponentArraysMooncakeExt: cannot aggregate a cotangent
+    of length 339 into a SubArray-backed ComponentVector tangent whose
+    parent has length 340. This happens when a cotangent flows into a view
+    that does not fully cover its parent; there is no way to recover the
+    view indices from Mooncake fdata alone.
+    ```
+    
+    Fixing it requires teaching either the SciMLSensitivity adjoint rrule
+    to emit cotangents in the parent layout, or the ComponentArrays
+    Mooncake extension to track view indices through the SubArray.  Until
+    one of those lands, this tutorial keeps `OPT.AutoZygote()`.
 
 We will assume that we know the dynamics of the second equation
 (linear dynamics), and our goal is to find a neural network that is dependent
