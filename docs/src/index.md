@@ -49,6 +49,8 @@ solve(prob, args...; sensealg = SMS.InterpolatingAdjoint(), checkpoints = sol.t,
 `solve` is fully compatible with automatic differentiation libraries
 like:
 
+  - [Mooncake.jl](https://github.com/chalk-lab/Mooncake.jl) (recommended for reverse-mode)
+  - [Enzyme.jl](https://github.com/EnzymeAD/Enzyme.jl)
   - [Zygote.jl](https://fluxml.ai/Zygote.jl/stable/)
   - [ReverseDiff.jl](https://juliadiff.org/ReverseDiff.jl/)
   - [Tracker.jl](https://github.com/FluxML/Tracker.jl)

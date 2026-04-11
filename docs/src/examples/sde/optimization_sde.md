@@ -94,7 +94,16 @@ function cb2(st, l)
 end
 ```
 
-We can then use `Optimization.solve` to fit the SDE:
+We can then use `Optimization.solve` to fit the SDE.
+
+!!! note
+    
+    This example still uses Zygote because Mooncake's rule compiler
+    currently fails on `EnsembleProblem.__solve` (used inside `loss` to
+    estimate the SDE expectation), raising a
+    `Mooncake.MooncakeRuleCompilationError`.  Once Mooncake supports
+    `EnsembleProblem`, switch the AD frontend to
+    `OPT.AutoMooncake(; config = nothing)`.
 
 ```@example sde
 import Optimization as OPT, Zygote, OptimizationOptimisers as OPO
@@ -178,7 +187,8 @@ end
 Let's optimize
 
 ```@example sde
-adtype = OPT.AutoZygote()
+import Mooncake
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)

@@ -43,7 +43,6 @@ import Optimization as OPT
 import OptimizationOptimJL as OOJ
 import OptimizationOptimisers as OPO
 import SciMLSensitivity as SMS
-import Zygote
 import Plots
 import Statistics
 import Random

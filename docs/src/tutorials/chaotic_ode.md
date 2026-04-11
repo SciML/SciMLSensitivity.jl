@@ -23,7 +23,8 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 ```@example chaosode
 import OrdinaryDiffEq as ODE
 import SciMLSensitivity as SMS
-import Zygote
+import Mooncake
+import DifferentiationInterface as DI
 import Plots
 
 import Random
@@ -132,7 +133,7 @@ function G(p)
         sensealg = SMS.ForwardLSS(; g))
     sum(getindex.(_sol.u, 3))
 end
-dp1 = Zygote.gradient(p -> G(p), p)
+dp1 = DI.gradient(p -> G(p), DI.AutoMooncake(; config = nothing), p)
 ```
 
 Alternatively, we can define the `ForwardLSSProblem` and solve it

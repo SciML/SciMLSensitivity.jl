@@ -30,6 +30,7 @@ A full example making use of this trick is:
 ```@example divergence
 import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, SciMLBase, Optimization as OPT,
        OptimizationOptimisers as OPO, Plots
+import Mooncake
 
 function lotka_volterra!(du, u, p, t)
     rab, wol = u
@@ -65,7 +66,7 @@ function loss(p)
 end
 
 pinit = [1.2, 0.8, 2.5, 0.8]
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
@@ -74,9 +75,9 @@ res = OPT.solve(optprob, OPO.Adam(), maxiters = 1000)
 # res = OPT.solve(optprob,NLopt.LD_LBFGS(), maxiters = 1000) ### errors!
 ```
 
-You might notice that `AutoZygote` (default) fails for the above `OPT.solve` call
-with Optim's optimizers, which happens because of Zygote's behavior for zero gradients, in
-which case it returns `nothing`. To avoid such issues, you can just use a different version
+You might notice that some AD backends fail for the above `OPT.solve` call
+with Optim's optimizers, which can happen due to how reverse-mode AD handles zero gradients
+(e.g., returning `nothing`). To avoid such issues, you can just use a different version
 of the same check which compares the size of the obtained solution and the data we have,
 shown below, which is easier to AD.
 

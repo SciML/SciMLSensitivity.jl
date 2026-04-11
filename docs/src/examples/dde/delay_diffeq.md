@@ -1,5 +1,13 @@
 # Delay Differential Equations
 
+!!! note
+    
+    This example still uses Zygote because Mooncake's rule compiler
+    currently fails on `MethodOfSteps`-driven DDE solves
+    (`StackOverflowError` during rule compilation).  Once Mooncake
+    supports DDEs, the recommended frontend will switch to
+    `OPT.AutoMooncake(; config = nothing)`.
+
 Other differential equation problem types from DifferentialEquations.jl are
 supported. For example, we can build a layer with a delay differential equation
 like:

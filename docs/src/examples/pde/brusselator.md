@@ -1,5 +1,15 @@
 # Learning Nonlinear Reaction Dynamics in the 2D Brusselator PDE Using Universal Differential Equations
 
+!!! note
+    
+    This example still uses Zygote because the FBDF stiff-PDE adjoint with
+    Lux+`ComponentArray` parameters currently raises a
+    `MooncakeRuleCompilationError` (the auto-selected sensealg returns a
+    cotangent layout that hits the missing
+    `increment_and_get_rdata!` method in ComponentArrays' Mooncake extension).
+    Once the upstream fix lands, the recommended frontend will switch to
+    `OPT.AutoMooncake(; config = nothing)`.
+
 ## Introduction
 
 The Brusselator is a mathematical model used to describe oscillating chemical reactions and spatial pattern formation, capturing how concentrations of chemical species evolve over time and space. In this documentation, we simulate the two-dimensional Brusselator partial differential equation (PDE) on a periodic square domain, generate time-resolved data using a finite difference discretization, and use this data to train a **Universal Differential Equation (UDE)**. Specifically, we replace the known nonlinear reaction term with a neural network, enabling us to learn complex dynamics directly from the generated data while preserving the known physical structure of the system.

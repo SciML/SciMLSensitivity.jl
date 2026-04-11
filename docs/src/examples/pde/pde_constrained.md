@@ -6,7 +6,7 @@ This example uses a prediction model to optimize the one-dimensional Heat Equati
 ```@example pde
 import SciMLSensitivity as SMS
 import DelimitedFiles, Plots
-import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Zygote
+import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Mooncake
 
 # Problem setup parameters:
 Lx = 10.0
@@ -92,7 +92,7 @@ cb((; u = ps), loss(ps)) # Testing callback function
 Plots.scatter(sol[:, end], label = "Truth", size = (800, 500))
 Plots.plot!(PRED[end][:, end], lw = 2, label = "Prediction")
 
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, ps)
@@ -107,7 +107,7 @@ res = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
 ```@example pde2
 import SciMLSensitivity as SMS
 import DelimitedFiles, Plots
-import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Zygote
+import OrdinaryDiffEq as ODE, Optimization as OPT, OptimizationPolyalgorithms as OPA, Mooncake
 ```
 
 ### Parameters
@@ -283,7 +283,7 @@ The resulting best parameters are stored in `res` and `res.u` returns the
 parameters that minimize the cost function.
 
 ```@example pde2
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, ps)

@@ -1,5 +1,14 @@
 # Training Neural Networks in Hybrid Differential Equations
 
+!!! note
+    
+    This example still uses Zygote because the inner `ReverseDiffAdjoint`
+    sensealg returns ReverseDiff-tracked types that confuse Mooncake's
+    `CoDual` type expectations (`TypeError` during pullback compilation).
+    Once Mooncake gains compatibility with `ReverseDiffAdjoint` (or this
+    tutorial switches to a Mooncake-friendly inner adjoint), the recommended
+    AD frontend will switch to `OPT.AutoMooncake(; config = nothing)`.
+
 Hybrid differential equations are differential equations with implicit or
 explicit discontinuities as specified by
 [callbacks](https://docs.sciml.ai/DiffEqDocs/stable/features/callback_functions/).

@@ -10,7 +10,7 @@ import OrdinaryDiffEq as ODE
 import Optimization as OPT
 import OptimizationPolyalgorithms as OPA
 import SciMLSensitivity as SMS
-import Zygote
+import Mooncake
 import Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -54,7 +54,7 @@ callback = function (state, l)
     return false
 end
 
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 
@@ -78,7 +78,7 @@ import OrdinaryDiffEq as ODE
 import Optimization as OPT
 import OptimizationPolyalgorithms as OPA
 import SciMLSensitivity as SMS
-import Zygote
+import Mooncake
 import Plots
 
 function lotka_volterra!(du, u, p, t)
@@ -148,7 +148,7 @@ end
 Let's optimize the model.
 
 ```@example optode
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = nothing)
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 

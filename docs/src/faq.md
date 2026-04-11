@@ -48,17 +48,20 @@ Enzyme.autodiff(Enzyme.Reverse, Enzyme.Duplicated(_f, _tmp6),
 This is exactly the inner core Enzyme call and if this fails, that is the issue that
 needs to be fixed.
 
-And similarly, for out-of-place functions the Zygote isolation is as follows:
+And similarly, for out-of-place functions the Mooncake isolation is as follows:
 
 ```julia
+import Mooncake
 p = prob.p
 y = prob.u0
 f = prob.f
 λ = zero(prob.u0)
-_dy, back = Zygote.pullback(y, p) do u, p
-    vec(f(u, p, t))
-end
-tmp1, tmp2 = back(λ)
+# Build the Mooncake pullback for the inner-rhs evaluation `f(u, p)` and
+# apply the cotangent `λ` to recover the seed gradients `tmp1` (wrt `y`)
+# and `tmp2` (wrt `p`).
+g = (u, p) -> vec(f(u, p, t))
+cache = Mooncake.prepare_pullback_cache(g, y, p)
+_dy, (_, tmp1, tmp2) = Mooncake.value_and_pullback!!(cache, λ, g, y, p)
 ```
 
 ## How do I use custom parameter types with adjoint sensitivity analysis?

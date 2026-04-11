@@ -1,5 +1,14 @@
 # Faster Neural Ordinary Differential Equations with SimpleChains
 
+!!! note
+    
+    This example still uses Zygote because the `QuadratureAdjoint(ZygoteVJP)`
+    pullback emits cotangents whose `tangent_type` is incompatible with
+    Mooncake's `CoDual` expectations for the SimpleChains+`StaticArrays`
+    out-of-place flow.  Once Mooncake gains a working path through
+    `QuadratureAdjoint(ZygoteVJP)`, the recommended frontend will switch to
+    `OPT.AutoMooncake(; config = nothing)`.
+
 [SimpleChains](https://github.com/PumasAI/SimpleChains.jl) has demonstrated performance boosts of ~5x and ~30x when compared to other mainstream deep learning frameworks like Pytorch for the training and evaluation in the specific case of small neural networks. For the nitty-gritty details, as well as, some SciML related videos around the need and applications of such a library, we can refer to this [blogpost](https://julialang.org/blog/2022/04/simple-chains/). As for doing Scientific Machine Learning, how do we even begin with training neural ODEs with any generic deep learning library?
 
 ## Training Data

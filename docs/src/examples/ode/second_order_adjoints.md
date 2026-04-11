@@ -13,6 +13,17 @@ optimization, while `KrylovTrustRegion` will utilize a Krylov-based method
 with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
+!!! note
+    
+    This example still uses Zygote because `NewtonTrustRegion` needs a true
+    Hessian, and Mooncake does not yet have a forward-over-Mooncake path that
+    Optimization.jl can use to assemble one (the auto-fallback to
+    `SecondOrder(AutoMooncake(), AutoMooncake())` raises `ArgumentError`).
+    The Adam phase below works fine with `OPT.AutoMooncake(; config = nothing)`
+    if you only want first-order training; the full Newton/NewtonTrustRegion
+    pipeline will become Mooncake-compatible once forward-mode Mooncake
+    matures.
+
 ```@example secondorderadjoints
 import SciMLSensitivity as SMS
 import Lux

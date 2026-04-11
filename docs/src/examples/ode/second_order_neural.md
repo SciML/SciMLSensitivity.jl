@@ -20,6 +20,15 @@ neural network by the mass!)
 
 An example of training a neural network on a second order ODE is as follows:
 
+!!! note
+    
+    This example still uses Zygote because the `SecondOrderODEProblem` adjoint
+    path currently produces `ComponentVector` cotangents that hit a missing
+    `increment_and_get_rdata!` method in ComponentArrays' Mooncake extension.
+    Once that method is added (or `friendly_tangent_cache` is defined for
+    `ComponentVector`), the recommended frontend will switch to
+    `OPT.AutoMooncake(; config = nothing)`.
+
 ```@example secondorderneural
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE

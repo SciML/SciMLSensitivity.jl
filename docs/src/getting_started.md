@@ -82,23 +82,25 @@ solution at time `t=1` with respect to `p[1]`.
 
 ## Reverse-Mode Automatic Differentiation
 
-[The `solve` function is automatically compatible with AD systems like Zygote.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
+[The `solve` function is automatically compatible with reverse-mode AD systems like Mooncake.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
 and thus there is no machinery that is necessary to use other than to put `solve` inside
-a function that is differentiated by Zygote. For example, the following computes the solution
+a function that is differentiated by Mooncake. For example, the following computes the solution
 to an ODE and computes the gradient of a loss function (the sum of the ODE's output at each
 timepoint with dt=0.1) via the adjoint method:
 
 ```@example diffode
-import Zygote
+import Mooncake
+import DifferentiationInterface as DI
 
-function sum_of_solution(u0, p)
-    _prob = ODE.remake(prob; u0, p)
+function sum_of_solution(p)
+    _prob = ODE.remake(prob; p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
 end
-du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
+backend = DI.AutoMooncake(; config = nothing)
+dp1 = DI.gradient(sum_of_solution, backend, p)
 ```
 
-Zygote.jl's automatic differentiation system is overloaded to allow SciMLSensitivity.jl
+Mooncake.jl's automatic differentiation system is overloaded to allow SciMLSensitivity.jl
 to redefine the way the derivatives are computed, allowing trade-offs between numerical
 stability, memory, and compute performance, similar to how ODE solver algorithms are
 chosen.
@@ -107,16 +109,16 @@ chosen.
 
 The algorithms for differentiation calculation are called `AbstractSensitivityAlgorithms`,
 or `sensealg`s for short. These are chosen by passing the `sensealg` keyword argument into solve.
-Let's demonstrate this by choosing the `QuadratureAdjoint` `sensealg` for the differentiation of
+Let's demonstrate this by choosing the `GaussAdjoint` `sensealg` for the differentiation of
 this system:
 
 ```@example diffode
-function sum_of_solution(u0, p)
-    _prob = ODE.remake(prob; u0, p)
+function sum_of_solution(p)
+    _prob = ODE.remake(prob; p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1,
         sensealg = SMS.GaussAdjoint()))
 end
-du01, dp1 = Zygote.gradient(sum_of_solution, u0, p)
+dp1 = DI.gradient(sum_of_solution, backend, p)
 ```
 
 Here this computes the derivative of the output with respect to the initial

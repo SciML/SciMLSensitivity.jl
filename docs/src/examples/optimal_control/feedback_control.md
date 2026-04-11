@@ -4,6 +4,16 @@ You can also mix a known differential equation and a neural differential
 equation, so that the parameters and the neural network are estimated
 simultaneously!
 
+!!! note
+    
+    This example still uses Zygote because the optimization variable here
+    nests an `u0` `ComponentVector` inside a larger `ComponentVector`
+    (`θ = CA.ComponentArray(; u0, p_all)`), and Mooncake's rrule pullback for
+    the nested layout currently raises a `MooncakeRuleCompilationError`.
+    Once Mooncake/ComponentArrays support nested `ComponentVector` cotangents,
+    the recommended frontend will switch to
+    `OPT.AutoMooncake(; config = nothing)`.
+
 We will assume that we know the dynamics of the second equation
 (linear dynamics), and our goal is to find a neural network that is dependent
 on the current state of the dynamical system that will control the second
