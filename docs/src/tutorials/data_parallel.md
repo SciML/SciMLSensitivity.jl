@@ -89,11 +89,13 @@ interface.
 The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
+
 ```@example dataparallel
 import OrdinaryDiffEq as ODE
 import Optimization as OPT
 import OptimizationOptimisers as OPO
 import SciMLSensitivity as SMS
+import Zygote
 pa = [1.0]
 u0 = [3.0]
 θ = [u0; pa]

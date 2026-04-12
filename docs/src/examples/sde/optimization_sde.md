@@ -94,7 +94,8 @@ function cb2(st, l)
 end
 ```
 
-We can then use `Optimization.solve` to fit the SDE:
+We can then use `Optimization.solve` to fit the SDE.
+
 
 ```@example sde
 import Optimization as OPT, Zygote, OptimizationOptimisers as OPO
@@ -178,7 +179,8 @@ end
 Let's optimize
 
 ```@example sde
-adtype = OPT.AutoZygote()
+import Mooncake
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss_sde(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)

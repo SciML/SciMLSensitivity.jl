@@ -24,7 +24,8 @@ Take for example this simple differential equation solve on Lotka-Volterra:
 ```julia
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE
-import Zygote
+import Mooncake
+import DifferentiationInterface as DI
 
 function fiip(du, u, p, t)
     du[1] = dx = p[1] * u[1] - p[2] * u[1] * u[2]
@@ -34,31 +35,32 @@ p = [1.5, 1.0, 3.0, 1.0];
 u0 = [1.0; 1.0];
 prob = ODE.ODEProblem(fiip, u0, (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.Tsit5())
-loss(u0, p) = sum(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = 0.1))
-du0, dp = Zygote.gradient(loss, u0, p)
+loss(p) = sum(ODE.solve(prob, ODE.Tsit5(); p, saveat = 0.1))
+backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+dp = DI.gradient(loss, backend, p)
 ```
 
 This will compute the gradient of the loss function "sum of the values of the
-solution to the ODE at timepoints dt=0.1" using an adjoint method, where `du0`
-is the derivative of the loss function with respect to the initial condition
-and `dp` is the derivative of the loss function with respect to the parameters.
+solution to the ODE at timepoints dt=0.1" using an adjoint method, where `dp`
+is the derivative of the loss function with respect to the parameters.
 
-Because the gradient is calculated by `Zygote.gradient` and Zygote.jl is one of
-the compatible AD libraries, this derivative calculation will be captured
-by the `sensealg` system, and one of SciMLSensitivity.jl's adjoint overloads
-will be used to compute the derivative. By default, if the `sensealg` keyword
-argument is not defined, then a smart polyalgorithm is used to automatically
-determine the most appropriate method for a given equation.
+Because the gradient is calculated through DifferentiationInterface.jl with
+`AutoMooncake` and Mooncake.jl is one of the compatible AD libraries, this
+derivative calculation will be captured by the `sensealg` system, and one of
+SciMLSensitivity.jl's adjoint overloads will be used to compute the
+derivative. By default, if the `sensealg` keyword argument is not defined,
+then a smart polyalgorithm is used to automatically determine the most
+appropriate method for a given equation.
 
 Likewise, the `sensealg` argument can be given to directly control the method
 by which the derivative is computed. For example:
 
 ```julia
-function loss(u0, p)
-    sum(ODE.solve(prob, ODE.Tsit5(); u0, p, saveat = 0.1,
+function loss(p)
+    sum(ODE.solve(prob, ODE.Tsit5(); p, saveat = 0.1,
         sensealg = SMS.ForwardSensitivity()))
 end
-du0, dp = Zygote.gradient(loss, u0, p)
+dp = DI.gradient(loss, backend, p)
 ```
 
 would do reverse-mode automatic differentiation of the loss function, but when reversing

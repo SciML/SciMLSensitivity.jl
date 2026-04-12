@@ -10,6 +10,7 @@ The following is a fully working demo on the Fitzhugh-Nagumo ODE:
 import SciMLSensitivity as SMS
 import Lux, ComponentArrays as CA, Optimization as OPT, OptimizationOptimJL as OOJ,
        OptimizationOptimisers as OPO, OrdinaryDiffEq as ODE, Random
+import Mooncake
 
 rng = Random.default_rng()
 Random.seed!(rng, 1)
@@ -77,7 +78,7 @@ callback(θ, l) = begin
     end
     false
 end
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, p)

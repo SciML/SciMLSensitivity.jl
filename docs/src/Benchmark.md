@@ -40,7 +40,8 @@ Quick summary:
 import OrdinaryDiffEq as ODE
 import Lux
 import SciMLSensitivity as SMS
-import Zygote
+import Mooncake
+import DifferentiationInterface as DI
 import BenchmarkTools
 import Random
 import ComponentArrays as CA
@@ -80,7 +81,9 @@ for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
         return loss
     end
 
-    t = BenchmarkTools.@belapsed Zygote.gradient($loss_neuralode, $u0, $ps, $st)
+    backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+    loss_ps = p -> loss_neuralode(u0, p, st)
+    t = BenchmarkTools.@belapsed DI.gradient($loss_ps, $backend, $ps)
     println("$(sensealg) took $(t)s")
 end
 

@@ -12,6 +12,7 @@ import ComponentArrays as CA
 import Random
 import SciMLSensitivity as SMS
 import Lux
+import Mooncake
 import OrdinaryDiffEq as ODE
 import Plots
 import Optimization as OPT
@@ -50,9 +51,7 @@ cb = DEC.PresetTimeCallback(dosetimes, affect!, save_positions = (false, false))
 
 function predict_n_ode(p)
     _prob = ODE.remake(prob; p)
-    Array(ODE.solve(_prob, ODE.Tsit5(); u0 = z0, p, callback = cb, saveat = t,
-        sensealg = SMS.ReverseDiffAdjoint()))[1:2, :]
-    #Array(solve(prob,Tsit5();u0=z0,p,saveat=t))[1:2,:]
+    Array(ODE.solve(_prob, ODE.Tsit5(); u0 = z0, p, callback = cb, saveat = t))[1:2, :]
 end
 
 function loss_n_ode(p, _)
@@ -73,7 +72,10 @@ cba = function (state, l; doplot = false) #callback function to observe training
 end
 
 res = OPT.solve(
-    OPT.OptimizationProblem(OPT.OptimizationFunction(loss_n_ode, OPT.AutoZygote()),
+    OPT.OptimizationProblem(
+        OPT.OptimizationFunction(
+            loss_n_ode, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+        ),
         CA.ComponentArray(ps)),
     OPO.Adam(0.05); callback = cba, maxiters = 1000)
 ```

@@ -49,6 +49,7 @@ import OptimizationPolyalgorithms as OPA
 import OptimizationOptimisers as OPO
 import Plots
 import Random
+import Mooncake
 
 rng = Random.default_rng()
 tspan = (0.1, 10.0)
@@ -93,7 +94,7 @@ function loss(p)
     return sum(abs2.(y[1:N] .- sol')) / N
 end
 
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, CA.ComponentArray{Float64}(p_model))
 

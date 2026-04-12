@@ -13,6 +13,7 @@ optimization, while `KrylovTrustRegion` will utilize a Krylov-based method
 with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
+
 ```@example secondorderadjoints
 import SciMLSensitivity as SMS
 import Lux
@@ -23,6 +24,7 @@ import OrdinaryDiffEq as ODE
 import Plots
 import Random
 import OptimizationOptimJL as OOJ
+import Mooncake
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -83,13 +85,14 @@ callback = function (state, l; doplot = false)
     return l < 0.01
 end
 
-adtype = OPT.AutoZygote()
-optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype)
-
-optprob1 = OPT.OptimizationProblem(optf, ps)
+adtype1 = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+optf1 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype1)
+optprob1 = OPT.OptimizationProblem(optf1, ps)
 pstart = OPT.solve(optprob1, OPO.Adam(0.01); callback, maxiters = 100).u
 
-optprob2 = OPT.OptimizationProblem(optf, pstart)
+adtype2 = OPT.AutoZygote()
+optf2 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype2)
+optprob2 = OPT.OptimizationProblem(optf2, pstart)
 pmin = OPT.solve(optprob2, OOJ.NewtonTrustRegion(); callback, maxiters = 200)
 ```
 
