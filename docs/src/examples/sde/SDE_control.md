@@ -18,15 +18,6 @@ to ultimately prepare and stabilize the qubit in the excited state.
 Before getting to the explanation, here's some code to start with. We will
 follow a full explanation of the definition and training process:
 
-!!! note
-    
-    This tutorial still uses Zygote because Mooncake's rule compiler
-    currently fails on `EnsembleProblem.__solve`
-    (`Mooncake.MooncakeRuleCompilationError` / stack overflow).
-    Once Mooncake supports `EnsembleProblem`, switch the AD frontend
-    to `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))` and replace
-    `Zygote.@nograd CreateGrid` with
-    `Mooncake.@zero_adjoint Mooncake.DefaultCtx Tuple{typeof(CreateGrid), Any, Any}`.
 
 ```@example
 # load packages

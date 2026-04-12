@@ -96,14 +96,6 @@ end
 
 We can then use `Optimization.solve` to fit the SDE.
 
-!!! note
-    
-    This example still uses Zygote because Mooncake's rule compiler
-    currently fails on `EnsembleProblem.__solve` (used inside `loss` to
-    estimate the SDE expectation), raising a
-    `Mooncake.MooncakeRuleCompilationError`.  Once Mooncake supports
-    `EnsembleProblem`, switch the AD frontend to
-    `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`.
 
 ```@example sde
 import Optimization as OPT, Zygote, OptimizationOptimisers as OPO

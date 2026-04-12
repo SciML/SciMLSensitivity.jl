@@ -89,14 +89,6 @@ interface.
 The following is a full copy-paste example for the multithreading.
 Distributed and GPU minibatching are described below.
 
-!!! note
-    
-    This tutorial still uses `AutoZygote` because Mooncake's rule
-    compiler currently fails on `EnsembleProblem`'s `__solve`
-    (`Mooncake.MooncakeRuleCompilationError` / stack overflow).
-    Once Mooncake supports `EnsembleProblem`, the recommended
-    AD frontend will switch to `OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))`
-    to match the rest of the tutorials.
 
 ```@example dataparallel
 import OrdinaryDiffEq as ODE

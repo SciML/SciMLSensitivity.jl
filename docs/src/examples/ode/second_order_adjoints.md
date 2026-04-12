@@ -13,20 +13,6 @@ optimization, while `KrylovTrustRegion` will utilize a Krylov-based method
 with Hessian-vector products (never forming the Hessian) for large parameter
 optimizations.
 
-!!! note
-    
-    The Adam (first-order) phase below uses Mooncake. The
-    `NewtonTrustRegion` (second-order) phase still uses Zygote because
-    Mooncake currently has no working forward-over-reverse path through
-    `SciMLSensitivity` + `OrdinaryDiffEq`: `SecondOrder(AutoMooncake(),
-    AutoMooncake())` raises a "reverse-over-reverse not supported" error
-    and `SecondOrder(AutoForwardDiff(), AutoMooncake())` is blocked on
-    Mooncake's `IEEEFloat`-only gradient interface (it rejects
-    `ForwardDiff.Dual` as the primal type). Tracking issue:
-    [chalk-lab/Mooncake.jl#1142](https://github.com/chalk-lab/Mooncake.jl/pull/1142)
-    is the first step in unblocking this. Once forward-over-Mooncake is
-    available end-to-end, this tutorial can be switched to Mooncake for
-    both phases.
 
 ```@example secondorderadjoints
 import SciMLSensitivity as SMS
@@ -99,17 +85,11 @@ callback = function (state, l; doplot = false)
     return l < 0.01
 end
 
-# First-order training: Mooncake gives the gradient through the
-# `SciMLSensitivity` adjoint chain.
 adtype1 = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
 optf1 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype1)
 optprob1 = OPT.OptimizationProblem(optf1, ps)
 pstart = OPT.solve(optprob1, OPO.Adam(0.01); callback, maxiters = 100).u
 
-# Second-order training: NewtonTrustRegion needs a true Hessian, which
-# `OptimizationBase` assembles via `SecondOrder(AutoForwardDiff(),
-# AutoZygote())`. Mooncake cannot fill that role yet (see the note above),
-# so the Hessian phase keeps the Zygote VJP.
 adtype2 = OPT.AutoZygote()
 optf2 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype2)
 optprob2 = OPT.OptimizationProblem(optf2, pstart)
