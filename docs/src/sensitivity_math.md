@@ -134,4 +134,5 @@ We note that
 is a vector-transpose Jacobian product, also known as a `vjp`, which can be efficiently computed
 using the pullback of backpropagation on the user function `f` with a forward pass at `u` with a
 pullback vector ``\lambda^{\star}``. For more information, consult the
-[MIT 18.337 lecture notes on reverse mode AD](https://book.sciml.ai/notes/10-Basic_Parameter_Estimation-Reverse-Mode_AD-and_Inverse_Problems/).
+[MIT 18.337 lecture notes on reverse mode AD](https://book.sciml.ai/notes/10-Basic_Parameter_Estimation-Reverse-Mode_AD-and_Inverse_Problems/)
+and [this review paper](https://arxiv.org/abs/2406.09699).

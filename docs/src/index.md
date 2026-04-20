@@ -127,7 +127,9 @@ stabilization to ensure it works for large stiff equations, while specialization
 on static objects allows for high efficiency on small equations. For an overview
 of the topic with applications, consult the paper
 [Universal Differential Equations for Scientific Machine
-Learning](https://arxiv.org/abs/2001.04385).
+Learning](https://arxiv.org/abs/2001.04385), and for a broader review of
+differentiable programming techniques for differential equations, see
+[Sapienza et al. (2024)](https://arxiv.org/abs/2406.09699).
 
 You can efficiently use the package for:
 
