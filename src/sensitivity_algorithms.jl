@@ -1624,12 +1624,13 @@ end
 
 function UnconstrainedOptimizationAdjoint(;
         chunk_size = 0, autodiff = true,
-        diff_type = Val{:central}, objective_ad = true, autojacvec = nothing, linsolve = nothing,
+        objective_ad = AutoForwardDiff(),
+        autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;)
     )
     ad = sensealg_autodiff_as_bool(autodiff)
     return UnconstrainedOptimizationAdjoint{
-        chunk_size, ad, diff_type, typeof(autojacvec),
+        chunk_size, ad, Val{:central}, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad),
     }(autojacvec, linsolve, linsolve_kwargs, objective_ad)
 end
@@ -1655,11 +1656,12 @@ end
 
 function OptimizationAdjoint(;
         chunk_size = 0, autodiff = true,
-        diff_type = Val{:central}, objective_ad = true, autojacvec = nothing,
+        objective_ad = AutoForwardDiff(),
+        autojacvec = nothing,
         linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
     )
     return OptimizationAdjoint{
-        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        chunk_size, autodiff, Val{:central}, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad), typeof(active_tol),
     }(autojacvec, linsolve, linsolve_kwargs, objective_ad, active_tol)
 end
