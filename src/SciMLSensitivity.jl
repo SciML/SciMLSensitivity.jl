@@ -47,6 +47,7 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
 # AD Backends
 using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
     AbstractThunk, AbstractTangent
+import DifferentiationInterface as DI
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff

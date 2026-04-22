@@ -2819,10 +2819,6 @@ function SciMLBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; save_idxs = nothing, kwargs...
     ) where {CS, AD, FDT}
-    if prob.lcons === nothing
-        error("OptimizationAdjoint requires a constrained OptimizationProblem (lcons/ucons). " *
-              "For unconstrained problems, use UnconstrainedOptimizationAdjoint instead.")
-    end
 
     _prob = remake(prob, u0 = u0, p = p)
     opt_sol = solve(_prob, alg, args...; kwargs...)
