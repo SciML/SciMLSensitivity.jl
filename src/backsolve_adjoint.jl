@@ -535,7 +535,7 @@ function backsolve_checkpoint_callbacks(
         function (integrator)
             _y = reshape(@view(integrator.u[(end - idx + 1):end]), axes(state_values(prob)))
             sol(_y, integrator.t)
-            u_modified!(integrator, true)
+            derivative_discontinuity!(integrator, true)
             cur_time[] -= 1
             return nothing
         end
@@ -561,7 +561,7 @@ function backsolve_checkpoint_callbacks(
         function (integrator)
             _y = integrator.u.x[3]
             sol(_y, integrator.t)
-            u_modified!(integrator, true)
+            derivative_discontinuity!(integrator, true)
             cur_time[] -= 1
             return nothing
         end

@@ -19,8 +19,8 @@ else
                 EnsembleThreads(), EnsembleSerial(),
             )
         )
-        function prob_func(prob, i, repeat)
-            remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+        function prob_func(prob, ctx)
+            remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
         end
         function model(p)
             prob = ODEProblem((u, p, t) -> 1.01u .* p, p[1:1], (0.0, 1.0), p[2:2])
