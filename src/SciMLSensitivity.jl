@@ -84,7 +84,7 @@ include("adjoint_common.jl")
 # adjoint path here, so projecting to NoTangent is the right thing and
 # also cuts the bad iteration entirely. This shows up most visibly when
 # Zygote backpropagates through `remake(prob::SDEProblem; noise=Z, ...)`.
-ChainRulesCore.ProjectTo(::DiffEqNoiseProcess.AbstractNoiseProcess) =
+ChainRulesCore.ProjectTo(::SciMLBase.AbstractNoiseProcess) =
     ChainRulesCore.ProjectTo{ChainRulesCore.NoTangent}()
 include("lss.jl")
 include("nilss.jl")
