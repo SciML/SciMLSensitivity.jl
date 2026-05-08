@@ -77,12 +77,6 @@ end
             out[2] = (u[3] - 10.0)u[3]
         end
         @testset "callback with linear affect" begin
-            # Affect supports both DiffEqBase v7's
-            # `(integrator, simultaneous_events::Vector{Int8})` direct
-            # dispatch (used by the forward solve / ForwardDiff path)
-            # and SciMLSensitivity's per-fire `(integrator, idx::Int)`
-            # translation (used by the adjoint replay through
-            # `TrackedAffect`).
             function affect!(integrator, ev)
                 indices = ev isa AbstractVector ?
                     (i for i in eachindex(ev) if !iszero(ev[i])) : (ev,)

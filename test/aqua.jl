@@ -16,10 +16,6 @@ using SciMLSensitivity, Aqua, SciMLBase, ChainRulesCore, ExplicitImports
         treat_as_own = [
             SciMLBase._concrete_solve_adjoint,
             SciMLBase._concrete_solve_forward,
-            # Short-circuit for AbstractNoiseProcess to dodge RAT v4's
-            # broken `getindex(::AbstractVectorOfArray{T,1}, ::Int)`
-            # under the default ProjectTo(::AbstractArray) recursion.
-            # Belongs in SciMLBase/DiffEqNoiseProcess long-term.
             ChainRulesCore.ProjectTo,
         ]
     )

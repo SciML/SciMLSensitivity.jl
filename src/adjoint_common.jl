@@ -71,10 +71,6 @@ function adjointdiffcache(
     autojacvec = sensealg.autojacvec
 
     if isRODE
-        # RAT v4 made AbstractVectorOfArray <: AbstractArray{T,N}, so
-        # `last(sol.W)` now returns a scalar element instead of the last
-        # noise sample. Reach into the underlying `W` Vector to get the
-        # last noise value with its original shape (scalar or vector).
         _W = last(sol.W.W)
     else
         _W = nothing

@@ -107,15 +107,6 @@ end
 function (f::TrackedAffect)(integrator, event_idx = nothing)
     uleft = deepcopy(integrator.u)
     pleft = deepcopy(integrator.p)
-    # DiffEqBase v7 changed `VectorContinuousCallback` dispatch: affect is
-    # now called once per step with a `Vector{Int8}` simultaneous-events
-    # mask (0 = didn't fire, ±1 = fired in that crossing direction)
-    # instead of one call per fired component with a single `Int` index.
-    # The user's affect (and the SciMLSensitivity adjoint replay through
-    # `CallbackAffectWrapper` / `setup_w_wp` / `cb_diffcaches`) is built
-    # around the legacy single-Int signature; translate the new mask back
-    # to per-fired-component calls so both forward and adjoint stay in
-    # the legacy shape.
     fired_indices::Vector{Int} = if event_idx isa AbstractVector
         Int[Int(i) for i in eachindex(event_idx) if !iszero(event_idx[i])]
     elseif event_idx === nothing

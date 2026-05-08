@@ -1128,7 +1128,6 @@ function SciMLBase._concrete_solve_adjoint(
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
             elseif Δ isa Number
-                # Scalar Δ — broadcast across all states at this time index.
                 v = fill(Δ, size(J, 1))
             else
                 v = @view Δ[.., i]
