@@ -1,4 +1,4 @@
-using SciMLSensitivity, Aqua, SciMLBase, ChainRulesCore, ExplicitImports
+using SciMLSensitivity, Aqua, SciMLBase, ExplicitImports
 
 @testset "Aqua" begin
     # find_persistent_tasks_deps may fail on Julia 1.12+ due to OrdinaryDiffEqCore's
@@ -16,7 +16,6 @@ using SciMLSensitivity, Aqua, SciMLBase, ChainRulesCore, ExplicitImports
         treat_as_own = [
             SciMLBase._concrete_solve_adjoint,
             SciMLBase._concrete_solve_forward,
-            ChainRulesCore.ProjectTo,
         ]
     )
     Aqua.test_project_extras(SciMLSensitivity)

@@ -45,8 +45,8 @@ using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
     default_nlsolve, has_autodiff
 
 # AD Backends
-using ChainRulesCore: ChainRulesCore, unthunk, @thunk, NoTangent, @not_implemented,
-    Tangent, ZeroTangent, AbstractThunk, AbstractTangent
+using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
+    AbstractThunk, AbstractTangent
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
@@ -74,9 +74,6 @@ include("derivative_wrappers.jl")
 include("sensitivity_interface.jl")
 include("forward_sensitivity.jl")
 include("adjoint_common.jl")
-
-ChainRulesCore.ProjectTo(::SciMLBase.AbstractNoiseProcess) =
-    ChainRulesCore.ProjectTo{ChainRulesCore.NoTangent}()
 include("lss.jl")
 include("nilss.jl")
 include("nilsas.jl")
