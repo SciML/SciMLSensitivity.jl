@@ -586,8 +586,9 @@ function get_cb_diffcaches(
     for event_idx in event_idxs
         for pos_neg in pos_negs
             vcc = cb isa VectorContinuousCallback
+            dc = cb isa DiscreteCallback
             has_affect = !isempty(cb.affect!.event_times)
-            has_affect_neg = !isempty(cb.affect_neg!.event_times)
+            has_affect_neg = !dc && !isempty(cb.affect_neg!.event_times)
             should_build = if vcc
                 pos_neg && has_affect
             else
