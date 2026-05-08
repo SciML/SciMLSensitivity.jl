@@ -57,13 +57,20 @@ function get_cb_paramjac_config(
         ::MooncakeLoaded, ::MooncakeVJP, raw_affect, event_idx, y, p, _t, mode
     )
     has_event_idx = event_idx !== nothing
+    is_mask = event_idx isa AbstractVector
     tprev0 = _t
 
     if mode === :state
-        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0, has_ev = has_event_idx
+        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0,
+                has_ev = has_event_idx, mask = is_mask
+
             (out, u, p, t) -> begin
                 fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-                if has_ev
+                if mask
+                    for i in eachindex(ev)
+                        iszero(ev[i]) || raw(fakeinteg, Int(i))
+                    end
+                elseif has_ev
                     raw(fakeinteg, ev)
                 else
                     raw(fakeinteg)
@@ -74,10 +81,16 @@ function get_cb_paramjac_config(
         end
         out_sample = y
     elseif mode === :param
-        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0, has_ev = has_event_idx
+        pf = let raw = raw_affect, ev = event_idx, tprev = tprev0,
+                has_ev = has_event_idx, mask = is_mask
+
             (out, u, p, t) -> begin
                 fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-                if has_ev
+                if mask
+                    for i in eachindex(ev)
+                        iszero(ev[i]) || raw(fakeinteg, Int(i))
+                    end
+                elseif has_ev
                     raw(fakeinteg, ev)
                 else
                     raw(fakeinteg)

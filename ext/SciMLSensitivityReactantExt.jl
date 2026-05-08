@@ -550,10 +550,15 @@ end
 
 function _make_cb_state_vjp_kernel(raw_affect, event_idx)
     has_event_idx = event_idx !== nothing
+    is_mask = event_idx isa AbstractVector
 
     function cb_state_fn(out_buf, u, p, t, tprev)
         fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-        if has_event_idx
+        if is_mask
+            for i in eachindex(event_idx)
+                iszero(event_idx[i]) || raw_affect(fakeinteg, Int(i))
+            end
+        elseif has_event_idx
             raw_affect(fakeinteg, event_idx)
         else
             raw_affect(fakeinteg)
@@ -584,10 +589,15 @@ end
 
 function _make_cb_param_vjp_kernel(raw_affect, event_idx)
     has_event_idx = event_idx !== nothing
+    is_mask = event_idx isa AbstractVector
 
     function cb_param_fn(out_buf, u, p, t, tprev)
         fakeinteg = FakeIntegrator(copy(u), copy(p), t, tprev)
-        if has_event_idx
+        if is_mask
+            for i in eachindex(event_idx)
+                iszero(event_idx[i]) || raw_affect(fakeinteg, Int(i))
+            end
+        elseif has_event_idx
             raw_affect(fakeinteg, event_idx)
         else
             raw_affect(fakeinteg)
