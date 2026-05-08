@@ -124,8 +124,10 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
         f.affect!(integrator, event_idx)
     end
     return if integrator.derivative_discontinuity
-        already_recorded = !isempty(f.event_times) &&
-            maximum(.≈(integrator.t, f.event_times, rtol = 0.0, atol = 1.0e-14))
+        already_recorded = any(
+            t -> isapprox(integrator.t, t; rtol = 0.0, atol = 1.0e-14),
+            f.event_times
+        )
         if !already_recorded
             if event_idx === nothing
                 push!(f.event_times, integrator.t)
