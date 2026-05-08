@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, Zygote, SciMLSensitivity, ComponentArrays, Lux, ForwardDiff
+using OrdinaryDiffEqLowOrderRK: BS5
 using Test, Random, LinearAlgebra
 
 const T = 10.0;
@@ -24,7 +25,7 @@ function loss_adjoint(p; sensealg = nothing)
     local prediction = solve(
         prob_ode, BS5(); p, abstol = 1.0e-13, reltol = 1.0e-13, sensealg
     )
-    local usol = last(prediction)
+    local usol = prediction.u[end]
     local loss = abs(1.0 - abs(tr(usol * utarget') / 2))
     return loss
 end

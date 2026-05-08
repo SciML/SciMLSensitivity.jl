@@ -1,6 +1,7 @@
 using OrdinaryDiffEq, Zygote, Reactant, Mooncake
 using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
 using SciMLSensitivity: MooncakeVJP
+using SciMLBase: terminate!
 
 abstol = 1.0e-12
 reltol = 1.0e-12

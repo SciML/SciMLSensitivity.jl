@@ -1,6 +1,6 @@
 # Regression test for https://github.com/SciML/SciMLSensitivity.jl/issues/1365
 # ForwardSensitivity with sparse jac_prototype and sparse linear solver
-using OrdinaryDiffEq, SciMLSensitivity
+using OrdinaryDiffEq, SciMLSensitivity, ADTypes
 using SparseArrays, LinearSolve, Zygote
 using Test
 
@@ -28,7 +28,7 @@ sense_alg = ForwardSensitivity(autodiff = true, autojacvec = true)
 function loss_sparse(p)
     new_prob = remake(prob_sparse, p = p)
     sol = solve(
-        new_prob, FBDF(autodiff = false, linsolve = UMFPACKFactorization()),
+        new_prob, FBDF(autodiff = AutoFiniteDiff(), linsolve = UMFPACKFactorization()),
         abstol = 1.0e-8, reltol = 1.0e-6, saveat = 1.0, sensealg = sense_alg
     )
     return sum(sum.(sol.u))
@@ -37,7 +37,7 @@ end
 function loss_dense(p)
     new_prob = remake(prob_dense, p = p)
     sol = solve(
-        new_prob, FBDF(autodiff = false),
+        new_prob, FBDF(autodiff = AutoFiniteDiff()),
         abstol = 1.0e-8, reltol = 1.0e-6, saveat = 1.0, sensealg = sense_alg
     )
     return sum(sum.(sol.u))

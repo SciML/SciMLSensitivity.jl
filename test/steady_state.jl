@@ -1,6 +1,7 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, SteadyStateDiffEq, DiffEqBase, NLsolve
 using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Random, Reactant
+using OrdinaryDiffEqRosenbrock: Rodas5
 Random.seed!(12345)
 
 # Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions

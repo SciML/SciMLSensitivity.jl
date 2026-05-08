@@ -1,4 +1,7 @@
 using OrdinaryDiffEq, SciMLSensitivity, Test, ADTypes, Reactant
+using OrdinaryDiffEqSDIRK: KenCarp4
+using OrdinaryDiffEqLowOrderRK: Midpoint
+using OrdinaryDiffEqRosenbrock: Rodas4P
 function f!(du, u::AbstractArray{T}, p, x) where {T}
     du[1] = -p[1] * exp((x - 8)) * u[1]
     return nothing

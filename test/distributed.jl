@@ -25,8 +25,8 @@ else
         u0 = pu0[2:2]
         prob = ODEProblem((u, p, t) -> 1.01u .* p, u0, (0.0, 1.0), pa)
 
-        function prob_func(prob, i, repeat)
-            return remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+        function prob_func(prob, ctx)
+            return remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
         end
 
         ensemble_prob = EnsembleProblem(prob; prob_func)

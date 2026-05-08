@@ -3,6 +3,7 @@ using ModelingToolkit, OrdinaryDiffEq
 using ModelingToolkit: t_nounits as t, D_nounits as D
 import SciMLStructures as SS
 import SciMLSensitivity
+import SciMLBase
 using SymbolicIndexingInterface
 using FiniteDiff
 using ForwardDiff

@@ -269,7 +269,7 @@ end
         tmp2 = similar(xdis.u[1])
         tmp2 *= false
 
-        for (i, u) in enumerate(xdis)
+        for (i, u) in enumerate(xdis.u)
             tmp1[1] += xdis.t[i] * u' * mat1 * u
             tmp1[2] += xdis.t[i] * u' * mat2 * u
             tmp1[3] += sum(sol.W(xdis.t[i])[1]) * u' * mat1 * u
@@ -694,9 +694,9 @@ end
         adaptive = false
     )
 
-    @test adj_soloop[end][(length(p) + length(u₀) + 1):end] == soloop.u[1]
-    @test adj_soloop[end][1:length(u₀)] == res_sde_u0
-    @test adj_soloop[end][(length(u₀) + 1):(end - length(u₀))] == res_sde_p'
+    @test adj_soloop.u[end][(length(p) + length(u₀) + 1):end] == soloop.u[1]
+    @test adj_soloop.u[end][1:length(u₀)] == res_sde_u0
+    @test adj_soloop.u[end][(length(u₀) + 1):(end - length(u₀))] == res_sde_p'
 
     adjprob = SDEAdjointProblem(
         sol,
@@ -708,7 +708,7 @@ end
     )
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end] ≈ adj_sol.u[end] rtol = 1.0e-15
+    @test adj_soloop.u[end] ≈ adj_sol.u[end] rtol = 1.0e-15
 
     adjprob = SDEAdjointProblem(
         sol,
@@ -720,7 +720,7 @@ end
     )
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end] ≈ adj_sol.u[end] rtol = 1.0e-8
+    @test adj_soloop.u[end] ≈ adj_sol.u[end] rtol = 1.0e-8
 
     # InterpolatingAdjoint
 
@@ -760,8 +760,8 @@ end
         adaptive = false
     )
 
-    @test adj_soloop[end][1:length(u₀)] ≈ res_sde_u0 atol = 1.0e-14
-    @test adj_soloop[end][(length(u₀) + 1):end] ≈ res_sde_p' atol = 1.0e-14
+    @test adj_soloop.u[end][1:length(u₀)] ≈ res_sde_u0 atol = 1.0e-14
+    @test adj_soloop.u[end][(length(u₀) + 1):end] ≈ res_sde_p' atol = 1.0e-14
 
     adjprob = SDEAdjointProblem(
         sol,
@@ -774,7 +774,7 @@ end
     )
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end] ≈ adj_sol.u[end] rtol = 1.0e-8
+    @test adj_soloop.u[end] ≈ adj_sol.u[end] rtol = 1.0e-8
 
     adjprob = SDEAdjointProblem(
         sol,
@@ -787,7 +787,7 @@ end
     )
     adj_sol = solve(adjprob, EulerHeun(); dt = dtmix, adaptive = false, tstops = soloop.t)
 
-    @test adj_soloop[end] ≈ adj_sol.u[end] rtol = 1.0e-8
+    @test adj_soloop.u[end] ≈ adj_sol.u[end] rtol = 1.0e-8
 end
 
 @testset "mutating non-diagonal noise" begin

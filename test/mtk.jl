@@ -2,6 +2,8 @@ using ModelingToolkit, OrdinaryDiffEq
 using ModelingToolkit: t_nounits as t, D_nounits as D
 using OrdinaryDiffEq
 using OrdinaryDiffEqCore
+using OrdinaryDiffEqNonlinearSolve: BrownFullBasicInit
+using SciMLBase: NoInit
 using SciMLSensitivity
 using Enzyme
 using Mooncake

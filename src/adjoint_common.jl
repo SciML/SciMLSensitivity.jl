@@ -71,7 +71,7 @@ function adjointdiffcache(
     autojacvec = sensealg.autojacvec
 
     if isRODE
-        _W = last(sol.W)
+        _W = last(sol.W.W)
     else
         _W = nothing
     end
@@ -784,7 +784,7 @@ function (f::ReverseLossCallback)(integrator)
         @assert sensealg isa QuadratureAdjoint
         integrator.u += Δλd
     end
-    u_modified!(integrator, true)
+    derivative_discontinuity!(integrator, true)
     cur_time[] -= 1
     return nothing
 end

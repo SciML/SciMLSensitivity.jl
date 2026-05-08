@@ -1,5 +1,8 @@
 using SciMLSensitivity, OrdinaryDiffEq, RecursiveArrayTools, DiffEqBase,
     ForwardDiff, Calculus, QuadGK, LinearAlgebra, Zygote, Mooncake, ADTypes, Reactant
+using OrdinaryDiffEqNonlinearSolve: NLAnderson, BrownFullBasicInit
+using OrdinaryDiffEqSDIRK: Kvaerno5
+using OrdinaryDiffEqRosenbrock: Rodas4
 using Test
 
 function fb(du, u, p, t)
@@ -1303,7 +1306,7 @@ function G(p, prob, ts, cost)
     tmp_prob_mm = remake(prob; u0 = convert.(eltype(p), prob.u0), p)
     sol = solve(
         tmp_prob_mm, Rodas4(autodiff = AutoFiniteDiff()), abstol = 1.0e-14, reltol = 1.0e-14,
-        saveat = ts
+        saveat = ts, initializealg = BrownFullBasicInit()
     )
     return cost(sol)
 end
@@ -1466,7 +1469,8 @@ for iip in [true, false]
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-8,
         reltol = 1.0e-8, sensealg = QuadratureAdjoint(),
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     reference_sol = ForwardDiff.gradient(
         p -> G(
@@ -1481,7 +1485,8 @@ for iip in [true, false]
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-8,
         reltol = 1.0e-8, sensealg = GaussAdjoint(),
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @test res_gauss ≈ res rtol = 1.0e-5
 
@@ -1490,7 +1495,8 @@ for iip in [true, false]
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-8,
         reltol = 1.0e-8, sensealg = GaussKronrodAdjoint(),
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @test res_gausskron ≈ res rtol = 1.0e-5
 
@@ -1501,7 +1507,8 @@ for iip in [true, false]
         abstol = 1.0e-8,
         reltol = 1.0e-8,
         sensealg = InterpolatingAdjoint(),
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @test res_interp ≈ res rtol = 1.0e-5
     _,
@@ -1511,7 +1518,8 @@ for iip in [true, false]
         abstol = 1.0e-8,
         reltol = 1.0e-8,
         sensealg = InterpolatingAdjoint(checkpointing = true),
-        checkpoints = sol_singular_mm.t[1:10:end]
+        checkpoints = sol_singular_mm.t[1:10:end],
+        initializealg = BrownFullBasicInit()
     )
     @test res_interp2 ≈ res rtol = 1.0e-5
 
@@ -1563,7 +1571,7 @@ prob_singular_mm = ODEProblem(
 )
 sol_singular_mm = solve(
     prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
-    reltol = 1.0e-14, abstol = 1.0e-14
+    reltol = 1.0e-14, abstol = 1.0e-14, initializealg = BrownFullBasicInit()
 )
 ts = [0.01, 0.25, 0.5, 1.0, 1.5]
 dg_singular(out, u, p, t, i) = fill!(out, 1)
@@ -1585,7 +1593,8 @@ for salg in [
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-14,
         reltol = 1.0e-14, sensealg = salg,
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @test res' ≈ reference_sol rtol = 1.0e-5
 end
@@ -1606,7 +1615,7 @@ prob_singular_mm = ODEProblem(
 )
 sol_singular_mm = solve(
     prob_singular_mm, Rodas4(autodiff = AutoFiniteDiff()),
-    reltol = 1.0e-12, abstol = 1.0e-12
+    reltol = 1.0e-12, abstol = 1.0e-12, initializealg = BrownFullBasicInit()
 )
 ts = [0.5, 1.0]
 _,
@@ -1614,7 +1623,8 @@ _,
     sol_singular_mm, alg, t = ts,
     dgdu_discrete = dg_singular, abstol = 1.0e-8,
     reltol = 1.0e-8, sensealg = QuadratureAdjoint(),
-    maxiters = Int(1.0e6)
+    maxiters = Int(1.0e6),
+    initializealg = BrownFullBasicInit()
 )
 reference_sol = ForwardDiff.gradient(
     p -> G(
@@ -1634,7 +1644,8 @@ for salg in [
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-14,
         reltol = 1.0e-14, sensealg = salg,
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @test res' ≈ reference_sol rtol = 1.0e-7
 end
@@ -1657,7 +1668,7 @@ f_singular_mm = ODEFunction{true}(pend, mass_matrix = Diagonal([1, 1, 1, 1, 0]))
 prob_singular_mm = ODEProblem{true}(f_singular_mm, x0, tspan, p)
 sol_singular_mm = solve(
     prob_singular_mm, Rodas5P(),
-    reltol = 1.0e-12, abstol = 1.0e-12
+    reltol = 1.0e-12, abstol = 1.0e-12, initializealg = BrownFullBasicInit()
 )
 ts = 0:0.1:1.0
 dg_singular(out, u, p, t, i) = (fill!(out, 0); out[end] = 1)
@@ -1666,7 +1677,8 @@ _,
     sol_singular_mm, alg, t = ts,
     dgdu_discrete = dg_singular, abstol = 1.0e-8,
     reltol = 1.0e-8, sensealg = QuadratureAdjoint(),
-    maxiters = Int(1.0e6)
+    maxiters = Int(1.0e6),
+    initializealg = BrownFullBasicInit()
 )
 reference_sol = ForwardDiff.gradient(
     p -> G(
@@ -1685,14 +1697,15 @@ for salg in [
     ]
     sol_singular_mm = solve(
         prob_singular_mm, Rodas5P(),
-        reltol = 1.0e-12, abstol = 1.0e-12
+        reltol = 1.0e-12, abstol = 1.0e-12, initializealg = BrownFullBasicInit()
     )
     _,
         res = adjoint_sensitivities(
         sol_singular_mm, alg, t = ts,
         dgdu_discrete = dg_singular, abstol = 1.0e-8,
         reltol = 1.0e-8, sensealg = salg,
-        maxiters = Int(1.0e6)
+        maxiters = Int(1.0e6),
+        initializealg = BrownFullBasicInit()
     )
     @show salg
     @test res' ≈ reference_sol rtol = 1.0e-6

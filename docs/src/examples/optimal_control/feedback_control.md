@@ -96,5 +96,5 @@ result_univ = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
 ```
 
 ```@example udeneuralcontrol
-cb(result_univ, result_univ.minimum; makeplot = true)
+cb(result_univ, result_univ.objective; makeplot = true)
 ```

@@ -202,7 +202,7 @@ else
 
         # Defining the loss function
         function loss(pars, prob, alg)
-            function prob_func(prob, i, repeat)
+            function prob_func(prob, ctx)
                 # Prepare new initial state and remake the problem
                 u0tmp = vec(rand(Float64, (x_size, 1)))
 

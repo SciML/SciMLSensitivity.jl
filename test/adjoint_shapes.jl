@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff
+using OrdinaryDiffEqLowOrderRK: Midpoint
 using SciMLStructures
 using Test, Reactant
 

@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, ADTypes
+using OrdinaryDiffEqRosenbrock: Rodas4P
 using ComponentArrays, LinearAlgebra, Optimization, OptimizationOptimisers, Test
 
 const nknots = 10

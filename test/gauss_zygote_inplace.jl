@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, Zygote, SciMLBase
+using OrdinaryDiffEqSDIRK: KenCarp4
 using Test
 
 # Test for issue #1282: GaussAdjoint with ZygoteVJP should handle in-place ODE functions

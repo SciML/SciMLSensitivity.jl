@@ -107,28 +107,40 @@ end
 function (f::TrackedAffect)(integrator, event_idx = nothing)
     uleft = deepcopy(integrator.u)
     pleft = deepcopy(integrator.p)
+    fired_indices::Vector{Int} = if event_idx isa AbstractVector
+        Int[Int(i) for i in eachindex(event_idx) if !iszero(event_idx[i])]
+    elseif event_idx === nothing
+        Int[]
+    else
+        Int[event_idx]
+    end
     if event_idx === nothing
         f.affect!(integrator)
+    elseif event_idx isa AbstractVector
+        for fired_idx in fired_indices
+            f.affect!(integrator, fired_idx)
+        end
     else
         f.affect!(integrator, event_idx)
     end
-    return if integrator.u_modified
-        if isempty(f.event_times)
-            push!(f.event_times, integrator.t)
-            push!(f.tprev, integrator.tprev)
-            push!(f.uleft, uleft)
-            push!(f.pleft, pleft)
-            if event_idx !== nothing
-                push!(f.event_idx, event_idx)
-            end
-        else
-            if !maximum(.≈(integrator.t, f.event_times, rtol = 0.0, atol = 1.0e-14))
+    return if integrator.derivative_discontinuity
+        already_recorded = any(
+            t -> isapprox(integrator.t, t; rtol = 0.0, atol = 1.0e-14),
+            f.event_times
+        )
+        if !already_recorded
+            if event_idx === nothing
                 push!(f.event_times, integrator.t)
                 push!(f.tprev, integrator.tprev)
                 push!(f.uleft, uleft)
                 push!(f.pleft, pleft)
-                if event_idx !== nothing
-                    push!(f.event_idx, event_idx)
+            else
+                for fired_idx in fired_indices
+                    push!(f.event_times, integrator.t)
+                    push!(f.tprev, integrator.tprev)
+                    push!(f.uleft, uleft)
+                    push!(f.pleft, pleft)
+                    push!(f.event_idx, fired_idx)
                 end
             end
         end

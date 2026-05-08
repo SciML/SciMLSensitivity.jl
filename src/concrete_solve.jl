@@ -1117,6 +1117,7 @@ function SciMLBase._concrete_solve_adjoint(
     end
 
     function forward_sensitivity_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         adj = sum(eachindex(du)) do i
             J = du[i]
             if Δ isa AbstractVector
@@ -1126,6 +1127,8 @@ function SciMLBase._concrete_solve_adjoint(
                 v = Δ.u[i]
             elseif Δ isa AbstractMatrix
                 v = @view Δ[:, i]
+            elseif Δ isa Number
+                v = fill(Δ, size(J, 1))
             else
                 v = @view Δ[.., i]
             end
@@ -1308,6 +1311,7 @@ function SciMLBase._concrete_solve_adjoint(
     ts = current_time(sol)
 
     function forward_sensitivity_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         if !(p === nothing || p === SciMLBase.NullParameters())
             dp = @thunk begin
                 chunk_size = if CS === 0 && length(tunables) < 12
@@ -1463,6 +1467,8 @@ function SciMLBase._concrete_solve_adjoint(
                             v = Δ.u[i]
                         elseif Δ isa AbstractMatrix
                             v = @view Δ[:, i]
+                        elseif Δ isa Number
+                            v = fill(Δ, size(J, 1))
                         else
                             v = @view Δ[.., i]
                         end
@@ -1662,6 +1668,8 @@ function SciMLBase._concrete_solve_adjoint(
                         v = Δ.u[i]
                     elseif Δ isa AbstractMatrix
                         v = @view Δ[:, i]
+                    elseif Δ isa Number
+                        v = fill(Δ, size(J, 1))
                     else
                         v = @view Δ[.., i]
                     end
@@ -2095,6 +2103,7 @@ function SciMLBase._concrete_solve_adjoint(
 
     out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, tunables)
     function tracker_adjoint_backpass(ybar)
+        ybar = ybar isa AbstractThunk ? unthunk(ybar) : ybar
         tmp = if eltype(ybar) <: Number && u0 isa Array
             Array(ybar) # can also be a ODESolution
         elseif eltype(ybar) <: Number # CuArray{Floats}
@@ -2318,6 +2327,7 @@ function SciMLBase._concrete_solve_adjoint(
     ReverseDiff.forward_pass!(tape)
 
     function reversediff_adjoint_backpass(ybar)
+        ybar = ybar isa AbstractThunk ? unthunk(ybar) : ybar
         _ybar = if ybar isa AbstractVectorOfArray
             Array(ybar)
         elseif eltype(ybar) <: AbstractArray

@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, RecursiveArrayTools, LinearAlgebra
+using OrdinaryDiffEqLowOrderRK: BS3, DP5
 using Zygote, SciMLSensitivity, Random, Test
 
 struct CustomArray{T, N}
