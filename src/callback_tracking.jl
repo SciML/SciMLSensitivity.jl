@@ -109,10 +109,6 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     pleft = deepcopy(integrator.p)
     if event_idx === nothing
         f.affect!(integrator)
-    elseif event_idx isa AbstractVector
-        for i in eachindex(event_idx)
-            iszero(event_idx[i]) || f.affect!(integrator, Int(i))
-        end
     else
         f.affect!(integrator, event_idx)
     end
@@ -491,9 +487,7 @@ function (ff::CallbackAffectWrapper)(du, u, p, t)
     _affect! = get_affect!(ff.cb, ff.pos_neg)
     fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
     if ff.cb isa VectorContinuousCallback
-        for i in eachindex(ff.event_idx)
-            iszero(ff.event_idx[i]) || _affect!(fakeinteg, Int(i))
-        end
+        _affect!(fakeinteg, ff.event_idx)
     else
         _affect!(fakeinteg)
     end
@@ -513,9 +507,7 @@ function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     _affect! = get_affect!(ff.cb, ff.pos_neg)
     fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
     if ff.cb isa VectorContinuousCallback
-        for i in eachindex(ff.event_idx)
-            iszero(ff.event_idx[i]) || _affect!(fakeinteg, Int(i))
-        end
+        _affect!(fakeinteg, ff.event_idx)
     else
         _affect!(fakeinteg)
     end
