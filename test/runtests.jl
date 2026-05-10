@@ -31,6 +31,7 @@ end
             @time @safetestset "Time Type Mixing Adjoints" include("time_type_mixing.jl")
             @time @safetestset "SciMLStructures Interface" include("scimlstructures_interface.jl")
             @time @safetestset "Functor Parameters" include("functor_params.jl")
+            @time @safetestset "Sensitivity Verbosity" include("sensitivity_verbosity.jl")
         end
     end
 

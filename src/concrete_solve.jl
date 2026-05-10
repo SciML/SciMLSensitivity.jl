@@ -22,29 +22,6 @@ const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 
-"""
-    _get_sensitivity_vjp_verbose(verbose)
-
-Extract the verbosity setting for sensitivity VJP choice warnings.
-
-Returns `true` if warnings should be displayed, `false` if they should be silenced.
-Handles:
-
-  - `Bool`: used directly
-  - `NonlinearVerbosity` (or similar types with `sensitivity_vjp_choice` field): checks the toggle
-  - Other types: defaults to `true` for backward compatibility
-"""
-function _get_sensitivity_vjp_verbose(verbose)
-    verbose isa Bool && return verbose
-    # Check for NonlinearVerbosity or similar types with sensitivity_vjp_choice field
-    if hasproperty(verbose, :sensitivity_vjp_choice)
-        toggle = getproperty(verbose, :sensitivity_vjp_choice)
-        return verbosity_to_bool(toggle)
-    end
-    # Default: verbose means show warnings
-    return true
-end
-
 function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
     # Get verbosity for sensitivity VJP choice warnings
