@@ -315,16 +315,13 @@ function _setup_reverse_callbacks(
     function affect!(integrator)
         indx, pos_neg = get_indx(cb, integrator.t)
         tprev = get_tprev(cb, indx, pos_neg)
-        event_idx = if cb isa VectorContinuousCallback
-            get_event_idx(cb, indx, pos_neg)
-        else
-            nothing
-        end
+        event_idxs = cb isa VectorContinuousCallback ?
+            get_event_idx(cb, indx, pos_neg) : nothing
         cache_key = cb isa VectorContinuousCallback ? (pos_neg, indx) :
             (pos_neg, nothing)
 
         # update diffcache here to use the correct precompiled callback tape
-        w, wp = setup_w_wp(cb, cb_autojacvec, pos_neg, event_idx, tprev)
+        w, wp = setup_w_wp(cb, cb_autojacvec, pos_neg, event_idxs, tprev)
         diffcaches = cb_diffcaches[cache_key]
 
         S = integrator.f.f # get the sensitivity function
@@ -385,7 +382,7 @@ function _setup_reverse_callbacks(
             # compute the correction of the right limit (with left state limit inserted into dgdt)
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
-            dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idx)
+            dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idxs)
             if !correction.terminated
                 implicit_correction!(Lu_right, dλ, λ, dy_right, correction)
                 correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution
@@ -482,7 +479,7 @@ mutable struct CallbackAffectWrapper{cbType, AJV, EI, T} <: Function
     cb::cbType
     autojacvec::AJV
     pos_neg::Bool
-    event_idx::EI
+    event_idxs::EI
     tprev::T
 end
 
@@ -490,7 +487,7 @@ function (ff::CallbackAffectWrapper)(du, u, p, t)
     _affect! = get_affect!(ff.cb, ff.pos_neg)
     fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
     if ff.cb isa VectorContinuousCallback
-        _affect!(fakeinteg, ff.event_idx)
+        _affect!(fakeinteg, ff.event_idxs)
     else
         _affect!(fakeinteg)
     end
@@ -502,7 +499,7 @@ mutable struct CallbackAffectPWrapper{cbType, AJV, EI, T} <: Function
     cb::cbType
     autojacvec::AJV
     pos_neg::Bool
-    event_idx::EI
+    event_idxs::EI
     tprev::T
 end
 
@@ -510,7 +507,7 @@ function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     _affect! = get_affect!(ff.cb, ff.pos_neg)
     fakeinteg = get_FakeIntegrator(ff.autojacvec, u, p, t, ff.tprev)
     if ff.cb isa VectorContinuousCallback
-        _affect!(fakeinteg, ff.event_idx)
+        _affect!(fakeinteg, ff.event_idxs)
     else
         _affect!(fakeinteg)
     end
@@ -520,12 +517,12 @@ end
 
 function setup_w_wp(
         cb::Union{DiscreteCallback, ContinuousCallback, VectorContinuousCallback},
-        autojacvec, pos_neg, event_idx, tprev
+        autojacvec, pos_neg, event_idxs, tprev
     )
     supports_callback_vjp(autojacvec) ||
         error("setup_w_wp called with a VJP backend that does not support callbacks: $(autojacvec). This is an internal error — the callback path should have redirected to a compatible backend in `_setup_reverse_callbacks`.")
-    w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
-    wp = CallbackAffectPWrapper(cb, autojacvec, pos_neg, event_idx, tprev)
+    w = CallbackAffectWrapper(cb, autojacvec, pos_neg, event_idxs, tprev)
+    wp = CallbackAffectPWrapper(cb, autojacvec, pos_neg, event_idxs, tprev)
     return w, wp
 end
 
@@ -781,8 +778,9 @@ function compute_f!(dy, S, y, integrator)
     return nothing
 end
 
-function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
-    # dy refers to f evaluated on left limit
+function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
+    # dy refers to f evaluated on left limit. For VCC, event_idxs is the
+    # Vector{Int8} mask of fired components (+1/-1/0); for CC, nothing.
     (; gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition) = correction
 
     p, t = integrator.p, integrator.t
@@ -796,19 +794,18 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
     gu.t = t
     gu.integrator = fakeinteg
 
-    # for VectorContinuousCallback we also need to set the event_idx.
     if gt isa VectorConditionTimeWrapper
-        gt.event_idx = event_idx
-        gu.event_idx = event_idx
+        gt.event_idxs = event_idxs
+        gu.event_idxs = event_idxs
 
         condition(gt.out_cache, y, t, integrator)
         gt.out_cache .= abs.(gt.out_cache) .< 1000 * eps(eltype(gt.out_cache))
-        for i in eachindex(event_idx)
-            iszero(event_idx[i]) && continue
+        for i in eachindex(event_idxs)
+            iszero(event_idxs[i]) && continue
             gt.out_cache[i] == 1 || error(
-                "VCC event_idx mask flagged component $(i) but its condition " *
-                    "is not zero at the recorded event time. Output of " *
-                    "conditions: $(gt.out_cache)"
+                "VCC event_idxs mask flagged component $(i) but its " *
+                    "condition is not zero at the recorded event time. " *
+                    "Output of conditions: $(gt.out_cache)"
             )
         end
     end
@@ -896,14 +893,21 @@ mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType, EIType}
     f::F
     u::uType
     integrator::Integrator
-    event_idx::EIType
+    event_idxs::EIType
     out_cache::outType
 end
 function (ff::VectorConditionTimeWrapper)(t)
     out = zeros(typeof(t), length(ff.out_cache))
     ff.f(out, ff.u, t, ff.integrator)
-    i = findfirst(!iszero, ff.event_idx)::Int
-    return [out[i]]
+    # Combine fired components' conditions via signed sum (sign carried in
+    # the mask: +1 = upcrossing, -1 = downcrossing). The result's implicit
+    # ∇τ aggregates simultaneous-fire contributions in one shot.
+    s = zero(eltype(out))
+    @inbounds for i in eachindex(ff.event_idxs)
+        m = ff.event_idxs[i]
+        iszero(m) || (s += m * out[i])
+    end
+    return [s]
 end
 
 mutable struct VectorConditionUWrapper{F, tType, Integrator, outType, EIType} <:
@@ -911,14 +915,18 @@ mutable struct VectorConditionUWrapper{F, tType, Integrator, outType, EIType} <:
     f::F
     t::tType
     integrator::Integrator
-    event_idx::EIType
+    event_idxs::EIType
     out_cache::outType
 end
 function (ff::VectorConditionUWrapper)(u)
     out = similar(u, length(ff.out_cache))
     ff.f(out, u, ff.t, ff.integrator)
-    i = findfirst(!iszero, ff.event_idx)::Int
-    return out[i]
+    s = zero(eltype(out))
+    @inbounds for i in eachindex(ff.event_idxs)
+        m = ff.event_idxs[i]
+        iszero(m) || (s += m * out[i])
+    end
+    return s
 end
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
