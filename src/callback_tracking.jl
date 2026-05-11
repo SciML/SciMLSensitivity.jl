@@ -67,13 +67,23 @@ struct TrackedAffect{T, T2, T3, T4, T5, T6}
     event_idx::Vector{T6}
 end
 
-TrackedAffect(t::Number, u, p, affect!::Nothing, correction; kwargs...) = nothing
-function TrackedAffect(t::Number, u, p, affect!, correction; idx_type::Type = Int)
+TrackedAffect(t::Number, u, p, affect!::Nothing, correction) = nothing
+function TrackedAffect(t::Number, u, p, affect!, correction)
     return TrackedAffect(
         Vector{typeof(t)}(undef, 0), Vector{typeof(t)}(undef, 0),
         Vector{typeof(u)}(undef, 0), Vector{typeof(p)}(undef, 0), affect!,
         correction,
-        Vector{idx_type}(undef, 0)
+        Vector{Int}(undef, 0)
+    )
+end
+
+TrackedAffect_vcc(t::Number, u, p, affect!::Nothing, correction) = nothing
+function TrackedAffect_vcc(t::Number, u, p, affect!, correction)
+    return TrackedAffect(
+        Vector{typeof(t)}(undef, 0), Vector{typeof(t)}(undef, 0),
+        Vector{typeof(u)}(undef, 0), Vector{typeof(p)}(undef, 0), affect!,
+        correction,
+        Vector{Vector{Int8}}(undef, 0)
     )
 end
 
@@ -159,10 +169,13 @@ end
 
 function _track_callback(cb::VectorContinuousCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
+    # Under DiffEqBase v7's VCC dispatch, only affect! is ever called (with a
+    # Vector{Int8} mask). The affect_neg! slot exists solely as a non-nothing
+    # marker so down-crossings still get detected; that tracker stays dormant.
     return VectorContinuousCallback(
         cb.condition,
-        TrackedAffect(t, u, p, cb.affect!, correction; idx_type = Vector{Int8}),
-        TrackedAffect(t, u, p, cb.affect_neg!, correction; idx_type = Vector{Int8}),
+        TrackedAffect_vcc(t, u, p, cb.affect!, correction),
+        TrackedAffect_vcc(t, u, p, cb.affect_neg!, correction),
         cb.len, cb.initialize, cb.finalize, cb.idxs,
         cb.rootfind, cb.interp_points,
         collect(cb.save_positions),
@@ -565,30 +578,19 @@ function get_cb_diffcaches(
         autojacvec
     )
     _dc = []
-    if cb isa DiscreteCallback
-        pos_negs = (true,)
-    else
-        pos_negs = (true, false)
-    end
-    if cb isa VectorContinuousCallback
-        event_idxs = eachindex(cb.affect!.event_idx)
-    else
-        event_idxs = (nothing,)
-    end
+    pos_negs = cb isa DiscreteCallback ? (true,) : (true, false)
+    event_idxs = cb isa VectorContinuousCallback ?
+        eachindex(cb.affect!.event_times) : (nothing,)
     for event_idx in event_idxs
         for pos_neg in pos_negs
             vcc = cb isa VectorContinuousCallback
             dc = cb isa DiscreteCallback
             has_affect = !isempty(cb.affect!.event_times)
             has_affect_neg = !dc && !isempty(cb.affect_neg!.event_times)
-            should_build = if vcc
-                pos_neg && has_affect
-            else
-                (pos_neg && has_affect) || (!pos_neg && has_affect_neg)
-            end
+            should_build = (pos_neg && has_affect) ||
+                (!pos_neg && has_affect_neg)
             if should_build
-                use_affect = vcc || (pos_neg && has_affect)
-                if use_affect
+                if pos_neg
                     src_indx = vcc ? event_idx : lastindex(cb.affect!.uleft)
                     y = cb.affect!.uleft[src_indx]
                     _p = cb.affect!.pleft[src_indx]
