@@ -378,11 +378,21 @@ function _setup_reverse_callbacks(
             y = _y
         end
 
-        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
-            # compute the correction of the right limit (with left state limit inserted into dgdt)
+        # ∇τ implicit correction. For CC, τ is implicitly defined by a single
+        # `condition`. For VCC, τ is defined by the first component to hit
+        # zero — well-defined only when exactly one component fired at this
+        # event. For simultaneous multi-component fires the implicit
+        # function theorem does not give a single ∇τ (different fired
+        # components yield different ∇τ and have no canonical combination),
+        # so we skip the correction in that case.
+        applies = cb isa ContinuousCallback ||
+            (cb isa VectorContinuousCallback && count(!iszero, event_idxs) == 1)
+        if applies
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
-            dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idxs)
+            dgdt_event = cb isa VectorContinuousCallback ?
+                Int(findfirst(!iszero, event_idxs)) : nothing
+            dgdt(dy_left, correction, sensealg, y, integrator, tprev, dgdt_event)
             if !correction.terminated
                 implicit_correction!(Lu_right, dλ, λ, dy_right, correction)
                 correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution
@@ -424,7 +434,7 @@ function _setup_reverse_callbacks(
 
         dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 
-        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
+        if applies
             # second correction to correct for left limit
             (; Lu_left) = correction
             implicit_correction!(Lu_left, dλ, dy_left, correction)
@@ -778,9 +788,10 @@ function compute_f!(dy, S, y, integrator)
     return nothing
 end
 
-function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
-    # dy refers to f evaluated on left limit. For VCC, event_idxs is the
-    # Vector{Int8} mask of fired components (+1/-1/0); for CC, nothing.
+function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
+    # dy refers to f evaluated on left limit. For VCC, event_idx is a
+    # single Int (component index) — only valid when exactly one
+    # component fired; for CC, nothing.
     (; gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition) = correction
 
     p, t = integrator.p, integrator.t
@@ -795,19 +806,15 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
     gu.integrator = fakeinteg
 
     if gt isa VectorConditionTimeWrapper
-        gt.event_idxs = event_idxs
-        gu.event_idxs = event_idxs
+        gt.event_idx = event_idx
+        gu.event_idx = event_idx
 
         condition(gt.out_cache, y, t, integrator)
         gt.out_cache .= abs.(gt.out_cache) .< 1000 * eps(eltype(gt.out_cache))
-        for i in eachindex(event_idxs)
-            iszero(event_idxs[i]) && continue
-            gt.out_cache[i] == 1 || error(
-                "VCC event_idxs mask flagged component $(i) but its " *
-                    "condition is not zero at the recorded event time. " *
-                    "Output of conditions: $(gt.out_cache)"
-            )
-        end
+        gt.out_cache[event_idx] == 1 || error(
+            "VCC component $(event_idx) is not zero at the recorded event " *
+                "time. Output of conditions: $(gt.out_cache)"
+        )
     end
 
     derivative!(gt_val, gt, t, sensealg, gt_conf)
@@ -871,9 +878,8 @@ end
 function build_condition_wrappers(cb::VectorContinuousCallback, condition, u, t, fakeinteg)
     out = similar(u, cb.len) # create a cache for condition function (out,u,t,integrator)
     out .= 0
-    mask = zeros(Int8, cb.len)
-    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, mask, out)
-    gu = VectorConditionUWrapper(condition, t, fakeinteg, mask, out)
+    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, 1, out)
+    gu = VectorConditionUWrapper(condition, t, fakeinteg, 1, out)
     return gt, gu
 end
 mutable struct ConditionTimeWrapper{F, uType, Integrator} <: Function
@@ -888,45 +894,30 @@ mutable struct ConditionUWrapper{F, tType, Integrator} <: Function
     integrator::Integrator
 end
 (ff::ConditionUWrapper)(u) = ff.f(u, ff.t, ff.integrator)
-mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType, EIType} <:
-    Function
+mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Function
     f::F
     u::uType
     integrator::Integrator
-    event_idxs::EIType
+    event_idx::Int
     out_cache::outType
 end
 function (ff::VectorConditionTimeWrapper)(t)
     out = zeros(typeof(t), length(ff.out_cache))
     ff.f(out, ff.u, t, ff.integrator)
-    # Combine fired components' conditions via signed sum (sign carried in
-    # the mask: +1 = upcrossing, -1 = downcrossing). The result's implicit
-    # ∇τ aggregates simultaneous-fire contributions in one shot.
-    s = zero(eltype(out))
-    @inbounds for i in eachindex(ff.event_idxs)
-        m = ff.event_idxs[i]
-        iszero(m) || (s += m * out[i])
-    end
-    return [s]
+    return [out[ff.event_idx]]
 end
 
-mutable struct VectorConditionUWrapper{F, tType, Integrator, outType, EIType} <:
-    Function
+mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Function
     f::F
     t::tType
     integrator::Integrator
-    event_idxs::EIType
+    event_idx::Int
     out_cache::outType
 end
 function (ff::VectorConditionUWrapper)(u)
     out = similar(u, length(ff.out_cache))
     ff.f(out, u, ff.t, ff.integrator)
-    s = zero(eltype(out))
-    @inbounds for i in eachindex(ff.event_idxs)
-        m = ff.event_idxs[i]
-        iszero(m) || (s += m * out[i])
-    end
-    return s
+    return out[ff.event_idx]
 end
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
