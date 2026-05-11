@@ -381,13 +381,7 @@ function _setup_reverse_callbacks(
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
-            # τ is a single number per fire — all simultaneous events share
-            # the same event time, so its implicit ∇τ is a single vector.
-            # IFT needs one fired condition; the recorded VCC fire
-            # guarantees at least one is fired.
-            dgdt_event = cb isa VectorContinuousCallback ?
-                findfirst(!iszero, event_idxs) : nothing
-            dgdt(dy_left, correction, sensealg, y, integrator, tprev, dgdt_event)
+            dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idxs)
             if !correction.terminated
                 implicit_correction!(Lu_right, dλ, λ, dy_right, correction)
                 correction.terminated = false # additional callbacks might have happened which didn't terminate the time evolution
@@ -783,10 +777,9 @@ function compute_f!(dy, S, y, integrator)
     return nothing
 end
 
-function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
-    # dy refers to f evaluated on left limit. For VCC, event_idx is a
-    # single Int (component index) — only valid when exactly one
-    # component fired; for CC, nothing.
+function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
+    # dy refers to f evaluated on left limit. For VCC, event_idxs is the
+    # Vector{Int8} mask of fired components; for CC, nothing.
     (; gt_val, gu_val, gt, gu, gt_conf, gu_conf, condition) = correction
 
     p, t = integrator.p, integrator.t
@@ -801,15 +794,11 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idx)
     gu.integrator = fakeinteg
 
     if gt isa VectorConditionTimeWrapper
-        gt.event_idx = event_idx
-        gu.event_idx = event_idx
+        gt.event_idxs = event_idxs
+        gu.event_idxs = event_idxs
 
         condition(gt.out_cache, y, t, integrator)
         gt.out_cache .= abs.(gt.out_cache) .< 1000 * eps(eltype(gt.out_cache))
-        gt.out_cache[event_idx] == 1 || error(
-            "VCC component $(event_idx) is not zero at the recorded event " *
-                "time. Output of conditions: $(gt.out_cache)"
-        )
     end
 
     derivative!(gt_val, gt, t, sensealg, gt_conf)
@@ -873,8 +862,9 @@ end
 function build_condition_wrappers(cb::VectorContinuousCallback, condition, u, t, fakeinteg)
     out = similar(u, cb.len) # create a cache for condition function (out,u,t,integrator)
     out .= 0
-    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, 1, out)
-    gu = VectorConditionUWrapper(condition, t, fakeinteg, 1, out)
+    mask = zeros(Int8, cb.len)
+    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, mask, out)
+    gu = VectorConditionUWrapper(condition, t, fakeinteg, mask, out)
     return gt, gu
 end
 mutable struct ConditionTimeWrapper{F, uType, Integrator} <: Function
@@ -889,30 +879,32 @@ mutable struct ConditionUWrapper{F, tType, Integrator} <: Function
     integrator::Integrator
 end
 (ff::ConditionUWrapper)(u) = ff.f(u, ff.t, ff.integrator)
-mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Function
+mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType, EIType} <:
+    Function
     f::F
     u::uType
     integrator::Integrator
-    event_idx::Int
+    event_idxs::EIType
     out_cache::outType
 end
 function (ff::VectorConditionTimeWrapper)(t)
     out = zeros(typeof(t), length(ff.out_cache))
     ff.f(out, ff.u, t, ff.integrator)
-    return [out[ff.event_idx]]
+    return [out[findfirst(!iszero, ff.event_idxs)]]
 end
 
-mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Function
+mutable struct VectorConditionUWrapper{F, tType, Integrator, outType, EIType} <:
+    Function
     f::F
     t::tType
     integrator::Integrator
-    event_idx::Int
+    event_idxs::EIType
     out_cache::outType
 end
 function (ff::VectorConditionUWrapper)(u)
     out = similar(u, length(ff.out_cache))
     ff.f(out, u, ff.t, ff.integrator)
-    return out[ff.event_idx]
+    return out[findfirst(!iszero, ff.event_idxs)]
 end
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
