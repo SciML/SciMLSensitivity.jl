@@ -381,13 +381,12 @@ function _setup_reverse_callbacks(
         if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
-            # τ is a single number per fire (all simultaneous events share
-            # the same event time), so its implicit ∇τ is a single vector.
-            # The IFT step needs one fired condition; the recorded VCC fire
-            # guarantees at least one component fired, so findfirst always
-            # returns a valid Int.
+            # τ is a single number per fire — all simultaneous events share
+            # the same event time, so its implicit ∇τ is a single vector.
+            # IFT needs one fired condition; the recorded VCC fire
+            # guarantees at least one is fired.
             dgdt_event = cb isa VectorContinuousCallback ?
-                Int(findfirst(!iszero, event_idxs)) : nothing
+                findfirst(!iszero, event_idxs) : nothing
             dgdt(dy_left, correction, sensealg, y, integrator, tprev, dgdt_event)
             if !correction.terminated
                 implicit_correction!(Lu_right, dλ, λ, dy_right, correction)
