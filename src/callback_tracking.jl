@@ -378,18 +378,14 @@ function _setup_reverse_callbacks(
             y = _y
         end
 
-        # ∇τ implicit correction. For CC, τ is implicitly defined by a single
-        # `condition`. For VCC, τ is defined by the first component to hit
-        # zero — well-defined only when exactly one component fired at this
-        # event. For simultaneous multi-component fires the implicit
-        # function theorem does not give a single ∇τ (different fired
-        # components yield different ∇τ and have no canonical combination),
-        # so we skip the correction in that case.
-        applies = cb isa ContinuousCallback ||
-            (cb isa VectorContinuousCallback && count(!iszero, event_idxs) == 1)
-        if applies
+        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
+            # τ is a single number per fire (all simultaneous events share
+            # the same event time), so its implicit ∇τ is a single vector.
+            # The IFT step needs one fired condition; the recorded VCC fire
+            # guarantees at least one component fired, so findfirst always
+            # returns a valid Int.
             dgdt_event = cb isa VectorContinuousCallback ?
                 Int(findfirst(!iszero, event_idxs)) : nothing
             dgdt(dy_left, correction, sensealg, y, integrator, tprev, dgdt_event)
@@ -434,7 +430,7 @@ function _setup_reverse_callbacks(
 
         dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 
-        if applies
+        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
             # second correction to correct for left limit
             (; Lu_left) = correction
             implicit_correction!(Lu_left, dλ, dy_left, correction)
