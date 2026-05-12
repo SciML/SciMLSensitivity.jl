@@ -378,7 +378,17 @@ function _setup_reverse_callbacks(
             y = _y
         end
 
-        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
+        # The implicit ∇τ correction assumes τ is implicitly defined by a
+        # single scalar condition function. For VCC simultaneous fires the
+        # whole event_idxs mask determines what happened, and there is no
+        # single condition that captures it (different events can do
+        # completely different things — corner trap vs bounce). Skip the
+        # correction for multi-fire; rely on the affect-VJP through the
+        # combined wrapper, which correctly traces whatever the user's
+        # affect did with the full mask.
+        applies = cb isa ContinuousCallback ||
+            (cb isa VectorContinuousCallback && count(!iszero, event_idxs) == 1)
+        if applies
             (; dy_left, cur_time) = correction
             compute_f!(dy_left, S, y, integrator)
             dgdt(dy_left, correction, sensealg, y, integrator, tprev, event_idxs)
@@ -423,7 +433,7 @@ function _setup_reverse_callbacks(
 
         dgrad !== nothing && !(sensealg isa QuadratureAdjoint) && (dgrad .*= -1)
 
-        if cb isa Union{ContinuousCallback, VectorContinuousCallback}
+        if applies
             # second correction to correct for left limit
             (; Lu_left) = correction
             implicit_correction!(Lu_left, dλ, dy_left, correction)
