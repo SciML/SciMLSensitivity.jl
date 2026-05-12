@@ -110,4 +110,80 @@ end
         cb = VectorContinuousCallback(condition, affect!, 2)
         test_vector_continuous_callback(cb, g)
     end
+    @testset "Simultaneous fire (corner trap)" begin
+        # Two walls at x=0 and y=0. Mask interpretation:
+        #   [±1, 0]: bounce off x-wall   (flip vx)
+        #   [0, ±1]: bounce off y-wall   (flip vy)
+        #   [±1, ±1]: hit the corner     (both velocities → 0, trap)
+        # The trap is fundamentally not decomposable into two single-wall
+        # bounces — different mask combinations do different things — so
+        # the adjoint must use the full event_idxs mask in the affect VJP.
+        function ball!(du, u, p, t)
+            du[1] = u[3]
+            du[2] = u[4]
+            du[3] = 0
+            du[4] = 0
+            return nothing
+        end
+        condition_corner(out, u, t, integrator) = (out[1] = u[1]; out[2] = u[2]; nothing)
+        function affect_corner!(integrator, ev)
+            if ev isa AbstractVector
+                hit1 = !iszero(ev[1])
+                hit2 = !iszero(ev[2])
+                if hit1 && hit2
+                    integrator.u[3] = 0.0
+                    integrator.u[4] = 0.0
+                elseif hit1
+                    integrator.u[3] = -integrator.u[3]
+                elseif hit2
+                    integrator.u[4] = -integrator.u[4]
+                end
+            else
+                if ev == 1
+                    integrator.u[3] = -integrator.u[3]
+                else
+                    integrator.u[4] = -integrator.u[4]
+                end
+            end
+            return nothing
+        end
+        cb = VectorContinuousCallback(condition_corner, affect_corner!, 2)
+        u0 = [1.0, 1.0, -1.0, -1.0]
+        prob = ODEProblem(ball!, u0, (0.0, 3.0), [0.0])
+        ref = [0.5, 0.5]
+        g_corner(u) = sum(abs2, u[1:2] .- ref)
+        loss_corner(theta) = g_corner(
+            solve(
+                prob, Tsit5(); u0 = theta, callback = cb,
+                abstol = 1.0e-12, reltol = 1.0e-12
+            ).u[end]
+        )
+
+        # Trap-aware analytical gradient: at t=1 the forward solve fires
+        # mask=[-1,-1], affect sets u[3]=u[4]=0 (velocities killed), and
+        # the ball sits at the origin for t > 1. Backward through that:
+        # the affect's VJP zeros velocity adjoints, integration to t=0
+        # accumulates +1 in each velocity slot; dL/du[1:2] = 2*(0-0.5) = -1.
+        analytical = [-1.0, -1.0, -1.0, -1.0]
+        du0_bs, = Zygote.gradient(
+            u0 -> g_corner(
+                solve(
+                    prob, Tsit5(); u0 = u0, callback = cb,
+                    abstol = 1.0e-12, reltol = 1.0e-12,
+                    sensealg = BacksolveAdjoint()
+                ).u[end]
+            ),
+            u0
+        )
+        @test du0_bs ≈ analytical rtol = 1.0e-8
+
+        # ForwardDiff sees the perturbed trajectory: a Dual ε perturbation
+        # in any component breaks the simultaneity in the event-time
+        # search, so the perturbed ball does TWO sequential single-wall
+        # bounces instead of the corner trap. Hence FD differs from the
+        # adjoint at this measure-zero singularity. It still has to
+        # *run* without erroring, which is what this exercises.
+        gfd = ForwardDiff.gradient(loss_corner, u0)
+        @test all(isfinite, gfd)
+    end
 end
