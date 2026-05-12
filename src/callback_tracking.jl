@@ -890,6 +890,19 @@ end
 function (ff::VectorConditionTimeWrapper)(t)
     out = zeros(typeof(t), length(ff.out_cache))
     ff.f(out, ff.u, t, ff.integrator)
+    # event_idxs is the per-fire mask (Vector{Int8}); a recorded VCC
+    # fire guarantees at least one entry is non-zero. Any one of the
+    # fired conditions is fine here: when simultaneity is *structural*
+    # (the fired conditions are algebraically tied, so the perturbation
+    # preserves their joint zero), each condition's ∇τ via the implicit
+    # function theorem scales by 1 / total-derivative_i — the same
+    # ratio across i — so every fired component yields the same ∇τ
+    # vector. When simultaneity is *coincidental* (independent
+    # conditions happening to hit zero at the same instant, e.g. a
+    # corner-trap geometry), the choice would differ, but that case is
+    # a measure-zero singularity where no scalar ∇τ matches the
+    # perturbation limit anyway, so any fired component is as good as
+    # any other.
     return [out[findfirst(!iszero, ff.event_idxs)]]
 end
 
@@ -904,6 +917,9 @@ end
 function (ff::VectorConditionUWrapper)(u)
     out = similar(u, length(ff.out_cache))
     ff.f(out, u, ff.t, ff.integrator)
+    # Pick any fired condition — see VectorConditionTimeWrapper for why
+    # this is correct (structurally tied fired conditions all give the
+    # same ∇τ).
     return out[findfirst(!iszero, ff.event_idxs)]
 end
 
