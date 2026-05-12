@@ -794,11 +794,14 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
     gu.integrator = fakeinteg
 
     if gt isa VectorConditionTimeWrapper
-        gt.event_idxs = event_idxs
-        gu.event_idxs = event_idxs
-
-        condition(gt.out_cache, y, t, integrator)
-        gt.out_cache .= abs.(gt.out_cache) .< 1000 * eps(eltype(gt.out_cache))
+        # Pick a single fired condition once here — see the wrapper
+        # bodies for why any fired condition yields the same ∇τ when
+        # simultaneity is structural. The wrappers will be invoked
+        # repeatedly by derivative!/gradient! and would otherwise
+        # re-run findfirst on every call.
+        idx = findfirst(!iszero, event_idxs)
+        gt.event_idx = idx
+        gu.event_idx = idx
     end
 
     derivative!(gt_val, gt, t, sensealg, gt_conf)
@@ -862,9 +865,8 @@ end
 function build_condition_wrappers(cb::VectorContinuousCallback, condition, u, t, fakeinteg)
     out = similar(u, cb.len) # create a cache for condition function (out,u,t,integrator)
     out .= 0
-    mask = zeros(Int8, cb.len)
-    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, mask, out)
-    gu = VectorConditionUWrapper(condition, t, fakeinteg, mask, out)
+    gt = VectorConditionTimeWrapper(condition, u, fakeinteg, 1, out)
+    gu = VectorConditionUWrapper(condition, t, fakeinteg, 1, out)
     return gt, gu
 end
 mutable struct ConditionTimeWrapper{F, uType, Integrator} <: Function
@@ -879,48 +881,43 @@ mutable struct ConditionUWrapper{F, tType, Integrator} <: Function
     integrator::Integrator
 end
 (ff::ConditionUWrapper)(u) = ff.f(u, ff.t, ff.integrator)
-mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType, EIType} <:
-    Function
+mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Function
     f::F
     u::uType
     integrator::Integrator
-    event_idxs::EIType
+    # Single fired-component index set by dgdt via findfirst on the
+    # per-fire mask. Any fired component is fine: when simultaneity is
+    # *structural* (the fired conditions are algebraically tied so the
+    # perturbation preserves their joint zero), each condition's ∇τ
+    # via the implicit function theorem scales the gradient by
+    # 1 / total-derivative_i, and that ratio is the same across i, so
+    # every fired component yields the same ∇τ vector. When
+    # simultaneity is *coincidental* (independent conditions happening
+    # to hit zero at the same instant, e.g. a corner-trap geometry),
+    # different fired components give different ∇τ vectors, but this
+    # case is a measure-zero singularity where no scalar ∇τ matches
+    # the perturbation-limit anyway — any fired component is as good
+    # as any other.
+    event_idx::Int
     out_cache::outType
 end
 function (ff::VectorConditionTimeWrapper)(t)
     out = zeros(typeof(t), length(ff.out_cache))
     ff.f(out, ff.u, t, ff.integrator)
-    # event_idxs is the per-fire mask (Vector{Int8}); a recorded VCC
-    # fire guarantees at least one entry is non-zero. Any one of the
-    # fired conditions is fine here: when simultaneity is *structural*
-    # (the fired conditions are algebraically tied, so the perturbation
-    # preserves their joint zero), each condition's ∇τ via the implicit
-    # function theorem scales by 1 / total-derivative_i — the same
-    # ratio across i — so every fired component yields the same ∇τ
-    # vector. When simultaneity is *coincidental* (independent
-    # conditions happening to hit zero at the same instant, e.g. a
-    # corner-trap geometry), the choice would differ, but that case is
-    # a measure-zero singularity where no scalar ∇τ matches the
-    # perturbation limit anyway, so any fired component is as good as
-    # any other.
-    return [out[findfirst(!iszero, ff.event_idxs)]]
+    return [out[ff.event_idx]]
 end
 
-mutable struct VectorConditionUWrapper{F, tType, Integrator, outType, EIType} <:
-    Function
+mutable struct VectorConditionUWrapper{F, tType, Integrator, outType} <: Function
     f::F
     t::tType
     integrator::Integrator
-    event_idxs::EIType
+    event_idx::Int
     out_cache::outType
 end
 function (ff::VectorConditionUWrapper)(u)
     out = similar(u, length(ff.out_cache))
     ff.f(out, u, ff.t, ff.integrator)
-    # Pick any fired condition — see VectorConditionTimeWrapper for why
-    # this is correct (structurally tied fired conditions all give the
-    # same ∇τ).
-    return out[findfirst(!iszero, ff.event_idxs)]
+    return out[ff.event_idx]
 end
 
 DiffEqBase.terminate!(i::FakeIntegrator) = nothing
