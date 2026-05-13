@@ -429,7 +429,8 @@ function adjoint_sensitivities(
         sensealg::OptimizationAdjoint,
         verbose = true, kwargs...
     )
-    return _adjoint_sensitivities(sol, sensealg, alg, args...; verbose, kwargs...)
+    _sensealg = sensealg.autojacvec === nothing ? setvjp(sensealg, true) : sensealg
+    return _adjoint_sensitivities(sol, _sensealg, alg, args...; verbose, kwargs...)
 end
 
 function _adjoint_sensitivities(
@@ -441,7 +442,7 @@ function _adjoint_sensitivities(
     p  = SymbolicIndexingInterface.parameter_values(sol)
     Δu = zero(sol.u)
     dgdu(Δu, sol.u, p, nothing, nothing)
-    return OptimizationAdjointProblem(sol.prob, sol, sensealg, p, Δu)
+    return OptimizationAdjointProblem(sol.cache, sol, sensealg, p, Δu)
 end
 
 function _adjoint_sensitivities(

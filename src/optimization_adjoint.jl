@@ -24,6 +24,21 @@ end
 # Override inplace_sensitivity: f is always OOP for optimization
 inplace_sensitivity(::OptimizationAdjointSensitivityFunction) = false
 
+# Override getprob: OptimizationSolution has no `prob` field; its cache plays the role.
+getprob(S::OptimizationAdjointSensitivityFunction) = S.sol.cache
+
+# Wrapper for the KKT residual closure. Named struct so we can declare the SciMLFunction
+# traits that `_vecjacobian!` queries (otherwise a raw closure errors with MethodError).
+struct OptimizationKKTResidual{F}
+    f::F
+end
+(o::OptimizationKKTResidual)(args...) = o.f(args...)
+SciMLBase.has_paramjac(::OptimizationKKTResidual) = false
+SciMLBase.has_jac(::OptimizationKKTResidual) = false
+SciMLBase.has_vjp(::OptimizationKKTResidual) = false
+SciMLBase.has_vjp_p(::OptimizationKKTResidual) = false
+SciMLBase.unwrapped_f(o::OptimizationKKTResidual) = o.f
+
 # Evaluate OptimizationFunction auxiliary fields (grad, hess, cons_j, lag_h).
 # Dispatched on:
 #   Val{iip}   — from OptimizationFunction{iip}: true = in-place (leading buffer), false = oop
@@ -58,10 +73,10 @@ _opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
 function OptimizationAdjointSensitivityFunction(
         prob,
         opt_sol,
-        sensealg::OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD, AT},
+        sensealg::OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT},
         p,
         Δu
-    ) where {CS, AD, FDT, VJP, LS, LK, OAD, AT}
+    ) where {CS, AD, FDT, VJP, LS, LK, AT}
     x_star = opt_sol.u
 
     lcons = prob.lcons
@@ -136,13 +151,11 @@ function OptimizationAdjointSensitivityFunction(
     iip_val   = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
 
-    objective_ad = sensealg.objective_ad
-
     # ---- ∇f at x_star: use stored gradient if available ----
     ∇f = if opt_f.grad !== nothing
         _opt_eval_vec(opt_f.grad, n_x, x_star, p, iip_val, has_p_val)
     else
-        DI.gradient(x -> prob.f(x, p), objective_ad, x_star)
+        gradient(x -> prob.f(x, p), x_star, sensealg)
     end
 
     # Precompute full constraint Jacobian once if cons_j is available (reused across passes).
@@ -155,7 +168,7 @@ function OptimizationAdjointSensitivityFunction(
     elseif J_full !== nothing
         J_full[eq_idx, :]
     else
-        DI.jacobian(x -> g(x, p), objective_ad, x_star)
+        jacobian(x -> g(x, p), x_star, sensealg)
     end
 
     # Active ineq lower bound: h_lb(x,p) = lcons[i] - cons(x,p)[i]  (= 0 when active)
@@ -181,7 +194,7 @@ function OptimizationAdjointSensitivityFunction(
             isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) :  J_full[active_ub, :]
         )
     else
-        DI.jacobian(x -> h_I(x, p), objective_ad, x_star)
+        jacobian(x -> h_I(x, p), x_star, sensealg)
     end
 
     Jx_bound = zeros(eltype(x_star), n_bound, n_x)
@@ -234,7 +247,7 @@ function OptimizationAdjointSensitivityFunction(
                 isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) :  J_full[active_ub, :]
             )
         else
-            DI.jacobian(x -> h_I(x, p), objective_ad, x_star)
+            jacobian(x -> h_I(x, p), x_star, sensealg)
         end
 
         Jx_bound = zeros(eltype(x_star), n_bound, n_x)
@@ -277,7 +290,7 @@ function OptimizationAdjointSensitivityFunction(
     elseif !has_cons && opt_f.hess !== nothing
         _opt_eval_mat(opt_f.hess, n_x, n_x, x_star, p, iip_val, has_p_val)
     else
-        DI.hessian(x -> L(x, p), objective_ad, x_star)
+        hessian(x -> L(x, p), x_star, sensealg)
     end
 
     N = n_x + n_eq + n_act_total
@@ -314,16 +327,16 @@ function OptimizationAdjointSensitivityFunction(
     # size their buffers, so buffers will be M-sized and match the output of f_F.
     M = n_x + n_eq + n_act
     y = zeros(eltype(x_star), M)
-    f_F = let L = L, g = g, h_I = h_I, x_star = x_star,
-              objective_ad = objective_ad, n_eq = n_eq, n_act = n_act
+    f_F = OptimizationKKTResidual(let L = L, g = g, h_I = h_I, x_star = x_star,
+              sensealg = sensealg, n_eq = n_eq, n_act = n_act
         function(_, q_full, _)
-            grad_L = DI.gradient(x -> L(x, q_full), objective_ad, x_star)
+            grad_L = gradient(x -> L(x, q_full), x_star, sensealg)
             n_eq == 0 && n_act == 0 && return grad_L
             n_eq  > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
             n_eq == 0 && n_act  > 0 && return vcat(grad_L, h_I(x_star, q_full))
             vcat(grad_L, g(x_star, q_full), h_I(x_star, q_full))
         end
-    end
+    end)
 
     # λ: adjoint cotangent for f_F — drop the variable-bound rows of λ_full (∂/∂p = 0).
     λ = λ_full[1:M]
