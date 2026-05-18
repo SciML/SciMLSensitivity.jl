@@ -28,7 +28,7 @@ inplace_sensitivity(::OptimizationAdjointSensitivityFunction) = false
 getprob(S::OptimizationAdjointSensitivityFunction) = S.sol.cache
 
 # Wrapper for the KKT residual closure. Named struct so we can declare the SciMLFunction
-# traits that `_vecjacobian!` queries (otherwise a raw closure errors with MethodError).
+# traits that `_vecjacobian!` queries
 struct OptimizationKKTResidual{F}
     f::F
 end
@@ -113,18 +113,13 @@ function OptimizationAdjointSensitivityFunction(
             end
             captured_f.cons
         end
-        cons_cache = LazyBufferCache(_ -> (n_cons,))
         eval_cons = function (x, q)
-            # When eltype(x) and eltype(q) match, reuse the cache.  Otherwise infer the
-            # arithmetic result type via promote_op (compile-time inference) — ForwardDiff's
-            # @define_binary_dual_op bypasses promote_type, so Dual + TrackedReal returns
-            # Dual{Tag, TrackedReal, N} which promote_type would not predict.
-            res = if eltype(x) === eltype(q)
-                cons_cache[q]
-            else
-                T = Base.promote_op(+, eltype(x), eltype(q))
-                Vector{T}(undef, n_cons)
-            end
+            # promote_op gives the inferred result eltype of `+(eltype(x), eltype(q))`.
+            # Preferred over promote_type because ForwardDiff's @define_binary_dual_op
+            # bypasses promote_type — e.g. Dual + TrackedReal returns Dual{Tag, TrackedReal, N}
+            # which promote_type would not predict.
+            T = Base.promote_op(+, eltype(x), eltype(q))
+            res = Vector{T}(undef, n_cons)
             _cons3(res, x, q)
             return res
         end
