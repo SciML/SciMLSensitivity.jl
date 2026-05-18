@@ -150,7 +150,7 @@ function gradient(
         f, x::AbstractArray{<:Number},
         alg::AbstractOverloadingSensitivityAlgorithm
     )
-    if alg_autodiff(alg)
+    return if alg_autodiff(alg)
         ForwardDiff.gradient(unwrapped_f(f), x)
     else
         FiniteDiff.finite_difference_gradient(f, x, diff_type(alg))
@@ -161,7 +161,7 @@ function hessian(
         f, x::AbstractArray{<:Number},
         alg::AbstractOverloadingSensitivityAlgorithm
     )
-    if alg_autodiff(alg)
+    return if alg_autodiff(alg)
         ForwardDiff.hessian(unwrapped_f(f), x)
     else
         FiniteDiff.finite_difference_hessian(f, x)

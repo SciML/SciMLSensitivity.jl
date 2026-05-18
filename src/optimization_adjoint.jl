@@ -44,30 +44,36 @@ SciMLBase.unwrapped_f(o::OptimizationKKTResidual) = o.f
 #   Val{iip}   — from OptimizationFunction{iip}: true = in-place (leading buffer), false = oop
 #   Val{has_p} — true = AbstractOptimizationProblem (p explicit), false = OptimizationCache (p baked in)
 function _opt_eval_vec(fn, n, x, p, ::Val{true}, ::Val{true})
-    out = zeros(eltype(x), n); fn(out, x, p); out
+    out = zeros(eltype(x), n); fn(out, x, p)
+    return out
 end
 function _opt_eval_vec(fn, n, x, _, ::Val{true}, ::Val{false})
-    out = zeros(eltype(x), n); fn(out, x); out
+    out = zeros(eltype(x), n); fn(out, x)
+    return out
 end
-_opt_eval_vec(fn, _, x, p, ::Val{false}, ::Val{true})  = fn(x, p)
+_opt_eval_vec(fn, _, x, p, ::Val{false}, ::Val{true}) = fn(x, p)
 _opt_eval_vec(fn, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 
 function _opt_eval_mat(fn, m, n, x, p, ::Val{true}, ::Val{true})
-    out = zeros(eltype(x), m, n); fn(out, x, p); out
+    out = zeros(eltype(x), m, n); fn(out, x, p)
+    return out
 end
 function _opt_eval_mat(fn, m, n, x, _, ::Val{true}, ::Val{false})
-    out = zeros(eltype(x), m, n); fn(out, x); out
+    out = zeros(eltype(x), m, n); fn(out, x)
+    return out
 end
-_opt_eval_mat(fn, _, _, x, p, ::Val{false}, ::Val{true})  = fn(x, p)
+_opt_eval_mat(fn, _, _, x, p, ::Val{false}, ::Val{true}) = fn(x, p)
 _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 
 function _opt_eval_lag_h(fn, n, x, σ, μ, p, ::Val{true}, ::Val{true})
-    H = zeros(eltype(x), n, n); fn(H, x, σ, μ, p); H
+    H = zeros(eltype(x), n, n); fn(H, x, σ, μ, p)
+    return H
 end
 function _opt_eval_lag_h(fn, n, x, σ, μ, _, ::Val{true}, ::Val{false})
-    H = zeros(eltype(x), n, n); fn(H, x, σ, μ); H
+    H = zeros(eltype(x), n, n); fn(H, x, σ, μ)
+    return H
 end
-_opt_eval_lag_h(fn, _, x, σ, μ, p, ::Val{false}, ::Val{true})  = fn(x, σ, μ, p)
+_opt_eval_lag_h(fn, _, x, σ, μ, p, ::Val{false}, ::Val{true}) = fn(x, σ, μ, p)
 _opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
 
 function OptimizationAdjointSensitivityFunction(
@@ -98,8 +104,12 @@ function OptimizationAdjointSensitivityFunction(
             prob.f.cons              # AbstractOptimizationProblem: already (res, x, p)
         else
             captured_f = let cl = prob.f.cons
-                getfield(cl, only(fname for fname in fieldnames(typeof(cl))
-                                  if getfield(cl, fname) isa SciMLBase.AbstractOptimizationFunction))
+                getfield(
+                    cl, only(
+                        fname for fname in fieldnames(typeof(cl))
+                            if getfield(cl, fname) isa SciMLBase.AbstractOptimizationFunction
+                    )
+                )
             end
             captured_f.cons
         end
@@ -124,7 +134,7 @@ function OptimizationAdjointSensitivityFunction(
     end
 
     # Classify constraints: equality where lcons[i] == ucons[i]
-    eq_idx   = has_cons ? findall(i -> lcons[i] == ucons[i], eachindex(lcons)) : Int[]
+    eq_idx = has_cons ? findall(i -> lcons[i] == ucons[i], eachindex(lcons)) : Int[]
     ineq_idx = has_cons ? findall(i -> lcons[i] != ucons[i], eachindex(lcons)) : Int[]
 
     # Evaluate constraints at solution
@@ -140,15 +150,15 @@ function OptimizationAdjointSensitivityFunction(
     g(x, q) = eval_cons(x, q)[eq_idx] .- lcons[eq_idx]
 
     n_eq = length(eq_idx)
-    n_x  = length(x_star)
+    n_x = length(x_star)
 
     lb = prob.lb
     ub = prob.ub
     active_lb_var = lb !== nothing ? findall(i -> abs(x_star[i] - lb[i]) <= atol, 1:n_x) : Int[]
     active_ub_var = ub !== nothing ? findall(i -> abs(x_star[i] - ub[i]) <= atol, 1:n_x) : Int[]
 
-    opt_f     = prob.f
-    iip_val   = Val{SciMLBase.isinplace(opt_f)}()
+    opt_f = prob.f
+    iip_val = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
 
     # ---- ∇f at x_star: use stored gradient if available ----
@@ -175,7 +185,7 @@ function OptimizationAdjointSensitivityFunction(
     # Active ineq upper bound: h_ub(x,p) = cons(x,p)[i] - ucons[i]  (= 0 when active)
     # Variable bound active lower: h_lb_var = lb[i] - x[i]  (∂/∂x = -eᵢ, ∂/∂p = 0)
     # Variable bound active upper: h_ub_var = x[i] - ub[i]  (∂/∂x = +eᵢ, ∂/∂p = 0)
-    n_act   = length(active_lb) + length(active_ub)
+    n_act = length(active_lb) + length(active_ub)
     n_bound = length(active_lb_var) + length(active_ub_var)
 
     h_I = (x, q) -> begin
@@ -191,14 +201,16 @@ function OptimizationAdjointSensitivityFunction(
     elseif J_full !== nothing
         vcat(
             isempty(active_lb) ? zeros(eltype(x_star), 0, n_x) : -J_full[active_lb, :],
-            isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) :  J_full[active_ub, :]
+            isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) : J_full[active_ub, :]
         )
     else
         jacobian(x -> h_I(x, p), x_star, sensealg)
     end
 
     Jx_bound = zeros(eltype(x_star), n_bound, n_x)
-    for (j, i) in enumerate(active_lb_var); Jx_bound[j, i] = -one(eltype(x_star)); end
+    for (j, i) in enumerate(active_lb_var)
+        Jx_bound[j, i] = -one(eltype(x_star))
+    end
     for (j, i) in enumerate(active_ub_var)
         Jx_bound[length(active_lb_var) + j, i] = one(eltype(x_star))
     end
@@ -211,24 +223,28 @@ function OptimizationAdjointSensitivityFunction(
     else
         solve(LinearProblem(Matrix(vcat(Jxg, Jxhι)'), -∇f), LinearSolve.QRFactorization()).u
     end
-    y_star       = n_eq    > 0 ? dual_vars[1:n_eq]                    : eltype(x_star)[]
-    zI_star      = n_act   > 0 ? dual_vars[(n_eq+1):(n_eq+n_act)]     : eltype(x_star)[]
-    z_bound_star = n_bound > 0 ? dual_vars[(n_eq+n_act+1):end]        : eltype(x_star)[]
+    y_star = n_eq > 0 ? dual_vars[1:n_eq] : eltype(x_star)[]
+    zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
+    z_bound_star = n_bound > 0 ? dual_vars[(n_eq + n_act + 1):end] : eltype(x_star)[]
 
     # Multiplier sign check: KKT requires all inequality multipliers ≥ 0 at a minimum.
     # Negative multipliers indicate spuriously-included constraints (close to bound but inactive).
     # Drop those and redo only the Jxhι build and dual solve — no extra cost if all signs are good.
     mtol = sqrt(eps(eltype(x_star)))
     if (n_act > 0 && any(<(-mtol), zI_star)) ||
-       (n_bound > 0 && any(<(-mtol), z_bound_star))
-        n_lb     = length(active_lb)
+            (n_bound > 0 && any(<(-mtol), z_bound_star))
+        n_lb = length(active_lb)
         n_lb_var = length(active_lb_var)
-        active_lb     = active_lb[findall(j -> zI_star[j]          >= -mtol, 1:n_lb)]
-        active_ub     = active_ub[findall(j -> zI_star[n_lb+j]     >= -mtol, 1:length(active_ub))]
-        active_lb_var = active_lb_var[findall(j -> z_bound_star[j]              >= -mtol, 1:n_lb_var)]
-        active_ub_var = active_ub_var[findall(j -> z_bound_star[n_lb_var+j]     >= -mtol,
-                                              1:length(active_ub_var))]
-        n_act   = length(active_lb) + length(active_ub)
+        active_lb = active_lb[findall(j -> zI_star[j] >= -mtol, 1:n_lb)]
+        active_ub = active_ub[findall(j -> zI_star[n_lb + j] >= -mtol, 1:length(active_ub))]
+        active_lb_var = active_lb_var[findall(j -> z_bound_star[j] >= -mtol, 1:n_lb_var)]
+        active_ub_var = active_ub_var[
+            findall(
+                j -> z_bound_star[n_lb_var + j] >= -mtol,
+                1:length(active_ub_var)
+            ),
+        ]
+        n_act = length(active_lb) + length(active_ub)
         n_bound = length(active_lb_var) + length(active_ub_var)
 
         h_I = (x, q) -> begin
@@ -244,14 +260,16 @@ function OptimizationAdjointSensitivityFunction(
         elseif J_full !== nothing
             vcat(
                 isempty(active_lb) ? zeros(eltype(x_star), 0, n_x) : -J_full[active_lb, :],
-                isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) :  J_full[active_ub, :]
+                isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) : J_full[active_ub, :]
             )
         else
             jacobian(x -> h_I(x, p), x_star, sensealg)
         end
 
         Jx_bound = zeros(eltype(x_star), n_bound, n_x)
-        for (j, i) in enumerate(active_lb_var); Jx_bound[j, i] = -one(eltype(x_star)); end
+        for (j, i) in enumerate(active_lb_var)
+            Jx_bound[j, i] = -one(eltype(x_star))
+        end
         for (j, i) in enumerate(active_ub_var)
             Jx_bound[length(active_lb_var) + j, i] = one(eltype(x_star))
         end
@@ -263,14 +281,14 @@ function OptimizationAdjointSensitivityFunction(
         else
             solve(LinearProblem(Matrix(vcat(Jxg, Jxhι)'), -∇f), LinearSolve.QRFactorization()).u
         end
-        y_star  = n_eq  > 0 ? dual_vars[1:n_eq]                : eltype(x_star)[]
-        zI_star = n_act > 0 ? dual_vars[(n_eq+1):(n_eq+n_act)] : eltype(x_star)[]
+        y_star = n_eq > 0 ? dual_vars[1:n_eq] : eltype(x_star)[]
+        zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
     end
 
     # Lagrangian with fixed multipliers (used for p-derivative computations below)
-    L = function(x, q)
+    L = function (x, q)
         val = prob.f(x, q)
-        n_eq  > 0 && (val += dot(y_star,  g(x, q)))
+        n_eq > 0 && (val += dot(y_star, g(x, q)))
         n_act > 0 && (val += dot(zI_star, h_I(x, q)))
         return val
     end
@@ -283,9 +301,15 @@ function OptimizationAdjointSensitivityFunction(
     #   μ[active_ub[j]] =  zI_star[n_lb + j]       (h_ub = cons - ucons  → +cons contribution)
     Lxx = if opt_f.lag_h !== nothing
         mu_full = zeros(eltype(x_star), n_cons)
-        for (j, i) in enumerate(eq_idx);    mu_full[i]  = y_star[j]                          end
-        for (j, i) in enumerate(active_lb); mu_full[i] -= zI_star[j]                          end
-        for (j, i) in enumerate(active_ub); mu_full[i] += zI_star[length(active_lb) + j]      end
+        for (j, i) in enumerate(eq_idx)
+            mu_full[i] = y_star[j]
+        end
+        for (j, i) in enumerate(active_lb)
+            mu_full[i] -= zI_star[j]
+        end
+        for (j, i) in enumerate(active_ub)
+            mu_full[i] += zI_star[length(active_lb) + j]
+        end
         _opt_eval_lag_h(opt_f.lag_h, n_x, x_star, one(eltype(x_star)), mu_full, p, iip_val, has_p_val)
     elseif !has_cons && opt_f.hess !== nothing
         _opt_eval_mat(opt_f.hess, n_x, n_x, x_star, p, iip_val, has_p_val)
@@ -297,18 +321,20 @@ function OptimizationAdjointSensitivityFunction(
     KKT = zeros(eltype(x_star), N, N)
     KKT[1:n_x, 1:n_x] = Lxx
     if n_eq > 0
-        KKT[1:n_x, (n_x + 1):(n_x + n_eq)]  = Jxg'
-        KKT[(n_x + 1):(n_x + n_eq), 1:n_x]  = Jxg
+        KKT[1:n_x, (n_x + 1):(n_x + n_eq)] = Jxg'
+        KKT[(n_x + 1):(n_x + n_eq), 1:n_x] = Jxg
     end
     if n_act_total > 0
-        KKT[1:n_x, (n_x + n_eq + 1):N]      = Jxhι'
-        KKT[(n_x + n_eq + 1):N, 1:n_x]      = Jxhι
+        KKT[1:n_x, (n_x + n_eq + 1):N] = Jxhι'
+        KKT[(n_x + n_eq + 1):N, 1:n_x] = Jxhι
     end
 
     # KKT is symmetric, so KKT' = KKT. Solve KKT * λ_full = [Δu; 0; ...; 0] once for all parameters.
     rhs_adj = vcat(Δu, zeros(eltype(x_star), n_eq + n_act_total))
-    λ_full  = solve(LinearProblem(KKT, rhs_adj), sensealg.linsolve;
-                    sensealg.linsolve_kwargs...).u
+    λ_full = solve(
+        LinearProblem(KKT, rhs_adj), sensealg.linsolve;
+        sensealg.linsolve_kwargs...
+    ).u
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
@@ -327,16 +353,18 @@ function OptimizationAdjointSensitivityFunction(
     # size their buffers, so buffers will be M-sized and match the output of f_F.
     M = n_x + n_eq + n_act
     y = zeros(eltype(x_star), M)
-    f_F = OptimizationKKTResidual(let L = L, g = g, h_I = h_I, x_star = x_star,
-              sensealg = sensealg, n_eq = n_eq, n_act = n_act
-        function(_, q_full, _)
-            grad_L = gradient(x -> L(x, q_full), x_star, sensealg)
-            n_eq == 0 && n_act == 0 && return grad_L
-            n_eq  > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
-            n_eq == 0 && n_act  > 0 && return vcat(grad_L, h_I(x_star, q_full))
-            vcat(grad_L, g(x_star, q_full), h_I(x_star, q_full))
+    f_F = OptimizationKKTResidual(
+        let L = L, g = g, h_I = h_I, x_star = x_star,
+                sensealg = sensealg, n_eq = n_eq, n_act = n_act
+            function (_, q_full, _)
+                grad_L = gradient(x -> L(x, q_full), x_star, sensealg)
+                n_eq == 0 && n_act == 0 && return grad_L
+                n_eq > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
+                n_eq == 0 && n_act > 0 && return vcat(grad_L, h_I(x_star, q_full))
+                return vcat(grad_L, g(x_star, q_full), h_I(x_star, q_full))
+            end
         end
-    end)
+    )
 
     # λ: adjoint cotangent for f_F — drop the variable-bound rows of λ_full (∂/∂p = 0).
     λ = λ_full[1:M]
@@ -358,8 +386,10 @@ function OptimizationAdjointSensitivityFunction(
         _pf = f_F  # OOP: Enzyme.make_zero(f) called inline in _vecjacobian!
         _needs_shadow = _needs_repack
         _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
-        _config = get_paramjac_config(autojacvec, p, f_F, y, tunables, nothing;
-                                      numindvar = M, alg = nothing)
+        _config = get_paramjac_config(
+            autojacvec, p, f_F, y, tunables, nothing;
+            numindvar = M, alg = nothing
+        )
         _config = (_config..., Enzyme.make_zero(_pf), _shadow_p)
         _pf, _config, nothing
     elseif autojacvec isa MooncakeVJP
