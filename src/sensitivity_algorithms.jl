@@ -1418,7 +1418,7 @@ function setvjp(
 end
 
 struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
-       AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK

@@ -2696,7 +2696,8 @@ function SciMLBase._concrete_solve_adjoint(
             (G, u, p) -> ForwardDiff.gradient!(G, Base.Fix2(opt_f, p), u)
         else
             (G, u, p) -> FiniteDiff.finite_difference_gradient!(
-                G, Base.Fix2(opt_f, p), u, diff_type(sensealg))
+                G, Base.Fix2(opt_f, p), u, diff_type(sensealg)
+            )
         end
         nlprob = NonlinearProblem(grad_fn, opt_sol.u, p)
     else
@@ -2846,7 +2847,7 @@ function SciMLBase._concrete_solve_adjoint(
     function optimizationbackpass(Δ)
         Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         function df(_out, _u, _p, _t, _i)
-            if _save_idxs isa Number
+            return if _save_idxs isa Number
                 _out[_save_idxs] = Δ isa AbstractArray ? Δ[_save_idxs] : Δ.u[_save_idxs]
             elseif Δ isa Number
                 @. _out[_save_idxs] = Δ
@@ -2891,10 +2892,11 @@ function SciMLBase._concrete_solve_adjoint(
         end
 
         dp = Zygote.accum(
-            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables)
+            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables
+        )
 
         return if originator isa SciMLBase.TrackerOriginator ||
-                  originator isa SciMLBase.ReverseDiffOriginator
+                originator isa SciMLBase.ReverseDiffOriginator
             (
                 NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,

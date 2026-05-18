@@ -439,7 +439,7 @@ function _adjoint_sensitivities(
     )
     dgdu === nothing &&
         error("dgdu must be specified for OptimizationAdjoint")
-    p  = SymbolicIndexingInterface.parameter_values(sol)
+    p = SymbolicIndexingInterface.parameter_values(sol)
     Δu = zero(sol.u)
     dgdu(Δu, sol.u, p, nothing, nothing)
     return OptimizationAdjointProblem(sol.cache, sol, sensealg, p, Δu)
