@@ -1417,6 +1417,81 @@ function setvjp(
     )
 end
 
+"""
+```julia
+OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+```
+
+An implementation of adjoint differentiation for constrained optimization problems.
+Uses implicit differentiation of the KKT first-order optimality conditions to compute
+derivatives of the optimal solution u* with respect to parameters p, given a cotangent
+`dgdu = dG/du*` for some downstream loss `G`.
+
+Handles equality constraints (`lcons == ucons`), two-sided inequality constraints
+(`lcons ≤ cons(u, p) ≤ ucons`), and variable box bounds (`lb ≤ u ≤ ub`). The active
+inequality set is detected by proximity at the optimum and refined by multiplier-sign
+checks (KKT requires inequality multipliers to be non-negative).
+
+Given the cotangent `Δu`, the algorithm solves the symmetric KKT system
+
+```
+[ L_xx   J_g'   J_h' ]   [ λ_x   ]   [ Δu ]
+[ J_g    0      0    ] · [ λ_y   ] = [ 0  ]
+[ J_h    0      0    ]   [ λ_z   ]   [ 0  ]
+```
+
+once, then computes `dG/dp = -λ' · ∂F/∂p` as a single VJP through the KKT residual
+`F(p) = [∇_x L(u*, p); g(u*, p); h_I(u*, p)]`. No re-optimization is required.
+
+## Constructor
+
+```julia
+OptimizationAdjoint(; chunk_size = 0, autodiff = true,
+    autojacvec = nothing,
+    linsolve = nothing, linsolve_kwargs = (;),
+    active_tol = nothing)
+```
+
+## Keyword Arguments
+
+  - `autodiff`: Use automatic differentiation (ForwardDiff) for the inner derivatives
+    at `u*` — gradient of the objective, Jacobian of the constraints, Hessian of the
+    Lagrangian — when not supplied by `OptimizationFunction`. If `false`, FiniteDiff
+    is used with `diff_type = Val{:central}`. Defaults to `true`. This is independent
+    of `autojacvec`, which controls the *outer* VJP.
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
+    choice of chunk size.
+  - `autojacvec`: Calculate the vector-Jacobian product (`λ' · ∂F/∂p`) through the
+    KKT residual via automatic differentiation with special seeding. Choices:
+
+      + `nothing`: chooses an automatic algorithm. Defaults to `true` (ForwardDiff
+        via materialized Jacobian) and is recommended for most users.
+      + `false`: the Jacobian is constructed via FiniteDiff.jl.
+      + `true`: the Jacobian is constructed via ForwardDiff.jl.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+      + `MooncakeVJP`: Uses Mooncake.jl for the vjp.
+  - `linsolve`: the linear solver used in the KKT solve. Defaults to `nothing`,
+    which uses a polyalgorithm to choose an efficient algorithm automatically.
+  - `linsolve_kwargs`: keyword arguments to be passed to the linear solver.
+  - `active_tol`: proximity tolerance for active inequality / variable-bound
+    detection. A constraint or bound is considered active at `u*` when
+    `|c(u*) - bound| ≤ active_tol`. Defaults to `sqrt(eps(eltype(u*)))` when
+    `nothing`.
+
+For more details on the vjp choices, please consult the sensitivity algorithms
+documentation page or the docstrings of the vjp types.
+
+## References
+
+Gould, S., Fernando, B., Cherian, A., Anderson, P., Cruz, R. S., & Guo, E.,
+On Differentiating Parameterized Argmin and Argmax Problems with Application to
+Bi-level Optimization (2016), https://arxiv.org/abs/1607.05447
+"""
 struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP

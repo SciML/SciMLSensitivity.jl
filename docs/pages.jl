@@ -46,6 +46,7 @@ pages = [
     "Manual and APIs" => Any[
         "manual/differential_equation_sensitivities.md",
         "manual/nonlinear_solve_sensitivities.md",
+        "manual/optimization_sensitivities.md",
         "manual/direct_forward_sensitivity.md",
         "manual/direct_adjoint_sensitivities.md",
     ],
