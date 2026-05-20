@@ -169,14 +169,18 @@ end
 
 function _track_callback(cb::VectorContinuousCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
+    # VCC has only a single affect! (no affect_neg!) — the per-fire
+    # mask carries directionality through to the reverse pass, so we
+    # use the standard positional VCC constructor.
     return VectorContinuousCallback(
         cb.condition,
         TrackedAffect_vcc(t, u, p, cb.affect!, correction),
-        nothing,
         cb.len, cb.initialize, cb.finalize, cb.idxs,
         cb.rootfind, cb.interp_points,
         collect(cb.save_positions),
-        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge
+        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge,
+        cb.initializealg, cb.saved_clock_partitions,
+        cb.maybe_discontinuity, cb.initialize_save_discretes
     )
 end
 
