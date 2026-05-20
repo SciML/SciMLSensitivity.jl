@@ -189,7 +189,7 @@ function OptimizationAdjointSensitivityFunction(
     mtol = sqrt(eps(eltype(x_star)))
     max_iters = length(active_lb) + length(active_ub) +
                 length(active_lb_var) + length(active_ub_var) + 1
-    local h_I, n_act, n_bound, y_star, zI_star
+    local h_I, n_act, n_bound, n_act_total, y_star, zI_star, Jxhι
     has_negatives = true
     iter = 0
     while has_negatives && iter < max_iters
