@@ -15,7 +15,12 @@ function test_vector_continuous_callback(cb, g)
         return nothing
     end
 
-    u0 = [50.0, 0.0, 0.0, 2.0]
+    # u0[4] = 2.01 (not 2.0) so the "linear affect" event (u[3]=10) lands at
+    # τ = 10/2.01 ≈ 4.975 instead of exactly 5.0 — off the saveat grid. At
+    # τ = saveat the cost is jump-discontinuous in u0[3], u0[4] (the post-event
+    # state propagates to that saveat sample), so FD and adjoint legitimately
+    # compute different one-sided derivatives and rtol comparisons fail.
+    u0 = [50.0, 0.0, 0.0, 2.01]
     tspan = (0.0, 10.0)
     p = [9.8, 0.9]
     prob = ODEProblem(f, u0, tspan, p)
