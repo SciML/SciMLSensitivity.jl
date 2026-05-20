@@ -180,65 +180,20 @@ function OptimizationAdjointSensitivityFunction(
     # Active ineq upper bound: h_ub(x,p) = cons(x,p)[i] - ucons[i]  (= 0 when active)
     # Variable bound active lower: h_lb_var = lb[i] - x[i]  (∂/∂x = -eᵢ, ∂/∂p = 0)
     # Variable bound active upper: h_ub_var = x[i] - ub[i]  (∂/∂x = +eᵢ, ∂/∂p = 0)
-    n_act = length(active_lb) + length(active_ub)
-    n_bound = length(active_lb_var) + length(active_ub_var)
-
-    h_I = (x, q) -> begin
-        c = eval_cons(x, q)
-        vcat(
-            isempty(active_lb) ? eltype(x_star)[] : lcons[active_lb] .- c[active_lb],
-            isempty(active_ub) ? eltype(x_star)[] : c[active_ub] .- ucons[active_ub]
-        )
-    end
-
-    Jxhι_cons = if n_act == 0
-        zeros(eltype(x_star), 0, n_x)
-    elseif J_full !== nothing
-        vcat(
-            isempty(active_lb) ? zeros(eltype(x_star), 0, n_x) : -J_full[active_lb, :],
-            isempty(active_ub) ? zeros(eltype(x_star), 0, n_x) : J_full[active_ub, :]
-        )
-    else
-        jacobian(x -> h_I(x, p), x_star, sensealg)
-    end
-
-    Jx_bound = zeros(eltype(x_star), n_bound, n_x)
-    for (j, i) in enumerate(active_lb_var)
-        Jx_bound[j, i] = -one(eltype(x_star))
-    end
-    for (j, i) in enumerate(active_ub_var)
-        Jx_bound[length(active_lb_var) + j, i] = one(eltype(x_star))
-    end
-    Jxhι = vcat(Jxhι_cons, Jx_bound)
-
-    # Dual variables from stationarity: [Jxg; Jxhι]' * [y*; z_I*; z_bound] = -∇f
-    n_act_total = n_act + n_bound
-    dual_vars = if n_eq + n_act_total == 0
-        eltype(x_star)[]
-    else
-        solve(LinearProblem(Matrix(vcat(Jxg, Jxhι)'), -∇f), LinearSolve.QRFactorization()).u
-    end
-    y_star = n_eq > 0 ? dual_vars[1:n_eq] : eltype(x_star)[]
-    zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
-    z_bound_star = n_bound > 0 ? dual_vars[(n_eq + n_act + 1):end] : eltype(x_star)[]
-
-    # Multiplier sign check: KKT requires all inequality multipliers ≥ 0 at a minimum.
-    # Negative multipliers indicate spuriously-included constraints (close to bound but inactive).
-    # Drop those and redo only the Jxhι build and dual solve — no extra cost if all signs are good.
+    #
+    # Active-set iteration: KKT requires inequality multipliers ≥ 0 at any optimum.
+    # Build Jxhι and recover multipliers; if any are negative, the offending constraints
+    # were spuriously flagged by proximity detection. Drop them and re-solve. Dropped
+    # indices never come back, so this terminates in ≤ |initial active set| iterations.
+    # The iteration cap is defense-in-depth; the mathematical bound is the same.
     mtol = sqrt(eps(eltype(x_star)))
-    if (n_act > 0 && any(<(-mtol), zI_star)) ||
-            (n_bound > 0 && any(<(-mtol), z_bound_star))
-        n_lb = length(active_lb)
-        n_lb_var = length(active_lb_var)
-        active_lb = active_lb[findall(j -> zI_star[j] >= -mtol, 1:n_lb)]
-        active_ub = active_ub[findall(j -> zI_star[n_lb + j] >= -mtol, 1:length(active_ub))]
-        active_lb_var = active_lb_var[findall(j -> z_bound_star[j] >= -mtol, 1:n_lb_var)]
-        active_ub_var = active_ub_var[
-            findall(
-                j -> z_bound_star[n_lb_var + j] >= -mtol,
-                1:length(active_ub_var)
-            ),
-        ]
+    max_iters = length(active_lb) + length(active_ub) +
+                length(active_lb_var) + length(active_ub_var) + 1
+    local h_I, n_act, n_bound, y_star, zI_star
+    has_negatives = true
+    iter = 0
+    while has_negatives && iter < max_iters
+        iter += 1
         n_act = length(active_lb) + length(active_ub)
         n_bound = length(active_lb_var) + length(active_ub_var)
 
@@ -270,6 +225,7 @@ function OptimizationAdjointSensitivityFunction(
         end
         Jxhι = vcat(Jxhι_cons, Jx_bound)
 
+        # Dual variables from stationarity: [Jxg; Jxhι]' * [y*; z_I*; z_bound] = -∇f
         n_act_total = n_act + n_bound
         dual_vars = if n_eq + n_act_total == 0
             eltype(x_star)[]
@@ -278,6 +234,28 @@ function OptimizationAdjointSensitivityFunction(
         end
         y_star = n_eq > 0 ? dual_vars[1:n_eq] : eltype(x_star)[]
         zI_star = n_act > 0 ? dual_vars[(n_eq + 1):(n_eq + n_act)] : eltype(x_star)[]
+        z_bound_star = n_bound > 0 ? dual_vars[(n_eq + n_act + 1):end] : eltype(x_star)[]
+
+        neg_in_zI = n_act > 0 && any(<(-mtol), zI_star)
+        neg_in_bound = n_bound > 0 && any(<(-mtol), z_bound_star)
+        has_negatives = neg_in_zI || neg_in_bound
+
+        if has_negatives
+            # Filter offenders out of each active set; they never re-enter.
+            n_lb = length(active_lb)
+            n_lb_var = length(active_lb_var)
+            active_lb = active_lb[findall(j -> zI_star[j] >= -mtol, 1:n_lb)]
+            active_ub = active_ub[findall(j -> zI_star[n_lb + j] >= -mtol,
+                                          1:length(active_ub))]
+            active_lb_var = active_lb_var[findall(j -> z_bound_star[j] >= -mtol,
+                                                  1:n_lb_var)]
+            active_ub_var = active_ub_var[
+                findall(
+                    j -> z_bound_star[n_lb_var + j] >= -mtol,
+                    1:length(active_ub_var)
+                ),
+            ]
+        end
     end
 
     # Lagrangian with fixed multipliers (used for p-derivative computations below)
