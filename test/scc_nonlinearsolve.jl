@@ -70,22 +70,11 @@ p_test = [4.0, 3.0]
         @test isapprox(fwd, fd, rtol = 0.05)
     end
 
-    # Enzyme through Tuple-based SCCNonlinearProblem now works reliably on
-    # Julia 1.10 (verified across 40+ consecutive runs with the current
-    # SCCNonlinearSolve, NonlinearSolveBase, and Enzyme releases). On Julia
-    # 1.11+, Enzyme still hits an `IllegalTypeAnalysisException` on
-    # `Base._typed_vcat!` inside SCCNonlinearSolve's solution assembly,
-    # which segfaults the worker process — gate the test on the LTS until
-    # the upstream Enzyme/NonlinearSolve issues are fixed.
     # Vector-based SCC remains unsupported because heterogeneous function
     # types get erased to Any. See Enzyme.jl#3021.
     @testset "Enzyme" begin
-        if VERSION < v"1.11"
-            enz = Enzyme.gradient(Enzyme.Reverse, loss, copy(p_test))
-            @test isapprox(collect(enz[1]), fd, rtol = 0.05)
-        else
-            @test_skip true
-        end
+        enz = Enzyme.gradient(Enzyme.Reverse, loss, copy(p_test))
+        @test isapprox(collect(enz[1]), fd, rtol = 0.05)
     end
 
     @testset "Mooncake" begin
