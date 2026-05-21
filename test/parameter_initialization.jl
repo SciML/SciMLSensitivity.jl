@@ -70,13 +70,16 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     end
 
     # Exercises the EnzymeOriginator method of `_init_originator_gradient`
-    # added alongside this testset. Currently @test_broken because the
-    # outer Enzyme.gradient over `remake(prob; p = repack(tunables))`
-    # itself fails with `EnzymeRuntimeActivityError` from MTK's `remake`
-    # path — same upstream issue tracked by NonlinearSolve.jl#869 /
-    # Enzyme.jl#2699 / SciMLSensitivity.jl#1415. When that clears, this
-    # should pass without further changes (the dispatch already routes
-    # the init step through Enzyme natively).
+    # added alongside this testset. Annotations follow the documented
+    # user-side pattern: `Const(loss)` for the closure that captures the
+    # mutable `ODEProblem`, and `set_runtime_activity(Reverse)` so Enzyme's
+    # activity analysis tolerates the runtime-activity transitions through
+    # MTK's `remake` path. With these in place the activity layer is
+    # handled; the remaining blocker is a `MixedDuplicated` /
+    # `Core.SimpleVector` MethodError further down in Enzyme's
+    # runtime-activity wrapping for MTK-System / NonlinearSolution
+    # types — tracked in SciMLSensitivity.jl#1359. When that lifts,
+    # flipping `@test_broken` → `@test` is the only change needed here.
     @testset "Adjoint through Prob (Enzyme)" begin
         sensealg = SciMLSensitivity.GaussAdjoint(
             autojacvec = SciMLSensitivity.EnzymeVJP(),
@@ -89,7 +92,10 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             end
         end
         @test_broken begin
-            g = Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(loss), copy(tunables))[1]
+            g = Enzyme.gradient(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(loss), copy(tunables),
+            )[1]
             any(!iszero, g)
         end
     end

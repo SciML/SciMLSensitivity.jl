@@ -160,11 +160,19 @@ setups = [
 ]
 
 # Reverse-mode AD through DAE initialization with SCCNonlinearProblem mutation.
-# Marked as broken until Enzyme/Mooncake fully support this pattern.
-# Enzyme blockers (see NonlinearSolve.jl#869, issue #1358):
-# - Julia 1.12: LLVM crash (Enzyme rules disabled by VERSION < v"1.12" guard)
-# - Julia 1.10: EnzymeMutabilityException in remake, MixedReturnException with
-#   default PolyAlgorithm, NamedTuple broadcast error with MTKParameters
+# Annotations follow the documented user-side pattern: `Const(loss)` for the
+# closure that captures the mutable `ODEProblem`, and
+# `set_runtime_activity(Reverse)` so Enzyme's activity analysis tolerates the
+# runtime-activity transitions through MTK's `remake` path. The inner solve
+# already pins `Rodas5P()` (no polyalgorithm Union for Enzyme's type analysis
+# to trip on). The previously-reported `EnzymeMutabilityException` on the
+# mutable closure capture is correct upstream behavior per
+# EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the fix. With these
+# annotations the chain advances through the activity layer; the remaining
+# blocker is a `MixedDuplicated` / `Core.SimpleVector` MethodError further
+# down in Enzyme's runtime-activity wrapping for MTK-System /
+# NonlinearSolution types — tracked in SciMLSensitivity.jl#1359. When that
+# lifts, flipping `@test_broken` → `@test` is the only change needed here.
 @test_broken begin
     grads = map(setups) do setup
         prob, tunables, repack, init = setup
@@ -185,7 +193,10 @@ setups = [
                 sum(new_sol)
             end
         end
-        Enzyme.gradient(Enzyme.Reverse, loss, tunables)
+        Enzyme.gradient(
+            Enzyme.set_runtime_activity(Enzyme.Reverse),
+            Enzyme.Const(loss), tunables,
+        )
     end
     all(x ≈ grads[1] for x in grads)
 end
