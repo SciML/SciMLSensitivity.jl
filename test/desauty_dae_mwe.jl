@@ -132,13 +132,17 @@ eqs = [
             # through. The previously-reported `EnzymeMutabilityException`
             # on the mutable closure capture is correct upstream behavior
             # per EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the
-            # fix. With these annotations the chain advances through the
-            # activity layer; the remaining blocker is a `MixedDuplicated`
-            # / `Core.SimpleVector` MethodError further down in Enzyme's
-            # runtime-activity wrapping for MTK-System / NonlinearSolution
-            # types — tracked in SciMLSensitivity.jl#1359. When that
-            # lifts, flipping `@test_broken` → `@test` is the only change
-            # needed here.
+            # fix.
+            #
+            # With these annotations, the plain `NonlinearProblem` case
+            # (use_scc = false) now passes. The `SCCNonlinearProblem` case
+            # (use_scc = true) still trips a `MixedDuplicated` /
+            # `Core.SimpleVector` MethodError further down in Enzyme's
+            # runtime-activity wrapping for the MTK-System /
+            # NonlinearSolution types involved in SCC sub-problem
+            # assembly — tracked in SciMLSensitivity.jl#1359. When that
+            # lifts, flipping `@test_broken` → `@test` in the `use_scc`
+            # branch is the only change needed here.
             enzyme_init_loss = let iprob = iprob, irepack = irepack
                 p -> begin
                     iprob2 = remake(iprob, p = irepack(p))
@@ -146,12 +150,20 @@ eqs = [
                     sum(sol.u)
                 end
             end
-            @test_broken begin
+            if use_scc
+                @test_broken begin
+                    igs = Enzyme.gradient(
+                        Enzyme.set_runtime_activity(Enzyme.Reverse),
+                        Enzyme.Const(enzyme_init_loss), itunables,
+                    )
+                    !iszero(sum(igs))
+                end
+            else
                 igs = Enzyme.gradient(
                     Enzyme.set_runtime_activity(Enzyme.Reverse),
                     Enzyme.Const(enzyme_init_loss), itunables,
                 )
-                !iszero(sum(igs))
+                @test !iszero(sum(igs))
             end
         end
 
