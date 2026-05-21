@@ -4,8 +4,9 @@ using OrdinaryDiffEq, NonlinearSolve, ForwardDiff, Calculus, Random, Reactant
 using OrdinaryDiffEqRosenbrock: Rodas5
 Random.seed!(12345)
 
+using Enzyme
+
 # Use Mooncake on Julia 1.12+ (Zygote has issues), Zygote on older versions
-# Enzyme also has issues on Julia 1.12+
 if VERSION >= v"1.12"
     using Mooncake
     function compute_gradient(f, x)
@@ -19,18 +20,16 @@ if VERSION >= v"1.12"
         grad = Mooncake.value_and_gradient!!(Mooncake.build_rrule(g, xy), g, xy)[2][2]
         return grad[1], grad[2]
     end
-    const ENZYME_AVAILABLE = false
 else
     using Zygote
-    using Enzyme
     function compute_gradient(f, x)
         return Zygote.gradient(f, x)[1]
     end
     function compute_gradient(f, x, y)
         return Zygote.gradient(f, x, y)
     end
-    const ENZYME_AVAILABLE = true
 end
+const ENZYME_AVAILABLE = true
 
 @testset "Adjoint sensitivities of steady state solver" begin
     function f!(du, u, p, t)
