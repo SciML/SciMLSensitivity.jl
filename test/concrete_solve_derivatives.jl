@@ -514,11 +514,6 @@ Additional Tests: save_idxs, save_everystep, etc.
     ref_grad_idx = ForwardDiff.gradient(ref_loss_idx, u0p)
 
     @testset "save_idxs - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues on Julia 1.12+ - see issue #1331
-        if backend_name == "Tracker" && VERSION >= v"1.12"
-            @test_broken false
-            continue
-        end
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
@@ -544,11 +539,6 @@ end
     ref_grad_end = ForwardDiff.gradient(ref_loss_end, u0p)
 
     @testset "save_end only - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues on Julia 1.12+ - see issue #1331
-        if backend_name == "Tracker" && VERSION >= v"1.12"
-            @test_broken false
-            continue
-        end
         loss = u0p -> sum(
             solve(
                 prob, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
@@ -575,11 +565,6 @@ end
     ref_grad_saveat = ForwardDiff.gradient(ref_loss_saveat, u0p)
 
     @testset "saveat=2.3 - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues on Julia 1.12+ - see issue #1331
-        if backend_name == "Tracker" && VERSION >= v"1.12"
-            @test_broken false
-            continue
-        end
         loss = u0p -> sum(
             solve(
                 proboop, Tsit5(), u0 = u0p[1:2], p = u0p[3:end],
@@ -607,11 +592,6 @@ end
     ref_grad_vec = ForwardDiff.gradient(ref_loss_vec, p)
 
     @testset "VecOfArray - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        # Tracker has issues on Julia 1.12+ - see issue #1331
-        if backend_name == "Tracker" && VERSION >= v"1.12"
-            @test_broken false
-            continue
-        end
         result = grad_fn(ref_loss_vec, p)
         @test result ≈ ref_grad_vec
     end
@@ -732,13 +712,8 @@ https://github.com/SciML/SciMLSensitivity.jl/issues/943
     @test grad_fd ≈ grad_fi atol = 1.0e-2
 
     @testset "BouncingBall - $backend_name" for (backend_name, grad_fn) in REVERSE_BACKENDS
-        if backend_name == "Tracker" && VERSION >= v"1.12"
-            # Tracker has issues on Julia 1.12+ - see issue #1331
-            @test_broken false
-        else
-            result = grad_fn(loss_ball, p_ball)
-            @test result ≈ grad_fd atol = 1.0e-4
-        end
+        result = grad_fn(loss_ball, p_ball)
+        @test result ≈ grad_fd atol = 1.0e-4
     end
 end
 
