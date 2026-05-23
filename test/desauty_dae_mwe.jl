@@ -10,6 +10,7 @@ using ForwardDiff
 using Tracker
 using Enzyme
 using Mooncake
+using NonlinearSolve: NewtonRaphson
 
 # DAE with nonlinear algebraic constraints forming an SCC chain.
 # Inspired by the De Sauty bridge DAE but written as a flat system
@@ -120,28 +121,49 @@ eqs = [
         end
 
         @testset "Enzyme through init" begin
-            # Status (verified 2026-04-10 with Enzyme 0.13, NonlinearSolve
-            # 4.17, SciMLBase 2.153, ModelingToolkit current release):
+            # Annotations follow the documented user-side pattern:
+            # `Const(loss)` for the closure that captures the mutable
+            # `NonlinearProblem`/`SCCNonlinearProblem`, and
+            # `set_runtime_activity(Reverse)` so Enzyme's activity analysis
+            # tolerates the runtime-activity transitions through MTK's
+            # `remake` path. The inner `solve` pins `NewtonRaphson()`
+            # explicitly so Enzyme's type analysis does not trip on the
+            # polyalgorithm Union NonlinearSolve would otherwise dispatch
+            # through. The previously-reported `EnzymeMutabilityException`
+            # on the mutable closure capture is correct upstream behavior
+            # per EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the
+            # fix.
             #
-            #   * Julia 1.10 (LTS): hits an `EnzymeMutabilityException` because
-            #     the closure capturing `iprob`/`irepack` cannot be proven
-            #     read-only. Wrapping `init_loss` in `Const(...)` advances past
-            #     the activity check but then crashes the LLVM GC invariant
-            #     verifier with `Illegal inttoptr` during `MTK.remake`/
-            #     `SciMLStructures.replace`. Even calling
-            #     `Enzyme.set_runtime_activity(Reverse)` produces the same
-            #     LLVM crash. The issue reproduces equally for `use_scc=false`
-            #     and `use_scc=true` and is independent of SCCNonlinearSolve.
-            #   * Julia 1.11+: same crashes plus a separate
-            #     `IllegalTypeAnalysisException` on `Base._typed_vcat!` inside
-            #     SCCNonlinearSolve's solution assembly.
-            #
-            # Tracking issues: NonlinearSolve.jl#869, Enzyme.jl#2699,
-            # Enzyme.jl#3021 (vcat type analysis), and the upstream MTK
-            # remake/Enzyme interaction.
-            @test_broken begin
-                igs = Enzyme.gradient(Enzyme.Reverse, init_loss, itunables)
-                !iszero(sum(igs))
+            # With these annotations, the plain `NonlinearProblem` case
+            # (use_scc = false) now passes. The `SCCNonlinearProblem` case
+            # (use_scc = true) still trips a `MixedDuplicated` /
+            # `Core.SimpleVector` MethodError further down in Enzyme's
+            # runtime-activity wrapping for the MTK-System /
+            # NonlinearSolution types involved in SCC sub-problem
+            # assembly — tracked in SciMLSensitivity.jl#1359. When that
+            # lifts, flipping `@test_broken` → `@test` in the `use_scc`
+            # branch is the only change needed here.
+            enzyme_init_loss = let iprob = iprob, irepack = irepack
+                p -> begin
+                    iprob2 = remake(iprob, p = irepack(p))
+                    sol = solve(iprob2, NewtonRaphson())
+                    sum(sol.u)
+                end
+            end
+            if use_scc
+                @test_broken begin
+                    igs = Enzyme.gradient(
+                        Enzyme.set_runtime_activity(Enzyme.Reverse),
+                        Enzyme.Const(enzyme_init_loss), itunables,
+                    )
+                    !iszero(sum(igs))
+                end
+            else
+                igs = Enzyme.gradient(
+                    Enzyme.set_runtime_activity(Enzyme.Reverse),
+                    Enzyme.Const(enzyme_init_loss), itunables,
+                )
+                @test !iszero(sum(igs))
             end
         end
 
