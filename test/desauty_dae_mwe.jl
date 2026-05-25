@@ -121,50 +121,43 @@ eqs = [
         end
 
         @testset "Enzyme through init" begin
-            # Annotations follow the documented user-side pattern:
-            # `Const(loss)` for the closure that captures the mutable
-            # `NonlinearProblem`/`SCCNonlinearProblem`, and
-            # `set_runtime_activity(Reverse)` so Enzyme's activity analysis
-            # tolerates the runtime-activity transitions through MTK's
-            # `remake` path. The inner `solve` pins `NewtonRaphson()`
-            # explicitly so Enzyme's type analysis does not trip on the
-            # polyalgorithm Union NonlinearSolve would otherwise dispatch
-            # through. The previously-reported `EnzymeMutabilityException`
-            # on the mutable closure capture is correct upstream behavior
-            # per EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the
-            # fix.
+            # `Enzyme.gradient(Const(closure), tunables)` does not allocate
+            # shadows for the closure's captures, so when the closure captures
+            # a mutable `iprob` (whose `iprob.p.caches` is shared via the
+            # `SciMLStructures.replace` `@set!` repack and then mutated by
+            # the inner `solve!`), the derivative info carried by those cache
+            # writes has nowhere to land and is silently dropped. The
+            # idiomatic Enzyme pattern is to express the loss as a plain
+            # function whose captured mutable state is passed as an explicit
+            # `Duplicated` argument. We also reconstruct `irepack` *inside*
+            # the loss from the duplicated `iprob_`, so its captured
+            # parameter template shares the Enzyme shadow.
             #
-            # With these annotations, the plain `NonlinearProblem` case
-            # (use_scc = false) now passes. The `SCCNonlinearProblem` case
-            # (use_scc = true) still trips a `MixedDuplicated` /
-            # `Core.SimpleVector` MethodError further down in Enzyme's
-            # runtime-activity wrapping for the MTK-System /
-            # NonlinearSolution types involved in SCC sub-problem
-            # assembly — tracked in SciMLSensitivity.jl#1359. When that
-            # lifts, flipping `@test_broken` → `@test` in the `use_scc`
-            # branch is the only change needed here.
-            enzyme_init_loss = let iprob = iprob, irepack = irepack
-                p -> begin
-                    iprob2 = remake(iprob, p = irepack(p))
-                    sol = solve(iprob2, NewtonRaphson())
-                    sum(sol.u)
-                end
-            end
-            if use_scc
-                @test_broken begin
-                    igs = Enzyme.gradient(
-                        Enzyme.set_runtime_activity(Enzyme.Reverse),
-                        Enzyme.Const(enzyme_init_loss), itunables,
-                    )
-                    !iszero(sum(igs))
-                end
-            else
-                igs = Enzyme.gradient(
-                    Enzyme.set_runtime_activity(Enzyme.Reverse),
-                    Enzyme.Const(enzyme_init_loss), itunables,
+            # The inner `solve` pins `NewtonRaphson()` explicitly so Enzyme's
+            # type analysis does not trip on the polyalgorithm Union
+            # NonlinearSolve would otherwise dispatch through. The
+            # previously-reported `EnzymeMutabilityException` on the mutable
+            # closure capture is correct upstream behavior per
+            # EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the fix.
+            function enzyme_init_loss(t, iprob_)
+                _, irepack_, _ = SS.canonicalize(
+                    SS.Tunable(), parameter_values(iprob_),
                 )
-                @test !iszero(sum(igs))
+                iprob2 = remake(iprob_, p = irepack_(t))
+                sol = solve(iprob2, NewtonRaphson())
+                return sum(sol.u)
             end
+            diprob = Enzyme.make_zero(iprob)
+            dtunables = zero(itunables)
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(enzyme_init_loss),
+                Enzyme.Active,
+                Enzyme.Duplicated(itunables, dtunables),
+                Enzyme.Duplicated(iprob, diprob),
+            )
+            @test !iszero(sum(dtunables))
+            @test isapprox(dtunables, fd_init_grad, rtol = 0.05)
         end
 
         @testset "Mooncake through init" begin
