@@ -160,43 +160,69 @@ setups = [
 ]
 
 # Reverse-mode AD through DAE initialization with SCCNonlinearProblem mutation.
-# Annotations follow the documented user-side pattern: `Const(loss)` for the
-# closure that captures the mutable `ODEProblem`, and
-# `set_runtime_activity(Reverse)` so Enzyme's activity analysis tolerates the
-# runtime-activity transitions through MTK's `remake` path. The inner solve
-# already pins `Rodas5P()` (no polyalgorithm Union for Enzyme's type analysis
-# to trip on). The previously-reported `EnzymeMutabilityException` on the
-# mutable closure capture is correct upstream behavior per
-# EnzymeAD/Enzyme.jl#3117 — annotating with `Const` is the fix. With these
-# annotations the chain advances through the activity layer; the remaining
-# blocker is a `MixedDuplicated` / `Core.SimpleVector` MethodError further
-# down in Enzyme's runtime-activity wrapping for MTK-System /
-# NonlinearSolution types — tracked in SciMLSensitivity.jl#1359. When that
-# lifts, flipping `@test_broken` → `@test` is the only change needed here.
+# Use the same `Duplicated(prob, diprob)` pattern as the SCC init test in
+# `desauty_dae_mwe.jl` (#1454): a plain function `enzyme_solve_loss` (no
+# captured-mutable closure) with the `ODEProblem` passed explicitly as
+# `Duplicated`. `sensealg` is referenced via a module-level `const` so that
+# Enzyme sees it as a `Const`-typed input — passing it as a function argument
+# under `set_runtime_activity(Reverse)` causes Enzyme to promote it to
+# `Duplicated`, which then doesn't match the `solve_up` Enzyme rule signature
+# in `DiffEqBaseEnzymeExt` (which requires `sensealg::Const`). The inner solve
+# pins `Rodas5P()` to avoid polyalgorithm Union dispatch.
+#
+# Status: still `@test_broken`. After this restructure the chain reaches the
+# `solve_up` rule but Enzyme's `set_runtime_activity` layer promotes
+# `_MTK_SENSEALG` (and the structural fields of `ODEProblem` carrying
+# `MTKParameters`) to `Duplicated`, producing the same downstream
+# `MixedDuplicated` / `Core.SimpleVector` MethodError under MTK's
+# runtime-activity wrapping for MTK-System / NonlinearSolution types
+# tracked in SciMLSensitivity.jl#1359 (and EnzymeAD/Enzyme.jl#3117). The
+# refactor matches #1454's shape so that when #1359 lifts, only the
+# `@test_broken` → `@test` flip is needed.
+const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
+
+function _mtk_enzyme_solve_loss_with_init(t, prob_, init_)
+    _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
+    new_prob = remake(prob_; u0 = prob_.u0, p = repack_(t))
+    new_sol = solve(
+        new_prob, Rodas5P(); initializealg = init_,
+        sensealg = _MTK_SENSEALG, abstol = 1.0e-6, reltol = 1.0e-3,
+    )
+    return sum(new_sol)
+end
+
+function _mtk_enzyme_solve_loss_default_init(t, prob_)
+    _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
+    new_prob = remake(prob_; u0 = prob_.u0, p = repack_(t))
+    new_sol = solve(
+        new_prob, Rodas5P();
+        sensealg = _MTK_SENSEALG, abstol = 1.0e-6, reltol = 1.0e-3,
+    )
+    return sum(new_sol)
+end
+
 @test_broken begin
     grads = map(setups) do setup
         prob, tunables, repack, init = setup
-        u0 = prob.u0
-        loss = let prob = prob, u0 = u0, repack = repack, init = init, sensealg = sensealg
-            tunables_val -> begin
-                new_prob = remake(prob; u0, p = repack(tunables_val))
-                if init === nothing
-                    new_sol = solve(
-                        new_prob, Rodas5P(); sensealg, abstol = 1.0e-6, reltol = 1.0e-3,
-                    )
-                else
-                    new_sol = solve(
-                        new_prob, Rodas5P(); initializealg = init,
-                        sensealg, abstol = 1.0e-6, reltol = 1.0e-3,
-                    )
-                end
-                sum(new_sol)
-            end
+        diprob = Enzyme.make_zero(prob)
+        dtunables = zero(tunables)
+        if init === nothing
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(_mtk_enzyme_solve_loss_default_init), Enzyme.Active,
+                Enzyme.Duplicated(tunables, dtunables),
+                Enzyme.Duplicated(prob, diprob),
+            )
+        else
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(_mtk_enzyme_solve_loss_with_init), Enzyme.Active,
+                Enzyme.Duplicated(tunables, dtunables),
+                Enzyme.Duplicated(prob, diprob),
+                Enzyme.Const(init),
+            )
         end
-        Enzyme.gradient(
-            Enzyme.set_runtime_activity(Enzyme.Reverse),
-            Enzyme.Const(loss), tunables,
-        )
+        dtunables
     end
     all(x ≈ grads[1] for x in grads)
 end
