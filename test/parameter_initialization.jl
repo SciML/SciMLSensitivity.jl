@@ -70,33 +70,52 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     end
 
     # Exercises the EnzymeOriginator method of `_init_originator_gradient`
-    # added alongside this testset. Annotations follow the documented
-    # user-side pattern: `Const(loss)` for the closure that captures the
-    # mutable `ODEProblem`, and `set_runtime_activity(Reverse)` so Enzyme's
-    # activity analysis tolerates the runtime-activity transitions through
-    # MTK's `remake` path. With these in place the activity layer is
-    # handled; the remaining blocker is a `MixedDuplicated` /
-    # `Core.SimpleVector` MethodError further down in Enzyme's
-    # runtime-activity wrapping for MTK-System / NonlinearSolution
-    # types — tracked in SciMLSensitivity.jl#1359. When that lifts,
+    # via a full ODE solve under `GaussAdjoint(EnzymeVJP())`. We use the
+    # idiomatic Enzyme pattern (mirroring the SCC-init rewrite in #1454):
+    # express the loss as a plain function whose captured mutable state
+    # (the `ODEProblem`) is passed as an explicit `Duplicated` argument,
+    # and reconstruct `repack` *inside* the loss from the duplicated
+    # `prob_` so its captured parameter template shares the Enzyme
+    # shadow. `Const(loss)` annotates the function and
+    # `set_runtime_activity(Reverse)` tolerates runtime-activity
+    # transitions through MTK's `remake` path.
+    #
+    # Residual blocker: `Enzyme.autodiff` enters the `GaussAdjoint`
+    # `_concrete_solve_adjoint` rule, which calls
+    # `_init_originator_gradient` to differentiate the parameter-init
+    # `tunables -> new_u0` mapping. That helper currently invokes
+    # `Enzyme.gradient(Enzyme.Reverse, Const(init_loss), tunables)`
+    # without `set_runtime_activity`, so the inner Enzyme call still
+    # raises `EnzymeRuntimeActivityError` at the MTK init `remake`. The
+    # outer-call activity setting doesn't propagate into that nested
+    # gradient. Fixing this requires teaching
+    # `_init_originator_gradient(::EnzymeOriginator, ...)` to wrap with
+    # `set_runtime_activity(Reverse)` (or use `autodiff` + `Duplicated`
+    # itself); both are outside this test file's scope. When that lifts,
     # flipping `@test_broken` → `@test` is the only change needed here.
     @testset "Adjoint through Prob (Enzyme)" begin
-        sensealg = SciMLSensitivity.GaussAdjoint(
-            autojacvec = SciMLSensitivity.EnzymeVJP(),
-        )
-        loss = let prob = prob, repack = repack, sensealg = sensealg
-            function (tunables)
-                new_prob = remake(prob; p = repack(tunables))
-                sol = solve(new_prob; sensealg)
-                return sum(sol)
-            end
+        function enzyme_loss(t, prob_)
+            _, repack_, _ = SS.canonicalize(
+                SS.Tunable(), parameter_values(prob_),
+            )
+            new_prob = remake(prob_; p = repack_(t))
+            sensealg = SciMLSensitivity.GaussAdjoint(
+                autojacvec = SciMLSensitivity.EnzymeVJP(),
+            )
+            sol = solve(new_prob; sensealg)
+            return sum(sol)
         end
         @test_broken begin
-            g = Enzyme.gradient(
+            dprob = Enzyme.make_zero(prob)
+            dtunables = zero(tunables)
+            Enzyme.autodiff(
                 Enzyme.set_runtime_activity(Enzyme.Reverse),
-                Enzyme.Const(loss), copy(tunables),
-            )[1]
-            any(!iszero, g)
+                Enzyme.Const(enzyme_loss),
+                Enzyme.Active,
+                Enzyme.Duplicated(copy(tunables), dtunables),
+                Enzyme.Duplicated(prob, dprob),
+            )
+            any(!iszero, dtunables)
         end
     end
 end
