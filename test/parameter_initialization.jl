@@ -105,7 +105,7 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             sol = solve(new_prob; sensealg)
             return sum(sol)
         end
-        @test_broken begin
+        @test begin
             dprob = Enzyme.make_zero(prob)
             dtunables = zero(tunables)
             Enzyme.autodiff(

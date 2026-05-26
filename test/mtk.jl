@@ -201,7 +201,7 @@ function _mtk_enzyme_solve_loss_default_init(t, prob_)
     return sum(new_sol)
 end
 
-@test_broken begin
+@test begin
     grads = map(setups) do setup
         prob, tunables, repack, init = setup
         diprob = Enzyme.make_zero(prob)
