@@ -374,7 +374,10 @@ end
 # for problems that previously succeeded via the Zygote fallback —
 # see #1415 for context.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
-    return Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), tunables)[1]
+    return Enzyme.gradient(
+        Enzyme.set_runtime_activity(Enzyme.Reverse),
+        Enzyme.Const(f), tunables,
+    )[1]
 end
 
 function SciMLBase._concrete_solve_adjoint(
