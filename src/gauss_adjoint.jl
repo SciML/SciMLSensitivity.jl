@@ -518,7 +518,23 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     elseif sensealg.autojacvec isa EnzymeVJP
-        pf = SciMLBase.isinplace(sol.prob.f) ? SciMLBase.Void(unwrappedf) : unwrappedf
+        # Differentiate w.r.t. the flat `tunables` and `repack` to the full
+        # parameter object inside `pf` (as the ReverseDiff/Mooncake branches do).
+        # Otherwise `vec_pjac!` would build `Duplicated(p, out)` with a structured
+        # `p` (e.g. MTKParameters) and a flat-vector shadow `out`, which has no
+        # matching `Enzyme.Duplicated` constructor.
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        pf = if SciMLBase.isinplace(sol.prob.f)
+            if _needs_repack
+                let _f = unwrappedf, repack = repack
+                    SciMLBase.Void((du, u, tunables, t) -> _f(du, u, repack(tunables), t))
+                end
+            else
+                SciMLBase.Void(unwrappedf)
+            end
+        else
+            unwrappedf
+        end
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
@@ -644,7 +660,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             Enzyme.autodiff(
                 sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t)
+                Enzyme.Const(y), Enzyme.Duplicated(tunables, out), Enzyme.Const(t)
             )
         else
             tmp6 = Enzyme.make_zero(f)

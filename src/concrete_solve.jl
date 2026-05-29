@@ -374,7 +374,13 @@ end
 # for problems that previously succeeded via the Zygote fallback —
 # see #1415 for context.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
-    return Enzyme.gradient(Enzyme.Reverse, Enzyme.Const(f), tunables)[1]
+    # `f` (a `remake` + `solve` over MTK init) stores the inactive sensealg/init
+    # config into differentiable parameter memory, which static activity analysis
+    # rejects. The outer reverse pass is already under runtime activity, so enable
+    # it here too rather than erroring with EnzymeRuntimeActivityError.
+    return Enzyme.gradient(
+        Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Const(f), tunables,
+    )[1]
 end
 
 function SciMLBase._concrete_solve_adjoint(
@@ -1004,11 +1010,13 @@ function SciMLBase._concrete_solve_adjoint(
                 nothing, x -> (x,)
             end
 
-            if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
-                dp
-            else
-                repack_adjoint(dp)[1]
-            end
+            # Repack the flat tunable cotangent `dp` into the parameter's
+            # structural tangent (a NamedTuple for MTKParameters; identity for
+            # plain-array params). The EnzymeOriginator `solve_up` reverse rule
+            # accumulates structural tangents field-wise, so returning a flat
+            # vector here broadcasts against the structured shadow (e.g. an
+            # `MTKParameters`) and errors.
+            repack_adjoint(dp)[1]
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
@@ -2637,11 +2645,13 @@ function SciMLBase._concrete_solve_adjoint(
                     Δtunables
             )
 
-            if originator isa SciMLBase.EnzymeOriginator && isscimlstructure(p)
-                dp
-            else
-                repack_adjoint(dp)[1]
-            end
+            # Repack the flat tunable cotangent `dp` into the parameter's
+            # structural tangent (a NamedTuple for MTKParameters; identity for
+            # plain-array params). The EnzymeOriginator `solve_up` reverse rule
+            # accumulates structural tangents field-wise, so returning a flat
+            # vector here broadcasts against the structured shadow (e.g. an
+            # `MTKParameters`) and errors.
+            repack_adjoint(dp)[1]
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
