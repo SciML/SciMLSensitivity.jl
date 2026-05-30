@@ -374,10 +374,16 @@ end
 # for problems that previously succeeded via the Zygote fallback —
 # see #1415 for context.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
-    # `f` (a `remake` + `solve` over MTK init) stores the inactive sensealg/init
-    # config into differentiable parameter memory, which static activity analysis
-    # rejects. The outer reverse pass is already under runtime activity, so enable
-    # it here too rather than erroring with EnzymeRuntimeActivityError.
+    # `f` differentiates an MTK DAE initialization. Inside it,
+    # `remake(_prob, p = repack(t))` builds one `ODEProblem` allocation mixing
+    # constant memory (the captured `_prob`'s `u0`/`f`/`tspan`/caches) with active
+    # memory (the new parameters) — a partially-active object that Enzyme's static
+    # activity analysis rejects ("constant memory stored to a differentiable
+    # variable", inside `remake`, not the let-captured config). Dropping this
+    # re-raises EnzymeRuntimeActivityError; `set_runtime_activity` is Enzyme's
+    # correctness-preserving fix (the gradient still matches ForwardDiff). A static
+    # fix would need `remake`/SciMLBase to stop aliasing constant structure into
+    # the active problem.
     return Enzyme.gradient(
         Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Const(f), tunables,
     )[1]
