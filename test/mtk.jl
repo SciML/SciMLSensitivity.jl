@@ -170,15 +170,17 @@ setups = [
 # in `DiffEqBaseEnzymeExt` (which requires `sensealg::Const`). The inner solve
 # pins `Rodas5P()` to avoid polyalgorithm Union dispatch.
 #
-# Status: still `@test_broken`. After this restructure the chain reaches the
-# `solve_up` rule but Enzyme's `set_runtime_activity` layer promotes
-# `_MTK_SENSEALG` (and the structural fields of `ODEProblem` carrying
-# `MTKParameters`) to `Duplicated`, producing the same downstream
-# `MixedDuplicated` / `Core.SimpleVector` MethodError under MTK's
-# runtime-activity wrapping for MTK-System / NonlinearSolution types
-# tracked in SciMLSensitivity.jl#1359 (and EnzymeAD/Enzyme.jl#3117). The
-# refactor matches #1454's shape so that when #1359 lifts, only the
-# `@test_broken` → `@test` flip is needed.
+# Status: still `@test_broken`, but for a narrower reason than before. The
+# `MixedDuplicated(::ODESolution)` wall (#1359) is fixed upstream in
+# OrdinaryDiffEq#3700, and the GaussAdjoint(EnzymeVJP()) + MTKParameters
+# runtime-activity / repack issues are fixed in this PR (see the
+# parameter_initialization.jl "Adjoint through Prob (Enzyme)" block, now
+# `@test`). These `setups` additionally exercise DAE initialization via
+# `BrownFullBasicInit` / `DefaultInit` / overdetermined systems, which solve a
+# `NonlinearProblem` during init under Enzyme and hit
+# `NonConstantKeywordArgException: Custom Rule ... differentiable keyword
+# argument` in `get_initial_values` → `solve_up`. Flip to `@test` once that
+# init-path kwarg issue is resolved (e.g. via `Enzyme.EnzymeRules.inactive_kwarg`).
 const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
 
 function _mtk_enzyme_solve_loss_with_init(t, prob_, init_)
