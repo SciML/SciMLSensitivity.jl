@@ -918,6 +918,13 @@ function _vecjacobian(
     return dy, dλ, dgrad
 end
 
+# `λ ⋅ f(u, p, t)`, differentiated by Enzyme with respect to `u` and `p` while
+# holding `f`, `t`, `λ` (and `W`) constant. Kept as top-level methods so the
+# out-of-place EnzymeVJP path can call `Enzyme.gradient` without a capturing
+# closure.
+_enzyme_vecjac_dot(f, u, p, t, λ) = dot(vec(f(u, p, t)), vec(λ))
+_enzyme_vecjac_dot(f, u, p, t, λ, W) = dot(vec(f(u, p, t, W)), vec(λ))
+
 function _vecjacobian(
         y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
         W
@@ -932,20 +939,21 @@ function _vecjacobian(
     enzyme_mode = isautojacvec.mode
     if W === nothing
         _dy = f(y, p, t)
-        vecjacfun = let f = f, t = t, λ = λ
-            (u, p) -> dot(vec(f(u, p, t)), vec(λ))
-        end
+        res = Enzyme.gradient(
+            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, p,
+            Enzyme.Const(t), Enzyme.Const(λ)
+        )
     else
         _dy = f(y, p, t, W)
-        vecjacfun = let f = f, t = t, λ = λ, W = W
-            (u, p) -> dot(vec(f(u, p, t, W)), vec(λ))
-        end
+        res = Enzyme.gradient(
+            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, p,
+            Enzyme.Const(t), Enzyme.Const(λ), Enzyme.Const(W)
+        )
     end
-    tmp1, tmp2 = Enzyme.gradient(enzyme_mode, vecjacfun, y, p)
 
     dy !== nothing && recursive_copyto!(dy, vec(_dy))
-    dλ = vec(tmp1)
-    dgrad !== nothing && recursive_copyto!(dgrad, tmp2)
+    dλ = vec(res[2])
+    dgrad !== nothing && recursive_copyto!(dgrad, res[3])
     return dy, dλ, dgrad
 end
 

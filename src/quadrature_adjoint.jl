@@ -332,6 +332,11 @@ function gclosure4(f, du, u, p, t)
     return nothing
 end
 
+# `λ ⋅ f(y, repack(tunables), t)`, differentiated by Enzyme with respect to
+# `tunables` only (everything else held constant). Top-level so the out-of-place
+# immutable-state parameter vjp can call `Enzyme.gradient` without a closure.
+_enzyme_vecpjac_dot(f, repack, y, tunables, t, λ) = dot(vec(f(y, repack(tunables), t)), vec(λ))
+
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol, tunables, repack) = S
@@ -407,12 +412,14 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             # Out-of-place immutable state (e.g. `SVector`): the buffered
             # `Duplicated` path below needs mutable temporaries built from
             # `zero(y)`, so instead form the parameter vjp `(∂f/∂p)^T λ` as the
-            # gradient of `λ ⋅ f(y, p, t)` with respect to the tunables.
-            vecpjacfun = let f = f, y = y, t = t, λ = λ, repack = repack
-                tunables -> dot(vec(f(y, repack(tunables), t)), vec(λ))
-            end
-            dp = Enzyme.gradient(sensealg.autojacvec.mode, vecpjacfun, tunables)[1]
-            recursive_copyto!(out, dp)
+            # gradient of `λ ⋅ f(y, repack(tunables), t)` with respect to the
+            # tunables, holding `f`, `repack`, `y`, `t`, `λ` constant.
+            res = Enzyme.gradient(
+                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                Enzyme.Const(t), Enzyme.Const(λ)
+            )
+            recursive_copyto!(out, res[4])
         else
             tmp3, tmp4, tmp6 = paramjac_config
             vtmp4 = vec(tmp4)
