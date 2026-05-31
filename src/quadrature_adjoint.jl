@@ -332,6 +332,11 @@ function gclosure4(f, du, u, p, t)
     return nothing
 end
 
+# `λ ⋅ f(y, repack(tunables), t)`, differentiated by Enzyme with respect to
+# `tunables` only (everything else held constant). Top-level so the out-of-place
+# immutable-state parameter vjp can call `Enzyme.gradient` without a closure.
+_enzyme_vecpjac_dot(f, repack, y, tunables, t, λ) = dot(vec(f(y, repack(tunables), t)), vec(λ))
+
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     (; pJ, pf, p, f_cache, dgdp_cache, paramjac_config, sensealg, sol, adj_sol, tunables, repack) = S
@@ -403,48 +408,62 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     elseif sensealg.autojacvec isa ReactantVJP
         reactant_run_ad!(nothing, out, nothing, paramjac_config, y, p, t, λ)
     elseif sensealg.autojacvec isa EnzymeVJP
-        tmp3, tmp4, tmp6 = paramjac_config
-        vtmp4 = vec(tmp4)
-
-        Enzyme.remake_zero!(out)
-        Enzyme.remake_zero!(tmp3)
-        vtmp4 .= λ
-
-        _shadow_enzyme = nothing
-        if !(p isa AbstractArray)
-            _shadow_enzyme = repack(out)
-            dup = Enzyme.Duplicated(p, _shadow_enzyme)
-        else
-            dup = Enzyme.Duplicated(p, out)
-        end
-
-        if SciMLBase.isinplace(sol.prob.f)
-            Enzyme.remake_zero!(tmp6)
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode,
-                Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t)
+        if !ArrayInterface.ismutable(y)
+            # Out-of-place immutable state (e.g. `SVector`): the buffered
+            # `Duplicated` path below needs mutable temporaries built from
+            # `zero(y)`, so instead form the parameter vjp `(∂f/∂p)^T λ` as the
+            # gradient of `λ ⋅ f(y, repack(tunables), t)` with respect to the
+            # tunables, holding `f`, `repack`, `y`, `t`, `λ` constant.
+            res = Enzyme.gradient(
+                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                Enzyme.Const(t), Enzyme.Const(λ)
             )
+            recursive_copyto!(out, res[4])
         else
-            tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
-                Enzyme.Duplicated(f, tmp6),
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t)
-            )
-        end
+            tmp3, tmp4, tmp6 = paramjac_config
+            vtmp4 = vec(tmp4)
 
-        if _shadow_enzyme !== nothing && _shadow_enzyme !== out
-            _use_full_p_enzyme = hasproperty(sensealg, :diff_tunables) &&
-                sensealg.diff_tunables isa Val{false}
-            if !_use_full_p_enzyme && isscimlstructure(_shadow_enzyme)
-                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+            Enzyme.remake_zero!(out)
+            Enzyme.remake_zero!(tmp3)
+            vtmp4 .= λ
+
+            _shadow_enzyme = nothing
+            if !(p isa AbstractArray)
+                _shadow_enzyme = repack(out)
+                dup = Enzyme.Duplicated(p, _shadow_enzyme)
             else
-                grad_tunables = _shadow_enzyme
+                dup = Enzyme.Duplicated(p, out)
             end
-            copyto!(out, grad_tunables)
+
+            if SciMLBase.isinplace(sol.prob.f)
+                Enzyme.remake_zero!(tmp6)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode,
+                    Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), dup, Enzyme.Const(t)
+                )
+            else
+                tmp6 = Enzyme.make_zero(f)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
+                    Enzyme.Duplicated(f, tmp6),
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), dup, Enzyme.Const(t)
+                )
+            end
+
+            if _shadow_enzyme !== nothing && _shadow_enzyme !== out
+                _use_full_p_enzyme = hasproperty(sensealg, :diff_tunables) &&
+                    sensealg.diff_tunables isa Val{false}
+                if !_use_full_p_enzyme && isscimlstructure(_shadow_enzyme)
+                    grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+                else
+                    grad_tunables = _shadow_enzyme
+                end
+                copyto!(out, grad_tunables)
+            end
         end
     end
 

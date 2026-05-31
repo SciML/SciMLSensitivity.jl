@@ -228,3 +228,31 @@ du0, dp = Zygote.gradient(
 
 @test !iszero(du0)
 @test !iszero(dp)
+
+## QuadratureAdjoint with EnzymeVJP on immutable SVector state (issue #1460)
+# Out-of-place SVector states must dispatch to the out-of-place `_vecjacobian` and
+# `vec_pjac!` EnzymeVJP paths; the result must match the ZygoteVJP path.
+du0_cont_z, dp_cont_z = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dg, g,
+    sensealg = QuadratureAdjoint(abstol = 1.0e-14, reltol = 1.0e-14, autojacvec = ZygoteVJP())
+)
+du0_cont_e, dp_cont_e = adjoint_sensitivities(
+    sol, Tsit5(); dgdu_continuous = dg, g,
+    sensealg = QuadratureAdjoint(abstol = 1.0e-14, reltol = 1.0e-14, autojacvec = EnzymeVJP())
+)
+@test !iszero(du0_cont_e)
+@test !iszero(dp_cont_e)
+@test du0_cont_e ≈ du0_cont_z rtol = 1.0e-10
+@test dp_cont_e ≈ dp_cont_z rtol = 1.0e-10
+
+dg_disc_oop(u, p, t, i; outtype = nothing) = u
+du0_disc_z, dp_disc_z = adjoint_sensitivities(
+    sol, Tsit5(); t = tsteps, dgdu_discrete = dg_disc_oop,
+    sensealg = QuadratureAdjoint(abstol = 1.0e-14, reltol = 1.0e-14, autojacvec = ZygoteVJP())
+)
+du0_disc_e, dp_disc_e = adjoint_sensitivities(
+    sol, Tsit5(); t = tsteps, dgdu_discrete = dg_disc_oop,
+    sensealg = QuadratureAdjoint(abstol = 1.0e-14, reltol = 1.0e-14, autojacvec = EnzymeVJP())
+)
+@test du0_disc_e ≈ du0_disc_z rtol = 1.0e-10
+@test dp_disc_e ≈ dp_disc_z rtol = 1.0e-10
