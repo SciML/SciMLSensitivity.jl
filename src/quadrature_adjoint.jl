@@ -403,48 +403,60 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
     elseif sensealg.autojacvec isa ReactantVJP
         reactant_run_ad!(nothing, out, nothing, paramjac_config, y, p, t, λ)
     elseif sensealg.autojacvec isa EnzymeVJP
-        tmp3, tmp4, tmp6 = paramjac_config
-        vtmp4 = vec(tmp4)
-
-        Enzyme.remake_zero!(out)
-        Enzyme.remake_zero!(tmp3)
-        vtmp4 .= λ
-
-        _shadow_enzyme = nothing
-        if !(p isa AbstractArray)
-            _shadow_enzyme = repack(out)
-            dup = Enzyme.Duplicated(p, _shadow_enzyme)
-        else
-            dup = Enzyme.Duplicated(p, out)
-        end
-
-        if SciMLBase.isinplace(sol.prob.f)
-            Enzyme.remake_zero!(tmp6)
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode,
-                Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t)
-            )
-        else
-            tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
-                Enzyme.Duplicated(f, tmp6),
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), dup, Enzyme.Const(t)
-            )
-        end
-
-        if _shadow_enzyme !== nothing && _shadow_enzyme !== out
-            _use_full_p_enzyme = hasproperty(sensealg, :diff_tunables) &&
-                sensealg.diff_tunables isa Val{false}
-            if !_use_full_p_enzyme && isscimlstructure(_shadow_enzyme)
-                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
-            else
-                grad_tunables = _shadow_enzyme
+        if !ArrayInterface.ismutable(y)
+            # Out-of-place immutable state (e.g. `SVector`): the buffered
+            # `Duplicated` path below needs mutable temporaries built from
+            # `zero(y)`, so instead form the parameter vjp `(∂f/∂p)^T λ` as the
+            # gradient of `λ ⋅ f(y, p, t)` with respect to the tunables.
+            vecpjacfun = let f = f, y = y, t = t, λ = λ, repack = repack
+                tunables -> dot(vec(f(y, repack(tunables), t)), vec(λ))
             end
-            copyto!(out, grad_tunables)
+            dp = Enzyme.gradient(sensealg.autojacvec.mode, vecpjacfun, tunables)[1]
+            recursive_copyto!(out, dp)
+        else
+            tmp3, tmp4, tmp6 = paramjac_config
+            vtmp4 = vec(tmp4)
+
+            Enzyme.remake_zero!(out)
+            Enzyme.remake_zero!(tmp3)
+            vtmp4 .= λ
+
+            _shadow_enzyme = nothing
+            if !(p isa AbstractArray)
+                _shadow_enzyme = repack(out)
+                dup = Enzyme.Duplicated(p, _shadow_enzyme)
+            else
+                dup = Enzyme.Duplicated(p, out)
+            end
+
+            if SciMLBase.isinplace(sol.prob.f)
+                Enzyme.remake_zero!(tmp6)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode,
+                    Enzyme.Duplicated(SciMLBase.Void(f), tmp6), Enzyme.Const,
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), dup, Enzyme.Const(t)
+                )
+            else
+                tmp6 = Enzyme.make_zero(f)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
+                    Enzyme.Duplicated(f, tmp6),
+                    Enzyme.Duplicated(tmp3, tmp4),
+                    Enzyme.Const(y), dup, Enzyme.Const(t)
+                )
+            end
+
+            if _shadow_enzyme !== nothing && _shadow_enzyme !== out
+                _use_full_p_enzyme = hasproperty(sensealg, :diff_tunables) &&
+                    sensealg.diff_tunables isa Val{false}
+                if !_use_full_p_enzyme && isscimlstructure(_shadow_enzyme)
+                    grad_tunables, _, _ = canonicalize(Tunable(), _shadow_enzyme)
+                else
+                    grad_tunables = _shadow_enzyme
+                end
+                copyto!(out, grad_tunables)
+            end
         end
     end
 

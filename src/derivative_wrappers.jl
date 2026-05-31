@@ -918,6 +918,37 @@ function _vecjacobian(
     return dy, dλ, dgrad
 end
 
+function _vecjacobian(
+        y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
+        W
+    ) where {TS <: SensitivityFunction}
+    prob = getprob(S)
+    f = unwrapped_f(S.f)
+
+    # Out-of-place EnzymeVJP. The state may be immutable (e.g. a
+    # `StaticArrays.SVector`), so the in-place `Duplicated`-mutation path used by
+    # the in-place `_vecjacobian!` does not apply. Form the vjp as the
+    # reverse-mode gradient of `λ ⋅ f(u, p, t)` with respect to `(u, p)`.
+    enzyme_mode = isautojacvec.mode
+    if W === nothing
+        _dy = f(y, p, t)
+        vecjacfun = let f = f, t = t, λ = λ
+            (u, p) -> dot(vec(f(u, p, t)), vec(λ))
+        end
+    else
+        _dy = f(y, p, t, W)
+        vecjacfun = let f = f, t = t, λ = λ, W = W
+            (u, p) -> dot(vec(f(u, p, t, W)), vec(λ))
+        end
+    end
+    tmp1, tmp2 = Enzyme.gradient(enzyme_mode, vecjacfun, y, p)
+
+    dy !== nothing && recursive_copyto!(dy, vec(_dy))
+    dλ = vec(tmp1)
+    dgrad !== nothing && recursive_copyto!(dgrad, tmp2)
+    return dy, dλ, dgrad
+end
+
 function gclosure1(f, du, u, p, t)
     Base.copyto!(du, f(u, p, t))
     return nothing
