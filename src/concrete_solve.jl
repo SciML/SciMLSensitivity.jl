@@ -356,37 +356,26 @@ function _init_originator_gradient(::SciMLBase.ADOriginator, f, tunables)
     return back(one(iy))[1]
 end
 
-# Enzyme-native init-path gradient. `Const(f)` is required because the
-# closure built by the caller captures references to `_prob` / `repack` /
-# `kwargs_init`, which Enzyme would otherwise reject with
-# `EnzymeMutabilityException` ("Function argument passed to autodiff
-# cannot be proven readonly").
+# Init-path gradient for the `EnzymeOriginator` (outer-Enzyme) case.
 #
-# Note: this routes the init-step gradient through Enzyme's reverse mode
-# even when the user is only using Enzyme indirectly (e.g. via
-# `InterpolatingAdjoint(autojacvec = EnzymeVJP())` driven by Zygote). The
-# Mooncake-equivalent path is restricted to true `MooncakeOriginator`
-# callers; here we trust that anyone whose rrule was reached with
-# `originator::EnzymeOriginator` is in fact running Enzyme on the outside
-# and would prefer Enzyme-native errors over silently routing through
-# Zygote. Upstream Enzyme/NonlinearSolve issues affecting DAE
-# initialization (NonlinearSolve.jl#869, Enzyme.jl#2699) may surface here
-# for problems that previously succeeded via the Zygote fallback —
-# see #1415 for context.
+# This runs in the adjoint backpass of the `solve` rrule — ordinary primal code
+# inside the outer Enzyme reverse pass that is NOT itself differentiated by
+# Enzyme — so a Zygote pullback here is safe and yields the same result as the
+# generic `ADOriginator` fallback above.
+#
+# It deliberately does NOT use a nested `Enzyme.gradient` for the init step. A
+# nested Enzyme reverse pass (under `set_runtime_activity`) inside the outer
+# Enzyme reverse pass corrupts Enzyme's global compilation/runtime state: the
+# first outer `Enzyme.autodiff` call succeeds, but every subsequent call on the
+# same (or a related) MTK DAE-initialization problem throws
+# `LinearAlgebra.SingularException` out of the semi-explicit DAE adjoint. Routing
+# the init gradient through Zygote removes that nesting, so repeated and
+# multi-problem outer-Enzyme differentiation through MTK DAE init works (the init
+# sub-VJP it calls may still be `EnzymeVJP`; only the outer init differentiation
+# is moved off Enzyme). See #1415 for the prior Enzyme-native attempt.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
-    # `f` differentiates an MTK DAE initialization. Inside it,
-    # `remake(_prob, p = repack(t))` builds one `ODEProblem` allocation mixing
-    # constant memory (the captured `_prob`'s `u0`/`f`/`tspan`/caches) with active
-    # memory (the new parameters) — a partially-active object that Enzyme's static
-    # activity analysis rejects ("constant memory stored to a differentiable
-    # variable", inside `remake`, not the let-captured config). Dropping this
-    # re-raises EnzymeRuntimeActivityError; `set_runtime_activity` is Enzyme's
-    # correctness-preserving fix (the gradient still matches ForwardDiff). A static
-    # fix would need `remake`/SciMLBase to stop aliasing constant structure into
-    # the active problem.
-    return Enzyme.gradient(
-        Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Const(f), tunables,
-    )[1]
+    iy, back = Zygote.pullback(f, tunables)
+    return back(one(iy))[1]
 end
 
 function SciMLBase._concrete_solve_adjoint(
