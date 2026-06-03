@@ -170,18 +170,24 @@ setups = [
 # in `DiffEqBaseEnzymeExt` (which requires `sensealg::Const`). The inner solve
 # pins `Rodas5P()` to avoid polyalgorithm Union dispatch.
 #
-# Status: still `@test_broken`, but for a narrower reason than before. The
-# `MixedDuplicated(::ODESolution)` wall (#1359) is fixed upstream in
-# OrdinaryDiffEq#3700, and the GaussAdjoint(EnzymeVJP()) + MTKParameters
-# runtime-activity / repack issues are fixed in this PR (see the
-# parameter_initialization.jl "Adjoint through Prob (Enzyme)" block, now
-# `@test`). These `setups` additionally exercise DAE initialization via
-# `BrownFullBasicInit` / `DefaultInit` / overdetermined systems, which solve a
-# `NonlinearProblem` during init under Enzyme and hit
-# `NonConstantKeywordArgException: Custom Rule ... differentiable keyword
-# argument` in `get_initial_values` → `solve_up`. Flip to `@test` once that
-# init-path kwarg issue is resolved (e.g. via `Enzyme.EnzymeRules.inactive_kwarg`).
-const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
+# Status: now `@test` (below). The `MixedDuplicated(::ODESolution)` wall (#1359)
+# is fixed upstream in OrdinaryDiffEq#3700; the `solve_up` init-path issues
+# (`NonConstantKeywordArgException`, the `FunctionWrappersWrapper` return-type
+# mismatch, and the `NonlinearSolvePolyAlgorithm` runtime-activity assertion) are
+# fixed in NonlinearSolveBase (`inactive_kwarg`, the `within_autodiff` wrap-skip,
+# and `inactive_type`); and the repeated-call state corruption caused by a nested
+# `Enzyme.gradient` in the init sensitivity is fixed in this PR by routing
+# `_init_originator_gradient(::EnzymeOriginator)` through Zygote.
+#
+# The inner VJP is `ReverseDiffVJP`, not `EnzymeVJP`: `EnzymeVJP._vecjacobian!`
+# runs a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS, which both
+# mis-handles that RHS for some DAEs and corrupts Enzyme's global state across the
+# many `Enzyme.autodiff` calls this `setups` sweep makes (first call OK, later
+# calls `SingularException`). Using a non-Enzyme inner VJP is the established
+# workaround until that EnzymeVJP nested-Enzyme issue is fixed; the *outer* AD is
+# still Enzyme, which is what this test covers — Enzyme reverse-mode through MTK
+# DAE initialization.
+const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.ReverseDiffVJP())
 
 function _mtk_enzyme_solve_loss_with_init(t, prob_, init_)
     _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
@@ -203,7 +209,7 @@ function _mtk_enzyme_solve_loss_default_init(t, prob_)
     return sum(new_sol)
 end
 
-@test_broken begin
+@test begin
     grads = map(setups) do setup
         prob, tunables, repack, init = setup
         diprob = Enzyme.make_zero(prob)
@@ -229,7 +235,7 @@ end
     all(x ≈ grads[1] for x in grads)
 end
 
-@test_broken begin
+@test begin
     prob_test, tunables_test, repack_test, init_test = setups[1]
     u0_test = prob_test.u0
     loss = let prob = prob_test, u0 = u0_test, repack = repack_test,
