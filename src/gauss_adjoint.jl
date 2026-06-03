@@ -648,13 +648,12 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             recursive_copyto!(out, tmp[1])
         end
     elseif sensealg.autojacvec isa EnzymeVJP
-        tmp3, tmp4, tmp6 = paramjac_config
-        vtmp4 = vec(tmp4)
-        vtmp4 .= λ
-        Enzyme.remake_zero!(tmp3)
-        Enzyme.remake_zero!(out)
-
         if SciMLBase.isinplace(sol.prob.f)
+            tmp3, tmp4, tmp6 = paramjac_config
+            vtmp4 = vec(tmp4)
+            vtmp4 .= λ
+            Enzyme.remake_zero!(tmp3)
+            Enzyme.remake_zero!(out)
             Enzyme.remake_zero!(tmp6)
 
             Enzyme.autodiff(
@@ -663,12 +662,17 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
                 Enzyme.Const(y), Enzyme.Duplicated(tunables, out), Enzyme.Const(t)
             )
         else
-            tmp6 = Enzyme.make_zero(f)
-            Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Const(gclosure3), Enzyme.Duplicated(f, tmp6), Enzyme.Const,
-                Enzyme.Duplicated(tmp3, tmp4),
-                Enzyme.Const(y), Enzyme.Duplicated(p, out), Enzyme.Const(t)
+            # Out-of-place: form the parameter vjp `(∂f/∂p)^T λ` as the gradient of
+            # `λ ⋅ f(y, repack(tunables), t)` with respect to the tunables, holding
+            # `f`, `repack`, `y`, `t`, `λ` constant. This avoids the mutable
+            # `Duplicated` buffers the in-place path needs (and does not depend on
+            # mutability of the state), mirroring the `QuadratureAdjoint` fix.
+            res = Enzyme.gradient(
+                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                Enzyme.Const(t), Enzyme.Const(λ)
             )
+            recursive_copyto!(out, res[4])
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
