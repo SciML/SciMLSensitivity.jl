@@ -45,7 +45,7 @@ sol = solve(prob, Tsit5())
 # Extract tunables as Vector{Float64} for AD compatibility
 tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
 
-sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.ReverseDiffVJP())
+sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
 
 dmtk = Tracker.gradient(tunables) do tunables
     new_sol = solve(prob, Tsit5(); p = repack(tunables), sensealg)
@@ -235,7 +235,7 @@ end
     all(x ≈ grads[1] for x in grads)
 end
 
-@test_broken begin
+@test begin
     prob_test, tunables_test, repack_test, init_test = setups[1]
     u0_test = prob_test.u0
     loss = let prob = prob_test, u0 = u0_test, repack = repack_test,
