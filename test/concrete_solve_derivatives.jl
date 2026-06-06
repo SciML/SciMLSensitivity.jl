@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, StochasticDiffEq, ADTypes
+using OrdinaryDiffEqLowOrderRK: Euler
 using Test, ForwardDiff, Random
 import Tracker, ReverseDiff, ChainRulesCore, Mooncake, Enzyme
 
