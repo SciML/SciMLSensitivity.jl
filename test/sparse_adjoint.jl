@@ -1,5 +1,6 @@
 using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, SparseArrays, Zygote, LinearSolve
 using AlgebraicMultigrid
+using OrdinaryDiffEqSDIRK: ImplicitEuler
 using Test
 
 foop(u, p, t) = jac(u, p, t) * u
