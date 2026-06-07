@@ -12,8 +12,7 @@ on:
       - 'docs/**'
 jobs:
   test:
-    # Temporarily disabled - see https://github.com/SciML/SciMLSensitivity.jl/issues/1326
-    if: false
+    # Runs strict (allow_reresolve=false); expected RED until StatsBase resolves (#1326).
     name: Downgrade
     strategy:
       matrix:
