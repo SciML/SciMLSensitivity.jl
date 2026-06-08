@@ -1,0 +1,41 @@
+[Core1]
+versions = ["1", "1.11", "lts"]
+
+[Core2]
+versions = ["1", "1.11", "lts"]
+
+[Core3]
+versions = ["1", "1.11", "lts"]
+
+[Core4]
+versions = ["1", "1.11", "lts"]
+
+[Core5]
+versions = ["1", "1.11", "lts"]
+
+[Core6]
+versions = ["1", "1.11", "lts"]
+
+[Core7]
+versions = ["1", "1.11", "lts"]
+
+[Core8]
+versions = ["1", "1.11", "lts"]
+
+[QA]
+versions = ["1", "1.11", "lts"]
+
+[SDE1]
+versions = ["1", "1.11", "lts"]
+
+[SDE2]
+versions = ["1", "1.11", "lts"]
+
+[SDE3]
+versions = ["1", "1.11", "lts"]
+
+[Callbacks1]
+versions = ["1", "1.11", "lts"]
+
+[Callbacks2]
+versions = ["1", "1.11", "lts"]
