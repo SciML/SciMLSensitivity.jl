@@ -157,17 +157,6 @@ function gradient(
     end
 end
 
-function hessian(
-        f, x::AbstractArray{<:Number},
-        alg::AbstractOverloadingSensitivityAlgorithm
-    )
-    return if alg_autodiff(alg)
-        ForwardDiff.hessian(unwrapped_f(f), x)
-    else
-        FiniteDiff.finite_difference_hessian(f, x)
-    end
-end
-
 function jacobian!(
         J::Nothing, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
