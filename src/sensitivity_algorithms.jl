@@ -1398,12 +1398,12 @@ struct UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK} <:
 end
 
 function UnconstrainedOptimizationAdjoint(;
-        chunk_size = 0, autodiff = true,
+        chunk_size = 0, autodiff = true, diff_type = Val{:forward},
         autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;)
     )
     return UnconstrainedOptimizationAdjoint{
-        chunk_size, autodiff, Val{:central}, typeof(autojacvec),
+        chunk_size, autodiff, diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs),
     }(autojacvec, linsolve, linsolve_kwargs)
 end
@@ -1447,6 +1447,7 @@ once, then computes `dG/dp = -λ' · ∂F/∂p` as a single VJP through the KKT 
 
 ```julia
 OptimizationAdjoint(; chunk_size = 0, autodiff = true,
+    diff_type = Val{:forward},
     autojacvec = nothing,
     linsolve = nothing, linsolve_kwargs = (;),
     active_tol = nothing)
@@ -1457,11 +1458,16 @@ OptimizationAdjoint(; chunk_size = 0, autodiff = true,
   - `autodiff`: Use automatic differentiation (ForwardDiff) for the inner derivatives
     at `u*` — gradient of the objective, Jacobian of the constraints, Hessian of the
     Lagrangian — when not supplied by `OptimizationFunction`. If `false`, FiniteDiff
-    is used with `diff_type = Val{:central}`. Defaults to `true`. This is independent
-    of `autojacvec`, which controls the *outer* VJP.
+    is used. Defaults to `true`. This is independent of `autojacvec`, which controls
+    the *outer* VJP.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
     choice of chunk size.
+  - `diff_type`: The FiniteDiff.jl method used for the inner objective gradient when
+    `autodiff=false` and `OptimizationFunction` does not supply an analytic gradient.
+    Defaults to `Val{:forward}`. (The constraint-Jacobian and Lagrangian-Hessian
+    fallbacks use forward and `:hcentral` differencing respectively, independent of
+    this setting.)
   - `autojacvec`: Calculate the vector-Jacobian product (`λ' · ∂F/∂p`) through the
     KKT residual via automatic differentiation with special seeding. Choices:
 
@@ -1501,12 +1507,12 @@ struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
 end
 
 function OptimizationAdjoint(;
-        chunk_size = 0, autodiff = true,
+        chunk_size = 0, autodiff = true, diff_type = Val{:forward},
         autojacvec = nothing,
         linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
     )
     return OptimizationAdjoint{
-        chunk_size, autodiff, Val{:central}, typeof(autojacvec),
+        chunk_size, autodiff, diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(active_tol),
     }(autojacvec, linsolve, linsolve_kwargs, active_tol)
 end
