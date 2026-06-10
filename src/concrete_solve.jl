@@ -1421,20 +1421,20 @@ function SciMLBase._concrete_solve_adjoint(
                         # First step: filter all values, so that only time steps that actually occur
                         # in the primal are left. This is for example necessary when `terminate!`
                         # is used.
-                        indxs = findall(t -> t ∈ ts, current_time(_sol))
-                        _ts = current_time(_sol, indxs)
+                        idxs = findall(t -> t ∈ ts, current_time(_sol))
+                        _ts = current_time(_sol, idxs)
                         # after this filtering step, we might end up with a too large amount of indices.
                         # For example, if a callback saved values in the primal, then we now potentially
                         # save it by `saveat` and by `save_positions` of the callback.
                         # Second step. Drop these duplicates values.
-                        if length(indxs) != length(ts)
+                        if length(idxs) != length(ts)
                             for i in (length(_ts) - 1):-1:2
                                 if _ts[i] == _ts[i + 1] && _ts[i] == _ts[i - 1]
-                                    deleteat!(indxs, i)
+                                    deleteat!(idxs, i)
                                 end
                             end
                         end
-                        _du = @view du[indxs]
+                        _du = @view du[idxs]
                     else
                         _du = du
                     end
@@ -1622,20 +1622,20 @@ function SciMLBase._concrete_solve_adjoint(
                     # First step: filter all values, so that only time steps that actually occur
                     # in the primal are left. This is for example necessary when `terminate!`
                     # is used.
-                    indxs = findall(t -> t ∈ ts, current_time(_sol))
-                    _ts = current_time(_sol, indxs)
+                    idxs = findall(t -> t ∈ ts, current_time(_sol))
+                    _ts = current_time(_sol, idxs)
                     # after this filtering step, we might end up with a too large amount of indices.
                     # For example, if a callback saved values in the primal, then we now potentially
                     # save it by `saveat` and by `save_positions` of the callback.
                     # Second step. Drop these duplicates values.
-                    if length(indxs) != length(ts)
+                    if length(idxs) != length(ts)
                         for i in (length(_ts) - 1):-1:2
                             if _ts[i] == _ts[i + 1] && _ts[i] == _ts[i - 1]
-                                deleteat!(indxs, i)
+                                deleteat!(idxs, i)
                             end
                         end
                     end
-                    _du = @view du[indxs]
+                    _du = @view du[idxs]
                 else
                     _du = du
                 end

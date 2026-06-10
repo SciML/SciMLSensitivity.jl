@@ -321,21 +321,21 @@ function adjointdiffcache(
             m = noise_rate_prototype === nothing ? numindvar : size(noise_rate_prototype)[2]
             if isinplace
                 for i in 1:m
-                    function noisetape(indx)
+                    function noisetape(idx)
                         return if SciMLBase.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                                 du1 = p !== nothing && p !== SciMLBase.NullParameters() ?
                                     similar(p, size(u)) : similar(u)
                                 copyto!(du1, false)
                                 unwrappedf(du1, u, p, first(t))
-                                return du1[indx]
+                                return du1[idx]
                             end
                         else
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
                                 du1 = similar(p, size(noise_rate_prototype))
                                 du1 .= false
                                 unwrappedf(du1, u, p, first(t))
-                                return du1[:, indx]
+                                return du1[:, idx]
                             end
                         end
                     end
@@ -348,14 +348,14 @@ function adjointdiffcache(
                 end
             else
                 for i in 1:m
-                    function noisetapeoop(indx)
+                    function noisetapeoop(idx)
                         return if SciMLBase.is_diagonal_noise(prob)
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
-                                unwrappedf(u, p, first(t))[indx]
+                                unwrappedf(u, p, first(t))[idx]
                             end
                         else
                             ReverseDiff.GradientTape((y, _p, [_t])) do u, p, t
-                                unwrappedf(u, p, first(t))[:, indx]
+                                unwrappedf(u, p, first(t))[:, idx]
                             end
                         end
                     end

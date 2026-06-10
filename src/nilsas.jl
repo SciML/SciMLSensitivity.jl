@@ -188,18 +188,18 @@ function split_states(du, u, t, NS::NILSASSensitivityFunction, j; update = true)
     (; nilss, S) = NS
     (; numindvar, numparams) = nilss
 
-    indx1 = (j - 1) * (numindvar) + 1
-    indx2 = indx1 + (numindvar - 1)
-    indx3 = (j - 1) * (numparams) + 1
-    indx4 = indx3 + (numparams - 1)
+    idx1 = (j - 1) * (numindvar) + 1
+    idx2 = idx1 + (numindvar - 1)
+    idx3 = (j - 1) * (numparams) + 1
+    idx4 = idx3 + (numparams - 1)
 
-    λ = @view u.x[1][indx1:indx2]
-    grad = @view u.x[2][indx3:indx4]
+    λ = @view u.x[1][idx1:idx2]
+    grad = @view u.x[2][idx3:idx4]
     _y = u.x[3]
 
     # like ODE/Drift term and scalar noise
-    dλ = @view du.x[1][indx1:indx2]
-    dgrad = @view du.x[2][indx3:indx4]
+    dλ = @view du.x[1][idx1:idx2]
+    dgrad = @view du.x[2][idx3:idx4]
     dy = du.x[3]
 
     return λ, grad, _y, dλ, dgrad, dy

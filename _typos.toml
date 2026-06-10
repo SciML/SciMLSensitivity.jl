@@ -81,3 +81,7 @@ hom = "hom"  # Homogeneous (mathematical term)
 pn = "pn"  # Parameter n (mathematical variable)
 iy = "iy"  # Legitimate variable name
 Chater = "Chater"  # Author surname in references
+indx = "indx"  # Keyword argument of DiffEqNoiseProcess.NoiseWrapper; also internal callback-tracking helpers
+
+[default.extend-identifiers]
+LambaEM = "LambaEM"  # StochasticDiffEq.jl solver (Lamba's Euler-Maruyama method)

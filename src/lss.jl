@@ -276,9 +276,9 @@ function wB!(S::LSSSchur, Δt, Nt, numindvar, dt)
     tmp ./= dt[1]
     tmp = @view wBinv[(dim - 2):end]
     tmp ./= dt[end]
-    for indx in 2:(Nt - 1)
-        tmp = @view wBinv[((indx - 1) * numindvar + 1):(indx * numindvar)]
-        tmp ./= (dt[indx] + dt[indx - 1])
+    for idx in 2:(Nt - 1)
+        tmp = @view wBinv[((idx - 1) * numindvar + 1):(idx * numindvar)]
+        tmp ./= (dt[idx] + dt[idx - 1])
     end
 
     wBinv .*= 2 * Δt
@@ -493,7 +493,7 @@ function shadow_forward(
     return res
 end
 
-function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
+function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, idx)
     (; dgdu, dgdp, dg_val, pgpu, pgpu_config, pgpp, pgpp_config, uf) = diffcache
 
     if dgdu === nothing
@@ -505,10 +505,10 @@ function lss_accumulate_cost!(u, p, t, sensealg::ForwardLSS, diffcache, indx)
         end
     else
         if dg_val isa Tuple
-            dgdu(dg_val[1], u, p, t, indx) # indx = n0 + j - 1 for LSSregularizer and j for windowing
-            dgdp(dg_val[2], u, p, t, indx)
+            dgdu(dg_val[1], u, p, t, idx) # idx = n0 + j - 1 for LSSregularizer and j for windowing
+            dgdp(dg_val[2], u, p, t, idx)
         else
-            dgdu(dg_val, u, p, t, indx)
+            dgdu(dg_val, u, p, t, idx)
         end
     end
 
