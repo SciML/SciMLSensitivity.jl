@@ -216,11 +216,55 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
     return λ, nothing, y, dλ, nothing, nothing
 end
 
+# Re-solve the checkpoint interval containing `t` if the current checkpoint
+# solution does not cover it, updating `checkpoint_sol` and `GaussInt.sol`.
+function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
+    (; sol, checkpoint_sol, prob, GaussInt) = S
+    intervals = checkpoint_sol.intervals
+    interval = intervals[checkpoint_sol.cursor]
+    if !(interval[1] <= t <= interval[2])
+        cursor′ = Gaussfindcursor(intervals, t)
+        interval = intervals[cursor′]
+        cpsol_t = current_time(checkpoint_sol.cpsol)
+        y₀ = sol(interval[1])
+        dt = abs(cpsol_t[end] - cpsol_t[end - 1])
+        if checkpoint_sol.tstops === nothing
+            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
+            cpsol′ = solve(prob′, sol.alg; dt, checkpoint_sol.tols...)
+        else
+            if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                # callback might have changed p
+                _p = reset_p(prob.kwargs[:callback], interval)
+                prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀, p = _p)
+                cpsol′ = solve(
+                    prob′, sol.alg; dt,
+                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                )
+            else
+                prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
+                cpsol′ = solve(
+                    prob′, sol.alg; dt,
+                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                )
+            end
+        end
+        checkpoint_sol.cpsol = cpsol′
+        checkpoint_sol.cursor = cursor′
+        GaussInt.sol = cpsol′
+    end
+    return nothing
+end
+
 function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
-    (; y, sol) = S
+    (; y, sol, checkpoint_sol) = S
 
     if update
-        y = sol(t, continuity = :right)
+        if checkpoint_sol === nothing
+            y = sol(t, continuity = :right)
+        else
+            Gaussupdate_checkpoint_sol!(S, t)
+            y = checkpoint_sol.cpsol(t, continuity = :right)
+        end
     end
 
     λ = u
@@ -495,7 +539,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : allocate_zeros(tunables)
+    dgdp_cache = dgdp === nothing ? nothing : mutable_zeros(tunables)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
@@ -667,12 +711,24 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             # `f`, `repack`, `y`, `t`, `λ` constant. This avoids the mutable
             # `Duplicated` buffers the in-place path needs (and does not depend on
             # mutability of the state), mirroring the `QuadratureAdjoint` fix.
-            res = Enzyme.gradient(
-                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
-                Enzyme.Const(repack), Enzyme.Const(y), tunables,
-                Enzyme.Const(t), Enzyme.Const(λ)
-            )
-            recursive_copyto!(out, res[4])
+            if out isa typeof(tunables) && ArrayInterface.ismutable(out)
+                # Write the gradient directly into `out` instead of allocating a
+                # fresh gradient (and result tuple) on every quadrature node.
+                Enzyme.remake_zero!(out)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(_enzyme_vecpjac_dot),
+                    Enzyme.Active, Enzyme.Const(f), Enzyme.Const(repack),
+                    Enzyme.Const(y), Enzyme.Duplicated(tunables, out),
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+            else
+                res = Enzyme.gradient(
+                    sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                    Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+                recursive_copyto!(out, res[4])
+            end
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
@@ -703,7 +759,7 @@ function (S::GaussIntegrand)(out, t, λ)
 end
 
 function (S::GaussIntegrand)(t, λ)
-    out = allocate_zeros(S.tunables)
+    out = mutable_zeros(S.tunables)
     return S(out, t, λ)
 end
 
@@ -748,16 +804,23 @@ function _adjoint_sensitivities(
         tunables, repack = p, identity
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
+    # The integrating callbacks mutate their accumulation buffers, so immutable
+    # (e.g. SVector) tunables need mutable counterparts for the quadrature.
+    integrand_values = IntegrandValuesSum(mutable_zeros(tunables))
+    # The integrand output is parameter-shaped and hence mutable even for
+    # immutable (e.g. SVector) state, so always use the in-place integrand form
+    # rather than the allocating one the callbacks default to for out-of-place
+    # adjoint problems.
+    integrand_func = (out, u, t, integrator) -> integrand(out, t, u)
     if sensealg isa GaussAdjoint
         cb = IntegratingSumCallback(
-            (out, u, t, integrator) -> integrand(out, t, u),
-            integrand_values, allocate_vjp(tunables)
+            integrand_func, integrand_values, mutable_zeros(tunables);
+            integrand_inplace = true
         )
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback(
-            (out, u, t, integrator) -> integrand(out, t, u),
-            integrand_values, allocate_vjp(tunables)
+            integrand_func, integrand_values, mutable_zeros(tunables);
+            integrand_inplace = true
         )
     end
     rcb = nothing

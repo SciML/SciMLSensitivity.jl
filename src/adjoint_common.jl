@@ -701,7 +701,7 @@ end
 
 function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
     (; sensealg, y) = sensefun
-    isq = (sensealg isa QuadratureAdjoint) || (sensealg isa GaussAdjoint)
+    isq = (sensealg isa QuadratureAdjoint) || (sensealg isa AbstractGAdjoint)
 
     (; factorized_mass_matrix) = sensefun.diffcache
     prob = getprob(sensefun)
@@ -750,7 +750,9 @@ function (f::ReverseLossCallback)(integrator)
             end
         end
     else
-        @assert sensealg isa QuadratureAdjoint
+        # Immutable (e.g. SVector) state: only valid for adjoints whose state is
+        # exactly λ with no parameter-gradient augmentation.
+        @assert isq
         outtype = ArrayInterface.parameterless_type(λ)
         y = sol(t[cur_time[]])
         gᵤ = dgdu(y, p, t[cur_time[]], cur_time[]; outtype)
@@ -781,7 +783,7 @@ function (f::ReverseLossCallback)(integrator)
     if ArrayInterface.ismutable(u)
         u[diffvar_idxs] .+= Δλd
     else
-        @assert sensealg isa QuadratureAdjoint
+        @assert isq
         integrator.u += Δλd
     end
     derivative_discontinuity!(integrator, true)

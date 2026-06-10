@@ -888,20 +888,28 @@ function _vecjacobian(
     prob = getprob(S)
     f = unwrapped_f(S.f)
 
-    if W === nothing
-        _dy, back = Zygote.pullback(y, p) do u, p
-            vec(f(u, p, t))
+    # Only differentiate with respect to `p` when the caller actually wants the
+    # parameter gradient; the Gauss/Quadrature adjoint rhs calls this with
+    # `dgrad === nothing` on every solver stage.
+    if dgrad === nothing
+        if W === nothing
+            _dy, back = Zygote.pullback(u -> vec(f(u, p, t)), y)
+        else
+            _dy, back = Zygote.pullback(u -> vec(f(u, p, t, W)), y)
         end
     else
-        _dy, back = Zygote.pullback(y, p) do u, p
-            vec(f(u, p, t, W))
+        if W === nothing
+            _dy, back = Zygote.pullback((u, p) -> vec(f(u, p, t)), y, p)
+        else
+            _dy, back = Zygote.pullback((u, p) -> vec(f(u, p, t, W)), y, p)
         end
     end
 
     # Grab values from `_dy` before `back` in case mutated
     dy !== nothing && recursive_copyto!(dy, _dy)
 
-    tmp1, tmp2 = back(λ)
+    tmp = back(λ)
+    tmp1 = tmp[1]
     if tmp1 === nothing && !sensealg.autojacvec.allow_nothing
         throw(ZygoteVJPNothingError())
     elseif tmp1 !== nothing
@@ -909,6 +917,7 @@ function _vecjacobian(
     end
 
     if dgrad !== nothing
+        tmp2 = tmp[2]
         if tmp2 === nothing && !sensealg.autojacvec.allow_nothing
             throw(ZygoteVJPNothingError())
         elseif tmp2 !== nothing
@@ -937,21 +946,24 @@ function _vecjacobian(
     # the in-place `_vecjacobian!` does not apply. Form the vjp as the
     # reverse-mode gradient of `λ ⋅ f(u, p, t)` with respect to `(u, p)`.
     enzyme_mode = isautojacvec.mode
+    # Only differentiate with respect to `p` when the caller actually wants the
+    # parameter gradient; the Gauss/Quadrature adjoint rhs calls this with
+    # `dgrad === nothing` on every solver stage.
+    _p = dgrad === nothing ? Enzyme.Const(p) : p
     if W === nothing
-        _dy = f(y, p, t)
         res = Enzyme.gradient(
-            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, p,
+            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, _p,
             Enzyme.Const(t), Enzyme.Const(λ)
         )
+        dy !== nothing && recursive_copyto!(dy, vec(f(y, p, t)))
     else
-        _dy = f(y, p, t, W)
         res = Enzyme.gradient(
-            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, p,
+            enzyme_mode, _enzyme_vecjac_dot, Enzyme.Const(f), y, _p,
             Enzyme.Const(t), Enzyme.Const(λ), Enzyme.Const(W)
         )
+        dy !== nothing && recursive_copyto!(dy, vec(f(y, p, t, W)))
     end
 
-    dy !== nothing && recursive_copyto!(dy, vec(_dy))
     dλ = vec(res[2])
     dgrad !== nothing && recursive_copyto!(dgrad, res[3])
     return dy, dλ, dgrad
