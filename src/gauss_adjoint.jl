@@ -711,12 +711,24 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             # `f`, `repack`, `y`, `t`, `λ` constant. This avoids the mutable
             # `Duplicated` buffers the in-place path needs (and does not depend on
             # mutability of the state), mirroring the `QuadratureAdjoint` fix.
-            res = Enzyme.gradient(
-                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
-                Enzyme.Const(repack), Enzyme.Const(y), tunables,
-                Enzyme.Const(t), Enzyme.Const(λ)
-            )
-            recursive_copyto!(out, res[4])
+            if out isa typeof(tunables) && ArrayInterface.ismutable(out)
+                # Write the gradient directly into `out` instead of allocating a
+                # fresh gradient (and result tuple) on every quadrature node.
+                Enzyme.remake_zero!(out)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(_enzyme_vecpjac_dot),
+                    Enzyme.Active, Enzyme.Const(f), Enzyme.Const(repack),
+                    Enzyme.Const(y), Enzyme.Duplicated(tunables, out),
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+            else
+                res = Enzyme.gradient(
+                    sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                    Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+                recursive_copyto!(out, res[4])
+            end
         end
     elseif sensealg.autojacvec isa MooncakeVJP
         _, _, p_grad = mooncake_run_ad(paramjac_config, y, p, t, λ)
@@ -795,22 +807,20 @@ function _adjoint_sensitivities(
     # The integrating callbacks mutate their accumulation buffers, so immutable
     # (e.g. SVector) tunables need mutable counterparts for the quadrature.
     integrand_values = IntegrandValuesSum(mutable_zeros(tunables))
-    # The integrating callbacks call the integrand as `integrand_func(out, u, t,
-    # integrator)` when the adjoint problem is in-place, but as
-    # `out = integrand_func(u, t, integrator)` when it is out-of-place, which is
-    # the case for immutable (e.g. SVector) state.
-    integrand_func = if ArrayInterface.ismutable(state_values(sol.prob))
-        (out, u, t, integrator) -> integrand(out, t, u)
-    else
-        (u, t, integrator) -> integrand(t, u)
-    end
+    # The integrand output is parameter-shaped and hence mutable even for
+    # immutable (e.g. SVector) state, so always use the in-place integrand form
+    # rather than the allocating one the callbacks default to for out-of-place
+    # adjoint problems.
+    integrand_func = (out, u, t, integrator) -> integrand(out, t, u)
     if sensealg isa GaussAdjoint
         cb = IntegratingSumCallback(
-            integrand_func, integrand_values, mutable_zeros(tunables)
+            integrand_func, integrand_values, mutable_zeros(tunables);
+            integrand_inplace = true
         )
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback(
-            integrand_func, integrand_values, mutable_zeros(tunables)
+            integrand_func, integrand_values, mutable_zeros(tunables);
+            integrand_inplace = true
         )
     end
     rcb = nothing

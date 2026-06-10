@@ -414,12 +414,24 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
             # `zero(y)`, so instead form the parameter vjp `(∂f/∂p)^T λ` as the
             # gradient of `λ ⋅ f(y, repack(tunables), t)` with respect to the
             # tunables, holding `f`, `repack`, `y`, `t`, `λ` constant.
-            res = Enzyme.gradient(
-                sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
-                Enzyme.Const(repack), Enzyme.Const(y), tunables,
-                Enzyme.Const(t), Enzyme.Const(λ)
-            )
-            recursive_copyto!(out, res[4])
+            if out isa typeof(tunables) && ArrayInterface.ismutable(out)
+                # Write the gradient directly into `out` instead of allocating a
+                # fresh gradient (and result tuple) on every quadrature node.
+                Enzyme.remake_zero!(out)
+                Enzyme.autodiff(
+                    sensealg.autojacvec.mode, Enzyme.Const(_enzyme_vecpjac_dot),
+                    Enzyme.Active, Enzyme.Const(f), Enzyme.Const(repack),
+                    Enzyme.Const(y), Enzyme.Duplicated(tunables, out),
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+            else
+                res = Enzyme.gradient(
+                    sensealg.autojacvec.mode, _enzyme_vecpjac_dot, Enzyme.Const(f),
+                    Enzyme.Const(repack), Enzyme.Const(y), tunables,
+                    Enzyme.Const(t), Enzyme.Const(λ)
+                )
+                recursive_copyto!(out, res[4])
+            end
         else
             tmp3, tmp4, tmp6 = paramjac_config
             vtmp4 = vec(tmp4)
