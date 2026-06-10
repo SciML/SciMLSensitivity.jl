@@ -284,10 +284,10 @@ function (NS::NILSSForwardSensitivityFunction)(du, u, p, t)
     # Compute the parameter derivatives
     for j in 1:(nus + 1)
         for i in eachindex(p)
-            indx1 = (j - 1) * S.numindvar * 1 + i * S.numindvar + 1
-            indx2 = (j - 1) * S.numindvar * 1 + (i + 1) * S.numindvar
-            Sj = @view u[indx1:indx2]
-            dp = @view du[indx1:indx2]
+            idx1 = (j - 1) * S.numindvar * 1 + i * S.numindvar + 1
+            idx2 = (j - 1) * S.numindvar * 1 + (i + 1) * S.numindvar
+            Sj = @view u[idx1:idx2]
+            dp = @view du[idx1:idx2]
             if !S.isautojacvec
                 mul!(dp, S.J, Sj)
             else
@@ -360,19 +360,19 @@ function store_y_w_vstar!(y, w, vstar, sol, nus, numindvar, numparams, iseg)
     # fill w
     # only calculate w one time, w can be reused for each parameter
     for j in 1:nus
-        indx1 = (j - 1) * numindvar * 1 + numindvar + 1
-        indx2 = (j - 1) * numindvar * 1 + 2 * numindvar
+        idx1 = (j - 1) * numindvar * 1 + numindvar + 1
+        idx2 = (j - 1) * numindvar * 1 + 2 * numindvar
 
         _w = @view w[:, :, iseg, j]
-        copyto!(_w, (@view sol[indx1:indx2, :]))
+        copyto!(_w, (@view sol[idx1:idx2, :]))
     end
 
     # fill vstar
     for i in 1:numparams
-        indx1 = nus * numindvar * 1 + i * numindvar + 1
-        indx2 = nus * numindvar * 1 + (i + 1) * numindvar
+        idx1 = nus * numindvar * 1 + i * numindvar + 1
+        idx2 = nus * numindvar * 1 + (i + 1) * numindvar
         _vstar = @view vstar[i, :, :, iseg]
-        copyto!(_vstar, (@view sol[indx1:indx2, :]))
+        copyto!(_vstar, (@view sol[idx1:idx2, :]))
     end
 
     return nothing
@@ -418,16 +418,16 @@ function dudt_g_dgdu!(dudt, dgdu_val, gsave, nilssprob::NILSSProblem, y, p, iseg
 end
 
 function perp!(w_perp, vstar_perp, w, vstar, dudt, iseg, numparams, nsteps, nus)
-    for indx_steps in 1:nsteps
-        _dudt = @view dudt[:, indx_steps, iseg]
-        for indx_nus in 1:nus
-            _w_perp = @view w_perp[:, indx_steps, iseg, indx_nus]
-            _w = @view w[:, indx_steps, iseg, indx_nus]
+    for idx_steps in 1:nsteps
+        _dudt = @view dudt[:, idx_steps, iseg]
+        for idx_nus in 1:nus
+            _w_perp = @view w_perp[:, idx_steps, iseg, idx_nus]
+            _w = @view w[:, idx_steps, iseg, idx_nus]
             perp!(_w_perp, _w, _dudt)
         end
-        for indx_params in 1:numparams
-            _vstar_perp = @view vstar_perp[indx_params, :, indx_steps, iseg]
-            _vstar = @view vstar[indx_params, :, indx_steps, iseg]
+        for idx_params in 1:numparams
+            _vstar_perp = @view vstar_perp[idx_params, :, idx_steps, iseg]
+            _vstar = @view vstar[idx_params, :, idx_steps, iseg]
             perp!(_vstar_perp, _vstar, _dudt)
         end
     end
@@ -464,7 +464,7 @@ function renormalize!(R, b, w_perp, vstar_perp, y, vstar, w, iseg, numparams, nu
     return nothing
 end
 
-function compute_Cinv!(Cinv, w_perp, weight, nseg, nus, indxp)
+function compute_Cinv!(Cinv, w_perp, weight, nseg, nus, idxp)
     # construct Schur complement of Lagrange multiplier
     _weight = @view weight[1, :]
     for iseg in 1:nseg
@@ -485,12 +485,12 @@ function compute_Cinv!(Cinv, w_perp, weight, nseg, nus, indxp)
     return nothing
 end
 
-function compute_d!(d, w_perp, vstar_perp, weight, nseg, nus, indxp)
+function compute_d!(d, w_perp, vstar_perp, weight, nseg, nus, idxp)
     # construct d
     _weight = @view weight[1, :]
     for iseg in 1:nseg
         _d = @view d[((iseg - 1) * nus + 1):(iseg * nus)]
-        vi = @view vstar_perp[indxp, :, :, iseg]
+        vi = @view vstar_perp[idxp, :, :, iseg]
         for i in 1:nus
             wi = @view w_perp[:, :, iseg, i]
             _d[i] = sum(wi .* vi * _weight)
@@ -499,13 +499,13 @@ function compute_d!(d, w_perp, vstar_perp, weight, nseg, nus, indxp)
     return nothing
 end
 
-function compute_B!(B, R, nseg, nus, indxp)
+function compute_B!(B, R, nseg, nus, idxp)
     for iseg in 1:(nseg - 1)
         _B = @view B[
             ((iseg - 1) * nus + 1):(iseg * nus),
             ((iseg - 1) * nus + 1):(iseg * nus),
         ]
-        _R = @view R[indxp, iseg, :, :]
+        _R = @view R[idxp, iseg, :, :]
         copyto!(_B, -_R)
         # off diagonal one
         for i in 1:nus
@@ -515,17 +515,17 @@ function compute_B!(B, R, nseg, nus, indxp)
     return nothing
 end
 
-function compute_a!(a, B, Cinv, b, d, indxp)
-    _b = @view b[indxp, :]
+function compute_a!(a, B, Cinv, b, d, idxp)
+    _b = @view b[idxp, :]
 
     lbd = (-B * Cinv * B') \ (B * Cinv * d + _b)
     a .= -Cinv * (B' * lbd + d)
     return nothing
 end
 
-function compute_v!(v, v_perp, vstar, vstar_perp, w, w_perp, a, nseg, nus, indxp)
-    _vstar = @view vstar[indxp, :, :, :]
-    _vstar_perp = @view vstar_perp[indxp, :, :, :]
+function compute_v!(v, v_perp, vstar, vstar_perp, w, w_perp, a, nseg, nus, idxp)
+    _vstar = @view vstar[idxp, :, :, :]
+    _vstar_perp = @view vstar_perp[idxp, :, :, :]
 
     copyto!(v, _vstar)
     copyto!(v_perp, _vstar_perp)

@@ -181,7 +181,7 @@ setups = [
 #
 # The inner VJP is `ReverseDiffVJP`, not `EnzymeVJP`: `EnzymeVJP._vecjacobian!`
 # runs a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS, which both
-# mis-handles that RHS for some DAEs and corrupts Enzyme's global state across the
+# mishandles that RHS for some DAEs and corrupts Enzyme's global state across the
 # many `Enzyme.autodiff` calls this `setups` sweep makes (first call OK, later
 # calls `SingularException`). Using a non-Enzyme inner VJP is the established
 # workaround until that EnzymeVJP nested-Enzyme issue is fixed; the *outer* AD is

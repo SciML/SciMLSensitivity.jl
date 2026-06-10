@@ -202,7 +202,7 @@ prob_ude_template = ODE.ODEProblem(pde_ude!, u0, tspan, ps_init)
 To train the neural network
 $\mathcal{N}_\theta(U, V)$ embedded in the UDE, we define a loss function that measures how closely the solution of the UDE matches the ground truth data generated earlier.
 
-The loss is computed as the sum of squared errors between the predicted solution from the UDE and the true solution at each saved time point. If the solver fails (e.g., due to numerical instability or incorrect parameters), we return an infinite loss to discard that configuration during optimization. We use `FBDF()` as the solver due to the stiff nature of the brusselators euqation. Other solvers like `KenCarp47()` could also be used.
+The loss is computed as the sum of squared errors between the predicted solution from the UDE and the true solution at each saved time point. If the solver fails (e.g., due to numerical instability or incorrect parameters), we return an infinite loss to discard that configuration during optimization. We use `FBDF()` as the solver due to the stiff nature of the brusselator equations. Other solvers like `KenCarp47()` could also be used.
 
 To efficiently compute gradients of the loss with respect to the neural network parameters, we use an adjoint sensitivity method (`GaussAdjoint`), which performs high-accuracy quadrature-based integration of the adjoint equations. This approach enables scalable and memory-efficient training for stiff PDEs by avoiding full trajectory storage while maintaining accurate gradient estimates.
 

@@ -130,8 +130,8 @@ mutable struct Affect{T}
 end
 compute_index(t) = round(Int, t) + 1
 function (cb::Affect)(integrator)
-    indx = compute_index(integrator.t)
-    return integrator.u .= integrator.u .+ @view(cb.callback_data[:, indx, 1]) * (integrator.t - integrator.tprev)
+    idx = compute_index(integrator.t)
+    return integrator.u .= integrator.u .+ @view(cb.callback_data[:, idx, 1]) * (integrator.t - integrator.tprev)
 end
 function test_hybridNODE3(sensealg)
     u0 = Float32[2.0; 0.0]
