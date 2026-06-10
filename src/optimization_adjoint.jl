@@ -266,12 +266,15 @@ function OptimizationAdjointSensitivityFunction(
         n_act = length(active_lb) + length(active_ub)
         n_bound = length(active_lb_var) + length(active_ub_var)
 
-        h_I = (x, q) -> begin
-            c = eval_cons(x, q)
-            vcat(
-                isempty(active_lb) ? eltype(x_star)[] : lcons[active_lb] .- c[active_lb],
-                isempty(active_ub) ? eltype(x_star)[] : c[active_ub] .- ucons[active_ub]
-            )
+        h_I = let active_lb = active_lb, active_ub = active_ub,
+                lcons = lcons, ucons = ucons, eval_cons = eval_cons, x_star = x_star
+            (x, q) -> begin
+                c = eval_cons(x, q)
+                vcat(
+                    isempty(active_lb) ? eltype(x_star)[] : lcons[active_lb] .- c[active_lb],
+                    isempty(active_ub) ? eltype(x_star)[] : c[active_ub] .- ucons[active_ub]
+                )
+            end
         end
 
         Jxhι_cons = if n_act == 0
@@ -328,11 +331,14 @@ function OptimizationAdjointSensitivityFunction(
     end
 
     # Lagrangian with fixed multipliers (used for p-derivative computations below)
-    L = function (x, q)
-        val = prob.f(x, q)
-        n_eq > 0 && (val += dot(y_star, g(x, q)))
-        n_act > 0 && (val += dot(zI_star, h_I(x, q)))
-        return val
+    L = let prob = prob, y_star = y_star, g = g, n_eq = n_eq,
+            zI_star = zI_star, h_I = h_I, n_act = n_act
+        function (x, q)
+            val = prob.f(x, q)
+            n_eq > 0 && (val += dot(y_star, g(x, q)))
+            n_act > 0 && (val += dot(zI_star, h_I(x, q)))
+            return val
+        end
     end
 
     # ---- Lagrangian Hessian w.r.t. x ----
