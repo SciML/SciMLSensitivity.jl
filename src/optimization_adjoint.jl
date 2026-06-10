@@ -416,11 +416,17 @@ function OptimizationAdjointSensitivityFunction(
     # size their buffers, so buffers will be M-sized and match the output of f_F.
     M = n_x + n_eq + n_act
     y = zeros(eltype(x_star), M)
+    grad_adtype = sensealg.autodiff
     f_F = OptimizationKKTResidual(
         let L = L, g = g, h_I = h_I, x_star = x_star,
-                sensealg = sensealg, n_eq = n_eq, n_act = n_act
+                grad_adtype = grad_adtype, n_eq = n_eq, n_act = n_act
             function (_, q_full, _)
-                grad_L = gradient(x -> L(x, q_full), x_star, sensealg)
+                # Inner Lagrangian gradient ∇_x L(·, q) via DifferentiationInterface, using
+                # the user-selected backend. Unprepared so it nests cleanly inside the outer
+                # VJP (`autojacvec`) that differentiates this residual w.r.t. q.
+                grad_L = DifferentiationInterface.gradient(
+                    x -> L(x, q_full), grad_adtype, x_star
+                )
                 n_eq == 0 && n_act == 0 && return grad_L
                 n_eq > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
                 n_eq == 0 && n_act > 0 && return vcat(grad_L, h_I(x_star, q_full))
