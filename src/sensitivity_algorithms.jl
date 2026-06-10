@@ -1455,19 +1455,21 @@ OptimizationAdjoint(; chunk_size = 0, autodiff = true,
 
 ## Keyword Arguments
 
-  - `autodiff`: Use automatic differentiation (ForwardDiff) for the inner derivatives
-    at `u*` — gradient of the objective, Jacobian of the constraints, Hessian of the
-    Lagrangian — when not supplied by `OptimizationFunction`. If `false`, FiniteDiff
-    is used. Defaults to `true`. This is independent of `autojacvec`, which controls
-    the *outer* VJP.
+  - `autodiff`: selects the backend used by DifferentiationInterface.jl to compute the
+    inner Lagrangian gradient `∇_x L(u*, p)` that forms the stationarity rows of the KKT
+    residual `F`. (`grad`, `cons_j`, and the Lagrangian Hessian are taken from the
+    `OptimizationFunction`, so this is the *only* derivative the adjoint itself computes
+    by AD.) Accepts any `ADTypes` backend directly — e.g. `AutoForwardDiff()`,
+    `AutoFiniteDiff()`, `AutoReverseDiff()`, `AutoEnzyme()` — and the chosen backend must
+    nest inside the outer VJP selected by `autojacvec`, which differentiates `F` w.r.t.
+    `p`. For backward compatibility it also accepts a `Bool`: `true` (the default) maps
+    to `AutoForwardDiff()` and `false` maps to `AutoFiniteDiff(; fdtype = diff_type)`.
+    This is independent of `autojacvec`, which controls the *outer* VJP.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
-    built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
-    choice of chunk size.
-  - `diff_type`: The FiniteDiff.jl method used for the inner objective gradient when
-    `autodiff=false` and `OptimizationFunction` does not supply an analytic gradient.
-    Defaults to `Val{:forward}`. (The constraint-Jacobian and Lagrangian-Hessian
-    fallbacks use forward and `:hcentral` differencing respectively, independent of
-    this setting.)
+    built. Default is `0` for automatic choice of chunk size.
+  - `diff_type`: The FiniteDiff.jl method used for the inner Lagrangian gradient when
+    `autodiff=false`. Defaults to `Val{:forward}`. Ignored when `autodiff` is an
+    explicit `ADTypes` backend.
   - `autojacvec`: Calculate the vector-Jacobian product (`λ' · ∂F/∂p`) through the
     KKT residual via automatic differentiation with special seeding. Choices:
 
@@ -1504,6 +1506,7 @@ struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
     linsolve::LS
     linsolve_kwargs::LK
     active_tol::AT  # tolerance for active inequality constraint detection; nothing = sqrt(eps(eltype(x*)))
+    autodiff::AD    # ADTypes backend used by DifferentiationInterface for the inner Lagrangian gradient
 end
 
 function OptimizationAdjoint(;
@@ -1511,10 +1514,18 @@ function OptimizationAdjoint(;
         autojacvec = nothing,
         linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
     )
+    # `autodiff` selects the backend for the inner Lagrangian gradient ∇_x L(u*, p),
+    # computed via DifferentiationInterface. It accepts any ADTypes backend directly;
+    # the `Bool` forms map to the legacy defaults for backward compatibility.
+    adtype = if autodiff isa Bool
+        autodiff ? AutoForwardDiff() : AutoFiniteDiff(; fdtype = diff_type)
+    else
+        autodiff
+    end
     return OptimizationAdjoint{
-        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        chunk_size, typeof(adtype), diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(active_tol),
-    }(autojacvec, linsolve, linsolve_kwargs, active_tol)
+    }(autojacvec, linsolve, linsolve_kwargs, active_tol, adtype)
 end
 
 function setvjp(
@@ -1523,7 +1534,7 @@ function setvjp(
     ) where {CS, AD, FDT, VJP, LS, LK, AT}
     return OptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, AT}(
         vjp, sensealg.linsolve, sensealg.linsolve_kwargs,
-        sensealg.active_tol
+        sensealg.active_tol, sensealg.autodiff
     )
 end
 

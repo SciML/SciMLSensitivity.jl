@@ -2,6 +2,7 @@ module SciMLSensitivity
 
 using ADTypes: ADTypes, AutoEnzyme, AutoFiniteDiff, AutoForwardDiff,
     AutoMooncake, AutoReverseDiff, AutoTracker, AutoZygote
+using DifferentiationInterface: DifferentiationInterface
 using Accessors: @reset
 using Adapt: Adapt, adapt
 using ArrayInterface: ArrayInterface
