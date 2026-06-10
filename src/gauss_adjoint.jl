@@ -539,7 +539,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : allocate_zeros(mutable_buffer(tunables))
+    dgdp_cache = dgdp === nothing ? nothing : mutable_zeros(tunables)
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
@@ -747,7 +747,7 @@ function (S::GaussIntegrand)(out, t, λ)
 end
 
 function (S::GaussIntegrand)(t, λ)
-    out = allocate_zeros(mutable_buffer(S.tunables))
+    out = mutable_zeros(S.tunables)
     return S(out, t, λ)
 end
 
@@ -794,8 +794,7 @@ function _adjoint_sensitivities(
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     # The integrating callbacks mutate their accumulation buffers, so immutable
     # (e.g. SVector) tunables need mutable counterparts for the quadrature.
-    _tunables_buf = mutable_buffer(tunables)
-    integrand_values = IntegrandValuesSum(allocate_zeros(_tunables_buf))
+    integrand_values = IntegrandValuesSum(mutable_zeros(tunables))
     # The integrating callbacks call the integrand as `integrand_func(out, u, t,
     # integrator)` when the adjoint problem is in-place, but as
     # `out = integrand_func(u, t, integrator)` when it is out-of-place, which is
@@ -807,11 +806,11 @@ function _adjoint_sensitivities(
     end
     if sensealg isa GaussAdjoint
         cb = IntegratingSumCallback(
-            integrand_func, integrand_values, allocate_vjp(_tunables_buf)
+            integrand_func, integrand_values, mutable_zeros(tunables)
         )
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback(
-            integrand_func, integrand_values, allocate_vjp(_tunables_buf)
+            integrand_func, integrand_values, mutable_zeros(tunables)
         )
     end
     rcb = nothing

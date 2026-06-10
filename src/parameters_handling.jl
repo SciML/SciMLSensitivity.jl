@@ -97,14 +97,21 @@ allocate_vjp(x::Number) = zero(x)
 allocate_vjp(x::_NonDiffLeaf) = x
 
 """
-    mutable_buffer(x)
+    mutable_zeros(x)
 
-`x` itself when it is mutable (or not an array), otherwise a mutable copy of it.
-Used to derive accumulation buffers from possibly immutable (e.g. static-array)
-tunables.
+A zeroed mutable buffer shaped like `x`: `allocate_zeros(x)` when that is
+already mutable (or `x` is not an array), otherwise a zeroed `similar(x)`
+(e.g. an `MVector` for an `SVector`). Used for accumulation buffers derived
+from possibly immutable (static-array) tunables.
 """
-mutable_buffer(x::AbstractArray) = ArrayInterface.ismutable(x) ? x : collect(x)
-mutable_buffer(x) = x
+function mutable_zeros(x::AbstractArray)
+    return if ArrayInterface.ismutable(x)
+        allocate_zeros(x)
+    else
+        fill!(similar(x), zero(eltype(x)))
+    end
+end
+mutable_zeros(x) = allocate_zeros(x)
 
 """
     allocate_zeros(x)
