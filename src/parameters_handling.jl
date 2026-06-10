@@ -97,6 +97,16 @@ allocate_vjp(x::Number) = zero(x)
 allocate_vjp(x::_NonDiffLeaf) = x
 
 """
+    mutable_buffer(x)
+
+`x` itself when it is mutable (or not an array), otherwise a mutable copy of it.
+Used to derive accumulation buffers from possibly immutable (e.g. static-array)
+tunables.
+"""
+mutable_buffer(x::AbstractArray) = ArrayInterface.ismutable(x) ? x : collect(x)
+mutable_buffer(x) = x
+
+"""
     allocate_zeros(x)
 
 `zero.(x)` for generic `x`. This is used to handle non-array parameters!

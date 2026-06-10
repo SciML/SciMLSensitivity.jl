@@ -216,11 +216,55 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
     return λ, nothing, y, dλ, nothing, nothing
 end
 
+# Re-solve the checkpoint interval containing `t` if the current checkpoint
+# solution does not cover it, updating `checkpoint_sol` and `GaussInt.sol`.
+function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
+    (; sol, checkpoint_sol, prob, GaussInt) = S
+    intervals = checkpoint_sol.intervals
+    interval = intervals[checkpoint_sol.cursor]
+    if !(interval[1] <= t <= interval[2])
+        cursor′ = Gaussfindcursor(intervals, t)
+        interval = intervals[cursor′]
+        cpsol_t = current_time(checkpoint_sol.cpsol)
+        y₀ = sol(interval[1])
+        dt = abs(cpsol_t[end] - cpsol_t[end - 1])
+        if checkpoint_sol.tstops === nothing
+            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
+            cpsol′ = solve(prob′, sol.alg; dt, checkpoint_sol.tols...)
+        else
+            if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                # callback might have changed p
+                _p = reset_p(prob.kwargs[:callback], interval)
+                prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀, p = _p)
+                cpsol′ = solve(
+                    prob′, sol.alg; dt,
+                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                )
+            else
+                prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
+                cpsol′ = solve(
+                    prob′, sol.alg; dt,
+                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                )
+            end
+        end
+        checkpoint_sol.cpsol = cpsol′
+        checkpoint_sol.cursor = cursor′
+        GaussInt.sol = cpsol′
+    end
+    return nothing
+end
+
 function split_states(u, t, S::ODEGaussAdjointSensitivityFunction; update = true)
-    (; y, sol) = S
+    (; y, sol, checkpoint_sol) = S
 
     if update
-        y = sol(t, continuity = :right)
+        if checkpoint_sol === nothing
+            y = sol(t, continuity = :right)
+        else
+            Gaussupdate_checkpoint_sol!(S, t)
+            y = checkpoint_sol.cpsol(t, continuity = :right)
+        end
     end
 
     λ = u
@@ -495,7 +539,7 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
 
     unwrappedf = unwrapped_f(f)
 
-    dgdp_cache = dgdp === nothing ? nothing : allocate_zeros(tunables)
+    dgdp_cache = dgdp === nothing ? nothing : allocate_zeros(mutable_buffer(tunables))
 
     if sensealg.autojacvec isa ReverseDiffVJP
         tape = if DiffEqBase.isinplace(prob)
@@ -703,7 +747,7 @@ function (S::GaussIntegrand)(out, t, λ)
 end
 
 function (S::GaussIntegrand)(t, λ)
-    out = allocate_zeros(S.tunables)
+    out = allocate_zeros(mutable_buffer(S.tunables))
     return S(out, t, λ)
 end
 
@@ -748,16 +792,26 @@ function _adjoint_sensitivities(
         tunables, repack = p, identity
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
-    integrand_values = IntegrandValuesSum(allocate_zeros(tunables))
+    # The integrating callbacks mutate their accumulation buffers, so immutable
+    # (e.g. SVector) tunables need mutable counterparts for the quadrature.
+    _tunables_buf = mutable_buffer(tunables)
+    integrand_values = IntegrandValuesSum(allocate_zeros(_tunables_buf))
+    # The integrating callbacks call the integrand as `integrand_func(out, u, t,
+    # integrator)` when the adjoint problem is in-place, but as
+    # `out = integrand_func(u, t, integrator)` when it is out-of-place, which is
+    # the case for immutable (e.g. SVector) state.
+    integrand_func = if ArrayInterface.ismutable(state_values(sol.prob))
+        (out, u, t, integrator) -> integrand(out, t, u)
+    else
+        (u, t, integrator) -> integrand(t, u)
+    end
     if sensealg isa GaussAdjoint
         cb = IntegratingSumCallback(
-            (out, u, t, integrator) -> integrand(out, t, u),
-            integrand_values, allocate_vjp(tunables)
+            integrand_func, integrand_values, allocate_vjp(_tunables_buf)
         )
     elseif sensealg isa GaussKronrodAdjoint
         cb = IntegratingGKSumCallback(
-            (out, u, t, integrator) -> integrand(out, t, u),
-            integrand_values, allocate_vjp(tunables)
+            integrand_func, integrand_values, allocate_vjp(_tunables_buf)
         )
     end
     rcb = nothing

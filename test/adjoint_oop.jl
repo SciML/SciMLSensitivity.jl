@@ -256,3 +256,82 @@ du0_disc_e, dp_disc_e = adjoint_sensitivities(
 )
 @test du0_disc_e ≈ du0_disc_z rtol = 1.0e-10
 @test dp_disc_e ≈ dp_disc_z rtol = 1.0e-10
+
+## GaussAdjoint / GaussKronrodAdjoint on immutable SVector state (issue #1461)
+# The immutable-state branch of `ReverseLossCallback` previously asserted
+# `sensealg isa QuadratureAdjoint`, the Gauss integrating callbacks passed an
+# in-place integrand to the out-of-place adjoint problem, and the out-of-place
+# `split_states` ignored checkpointing.
+
+# Discrete cost G(u0, p) = sum over tsteps of sum(u .^ 2) / 2, matching
+# dgdu_discrete = dg_disc_oop. ForwardDiff on accurate dense solves is the
+# reference.
+function G_disc(u0, p)
+    tmp_prob = remake(prob; u0 = convert.(promote_type(eltype(u0), eltype(p)), u0), p)
+    tmp_sol = solve(tmp_prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
+    return sum(t -> sum(tmp_sol(t) .^ 2) / 2, tsteps)
+end
+fd_dp_disc = ForwardDiff.gradient(p -> G_disc(u0, p), p)
+fd_du0_disc = ForwardDiff.gradient(u0 -> G_disc(u0, p), u0)
+
+# Dense forward solution: no checkpointing inside GaussAdjoint.
+sol_dense = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
+
+for galg in (
+        GaussAdjoint(autojacvec = EnzymeVJP()),
+        GaussAdjoint(autojacvec = ZygoteVJP()),
+        GaussKronrodAdjoint(autojacvec = EnzymeVJP()),
+    )
+    du0_g, dp_g = adjoint_sensitivities(
+        sol_dense, Tsit5(); t = collect(tsteps), dgdu_discrete = dg_disc_oop,
+        sensealg = galg, abstol = 1.0e-10, reltol = 1.0e-10
+    )
+    @test du0_g ≈ fd_du0_disc rtol = 1.0e-6
+    @test vec(dp_g) ≈ fd_dp_disc rtol = 1.0e-6
+end
+
+# Non-dense (saveat) forward solution: exercises the checkpointing path of the
+# out-of-place `split_states` and `GaussIntegrand`.
+du0_gc, dp_gc = adjoint_sensitivities(
+    sol, Tsit5(); t = collect(tsteps), dgdu_discrete = dg_disc_oop,
+    sensealg = GaussAdjoint(autojacvec = EnzymeVJP()),
+    abstol = 1.0e-10, reltol = 1.0e-10
+)
+@test du0_gc ≈ fd_du0_disc rtol = 1.0e-5
+@test vec(dp_gc) ≈ fd_dp_disc rtol = 1.0e-5
+
+# Continuous cost, compared against the quadgk + ForwardDiff reference
+# (`f_du0`, `f_dp`) computed above.
+du0_cont_g, dp_cont_g = adjoint_sensitivities(
+    sol_dense, Tsit5(); dgdu_continuous = dg, g,
+    sensealg = GaussAdjoint(autojacvec = EnzymeVJP()),
+    abstol = 1.0e-10, reltol = 1.0e-10
+)
+@test du0_cont_g ≈ f_du0 rtol = 1.0e-6
+@test vec(dp_cont_g) ≈ f_dp rtol = 1.0e-6
+
+# Through-solve gradient with the default automatic vjp choice.
+du0_g, dp_g = Zygote.gradient(
+    (u0, p) -> sum(
+        solve(
+            prob, Tsit5(); u0, p,
+            abstol = 1.0e-10, reltol = 1.0e-10, saveat = tsteps,
+            sensealg = GaussAdjoint()
+        )
+    ),
+    u0, p
+)
+du0_q, dp_q = Zygote.gradient(
+    (u0, p) -> sum(
+        solve(
+            prob, Tsit5(); u0, p,
+            abstol = 1.0e-10, reltol = 1.0e-10, saveat = tsteps,
+            sensealg = QuadratureAdjoint(
+                abstol = 1.0e-12, reltol = 1.0e-12, autojacvec = ZygoteVJP()
+            )
+        )
+    ),
+    u0, p
+)
+@test du0_g ≈ du0_q rtol = 1.0e-6
+@test dp_g ≈ dp_q rtol = 1.0e-6
