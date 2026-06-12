@@ -44,6 +44,7 @@ end
             @time @safetestset "Error Messages" include("error_messages.jl")
             @time @safetestset "Autodiff Events" include("autodiff_events.jl")
             @time @safetestset "Enzyme VJP Inactive" include("enzyme_vjp_inactive.jl")
+            @time @safetestset "Enzyme VJP View ComponentArray" include("enzyme_view_componentarray.jl")
         end
     end
 

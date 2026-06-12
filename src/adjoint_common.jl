@@ -1,3 +1,12 @@
+# Wraps a pre-allocated dense primal buffer for use with Enzyme.Duplicated when the
+# parameter is a view-backed array (e.g. ComponentArray with SubArray data). Enzyme
+# requires primal and shadow to have the same concrete type; since the shadow is always
+# a fresh dense allocation, the primal must also be dense. We pre-allocate once here
+# and copyto! the current parameter values at each adjoint step.
+struct EnzymeViewPrimalBuffer{T}
+    buf::T
+end
+
 struct AdjointDiffCache{
         UF, PF, G, TJ, PJT, uType, JC, GC, PJC, JNC, PJNC, rateType, DG1,
         DG2, DI,
@@ -240,7 +249,19 @@ function adjointdiffcache(
         pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
         _needs_shadow = !(p isa SciMLBase.NullParameters) &&
             isscimlstructure(p) && !(p isa AbstractArray)
-        _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
+        _shadow_p = if _needs_shadow
+            repack(zero(tunables))
+        elseif !(p isa SciMLBase.NullParameters) && p isa AbstractArray &&
+                typeof(tunables) !== typeof(zero(tunables))
+            # tunables is a view-backed array (e.g. ComponentArray with SubArray data).
+            # zero(tunables) returns a dense array of a different concrete type, so
+            # Enzyme.Duplicated(p, tmp2) would throw a type mismatch. Pre-allocate a
+            # dense primal buffer here; at each adjoint step we copyto! the current p
+            # values and pass this buffer as the Enzyme primal instead of p itself.
+            EnzymeViewPrimalBuffer(copy(tunables))
+        else
+            nothing
+        end
         paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), _shadow_p)
     elseif autojacvec isa MooncakeVJP
         _pf = get_pf(autojacvec, prob, unwrappedf)
