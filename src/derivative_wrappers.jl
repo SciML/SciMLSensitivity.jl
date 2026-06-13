@@ -1037,14 +1037,25 @@ function _vecjacobian!(
     dup = if !(tmp2 isa SciMLBase.NullParameters)
         # tmp2 .= 0
         Enzyme.remake_zero!(tmp2)
-        if _cached_shadow !== nothing
+        if _cached_shadow isa EnzymeViewPrimalBuffer
+            # p is a view-backed array (e.g. ComponentArray with SubArray data).
+            # The shadow tmp2 = zero(tunables) is a dense array of a different
+            # concrete type. Use the pre-allocated dense primal buffer, updating it
+            # with the current p values, so that primal and shadow types match.
+            copyto!(_cached_shadow.buf, p)
+            _sp = tmp2
+            _shadow_p = _sp
+            Enzyme.Duplicated(_cached_shadow.buf, _sp)
+        elseif _cached_shadow !== nothing
             Enzyme.remake_zero!(_cached_shadow)
             _sp = _cached_shadow
+            _shadow_p = _sp
+            Enzyme.Duplicated(p, _sp)
         else
             _sp = trivial_repack ? tmp2 : repack(tmp2)
+            _shadow_p = _sp
+            Enzyme.Duplicated(p, _sp)
         end
-        _shadow_p = _sp
-        Enzyme.Duplicated(p, _sp)
     else
         Enzyme.Const(p)
     end
