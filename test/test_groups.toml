@@ -23,7 +23,7 @@ versions = ["1", "1.11", "lts"]
 versions = ["1", "1.11", "lts"]
 
 [QA]
-versions = ["1", "1.11", "lts"]
+versions = ["lts", "1"]
 
 [SDE1]
 versions = ["1", "1.11", "lts"]
