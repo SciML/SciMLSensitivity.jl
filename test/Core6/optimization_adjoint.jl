@@ -270,6 +270,50 @@ end
         end
     end
 
+    @testset "Enzyme forward backend" begin
+        let
+            # SLSQP exposes no Hessian, so the Lxx block is built by the AD fallback — this
+            # exercises the Enzyme forward path for BOTH the residual stationarity gradient
+            # and Lxx. p enters objective and constraint, so the mixed ∇²_xp L term is
+            # nonzero. Analytic optimum u* = (13/9, 10/9), μ* = -4/9; differentiating the KKT
+            # system gives du*/dp = [4/9 -16/27; 1/9 -7/27].
+            f = (u, p) -> (u[1] - 1)^2 + p[2] * (u[2] - 1)^2
+            cons = (res, u, p) -> (res[1] = p[2] * u[1] + u[2] - p[1])
+            u0 = [1.0, 1.0]
+            p = [4.0, 2.0]
+
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            prob = OptimizationProblem(opt_f, u0, p; lcons = [0.0], ucons = [0.0])
+            opt_sol = solve(prob, NLopt.LD_SLSQP())
+
+            J_exact = [4/9 -16/27; 1/9 -7/27]
+            function dprow(i; kw...)
+                dgdu!(out, _, _, _, _) = (out .= 0; out[i] = 1.0; out)
+                adjoint_sensitivities(
+                    opt_sol, nothing; sensealg = OptimizationAdjoint(; kw...), dgdu = dgdu!
+                )
+            end
+
+            J_enz = vcat(
+                dprow(1; autodiff = Optimization.AutoEnzyme())',
+                dprow(2; autodiff = Optimization.AutoEnzyme())'
+            )
+            J_fwd = vcat(
+                dprow(1; autodiff = Optimization.AutoForwardDiff())',
+                dprow(2; autodiff = Optimization.AutoForwardDiff())'
+            )
+            @test J_enz ≈ J_exact rtol = 1.0e-5
+            @test J_enz ≈ J_fwd rtol = 1.0e-6
+
+            # Reverse-mode backends are rejected (these derivatives are forward-mode).
+            @test_throws ArgumentError adjoint_sensitivities(
+                opt_sol, nothing;
+                sensealg = OptimizationAdjoint(autodiff = SciMLSensitivity.AutoReverseDiff()),
+                dgdu = (out, _, _, _, _) -> (out .= 0; out[1] = 1.0; out)
+            )
+        end
+    end
+
     @testset "p only in objective (sensitivity via ∇²_xp L, J_p g = 0)" begin
         let
             # Minimize p[1]*u[1] + u[1]^2 + u[2]^2  s.t.  u[1] + u[2] = 1  (no p in constraint)

@@ -1455,16 +1455,25 @@ OptimizationAdjoint(; chunk_size = 0, autodiff = true,
 
 ## Keyword Arguments
 
-  - `autodiff`: selects the backend used by DifferentiationInterface.jl to compute the
-    inner Lagrangian gradient `∇_x L(u*, p)` that forms the stationarity rows of the KKT
-    residual `F`. (`grad`, `cons_j`, and the Lagrangian Hessian are taken from the
-    `OptimizationFunction`, so this is the *only* derivative the adjoint itself computes
-    by AD.) Accepts any `ADTypes` backend directly — e.g. `AutoForwardDiff()`,
-    `AutoFiniteDiff()`, `AutoReverseDiff()`, `AutoEnzyme()` — and the chosen backend must
-    nest inside the outer VJP selected by `autojacvec`, which differentiates `F` w.r.t.
-    `p`. For backward compatibility it also accepts a `Bool`: `true` (the default) maps
-    to `AutoForwardDiff()` and `false` maps to `AutoFiniteDiff(; fdtype = diff_type)`.
-    This is independent of `autojacvec`, which controls the *outer* VJP.
+  - `autodiff`: the **forward-mode** backend the adjoint uses for the two derivatives it
+    computes itself:
+      1. the inner Lagrangian gradient `∇_x L(u*, p)` forming the stationarity rows of the
+         KKT residual `F` (this must nest inside the outer VJP selected by `autojacvec`); and
+      2. as a *fallback*, the Lagrangian Hessian `L_xx` of the KKT matrix, computed by
+         forward-mode differentiation of `∇_x L` — used only when the `OptimizationFunction`
+         exposes no second-order information (no `lag_h`, and not both `hess` and `cons_h`),
+         e.g. for gradient-only solvers like SLSQP. When second-order info is present it is
+         used directly and this backend is not invoked for `L_xx`.
+    Both differentiate the *raw* Lagrangian, not the `OptimizationFunction`'s stored
+    `grad`/`cons_j` (whose DI preparation is frozen at the solve's `Float64` types and
+    rejects dual inputs); `cons_j` is still used for the first-order constraint-Jacobian
+    blocks. Defaults to `nothing`, meaning *use the `OptimizationFunction`'s own ADType*.
+    Pass an `ADTypes` backend to override: `AutoForwardDiff()`, `AutoFiniteDiff()`, or
+    `AutoEnzyme()` (always run in forward mode). **Reverse-mode backends** (`AutoReverseDiff`,
+    `AutoZygote`, `AutoTracker`, `AutoMooncake`) are rejected — these derivatives are taken
+    in forward mode; any other backend falls back to ForwardDiff. For backward compatibility
+    a `Bool` is also accepted: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
+    Independent of `autojacvec`, which controls the *outer* VJP.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built. Default is `0` for automatic choice of chunk size.
   - `diff_type`: The FiniteDiff.jl method used for the inner Lagrangian gradient when
@@ -1510,15 +1519,17 @@ struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
 end
 
 function OptimizationAdjoint(;
-        chunk_size = 0, autodiff = true, diff_type = Val{:forward},
+        chunk_size = 0, autodiff = nothing, diff_type = Val{:forward},
         autojacvec = nothing,
         linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
     )
-    # `autodiff` selects the backend for the inner Lagrangian gradient ∇_x L(u*, p),
-    # computed via DifferentiationInterface. It accepts any ADTypes backend directly;
-    # the `Bool` forms map to the legacy defaults for backward compatibility.
+    # `autodiff` selects the forward-mode backend the adjoint uses for its own derivatives
+    # (the inner Lagrangian gradient and the Lxx fallback). `nothing` (the default) means
+    # "use the OptimizationFunction's own ADType". An explicit `ADTypes` backend overrides
+    # it; reverse-mode backends are rejected at solve time. The `Bool` forms are kept for
+    # backward compatibility: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
     adtype = if autodiff isa Bool
-        autodiff ? AutoForwardDiff() : AutoFiniteDiff(; fdtype = diff_type)
+        autodiff ? AutoForwardDiff() : AutoFiniteDiff()
     else
         autodiff
     end
@@ -1537,6 +1548,20 @@ function setvjp(
         sensealg.active_tol, sensealg.autodiff
     )
 end
+
+# `alg_autodiff` selects ForwardDiff (true) vs FiniteDiff (false) for the *outer* materialized
+# parameter-Jacobian (the Bool-`autojacvec` path). OptimizationAdjoint stores an ADTypes
+# backend in the AD type-parameter slot, so the generic definition would return that object and
+# fail in a boolean context; this override maps it to the Bool the wrappers expect.
+#
+# This deliberately keys off the *inner* `autodiff`, not `autojacvec`, and that coupling is
+# load-bearing: the outer Jacobian and the inner Lagrangian gradient are nested, so their AD
+# modes must be compatible. A ForwardDiff outer seeds the parameters with Dual numbers, but a
+# FiniteDiff *inner* gradient has concretely-Float64 caches and can't accept Duals
+# (`Float64(::Dual)` errors). So a FiniteDiff inner requires a FiniteDiff (Dual-free) outer,
+# which is exactly what `!(autodiff isa AutoFiniteDiff)` gives: FiniteDiff inner → false →
+# FiniteDiff outer; ForwardDiff/Enzyme inner (Dual-tolerant) → true → ForwardDiff outer.
+@inline alg_autodiff(alg::OptimizationAdjoint) = !(alg.autodiff isa AutoFiniteDiff)
 
 abstract type VJPChoice end
 
