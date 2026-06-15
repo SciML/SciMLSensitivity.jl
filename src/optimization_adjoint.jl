@@ -76,6 +76,56 @@ end
 _opt_eval_lag_h(fn, _, x, σ, μ, p, ::Val{false}, ::Val{true}) = fn(x, σ, μ, p)
 _opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
 
+# ---- Forward-mode AD for the adjoint's own derivatives ----
+# The OptimizationAdjoint computes two derivatives itself, both in forward mode:
+#   * the Lagrangian gradient ∇_x L — the stationarity rows of the KKT residual `F`, which
+#     the outer VJP then differentiates w.r.t. the parameters; and
+#   * its Jacobian w.r.t. x, i.e. the Lagrangian Hessian `Lxx` — only as a fallback, when
+#     the OptimizationFunction exposes no second-order info (no `lag_h`/`hess`).
+# These deliberately do NOT use the stored `grad`/`cons_j`/`hess` (their DI preparation is
+# frozen at the solve's Float64 types and rejects the dual inputs AD introduces); they
+# differentiate the raw Lagrangian `L` instead. The backend is the optimization problem's
+# own ADType by default, or an override passed to `OptimizationAdjoint(autodiff=...)`.
+# `_opt_validate_fwd` rejects reverse-mode backends (both derivatives are taken in forward
+# mode — the inner gradient must also nest cleanly inside the outer reverse-mode VJP) and
+# otherwise returns the backend unchanged; `_opt_grad`/`_opt_hess` then dispatch on it.
+function _opt_validate_fwd(adtype::Union{AutoReverseDiff, AutoZygote, AutoTracker, AutoMooncake})
+    throw(
+        ArgumentError(
+            "OptimizationAdjoint differentiates the KKT optimality conditions in forward " *
+            "mode, but a reverse-mode AD backend ($(nameof(typeof(adtype)))) was selected " *
+            "(via the OptimizationFunction's `adtype` or `OptimizationAdjoint(autodiff=...)`). " *
+            "Pass a forward-mode backend instead: AutoForwardDiff(), AutoFiniteDiff(), or " *
+            "AutoEnzyme()."
+        )
+    )
+end
+_opt_validate_fwd(adtype) = adtype
+
+# Forward-mode gradient of scalar `f` at `x`. Enzyme is run in forward mode; FiniteDiff maps
+# to itself; AutoForwardDiff and any other backend use ForwardDiff.
+_opt_grad(::AutoFiniteDiff, f, x) = FiniteDiff.finite_difference_gradient(f, x)
+# Enzyme is run in forward mode with two annotations the Lagrangian closure requires:
+#   * `Enzyme.Const(f)` — the closure captures parameters/multipliers/the OptimizationFunction,
+#     which Enzyme can't prove read-only; we differentiate only the explicit `x`.
+#   * `set_runtime_activity` — Enzyme's static activity analysis can't classify active-vs-const
+#     through that opaque capture, so we opt into runtime activity (also needed for the nested
+#     residual case, where `x` is differentiated under the outer VJP).
+# `Enzyme.gradient(Forward, ...)` returns a 1-tuple holding a TupleArray; collect to a plain
+# Vector so it composes (vcat into the residual, and re-differentiation for Lxx).
+const _OPT_ENZYME_FWD = Enzyme.set_runtime_activity(Enzyme.Forward)
+_opt_grad(::AutoEnzyme, f, x) = collect(only(Enzyme.gradient(_OPT_ENZYME_FWD, Enzyme.Const(f), x)))
+_opt_grad(_, f, x) = ForwardDiff.gradient(f, x)
+
+# Hessian of scalar `f` at `x` (used for Lxx = ∇²_x L when no second-order info is stored).
+# ForwardDiff and FiniteDiff use their native second-order routines (FiniteDiff's stencil is
+# more accurate than differencing a finite-difference gradient). Enzyme has no native Hessian,
+# so there we differentiate the forward-mode gradient once more — `jacobian(Const(∇f), x)` —
+# with the same `Const`/runtime-activity handling `_opt_grad` needs.
+_opt_hess(::AutoFiniteDiff, f, x) = FiniteDiff.finite_difference_hessian(f, x)
+_opt_hess(m::AutoEnzyme, f, x) = only(Enzyme.jacobian(_OPT_ENZYME_FWD, Enzyme.Const(z -> _opt_grad(m, f, z)), x))
+_opt_hess(_, f, x) = ForwardDiff.hessian(f, x)
+
 # Constraint Hessians: `cons_h` writes a length-`m` vector of `n×n` matrices, `H[i] = ∇²cᵢ`.
 # m = n_cons, n = n_x.
 function _opt_eval_cons_h(fn, m, n, x, p, ::Val{true}, ::Val{true})
@@ -160,29 +210,19 @@ function OptimizationAdjointSensitivityFunction(
 
     # Wrap in-place cons!(res, x, p) into an out-of-place helper.
     # promote_type handles ForwardDiff Dual propagation when either x or q contains duals.
-    # When prob is an OptimizationCache, prob.f.cons is a 2-arg closure
-    # `(res, x) -> f.cons(res, x, captured_p)` from OptimizationBase.instantiate_function.
-    # The captured field names are mangled (e.g. `#95#f`), so we search by type to find
-    # the captured OptimizationFunction, regardless of field ordering.
-    # Very unfortunate that this is needed, but sensitivity requires the three arg version of
-    # the constraint function. To make this stable and not hacky there needs to be a way to access
-    # it without going inside of the closure.
-    if has_cons
-        n_cons = length(lcons)
-        _cons3 = if applicable(prob.f.cons, zeros(n_cons), x_star, p)
-            prob.f.cons              # AbstractOptimizationProblem: already (res, x, p)
-        else
-            captured_f = let cl = prob.f.cons
-                getfield(
-                    cl, only(
-                        fname for fname in fieldnames(typeof(cl))
-                            if getfield(cl, fname) isa SciMLBase.AbstractOptimizationFunction
-                    )
-                )
-            end
-            captured_f.cons
-        end
-        eval_cons = function (x, q)
+    # The KKT residual differentiates the constraints w.r.t. the parameters, so we need the
+    # three-arg `cons(res, x, p)` form. OptimizationBase ≥ 5.1.2 (SciML/Optimization.jl#1184,
+    # the AugLag rewrite) builds `prob.f.cons` as `(res, x, p_call = p) -> f.cons(res, x, p_call)`,
+    # which forwards straight to the raw user constraint and is therefore safe to differentiate
+    # through w.r.t. p. Earlier versions baked `p` in as a 2-arg `(res, x)` closure and required
+    # reaching inside it to recover the original 3-arg function; that path is no longer supported.
+    # Single-assignment for n_cons and _cons3: both are captured by closures (g, h_I, eval_cons),
+    # so assigning them in separate if/else arms would force Julia to box them.
+    n_cons = has_cons ? length(lcons) : 0
+    _cons3 = has_cons ? prob.f.cons : nothing
+    eval_cons = let _cons3 = _cons3, n_cons = n_cons, x_star = x_star
+        function (x, q)
+            _cons3 === nothing && return eltype(x_star)[]
             # promote_op gives the inferred result eltype of `+(eltype(x), eltype(q))`.
             # Preferred over promote_type because ForwardDiff's @define_binary_dual_op
             # bypasses promote_type — e.g. Dual + TrackedReal returns Dual{Tag, TrackedReal, N}
@@ -192,9 +232,6 @@ function OptimizationAdjointSensitivityFunction(
             _cons3(res, x, q)
             return res
         end
-    else
-        n_cons = 0
-        eval_cons = (_, _) -> eltype(x_star)[]
     end
 
     # Classify constraints: equality where lcons[i] == ucons[i]
@@ -224,6 +261,11 @@ function OptimizationAdjointSensitivityFunction(
     opt_f = prob.f
     iip_val = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
+
+    # Forward-mode backend for the adjoint's own derivatives (inner Lagrangian gradient and,
+    # as a fallback, Lxx). Defaults to the optimization problem's ADType; overridden when the
+    # user passes `OptimizationAdjoint(autodiff=...)`. Errors on reverse-mode backends.
+    fwd_mode = _opt_validate_fwd(sensealg.autodiff === nothing ? opt_f.adtype : sensealg.autodiff)
 
     # ---- ∇f at x_star: require the stored gradient ----
     ∇f = if opt_f.grad !== nothing
@@ -314,29 +356,31 @@ function OptimizationAdjointSensitivityFunction(
 
         if has_negatives
             # Filter offenders out of each active set; they never re-enter.
+            # Use non-capturing broadcast masks rather than `findall(j -> zI_star[j]...)`:
+            # a capturing closure created in this loop forces zI_star/z_bound_star to be boxed
+            # in the enclosing frame (zI_star is also captured by L below), defeating the let.
             n_lb = length(active_lb)
+            n_ub = length(active_ub)
             n_lb_var = length(active_lb_var)
-            active_lb = active_lb[findall(j -> zI_star[j] >= -mtol, 1:n_lb)]
-            active_ub = active_ub[findall(j -> zI_star[n_lb + j] >= -mtol,
-                                          1:length(active_ub))]
-            active_lb_var = active_lb_var[findall(j -> z_bound_star[j] >= -mtol,
-                                                  1:n_lb_var)]
-            active_ub_var = active_ub_var[
-                findall(
-                    j -> z_bound_star[n_lb_var + j] >= -mtol,
-                    1:length(active_ub_var)
-                ),
-            ]
+            n_ub_var = length(active_ub_var)
+            active_lb = active_lb[findall(@view(zI_star[1:n_lb]) .>= -mtol)]
+            active_ub = active_ub[findall(@view(zI_star[(n_lb + 1):(n_lb + n_ub)]) .>= -mtol)]
+            active_lb_var = active_lb_var[findall(@view(z_bound_star[1:n_lb_var]) .>= -mtol)]
+            active_ub_var = active_ub_var[findall(@view(z_bound_star[(n_lb_var + 1):(n_lb_var + n_ub_var)]) .>= -mtol)]
         end
     end
 
-    # Lagrangian with fixed multipliers (used for p-derivative computations below)
+    # Lagrangian with fixed multipliers (differentiated for both the residual stationarity
+    # rows and the Lxx fallback). Uses `sum(μ .* c)` rather than `dot(μ, c)`: `dot` lowers to
+    # a BLAS call on Float64 vectors, which Enzyme's forward mode cannot differentiate under
+    # runtime activity. The multiplier vectors are tiny, so the broadcast costs nothing, and
+    # ForwardDiff/FiniteDiff are unaffected.
     L = let prob = prob, y_star = y_star, g = g, n_eq = n_eq,
             zI_star = zI_star, h_I = h_I, n_act = n_act
         function (x, q)
             val = prob.f(x, q)
-            n_eq > 0 && (val += dot(y_star, g(x, q)))
-            n_act > 0 && (val += dot(zI_star, h_I(x, q)))
+            n_eq > 0 && (val += sum(y_star .* g(x, q)))
+            n_act > 0 && (val += sum(zI_star .* h_I(x, q)))
             return val
         end
     end
@@ -358,11 +402,12 @@ function OptimizationAdjointSensitivityFunction(
         mu_full[i] += zI_star[length(active_lb) + j]
     end
 
-    # Require system-provided second-order derivatives rather than recomputing by AD:
+    # Lagrangian Hessian ∇²_x L, in order of preference:
     #   1. `lag_h`  — the combined Lagrangian Hessian, used directly.
     #   2. `hess` (+ `cons_h` when constrained) — assemble ∇²L = ∇²f + Σ μᵢ ∇²cᵢ.
     #      This covers solvers (e.g. IPNewton) that populate `hess`/`cons_h` but not `lag_h`.
-    #   3. error — neither form available; we don't duplicate the AD that produced the solution.
+    #   3. AD fallback — forward-mode over the Lagrangian gradient. Covers solvers that
+    #      expose no second-order info (e.g. SLSQP: only `grad` + `cons_j`). See below.
     Lxx = if opt_f.lag_h !== nothing
         _opt_eval_lag_h(opt_f.lag_h, n_x, x_star, one(eltype(x_star)), mu_full, p, iip_val, has_p_val)
     elseif opt_f.hess !== nothing && (!has_cons || opt_f.cons_h !== nothing)
@@ -379,11 +424,17 @@ function OptimizationAdjointSensitivityFunction(
         end
         H
     else
-        throw(
-            OptimizationAdjointMissingDerivativeError(
-                :hessian, has_cons, opt_f.hess !== nothing, opt_f.cons_h !== nothing
-            )
-        )
+        # No second-order info: take the Hessian of the *raw* Lagrangian `L` w.r.t. x (its
+        # constraint terms route through the prep-free `prob.f.cons`), NOT the stored
+        # `grad`/`cons_j` — their DI preparation is frozen at Float64 and a forward pass
+        # introduces dual `x`, which it would reject (the same preparation wall that blocks
+        # reusing them in the p-residual). The first-order `cons_j` is still reused for the
+        # Jacobian blocks Jxg/Jxhι; only the second-order term is AD'd here. `fwd_mode` picks
+        # the forward-mode backend; evaluated at the real Float64 (x*, p) — no nesting with
+        # the outer VJP.
+        let L = L, p = p, fwd_mode = fwd_mode
+            _opt_hess(fwd_mode, z -> L(z, p), x_star)
+        end
     end
 
     N = n_x + n_eq + n_act_total
@@ -405,12 +456,14 @@ function OptimizationAdjointSensitivityFunction(
         sensealg.linsolve_kwargs...
     ).u
 
-    if p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+    
+    tunables, repack = if p === nothing || p isa SciMLBase.NullParameters
+        p, identity
     elseif isscimlstructure(p)
-        tunables, repack, _ = canonicalize(Tunable(), p)
+        t, r, _ = canonicalize(Tunable(), p)
+        t, r
     else
-        tunables, repack = p, identity
+        p, identity
     end
 
     autojacvec = sensealg.autojacvec
@@ -422,17 +475,17 @@ function OptimizationAdjointSensitivityFunction(
     # size their buffers, so buffers will be M-sized and match the output of f_F.
     M = n_x + n_eq + n_act
     y = zeros(eltype(x_star), M)
-    grad_adtype = sensealg.autodiff
+    # Stationarity rows ∇_x L(x*, q): forward-mode gradient (via `fwd_mode`) of the raw
+    # Lagrangian `L`. `L` routes its constraint terms through the prep-free `prob.f.cons`,
+    # so it is differentiable w.r.t. `q` for the outer VJP (`autojacvec`) — unlike the stored
+    # `grad`/`cons_j`, whose DI preparation is frozen at the solve's Float64 parameter type
+    # and rejects dual-valued `q`. The forward-mode inner gradient nests cleanly inside the
+    # outer (possibly reverse-mode) VJP.
     f_F = OptimizationKKTResidual(
         let L = L, g = g, h_I = h_I, x_star = x_star,
-                grad_adtype = grad_adtype, n_eq = n_eq, n_act = n_act
+                fwd_mode = fwd_mode, n_eq = n_eq, n_act = n_act
             function (_, q_full, _)
-                # Inner Lagrangian gradient ∇_x L(·, q) via DifferentiationInterface, using
-                # the user-selected backend. Unprepared so it nests cleanly inside the outer
-                # VJP (`autojacvec`) that differentiates this residual w.r.t. q.
-                grad_L = DifferentiationInterface.gradient(
-                    x -> L(x, q_full), grad_adtype, x_star
-                )
+                grad_L = _opt_grad(fwd_mode, x -> L(x, q_full), x_star)
                 n_eq == 0 && n_act == 0 && return grad_L
                 n_eq > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
                 n_eq == 0 && n_act > 0 && return vcat(grad_L, h_I(x_star, q_full))
