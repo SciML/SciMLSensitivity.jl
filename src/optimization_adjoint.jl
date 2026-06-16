@@ -1,7 +1,8 @@
 # SensitivityFunction subtype for the OptimizationAdjoint VJP path.
-# f = (_, q_full, _) -> F(x*, q_full) = [∇_x L; g; h_I], OOP, output size M = n_x + n_eq + n_act.
-# y is a zeros(M) dummy state used to size AD buffers in vecjacobian! backends.
-# λ holds the adjoint cotangent (λ_full[1:M]) from the KKT solve.
+# f = (_, q_full, _) -> Φ(q_full) = λ·F(x*, q_full), OOP, scalar output (length-1 vector).
+# The KKT cotangent λ is folded into Φ via the λ-contraction (see f_F below), so the residual
+# is scalar: the outer VJP just takes ∇_q Φ with a unit seed. y is a length-1 dummy state used
+# to size AD buffers in vecjacobian! backends; λ is the unit seed [1].
 # dp is the pre-allocated output gradient buffer (size n_p), written by vecjacobian!.
 struct OptimizationAdjointSensitivityFunction{
         C <: AdjointDiffCache,
@@ -125,6 +126,16 @@ _opt_grad(_, f, x) = ForwardDiff.gradient(f, x)
 _opt_hess(::AutoFiniteDiff, f, x) = FiniteDiff.finite_difference_hessian(f, x)
 _opt_hess(m::AutoEnzyme, f, x) = only(Enzyme.jacobian(_OPT_ENZYME_FWD, Enzyme.Const(z -> _opt_grad(m, f, z)), x))
 _opt_hess(_, f, x) = ForwardDiff.hessian(f, x)
+
+# Directional derivative d/dε f(x + ε v)|_0 = v'∇f(x), in forward mode — the Pearlmutter-style
+# contraction that yields v'∇f directly (a single forward seed) without forming the full n-wide
+# gradient. Used for the stationarity term λx'∇_x L of the scalar KKT residual. Enzyme falls
+# back to the validated full-gradient path then contracts (sum(.*), BLAS-free), since its
+# forward JVP API is finickier and the gradient route is already exercised.
+_opt_dir(::AutoFiniteDiff, f, x, v) =
+    FiniteDiff.finite_difference_derivative(ε -> f(x .+ ε .* v), zero(eltype(x)))
+_opt_dir(m::AutoEnzyme, f, x, v) = sum(v .* _opt_grad(m, f, x))
+_opt_dir(_, f, x, v) = ForwardDiff.derivative(ε -> f(x .+ ε .* v), zero(eltype(x)))
 
 # Constraint Hessians: `cons_h` writes a length-`m` vector of `n×n` matrices, `H[i] = ∇²cᵢ`.
 # m = n_cons, n = n_x.
@@ -468,38 +479,41 @@ function OptimizationAdjointSensitivityFunction(
 
     autojacvec = sensealg.autojacvec
 
-    # f_F: OOP function (_, q_full, _) -> F(x*, q_full), the KKT residual as a function of p.
-    # F = [∇_x L(x*, q); g(x*, q); h_I(x*, q)]  — output size M = n_x + n_eq + n_act.
-    # Variable-bound rows are omitted since ∂(lb - x)/∂p = 0, so they don't contribute to dp.
-    # y = zeros(M) is passed as the dummy state; f_F ignores it, but backends use it to
-    # size their buffers, so buffers will be M-sized and match the output of f_F.
-    M = n_x + n_eq + n_act
-    y = zeros(eltype(x_star), M)
-    # Stationarity rows ∇_x L(x*, q): forward-mode gradient (via `fwd_mode`) of the raw
-    # Lagrangian `L`. `L` routes its constraint terms through the prep-free `prob.f.cons`,
-    # so it is differentiable w.r.t. `q` for the outer VJP (`autojacvec`) — unlike the stored
-    # `grad`/`cons_j`, whose DI preparation is frozen at the solve's Float64 parameter type
-    # and rejects dual-valued `q`. The forward-mode inner gradient nests cleanly inside the
-    # outer (possibly reverse-mode) VJP.
+    # Scalar KKT residual via λ-contraction. The cotangent λ is already known (constant) from
+    # the KKT solve, so instead of forming the vector residual F = [∇_xL; g; h_I] and VJP'ing
+    # it with λ, we build the scalar Φ(q) = λ·F(x*, q) and let the outer pass take ∇_q Φ (a VJP
+    # of a scalar with seed [1]). Identical result, but the stationarity term λx'∇_xL is a
+    # single forward directional derivative (Pearlmutter) rather than the full n_x-wide gradient
+    # — much less for the outer AD to differentiate through. `L` routes its constraint terms
+    # through the prep-free `prob.f.cons`, so it is differentiable w.r.t. `q` (unlike the stored
+    # `grad`/`cons_j`, frozen at the solve's Float64 types). Constraint terms use sum(.*) not
+    # `dot` to stay BLAS-free (Enzyme forward can't differentiate BLAS `dot` under runtime
+    # activity). Variable-bound rows are dropped: ∂(lb - x)/∂p = 0.
+    #
+    # Scalar output: y is the length-1 dummy state backends use to size buffers.
+    y = zeros(eltype(x_star), 1)
+    λx = λ_full[1:n_x]
+    λy = n_eq  > 0 ? λ_full[(n_x + 1):(n_x + n_eq)]                : eltype(x_star)[]
+    λz = n_act > 0 ? λ_full[(n_x + n_eq + 1):(n_x + n_eq + n_act)] : eltype(x_star)[]
     f_F = OptimizationKKTResidual(
-        let L = L, g = g, h_I = h_I, x_star = x_star,
+        let L = L, g = g, h_I = h_I, x_star = x_star, λx = λx, λy = λy, λz = λz,
                 fwd_mode = fwd_mode, n_eq = n_eq, n_act = n_act
             function (_, q_full, _)
-                grad_L = _opt_grad(fwd_mode, x -> L(x, q_full), x_star)
-                n_eq == 0 && n_act == 0 && return grad_L
-                n_eq > 0 && n_act == 0 && return vcat(grad_L, g(x_star, q_full))
-                n_eq == 0 && n_act > 0 && return vcat(grad_L, h_I(x_star, q_full))
-                return vcat(grad_L, g(x_star, q_full), h_I(x_star, q_full))
+                val = _opt_dir(fwd_mode, x -> L(x, q_full), x_star, λx)
+                n_eq  > 0 && (val += sum(λy .* g(x_star, q_full)))
+                n_act > 0 && (val += sum(λz .* h_I(x_star, q_full)))
+                return [val]
             end
         end
     )
 
-    # λ: adjoint cotangent for f_F — drop the variable-bound rows of λ_full (∂/∂p = 0).
-    λ = λ_full[1:M]
+    # Scalar cotangent: the contraction with the KKT λ is folded into Φ above, so the outer
+    # VJP just needs ∇_q Φ — i.e. seed with 1.
+    λ = [one(eltype(x_star))]
 
     # Build pf and paramjac_config via the same adjointdiffcache machinery used by
-    # SteadyStateAdjoint. f_F is OOP, output size M, no time argument.
-    # For Bool dispatch: pf = ParamGradientWrapper(f_F, nothing, y), pJ = M × n_p matrix.
+    # SteadyStateAdjoint. f_F is OOP, scalar output, no time argument.
+    # For Bool dispatch: pf = ParamGradientWrapper(f_F, nothing, y), pJ = 1 × n_p matrix.
     # For VJP backends: pf/paramjac_config built by get_pf/get_paramjac_config as usual.
     _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
     pf, paramjac_config, pJ = if autojacvec isa ReverseDiffVJP
@@ -516,7 +530,7 @@ function OptimizationAdjointSensitivityFunction(
         _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
         _config = get_paramjac_config(
             autojacvec, p, f_F, y, tunables, nothing;
-            numindvar = M, alg = nothing
+            numindvar = 1, alg = nothing
         )
         _config = (_config..., Enzyme.make_zero(_pf), _shadow_p)
         _pf, _config, nothing
@@ -541,7 +555,7 @@ function OptimizationAdjointSensitivityFunction(
             (u, q_t, t) -> f_F(u, repack(q_t), t) :
             f_F
         _pf = ParamGradientWrapper(_pgrad_f, nothing, y)
-        _pJ = zeros(eltype(x_star), M, length(tunables))
+        _pJ = zeros(eltype(x_star), 1, length(tunables))
         _pf, nothing, _pJ
     else
         nothing, nothing, nothing
@@ -571,9 +585,11 @@ Compute the parameter sensitivity `dp = dG/dp` for a scalar loss `G` via one adj
 
 Given `Δu = dG/dx* ∈ Rⁿˣ` (the cotangent of the optimal solution supplied by the caller),
 solves the adjoint system `KKT * λ_full = [Δu; 0; ...; 0]` (one linear solve, exploiting
-KKT symmetry), then returns `dp = -(∂F/∂p)' · λ` via a single `vecjacobian!` call, where
-`F(x*, p) = [∇_x L(x*, p); g(x*, p); h_I(x*, p)]` is the KKT residual and `λ = λ_full[1:M]`
-(variable-bound rows are dropped since `∂(lb-x)/∂p = 0`).
+KKT symmetry), then returns `dp = -∇_q Φ` via a single `vecjacobian!` call. Rather than
+VJP'ing the vector KKT residual `F(x*, q) = [∇_x L; g; h_I]` against `λ_full`, the (constant)
+contraction is folded in up front as the scalar `Φ(q) = λ_full · F(x*, q)`, so the outer pass
+only needs its gradient `∇_q Φ` (a scalar VJP, unit seed). Variable-bound rows are dropped
+since `∂(lb-x)/∂p = 0`.
 
 The VJP is computed via `sensealg.autojacvec` (falls back to ForwardDiff otherwise).
 """
