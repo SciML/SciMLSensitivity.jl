@@ -661,3 +661,52 @@ end
     @test du0ReverseDiff ≈ du0 rtol = 1.0e-2
     @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 end
+
+@testset "InterpolatingAdjoint RODE never checkpoints (linear interp)" begin
+    # RODE solutions only have a linear interpolation, so `InterpolatingAdjoint`
+    # never checkpoints them — `default_linear_interpolation(prob, alg)` is true,
+    # so `ischeckpointing` returns false even when `checkpointing = true`. This
+    # avoids the pointless per-step re-solve (and the former per-step
+    # `deepcopy(sol)`) that has no effect on the gradient.
+    function frep(du, u, p, t, W)
+        du[1] = p[1] * u[1] * sin(W[1])
+        return nothing
+    end
+    dtr = 1.0e-2
+    u0r = [1.0]
+    tspanr = (0.0, 0.2)
+    tr = tspanr[1]:0.02:tspanr[2]
+    pr = [1.5]
+    probr = RODEProblem(frep, u0r, tspanr, pr)
+
+    Random.seed!(seed)
+    soli = solve(probr, RandomEM(); dt = dtr, save_noise = true, dense = true)
+    # Never checkpoint a linear-interpolation method, even on explicit request.
+    @test !SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(), soli)
+    @test !SciMLSensitivity.ischeckpointing(
+        InterpolatingAdjoint(checkpointing = true), soli
+    )
+
+    # Gradient is still correct against an independent adjoint method, and the
+    # `checkpointing = true` request gives the same (non-checkpointed) result.
+    Random.seed!(seed)
+    solb = solve(probr, RandomEM(); dt = dtr, save_noise = true, saveat = tr)
+    du0b, dpb = adjoint_sensitivities(
+        solb, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = dtr, adaptive = false, sensealg = BacksolveAdjoint()
+    )
+    du0i, dpi = adjoint_sensitivities(
+        soli, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = dtr, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
+    du0c, dpc = adjoint_sensitivities(
+        soli, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = dtr, adaptive = false,
+        sensealg = InterpolatingAdjoint(checkpointing = true, autojacvec = ReverseDiffVJP())
+    )
+    @test du0i ≈ du0b rtol = 1.0e-2
+    @test dpi ≈ dpb rtol = 1.0e-2
+    @test du0c ≈ du0i
+    @test dpc ≈ dpi
+end

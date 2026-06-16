@@ -1648,13 +1648,25 @@ end
 @inline function get_jacmat(alg::AbstractSensitivityAlgorithm)
     return alg.autojacmat isa Bool ? alg.autojacmat : true
 end
+# Checkpointing re-solves the forward pass to reconstruct the state during the
+# reverse pass. It only helps when the algorithm has a dense (higher-than-linear)
+# interpolation that wasn't saved. For methods whose only interpolation is linear
+# (RODE/SDE, where `default_linear_interpolation(prob, alg) == true` forces
+# `sol.dense == false`), re-solving recovers nothing better than the stored linear
+# interpolation — verified to leave the adjoint gradient unchanged — so they are
+# never checkpointed, even when `checkpointing = true` is requested.
+@inline function needs_checkpointing(alg, sol)
+    OrdinaryDiffEqCore.default_linear_interpolation(sol.prob, sol.alg) && return false
+    return alg.checkpointing || !sol.dense
+end
+
 @inline ischeckpointing(alg::AbstractSensitivityAlgorithm, sol = nothing) = false
 @inline ischeckpointing(alg::InterpolatingAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::InterpolatingAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::InterpolatingAdjoint, sol) = needs_checkpointing(alg, sol)
 @inline ischeckpointing(alg::GaussAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::GaussAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::GaussAdjoint, sol) = needs_checkpointing(alg, sol)
 @inline ischeckpointing(alg::GaussKronrodAdjoint) = alg.checkpointing
-@inline ischeckpointing(alg::GaussKronrodAdjoint, sol) = alg.checkpointing || !sol.dense
+@inline ischeckpointing(alg::GaussKronrodAdjoint, sol) = needs_checkpointing(alg, sol)
 @inline ischeckpointing(alg::BacksolveAdjoint, sol = nothing) = alg.checkpointing
 
 @inline isnoisemixing(alg::AbstractSensitivityAlgorithm) = false
