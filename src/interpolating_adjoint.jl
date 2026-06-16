@@ -43,54 +43,26 @@ function ODEInterpolatingAdjointSensitivityFunction(
         cursor = lastindex(intervals)
         interval = intervals[cursor]
 
-        if sol.prob isa Union{SDEProblem, RODEProblem}
-            # replicated noise
-            _sol = deepcopy(sol)
-            idx1 = searchsortedfirst(_sol.W.t, interval[1] - 1000eps(interval[1]))
-            if sol.W isa DiffEqNoiseProcess.NoiseProcess
-                sol.W.save_everystep = false
-                _sol.W.save_everystep = false
-                forwardnoise = DiffEqNoiseProcess.NoiseWrapper(_sol.W, indx = idx1)
-            elseif sol.W isa DiffEqNoiseProcess.NoiseGrid
-                #idx2 = searchsortedfirst(_sol.W.t, interval[2]+1000eps(interval[1]))
-                forwardnoise = DiffEqNoiseProcess.NoiseGrid(
-                    _sol.W.t[idx1:end],
-                    _sol.W.W[idx1:end]
-                )
-            else
-                error("NoiseProcess type not implemented.")
-            end
-            dt = choose_dt((_sol.W.t[idx1] - _sol.W.t[idx1 + 1]), _sol.W.t, interval)
-
-            _ts = current_time(_sol)
+        # SDE/RODE solutions only have a linear interpolation, so they are never
+        # checkpointed (see `ischeckpointing`); only ODE-type problems reach here.
+        if tstops === nothing
             cpsol = solve(
-                remake(
-                    sol.prob, tspan = interval, u0 = sol(interval[1]),
-                    noise = forwardnoise
-                ),
-                sol.alg, save_noise = false; dt, tstops = _ts[idx1:end],
-                tols...
+                remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                sol.alg; tols...
             )
         else
-            if tstops === nothing
+            if maximum(interval[1] .< tstops .< interval[2])
+                # callback might have changed p
+                _p = reset_p(sol.prob.kwargs[:callback], interval)
                 cpsol = solve(
-                    remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    sol.alg; tols...
+                    remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                    tstops, p = _p, sol.alg, tols...
                 )
             else
-                if maximum(interval[1] .< tstops .< interval[2])
-                    # callback might have changed p
-                    _p = reset_p(sol.prob.kwargs[:callback], interval)
-                    cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, p = _p, sol.alg, tols...
-                    )
-                else
-                    cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, sol.alg, tols...
-                    )
-                end
+                cpsol = solve(
+                    remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                    tstops, sol.alg, tols...
+                )
             end
         end
         CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
@@ -202,67 +174,35 @@ function split_states(
                 else
                     sol(y, interval[1])
                 end
-                if sol.prob isa Union{SDEProblem, RODEProblem}
-                    #idx1 = searchsortedfirst(sol.t, interval[1])
-                    _sol = deepcopy(sol)
-                    _ts = current_time(_sol)
-                    idx1 = searchsortedfirst(_ts, interval[1] - 100eps(interval[1]))
-                    idx2 = searchsortedfirst(_ts, interval[2] + 100eps(interval[2]))
-                    idx_noise = searchsortedfirst(
-                        _sol.W.t,
-                        interval[1] - 100eps(interval[1])
-                    )
-                    if sol.W isa DiffEqNoiseProcess.NoiseProcess
-                        _sol.W.save_everystep = false
-                        forwardnoise = DiffEqNoiseProcess.NoiseWrapper(
-                            _sol.W,
-                            indx = idx_noise
-                        )
-                    elseif sol.W isa DiffEqNoiseProcess.NoiseGrid
-                        forwardnoise = DiffEqNoiseProcess.NoiseGrid(
-                            _sol.W.t[idx_noise:end],
-                            _sol.W.W[idx_noise:end]
-                        )
-                    else
-                        error("NoiseProcess type not implemented.")
-                    end
-                    prob′ = remake(
-                        prob, tspan = intervals[cursor′], u0 = y,
-                        noise = forwardnoise
-                    )
-                    dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
+                # SDE/RODE solutions only have a linear interpolation and are
+                # never checkpointed (see `ischeckpointing`); only ODE-type
+                # problems reach here.
+                if checkpoint_sol.tstops === nothing
+                    prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                     cpsol′ = solve(
-                        prob′, sol.alg, save_noise = false; dt,
-                        tstops = _ts[idx1:idx2], checkpoint_sol.tols...
+                        prob′, sol.alg;
+                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                        checkpoint_sol.tols...
                     )
                 else
-                    if checkpoint_sol.tstops === nothing
+                    if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                        # callback might have changed p
+                        _p = reset_p(prob.kwargs[:callback], interval)
+                        prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
+                        cpsol′ = solve(
+                            prob′, sol.alg;
+                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            tstops = checkpoint_sol.tstops,
+                            checkpoint_sol.tols...
+                        )
+                    else
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            tstops = checkpoint_sol.tstops,
                             checkpoint_sol.tols...
                         )
-                    else
-                        if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
-                            # callback might have changed p
-                            _p = reset_p(prob.kwargs[:callback], interval)
-                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
-                            cpsol′ = solve(
-                                prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                                tstops = checkpoint_sol.tstops,
-                                checkpoint_sol.tols...
-                            )
-                        else
-                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
-                            cpsol′ = solve(
-                                prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                                tstops = checkpoint_sol.tstops,
-                                checkpoint_sol.tols...
-                            )
-                        end
                     end
                 end
                 checkpoint_sol.cpsol = cpsol′
