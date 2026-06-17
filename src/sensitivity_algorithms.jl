@@ -1676,29 +1676,26 @@ OptimizationAdjoint(; chunk_size = 0, autodiff = true,
 
 ## Keyword Arguments
 
-  - `autodiff`: the **forward-mode** backend the adjoint uses for the two derivatives it
-    computes itself:
-      1. the inner Lagrangian gradient `∇_x L(u*, p)` forming the stationarity rows of the
-         KKT residual `F` (this must nest inside the outer VJP selected by `autojacvec`); and
-      2. as a *fallback*, the Lagrangian Hessian `L_xx` of the KKT matrix, computed by
-         forward-mode differentiation of `∇_x L` — used only when the `OptimizationFunction`
-         exposes no second-order information (no `lag_h`, and not both `hess` and `cons_h`),
-         e.g. for gradient-only solvers like SLSQP. When second-order info is present it is
-         used directly and this backend is not invoked for `L_xx`.
-    Both differentiate the *raw* Lagrangian, not the `OptimizationFunction`'s stored
-    `grad`/`cons_j` (whose DI preparation is frozen at the solve's `Float64` types and
-    rejects dual inputs); `cons_j` is still used for the first-order constraint-Jacobian
-    blocks. Defaults to `nothing`, meaning *use the `OptimizationFunction`'s own ADType*.
-    Pass an `ADTypes` backend to override: `AutoForwardDiff()`, `AutoFiniteDiff()`, or
-    `AutoEnzyme()` (always run in forward mode). **Reverse-mode backends** (`AutoReverseDiff`,
-    `AutoZygote`, `AutoTracker`, `AutoMooncake`) are rejected — these derivatives are taken
-    in forward mode; any other backend falls back to ForwardDiff. For backward compatibility
-    a `Bool` is also accepted: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
-    Independent of `autojacvec`, which controls the *outer* VJP.
+  - `autodiff`: the **forward-mode** backend for the one derivative the adjoint computes
+    itself — the Lagrangian Hessian `L_xx` (the `∂²ₓ` block of the KKT matrix), and only as a
+    *fallback*: when the `OptimizationFunction` exposes no second-order information (no `lag_h`,
+    and not both `hess` and `cons_h`), e.g. for gradient-only solvers like SLSQP. When
+    second-order info is present it is used directly and this backend is never invoked, so
+    `autodiff` has **no effect for second-order solvers**. The residual's first-order
+    stationarity terms are *not* affected by this setting — they reuse the stored (dual-tolerant)
+    `grad`/`cons_j` directly. The fallback differentiates the *raw* Lagrangian (raw objective +
+    prep-free constraints), keeping DI preparation out of the differentiated path. Defaults to
+    `nothing`, meaning *use the `OptimizationFunction`'s own ADType*. Pass an `ADTypes` backend
+    to override: `AutoForwardDiff()`, `AutoFiniteDiff()`, or `AutoEnzyme()` (always run in
+    forward mode). **Reverse-mode backends** (`AutoReverseDiff`, `AutoZygote`, `AutoTracker`,
+    `AutoMooncake`) are rejected, since the fallback nests forward-over-forward. For backward
+    compatibility a `Bool` is also accepted: `true` → `AutoForwardDiff()`,
+    `false` → `AutoFiniteDiff()`. Validated *lazily* — an irrelevant setting on a second-order
+    solver does not error. Independent of `autojacvec`, which controls the *outer* VJP.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built. Default is `0` for automatic choice of chunk size.
-  - `diff_type`: The FiniteDiff.jl method used for the inner Lagrangian gradient when
-    `autodiff=false`. Defaults to `Val{:forward}`. Ignored when `autodiff` is an
+  - `diff_type`: The FiniteDiff.jl method used for the `L_xx` Hessian fallback when
+    `autodiff = false`. Defaults to `Val{:forward}`. Ignored when `autodiff` is an
     explicit `ADTypes` backend.
   - `autojacvec`: Calculate the vector-Jacobian product (`λ' · ∂F/∂p`) through the
     KKT residual via automatic differentiation with special seeding. Choices:
@@ -1736,7 +1733,7 @@ struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
     linsolve::LS
     linsolve_kwargs::LK
     active_tol::AT  # tolerance for active inequality constraint detection; nothing = sqrt(eps(eltype(x*)))
-    autodiff::AD    # ADTypes backend used by DifferentiationInterface for the inner Lagrangian gradient
+    autodiff::AD    # forward-mode ADTypes backend for the Lxx Hessian fallback (grad-only solvers)
 end
 
 function OptimizationAdjoint(;
@@ -1744,11 +1741,12 @@ function OptimizationAdjoint(;
         autojacvec = nothing,
         linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
     )
-    # `autodiff` selects the forward-mode backend the adjoint uses for its own derivatives
-    # (the inner Lagrangian gradient and the Lxx fallback). `nothing` (the default) means
-    # "use the OptimizationFunction's own ADType". An explicit `ADTypes` backend overrides
-    # it; reverse-mode backends are rejected at solve time. The `Bool` forms are kept for
-    # backward compatibility: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
+    # `autodiff` selects the forward-mode backend for the `Lxx` Hessian fallback (used only when
+    # the OptimizationFunction stores no second-order info; the residual reuses `grad`/`cons_j`
+    # and is unaffected). `nothing` (the default) means "use the OptimizationFunction's own
+    # ADType". An explicit `ADTypes` backend overrides it; reverse-mode backends are rejected
+    # (lazily, only if the fallback is taken). The `Bool` forms are kept for backward
+    # compatibility: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
     adtype = if autodiff isa Bool
         autodiff ? AutoForwardDiff() : AutoFiniteDiff()
     else
