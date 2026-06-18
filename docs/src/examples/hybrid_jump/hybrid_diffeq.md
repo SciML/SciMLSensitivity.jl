@@ -12,7 +12,7 @@ import ComponentArrays as CA
 import Random
 import SciMLSensitivity as SMS
 import Lux
-import Mooncake
+import Enzyme
 import OrdinaryDiffEq as ODE
 import Plots
 import Optimization as OPT
@@ -74,7 +74,7 @@ end
 res = OPT.solve(
     OPT.OptimizationProblem(
         OPT.OptimizationFunction(
-            loss_n_ode, OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+            loss_n_ode, OPT.AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse))
         ),
         CA.ComponentArray(ps)),
     OPO.Adam(0.05); callback = cba, maxiters = 1000)
