@@ -45,11 +45,7 @@ the value 20:
 function loss(θ)
     sol = ODE.solve(prob, ODE.Tsit5(), p = [9.8, θ[1]]; callback)
     target = 20.0
-    # Use `last(sol.u)[1]` instead of `sol[end][1]` — Mooncake's pullback for
-    # `getindex(::ODESolution, end)` currently has a `BoundsError` bug
-    # (`SciMLBaseMooncakeExt._scatter_pullback`).  Indexing the underlying
-    # `sol.u::Vector{Vector{Float64}}` directly avoids the bad path.
-    abs2(last(sol.u)[1] - target)
+    abs2(sol[end][1] - target)
 end
 
 loss([0.8])
