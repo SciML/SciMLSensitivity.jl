@@ -156,7 +156,7 @@ First, we have to define and configure the neural network that has to be used fo
 
 ```@example bruss
 import Lux, Random, Optimization as OPT, OptimizationOptimJL as OOJ,
-       SciMLSensitivity as SMS, Mooncake
+       SciMLSensitivity as SMS, Enzyme
 
 model = Lux.Chain(Lux.Dense(2 => 16, tanh), Lux.Dense(16 => 1))
 rng = Random.default_rng()
@@ -223,12 +223,12 @@ function loss_fn(ps, _)
 end
 ```
 
-Once the loss function is defined, we use the ADAM optimizer to train the neural network. The optimization problem is defined using SciML's `Optimization.jl` tools, and gradients are computed via automatic differentiation using Mooncake through the `SciMLSensitivity` adjoint chain:
+Once the loss function is defined, we use the ADAM optimizer to train the neural network. The optimization problem is defined using SciML's `Optimization.jl` tools, and gradients are computed via automatic differentiation using Enzyme through the `SciMLSensitivity` adjoint chain:
 
 ```@example bruss
 println("[Training] Starting optimization...")
 import OptimizationOptimisers as OPO
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction(loss_fn, adtype)
 optprob = OPT.OptimizationProblem(optf, ps_init)
 loss_history = Float32[]

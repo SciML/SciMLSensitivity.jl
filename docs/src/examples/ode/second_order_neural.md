@@ -29,7 +29,7 @@ import OptimizationOptimisers as OPO
 import RecursiveArrayTools
 import Random
 import ComponentArrays as CA
-import Mooncake
+import Enzyme
 
 u0 = Float32[0.0; 2.0]
 du0 = Float32[0.0; 0.0]
@@ -62,7 +62,7 @@ callback = function (state, l)
     l < 0.01
 end
 
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss_n_ode(x), adtype)
 optprob = OPT.OptimizationProblem(optf, ps)
 

@@ -13,7 +13,7 @@ import OptimizationPolyalgorithms as OPA
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE
 import DiffEqCallbacks as DEC
-import Mooncake
+import Enzyme
 
 function f(du, u, p, t)
     du[1] = u[2]
@@ -53,7 +53,7 @@ function loss(θ)
 end
 
 loss([0.8])
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, [0.8])
 @time res = OPT.solve(optprob, OPA.PolyOpt(), maxiters = 300)

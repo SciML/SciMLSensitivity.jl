@@ -24,7 +24,7 @@ Take for example this simple differential equation solve on Lotka-Volterra:
 ```julia
 import SciMLSensitivity as SMS
 import OrdinaryDiffEq as ODE
-import Mooncake
+import Enzyme
 import DifferentiationInterface as DI
 
 function fiip(du, u, p, t)
@@ -36,7 +36,7 @@ u0 = [1.0; 1.0];
 prob = ODE.ODEProblem(fiip, u0, (0.0, 10.0), p)
 sol = ODE.solve(prob, ODE.Tsit5())
 loss(p) = sum(ODE.solve(prob, ODE.Tsit5(); p, saveat = 0.1))
-backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+backend = DI.AutoEnzyme()
 dp = DI.gradient(loss, backend, p)
 ```
 
@@ -45,7 +45,7 @@ solution to the ODE at timepoints dt=0.1" using an adjoint method, where `dp`
 is the derivative of the loss function with respect to the parameters.
 
 Because the gradient is calculated through DifferentiationInterface.jl with
-`AutoMooncake` and Mooncake.jl is one of the compatible AD libraries, this
+`AutoEnzyme` and Enzyme.jl is one of the compatible AD libraries, this
 derivative calculation will be captured by the `sensealg` system, and one of
 SciMLSensitivity.jl's adjoint overloads will be used to compute the
 derivative. By default, if the `sensealg` keyword argument is not defined,

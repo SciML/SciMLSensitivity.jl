@@ -10,7 +10,7 @@ import Optimization as OPT
 import SciMLSensitivity as SMS
 import OptimizationPolyalgorithms as OPA
 import DelayDiffEq as DDE
-import Mooncake
+import Enzyme
 
 # Define the same LV equation, but including a delay parameter
 function delay_lotka_volterra!(du, u, h, p, t)
@@ -51,7 +51,7 @@ callback = function (state, l; doplot = false)
     return false
 end
 
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 result_dde = OPT.solve(optprob, OPA.PolyOpt(); maxiters = 300, callback)
@@ -81,7 +81,7 @@ end
 We use `Optimization.solve` to optimize the parameters for our loss function:
 
 ```@example dde
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss_dde(x), adtype)
 optprob = OPT.OptimizationProblem(optf, p)
 result_dde = OPT.solve(optprob, OPA.PolyOpt(); callback)

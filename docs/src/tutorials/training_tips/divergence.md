@@ -30,7 +30,7 @@ A full example making use of this trick is:
 ```@example divergence
 import OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, SciMLBase, Optimization as OPT,
        OptimizationOptimisers as OPO, Plots
-import Mooncake
+import Enzyme
 
 function lotka_volterra!(du, u, p, t)
     rab, wol = u
@@ -66,7 +66,7 @@ function loss(p)
 end
 
 pinit = [1.2, 0.8, 2.5, 0.8]
-adtype = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 
 optprob = OPT.OptimizationProblem(optf, pinit)
