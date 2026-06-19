@@ -12,7 +12,8 @@ on:
       - 'docs/**'
 jobs:
   test:
-    # Runs strict (allow_reresolve=false); expected RED until StatsBase resolves (#1326).
+    # Runs strict (allow_reresolve=false): the [compat] lower bounds must be the
+    # real transitive floors so the minimum-version manifest resolves.
     name: Downgrade
     strategy:
       matrix:
