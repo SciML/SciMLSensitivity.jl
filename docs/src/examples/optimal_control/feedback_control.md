@@ -16,7 +16,7 @@ import Optimization as OPT
 import OptimizationPolyalgorithms as OPA
 import ComponentArrays as CA
 import SciMLSensitivity as SMS
-import Zygote
+import Enzyme
 import OrdinaryDiffEq as ODE
 import Plots
 import Random
@@ -89,7 +89,7 @@ end
 ```
 
 ```@example udeneuralcontrol
-adtype = OPT.AutoZygote()
+adtype = OPT.AutoEnzyme()
 optf = OPT.OptimizationFunction((x, p) -> loss_univ(x), adtype)
 optprob = OPT.OptimizationProblem(optf, θ)
 result_univ = OPT.solve(optprob, OPA.PolyOpt(), callback = cb)
