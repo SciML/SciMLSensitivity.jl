@@ -1,6 +1,6 @@
 name = "SciMLSensitivity"
 uuid = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
-version = "7.112.2"
+version = "7.112.3"
 authors = ["Christopher Rackauckas <accounts@chrisrackauckas.com>", "Yingbo Ma <mayingbo5@gmail.com>"]
 
 [deps]
@@ -73,7 +73,7 @@ DiffEqNoiseProcess = "5.32"
 DifferentiationInterface = "0.7.17"
 Distributed = "1"
 Distributions = "0.25.127"
-Enzyme = "0.13.162"
+Enzyme = "0.13.163"
 ExplicitImports = "1"
 FastBroadcast = "1.3.2"
 FiniteDiff = "2.31"
