@@ -175,9 +175,12 @@ setups = [
 # (`NonConstantKeywordArgException`, the `FunctionWrappersWrapper` return-type
 # mismatch, and the `NonlinearSolvePolyAlgorithm` runtime-activity assertion) are
 # fixed in NonlinearSolveBase (`inactive_kwarg`, the `within_autodiff` wrap-skip,
-# and `inactive_type`); and the repeated-call state corruption caused by a nested
-# `Enzyme.gradient` in the init sensitivity is fixed in this PR by routing
-# `_init_originator_gradient(::EnzymeOriginator)` through Zygote.
+# and `inactive_type`); and the repeated-call state corruption caused by the
+# nested `Enzyme.gradient` in `_init_originator_gradient(::EnzymeOriginator)` was
+# an upstream Enzyme bug (EnzymeAD/Enzyme.jl#3139, nested reverse-over-BLAS under
+# `set_runtime_activity`) fixed as of the `Enzyme` floor in `[compat]`, so that
+# init gradient is Enzyme-native again (#1467 routed it through Zygote until the
+# upstream fix landed; #1469).
 #
 # The inner VJP is `ReverseDiffVJP`, not `EnzymeVJP`: `EnzymeVJP._vecjacobian!`
 # runs a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS, which both
