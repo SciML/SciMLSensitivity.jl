@@ -214,6 +214,7 @@ end
 
 @test begin
     grads = map(setups) do setup
+        @info "HERE"
         prob, tunables, repack, init = setup
         diprob = Enzyme.make_zero(prob)
         dtunables = zero(tunables)
