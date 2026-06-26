@@ -36,22 +36,21 @@ run_qa(
                 :BrownFullBasicInit, :DefaultInit, :default_nlsolve, :has_autodiff,
                 # SciMLBase
                 :AbstractAdjointSensitivityAlgorithm, :AbstractDiffEqFunction,
-                :AbstractForwardSensitivityAlgorithm, :AbstractNonlinearProblem,
-                :AbstractODEFunction, :AbstractOptimizationProblem,
-                :AbstractOverloadingSensitivityAlgorithm,
+                :AbstractForwardSensitivityAlgorithm, :AbstractODEFunction,
+                :AbstractOptimizationProblem, :AbstractOverloadingSensitivityAlgorithm,
                 :AbstractSecondOrderSensitivityAlgorithm, :AbstractSensitivityAlgorithm,
                 :AbstractShadowingSensitivityAlgorithm, :AbstractTimeseriesSolution,
                 :OverrideInit, :unwrapped_f,
                 # SciMLStructures
                 :Tunable, :canonicalize, :isscimlstructure,
-                # SciMLSensitivityMooncakeExt: imports of the parent's own
-                # (non-public) internals + names re-imported through the parent.
-                :DiffEqBase, :FakeIntegrator, :FunctionWrappersWrappers,
-                :MooncakeLoaded, :MooncakeVJP, :ODEFunction, :SciMLBase,
-                :SciMLStructures, :SciMLStructuresCompatibilityError,
-                :_init_originator_gradient, :convert_tspan, :current_time,
-                :get_cb_paramjac_config, :get_paramjac_config,
-                :has_continuous_callback, :mooncake_run_ad, :state_values,
+                # SciMLSensitivityMooncakeExt: the parent's own (non-public) internals
+                # + names re-imported through the parent module.
+                :DiffEqBase, :FakeIntegrator, :FunctionWrappersWrappers, :MooncakeLoaded,
+                :MooncakeVJP, :ODEFunction, :SciMLBase, :SciMLStructures,
+                :SciMLStructuresCompatibilityError, :_init_originator_gradient,
+                :convert_tspan, :current_time, :get_cb_paramjac_config,
+                :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
+                :state_values,
             ),
         ),
         # Non-public names of upstream deps accessed qualified in the source; ignore
@@ -59,15 +58,19 @@ run_qa(
         all_qualified_accesses_are_public = (;
             ignore = (
                 # ArrayInterface
-                :aos_to_soa, :ismutable, :parameterless_type, :restructure,
+                :parameterless_type,
                 # Base
                 :(var"@pure"), :_nt_names, :diff_names,
                 # DiffEqCallbacks
                 :PeriodicCallbackAffect,
                 # DiffEqNoiseProcess
                 :vec_NoiseProcess,
-                # Enzyme / EnzymeCore / EnzymeCore.EnzymeRules
-                :EnzymeCore, :Mode, :inactive_type,
+                # Enzyme
+                :EnzymeCore,
+                # EnzymeCore
+                :Mode,
+                # EnzymeCore.EnzymeRules
+                :inactive_type,
                 # FiniteDiff
                 :DerivativeCache, :GradientCache, :JacobianCache,
                 :finite_difference_derivative!, :finite_difference_gradient!,
@@ -78,26 +81,28 @@ run_qa(
                 :jacobian!, :npartials, :partials, :pickchunksize, :value,
                 # LinearSolve
                 :needs_concrete_A,
+                # Mooncake (accessed in SciMLSensitivityMooncakeExt)
+                :CoDual, :NoFData, :Tangent, :build_rrule, :tangent_to_primal!!,
+                :zero_rdata,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff
-                :GradientTape, :TrackedArray, :compile, :deriv, :forward_pass!,
-                :gradient, :increment_deriv!, :input_hook, :output_hook, :pull_value!,
-                :reverse_pass!, :unseed!, :value!,
+                :GradientTape, :TrackedArray, :compile, :deriv, :forward_pass!, :gradient,
+                :increment_deriv!, :input_hook, :output_hook, :pull_value!, :reverse_pass!,
+                :unseed!, :value, :value!,
                 # SciMLBase
                 :ADOriginator, :AbstractDAEProblem, :AbstractDDEProblem,
-                :AbstractDiscreteProblem, :AbstractODEProblem, :AbstractRODEProblem,
-                :AbstractSDDEProblem, :AbstractSDEProblem, :AbstractSciMLFunction,
-                :AlgorithmInterpretation, :AutoSpecialize, :ChainRulesOriginator,
-                :EnzymeOriginator, :FullSpecialize, :ImmutableNonlinearProblem,
-                :MooncakeOriginator, :NullParameters, :OVERDETERMINED, :OverrideInit,
-                :ParamJacobianWrapper, :ReverseDiffOriginator, :TrackerOriginator,
-                :UDerivativeWrapper, :UJacobianWrapper, :Void,
+                :AbstractDiscreteProblem, :AbstractRODEProblem, :AbstractSDDEProblem,
+                :AbstractSDEProblem, :AbstractSciMLFunction, :AlgorithmInterpretation,
+                :ChainRulesOriginator, :EnzymeOriginator, :FullSpecialize,
+                :ImmutableNonlinearProblem, :MooncakeOriginator, :OVERDETERMINED,
+                :OverrideInit, :ParamJacobianWrapper, :ReverseDiffOriginator,
+                :TrackerOriginator, :UDerivativeWrapper, :UJacobianWrapper, :Void,
                 :_concrete_solve_adjoint, :_concrete_solve_forward, :alg_interpretation,
-                :build_solution, :forwarddiffs_model, :forwarddiffs_model_time,
-                :get_initial_values, :has_initialization_data, :has_jac, :has_observed,
-                :has_paramjac, :has_vjp, :has_vjp_p, :initialization_status,
-                :is_diagonal_noise, :sensitivity_solution, :specialization,
+                :forwarddiffs_model, :forwarddiffs_model_time, :get_initial_values,
+                :has_initialization_data, :has_observed, :has_paramjac, :has_vjp_p,
+                :initialization_status, :is_diagonal_noise, :sensitivity_solution,
+                :specialization,
                 # SciMLStructures
                 :replace,
                 # SparseArrays
@@ -106,13 +111,6 @@ run_qa(
                 :TrackedReal, :collect, :data, :forward,
                 # Zygote
                 :Buffer, :accum,
-                # Mooncake (accessed in SciMLSensitivityMooncakeExt)
-                :CoDual, :NoFData, :Tangent, :build_rrule,
-                :tangent_to_primal!!, :zero_rdata,
-                # Flagged only on Julia LTS (1.10); public on 1.11+:
-                :Fix1, :Fix2, :depwarn,             # Base
-                :Stratonovich, :Terminated,         # SciMLBase enum modules
-                :children, :functor,                # Functors
             ),
         ),
     ),
