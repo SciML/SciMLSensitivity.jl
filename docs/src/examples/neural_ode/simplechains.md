@@ -10,6 +10,7 @@ First, we'll need data for training the NeuralODE, which can be obtained by solv
 ```@example sc_neuralode
 import SimpleChains, OrdinaryDiffEq as ODE, SciMLSensitivity as SMS, Optimization as OPT,
        OptimizationOptimisers as OPO, Plots
+import Enzyme
 using StaticArrays: @SArray, @SMatrix
 
 u0 = @SArray Float32[2.0, 0.0]
@@ -50,7 +51,7 @@ prob_nn = ODE.ODEProblem(f, u0, tspan)
 
 function predict_neuralode(p)
     Array(ODE.solve(prob_nn, ODE.Tsit5(); p, saveat = tsteps,
-        sensealg = SMS.QuadratureAdjoint(autojacvec = SMS.ZygoteVJP())))
+        sensealg = SMS.QuadratureAdjoint(autojacvec = SMS.EnzymeVJP())))
 end
 
 function loss_neuralode(p)
@@ -64,7 +65,7 @@ end
 
 The next step is to minimize the loss, so that the NeuralODE gets trained. But in order to be able to do that, we have to be able to backpropagate through the NeuralODE model. Here the backpropagation through the neural network is the easy part, and we get that out of the box with any deep learning package(although not as fast as SimpleChains for the small nn case here). But we have to find a way to first propagate the sensitivities of the loss back, first through the ODE solver and then to the neural network.
 
-The adjoint of a neural ODE can be calculated through the various AD algorithms available in SciMLSensitivity.jl. But working with [StaticArrays](https://juliaarrays.github.io/StaticArrays.jl/stable/) in SimpleChains.jl requires a special adjoint method as StaticArrays do not allow any mutation. All the adjoint methods make heavy use of in-place mutation to be performant with the heap allocated normal arrays. For our statically sized, stack allocated StaticArrays, in order to be able to compute the ODE adjoint we need to do everything out of place. Hence, we have specifically used `QuadratureAdjoint(autojacvec=ZygoteVJP())` adjoint algorithm in the solve call inside `predict_neuralode(p)` which computes everything out-of-place when u0 is a StaticArray. Hence, we can move forward with the training of the NeuralODE
+The adjoint of a neural ODE can be calculated through the various AD algorithms available in SciMLSensitivity.jl. But working with [StaticArrays](https://juliaarrays.github.io/StaticArrays.jl/stable/) in SimpleChains.jl requires a special adjoint method as StaticArrays do not allow any mutation. All the adjoint methods make heavy use of in-place mutation to be performant with the heap allocated normal arrays. For our statically sized, stack allocated StaticArrays, in order to be able to compute the ODE adjoint we need to do everything out of place. Hence, we have specifically used the `QuadratureAdjoint` adjoint algorithm in the solve call inside `predict_neuralode(p)`, which computes everything out-of-place when `u0` is a StaticArray, with `autojacvec = EnzymeVJP()` for the inner vector-Jacobian product against the network. The outer optimization derivative is taken with `AutoEnzyme`, using `Enzyme.set_runtime_activity(Enzyme.Reverse)` because the non-mutating StaticArray path stores values that Enzyme's static activity analysis cannot prove inactive. With this fully Enzyme-based setup we can move forward with the training of the NeuralODE.
 
 ```@example sc_neuralode
 callback = function (state, l; doplot = true)
@@ -78,7 +79,8 @@ callback = function (state, l; doplot = true)
     return false
 end
 
-optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), OPT.AutoZygote())
+optf = OPT.OptimizationFunction((x, p) -> loss_neuralode(x),
+    OPT.AutoEnzyme(mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))
 optprob = OPT.OptimizationProblem(optf, p_nn)
 
 res = OPT.solve(optprob, OPO.Adam(0.05); callback, maxiters = 300)
