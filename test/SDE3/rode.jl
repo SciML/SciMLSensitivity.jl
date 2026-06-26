@@ -710,3 +710,38 @@ end
     @test du0c ≈ du0i
     @test dpc ≈ dpi
 end
+
+@testset "InterpolatingAdjoint RODE coarse-adjoint-dt accuracy" begin
+    # Regression for the SDE/RODE InterpolatingAdjoint accuracy loss from #1486.
+    # Disabling checkpointing also stopped forcing the reverse adjoint to step on
+    # the saved grid, so with an adjoint `dt` coarser than the forward grid the
+    # adjoint SDE was integrated too coarsely and the gradient drifted away from
+    # the reference. The grid is now restored via `tstops` (still without the
+    # O(N^2) per-interval re-solve), so the coarse-`dt` gradient matches again.
+    function frep(du, u, p, t, W)
+        du[1] = p[1] * u[1] * sin(W[1])
+        return nothing
+    end
+    u0r = [1.0]
+    tspanr = (0.0, 0.2)
+    fwd_dt = 1.0e-3
+    coarse_dt = 1.0e-2            # 10x coarser reverse step than the saved grid
+    tr = tspanr[1]:0.02:tspanr[2]
+    pr = [1.5]
+    probr = RODEProblem(frep, u0r, tspanr, pr)
+
+    Random.seed!(seed)
+    sol = solve(probr, RandomEM(); dt = fwd_dt, save_noise = true, dense = true)
+
+    du0b, dpb = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = fwd_dt, adaptive = false, sensealg = BacksolveAdjoint()
+    )
+    du0i, dpi = adjoint_sensitivities(
+        sol, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = coarse_dt, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
+    @test du0i ≈ du0b rtol = 1.0e-4
+    @test dpi ≈ dpb rtol = 1.0e-4
+end
