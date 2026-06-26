@@ -662,12 +662,13 @@ end
     @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 end
 
-@testset "InterpolatingAdjoint RODE never checkpoints (linear interp)" begin
-    # RODE solutions only have a linear interpolation, so `InterpolatingAdjoint`
-    # never checkpoints them — `default_linear_interpolation(prob, alg)` is true,
-    # so `ischeckpointing` returns false even when `checkpointing = true`. This
-    # avoids the pointless per-step re-solve (and the former per-step
-    # `deepcopy(sol)`) that has no effect on the gradient.
+@testset "InterpolatingAdjoint RODE checkpointing (linear interp)" begin
+    # RODE/SDE solutions only have a linear interpolation (`sol.dense == false`),
+    # so `InterpolatingAdjoint` always checkpoints them: the per-interval re-solve
+    # re-integrates with the recorded noise at the forward step size, which the
+    # reverse adjoint needs to match the forward path. The re-solve must therefore
+    # stay on, but it does so without the former per-step `deepcopy(sol)` that made
+    # the reverse pass O(N^2) and hung large problems.
     function frep(du, u, p, t, W)
         du[1] = p[1] * u[1] * sin(W[1])
         return nothing
@@ -681,14 +682,14 @@ end
 
     Random.seed!(seed)
     soli = solve(probr, RandomEM(); dt = dtr, save_noise = true, dense = true)
-    # Never checkpoint a linear-interpolation method, even on explicit request.
-    @test !SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(), soli)
-    @test !SciMLSensitivity.ischeckpointing(
+    # Linear-interpolation methods are checkpointed (sol.dense is false for RODE).
+    @test SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(), soli)
+    @test SciMLSensitivity.ischeckpointing(
         InterpolatingAdjoint(checkpointing = true), soli
     )
 
-    # Gradient is still correct against an independent adjoint method, and the
-    # `checkpointing = true` request gives the same (non-checkpointed) result.
+    # Gradient is correct against an independent adjoint method, and the explicit
+    # `checkpointing = true` request gives the same result as the default.
     Random.seed!(seed)
     solb = solve(probr, RandomEM(); dt = dtr, save_noise = true, saveat = tr)
     du0b, dpb = adjoint_sensitivities(
