@@ -82,25 +82,25 @@ solution at time `t=1` with respect to `p[1]`.
 
 ## Reverse-Mode Automatic Differentiation
 
-[The `solve` function is automatically compatible with reverse-mode AD systems like Mooncake.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
+[The `solve` function is automatically compatible with reverse-mode AD systems like Enzyme.jl](https://docs.sciml.ai/SciMLSensitivity/stable/)
 and thus there is no machinery that is necessary to use other than to put `solve` inside
-a function that is differentiated by Mooncake. For example, the following computes the solution
+a function that is differentiated by Enzyme. For example, the following computes the solution
 to an ODE and computes the gradient of a loss function (the sum of the ODE's output at each
 timepoint with dt=0.1) via the adjoint method:
 
 ```@example diffode
-import Mooncake
+import Enzyme
 import DifferentiationInterface as DI
 
 function sum_of_solution(p)
     _prob = ODE.remake(prob; p)
     sum(ODE.solve(_prob, ODE.Tsit5(), reltol = 1e-6, abstol = 1e-6, saveat = 0.1))
 end
-backend = DI.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+backend = DI.AutoEnzyme()
 dp1 = DI.gradient(sum_of_solution, backend, p)
 ```
 
-Mooncake.jl's automatic differentiation system is overloaded to allow SciMLSensitivity.jl
+Enzyme.jl's automatic differentiation system is overloaded to allow SciMLSensitivity.jl
 to redefine the way the derivatives are computed, allowing trade-offs between numerical
 stability, memory, and compute performance, similar to how ODE solver algorithms are
 chosen.
