@@ -475,7 +475,15 @@ function _adjoint_sensitivities(
         error("Continuous adjoint sensitivities are only supported for ODE/SDE/RODE problems.")
     end
 
-    tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
+    # The reverse adjoint must step on the forward grid. Checkpointing already
+    # forces this; for SDE/RODE in the default (non-checkpointed) mode it is also
+    # required, because the reverse adjoint reads the saved (linear) trajectory and
+    # stepping at a coarser, requested `dt` integrates the noise increments too
+    # coarsely and degrades the gradient. So pin `tstops` to the checkpoints for
+    # checkpointed solves and for all SDE/RODE solves.
+    needs_grid_tstops = ischeckpointing(sensealg, sol) ||
+        sol.prob isa Union{SDEProblem, RODEProblem}
+    tstops = needs_grid_tstops ? checkpoints : similar(current_time(sol), 0)
     adj_sol = solve(
         adj_prob, alg;
         save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],

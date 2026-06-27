@@ -662,51 +662,64 @@ end
     @test dpReverseDiff ≈ dp' rtol = 1.0e-2
 end
 
-@testset "InterpolatingAdjoint RODE never checkpoints (linear interp)" begin
-    # RODE solutions only have a linear interpolation, so `InterpolatingAdjoint`
-    # never checkpoints them — `default_linear_interpolation(prob, alg)` is true,
-    # so `ischeckpointing` returns false even when `checkpointing = true`. This
-    # avoids the pointless per-step re-solve (and the former per-step
-    # `deepcopy(sol)`) that has no effect on the gradient.
+@testset "InterpolatingAdjoint RODE reverse modes (linear default + checkpoint hi-fi)" begin
+    # RODE/SDE solutions only have a linear interpolation. The reverse adjoint
+    # defaults to that linear interpolation, stepping on the saved grid (via
+    # `tstops`); this is accurate when the forward solution is densely saved and
+    # avoids the per-interval re-solve. `checkpointing = true` opts into the
+    # higher-fidelity mode, which re-integrates each interval from the recorded
+    # noise to reconstruct in-cell state. That re-solve wraps the forward `sol.W`
+    # read-only (no deepcopy), so it never mutates the user's solution. This also
+    # guards the #1486 regression: with an adjoint `dt` coarser than the forward
+    # grid, stepping the reverse adjoint off the saved grid degrades the gradient.
     function frep(du, u, p, t, W)
         du[1] = p[1] * u[1] * sin(W[1])
         return nothing
     end
-    dtr = 1.0e-2
     u0r = [1.0]
     tspanr = (0.0, 0.2)
+    fwd_dt = 1.0e-3
+    coarse_dt = 1.0e-2            # 10x coarser reverse step than the saved grid
     tr = tspanr[1]:0.02:tspanr[2]
     pr = [1.5]
     probr = RODEProblem(frep, u0r, tspanr, pr)
 
     Random.seed!(seed)
-    soli = solve(probr, RandomEM(); dt = dtr, save_noise = true, dense = true)
-    # Never checkpoint a linear-interpolation method, even on explicit request.
-    @test !SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(), soli)
-    @test !SciMLSensitivity.ischeckpointing(
-        InterpolatingAdjoint(checkpointing = true), soli
-    )
+    soli = solve(probr, RandomEM(); dt = fwd_dt, save_noise = true, dense = true)
 
-    # Gradient is still correct against an independent adjoint method, and the
-    # `checkpointing = true` request gives the same (non-checkpointed) result.
-    Random.seed!(seed)
-    solb = solve(probr, RandomEM(); dt = dtr, save_noise = true, saveat = tr)
+    # Default: linear-interpolation reverse, not checkpointed.
+    @test !SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(), soli)
+    # Higher-fidelity: opt in with `checkpointing = true`.
+    @test SciMLSensitivity.ischeckpointing(InterpolatingAdjoint(checkpointing = true), soli)
+
+    W_save_everystep_before = soli.W.save_everystep
+    W_len_before = length(soli.W.t)
+    W_last_before = copy(soli.W.W[end])
+
     du0b, dpb = adjoint_sensitivities(
-        solb, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
-        dt = dtr, adaptive = false, sensealg = BacksolveAdjoint()
+        soli, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
+        dt = fwd_dt, adaptive = false, sensealg = BacksolveAdjoint()
     )
+    # default (linear) mode, adjoint dt coarser than the forward grid
     du0i, dpi = adjoint_sensitivities(
         soli, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
-        dt = dtr, adaptive = false,
+        dt = coarse_dt, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
     )
+    # higher-fidelity (checkpointed) mode
     du0c, dpc = adjoint_sensitivities(
         soli, RandomEM(); t = Array(tr), dgdu_discrete = dg!,
-        dt = dtr, adaptive = false,
+        dt = coarse_dt, adaptive = false,
         sensealg = InterpolatingAdjoint(checkpointing = true, autojacvec = ReverseDiffVJP())
     )
-    @test du0i ≈ du0b rtol = 1.0e-2
-    @test dpi ≈ dpb rtol = 1.0e-2
-    @test du0c ≈ du0i
-    @test dpc ≈ dpi
+    @test du0i ≈ du0b rtol = 1.0e-4
+    @test dpi ≈ dpb rtol = 1.0e-4
+    @test du0c ≈ du0b rtol = 1.0e-4
+    @test dpc ≈ dpb rtol = 1.0e-4
+    @test du0c ≈ du0i rtol = 1.0e-4
+
+    # the checkpointed (re-solve) mode must not mutate the user's forward noise
+    @test soli.W.save_everystep == W_save_everystep_before
+    @test length(soli.W.t) == W_len_before
+    @test soli.W.W[end] == W_last_before
 end

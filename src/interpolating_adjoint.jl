@@ -17,12 +17,27 @@ struct ODEInterpolatingAdjointSensitivityFunction{
     noiseterm::Bool
 end
 
-mutable struct CheckpointSolution{S, I, T, T2}
+mutable struct CheckpointSolution{S, I, T, T2, N}
     cpsol::S # solution in a checkpoint interval
     intervals::I # checkpoint intervals
     cursor::Int # sol.prob.tspan = intervals[cursor]
     tols::T
     tstops::T2 # for callbacks
+    noise::N # private deepcopy of sol.W for SDE/RODE re-solves (nothing for ODE)
+end
+
+# Build the forward-noise process used to re-solve a checkpoint interval from the
+# recorded forward noise `source`. `NoiseWrapper` only *reads* its source (it
+# interpolates it and pushes onto its own buffers), so wrapping the forward
+# `sol.W` directly does not mutate it — no `deepcopy` of the noise is needed.
+function checkpoint_forwardnoise(source, idx)
+    if source isa DiffEqNoiseProcess.NoiseProcess
+        return DiffEqNoiseProcess.NoiseWrapper(source, indx = idx, reset = true)
+    elseif source isa DiffEqNoiseProcess.NoiseGrid
+        return DiffEqNoiseProcess.NoiseGrid(source.t[idx:end], source.W[idx:end])
+    else
+        error("NoiseProcess type not implemented.")
+    end
 end
 
 function ODEInterpolatingAdjointSensitivityFunction(
@@ -43,29 +58,55 @@ function ODEInterpolatingAdjointSensitivityFunction(
         cursor = lastindex(intervals)
         interval = intervals[cursor]
 
-        # SDE/RODE solutions only have a linear interpolation, so they are never
-        # checkpointed (see `ischeckpointing`); only ODE-type problems reach here.
-        if tstops === nothing
+        checkpoint_noise = nothing
+        if sol.prob isa Union{SDEProblem, RODEProblem}
+            # Re-solve each checkpoint interval driven by the recorded forward
+            # noise so the reverse adjoint steps on the forward grid. The forward
+            # noise `sol.W` is cached on the CheckpointSolution and reused for
+            # every interval; `checkpoint_forwardnoise` wraps it read-only (no
+            # `deepcopy`, no mutation of the user's solution).
+            checkpoint_noise = sol.W
+            idx1 = searchsortedfirst(
+                checkpoint_noise.t, interval[1] - 1000eps(interval[1])
+            )
+            forwardnoise = checkpoint_forwardnoise(checkpoint_noise, idx1)
+            dt = choose_dt(
+                (checkpoint_noise.t[idx1] - checkpoint_noise.t[idx1 + 1]),
+                checkpoint_noise.t, interval
+            )
+
+            _ts = current_time(sol)
             cpsol = solve(
-                remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                sol.alg; tols...
+                remake(
+                    sol.prob, tspan = interval, u0 = sol(interval[1]),
+                    noise = forwardnoise
+                ),
+                sol.alg, save_noise = false; dt, tstops = _ts[idx1:end],
+                tols...
             )
         else
-            if maximum(interval[1] .< tstops .< interval[2])
-                # callback might have changed p
-                _p = reset_p(sol.prob.kwargs[:callback], interval)
+            if tstops === nothing
                 cpsol = solve(
-                    remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                    tstops, p = _p, sol.alg, tols...
+                    remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                    sol.alg; tols...
                 )
             else
-                cpsol = solve(
-                    remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                    tstops, sol.alg, tols...
-                )
+                if maximum(interval[1] .< tstops .< interval[2])
+                    # callback might have changed p
+                    _p = reset_p(sol.prob.kwargs[:callback], interval)
+                    cpsol = solve(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                        tstops, p = _p, sol.alg, tols...
+                    )
+                else
+                    cpsol = solve(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
+                        tstops, sol.alg, tols...
+                    )
+                end
             end
         end
-        CheckpointSolution(cpsol, intervals, cursor, tols, tstops)
+        CheckpointSolution(cpsol, intervals, cursor, tols, tstops, checkpoint_noise)
     else
         nothing
     end
@@ -174,35 +215,60 @@ function split_states(
                 else
                     sol(y, interval[1])
                 end
-                # SDE/RODE solutions only have a linear interpolation and are
-                # never checkpointed (see `ischeckpointing`); only ODE-type
-                # problems reach here.
-                if checkpoint_sol.tstops === nothing
-                    prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                if sol.prob isa Union{SDEProblem, RODEProblem}
+                    # Re-integrate this checkpoint interval driven by the recorded
+                    # forward noise so the reverse adjoint steps on the forward
+                    # grid. The noise comes from the single private copy made in
+                    # the constructor (`checkpoint_sol.noise`), reused across every
+                    # cursor move — so each move is O(interval), not the former
+                    # per-step O(N) `deepcopy(sol)` that made the reverse pass
+                    # O(N^2) and hung large RODE/SDE problems.
+                    _ts = current_time(sol)
+                    idx1 = searchsortedfirst(_ts, interval[1] - 100eps(interval[1]))
+                    idx2 = searchsortedfirst(_ts, interval[2] + 100eps(interval[2]))
+                    noise_source = checkpoint_sol.noise
+                    idx_noise = searchsortedfirst(
+                        noise_source.t,
+                        interval[1] - 100eps(interval[1])
+                    )
+                    forwardnoise = checkpoint_forwardnoise(noise_source, idx_noise)
+                    prob′ = remake(
+                        prob, tspan = intervals[cursor′], u0 = y,
+                        noise = forwardnoise
+                    )
+                    dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
                     cpsol′ = solve(
-                        prob′, sol.alg;
-                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                        checkpoint_sol.tols...
+                        prob′, sol.alg, save_noise = false; dt,
+                        tstops = _ts[idx1:idx2], checkpoint_sol.tols...
                     )
                 else
-                    if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
-                        # callback might have changed p
-                        _p = reset_p(prob.kwargs[:callback], interval)
-                        prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
-                        cpsol′ = solve(
-                            prob′, sol.alg;
-                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                            tstops = checkpoint_sol.tstops,
-                            checkpoint_sol.tols...
-                        )
-                    else
+                    if checkpoint_sol.tstops === nothing
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                            tstops = checkpoint_sol.tstops,
                             checkpoint_sol.tols...
                         )
+                    else
+                        if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
+                            # callback might have changed p
+                            _p = reset_p(prob.kwargs[:callback], interval)
+                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
+                            cpsol′ = solve(
+                                prob′, sol.alg;
+                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                tstops = checkpoint_sol.tstops,
+                                checkpoint_sol.tols...
+                            )
+                        else
+                            prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
+                            cpsol′ = solve(
+                                prob′, sol.alg;
+                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                tstops = checkpoint_sol.tstops,
+                                checkpoint_sol.tols...
+                            )
+                        end
                     end
                 end
                 checkpoint_sol.cpsol = cpsol′
