@@ -22,6 +22,20 @@ const have_not_warned_vjp = Ref(true)
 const STACKTRACE_WITH_VJPWARN = Ref(false)
 
 
+# Non-capturing probe for the EnzymeVJP availability check. The RHS `f` is passed as an
+# explicit argument (annotated `Duplicated`) rather than captured in a closure. Capturing it
+# makes the differentiated function object carry the RHS — and any arrays it holds, e.g. a
+# `SparseMatrixCSC` field — as closure data, which Enzyme cannot prove read-only, so the
+# probe spuriously throws `EnzymeMutabilityException` and falls back to ReverseDiff even
+# though EnzymeVJP works for such RHS. `f` is given a shadow (`Duplicated`, not `Const`) to
+# match how `_vecjacobian!` actually invokes Enzyme on the in-place RHS
+# (`Duplicated(SciMLBase.Void(f), …)`), so an `f` that mutates internal caches or embeds
+# parameters is probed the same way it is used.
+function _enzyme_vjp_probe(f, repack, out, u, _p, t)
+    f(out, u, repack(_p), t)
+    return nothing
+end
+
 function inplace_vjp(prob, u0, p, verbose, repack)
     du = zero(u0)
     # Get verbosity for sensitivity VJP choice warnings
@@ -32,16 +46,14 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     ez = try
         f = unwrapped_f(prob.f)
 
-        function adfunc(out, u, _p, t)
-            f(out, u, repack(_p), t)
-            return nothing
-        end
         # Skip Enzyme autodiff for NonlinearProblems since they don't have tspan
         if prob isa AbstractNonlinearProblem
             false
         else
             Enzyme.autodiff(
-                Enzyme.Reverse, adfunc, Enzyme.Duplicated(du, copy(u0)),
+                Enzyme.Reverse, _enzyme_vjp_probe,
+                Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
+                Enzyme.Duplicated(du, copy(u0)),
                 Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
                 Enzyme.Const(t0)
             )
@@ -57,16 +69,13 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     # Try Enzyme with runtime activity if regular Enzyme failed
     erz = try
         f = unwrapped_f(prob.f)
-        function adfunc_rta(out, u, _p, t)
-            f(out, u, repack(_p), t)
-            return nothing
-        end
         # Skip Enzyme autodiff for NonlinearProblems since they don't have tspan
         if prob isa AbstractNonlinearProblem
             false
         else
             Enzyme.autodiff(
-                Enzyme.set_runtime_activity(Enzyme.Reverse), adfunc_rta,
+                Enzyme.set_runtime_activity(Enzyme.Reverse), _enzyme_vjp_probe,
+                Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
                 Enzyme.Duplicated(du, copy(u0)),
                 Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
                 Enzyme.Const(t0)
