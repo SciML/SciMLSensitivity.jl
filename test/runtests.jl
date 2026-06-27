@@ -101,8 +101,9 @@ run_tests(;
             return @testset "Core 8" begin
                 @time @safetestset "Adjoints through NonlinearProblem" include("Core8/parameter_initialization.jl")
                 @time @safetestset "Initialization with MTK" include("Core8/desauty_dae_mwe.jl")
-                @time @safetestset "MTK Forward Mode" include("Core8/mtk.jl")
                 @time @safetestset "SCCNonlinearProblem" include("Core8/scc_nonlinearsolve.jl")
+                # Last: its `@test_broken` EnzymeVJP sweep corrupts Enzyme state (#1469).
+                @time @safetestset "MTK Forward Mode" include("Core8/mtk.jl")
             end
         end,
         "SDE1" => function ()

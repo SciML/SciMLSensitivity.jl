@@ -182,14 +182,11 @@ setups = [
 # init gradient is Enzyme-native again (#1467 routed it through Zygote until the
 # upstream fix landed; #1469).
 #
-# The inner VJP is `ReverseDiffVJP`, not `EnzymeVJP`: `EnzymeVJP._vecjacobian!`
-# runs a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS, which both
-# mishandles that RHS for some DAEs and corrupts Enzyme's global state across the
-# many `Enzyme.autodiff` calls this `setups` sweep makes (first call OK, later
-# calls `SingularException`). Using a non-Enzyme inner VJP is the established
-# workaround until that EnzymeVJP nested-Enzyme issue is fixed; the *outer* AD is
-# still Enzyme, which is what this test covers — Enzyme reverse-mode through MTK
-# DAE initialization.
+# The default `autojacvec` for this in-place MTK DAE resolves to `EnzymeVJP`, but
+# its nested `Enzyme.autodiff` corrupts Enzyme state across the repeated calls of
+# the `setups` sweep (later setups throw `SingularException` / return zero; #1469).
+# `ReverseDiffVJP` is the workaround across the sweep; the `EnzymeVJP` sweep is
+# the `@test_broken` at the end of this file.
 const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.ReverseDiffVJP())
 
 function _mtk_enzyme_solve_loss_with_init(t, prob_, init_)
@@ -208,6 +205,28 @@ function _mtk_enzyme_solve_loss_default_init(t, prob_)
     new_sol = solve(
         new_prob, Rodas5P();
         sensealg = _MTK_SENSEALG, abstol = 1.0e-6, reltol = 1.0e-3,
+    )
+    return sum(new_sol)
+end
+
+const _MTK_SENSEALG_ENZYME = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
+
+function _mtk_enzyme_solve_loss_with_init_enzyme(t, prob_, init_)
+    _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
+    new_prob = remake(prob_; u0 = prob_.u0, p = repack_(t))
+    new_sol = solve(
+        new_prob, Rodas5P(); initializealg = init_,
+        sensealg = _MTK_SENSEALG_ENZYME, abstol = 1.0e-6, reltol = 1.0e-3,
+    )
+    return sum(new_sol)
+end
+
+function _mtk_enzyme_solve_loss_default_init_enzyme(t, prob_)
+    _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
+    new_prob = remake(prob_; u0 = prob_.u0, p = repack_(t))
+    new_sol = solve(
+        new_prob, Rodas5P();
+        sensealg = _MTK_SENSEALG_ENZYME, abstol = 1.0e-6, reltol = 1.0e-3,
     )
     return sum(new_sol)
 end
@@ -256,4 +275,32 @@ end
     rule = Mooncake.build_rrule(loss, tunables_test)
     _, (_, grad) = Mooncake.value_and_gradient!!(rule, loss, tunables_test)
     any(!iszero, grad)
+end
+
+# The first `@test`'s sweep with the default `EnzymeVJP` inner VJP (#1469). Kept
+# last so its Enzyme-state corruption cannot affect the tests above.
+@test_broken begin
+    grads = map(setups) do setup
+        prob, tunables, repack, init = setup
+        diprob = Enzyme.make_zero(prob)
+        dtunables = zero(tunables)
+        if init === nothing
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(_mtk_enzyme_solve_loss_default_init_enzyme), Enzyme.Active,
+                Enzyme.Duplicated(tunables, dtunables),
+                Enzyme.Duplicated(prob, diprob),
+            )
+        else
+            Enzyme.autodiff(
+                Enzyme.set_runtime_activity(Enzyme.Reverse),
+                Enzyme.Const(_mtk_enzyme_solve_loss_with_init_enzyme), Enzyme.Active,
+                Enzyme.Duplicated(tunables, dtunables),
+                Enzyme.Duplicated(prob, diprob),
+                Enzyme.Const(init),
+            )
+        end
+        dtunables
+    end
+    all(x ≈ grads[1] for x in grads)
 end
