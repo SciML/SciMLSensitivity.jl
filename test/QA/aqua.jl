@@ -35,22 +35,14 @@ run_qa(
                 # OrdinaryDiffEqCore
                 :BrownFullBasicInit, :DefaultInit, :default_nlsolve, :has_autodiff,
                 # SciMLBase
-                :AbstractAdjointSensitivityAlgorithm, :AbstractDiffEqFunction,
-                :AbstractForwardSensitivityAlgorithm, :AbstractODEFunction,
-                :AbstractOptimizationProblem, :AbstractOverloadingSensitivityAlgorithm,
+                :AbstractAdjointSensitivityAlgorithm,
+                :AbstractForwardSensitivityAlgorithm, :AbstractOptimizationProblem,
+                :AbstractOverloadingSensitivityAlgorithm,
                 :AbstractSecondOrderSensitivityAlgorithm, :AbstractSensitivityAlgorithm,
                 :AbstractShadowingSensitivityAlgorithm, :AbstractTimeseriesSolution,
-                :OverrideInit, :unwrapped_f,
+                :unwrapped_f,
                 # SciMLStructures
                 :Tunable, :canonicalize, :isscimlstructure,
-                # SciMLSensitivityMooncakeExt: the parent's own (non-public) internals
-                # + names re-imported through the parent module.
-                :DiffEqBase, :FakeIntegrator, :FunctionWrappersWrappers, :MooncakeLoaded,
-                :MooncakeVJP, :ODEFunction, :SciMLBase, :SciMLStructures,
-                :SciMLStructuresCompatibilityError, :_init_originator_gradient,
-                :convert_tspan, :current_time, :get_cb_paramjac_config,
-                :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
-                :state_values,
             ),
         ),
         # Non-public names of upstream deps accessed qualified in the source; ignore
@@ -81,9 +73,6 @@ run_qa(
                 :jacobian!, :npartials, :partials, :pickchunksize, :value,
                 # LinearSolve
                 :needs_concrete_A,
-                # Mooncake (accessed in SciMLSensitivityMooncakeExt)
-                :CoDual, :NoFData, :Tangent, :build_rrule, :tangent_to_primal!!,
-                :zero_rdata,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff
@@ -91,18 +80,14 @@ run_qa(
                 :increment_deriv!, :input_hook, :output_hook, :pull_value!, :reverse_pass!,
                 :unseed!, :value, :value!,
                 # SciMLBase
-                :ADOriginator, :AbstractDAEProblem, :AbstractDDEProblem,
-                :AbstractDiscreteProblem, :AbstractRODEProblem, :AbstractSDDEProblem,
-                :AbstractSDEProblem, :AbstractSciMLFunction, :AlgorithmInterpretation,
-                :ChainRulesOriginator, :EnzymeOriginator, :FullSpecialize,
-                :ImmutableNonlinearProblem, :MooncakeOriginator, :OVERDETERMINED,
-                :OverrideInit, :ParamJacobianWrapper, :ReverseDiffOriginator,
+                :ADOriginator, :AbstractRODEProblem, :AbstractSDDEProblem,
+                :AlgorithmInterpretation, :ChainRulesOriginator, :EnzymeOriginator,
+                :FullSpecialize, :ImmutableNonlinearProblem, :MooncakeOriginator,
+                :OVERDETERMINED, :ParamJacobianWrapper, :ReverseDiffOriginator,
                 :TrackerOriginator, :UDerivativeWrapper, :UJacobianWrapper, :Void,
                 :_concrete_solve_adjoint, :_concrete_solve_forward, :alg_interpretation,
-                :forwarddiffs_model, :forwarddiffs_model_time, :get_initial_values,
                 :has_initialization_data, :has_observed, :has_paramjac, :has_vjp_p,
-                :initialization_status, :is_diagonal_noise, :sensitivity_solution,
-                :specialization,
+                :initialization_status, :sensitivity_solution, :specialization,
                 # SciMLStructures
                 :replace,
                 # SparseArrays
