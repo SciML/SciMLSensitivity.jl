@@ -250,7 +250,15 @@ function adjointdiffcache(
         _needs_shadow = !(p isa SciMLBase.NullParameters) &&
             isscimlstructure(p) && !(p isa AbstractArray)
         _shadow_p = if _needs_shadow
-            repack(zero(tunables))
+            # `repack` only writes the tunable fields and copies the rest of the
+            # parameter object (e.g. `initials`, `discrete`) *by reference* from
+            # `p`, so `repack(zero(tunables))` would alias the primal's non-tunable
+            # arrays. `_vecjacobian!` then `Enzyme.remake_zero!`s this shadow, which
+            # would zero the user's `p.initials` and corrupt the problem across
+            # repeated differentiation (#1470). `make_zero(p)` allocates a fully
+            # disjoint zeroed shadow; `canonicalize(Tunable(), _shadow_p)` still
+            # reads back the accumulated tunable gradient.
+            Enzyme.make_zero(p)
         elseif !(p isa SciMLBase.NullParameters) && p isa AbstractArray &&
                 typeof(tunables) !== typeof(zero(tunables))
             # tunables is a view-backed array (e.g. ComponentArray with SubArray data).
