@@ -182,15 +182,15 @@ setups = [
 # init gradient is Enzyme-native again (#1467 routed it through Zygote until the
 # upstream fix landed; #1469).
 #
-# The inner VJP is `ReverseDiffVJP`, not `EnzymeVJP`: `EnzymeVJP._vecjacobian!`
-# runs a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS, which both
-# mishandles that RHS for some DAEs and corrupts Enzyme's global state across the
-# many `Enzyme.autodiff` calls this `setups` sweep makes (first call OK, later
-# calls `SingularException`). Using a non-Enzyme inner VJP is the established
-# workaround until that EnzymeVJP nested-Enzyme issue is fixed; the *outer* AD is
-# still Enzyme, which is what this test covers — Enzyme reverse-mode through MTK
-# DAE initialization.
-const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.ReverseDiffVJP())
+# The inner VJP is `EnzymeVJP` — the default `autojacvec` for this in-place MTK
+# DAE — so this is a true Enzyme-over-Enzyme test. `EnzymeVJP._vecjacobian!` runs
+# a *nested* `Enzyme.autodiff` on the MTK-generated DAE RHS whose reverse pass
+# writes the `MTKParameters` `Initials` buffer in place; that used to corrupt the
+# problem across the repeated `Enzyme.autodiff` calls of this `setups` sweep
+# (first call OK, later calls `SingularException` / `CheckInitFailureError`).
+# Fixed in #1507 (the GaussAdjoint adjoint now runs on a copy of the parameters);
+# the underlying Enzyme read-only violation is EnzymeAD/Enzyme.jl#3247.
+const _MTK_SENSEALG = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
 
 function _mtk_enzyme_solve_loss_with_init(t, prob_, init_)
     _, repack_, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob_))
