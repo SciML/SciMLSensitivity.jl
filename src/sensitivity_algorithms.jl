@@ -1649,14 +1649,21 @@ end
     return alg.autojacmat isa Bool ? alg.autojacmat : true
 end
 # Checkpointing re-solves the forward pass to reconstruct the state during the
-# reverse pass. It only helps when the algorithm has a dense (higher-than-linear)
-# interpolation that wasn't saved. For methods whose only interpolation is linear
-# (RODE/SDE, where `default_linear_interpolation(prob, alg) == true` forces
-# `sol.dense == false`), re-solving recovers nothing better than the stored linear
-# interpolation — verified to leave the adjoint gradient unchanged — so they are
-# never checkpointed, even when `checkpointing = true` is requested.
+# reverse pass. For ODEs it is required whenever the saved solution lacks a dense
+# interpolation (`!sol.dense`), since re-solving recovers the dense output.
+#
+# SDE/RODE solutions only ever have a linear interpolation, so `!sol.dense` is
+# always true for them. Forcing a checkpoint on that basis is wrong: it re-solves
+# *every* saved interval (O(N) sub-solves) on every adjoint, which is needlessly
+# slow. Instead the reverse adjoint defaults to the saved linear interpolation,
+# stepping on the saved grid (see the SDE/RODE `tstops` branch in
+# `_adjoint_sensitivities`) so it matches the forward path whenever the solution
+# is densely saved — the common case. The per-interval, noise-driven re-solve is a
+# higher-fidelity mode (it reconstructs in-cell state from the recorded noise,
+# which linear interpolation cannot for coarsely `saveat`-saved solutions) and is
+# used only when `checkpointing = true` is explicitly requested.
 @inline function needs_checkpointing(alg, sol)
-    OrdinaryDiffEqCore.default_linear_interpolation(sol.prob, sol.alg) && return false
+    sol.prob isa Union{SDEProblem, RODEProblem} && return alg.checkpointing
     return alg.checkpointing || !sol.dense
 end
 
