@@ -776,15 +776,6 @@ function _adjoint_sensitivities(
         callback = CallbackSet(), no_start = false,
         kwargs...
     )
-    # Defensive copy of the parameters: the adjoint solve writes in place through
-    # the problem's parameters (notably EnzymeVJP's reverse pass, which writes the
-    # `MTKParameters` `Initials` buffer — a read-only violation, #1470 /
-    # EnzymeAD/Enzyme.jl#3247). Operating on a copy keeps the user's `prob` clean,
-    # so a subsequent `solve`/adjoint of the same problem is not corrupted.
-    _adj_p = SymbolicIndexingInterface.parameter_values(sol.prob)
-    if !(_adj_p === nothing || _adj_p isa SciMLBase.NullParameters)
-        @reset sol.prob = remake(sol.prob; p = deepcopy(_adj_p))
-    end
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p) &&
             !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray})

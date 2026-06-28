@@ -9,13 +9,15 @@ using SciMLSensitivity: parameter_values
 using Enzyme
 using Test
 
-# Regression test for #1470 / EnzymeAD/Enzyme.jl#3247. Repeatedly differentiating
-# a `solve` of an MTK DAE with `GaussAdjoint(EnzymeVJP())` must not corrupt the
-# problem across calls. `EnzymeVJP`'s reverse pass writes in place through the
-# `MTKParameters` `Initials` buffer; without the defensive parameter copy in
-# `_adjoint_sensitivities`, the first gradient is correct but the next solve's DAE
-# init reads the corrupted `Initials` and throws `CheckInitFailureError`. With the
-# copy, every repeated differentiation is correct and identical.
+# Regression test for #1470. Repeatedly differentiating a `solve` of an MTK DAE
+# with `GaussAdjoint(EnzymeVJP())` must not corrupt the problem across calls. The
+# EnzymeVJP shadow parameters (`adjoint_common.jl`) used to be built with
+# `repack(zero(tunables))`, which aliases the primal's non-tunable arrays
+# (`initials`) by reference; `_vecjacobian!` then `remake_zero!`s the shadow,
+# zeroing the user's `p.initials`. The first gradient was correct, but the next
+# solve's DAE init read the corrupted `Initials` and threw `CheckInitFailureError`.
+# Fixed by allocating a disjoint shadow with `make_zero(p)`; every repeated
+# differentiation is now correct and identical.
 
 @parameters σ ρ β
 @variables x(t) y(t) z(t) w(t) w2(t)
