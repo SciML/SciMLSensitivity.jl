@@ -43,6 +43,17 @@ run_qa(
                 :unwrapped_f,
                 # SciMLStructures
                 :Tunable, :canonicalize, :isscimlstructure,
+                # SciMLSensitivityMooncakeExt re-imports these internal/non-public
+                # names through the parent module (`using/import SciMLSensitivity: ...`),
+                # the intentional extension idiom. They are SciMLSensitivity internals
+                # or deps re-exported by the parent, so they are not public in
+                # SciMLSensitivity and never will be.
+                :DiffEqBase, :FakeIntegrator, :FunctionWrappersWrappers, :MooncakeLoaded,
+                :MooncakeVJP, :ODEFunction, :SciMLBase, :SciMLStructures,
+                :SciMLStructuresCompatibilityError, :_init_originator_gradient,
+                :convert_tspan, :current_time, :get_cb_paramjac_config,
+                :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
+                :state_values,
             ),
         ),
         # Non-public names of upstream deps accessed qualified in the source; ignore
@@ -73,6 +84,9 @@ run_qa(
                 :jacobian!, :npartials, :partials, :pickchunksize, :value,
                 # LinearSolve
                 :needs_concrete_A,
+                # Mooncake (internal tangent/rrule API used by SciMLSensitivityMooncakeExt)
+                :CoDual, :NoFData, :Tangent, :build_rrule, :tangent_to_primal!!,
+                :zero_rdata,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff
