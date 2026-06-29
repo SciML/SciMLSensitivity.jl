@@ -1,4 +1,6 @@
 using OrdinaryDiffEq, SciMLSensitivity, Zygote, Test
+using SciMLBase: DiscreteProblem
+using OrdinaryDiffEqFunctionMap: FunctionMap
 
 function loss1(p; sensealg = nothing)
     f(x, p, t) = [p[1]]
