@@ -365,25 +365,27 @@ function _init_originator_gradient(::SciMLBase.ADOriginator, f, tunables)
     return back(one(iy))[1]
 end
 
-# Init-path gradient for the `EnzymeOriginator` (outer-Enzyme) case, using a
-# nested `Enzyme.gradient` so the rrule does not pull Zygote into the Enzyme path.
+# Init-path gradient for the `EnzymeOriginator` (outer-Enzyme) case, routed
+# through a Zygote pullback (the #1467 workaround).
 #
-# `set_runtime_activity` is required: `f` differentiates an MTK DAE
-# initialization whose `remake(_prob, p = repack(t))` builds an `ODEProblem`
-# mixing constant memory (the captured problem's `u0`/`f`/`tspan`/caches) with
-# the active parameters, which Enzyme's static activity analysis rejects.
+# This runs in the adjoint backpass of the `solve` rrule — ordinary primal code
+# inside the outer Enzyme reverse pass that is NOT itself differentiated by
+# Enzyme — so a Zygote pullback here is safe and yields the same result as the
+# generic `ADOriginator` fallback above. (The init sub-VJP it calls may still be
+# `EnzymeVJP`; only the outer init differentiation is moved off Enzyme.)
 #
-# This nesting previously corrupted Enzyme's global compilation/runtime state —
-# the first outer `Enzyme.autodiff` succeeded but subsequent calls on the same
-# (or a related) MTK DAE-init problem threw `LinearAlgebra.SingularException` out
-# of the semi-explicit DAE adjoint (#1469). That was an upstream Enzyme bug in
-# nested reverse-over-BLAS under `set_runtime_activity` (EnzymeAD/Enzyme.jl#3139),
-# fixed as of the `Enzyme` floor in `[compat]`; #1467 routed this through Zygote
-# as a temporary workaround until that landed. See #1415, #1467, #1469.
+# It deliberately does NOT use a nested `Enzyme.gradient`. #1498 restored an
+# Enzyme-native init gradient after the #1469 nesting bug (EnzymeAD/Enzyme.jl#3139)
+# was fixed, but that nested `Enzyme.gradient` now crashes reverse-differentiating
+# MTK's `__apply_copy_template` parameter-template copy — an undersized shadow
+# `Memory{Float64}` `BoundsError` (and a TypeAnalysis blowup on cold compile) that
+# fails the Core8 `mtk.jl` `DefaultInit` setup. That is upstream
+# EnzymeAD/Enzyme.jl#3259; until it is fixed, route the init gradient through
+# Zygote so repeated/multi-problem outer-Enzyme differentiation through MTK DAE
+# init works. See #1514, #1467, #1469, #1415.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
-    return Enzyme.gradient(
-        Enzyme.set_runtime_activity(Enzyme.Reverse), Enzyme.Const(f), tunables,
-    )[1]
+    iy, back = Zygote.pullback(f, tunables)
+    return back(one(iy))[1]
 end
 
 function SciMLBase._concrete_solve_adjoint(
