@@ -201,23 +201,38 @@ function test_hybridNODE3(sensealg)
     return @test loss < 0.5
 end
 
+# The adjoint sensealgs below are pinned to `autojacvec = ReverseDiffVJP()`. With the
+# default `autojacvec`, the `inplace_vjp` probe selects `EnzymeVJP` for this Lux RHS
+# (since #1505), and the Enzyme reverse pass over LuxLib's dense layers segfaults
+# (signal 11, GC heap corruption) in the adjoint on Julia 1.10/1.12. See #1512 (and the
+# upstream Enzyme report). The probe can't catch it — it's a single-shot compile/run
+# check, while the corruption is cumulative across the many reverse passes of the solve.
 @testset "PresetTimeCallback: $(sensealg)" for sensealg in [
         ForwardDiffSensitivity(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP()),
+        GaussAdjoint(autojacvec = ReverseDiffVJP()),
     ]
     test_hybridNODE(sensealg)
 end
 
 @testset "PeriodicCallback: $(sensealg)" for sensealg in [
         ReverseDiffAdjoint(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP()),
+        GaussAdjoint(autojacvec = ReverseDiffVJP()),
     ]
     test_hybridNODE2(sensealg)
 end
 
 @testset "tprevCallback: $(sensealg)" for sensealg in [
         ReverseDiffAdjoint(),
-        BacksolveAdjoint(), InterpolatingAdjoint(), QuadratureAdjoint(), GaussAdjoint(),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP()),
+        GaussAdjoint(autojacvec = ReverseDiffVJP()),
     ]
     test_hybridNODE3(sensealg)
 end
