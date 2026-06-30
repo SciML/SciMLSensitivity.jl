@@ -24,7 +24,7 @@ import OrdinaryDiffEq as ODE
 import Plots
 import Random
 import OptimizationOptimJL as OOJ
-import Mooncake
+import Enzyme
 
 u0 = Float32[2.0; 0.0]
 datasize = 30
@@ -85,7 +85,7 @@ callback = function (state, l; doplot = false)
     return l < 0.01
 end
 
-adtype1 = OPT.AutoMooncake(; config = Mooncake.Config(; friendly_tangents = true))
+adtype1 = OPT.AutoEnzyme()
 optf1 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype1)
 optprob1 = OPT.OptimizationProblem(optf1, ps)
 pstart = OPT.solve(optprob1, OPO.Adam(0.01); callback, maxiters = 100).u
