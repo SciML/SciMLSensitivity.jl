@@ -697,8 +697,15 @@ function _ODEForwardSensitivityProblem(
         tspandual = tspan
     end
 
+    # `u0dual`/`pdual` are tagged with `f` itself (`ForwardDiff.Tag(f, …)` above).
+    # Under `AutoSpecialize`, `f`'s FunctionWrappers set is fixed when `f` is built
+    # and cannot contain this self-referential `Dual{Tag{f}}` element type, so
+    # solving the dual problem throws "No matching function wrapper was found!".
+    # Rebuild with `FullSpecialize` (preserving `jac`/`paramjac`) so the dual RHS
+    # dispatches dynamically on the Dual element type.
+    fdual = SciMLBase.ODEFunction{SciMLBase.isinplace(f), SciMLBase.FullSpecialize}(f)
     return prob_dual = ODEProblem(
-        f, u0dual, tspan, pdual,
+        fdual, u0dual, tspan, pdual,
         ODEForwardSensitivityProblem{
             DiffEqBase.isinplace(f),
             typeof(alg),
