@@ -270,47 +270,51 @@ end
         end
     end
 
-    @testset "Enzyme forward backend" begin
+    @testset "Enzyme backend (backend-matched)" begin
         let
-            # SLSQP exposes no Hessian, so the Lxx block is built by the AD fallback — this
-            # exercises the Enzyme forward path for BOTH the residual stationarity gradient
-            # and Lxx. p enters objective and constraint, so the mixed ∇²_xp L term is
-            # nonzero. Analytic optimum u* = (13/9, 10/9), μ* = -4/9; differentiating the KKT
-            # system gives du*/dp = [4/9 -16/27; 1/9 -7/27].
+            # SLSQP exposes no Hessian, so the Lxx block is built by the AD fallback, which
+            # differentiates the stored grad/cons_j. p enters objective and constraint, so the
+            # mixed ∇²_xp L term is nonzero. Analytic optimum u* = (13/9, 10/9), μ* = -4/9;
+            # differentiating the KKT system gives du*/dp = [4/9 -16/27; 1/9 -7/27].
             f = (u, p) -> (u[1] - 1)^2 + p[2] * (u[2] - 1)^2
             cons = (res, u, p) -> (res[1] = p[2] * u[1] + u[2] - p[1])
             u0 = [1.0, 1.0]
             p = [4.0, 2.0]
-
-            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
-            prob = OptimizationProblem(opt_f, u0, p; lcons = [0.0], ucons = [0.0])
-            opt_sol = solve(prob, NLopt.LD_SLSQP())
-
             J_exact = [4/9 -16/27; 1/9 -7/27]
-            function dprow(i; kw...)
+
+            dprow(sol, i; kw...) = begin
                 dgdu!(out, _, _, _, _) = (out .= 0; out[i] = 1.0; out)
                 adjoint_sensitivities(
-                    opt_sol, nothing; sensealg = OptimizationAdjoint(; kw...), dgdu = dgdu!
+                    sol, nothing; sensealg = OptimizationAdjoint(; kw...), dgdu = dgdu!
                 )
             end
 
-            J_enz = vcat(
-                dprow(1; autodiff = Optimization.AutoEnzyme())',
-                dprow(2; autodiff = Optimization.AutoEnzyme())'
+            # ForwardDiff end-to-end (function + adjoint both ForwardDiff).
+            opt_f_fwd = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            sol_fwd = solve(
+                OptimizationProblem(opt_f_fwd, u0, p; lcons = [0.0], ucons = [0.0]), NLopt.LD_SLSQP()
             )
-            J_fwd = vcat(
-                dprow(1; autodiff = Optimization.AutoForwardDiff())',
-                dprow(2; autodiff = Optimization.AutoForwardDiff())'
+            J_fwd = vcat(dprow(sol_fwd, 1)', dprow(sol_fwd, 2)')
+            @test J_fwd ≈ J_exact rtol = 1.0e-5
+
+            # Enzyme end-to-end: an AutoEnzyme OptimizationFunction (Enzyme-built grad/cons_j)
+            # with EnzymeVJP outer ⇒ Enzyme-over-Enzyme for both the residual and the Lxx
+            # fallback (which inherits autodiff = AutoEnzyme from the function).
+            opt_f_enz = OptimizationFunction(f, Optimization.AutoEnzyme(); cons = cons)
+            sol_enz = solve(
+                OptimizationProblem(opt_f_enz, u0, p; lcons = [0.0], ucons = [0.0]), NLopt.LD_SLSQP()
+            )
+            J_enz = vcat(
+                dprow(sol_enz, 1; autojacvec = EnzymeVJP())',
+                dprow(sol_enz, 2; autojacvec = EnzymeVJP())'
             )
             @test J_enz ≈ J_exact rtol = 1.0e-5
-            @test J_enz ≈ J_fwd rtol = 1.0e-6
+            @test J_enz ≈ J_fwd rtol = 1.0e-5
 
-            # Reverse-mode backends are rejected (these derivatives are forward-mode).
-            @test_throws ArgumentError adjoint_sensitivities(
-                opt_sol, nothing;
-                sensealg = OptimizationAdjoint(autodiff = SciMLSensitivity.AutoReverseDiff()),
-                dgdu = (out, _, _, _, _) -> (out .= 0; out[1] = 1.0; out)
-            )
+            # Cross-backend Lxx is rejected, not silently wrong: differentiating a ForwardDiff-built
+            # function's grad/cons_j with Enzyme would give a wrong Hessian. Reverse-mode likewise.
+            @test_throws ArgumentError dprow(sol_fwd, 1; autodiff = Optimization.AutoEnzyme())
+            @test_throws ArgumentError dprow(sol_fwd, 1; autodiff = SciMLSensitivity.AutoReverseDiff())
         end
     end
 

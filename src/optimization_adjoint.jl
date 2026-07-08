@@ -66,6 +66,31 @@ end
 _opt_eval_mat(fn, _, _, x, p, ::Val{false}, ::Val{true}) = fn(x, p)
 _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 
+# Evaluate the stored objective gradient ∇_x f and constraint Jacobian ∂c/∂x at (x*, q),
+# passing q explicitly so the result tracks the parameters. The KKT residual feeds these to
+# the outer VJP, which differentiates them w.r.t. q to form the mixed second-order terms
+# (∂²f/∂x∂p and Σμᵢ ∂²cᵢ/∂x∂p). Unlike `_opt_eval_*` above (Float64 buffers), the output is
+# allocated at promote(eltype(x*), eltype(q)) so ForwardDiff/ReverseDiff duals in q propagate.
+# Requires `grad`/`cons_j` to take a parameter argument and tolerate duals there — OptimizationBase
+# builds them with a prepped fast path plus a prep-free fallback for exactly this, sidestepping
+# the frozen DI preparation. Dispatched on Val{iip} (in-place buffer vs out-of-place return).
+function _opt_grad_q(fn, n_x, x_star, q, ::Val{true})
+    out = zeros(Base.promote_op(+, eltype(x_star), eltype(q)), n_x)
+    fn(out, x_star, q)
+    return out
+end
+_opt_grad_q(fn, _, x_star, q, ::Val{false}) = fn(x_star, q)
+
+# `reshape` normalizes the single-constraint case: the out-of-place `cons_j` returns a length-n_x
+# vector when n_cons == 1 (it `vec`s a 1×n_x Jacobian), which `reshape` lifts back to 1×n_x so the
+# `J * λx` contraction is well-formed for any n_cons.
+function _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{true})
+    J = zeros(Base.promote_op(+, eltype(x_star), eltype(q)), n_cons, n_x)
+    fn(J, x_star, q)
+    return J
+end
+_opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{false}) = reshape(fn(x_star, q), n_cons, n_x)
+
 function _opt_eval_lag_h(fn, n, x, σ, μ, p, ::Val{true}, ::Val{true})
     H = zeros(eltype(x), n, n); fn(H, x, σ, μ, p)
     return H
@@ -77,65 +102,81 @@ end
 _opt_eval_lag_h(fn, _, x, σ, μ, p, ::Val{false}, ::Val{true}) = fn(x, σ, μ, p)
 _opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
 
-# ---- Forward-mode AD for the adjoint's own derivatives ----
-# The OptimizationAdjoint computes two derivatives itself, both in forward mode:
-#   * the Lagrangian gradient ∇_x L — the stationarity rows of the KKT residual `F`, which
-#     the outer VJP then differentiates w.r.t. the parameters; and
-#   * its Jacobian w.r.t. x, i.e. the Lagrangian Hessian `Lxx` — only as a fallback, when
-#     the OptimizationFunction exposes no second-order info (no `lag_h`/`hess`).
-# These deliberately do NOT use the stored `grad`/`cons_j`/`hess` (their DI preparation is
-# frozen at the solve's Float64 types and rejects the dual inputs AD introduces); they
-# differentiate the raw Lagrangian `L` instead. The backend is the optimization problem's
-# own ADType by default, or an override passed to `OptimizationAdjoint(autodiff=...)`.
-# `_opt_validate_fwd` rejects reverse-mode backends (both derivatives are taken in forward
-# mode — the inner gradient must also nest cleanly inside the outer reverse-mode VJP) and
-# otherwise returns the backend unchanged; `_opt_grad`/`_opt_hess` then dispatch on it.
-function _opt_validate_fwd(adtype::Union{AutoReverseDiff, AutoZygote, AutoTracker, AutoMooncake})
-    throw(
-        ArgumentError(
-            "OptimizationAdjoint differentiates the KKT optimality conditions in forward " *
-            "mode, but a reverse-mode AD backend ($(nameof(typeof(adtype)))) was selected " *
-            "(via the OptimizationFunction's `adtype` or `OptimizationAdjoint(autodiff=...)`). " *
-            "Pass a forward-mode backend instead: AutoForwardDiff(), AutoFiniteDiff(), or " *
-            "AutoEnzyme()."
-        )
-    )
+# ---- Forward-mode AD for the Lagrangian Hessian fallback ----
+# The adjoint computes exactly ONE derivative itself: the Lagrangian Hessian `Lxx` (the ∂²ₓ
+# block of the KKT matrix), and only as a *fallback* — when the OptimizationFunction exposes
+# no stored second-order info (`lag_h`/`hess`), e.g. grad-only solvers like SLSQP. It reuses the
+# stored first-order derivatives: `Lxx = jac_x(grad(·,p) + cons_j(·,p)'·μ)` — the same
+# dual-tolerant `grad`/`cons_j` the residual uses, differentiated once more w.r.t. `x` (see the
+# `Lxx` assembly). The residual's first-order stationarity terms are likewise reused, not
+# recomputed here. `fwd_mode` (the backend that does this outer differentiation) is the
+# OptimizationFunction's own ADType by default, or an override via
+# `OptimizationAdjoint(autodiff = ...)`; the default keeps the nesting backend-matched
+# (ForwardDiff-over-ForwardDiff, Enzyme-over-Enzyme). It is resolved/validated *lazily*, only
+# inside the fallback branch (so an irrelevant `autodiff` on a second-order solver never errors).
+# `_opt_validate_fwd` rejects reverse-mode backends — the fallback nests forward-over-forward,
+# and a reverse inner would not compose — and otherwise returns the backend for `_opt_jac`.
+# Validate/return the `Lxx`-fallback backend `fwd_mode` against the OptimizationFunction's
+# `adtype`. The fallback differentiates the adtype-built `grad`/`cons_j`, so `fwd_mode` must nest
+# over them:
+#   * reverse-mode is rejected (the fallback is forward-over-forward);
+#   * AutoFiniteDiff always works (it evaluates `grad`/`cons_j` at real points — no nesting);
+#   * otherwise `fwd_mode` must match `adtype` (ForwardDiff-over-ForwardDiff, Enzyme-over-Enzyme).
+# A cross-backend choice (e.g. Enzyme over a ForwardDiff-built function) is rejected because it
+# *silently returns a wrong Hessian* rather than erroring. The matched default (`fwd_mode =
+# adtype`) always passes; only an explicit mismatched `autodiff` override trips this.
+function _opt_validate_fwd(fwd_mode, adtype)
+    fwd_mode isa Union{AutoReverseDiff, AutoZygote, AutoTracker, AutoMooncake} && throw(ArgumentError(
+        "OptimizationAdjoint builds the Lagrangian Hessian fallback (`Lxx`, used when the " *
+        "OptimizationFunction stores no `hess`/`lag_h`) in forward mode, but a reverse-mode AD " *
+        "backend ($(nameof(typeof(fwd_mode)))) was selected via `OptimizationAdjoint(autodiff = ...)` " *
+        "(or inherited from the OptimizationFunction's `adtype`). Pass a forward-mode backend: " *
+        "AutoForwardDiff(), AutoFiniteDiff(), or AutoEnzyme()."))
+    fwd_mode isa AutoFiniteDiff && return fwd_mode
+    (fwd_mode isa AutoForwardDiff && adtype isa AutoForwardDiff) && return fwd_mode
+    (fwd_mode isa AutoEnzyme && adtype isa AutoEnzyme) && return fwd_mode
+    throw(ArgumentError(
+        "OptimizationAdjoint's `Lxx` Hessian fallback differentiates the OptimizationFunction's " *
+        "`grad`/`cons_j` (built with $(nameof(typeof(adtype)))) using `autodiff = " *
+        "$(nameof(typeof(fwd_mode)))`. Differentiating one AD backend's output with a different one " *
+        "silently yields a wrong Hessian, so it is rejected. Match the backends — " *
+        "`OptimizationAdjoint(autodiff = $(nameof(typeof(adtype)))())` or omit `autodiff` to inherit " *
+        "it — or use `AutoFiniteDiff()`, which evaluates the derivatives without nesting."))
 end
-_opt_validate_fwd(adtype) = adtype
 
-# Forward-mode gradient of scalar `f` at `x`. Enzyme is run in forward mode; FiniteDiff maps
-# to itself; AutoForwardDiff and any other backend use ForwardDiff.
-_opt_grad(::AutoFiniteDiff, f, x) = FiniteDiff.finite_difference_gradient(f, x)
-# Enzyme is run in forward mode with two annotations the Lagrangian closure requires:
-#   * `Enzyme.Const(f)` — the closure captures parameters/multipliers/the OptimizationFunction,
-#     which Enzyme can't prove read-only; we differentiate only the explicit `x`.
-#   * `set_runtime_activity` — Enzyme's static activity analysis can't classify active-vs-const
-#     through that opaque capture, so we opt into runtime activity (also needed for the nested
-#     residual case, where `x` is differentiated under the outer VJP).
-# `Enzyme.gradient(Forward, ...)` returns a 1-tuple holding a TupleArray; collect to a plain
-# Vector so it composes (vcat into the residual, and re-differentiation for Lxx).
+# Reject outer-VJP/adtype combinations the reuse residual can't differentiate. The residual
+# differentiates the OptimizationFunction's `grad`/`cons_j` (built with `adtype`) w.r.t. the
+# parameters, so the outer VJP must nest over that AD backend. See
+# OptimizationAdjointUnsupportedVJPError for the cases:
+#   * an Enzyme-built function (adtype isa AutoEnzyme) needs EnzymeVJP (Enzyme-over-Enzyme);
+#     other outer VJPs can't nest over Enzyme-built derivatives.
+#   * a ForwardDiff/FiniteDiff-built function can't use EnzymeVJP (Enzyme-over-ForwardDiff) or
+#     ZygoteVJP (can't order nested ForwardDiff tags); ReverseDiffVJP, MooncakeVJP, and the
+#     forward-mode `Bool`/ForwardDiff paths nest fine.
+function _opt_validate_outer_vjp(autojacvec, adtype)
+    if adtype isa AutoEnzyme
+        autojacvec isa EnzymeVJP ||
+            throw(OptimizationAdjointUnsupportedVJPError(:enzyme_inner, adtype, autojacvec))
+    else
+        autojacvec isa ZygoteVJP &&
+            throw(OptimizationAdjointUnsupportedVJPError(:zygote, adtype, autojacvec))
+        autojacvec isa EnzymeVJP &&
+            throw(OptimizationAdjointUnsupportedVJPError(:enzyme_backend, adtype, autojacvec))
+    end
+    return nothing
+end
+
+# Forward-mode Jacobian of a vector function `h` at `x` — used for the `Lxx` fallback, which
+# differentiates the assembled Lagrangian gradient `∇_x L(·, p)` w.r.t. `x` (so `_opt_jac` over
+# it yields `∇²_x L`). `h` is built from the stored `grad`/`cons_j` (see the `Lxx` assembly),
+# so this is forward-over-(their own backend); `fwd_mode` defaults to that backend, keeping it
+# matched (ForwardDiff-over-ForwardDiff, Enzyme-over-Enzyme). Enzyme runs in forward mode under
+# `set_runtime_activity` (its static activity analysis can't see through the captured
+# OptimizationFunction); FiniteDiff and ForwardDiff use their native Jacobians.
 const _OPT_ENZYME_FWD = Enzyme.set_runtime_activity(Enzyme.Forward)
-_opt_grad(::AutoEnzyme, f, x) = collect(only(Enzyme.gradient(_OPT_ENZYME_FWD, Enzyme.Const(f), x)))
-_opt_grad(_, f, x) = ForwardDiff.gradient(f, x)
-
-# Hessian of scalar `f` at `x` (used for Lxx = ∇²_x L when no second-order info is stored).
-# ForwardDiff and FiniteDiff use their native second-order routines (FiniteDiff's stencil is
-# more accurate than differencing a finite-difference gradient). Enzyme has no native Hessian,
-# so there we differentiate the forward-mode gradient once more — `jacobian(Const(∇f), x)` —
-# with the same `Const`/runtime-activity handling `_opt_grad` needs.
-_opt_hess(::AutoFiniteDiff, f, x) = FiniteDiff.finite_difference_hessian(f, x)
-_opt_hess(m::AutoEnzyme, f, x) = only(Enzyme.jacobian(_OPT_ENZYME_FWD, Enzyme.Const(z -> _opt_grad(m, f, z)), x))
-_opt_hess(_, f, x) = ForwardDiff.hessian(f, x)
-
-# Directional derivative d/dε f(x + ε v)|_0 = v'∇f(x), in forward mode — the Pearlmutter-style
-# contraction that yields v'∇f directly (a single forward seed) without forming the full n-wide
-# gradient. Used for the stationarity term λx'∇_x L of the scalar KKT residual. Enzyme falls
-# back to the validated full-gradient path then contracts (sum(.*), BLAS-free), since its
-# forward JVP API is finickier and the gradient route is already exercised.
-_opt_dir(::AutoFiniteDiff, f, x, v) =
-    FiniteDiff.finite_difference_derivative(ε -> f(x .+ ε .* v), zero(eltype(x)))
-_opt_dir(m::AutoEnzyme, f, x, v) = sum(v .* _opt_grad(m, f, x))
-_opt_dir(_, f, x, v) = ForwardDiff.derivative(ε -> f(x .+ ε .* v), zero(eltype(x)))
+_opt_jac(::AutoFiniteDiff, h, x) = FiniteDiff.finite_difference_jacobian(h, x)
+_opt_jac(::AutoEnzyme, h, x) = only(Enzyme.jacobian(_OPT_ENZYME_FWD, Enzyme.Const(h), x))
+_opt_jac(_, h, x) = ForwardDiff.jacobian(h, x)
 
 # Constraint Hessians: `cons_h` writes a length-`m` vector of `n×n` matrices, `H[i] = ∇²cᵢ`.
 # m = n_cons, n = n_x.
@@ -206,6 +247,44 @@ function Base.showerror(io::IO, e::OptimizationAdjointMissingDerivativeError)
     end
 end
 
+# Thrown when the outer VJP (`autojacvec`) and the OptimizationFunction's `adtype` are
+# incompatible: the reuse residual differentiates the adtype-built `grad`/`cons_j` w.r.t. the
+# parameters, so the outer VJP must nest over that AD backend.
+#   kind :: :zygote         — Zygote can't order its tangents against the nested ForwardDiff tags
+#         :: :enzyme_backend — EnzymeVJP over a non-Enzyme function (Enzyme can't nest over ForwardDiff)
+#         :: :enzyme_inner   — an Enzyme-built function needs EnzymeVJP (others can't nest over Enzyme)
+#   adtype = the OptimizationFunction's ADType; autojacvec = the chosen outer VJP.
+struct OptimizationAdjointUnsupportedVJPError <: Exception
+    kind::Symbol
+    adtype::Any
+    autojacvec::Any
+end
+
+function Base.showerror(io::IO, e::OptimizationAdjointUnsupportedVJPError)
+    if e.kind === :zygote
+        print(io,
+            "OptimizationAdjoint does not support `autojacvec = ZygoteVJP()`: the parameter VJP " *
+            "differentiates the OptimizationFunction's `grad`/`cons_j`, which use forward-mode AD " *
+            "(ForwardDiff) internally, and Zygote cannot differentiate through nested ForwardDiff. " *
+            "Use `autojacvec = ReverseDiffVJP()` or `MooncakeVJP()`, or a forward-mode VJP " *
+            "(`autojacvec = true`).")
+    elseif e.kind === :enzyme_backend
+        print(io,
+            "OptimizationAdjoint with `autojacvec = EnzymeVJP()` requires the OptimizationFunction " *
+            "to be constructed with `AutoEnzyme()`, so its `grad`/`cons_j` are Enzyme-differentiable " *
+            "(got adtype = $(e.adtype)). Enzyme cannot differentiate through the forward-mode AD used " *
+            "by other backends. Use `autojacvec = ReverseDiffVJP()`/`MooncakeVJP()`/`true`, or rebuild " *
+            "the OptimizationFunction with AutoEnzyme.")
+    else # :enzyme_inner
+        print(io,
+            "OptimizationAdjoint: the OptimizationFunction was built with `AutoEnzyme()`, so its " *
+            "`grad`/`cons_j` are Enzyme-differentiated; the parameter VJP must therefore use " *
+            "`autojacvec = EnzymeVJP()` (Enzyme-over-Enzyme). Got `autojacvec = $(e.autojacvec)`, which " *
+            "cannot nest over Enzyme-built derivatives. Pass `autojacvec = EnzymeVJP()`, or rebuild the " *
+            "OptimizationFunction with a different backend (e.g. AutoForwardDiff()).")
+    end
+end
+
 function OptimizationAdjointSensitivityFunction(
         prob,
         opt_sol,
@@ -273,10 +352,10 @@ function OptimizationAdjointSensitivityFunction(
     iip_val = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
 
-    # Forward-mode backend for the adjoint's own derivatives (inner Lagrangian gradient and,
-    # as a fallback, Lxx). Defaults to the optimization problem's ADType; overridden when the
-    # user passes `OptimizationAdjoint(autodiff=...)`. Errors on reverse-mode backends.
-    fwd_mode = _opt_validate_fwd(sensealg.autodiff === nothing ? opt_f.adtype : sensealg.autodiff)
+    # Reject outer-VJP backends that cannot differentiate the reuse residual (which calls the
+    # OptimizationFunction's forward-mode-AD `grad`/`cons_j`). Fail fast with a clear message
+    # rather than a deep AD crash. (`fwd_mode` for the Lxx fallback is resolved lazily below.)
+    _opt_validate_outer_vjp(sensealg.autojacvec, opt_f.adtype)
 
     # ---- ∇f at x_star: require the stored gradient ----
     ∇f = if opt_f.grad !== nothing
@@ -381,21 +460,6 @@ function OptimizationAdjointSensitivityFunction(
         end
     end
 
-    # Lagrangian with fixed multipliers (differentiated for both the residual stationarity
-    # rows and the Lxx fallback). Uses `sum(μ .* c)` rather than `dot(μ, c)`: `dot` lowers to
-    # a BLAS call on Float64 vectors, which Enzyme's forward mode cannot differentiate under
-    # runtime activity. The multiplier vectors are tiny, so the broadcast costs nothing, and
-    # ForwardDiff/FiniteDiff are unaffected.
-    L = let prob = prob, y_star = y_star, g = g, n_eq = n_eq,
-            zI_star = zI_star, h_I = h_I, n_act = n_act
-        function (x, q)
-            val = prob.f(x, q)
-            n_eq > 0 && (val += sum(y_star .* g(x, q)))
-            n_act > 0 && (val += sum(zI_star .* h_I(x, q)))
-            return val
-        end
-    end
-
     # ---- Lagrangian Hessian w.r.t. x ----
     # ∇²L = σ*∇²f + Σ μᵢ*∇²cᵢ with σ = 1. Mapping from our dual vars to the full μ vector
     # (chosen to match `lag_h`'s Hessian-of-(σ*f + Σ μᵢ*consᵢ) convention):
@@ -435,17 +499,29 @@ function OptimizationAdjointSensitivityFunction(
         end
         H
     else
-        # No second-order info: take the Hessian of the *raw* Lagrangian `L` w.r.t. x (its
-        # constraint terms route through the prep-free `prob.f.cons`), NOT the stored
-        # `grad`/`cons_j` — their DI preparation is frozen at Float64 and a forward pass
-        # introduces dual `x`, which it would reject (the same preparation wall that blocks
-        # reusing them in the p-residual). The first-order `cons_j` is still reused for the
-        # Jacobian blocks Jxg/Jxhι; only the second-order term is AD'd here. `fwd_mode` picks
-        # the forward-mode backend; evaluated at the real Float64 (x*, p) — no nesting with
-        # the outer VJP.
-        let L = L, p = p, fwd_mode = fwd_mode
-            _opt_hess(fwd_mode, z -> L(z, p), x_star)
+        # No stored second-order info: assemble ∇²_x L = ∇²f + Σμᵢ∇²cᵢ by differentiating the
+        # stored *first-order* derivatives w.r.t. x. `grad` gives ∇_x f and `cons_j` gives the
+        # constraint Jacobian, so `jac_x(grad(·,p) + cons_j(·,p)'·μ) = ∇²_x L`. These are the same
+        # dual-tolerant stored derivatives the residual reuses, evaluated at a dual `x` through
+        # the prep-free fallback. `fwd_mode` (the backend that differentiates them) defaults to
+        # the OptimizationFunction's own ADType, which keeps the nesting *backend-matched*
+        # (ForwardDiff-over-ForwardDiff, Enzyme-over-Enzyme); it is resolved and
+        # reverse-mode-validated lazily here, since only this branch uses it. Reusing the stored
+        # derivatives (rather than re-AD'ing the raw objective) means we never need `f` to be
+        # twice-differentiable, and we leverage user-supplied analytic `grad`/`cons_j`.
+        fwd_mode = _opt_validate_fwd(
+            sensealg.autodiff === nothing ? opt_f.adtype : sensealg.autodiff, opt_f.adtype
+        )
+        gradL_x = let opt_f = opt_f, p = p, mu_full = mu_full, n_x = n_x,
+                n_cons = n_cons, iip_val = iip_val
+            function (x)
+                gx = _opt_grad_q(opt_f.grad, n_x, x, p, iip_val)
+                n_cons > 0 &&
+                    (gx = gx + _opt_jac_q(opt_f.cons_j, n_cons, n_x, x, p, iip_val)' * mu_full)
+                return gx
+            end
         end
+        _opt_jac(fwd_mode, gradL_x, x_star)
     end
 
     N = n_x + n_eq + n_act_total
@@ -480,15 +556,20 @@ function OptimizationAdjointSensitivityFunction(
     autojacvec = sensealg.autojacvec
 
     # Scalar KKT residual via λ-contraction. The cotangent λ is already known (constant) from
-    # the KKT solve, so instead of forming the vector residual F = [∇_xL; g; h_I] and VJP'ing
-    # it with λ, we build the scalar Φ(q) = λ·F(x*, q) and let the outer pass take ∇_q Φ (a VJP
-    # of a scalar with seed [1]). Identical result, but the stationarity term λx'∇_xL is a
-    # single forward directional derivative (Pearlmutter) rather than the full n_x-wide gradient
-    # — much less for the outer AD to differentiate through. `L` routes its constraint terms
-    # through the prep-free `prob.f.cons`, so it is differentiable w.r.t. `q` (unlike the stored
-    # `grad`/`cons_j`, frozen at the solve's Float64 types). Constraint terms use sum(.*) not
-    # `dot` to stay BLAS-free (Enzyme forward can't differentiate BLAS `dot` under runtime
-    # activity). Variable-bound rows are dropped: ∂(lb - x)/∂p = 0.
+    # the KKT solve, so instead of forming the vector residual F = [∇_xL; g; h_I] and VJP'ing it
+    # with λ, we build the scalar Φ(q) = λ·F(x*, q) and let the outer pass take ∇_q Φ (a VJP of a
+    # scalar, seed [1]). The stationarity contraction λx'∇_xL expands by the structure of the
+    # Lagrangian into terms we read straight off the stored derivatives:
+    #     λx'∇_xL = λx'∇_x f(x*,q)  +  Σᵢ μᵢ λx'∇_x cᵢ(x*,q)
+    #             = λx'·grad(x*,q)  +  mu_full'·(cons_j(x*,q)·λx)
+    # so the outer VJP differentiating Φ w.r.t. q yields the mixed second-order terms
+    # (∂²f/∂x∂p and Σμᵢ ∂²cᵢ/∂x∂p) directly — no inner AD on our side. This reuses the stored
+    # `grad`/`cons_j` rather than re-differentiating the raw objective/constraints; it relies on
+    # OptimizationBase making them dual-tolerant (prepped fast path + prep-free fallback), so the
+    # dual `q` the outer pass pushes in flows through the otherwise-frozen DI preparation.
+    # Contractions use sum(.*) to stay BLAS-free for an Enzyme outer VJP. The feasibility rows are
+    # constraint *values* (g, h_I via the already-dual-safe raw `cons`), not derivatives.
+    # Variable-bound rows are dropped: ∂(lb - x)/∂p = 0.
     #
     # Scalar output: y is the length-1 dummy state backends use to size buffers.
     y = zeros(eltype(x_star), 1)
@@ -496,10 +577,17 @@ function OptimizationAdjointSensitivityFunction(
     λy = n_eq  > 0 ? λ_full[(n_x + 1):(n_x + n_eq)]                : eltype(x_star)[]
     λz = n_act > 0 ? λ_full[(n_x + n_eq + 1):(n_x + n_eq + n_act)] : eltype(x_star)[]
     f_F = OptimizationKKTResidual(
-        let L = L, g = g, h_I = h_I, x_star = x_star, λx = λx, λy = λy, λz = λz,
-                fwd_mode = fwd_mode, n_eq = n_eq, n_act = n_act
+        let opt_f = opt_f, g = g, h_I = h_I, x_star = x_star, λx = λx, λy = λy, λz = λz,
+                mu_full = mu_full, iip_val = iip_val, n_x = n_x, n_cons = n_cons,
+                n_eq = n_eq, n_act = n_act
             function (_, q_full, _)
-                val = _opt_dir(fwd_mode, x -> L(x, q_full), x_star, λx)
+                # stationarity: objective part λx'∇_x f, plus constraint part mu·(J λx)
+                val = sum(λx .* _opt_grad_q(opt_f.grad, n_x, x_star, q_full, iip_val))
+                if n_cons > 0
+                    J = _opt_jac_q(opt_f.cons_j, n_cons, n_x, x_star, q_full, iip_val)
+                    val += sum(mu_full .* (J * λx))
+                end
+                # feasibility rows (constraint values)
                 n_eq  > 0 && (val += sum(λy .* g(x_star, q_full)))
                 n_act > 0 && (val += sum(λz .* h_I(x_star, q_full)))
                 return [val]
