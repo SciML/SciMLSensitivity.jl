@@ -2785,8 +2785,13 @@ function SciMLBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...
     )
+    # Auto-select the optimization adjoint: use the constrained KKT adjoint
+    # (`OptimizationAdjoint`) when the problem carries constraints, otherwise the
+    # stationarity-only `UnconstrainedOptimizationAdjoint`.
+    default_sensealg = prob.f.cons === nothing ?
+        UnconstrainedOptimizationAdjoint() : OptimizationAdjoint()
     return SciMLBase._concrete_solve_adjoint(
-        prob, alg, UnconstrainedOptimizationAdjoint(),
+        prob, alg, default_sensealg,
         u0, p, originator, args...; kwargs...
     )
 end
