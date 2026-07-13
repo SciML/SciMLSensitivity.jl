@@ -14,7 +14,8 @@ function build_opt_adjoint_sol(prob, alg, sensealg; kwargs...)
         (G, u, p) -> ForwardDiff.gradient!(G, Base.Fix2(opt_f, p), u)
     else
         (G, u, p) -> FiniteDiff.finite_difference_gradient!(
-            G, Base.Fix2(opt_f, p), u, diff_type(sensealg))
+            G, Base.Fix2(opt_f, p), u, diff_type(sensealg)
+        )
     end
     nlprob = NonlinearProblem(grad_fn, opt_sol.u, prob.p)
     sol = SciMLBase.build_solution(
@@ -280,7 +281,7 @@ end
             cons = (res, u, p) -> (res[1] = p[2] * u[1] + u[2] - p[1])
             u0 = [1.0, 1.0]
             p = [4.0, 2.0]
-            J_exact = [4/9 -16/27; 1/9 -7/27]
+            J_exact = [4 / 9 -16 / 27; 1 / 9 -7 / 27]
 
             dprow(sol, i; kw...) = begin
                 dgdu!(out, _, _, _, _) = (out .= 0; out[i] = 1.0; out)

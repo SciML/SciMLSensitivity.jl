@@ -126,22 +126,28 @@ _opt_eval_lag_h(fn, _, x, σ, μ, _, ::Val{false}, ::Val{false}) = fn(x, σ, μ)
 # *silently returns a wrong Hessian* rather than erroring. The matched default (`fwd_mode =
 # adtype`) always passes; only an explicit mismatched `autodiff` override trips this.
 function _opt_validate_fwd(fwd_mode, adtype)
-    fwd_mode isa Union{AutoReverseDiff, AutoZygote, AutoTracker, AutoMooncake} && throw(ArgumentError(
-        "OptimizationAdjoint builds the Lagrangian Hessian fallback (`Lxx`, used when the " *
-        "OptimizationFunction stores no `hess`/`lag_h`) in forward mode, but a reverse-mode AD " *
-        "backend ($(nameof(typeof(fwd_mode)))) was selected via `OptimizationAdjoint(autodiff = ...)` " *
-        "(or inherited from the OptimizationFunction's `adtype`). Pass a forward-mode backend: " *
-        "AutoForwardDiff(), AutoFiniteDiff(), or AutoEnzyme()."))
+    fwd_mode isa Union{AutoReverseDiff, AutoZygote, AutoTracker, AutoMooncake} && throw(
+        ArgumentError(
+            "OptimizationAdjoint builds the Lagrangian Hessian fallback (`Lxx`, used when the " *
+                "OptimizationFunction stores no `hess`/`lag_h`) in forward mode, but a reverse-mode AD " *
+                "backend ($(nameof(typeof(fwd_mode)))) was selected via `OptimizationAdjoint(autodiff = ...)` " *
+                "(or inherited from the OptimizationFunction's `adtype`). Pass a forward-mode backend: " *
+                "AutoForwardDiff(), AutoFiniteDiff(), or AutoEnzyme()."
+        )
+    )
     fwd_mode isa AutoFiniteDiff && return fwd_mode
     (fwd_mode isa AutoForwardDiff && adtype isa AutoForwardDiff) && return fwd_mode
     (fwd_mode isa AutoEnzyme && adtype isa AutoEnzyme) && return fwd_mode
-    throw(ArgumentError(
-        "OptimizationAdjoint's `Lxx` Hessian fallback differentiates the OptimizationFunction's " *
-        "`grad`/`cons_j` (built with $(nameof(typeof(adtype)))) using `autodiff = " *
-        "$(nameof(typeof(fwd_mode)))`. Differentiating one AD backend's output with a different one " *
-        "silently yields a wrong Hessian, so it is rejected. Match the backends — " *
-        "`OptimizationAdjoint(autodiff = $(nameof(typeof(adtype)))())` or omit `autodiff` to inherit " *
-        "it — or use `AutoFiniteDiff()`, which evaluates the derivatives without nesting."))
+    throw(
+        ArgumentError(
+            "OptimizationAdjoint's `Lxx` Hessian fallback differentiates the OptimizationFunction's " *
+                "`grad`/`cons_j` (built with $(nameof(typeof(adtype)))) using `autodiff = " *
+                "$(nameof(typeof(fwd_mode)))`. Differentiating one AD backend's output with a different one " *
+                "silently yields a wrong Hessian, so it is rejected. Match the backends — " *
+                "`OptimizationAdjoint(autodiff = $(nameof(typeof(adtype)))())` or omit `autodiff` to inherit " *
+                "it — or use `AutoFiniteDiff()`, which evaluates the derivatives without nesting."
+        )
+    )
 end
 
 # Reject outer-VJP/adtype combinations the reuse residual can't differentiate. The residual
@@ -209,41 +215,55 @@ end
 
 function Base.showerror(io::IO, e::OptimizationAdjointMissingDerivativeError)
     if e.missing === :grad
-        print(io,
+        print(
+            io,
             "OptimizationAdjoint requires the objective gradient `grad`, but the " *
-            "OptimizationFunction does not provide it.\n")
+                "OptimizationFunction does not provide it.\n"
+        )
     elseif e.missing === :cons_jac
-        print(io,
+        print(
+            io,
             "OptimizationAdjoint requires the constraint Jacobian `cons_j`, but the " *
-            "OptimizationFunction does not provide it.\n")
+                "OptimizationFunction does not provide it.\n"
+        )
     else # :hessian
-        print(io,
+        print(
+            io,
             "OptimizationAdjoint requires second-order derivative information to assemble " *
-            "the Lagrangian Hessian, but the OptimizationFunction does not provide it.\n")
+                "the Lagrangian Hessian, but the OptimizationFunction does not provide it.\n"
+        )
         if e.has_cons
-            print(io,
+            print(
+                io,
                 "For a constrained problem it needs either `lag_h` (the Lagrangian Hessian), " *
-                "or both `hess` (the objective Hessian) and `cons_h` (the constraint Hessians).\n")
+                    "or both `hess` (the objective Hessian) and `cons_h` (the constraint Hessians).\n"
+            )
             e.has_hess && !e.has_cons_h &&
                 print(io, "`hess` is present but `cons_h` is missing.\n")
             !e.has_hess && e.has_cons_h &&
                 print(io, "`cons_h` is present but `hess` is missing.\n")
         else
-            print(io,
+            print(
+                io,
                 "For an unconstrained problem it needs `hess` (the objective Hessian) " *
-                "or `lag_h`.\n")
+                    "or `lag_h`.\n"
+            )
         end
     end
-    print(io,
+    print(
+        io,
         "Provide the required derivatives on the `OptimizationFunction` — either explicitly, " *
-        "or by constructing it with an AD backend (e.g. `OptimizationFunction(f, AutoForwardDiff())`). " *
-        "Note that an AD backend alone is not sufficient: the relevant derivatives are only " *
-        "generated when the optimizer that produced the solution requested them, so use an " *
-        "optimizer that requests them (or pass them directly).")
-    if !e.has_cons
-        print(io,
+            "or by constructing it with an AD backend (e.g. `OptimizationFunction(f, AutoForwardDiff())`). " *
+            "Note that an AD backend alone is not sufficient: the relevant derivatives are only " *
+            "generated when the optimizer that produced the solution requested them, so use an " *
+            "optimizer that requests them (or pass them directly)."
+    )
+    return if !e.has_cons
+        print(
+            io,
             "\nAlternatively, for unconstrained problems use `UnconstrainedOptimizationAdjoint`, " *
-            "which requires none of these.")
+                "which requires none of these."
+        )
     end
 end
 
@@ -261,27 +281,33 @@ struct OptimizationAdjointUnsupportedVJPError <: Exception
 end
 
 function Base.showerror(io::IO, e::OptimizationAdjointUnsupportedVJPError)
-    if e.kind === :zygote
-        print(io,
+    return if e.kind === :zygote
+        print(
+            io,
             "OptimizationAdjoint does not support `autojacvec = ZygoteVJP()`: the parameter VJP " *
-            "differentiates the OptimizationFunction's `grad`/`cons_j`, which use forward-mode AD " *
-            "(ForwardDiff) internally, and Zygote cannot differentiate through nested ForwardDiff. " *
-            "Use `autojacvec = ReverseDiffVJP()` or `MooncakeVJP()`, or a forward-mode VJP " *
-            "(`autojacvec = true`).")
+                "differentiates the OptimizationFunction's `grad`/`cons_j`, which use forward-mode AD " *
+                "(ForwardDiff) internally, and Zygote cannot differentiate through nested ForwardDiff. " *
+                "Use `autojacvec = ReverseDiffVJP()` or `MooncakeVJP()`, or a forward-mode VJP " *
+                "(`autojacvec = true`)."
+        )
     elseif e.kind === :enzyme_backend
-        print(io,
+        print(
+            io,
             "OptimizationAdjoint with `autojacvec = EnzymeVJP()` requires the OptimizationFunction " *
-            "to be constructed with `AutoEnzyme()`, so its `grad`/`cons_j` are Enzyme-differentiable " *
-            "(got adtype = $(e.adtype)). Enzyme cannot differentiate through the forward-mode AD used " *
-            "by other backends. Use `autojacvec = ReverseDiffVJP()`/`MooncakeVJP()`/`true`, or rebuild " *
-            "the OptimizationFunction with AutoEnzyme.")
+                "to be constructed with `AutoEnzyme()`, so its `grad`/`cons_j` are Enzyme-differentiable " *
+                "(got adtype = $(e.adtype)). Enzyme cannot differentiate through the forward-mode AD used " *
+                "by other backends. Use `autojacvec = ReverseDiffVJP()`/`MooncakeVJP()`/`true`, or rebuild " *
+                "the OptimizationFunction with AutoEnzyme."
+        )
     else # :enzyme_inner
-        print(io,
+        print(
+            io,
             "OptimizationAdjoint: the OptimizationFunction was built with `AutoEnzyme()`, so its " *
-            "`grad`/`cons_j` are Enzyme-differentiated; the parameter VJP must therefore use " *
-            "`autojacvec = EnzymeVJP()` (Enzyme-over-Enzyme). Got `autojacvec = $(e.autojacvec)`, which " *
-            "cannot nest over Enzyme-built derivatives. Pass `autojacvec = EnzymeVJP()`, or rebuild the " *
-            "OptimizationFunction with a different backend (e.g. AutoForwardDiff()).")
+                "`grad`/`cons_j` are Enzyme-differentiated; the parameter VJP must therefore use " *
+                "`autojacvec = EnzymeVJP()` (Enzyme-over-Enzyme). Got `autojacvec = $(e.autojacvec)`, which " *
+                "cannot nest over Enzyme-built derivatives. Pass `autojacvec = EnzymeVJP()`, or rebuild the " *
+                "OptimizationFunction with a different backend (e.g. AutoForwardDiff())."
+        )
     end
 end
 
@@ -389,7 +415,7 @@ function OptimizationAdjointSensitivityFunction(
     # The iteration cap is defense-in-depth; the mathematical bound is the same.
     mtol = sqrt(eps(eltype(x_star)))
     max_iters = length(active_lb) + length(active_ub) +
-                length(active_lb_var) + length(active_ub_var) + 1
+        length(active_lb_var) + length(active_ub_var) + 1
     local h_I, n_act, n_bound, n_act_total, y_star, zI_star, Jxhι
     has_negatives = true
     iter = 0
@@ -543,7 +569,7 @@ function OptimizationAdjointSensitivityFunction(
         sensealg.linsolve_kwargs...
     ).u
 
-    
+
     tunables, repack = if p === nothing || p isa SciMLBase.NullParameters
         p, identity
     elseif isscimlstructure(p)
@@ -574,7 +600,7 @@ function OptimizationAdjointSensitivityFunction(
     # Scalar output: y is the length-1 dummy state backends use to size buffers.
     y = zeros(eltype(x_star), 1)
     λx = λ_full[1:n_x]
-    λy = n_eq  > 0 ? λ_full[(n_x + 1):(n_x + n_eq)]                : eltype(x_star)[]
+    λy = n_eq > 0 ? λ_full[(n_x + 1):(n_x + n_eq)] : eltype(x_star)[]
     λz = n_act > 0 ? λ_full[(n_x + n_eq + 1):(n_x + n_eq + n_act)] : eltype(x_star)[]
     f_F = OptimizationKKTResidual(
         let opt_f = opt_f, g = g, h_I = h_I, x_star = x_star, λx = λx, λy = λy, λz = λz,
@@ -588,7 +614,7 @@ function OptimizationAdjointSensitivityFunction(
                     val += sum(mu_full .* (J * λx))
                 end
                 # feasibility rows (constraint values)
-                n_eq  > 0 && (val += sum(λy .* g(x_star, q_full)))
+                n_eq > 0 && (val += sum(λy .* g(x_star, q_full)))
                 n_act > 0 && (val += sum(λz .* h_I(x_star, q_full)))
                 return [val]
             end
