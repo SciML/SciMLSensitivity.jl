@@ -658,7 +658,9 @@ function OptimizationAdjointSensitivityFunction(
         nothing, nothing,                             # dgdu, dgdp
         nothing, nothing, nothing,                    # diffvar_idxs, algevar_idxs, factorized_mass_matrix
         false,                                        # issemiexplicitdae
-        tunables, repack
+        tunables, repack,
+        nothing, nothing,                             # algeeq_idxs, diffeq_idxs (not a DAE)
+        false, false                                  # isdae, index2
     )
 
     dp = zeros(eltype(x_star), length(tunables))
