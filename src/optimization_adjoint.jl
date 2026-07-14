@@ -75,7 +75,7 @@ _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 # builds them with a prepped fast path plus a prep-free fallback for exactly this, sidestepping
 # the frozen DI preparation. Dispatched on Val{iip} (in-place buffer vs out-of-place return).
 function _opt_grad_q(fn, n_x, x_star, q, ::Val{true})
-    out = zeros(Base.promote_op(+, eltype(x_star), eltype(q)), n_x)
+    out = zeros(promote_type(eltype(x_star), eltype(q)), n_x)
     fn(out, x_star, q)
     return out
 end
@@ -85,7 +85,7 @@ _opt_grad_q(fn, _, x_star, q, ::Val{false}) = fn(x_star, q)
 # vector when n_cons == 1 (it `vec`s a 1×n_x Jacobian), which `reshape` lifts back to 1×n_x so the
 # `J * λx` contraction is well-formed for any n_cons.
 function _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{true})
-    J = zeros(Base.promote_op(+, eltype(x_star), eltype(q)), n_cons, n_x)
+    J = zeros(promote_type(eltype(x_star), eltype(q)), n_cons, n_x)
     fn(J, x_star, q)
     return J
 end
