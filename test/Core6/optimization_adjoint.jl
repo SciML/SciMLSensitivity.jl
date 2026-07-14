@@ -221,7 +221,8 @@ end
             # for constrained problems (rather than a deep AD crash); allowed unconstrained.
             @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError adjoint_sensitivities(
                 opt_sol, nothing;
-                sensealg = OptimizationAdjoint(autojacvec = ReverseDiffVJP()), dgdu = dgdu1!)
+                sensealg = OptimizationAdjoint(autojacvec = ReverseDiffVJP()), dgdu = dgdu1!
+            )
         end
     end
 
