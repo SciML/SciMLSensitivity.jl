@@ -215,6 +215,13 @@ end
             dp2 = adjoint_sensitivities(opt_sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu2!)
             @test dp1[1] ≈ 0.5 rtol = 1.0e-4   # du1*/dp[1]
             @test dp2[1] ≈ 0.5 rtol = 1.0e-4   # du2*/dp[1]
+
+            # Reverse-mode outer VJPs nest a reverse tape over the forward-mode cons_j, whose
+            # nested-AD buffer OptimizationBase currently mis-types. Rejected with a clear error
+            # for constrained problems (rather than a deep AD crash); allowed unconstrained.
+            @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError adjoint_sensitivities(
+                opt_sol, nothing;
+                sensealg = OptimizationAdjoint(autojacvec = ReverseDiffVJP()), dgdu = dgdu1!)
         end
     end
 

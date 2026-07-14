@@ -66,6 +66,15 @@ end
 _opt_eval_mat(fn, _, _, x, p, ::Val{false}, ::Val{true}) = fn(x, p)
 _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 
+# Element type for an in-place derivative buffer that must hold values combining `S`- and `T`-typed
+# numbers — Float64 normally, or a ForwardDiff.Dual / ReverseDiff.TrackedReal when the outer VJP
+# (residual, ∂/∂q) or the inner AD (Lxx, ∂/∂x) pushes an AD type through. Public, inferrable
+# equivalent of `Base.promote_op(+, S, T)`: evaluating the actual `+` reproduces ForwardDiff's
+# @define_binary_dual_op nesting (e.g. Dual-over-TrackedReal, which `promote_type` mis-orders) and
+# folds to a compile-time `Type` constant, while staying within the public API. Both `S` and `T` are
+# promoted so we pick up the dual whether it rides in on the state (Lxx) or the parameters (residual).
+_opt_bufel(S::Type, T::Type) = typeof(oneunit(S) + oneunit(T))
+
 # Evaluate the stored objective gradient ∇_x f and constraint Jacobian ∂c/∂x at (x*, q),
 # passing q explicitly so the result tracks the parameters. The KKT residual feeds these to
 # the outer VJP, which differentiates them w.r.t. q to form the mixed second-order terms
@@ -75,7 +84,7 @@ _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 # builds them with a prepped fast path plus a prep-free fallback for exactly this, sidestepping
 # the frozen DI preparation. Dispatched on Val{iip} (in-place buffer vs out-of-place return).
 function _opt_grad_q(fn, n_x, x_star, q, ::Val{true})
-    out = zeros(promote_type(eltype(x_star), eltype(q)), n_x)
+    out = zeros(_opt_bufel(eltype(x_star), eltype(q)), n_x)
     fn(out, x_star, q)
     return out
 end
@@ -85,7 +94,7 @@ _opt_grad_q(fn, _, x_star, q, ::Val{false}) = fn(x_star, q)
 # vector when n_cons == 1 (it `vec`s a 1×n_x Jacobian), which `reshape` lifts back to 1×n_x so the
 # `J * λx` contraction is well-formed for any n_cons.
 function _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{true})
-    J = zeros(promote_type(eltype(x_star), eltype(q)), n_cons, n_x)
+    J = zeros(_opt_bufel(eltype(x_star), eltype(q)), n_cons, n_x)
     fn(J, x_star, q)
     return J
 end
@@ -157,9 +166,13 @@ end
 #   * an Enzyme-built function (adtype isa AutoEnzyme) needs EnzymeVJP (Enzyme-over-Enzyme);
 #     other outer VJPs can't nest over Enzyme-built derivatives.
 #   * a ForwardDiff/FiniteDiff-built function can't use EnzymeVJP (Enzyme-over-ForwardDiff) or
-#     ZygoteVJP (can't order nested ForwardDiff tags); ReverseDiffVJP, MooncakeVJP, and the
-#     forward-mode `Bool`/ForwardDiff paths nest fine.
-function _opt_validate_outer_vjp(autojacvec, adtype)
+#     ZygoteVJP (can't order nested ForwardDiff tags); the forward-mode `Bool`/ForwardDiff path
+#     nests fine. ReverseDiffVJP/MooncakeVJP nest fine *unconstrained*, but on a constrained
+#     problem they run a reverse tape over the inner forward-mode `cons_j`, whose nested-AD output
+#     buffer OptimizationBase currently mis-types (its `_cons_out_eltype` uses `promote_type`,
+#     which orders nested AD element types backwards — Dual-over-TrackedReal ↔ TrackedReal-over-Dual).
+#     So they are rejected when `has_cons`; use the forward-mode VJP (or an Enzyme function) instead.
+function _opt_validate_outer_vjp(autojacvec, adtype, has_cons)
     if adtype isa AutoEnzyme
         autojacvec isa EnzymeVJP ||
             throw(OptimizationAdjointUnsupportedVJPError(:enzyme_inner, adtype, autojacvec))
@@ -168,6 +181,8 @@ function _opt_validate_outer_vjp(autojacvec, adtype)
             throw(OptimizationAdjointUnsupportedVJPError(:zygote, adtype, autojacvec))
         autojacvec isa EnzymeVJP &&
             throw(OptimizationAdjointUnsupportedVJPError(:enzyme_backend, adtype, autojacvec))
+        has_cons && autojacvec isa Union{ReverseDiffVJP, MooncakeVJP} &&
+            throw(OptimizationAdjointUnsupportedVJPError(:reverse_constrained, adtype, autojacvec))
     end
     return nothing
 end
@@ -273,6 +288,8 @@ end
 #   kind :: :zygote         — Zygote can't order its tangents against the nested ForwardDiff tags
 #         :: :enzyme_backend — EnzymeVJP over a non-Enzyme function (Enzyme can't nest over ForwardDiff)
 #         :: :enzyme_inner   — an Enzyme-built function needs EnzymeVJP (others can't nest over Enzyme)
+#         :: :reverse_constrained — a reverse-mode outer VJP (ReverseDiffVJP/MooncakeVJP) on a
+#                                   constrained problem (mis-typed nested-AD buffer in cons_j)
 #   adtype = the OptimizationFunction's ADType; autojacvec = the chosen outer VJP.
 struct OptimizationAdjointUnsupportedVJPError <: Exception
     kind::Symbol
@@ -298,6 +315,16 @@ function Base.showerror(io::IO, e::OptimizationAdjointUnsupportedVJPError)
                 "(got adtype = $(e.adtype)). Enzyme cannot differentiate through the forward-mode AD used " *
                 "by other backends. Use `autojacvec = ReverseDiffVJP()`/`MooncakeVJP()`/`true`, or rebuild " *
                 "the OptimizationFunction with AutoEnzyme."
+        )
+    elseif e.kind === :reverse_constrained
+        print(
+            io,
+            "OptimizationAdjoint does not support reverse-mode outer VJPs " *
+                "(`autojacvec = $(e.autojacvec)`) for constrained problems: the parameter VJP nests a " *
+                "reverse-mode tape over the forward-mode constraint Jacobian, and OptimizationBase's " *
+                "`cons_j` currently mis-types the resulting nested-AD buffer (a known limitation). Use the " *
+                "default forward-mode VJP (`autojacvec = true`), or build the OptimizationFunction with " *
+                "`AutoEnzyme()` and pass `autojacvec = EnzymeVJP()`."
         )
     else # :enzyme_inner
         print(
@@ -325,7 +352,7 @@ function OptimizationAdjointSensitivityFunction(
     has_cons = lcons !== nothing && ucons !== nothing
 
     # Wrap in-place cons!(res, x, p) into an out-of-place helper.
-    # promote_type handles ForwardDiff Dual propagation when either x or q contains duals.
+    # `_opt_bufel` types the result buffer to carry ForwardDiff/ReverseDiff duals when either x or q does.
     # The KKT residual differentiates the constraints w.r.t. the parameters, so we need the
     # three-arg `cons(res, x, p)` form. OptimizationBase ≥ 5.1.2 (SciML/Optimization.jl#1184,
     # the AugLag rewrite) builds `prob.f.cons` as `(res, x, p_call = p) -> f.cons(res, x, p_call)`,
@@ -339,11 +366,7 @@ function OptimizationAdjointSensitivityFunction(
     eval_cons = let _cons3 = _cons3, n_cons = n_cons, x_star = x_star
         function (x, q)
             _cons3 === nothing && return eltype(x_star)[]
-            # promote_op gives the inferred result eltype of `+(eltype(x), eltype(q))`.
-            # Preferred over promote_type because ForwardDiff's @define_binary_dual_op
-            # bypasses promote_type — e.g. Dual + TrackedReal returns Dual{Tag, TrackedReal, N}
-            # which promote_type would not predict.
-            T = Base.promote_op(+, eltype(x), eltype(q))
+            T = _opt_bufel(eltype(x), eltype(q))
             res = Vector{T}(undef, n_cons)
             _cons3(res, x, q)
             return res
@@ -381,7 +404,7 @@ function OptimizationAdjointSensitivityFunction(
     # Reject outer-VJP backends that cannot differentiate the reuse residual (which calls the
     # OptimizationFunction's forward-mode-AD `grad`/`cons_j`). Fail fast with a clear message
     # rather than a deep AD crash. (`fwd_mode` for the Lxx fallback is resolved lazily below.)
-    _opt_validate_outer_vjp(sensealg.autojacvec, opt_f.adtype)
+    _opt_validate_outer_vjp(sensealg.autojacvec, opt_f.adtype, has_cons)
 
     # ---- ∇f at x_star: require the stored gradient ----
     ∇f = if opt_f.grad !== nothing
