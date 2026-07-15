@@ -223,6 +223,10 @@ end
                 opt_sol, nothing;
                 sensealg = OptimizationAdjoint(autojacvec = ReverseDiffVJP()), dgdu = dgdu1!
             )
+            @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError adjoint_sensitivities(
+                opt_sol, nothing;
+                sensealg = OptimizationAdjoint(autojacvec = MooncakeVJP()), dgdu = dgdu1!
+            )
         end
     end
 
@@ -324,6 +328,16 @@ end
             # function's grad/cons_j with Enzyme would give a wrong Hessian. Reverse-mode likewise.
             @test_throws ArgumentError dprow(sol_fwd, 1; autodiff = Optimization.AutoEnzyme())
             @test_throws ArgumentError dprow(sol_fwd, 1; autodiff = SciMLSensitivity.AutoReverseDiff())
+
+            # Incompatible outer VJPs raise the structured error rather than crashing deep in AD:
+            #   ZygoteVJP can't order nested ForwardDiff tags;
+            @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(
+                sol_fwd, 1; autojacvec = SciMLSensitivity.ZygoteVJP())
+            #   EnzymeVJP can't nest over a ForwardDiff-built function;
+            @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(
+                sol_fwd, 1; autojacvec = EnzymeVJP())
+            #   an Enzyme-built function needs EnzymeVJP (a non-Enzyme outer can't nest over it).
+            @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(sol_enz, 1)
         end
     end
 
@@ -498,5 +512,38 @@ end
             @test dp1 ≈ [0.5, 0.5] rtol = 1.0e-3
             @test dp2 ≈ [-0.5, 0.5] rtol = 1.0e-3
         end
+    end
+end
+
+@testset "auto-selected default sensealg (constraint-aware)" begin
+    let
+        # Differentiating a solve without a `sensealg` auto-selects the optimization adjoint:
+        # the constrained KKT `OptimizationAdjoint` when the problem has constraints, the
+        # stationarity-only `UnconstrainedOptimizationAdjoint` otherwise. Exercised through the
+        # solve-differentiation rrule (`_concrete_solve_adjoint` with `sensealg = nothing`)
+        # directly — not a full Zygote-through-solve value test, just the dispatch.
+        f = (u, p) -> (u[1] - p[1])^2 + (u[2] - p[2])^2
+        cons = (res, u, p) -> (res[1] = p[2] * u[1] + u[2] - p[1])
+        u0 = [0.5, 0.5]
+        p = [1.0, 2.0]
+        orig = SciMLBase.ChainRulesOriginator()
+        pgrad(g) = only(filter(x -> x isa AbstractArray, g))  # the lone parameter tangent
+        dgdu1!(out, _, _, _, _) = (out .= 0; out[1] = 1.0; out)
+
+        # constrained → auto-selects OptimizationAdjoint: matches the explicit KKT result
+        # (had it wrongly picked the unconstrained adjoint, the constraint would be ignored).
+        optf_c = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+        prob_c = OptimizationProblem(optf_c, u0, p; lcons = [0.0], ucons = [0.0])
+        out_c, back_c = SciMLBase._concrete_solve_adjoint(
+            prob_c, NLopt.LD_SLSQP(), nothing, u0, p, orig; verbose = false)
+        dp_expl = adjoint_sensitivities(out_c, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu1!)
+        @test pgrad(back_c([1.0, 0.0])) ≈ dp_expl rtol = 1.0e-6
+
+        # unconstrained → auto-selects UnconstrainedOptimizationAdjoint (u* = p ⇒ ∂u1/∂p = [1, 0])
+        optf_u = OptimizationFunction(f, Optimization.AutoForwardDiff())
+        prob_u = OptimizationProblem(optf_u, u0, p)
+        out_u, back_u = SciMLBase._concrete_solve_adjoint(
+            prob_u, NLopt.LD_LBFGS(), nothing, u0, p, orig; verbose = false)
+        @test pgrad(back_u([1.0, 0.0])) ≈ [1.0, 0.0] atol = 1.0e-4
     end
 end
