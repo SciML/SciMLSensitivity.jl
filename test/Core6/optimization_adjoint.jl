@@ -332,10 +332,12 @@ end
             # Incompatible outer VJPs raise the structured error rather than crashing deep in AD:
             #   ZygoteVJP can't order nested ForwardDiff tags;
             @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(
-                sol_fwd, 1; autojacvec = SciMLSensitivity.ZygoteVJP())
+                sol_fwd, 1; autojacvec = SciMLSensitivity.ZygoteVJP()
+            )
             #   EnzymeVJP can't nest over a ForwardDiff-built function;
             @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(
-                sol_fwd, 1; autojacvec = EnzymeVJP())
+                sol_fwd, 1; autojacvec = EnzymeVJP()
+            )
             #   an Enzyme-built function needs EnzymeVJP (a non-Enzyme outer can't nest over it).
             @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError dprow(sol_enz, 1)
         end
@@ -535,7 +537,8 @@ end
         optf_c = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
         prob_c = OptimizationProblem(optf_c, u0, p; lcons = [0.0], ucons = [0.0])
         out_c, back_c = SciMLBase._concrete_solve_adjoint(
-            prob_c, NLopt.LD_SLSQP(), nothing, u0, p, orig; verbose = false)
+            prob_c, NLopt.LD_SLSQP(), nothing, u0, p, orig; verbose = false
+        )
         dp_expl = adjoint_sensitivities(out_c, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu1!)
         @test pgrad(back_c([1.0, 0.0])) ≈ dp_expl rtol = 1.0e-6
 
@@ -543,7 +546,8 @@ end
         optf_u = OptimizationFunction(f, Optimization.AutoForwardDiff())
         prob_u = OptimizationProblem(optf_u, u0, p)
         out_u, back_u = SciMLBase._concrete_solve_adjoint(
-            prob_u, NLopt.LD_LBFGS(), nothing, u0, p, orig; verbose = false)
+            prob_u, NLopt.LD_LBFGS(), nothing, u0, p, orig; verbose = false
+        )
         @test pgrad(back_u([1.0, 0.0])) ≈ [1.0, 0.0] atol = 1.0e-4
     end
 end
