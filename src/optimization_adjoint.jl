@@ -75,6 +75,19 @@ _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 # promoted so we pick up the dual whether it rides in on the state (Lxx) or the parameters (residual).
 _opt_bufel(S::Type, T::Type) = typeof(oneunit(S) + oneunit(T))
 
+# Scalar element type of the parameter object `q`, used to size the promoted buffers below. For an
+# array `q` this is just `eltype(q)`. A structured (SciMLStructure) parameter, however, may not
+# define a concrete `eltype` — MTKParameters and hand-rolled structs often return `Any` — which
+# would make `_opt_bufel` call `oneunit(::Type{Any})` and throw. Fall back to the eltype of the
+# canonicalized *tunables*, which is exactly where any AD dual the outer VJP pushes actually rides
+# (the non-tunable portions are held constant), so the buffer is still sized to carry duals.
+function _opt_q_eltype(q)
+    T = eltype(q)
+    isconcretetype(T) && return T
+    isscimlstructure(q) && return eltype(canonicalize(Tunable(), q)[1])
+    return T
+end
+
 # Evaluate the stored objective gradient ∇_x f and constraint Jacobian ∂c/∂x at (x*, q),
 # passing q explicitly so the result tracks the parameters. The KKT residual feeds these to
 # the outer VJP, which differentiates them w.r.t. q to form the mixed second-order terms
@@ -84,7 +97,7 @@ _opt_bufel(S::Type, T::Type) = typeof(oneunit(S) + oneunit(T))
 # builds them with a prepped fast path plus a prep-free fallback for exactly this, sidestepping
 # the frozen DI preparation. Dispatched on Val{iip} (in-place buffer vs out-of-place return).
 function _opt_grad_q(fn, n_x, x_star, q, ::Val{true})
-    out = zeros(_opt_bufel(eltype(x_star), eltype(q)), n_x)
+    out = zeros(_opt_bufel(eltype(x_star), _opt_q_eltype(q)), n_x)
     fn(out, x_star, q)
     return out
 end
@@ -94,7 +107,7 @@ _opt_grad_q(fn, _, x_star, q, ::Val{false}) = fn(x_star, q)
 # vector when n_cons == 1 (it `vec`s a 1×n_x Jacobian), which `reshape` lifts back to 1×n_x so the
 # `J * λx` contraction is well-formed for any n_cons.
 function _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{true})
-    J = zeros(_opt_bufel(eltype(x_star), eltype(q)), n_cons, n_x)
+    J = zeros(_opt_bufel(eltype(x_star), _opt_q_eltype(q)), n_cons, n_x)
     fn(J, x_star, q)
     return J
 end
@@ -104,7 +117,7 @@ _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{false}) = reshape(fn(x_star, q), n_
 # gets a promoted buffer; the out-of-place `cons(x, p)` (OptimizationFunction{false}) already
 # returns a correctly-typed vector.
 function _opt_cons_q(fn, n_cons, x, q, ::Val{true})
-    res = Vector{_opt_bufel(eltype(x), eltype(q))}(undef, n_cons)
+    res = Vector{_opt_bufel(eltype(x), _opt_q_eltype(q))}(undef, n_cons)
     fn(res, x, q)
     return res
 end

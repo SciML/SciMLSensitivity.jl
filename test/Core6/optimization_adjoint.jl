@@ -3,6 +3,24 @@ using SciMLSensitivity, Optimization, OptimizationOptimisers, OptimizationNLopt,
 using Mooncake, ForwardDiff, FiniteDiff
 using SciMLSensitivity: MooncakeVJP, alg_autodiff, diff_type
 
+# A minimal custom SciMLStructure parameter type (a tunable vector + a non-tunable array),
+# mimicking MTKParameters without pulling in ModelingToolkit. Used by the structured-parameter
+# testset below. Structs must be defined at top level, so it lives here rather than in the
+# testset. (Interface pattern taken from test/Core1/scimlstructures_interface.jl.)
+const SSTRUCT = SciMLSensitivity.SciMLStructures
+mutable struct StructParams{T, C}
+    tunable::Vector{T}
+    cdata::C   # non-tunable; `replace` copies it by reference (the #1470 aliasing target)
+end
+SSTRUCT.isscimlstructure(::StructParams) = true
+SSTRUCT.ismutablescimlstructure(::StructParams) = true
+SSTRUCT.hasportion(::SSTRUCT.Tunable, ::StructParams) = true
+function SSTRUCT.canonicalize(::SSTRUCT.Tunable, p::StructParams)
+    return copy(p.tunable), (nb -> SSTRUCT.replace(SSTRUCT.Tunable(), p, nb)), false
+end
+SSTRUCT.replace(::SSTRUCT.Tunable, p::StructParams, nb) = StructParams(collect(nb), p.cdata)
+SSTRUCT.replace!(::SSTRUCT.Tunable, p::StructParams, nb) = (copyto!(p.tunable, nb); p)
+
 # Helper: build a NonlinearSolution from an optimization solve using the gradient as the residual,
 # and the corresponding SteadyStateAdjoint, matching what _concrete_solve_adjoint does internally.
 function build_opt_adjoint_sol(prob, alg, sensealg; kwargs...)
@@ -571,6 +589,86 @@ end
             @test all(isfinite, dp)
             @test dp ≈ [1.0, 0.0] atol = 1.0e-6   # unconstrained ⇒ du*/dp = I
         end
+    end
+
+    @testset "Out-of-place constraint (OptimizationFunction{false})" begin
+        # A genuinely out-of-place constrained problem. `OptimizationFunction{false}` instantiates
+        # `cons` as an out-of-place `(x, p)` that *returns* the constraint vector, whereas the
+        # default `iip = true` path instantiates an in-place `(res, x, p)` cons. The KKT residual
+        # must dispatch on the function's `isinplace` (`Val{iip}`) to call the right form — the
+        # old code hardcoded the 3-arg in-place call and crashed on the out-of-place cons.
+        # min (u1-1)^2 + (u2-1)^2 s.t. u1+u2 = p1 ⇒ u* = (p1/2, p1/2); G = u1 ⇒ dG/dp1 = 1/2.
+        f = (u, p) -> (u[1] - 1)^2 + (u[2] - 1)^2
+        of = OptimizationFunction{false}(
+            f, Optimization.AutoForwardDiff(); cons = (u, p) -> [u[1] + u[2] - p[1]]
+        )
+        cache = Optimization.init(
+            OptimizationProblem(of, [0.3, 0.3], [1.0]; lcons = [0.0], ucons = [0.0]), NLopt.LD_SLSQP()
+        )
+        @test SciMLBase.isinplace(cache.f) == false   # genuinely out-of-place
+        # Build the solution at the analytic optimum (a full `solve` of an out-of-place
+        # constrained problem is unsupported upstream), then take the adjoint.
+        sol = SciMLBase.build_solution(
+            cache, NLopt.LD_SLSQP(), [0.5, 0.5], 0.0; retcode = ReturnCode.Success
+        )
+        dgdu!(out, _, _, _, _) = (out[1] = 1.0; out[2] = 0.0)
+        dp = adjoint_sensitivities(sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu!)
+        @test dp ≈ [0.5] rtol = 1.0e-6
+    end
+
+    @testset "autojacvec = true valid over a FiniteDiff Lxx (decoupled from autodiff)" begin
+        # The outer VJP is independent of `autodiff` (which backs only the Lxx fallback), so a
+        # ForwardDiff outer (autojacvec = true) is valid over a FiniteDiff Lxx (autodiff = false).
+        # SLSQP exposes no Hessian ⇒ Lxx is the AD fallback; the combo must match the exact J.
+        f = (u, p) -> (u[1] - 1)^2 + p[2] * (u[2] - 1)^2
+        cons = (res, u, p) -> (res[1] = p[2] * u[1] + u[2] - p[1])
+        J_exact = [4 / 9 -16 / 27; 1 / 9 -7 / 27]
+        opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+        sol = solve(
+            OptimizationProblem(opt_f, [1.0, 1.0], [4.0, 2.0]; lcons = [0.0], ucons = [0.0]),
+            NLopt.LD_SLSQP()
+        )
+        dprow(i) = begin
+            dg!(out, _, _, _, _) = (out .= 0; out[i] = 1.0; out)
+            adjoint_sensitivities(
+                sol, nothing;
+                sensealg = OptimizationAdjoint(autojacvec = true, autodiff = false), dgdu = dg!
+            )
+        end
+        J = vcat(dprow(1)', dprow(2)')
+        @test J ≈ J_exact rtol = 1.0e-5
+    end
+
+    @testset "Structured (SciMLStructure) parameters via EnzymeVJP" begin
+        # A structured parameter (tunable vector + non-tunable array) mimicking MTKParameters,
+        # differentiated with EnzymeVJP. Exercises two structured-param fixes at once:
+        #   (1) `_opt_q_eltype` sizes the constraint/gradient buffers from the *tunables'* eltype
+        #       — a structured param's `eltype` is `Any`, which would otherwise throw from
+        #       `_opt_bufel`'s `oneunit(::Type{Any})`;
+        #   (2) the EnzymeVJP shadow is `make_zero(p)`, not `repack(zero(tunables))`, so the
+        #       non-tunable `cdata` array is not aliased-and-zeroed across repeated adjoints (#1470).
+        # min (u1-1)^2 + (u2-1)^2 s.t. u1+u2 = tunable[1]; u* = (t/2, t/2); G = u1 ⇒ dG/dt = 1/2.
+        f = (u, p) -> (u[1] - 1)^2 + (u[2] - 1)^2
+        cons = (res, u, p) -> (res[1] = u[1] + u[2] - p.tunable[1])
+        p0 = StructParams([3.0], [7.0, 8.0])
+        cdata_before = copy(p0.cdata)
+        optf = OptimizationFunction(f, Optimization.AutoEnzyme(); cons = cons)
+        cache = Optimization.init(
+            OptimizationProblem(optf, [1.0, 1.0], p0; lcons = [0.0], ucons = [0.0]), NLopt.LD_SLSQP()
+        )
+        sol = SciMLBase.build_solution(
+            cache, NLopt.LD_SLSQP(), [1.5, 1.5], 0.0; retcode = ReturnCode.Success
+        )
+        dgdu!(out, _, _, _, _) = (out[1] = 1.0; out[2] = 0.0)
+        dp1 = adjoint_sensitivities(
+            sol, nothing; sensealg = OptimizationAdjoint(autojacvec = EnzymeVJP()), dgdu = dgdu!
+        )
+        dp2 = adjoint_sensitivities(
+            sol, nothing; sensealg = OptimizationAdjoint(autojacvec = EnzymeVJP()), dgdu = dgdu!
+        )
+        @test dp1 ≈ [0.5] rtol = 1.0e-6              # dG/d(tunable[1]) = 1/2
+        @test dp2 ≈ dp1 rtol = 1.0e-8                # repeatable
+        @test p0.cdata == cdata_before              # non-tunable field not corrupted (#1470)
     end
 
     @testset "alg_autodiff keys on autojacvec, independent of autodiff" begin
