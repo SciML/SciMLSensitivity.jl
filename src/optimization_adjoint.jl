@@ -100,6 +100,16 @@ function _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{true})
 end
 _opt_jac_q(fn, n_cons, n_x, x_star, q, ::Val{false}) = reshape(fn(x_star, q), n_cons, n_x)
 
+# Raw constraint values c(x, q) with the same Val{iip} dispatch: the in-place `cons(res, x, p)`
+# gets a promoted buffer; the out-of-place `cons(x, p)` (OptimizationFunction{false}) already
+# returns a correctly-typed vector.
+function _opt_cons_q(fn, n_cons, x, q, ::Val{true})
+    res = Vector{_opt_bufel(eltype(x), eltype(q))}(undef, n_cons)
+    fn(res, x, q)
+    return res
+end
+_opt_cons_q(fn, _, x, q, ::Val{false}) = fn(x, q)
+
 function _opt_eval_lag_h(fn, n, x, σ, μ, p, ::Val{true}, ::Val{true})
     H = zeros(eltype(x), n, n); fn(H, x, σ, μ, p)
     return H
@@ -351,25 +361,27 @@ function OptimizationAdjointSensitivityFunction(
     ucons = prob.ucons
     has_cons = lcons !== nothing && ucons !== nothing
 
-    # Wrap in-place cons!(res, x, p) into an out-of-place helper.
-    # `_opt_bufel` types the result buffer to carry ForwardDiff/ReverseDiff duals when either x or q does.
-    # The KKT residual differentiates the constraints w.r.t. the parameters, so we need the
-    # three-arg `cons(res, x, p)` form. OptimizationBase ≥ 5.1.2 (SciML/Optimization.jl#1184,
-    # the AugLag rewrite) builds `prob.f.cons` as `(res, x, p_call = p) -> f.cons(res, x, p_call)`,
-    # which forwards straight to the raw user constraint and is therefore safe to differentiate
-    # through w.r.t. p. Earlier versions baked `p` in as a 2-arg `(res, x)` closure and required
-    # reaching inside it to recover the original 3-arg function; that path is no longer supported.
+    opt_f = prob.f
+    iip_val = Val{SciMLBase.isinplace(opt_f)}()
+
+    # Wrap the instantiated `cons` into a parameter-explicit evaluator, dispatched on Val{iip}
+    # via `_opt_cons_q`: in-place `cons(res, x, p)` gets a `_opt_bufel`-promoted buffer (so
+    # ForwardDiff/ReverseDiff duals in x or q propagate); out-of-place `cons(x, p)` returns its
+    # own correctly-typed vector. The KKT residual differentiates the constraints w.r.t. the
+    # parameters, so we need the p-accepting forms. OptimizationBase ≥ 5.1.2
+    # (SciML/Optimization.jl#1184, the AugLag rewrite) builds `prob.f.cons` as
+    # `(res, x, p_call = p) -> f.cons(res, x, p_call)` (iip) / `(x, p_call = p) -> f.cons(x, p_call)`
+    # (oop), which forward straight to the raw user constraint and are therefore safe to
+    # differentiate through w.r.t. p. Earlier versions baked `p` in and required reaching inside
+    # the closure to recover the p-accepting function; that path is no longer supported.
     # Single-assignment for n_cons and _cons3: both are captured by closures (g, h_I, eval_cons),
     # so assigning them in separate if/else arms would force Julia to box them.
     n_cons = has_cons ? length(lcons) : 0
     _cons3 = has_cons ? prob.f.cons : nothing
-    eval_cons = let _cons3 = _cons3, n_cons = n_cons, x_star = x_star
+    eval_cons = let _cons3 = _cons3, n_cons = n_cons, x_star = x_star, iip_val = iip_val
         function (x, q)
             _cons3 === nothing && return eltype(x_star)[]
-            T = _opt_bufel(eltype(x), eltype(q))
-            res = Vector{T}(undef, n_cons)
-            _cons3(res, x, q)
-            return res
+            return _opt_cons_q(_cons3, n_cons, x, q, iip_val)
         end
     end
 
@@ -397,8 +409,6 @@ function OptimizationAdjointSensitivityFunction(
     active_lb_var = lb !== nothing ? findall(i -> abs(x_star[i] - lb[i]) <= atol, 1:n_x) : Int[]
     active_ub_var = ub !== nothing ? findall(i -> abs(x_star[i] - ub[i]) <= atol, 1:n_x) : Int[]
 
-    opt_f = prob.f
-    iip_val = Val{SciMLBase.isinplace(opt_f)}()
     has_p_val = Val{prob isa SciMLBase.AbstractOptimizationProblem}()
 
     # Reject outer-VJP backends that cannot differentiate the reuse residual (which calls the
@@ -414,8 +424,11 @@ function OptimizationAdjointSensitivityFunction(
     end
 
     # Precompute full constraint Jacobian once if cons_j is available (reused across passes).
+    # `_opt_jac_q` (not `_opt_eval_mat`) so the out-of-place single-constraint case is
+    # normalized: the oop `cons_j` returns a vec'd length-n_x vector when n_cons == 1, which
+    # the reshape lifts back to 1×n_x so the row-indexing/vcat below stay well-formed.
     J_full = has_cons && opt_f.cons_j !== nothing ?
-        _opt_eval_mat(opt_f.cons_j, n_cons, n_x, x_star, p, iip_val, has_p_val) : nothing
+        _opt_jac_q(opt_f.cons_j, n_cons, n_x, x_star, p, iip_val) : nothing
 
     # Equality constraint Jacobian (fixed; independent of active set).
     Jxg = if isempty(eq_idx)
