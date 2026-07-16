@@ -146,17 +146,6 @@ function jacobian(
     return J
 end
 
-function gradient(
-        f, x::AbstractArray{<:Number},
-        alg::AbstractOverloadingSensitivityAlgorithm
-    )
-    return if alg_autodiff(alg)
-        ForwardDiff.gradient(unwrapped_f(f), x)
-    else
-        FiniteDiff.finite_difference_gradient(f, x, diff_type(alg))
-    end
-end
-
 function jacobian!(
         J::Nothing, f, x::AbstractArray{<:Number},
         fx::Union{Nothing, AbstractArray{<:Number}},
