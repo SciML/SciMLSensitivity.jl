@@ -513,6 +513,78 @@ end
             @test dp2 ≈ [-0.5, 0.5] rtol = 1.0e-3
         end
     end
+
+    @testset "Near-coincident two-sided band folds to equality (no singular KKT)" begin
+        let
+            # Minimize (u1-1)^2 + (u2-1)^2  s.t.  u1 + u2 = p[1]  ⇒  u* = (p1/2, p1/2).
+            # Posing the constraint as a two-sided band [0, 1e-10] narrower than 2*atol makes it
+            # numerically an equality: left as an inequality it would register active at *both*
+            # bounds, stacking ±J[i,:] into a singular KKT matrix (NaN duals). It must instead be
+            # folded into the equality set and give the same finite sensitivity as lcons == ucons.
+            f = (u, p) -> (u[1] - 1)^2 + (u[2] - 1)^2
+            cons = (res, u, p) -> (res[1] = u[1] + u[2] - p[1])
+            p = [1.0]
+            opt_f = OptimizationFunction(f, Optimization.AutoForwardDiff(); cons = cons)
+            dgdu!(out, _, _, _, _) = (out[1] = 1.0; out[2] = 0.0)
+
+            dp_of(ucons) = begin
+                prob = OptimizationProblem(opt_f, [0.3, 0.3], p; lcons = [0.0], ucons = ucons)
+                sol = solve(prob, NLopt.LD_SLSQP())
+                adjoint_sensitivities(sol, nothing; sensealg = OptimizationAdjoint(), dgdu = dgdu!)
+            end
+
+            dp_eq = dp_of([0.0])        # exact equality
+            dp_nc = dp_of([1.0e-10])    # near-coincident band (< 2*atol)
+            @test all(isfinite, dp_nc)
+            @test dp_nc ≈ [0.5] rtol = 1.0e-3
+            @test dp_nc ≈ dp_eq rtol = 1.0e-3
+        end
+    end
+
+    @testset "Inactive inequality without stored cons_j (mu is zero)" begin
+        let
+            # A constrained problem whose stored function has `grad` but no `cons_j` (built with
+            # NoAD + an explicit gradient), and whose lone inequality is strictly inactive at u*.
+            # `mu_full` is all-zero, so the constraint-Jacobian term drops out — the residual/Lxx
+            # fallback must skip `cons_j` rather than call `_opt_jac_q(nothing, …)` (a MethodError).
+            f = (u, p) -> (u[1] - p[1])^2 + (u[2] - p[2])^2
+            gradf = (G, u, p) -> (G[1] = 2 * (u[1] - p[1]); G[2] = 2 * (u[2] - p[2]); G)
+            consf = (res, u, p) -> (res[1] = u[1] + u[2]; res)
+            p = [0.3, 0.4]
+
+            opt_f = OptimizationFunction(f, SciMLBase.NoAD(); grad = gradf, cons = consf)
+            prob = OptimizationProblem(opt_f, [0.0, 0.0], p; lcons = [-Inf], ucons = [100.0])
+            cache = Optimization.init(prob, NLopt.LD_SLSQP())
+            @test cache.f.cons_j === nothing
+            @test cache.f.grad !== nothing
+
+            # constraint inactive at the unconstrained optimum u* = p
+            sol = SciMLBase.build_solution(
+                cache, NLopt.LD_SLSQP(), copy(p), 0.0; retcode = ReturnCode.Success
+            )
+            dgdu!(out, _, _, _, _) = (out[1] = 1.0; out[2] = 0.0)
+            # AutoFiniteDiff avoids nesting an AD backend over the NoAD-built grad in the Lxx fallback
+            dp = adjoint_sensitivities(
+                sol, nothing;
+                sensealg = OptimizationAdjoint(autodiff = Optimization.AutoFiniteDiff()), dgdu = dgdu!
+            )
+            @test all(isfinite, dp)
+            @test dp ≈ [1.0, 0.0] atol = 1.0e-6   # unconstrained ⇒ du*/dp = I
+        end
+    end
+
+    @testset "autojacvec = false honors FiniteDiff outer (alg_autodiff)" begin
+        # alg_autodiff selects the outer materialized-Jacobian AD mode (true=ForwardDiff,
+        # false=FiniteDiff) for the Bool path. An explicit `autojacvec = false` must force
+        # FiniteDiff (safe over any inner), while the load-bearing inner/outer coupling still
+        # forbids a ForwardDiff outer over a FiniteDiff inner.
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = false)) == false
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = true)) == true
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = false, autodiff = false)) == false
+        # coupling: true outer requested, but FiniteDiff inner ⇒ FiniteDiff outer
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = true, autodiff = false)) == false
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = true, autodiff = true)) == true
+    end
 end
 
 @testset "auto-selected default sensealg (constraint-aware)" begin
@@ -547,5 +619,50 @@ end
             prob_u, NLopt.LD_LBFGS(), nothing, u0, p, orig; verbose = false
         )
         @test pgrad(back_u([1.0, 0.0])) ≈ [1.0, 0.0] atol = 1.0e-4
+    end
+end
+
+@testset "backpass structural tangent (parameter cotangent on the solution)" begin
+    # The solve-differentiation pullback returns an `OptimizationSolution`. A ChainRules-native
+    # consumer may hand back a *structural* tangent (`Tangent`/`NamedTuple`) rather than the bare
+    # `u`-cotangent Zygote produces. `OptimizationSolution` has no `prob` field — its parameters
+    # live in the cache at `cache.reinit_cache.p` — so the backpass must read the parameter
+    # cotangent from there (not a nonexistent `Δ.prob.p`, which drops it silently and throws on a
+    # raw NamedTuple), and must not double the KKT gradient.
+    Tangent = SciMLSensitivity.Tangent
+    orig = SciMLBase.ChainRulesOriginator()
+    pgrad(t) = only(filter(x -> x isa AbstractArray, t))
+    f = (u, p) -> (u[1] - p[1])^2 + (u[2] - p[2])^2   # u* = p ⇒ du*/dp = I
+
+    for (alg, sensealg) in (
+            (NLopt.LD_LBFGS(), UnconstrainedOptimizationAdjoint()),  # steadystatebackpass
+            (NLopt.LD_LBFGS(), OptimizationAdjoint()),               # optimizationbackpass
+        )
+        optf = OptimizationFunction(f, Optimization.AutoForwardDiff())
+        prob = OptimizationProblem(optf, [0.0, 0.0], [1.0, 2.0])
+        out, back = SciMLBase._concrete_solve_adjoint(
+            prob, alg, sensealg, prob.u0, prob.p, orig; verbose = false
+        )
+        ST = typeof(out)
+        CT = typeof(out.cache)
+        RIC = typeof(getfield(out.cache, :reinit_cache))
+
+        # (a) KKT contribution via `Δ.u` matches the bare-array path — no doubling.
+        ref = pgrad(back([1.0, 0.0]))
+        @test ref ≈ [1.0, 0.0] atol = 1.0e-4
+        @test pgrad(back(Tangent{ST}(; u = [1.0, 0.0]))) ≈ ref atol = 1.0e-8
+
+        # (b) an explicit parameter cotangent at the real location `cache.reinit_cache.p` is
+        # accumulated (with `Δ.u = 0` the KKT part is zero, so only this survives).
+        Δp = [3.0, 5.0]
+        tg = Tangent{ST}(; u = zeros(2),
+            cache = Tangent{CT}(; reinit_cache = Tangent{RIC}(; p = Δp)))
+        @test pgrad(back(tg)) ≈ Δp atol = 1.0e-8
+
+        # (c) a raw NamedTuple tangent must not throw (the old `Δ.prob.p` did).
+        nt = (; u = [1.0, 0.0], cache = (; reinit_cache = (; p = zeros(2))))
+        local rnt
+        @test (rnt = pgrad(back(nt)); true)
+        @test rnt ≈ [1.0, 0.0] atol = 1.0e-4
     end
 end
