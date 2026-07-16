@@ -1557,7 +1557,7 @@ end
 
 """
 ```julia
-UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
 ```
 
 An implementation of adjoint differentiation for unconstrained optimization problems.
@@ -1572,18 +1572,22 @@ steady-state adjoint method.
 
 ```julia
 UnconstrainedOptimizationAdjoint(; chunk_size = 0, autodiff = true,
+    diff_type = Val{:central}, objective_ad = true,
     autojacvec = nothing, linsolve = nothing,
     linsolve_kwargs = (;))
 ```
 
 ## Keyword Arguments
 
-  - `autodiff`: Use automatic differentiation (ForwardDiff) for the objective gradient
-    and Jacobians when needed. If `false`, FiniteDiff is used with `diff_type=Val{:central}`.
-    Defaults to `true`.
+  - `autodiff`: Use automatic differentiation for constructing the Jacobian
+    if the Jacobian needs to be constructed. Defaults to `true`.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
     choice of chunk size.
+  - `diff_type`: The method used by FiniteDiff.jl for constructing the Jacobian
+    if the full Jacobian is required with `autodiff=false`.
+  - `objective_ad`: Use automatic differentiation for computing the gradient of the
+    objective function when not provided. Defaults to `true`.
   - `autojacvec`: Calculate the vector-Jacobian product (`J'*v`) via automatic
     differentiation with special seeding. The total set of choices are:
 
@@ -1610,31 +1614,33 @@ documentation page or the docstrings of the vjp types.
 Johnson, S. G., Notes on Adjoint Methods for 18.336, Online at
 http://math.mit.edu/stevenj/18.336/adjoint.pdf (2007)
 """
-struct UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK} <:
+struct UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD} <:
     AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
     autojacvec::VJP
     linsolve::LS
     linsolve_kwargs::LK
+    objective_ad::OAD
 end
 
 function UnconstrainedOptimizationAdjoint(;
-        chunk_size = 0, autodiff = true, diff_type = Val{:forward},
-        autojacvec = nothing, linsolve = nothing,
+        chunk_size = 0, autodiff = true,
+        diff_type = Val{:central}, objective_ad = true, autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;)
     )
     ad = sensealg_autodiff_as_bool(autodiff)
     return UnconstrainedOptimizationAdjoint{
         chunk_size, ad, diff_type, typeof(autojacvec),
-        typeof(linsolve), typeof(linsolve_kwargs),
-    }(autojacvec, linsolve, linsolve_kwargs)
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad),
+    }(autojacvec, linsolve, linsolve_kwargs, objective_ad)
 end
 
 function setvjp(
-        sensealg::UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK},
+        sensealg::UnconstrainedOptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, OAD},
         vjp
-    ) where {CS, AD, FDT, VJP, LS, LK}
-    return UnconstrainedOptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK}(
-        vjp, sensealg.linsolve, sensealg.linsolve_kwargs
+    ) where {CS, AD, FDT, VJP, LS, LK, OAD}
+    return UnconstrainedOptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, OAD}(
+        vjp, sensealg.linsolve,
+        sensealg.linsolve_kwargs, sensealg.objective_ad
     )
 end
 
