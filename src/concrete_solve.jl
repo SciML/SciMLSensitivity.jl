@@ -2786,9 +2786,13 @@ function SciMLBase._concrete_solve_adjoint(
         args...; kwargs...
     )
     # Auto-select the optimization adjoint: use the constrained KKT adjoint
-    # (`OptimizationAdjoint`) when the problem carries constraints, otherwise the
-    # stationarity-only `UnconstrainedOptimizationAdjoint`.
-    default_sensealg = prob.f.cons === nothing ?
+    # (`OptimizationAdjoint`) when the problem carries constraints — general constraints
+    # (`cons`) or variable bounds (`lb`/`ub`), both of which enter the KKT system — otherwise
+    # the stationarity-only `UnconstrainedOptimizationAdjoint`. Bounds matter: at an active
+    # bound the stationarity premise ∇f(u*) = 0 fails, so the unconstrained adjoint would
+    # silently return wrong sensitivities.
+    unconstrained = prob.f.cons === nothing && prob.lb === nothing && prob.ub === nothing
+    default_sensealg = unconstrained ?
         UnconstrainedOptimizationAdjoint() : OptimizationAdjoint()
     return SciMLBase._concrete_solve_adjoint(
         prob, alg, default_sensealg,
