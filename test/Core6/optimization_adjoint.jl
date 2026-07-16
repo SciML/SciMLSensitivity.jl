@@ -656,8 +656,10 @@ end
         # (b) an explicit parameter cotangent at the real location `cache.reinit_cache.p` is
         # accumulated (with `Δ.u = 0` the KKT part is zero, so only this survives).
         Δp = [3.0, 5.0]
-        tg = Tangent{ST}(; u = zeros(2),
-            cache = Tangent{CT}(; reinit_cache = Tangent{RIC}(; p = Δp)))
+        tg = Tangent{ST}(;
+            u = zeros(2),
+            cache = Tangent{CT}(; reinit_cache = Tangent{RIC}(; p = Δp))
+        )
         @test pgrad(back(tg)) ≈ Δp atol = 1.0e-8
 
         # (c) a raw NamedTuple tangent must not throw (the old `Δ.prob.p` did).
