@@ -385,16 +385,25 @@ function OptimizationAdjointSensitivityFunction(
         end
     end
 
-    # Classify constraints: equality where lcons[i] == ucons[i]
-    eq_idx = has_cons ? findall(i -> lcons[i] == ucons[i], eachindex(lcons)) : Int[]
-    ineq_idx = has_cons ? findall(i -> lcons[i] != ucons[i], eachindex(lcons)) : Int[]
+    # Active-set proximity tolerance: a constraint/bound within `atol` of a bound is active.
+    atol = sensealg.active_tol === nothing ? sqrt(eps(eltype(x_star))) : sensealg.active_tol
+
+    # Classify constraints. Equalities are `lcons[i] == ucons[i]`; additionally, a two-sided
+    # inequality whose band is no wider than the active tolerance (`|lcons[i] - ucons[i]| <= 2atol`)
+    # is *numerically* an equality — its value cannot be resolved within the band. Fold it into the
+    # equality set (one row, free-sign multiplier). This is both more accurate and avoids a KKT
+    # singularity: left as an inequality such a band could register as active at *both* bounds,
+    # stacking the linearly dependent rows `-J[i,:]` and `+J[i,:]` in Jxhι and making the KKT
+    # matrix singular (Inf/NaN duals). `2atol` is exactly the width at which double-activity
+    # becomes possible (`|c-lcons| <= atol` and `|c-ucons| <= atol` ⟹ `|lcons-ucons| <= 2atol`).
+    eq_idx = has_cons ? findall(i -> abs(lcons[i] - ucons[i]) <= 2 * atol, eachindex(lcons)) : Int[]
+    ineq_idx = has_cons ? findall(i -> abs(lcons[i] - ucons[i]) > 2 * atol, eachindex(lcons)) : Int[]
 
     # Evaluate constraints at solution
     c_val = eval_cons(x_star, p)
 
     # Find active inequality constraints (proximity-based initial estimate).
     # Refined below via multiplier sign check to avoid spurious active constraints.
-    atol = sensealg.active_tol === nothing ? sqrt(eps(eltype(x_star))) : sensealg.active_tol
     active_lb = filter(i -> abs(c_val[i] - lcons[i]) <= atol, ineq_idx)
     active_ub = filter(i -> abs(c_val[i] - ucons[i]) <= atol, ineq_idx)
 
@@ -578,7 +587,11 @@ function OptimizationAdjointSensitivityFunction(
                 n_cons = n_cons, iip_val = iip_val
             function (x)
                 gx = _opt_grad_q(opt_f.grad, n_x, x, p, iip_val)
-                n_cons > 0 &&
+                # Skip the constraint term when no `cons_j` is stored. Reaching here with
+                # `cons_j === nothing` implies no equalities and no active inequalities (those
+                # paths already threw `:cons_jac`), so `mu_full` is all-zero and the term is
+                # exactly zero — guarding avoids calling `_opt_jac_q(nothing, …)`.
+                n_cons > 0 && opt_f.cons_j !== nothing &&
                     (gx = gx + _opt_jac_q(opt_f.cons_j, n_cons, n_x, x, p, iip_val)' * mu_full)
                 return gx
             end
@@ -645,7 +658,9 @@ function OptimizationAdjointSensitivityFunction(
             function (_, q_full, _)
                 # stationarity: objective part λx'∇_x f, plus constraint part mu·(J λx)
                 val = sum(λx .* _opt_grad_q(opt_f.grad, n_x, x_star, q_full, iip_val))
-                if n_cons > 0
+                # See `gradL_x`: `cons_j === nothing` here ⟹ `mu_full` all-zero, so this term is
+                # zero; guarding avoids calling `_opt_jac_q(nothing, …)`.
+                if n_cons > 0 && opt_f.cons_j !== nothing
                     J = _opt_jac_q(opt_f.cons_j, n_cons, n_x, x_star, q_full, iip_val)
                     val += sum(mu_full .* (J * λx))
                 end
@@ -675,9 +690,26 @@ function OptimizationAdjointSensitivityFunction(
         _config = compile_tape(autojacvec) ? ReverseDiff.compile(_tape) : _tape
         nothing, _config, nothing
     elseif autojacvec isa EnzymeVJP
+        # Mirror the canonical Enzyme branch in `adjointdiffcache` (adjoint_common.jl). Unlike the
+        # ReverseDiff/Mooncake/Bool arms above, the Enzyme arm does not repack internally: it
+        # delegates to the shared `_vecjacobian!`, which differentiates `f_F` at the *structured*
+        # `p` (passed as the primal at the `OptimizationAdjointProblem` call site), builds a
+        # matching structured shadow, and `canonicalize`s that shadow back to flat tunables for
+        # `dp`. The shadow must be `make_zero(p)`, not `repack(zero(tunables))`: `repack` copies
+        # `p`'s non-tunable arrays *by reference*, which `_vecjacobian!`'s `remake_zero!` would
+        # then zero, corrupting `p` across repeated differentiation (issue #1470).
         _pf = f_F  # OOP: Enzyme.make_zero(f) called inline in _vecjacobian!
-        _needs_shadow = _needs_repack
-        _shadow_p = _needs_shadow ? repack(zero(tunables)) : nothing
+        _shadow_p = if !(p isa SciMLBase.NullParameters) && _needs_repack
+            Enzyme.make_zero(p)
+        elseif !(p isa SciMLBase.NullParameters) && p isa AbstractArray &&
+                typeof(tunables) !== typeof(zero(tunables))
+            # View-backed tunables (e.g. a ComponentArray over a SubArray): the dense
+            # `zero(tunables)` shadow would mismatch the primal's concrete type, so pre-allocate
+            # a dense primal buffer that `_vecjacobian!` fills with the current `p` values.
+            EnzymeViewPrimalBuffer(copy(tunables))
+        else
+            nothing
+        end
         _config = get_paramjac_config(
             autojacvec, p, f_F, y, tunables, nothing;
             numindvar = 1, alg = nothing
@@ -753,6 +785,15 @@ function OptimizationAdjointProblem(
         Δu
     )
     S = OptimizationAdjointSensitivityFunction(prob, opt_sol, sensealg, p, Δu)
-    vecjacobian!(nothing, S.y, S.λ, S.diffcache.tunables, nothing, S; dgrad = S.dp)
+    # Choose the primal the outer VJP differentiates at. The EnzymeVJP arm reuses the shared
+    # `_vecjacobian!` machinery, which (like SteadyStateAdjoint) expects the *structured* `p` as
+    # the primal: it feeds it straight into `f_F` (whose stored `grad`/`cons_j` want the
+    # structured parameter), builds a matching structured shadow, then `canonicalize`s that shadow
+    # back to flat tunables for `dp`. The ReverseDiff/Mooncake/Bool arms are instead custom-built
+    # here over flat tunables (their tapes/wrappers repack internally, since the shared no-`t`
+    # path is gated on `AbstractNonlinearProblem`), so they take `S.diffcache.tunables`. For
+    # plain-`Vector` parameters the two coincide.
+    vjp_p = sensealg.autojacvec isa EnzymeVJP ? p : S.diffcache.tunables
+    vecjacobian!(nothing, S.y, S.λ, vjp_p, nothing, S; dgrad = S.dp)
     return -S.dp
 end
