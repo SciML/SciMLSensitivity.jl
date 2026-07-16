@@ -573,16 +573,17 @@ end
         end
     end
 
-    @testset "autojacvec = false honors FiniteDiff outer (alg_autodiff)" begin
+    @testset "alg_autodiff keys on autojacvec, independent of autodiff" begin
         # alg_autodiff selects the outer materialized-Jacobian AD mode (true=ForwardDiff,
-        # false=FiniteDiff) for the Bool path. An explicit `autojacvec = false` must force
-        # FiniteDiff (safe over any inner), while the load-bearing inner/outer coupling still
-        # forbids a ForwardDiff outer over a FiniteDiff inner.
+        # false=FiniteDiff) for the Bool path. It keys purely on `autojacvec`: the outer VJP
+        # differentiates the KKT residual over the stored dual-tolerant grad/cons_j and never
+        # touches the `Lxx` fallback that `autodiff` backs, so the two are independent — a
+        # ForwardDiff outer is valid over a FiniteDiff `Lxx`.
         @test alg_autodiff(OptimizationAdjoint(autojacvec = false)) == false
         @test alg_autodiff(OptimizationAdjoint(autojacvec = true)) == true
+        # `autodiff` does not affect the outer AD mode in either direction
         @test alg_autodiff(OptimizationAdjoint(autojacvec = false, autodiff = false)) == false
-        # coupling: true outer requested, but FiniteDiff inner ⇒ FiniteDiff outer
-        @test alg_autodiff(OptimizationAdjoint(autojacvec = true, autodiff = false)) == false
+        @test alg_autodiff(OptimizationAdjoint(autojacvec = true, autodiff = false)) == true
         @test alg_autodiff(OptimizationAdjoint(autojacvec = true, autodiff = true)) == true
     end
 end

@@ -1709,7 +1709,10 @@ OptimizationAdjoint(; chunk_size = 0, autodiff = true,
       + `nothing`: chooses an automatic algorithm. Defaults to `true` (ForwardDiff
         via materialized Jacobian) and is recommended for most users.
       + `false`: the Jacobian is constructed via FiniteDiff.jl.
-      + `true`: the Jacobian is constructed via ForwardDiff.jl.
+      + `true`: the Jacobian is constructed via ForwardDiff.jl. This requires the
+        OptimizationFunction's stored `grad`/`cons_j` to be dual-tolerant (built with a
+        ForwardDiff/Enzyme backend); for a non-dual-tolerant function use `false`. Independent of
+        `autodiff`, which only backs the `Lxx` fallback and never enters the outer VJP.
       + `ZygoteVJP`: Uses Zygote.jl for the vjp.
       + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
       + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
@@ -1779,14 +1782,16 @@ end
 # backend in the AD type-parameter slot, so the generic definition would return that object and
 # fail in a boolean context; this override maps it to the Bool the wrappers expect.
 #
-# This deliberately keys off the *inner* `autodiff`, not `autojacvec`, and that coupling is
-# load-bearing: the outer Jacobian and the inner Lagrangian gradient are nested, so their AD
-# modes must be compatible. A ForwardDiff outer seeds the parameters with Dual numbers, but a
-# FiniteDiff *inner* gradient has concretely-Float64 caches and can't accept Duals
-# (`Float64(::Dual)` errors). So a FiniteDiff inner requires a FiniteDiff (Dual-free) outer,
-# which is exactly what `!(autodiff isa AutoFiniteDiff)` gives: FiniteDiff inner → false →
-# FiniteDiff outer; ForwardDiff/Enzyme inner (Dual-tolerant) → true → ForwardDiff outer.
-@inline alg_autodiff(alg::OptimizationAdjoint) = !(alg.autodiff isa AutoFiniteDiff)
+# It keys purely on `autojacvec`, NOT on `autodiff` — the two are independent here. `autodiff`
+# only backs the `Lxx` Hessian fallback, which feeds the *concrete* KKT solve for the constant
+# multipliers `λ` *before* the outer VJP runs. The outer VJP then differentiates the KKT residual
+# `Φ(q) = λ · F(x*, q)` w.r.t. `q`, nesting over the stored (dual-tolerant) `grad`/`cons_j` — it
+# never touches the `Lxx` fallback. So a ForwardDiff outer works over a FiniteDiff `Lxx`, and the
+# user's `autojacvec` choice is honored directly: `true`/`nothing` → ForwardDiff, `false` →
+# FiniteDiff. (Whether a ForwardDiff outer is *admissible* depends on the OptimizationFunction's
+# own AD backend making `grad`/`cons_j` dual-tolerant, not on `autodiff`; a non-dual-tolerant
+# function should pass `autojacvec = false`.)
+@inline alg_autodiff(alg::OptimizationAdjoint) = !(alg.autojacvec === false)
 
 abstract type VJPChoice end
 
