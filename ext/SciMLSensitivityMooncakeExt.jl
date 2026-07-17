@@ -4,7 +4,8 @@ using SciMLSensitivity: SciMLSensitivity, FakeIntegrator
 using Mooncake: Mooncake
 import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_run_ad,
     MooncakeVJP, MooncakeLoaded,
-    DiffEqBase, MooncakeAdjoint, _init_originator_gradient
+    DiffEqBase, MooncakeAdjoint, _init_originator_gradient,
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
@@ -237,6 +238,104 @@ function SciMLBase._concrete_solve_adjoint(
     u = state_values(out)
     return SciMLBase.sensitivity_solution(out, u, current_time(out)),
         mooncake_adjoint_backpass
+end
+
+# Mooncake stacked over ReverseDiffAdjoint/TrackerAdjoint/ForwardSensitivity
+# (SciML/SciMLSensitivity.jl#1510, chalk-lab/Mooncake.jl#1208). `solve`
+# reports which AD is active via `set_mooncakeoriginator_if_mooncake`, a
+# `@mooncake_overlay` meant to swap in `MooncakeOriginator()`. That never
+# fires here: `ChainRulesOriginator`/`MooncakeOriginator` are zero-field
+# structs, which Julia's compiler treats as compile-time constants regardless
+# of runtime provenance, so the whole overlaid call gets folded away before
+# any rule dispatch happens. These hand-written `solve_up` rules sidestep
+# detection entirely -- they only ever run under Mooncake, so they construct
+# `MooncakeOriginator()` directly and dispatch into the existing
+# `MooncakeOriginator` methods added in #1420 (src/concrete_solve.jl), which
+# re-solve with a plain `Float64` primal Mooncake can build a `CoDual` for.
+# Being more specific than the generic rule's `Union{Nothing,
+# AbstractSensitivityAlgorithm}` signature, dispatch prefers these three
+# sensealgs and falls back to the generic rule for everything else.
+const _MooncakeOverAnotherADSensealg = Union{
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity,
+}
+
+function _solve_up_mooncake_over_another_ad(prob, sensealg, u0, p, alg_and_kwargs...; kwargs...)
+    return DiffEqBase._solve_adjoint(
+        prob, sensealg, u0, p, SciMLBase.MooncakeOriginator(), alg_and_kwargs...; kwargs...
+    )
+end
+
+# `cr_dfargs` is shaped like `_concrete_solve_adjoint`'s own arg list
+# (`prob̄, alḡ, sensealḡ, ū0, p̄, originator̄, tail̄...`), not `solve_up`'s --
+# `_solve_adjoint` takes the same no-tail branch whether `alg` arrived
+# explicitly or was extracted from kwargs, so `alg_and_rest` can be empty here
+# even though `_concrete_solve_adjoint` always has an `alg` slot. Reorder/pad
+# to `fargs = (f, prob, sensealg, u0, p, alg_and_rest...)`, dropping
+# `originator` (a zero-field marker, never differentiable).
+function _match_fargs_cotangents(cr_dfargs, alg_and_rest)
+    alg_and_rest_cotangents = isempty(alg_and_rest) ? () : (cr_dfargs[2], cr_dfargs[7:end]...)
+    return (
+        NoTangent(), cr_dfargs[1], cr_dfargs[3], cr_dfargs[4], cr_dfargs[5],
+        alg_and_rest_cotangents...,
+    )
+end
+
+function Mooncake.rrule!!(
+        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
+        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
+        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+    )
+    fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
+    primals = Mooncake.tuple_map(Mooncake.primal, fargs)
+    lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
+    y_primal, cr_pb = _solve_up_mooncake_over_another_ad(primals[2:end]...)
+    y_fdata = Mooncake.fdata(Mooncake.zero_tangent(y_primal))
+
+    function pb!!(y_rdata)
+        cr_tangent = Mooncake.to_cr_tangent(Mooncake.tangent(y_fdata, y_rdata))
+        cr_dfargs = _match_fargs_cotangents(cr_pb(cr_tangent), alg_and_rest)
+        return Mooncake.tuple_map(fargs, lazy_rdata, cr_dfargs) do x, l_rdata, cr_dx
+            return Mooncake.increment_and_get_rdata!(
+                Mooncake.tangent(x), Mooncake.instantiate(l_rdata), cr_dx
+            )
+        end
+    end
+
+    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+end
+
+function Mooncake.rrule!!(
+        ::Mooncake.CoDual{typeof(Core.kwcall)},
+        kwargs::Mooncake.CoDual{<:NamedTuple},
+        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
+        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
+        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+    )
+    fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
+    primals = Mooncake.tuple_map(Mooncake.primal, fargs)
+    lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
+    # `originator` is dropped from the forwarded kwargs -- we supply the
+    # correct one ourselves above, unconditionally, since this rule only ever
+    # fires under Mooncake.
+    kwargs_p = Base.structdiff(Mooncake.primal(kwargs), NamedTuple{(:originator,)})
+    y_primal, cr_pb = _solve_up_mooncake_over_another_ad(primals[2:end]...; kwargs_p...)
+    y_fdata = Mooncake.fdata(Mooncake.zero_tangent(y_primal))
+    kwargs_rdata = Mooncake.rdata(Mooncake.zero_tangent(Mooncake.primal(kwargs)))
+
+    function pb!!(y_rdata)
+        cr_tangent = Mooncake.to_cr_tangent(Mooncake.tangent(y_fdata, y_rdata))
+        cr_dfargs = _match_fargs_cotangents(cr_pb(cr_tangent), alg_and_rest)
+        args_rdata = Mooncake.tuple_map(fargs, lazy_rdata, cr_dfargs) do x, l_rdata, cr_dx
+            return Mooncake.increment_and_get_rdata!(
+                Mooncake.tangent(x), Mooncake.instantiate(l_rdata), cr_dx
+            )
+        end
+        return Mooncake.NoRData(), kwargs_rdata, args_rdata...
+    end
+
+    return Mooncake.CoDual(y_primal, y_fdata), pb!!
 end
 
 end

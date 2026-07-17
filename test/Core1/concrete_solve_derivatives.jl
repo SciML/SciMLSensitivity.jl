@@ -444,24 +444,20 @@ Tests callable structs with different AD backends
     end
 
     # Mooncake over another AD's adjoint (`ReverseDiffAdjoint`/`TrackerAdjoint`,
-    # and `ForwardSensitivity` below) is unsupported and won't be fixed: the
-    # `DiffEqBase.solve` overlay returns an `ODESolution{TrackedReal/Dual,…}`
-    # under these sensealgs, but Mooncake's inference is overlay-blind and
-    # records `ODESolution{Float64,…}`, so `build_rrule`'s typeassert fails. It
-    # surfaces as a fast `TypeError` or, under coverage instrumentation (the CI
-    # config), a multi-hour compile/inference hang that times out Core1. This is
-    # a documented Mooncake known-limitation (chalk-lab/Mooncake.jl#1208, closed
-    # won't-fix; the suggested workaround is a hand-written `rrule!!`). These
-    # AD-mixing testsets (added in #1420) are skipped permanently. `@test_skip`
-    # does not evaluate its argument, so it cannot hang. See #1510.
+    # and `ForwardSensitivity` below) previously hit a typeassert (or hung
+    # under coverage instrumentation): `set_mooncakeoriginator_if_mooncake`
+    # gets constant-folded away, so `solve_up` never saw `MooncakeOriginator()`
+    # here. Fixed with hand-written `Mooncake.rrule!!`s for `solve_up` in
+    # SciMLSensitivityMooncakeExt.jl that construct it directly. See #1510,
+    # chalk-lab/Mooncake.jl#1208.
     @testset "Mooncake with ReverseDiffAdjoint" begin
-        @test_skip gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p) ≈
-            ref_grad_senseloss
+        result = gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p)
+        @test result ≈ ref_grad_senseloss
     end
 
     @testset "Mooncake with TrackerAdjoint" begin
-        @test_skip gradient_mooncake(senseloss(TrackerAdjoint()), u0p) ≈
-            ref_grad_senseloss
+        result = gradient_mooncake(senseloss(TrackerAdjoint()), u0p)
+        @test result ≈ ref_grad_senseloss
     end
 
     # Test with p-only differentiation (senseloss3 and senseloss4 from alternative_ad_frontend.jl)
@@ -493,18 +489,12 @@ Tests callable structs with different AD backends
         end
     end
 
-    # Mooncake + `ForwardSensitivity` via the dedicated `MooncakeOriginator`
-    # dispatch added in #1420. p-only because `ForwardSensitivity` can't
-    # differentiate `u0`, and the Mooncake dispatch rewrites the `du0`
-    # slot to `NoTangent()` so Mooncake's cotangent threading doesn't trip
-    # on the main method's `@not_implemented` stub for `du0`.
-    # Same unsupported Mooncake-over-another-AD pattern as the ReverseDiffAdjoint/
-    # TrackerAdjoint testsets above (here over a `ForwardSensitivity` solve, whose
-    # overlay returns an `ODESolution{Dual,…}`). Won't be fixed on the Mooncake
-    # side — chalk-lab/Mooncake.jl#1208. Skipped permanently. See #1510.
+    # p-only: `ForwardSensitivity` can't differentiate `u0`; the
+    # `MooncakeOriginator` dispatch added in #1420 replaces that cotangent
+    # with `NoTangent()`. Same Mooncake-over-another-AD fix as above. See #1510.
     @testset "Mooncake with ForwardSensitivity (p-only)" begin
-        @test_skip gradient_mooncake(senseloss_p(ForwardSensitivity()), p_only) ≈
-            ref_grad_p
+        result = gradient_mooncake(senseloss_p(ForwardSensitivity()), p_only)
+        @test result ≈ ref_grad_p
     end
 end
 
