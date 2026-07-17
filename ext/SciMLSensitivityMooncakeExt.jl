@@ -282,7 +282,7 @@ end
 
 function Mooncake.rrule!!(
         f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        prob::Mooncake.CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
         u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
     )
@@ -309,7 +309,7 @@ function Mooncake.rrule!!(
         ::Mooncake.CoDual{typeof(Core.kwcall)},
         kwargs::Mooncake.CoDual{<:NamedTuple},
         f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        prob::Mooncake.CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
         u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
     )
