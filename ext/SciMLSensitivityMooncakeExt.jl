@@ -12,6 +12,7 @@ using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, issci
     has_continuous_callback,
     unwrapped_f, state_values, current_time
 using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
+using SciMLBase: remake, solve
 using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
 using Accessors: @reset
 
@@ -166,7 +167,7 @@ function SciMLBase._concrete_solve_adjoint(
                     prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
                         SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize
                 )
-                f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
+                f = ODEFunction{DiffEqBase.isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
                 _prob = remake(
                     prob, f = f, u0 = _u0, p = _p, tspan = _tspan, callback = nothing
                 )
@@ -190,36 +191,34 @@ function SciMLBase._concrete_solve_adjoint(
         return sol
     end
 
-    out,
-        pullback = Mooncake.value_and_pullback!!(
-        Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.NoFData()),
-        Mooncake.CoDual(u0, Mooncake.zero_rdata(u0)),
-        Mooncake.CoDual(tunables, Mooncake.zero_rdata(tunables))
+    # `_concrete_solve_adjoint` must return `(primal, pullback)` where `pullback` is called
+    # *later*, with a seed that isn't known yet -- so the Mooncake gradient can't be computed
+    # eagerly in one call. Mooncake's public `value_and_pullback!!` only offers an eager,
+    # single-call form (build the rule, run forward, and immediately apply the seed all at
+    # once), so we split its two halves by hand: build the rule and run the forward pass now
+    # (mirroring `Mooncake.__value_and_pullback!!`'s first half), and defer applying the seed
+    # to `pb!!` until `mooncake_adjoint_backpass` is actually invoked.
+    rule = Mooncake.build_rrule(mooncake_adjoint_forwardpass, u0, tunables)
+    fx = (
+        Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.zero_tangent(mooncake_adjoint_forwardpass)),
+        Mooncake.CoDual(u0, Mooncake.zero_tangent(u0)),
+        Mooncake.CoDual(tunables, Mooncake.zero_tangent(tunables)),
     )
+    fx_fwds = Mooncake.tuple_map(Mooncake.to_fwds, fx)
+    out, pb!! = Mooncake.__call_rule(rule, fx_fwds)
 
     function mooncake_adjoint_backpass(ybar)
-        tmp = if eltype(ybar) <: Number && u0 isa Array
-            Array(ybar)
-        elseif eltype(ybar) <: Number
-            ybar
-        elseif ybar isa Tangent
-            ut = unthunk.(ybar.u)
-            ut_ = map(ut) do u
-                (u isa ZeroTangent || u isa NoTangent) ? zero(u0) : u
-            end
-            reduce(hcat, ut_)
-        elseif ybar[1] isa Array
-            return Array(ybar)
-        else
-            tmp = vec(ybar.u[1])
-            for i in 2:length(ybar.u)
-                tmp = hcat(tmp, vec(ybar.u[i]))
-            end
-            return reshape(tmp, size(ybar.u[1])..., length(ybar.u))
-        end
-
-        _, u0bar, pbar = pullback(tmp)
-        _u0bar = u0bar
+        # Convert the incoming ChainRules-style cotangent into the Mooncake tangent type of
+        # the primal output (the same conversion `@from_rrule`/`@from_chainrules` use), run
+        # the deferred Mooncake pullback, then convert the resulting Mooncake tangents back
+        # to ChainRules tangents for the caller.
+        ȳ = Mooncake.mooncake_tangent(Mooncake.primal(out), ybar)
+        dfargs = pb!!(Mooncake.rdata(ȳ))
+        _, u0bar_mc, pbar_mc = Mooncake.tuple_map(
+            (f, r) -> Mooncake.tangent(Mooncake.fdata(Mooncake.tangent(f)), r), fx, dfargs
+        )
+        _u0bar = Mooncake.to_cr_tangent(u0bar_mc)
+        pbar = Mooncake.to_cr_tangent(pbar_mc)
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
@@ -236,9 +235,120 @@ function SciMLBase._concrete_solve_adjoint(
         end
     end
 
-    u = state_values(out)
-    return SciMLBase.sensitivity_solution(out, u, current_time(out)),
+    out_primal = Mooncake.primal(out)
+    u = state_values(out_primal)
+    return SciMLBase.sensitivity_solution(out_primal, u, current_time(out_primal)),
         mooncake_adjoint_backpass
+end
+
+# ============================================================================
+# Mooncake-native `solve_up` rule for `MooncakeAdjoint`
+#
+# The `_concrete_solve_adjoint(..., ::MooncakeAdjoint, ...)` method above conforms to the
+# ChainRulesCore.rrule contract, which forces Mooncake's generic `@from_rrule`-based
+# `solve_up` primitive (`DiffEqBaseMooncakeExt.jl`) to round-trip the output cotangent
+# through `mooncake_tangent`/`to_cr_tangent`. `mooncake_tangent` only has methods for
+# simple array/scalar/tuple primals (see AGENTS.md's restriction on `@from_rrule`/
+# `@from_chainrules`), so it has no case for a struct as deeply nested as `ODESolution`,
+# and that conversion throws `ArgumentError: ... does not currently have a method of
+# mooncake_tangent`.
+#
+# `MooncakeAdjoint`'s own gradient computation never leaves Mooncake's native
+# representation in the first place, so there's no need to go anywhere near ChainRules
+# here at all. This is a direct `Mooncake.rrule!!` for `solve_up` restricted to
+# `sensealg::MooncakeAdjoint`, mirroring the `_MooncakeOverAnotherADSensealg` pattern
+# below, but computing the adjoint via a *nested* Mooncake `build_rrule` call instead of
+# delegating to a foreign-AD-backed ChainRules pullback -- so the whole round trip stays
+# in native fdata/rdata. The nested call reuses the incoming `u0`/`p` CoDuals' fdata
+# directly (rather than allocating fresh tangents), so in-place fdata accumulation still
+# lands in the same, potentially-aliased buffers the surrounding reverse pass expects
+# (see the "Aliasing Invariant" in docs/src/understanding_mooncake/rule_system.md).
+function _solve_up_mooncake_native_forwardpass(prob, alg_and_rest, kwargs, _u0, _p)
+    _prob = remake(prob; u0 = _u0, p = _p)
+    sol = solve(
+        _prob, alg_and_rest...; sensealg = DiffEqBase.SensitivityADPassThrough(), kwargs...
+    )
+    return SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
+end
+
+function _solve_up_mooncake_native(
+        prob, sensealg, u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest...; kwargs...
+    )
+    forwardpass(_u0, _p) = _solve_up_mooncake_native_forwardpass(
+        prob, alg_and_rest, kwargs, _u0, _p
+    )
+    rule = Mooncake.build_rrule(forwardpass, Mooncake.primal(u0), Mooncake.primal(p))
+    fx_fwds = (
+        Mooncake.CoDual(forwardpass, Mooncake.fdata(Mooncake.zero_tangent(forwardpass))),
+        u0, p,
+    )
+    out, pb!! = Mooncake.__call_rule(rule, fx_fwds)
+    function native_pb!!(y_rdata)
+        _, u0_rdata, p_rdata = pb!!(y_rdata)
+        return u0_rdata, p_rdata
+    end
+    return Mooncake.primal(out), Mooncake.tangent(out), native_pb!!
+end
+
+function Mooncake.rrule!!(
+        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
+        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::Mooncake.CoDual{<:MooncakeAdjoint},
+        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+    )
+    fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
+    primals = Mooncake.tuple_map(Mooncake.primal, fargs)
+    lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
+    y_primal, y_fdata, native_pb!! = _solve_up_mooncake_native(
+        primals[2], primals[3], u0, p, primals[6:end]...
+    )
+
+    function pb!!(y_rdata)
+        u0_rdata, p_rdata = native_pb!!(y_rdata)
+        return (
+            Mooncake.instantiate(lazy_rdata[1]),
+            Mooncake.instantiate(lazy_rdata[2]),
+            Mooncake.instantiate(lazy_rdata[3]),
+            u0_rdata,
+            p_rdata,
+            Mooncake.tuple_map(Mooncake.instantiate, lazy_rdata[6:end])...,
+        )
+    end
+
+    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+end
+
+function Mooncake.rrule!!(
+        ::Mooncake.CoDual{typeof(Core.kwcall)},
+        kwargs::Mooncake.CoDual{<:NamedTuple},
+        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
+        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::Mooncake.CoDual{<:MooncakeAdjoint},
+        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+    )
+    fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
+    primals = Mooncake.tuple_map(Mooncake.primal, fargs)
+    lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
+    kwargs_p = Base.structdiff(Mooncake.primal(kwargs), NamedTuple{(:originator,)})
+    y_primal, y_fdata, native_pb!! = _solve_up_mooncake_native(
+        primals[2], primals[3], u0, p, primals[6:end]...; kwargs_p...
+    )
+    kwargs_rdata = Mooncake.rdata(Mooncake.zero_tangent(Mooncake.primal(kwargs)))
+
+    function pb!!(y_rdata)
+        u0_rdata, p_rdata = native_pb!!(y_rdata)
+        args_rdata = (
+            Mooncake.instantiate(lazy_rdata[1]),
+            Mooncake.instantiate(lazy_rdata[2]),
+            Mooncake.instantiate(lazy_rdata[3]),
+            u0_rdata,
+            p_rdata,
+            Mooncake.tuple_map(Mooncake.instantiate, lazy_rdata[6:end])...,
+        )
+        return Mooncake.NoRData(), kwargs_rdata, args_rdata...
+    end
+
+    return Mooncake.CoDual(y_primal, y_fdata), pb!!
 end
 
 # Mooncake stacked over ReverseDiffAdjoint/TrackerAdjoint/ForwardSensitivity
