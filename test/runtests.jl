@@ -22,6 +22,7 @@ run_tests(;
                 @time @safetestset "Forward Remake" include("Core1/forward_remake.jl")
                 @time @safetestset "Prob Kwargs" include("Core1/prob_kwargs.jl")
                 @time @safetestset "Mooncake VJP Prob Kwargs" include("Core1/mooncake_vjp_prob_kwargs.jl")
+                @time @safetestset "Mooncake ComponentArray Gradient" include("Core1/mooncake_componentarray_gradient.jl")
                 @time @safetestset "DiscreteProblem Adjoints" include("Core1/discrete.jl")
                 @time @safetestset "Time Type Mixing Adjoints" include("Core1/time_type_mixing.jl")
                 @time @safetestset "SciMLStructures Interface" include("Core1/scimlstructures_interface.jl")

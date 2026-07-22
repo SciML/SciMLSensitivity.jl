@@ -1332,6 +1332,15 @@ function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityE
     return print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
+# Pull the real array data out of a wrapper type's tangent (e.g. ComponentVector's
+# `data`/`axes`), without assuming a fixed field name. Structural fields like axes
+# differentiate to zero, so the one non-zero field is the data we want.
+function _tangent_array_data(v::Tangent)
+    live = Iterators.filter(x -> !(x isa AbstractZero), values(backing(v)))
+    return _tangent_array_data(only(live))
+end
+_tangent_array_data(v) = v
+
 # Generic Fallback for ForwardDiff
 function SciMLBase._concrete_solve_adjoint(
         prob::Union{
@@ -1543,7 +1552,7 @@ function SciMLBase._concrete_solve_adjoint(
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
                             elseif v isa Tangent
-                                ForwardDiff.value.(J'vec(v.x))
+                                ForwardDiff.value.(J'vec(_tangent_array_data(v)))
                             else
                                 ForwardDiff.value.(J'vec(v))
                             end
@@ -1744,7 +1753,7 @@ function SciMLBase._concrete_solve_adjoint(
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
                         elseif v isa Tangent
-                            ForwardDiff.value.(J'vec(v.x))
+                            ForwardDiff.value.(J'vec(_tangent_array_data(v)))
                         else
                             ForwardDiff.value.(J'vec(v))
                         end
