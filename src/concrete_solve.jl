@@ -1336,7 +1336,7 @@ end
 # `data`/`axes`), without assuming a fixed field name. Structural fields like axes
 # differentiate to zero, so the one non-zero field is the data we want.
 function _tangent_array_data(v::Tangent)
-    live = Iterators.filter(x -> !(x isa AbstractZero), values(backing(v)))
+    live = Iterators.filter(x -> !(x isa AbstractZero), values(getfield(v, :backing)))
     return _tangent_array_data(only(live))
 end
 _tangent_array_data(v) = v
