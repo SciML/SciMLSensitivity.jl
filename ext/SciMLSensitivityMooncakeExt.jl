@@ -35,7 +35,7 @@ end
 # function of u0/p, but its body has a try/catch Mooncake's forward-mode compiler can't
 # trace. Zero-derivative keeps Mooncake from ever looking inside.
 @zero_derivative(
-    MinimalCtx, Tuple{typeof(SciMLSensitivity.automatic_sensealg_choice),Vararg},
+    MinimalCtx, Tuple{typeof(SciMLSensitivity.automatic_sensealg_choice), Vararg},
 )
 
 # Mooncake-native gradient for the DAE/ODE init path. Avoids pulling Zygote
@@ -477,7 +477,7 @@ function rrule!!(
         sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
         ::CoDual, ::CoDual, ::CoDual...,
     )
-    _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
+    return _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
 end
 
 function rrule!!(
@@ -488,7 +488,7 @@ function rrule!!(
         sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
         ::CoDual, ::CoDual, ::CoDual...,
     )
-    _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
+    return _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
 end
 
 # Forward-mode primitive for `DiffEqBase._solve_adjoint` under ReverseDiffAdjoint and
@@ -529,7 +529,7 @@ function frule!!(
         ::Dual{<:SciMLBase.MooncakeOriginator},
         ::Dual...,
     )
-    _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
+    return _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
 end
 
 @is_primitive(
@@ -550,7 +550,7 @@ function frule!!(
         ::Dual{<:SciMLBase.MooncakeOriginator},
         ::Dual...,
     )
-    _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
+    return _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
 end
 
 # ForwardSensitivity's HVP is also unsupported, but not for the ReverseDiff/Tracker
@@ -585,7 +585,7 @@ function frule!!(
         ::Dual{<:SciMLBase.MooncakeOriginator},
         ::Dual...,
     )
-    _mooncake_forward_sensitivity_hvp_unsupported()
+    return _mooncake_forward_sensitivity_hvp_unsupported()
 end
 
 @is_primitive(
@@ -606,7 +606,7 @@ function frule!!(
         ::Dual{<:SciMLBase.MooncakeOriginator},
         ::Dual...,
     )
-    _mooncake_forward_sensitivity_hvp_unsupported()
+    return _mooncake_forward_sensitivity_hvp_unsupported()
 end
 
 end
