@@ -2,11 +2,13 @@ module SciMLSensitivityMooncakeExt
 
 using SciMLSensitivity: SciMLSensitivity, FakeIntegrator
 using Mooncake: Mooncake
+import Mooncake: MinimalCtx, ForwardMode, Dual, CoDual, frule!!, rrule!!, @is_primitive,
+    @zero_derivative
 import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_run_ad,
     MooncakeVJP, MooncakeLoaded,
     DiffEqBase, MooncakeAdjoint, _init_originator_gradient,
     ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity,
-    EnzymeAdjoint
+    EnzymeAdjoint, ZygoteAdjoint
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
@@ -15,6 +17,26 @@ using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
 using SciMLBase: remake, solve
 using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
 using Accessors: @reset
+
+# Mirrors `Mooncake.__call_rule` (src/utils.jl) instead of depending on it directly: that's
+# a double-underscore internal helper, not part of Mooncake's rule-writing API. On Julia
+# >= 1.11 it's just `rule(args...)`; on 1.10 it routes through `Base.inferencebarrier` and
+# a `@noinline` erased call to dodge a real compiler invalidation bug (see Mooncake's own
+# comment for the MWE). SciMLSensitivity still supports 1.10, so this keeps the workaround
+# instead of silently dropping it.
+@static if VERSION < v"1.11-"
+    @noinline _call_built_rule_erased(rule, args) = rule(args...)
+    @inline _call_built_rule(rule, args) = _call_built_rule_erased(Base.inferencebarrier(rule), args)
+else
+    @inline _call_built_rule(rule, args) = rule(args...)
+end
+
+# `automatic_sensealg_choice` is a discrete algorithm choice, never a differentiable
+# function of u0/p, but its body has a try/catch Mooncake's forward-mode compiler can't
+# trace. Zero-derivative keeps Mooncake from ever looking inside.
+@zero_derivative(
+    MinimalCtx, Tuple{typeof(SciMLSensitivity.automatic_sensealg_choice),Vararg},
+)
 
 # Mooncake-native gradient for the DAE/ODE init path. Avoids pulling Zygote
 # into the rrule when the user is differentiating with Mooncake. The default
@@ -191,21 +213,19 @@ function SciMLBase._concrete_solve_adjoint(
         return sol
     end
 
-    # `_concrete_solve_adjoint` must return `(primal, pullback)` where `pullback` is called
-    # *later*, with a seed that isn't known yet -- so the Mooncake gradient can't be computed
-    # eagerly in one call. Mooncake's public `value_and_pullback!!` only offers an eager,
-    # single-call form (build the rule, run forward, and immediately apply the seed all at
-    # once), so we split its two halves by hand: build the rule and run the forward pass now
-    # (mirroring `Mooncake.__value_and_pullback!!`'s first half), and defer applying the seed
-    # to `pb!!` until `mooncake_adjoint_backpass` is actually invoked.
+    # `_concrete_solve_adjoint` must return `(primal, pullback)`, with the seed for `pullback`
+    # not known until later -- but Mooncake's public `value_and_pullback!!` only offers an
+    # eager, single-call form (build + run forward + apply seed, all at once). So we split it
+    # by hand: build the rule and run the forward pass now, and defer applying the seed until
+    # `mooncake_adjoint_backpass` is actually invoked.
     rule = Mooncake.build_rrule(mooncake_adjoint_forwardpass, u0, tunables)
     fx = (
-        Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.zero_tangent(mooncake_adjoint_forwardpass)),
-        Mooncake.CoDual(u0, Mooncake.zero_tangent(u0)),
-        Mooncake.CoDual(tunables, Mooncake.zero_tangent(tunables)),
+        CoDual(mooncake_adjoint_forwardpass, Mooncake.zero_tangent(mooncake_adjoint_forwardpass)),
+        CoDual(u0, Mooncake.zero_tangent(u0)),
+        CoDual(tunables, Mooncake.zero_tangent(tunables)),
     )
     fx_fwds = Mooncake.tuple_map(Mooncake.to_fwds, fx)
-    out, pb!! = Mooncake.__call_rule(rule, fx_fwds)
+    out, pb!! = _call_built_rule(rule, fx_fwds)
 
     function mooncake_adjoint_backpass(ybar)
         # Convert the incoming ChainRules-style cotangent into the Mooncake tangent type of
@@ -244,25 +264,15 @@ end
 # ============================================================================
 # Mooncake-native `solve_up` rule for `MooncakeAdjoint`
 #
-# The `_concrete_solve_adjoint(..., ::MooncakeAdjoint, ...)` method above conforms to the
-# ChainRulesCore.rrule contract, which forces Mooncake's generic `@from_rrule`-based
-# `solve_up` primitive (`DiffEqBaseMooncakeExt.jl`) to round-trip the output cotangent
-# through `mooncake_tangent`/`to_cr_tangent`. `mooncake_tangent` only has methods for
-# simple array/scalar/tuple primals (see AGENTS.md's restriction on `@from_rrule`/
-# `@from_chainrules`), so it has no case for a struct as deeply nested as `ODESolution`,
-# and that conversion throws `ArgumentError: ... does not currently have a method of
-# mooncake_tangent`.
-#
-# `MooncakeAdjoint`'s own gradient computation never leaves Mooncake's native
-# representation in the first place, so there's no need to go anywhere near ChainRules
-# here at all. This is a direct `Mooncake.rrule!!` for `solve_up` restricted to
-# `sensealg::MooncakeAdjoint`, mirroring the `_MooncakeOverAnotherADSensealg` pattern
-# below, but computing the adjoint via a *nested* Mooncake `build_rrule` call instead of
-# delegating to a foreign-AD-backed ChainRules pullback -- so the whole round trip stays
-# in native fdata/rdata. The nested call reuses the incoming `u0`/`p` CoDuals' fdata
-# directly (rather than allocating fresh tangents), so in-place fdata accumulation still
-# lands in the same, potentially-aliased buffers the surrounding reverse pass expects
-# (see the "Aliasing Invariant" in docs/src/understanding_mooncake/rule_system.md).
+# The generic `@from_rrule`-based `solve_up` primitive (`DiffEqBaseMooncakeExt.jl`) round-trips
+# through `mooncake_tangent`/`to_cr_tangent`, which has no case for a struct as deeply nested
+# as `ODESolution` and throws `ArgumentError: ... does not currently have a method of
+# mooncake_tangent`. `MooncakeAdjoint`'s gradient never needs to leave Mooncake's native
+# representation, so this rule bypasses ChainRules entirely: a *nested* `Mooncake.build_rrule`
+# call (not a foreign-AD-backed pullback like `_MooncakeOverAnotherADSensealg` below), reusing
+# the incoming `u0`/`p` CoDuals' fdata directly so in-place accumulation lands in the same,
+# potentially-aliased buffers the surrounding reverse pass expects (see the "Aliasing
+# Invariant" in docs/src/understanding_mooncake/rule_system.md).
 function _solve_up_mooncake_native_forwardpass(prob, alg_and_rest, kwargs, _u0, _p)
     _prob = remake(prob; u0 = _u0, p = _p)
     sol = solve(
@@ -272,17 +282,17 @@ function _solve_up_mooncake_native_forwardpass(prob, alg_and_rest, kwargs, _u0, 
 end
 
 function _solve_up_mooncake_native(
-        prob, sensealg, u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest...; kwargs...
+        prob, sensealg, u0::CoDual, p::CoDual, alg_and_rest...; kwargs...
     )
     forwardpass(_u0, _p) = _solve_up_mooncake_native_forwardpass(
         prob, alg_and_rest, kwargs, _u0, _p
     )
     rule = Mooncake.build_rrule(forwardpass, Mooncake.primal(u0), Mooncake.primal(p))
     fx_fwds = (
-        Mooncake.CoDual(forwardpass, Mooncake.fdata(Mooncake.zero_tangent(forwardpass))),
+        CoDual(forwardpass, Mooncake.fdata(Mooncake.zero_tangent(forwardpass))),
         u0, p,
     )
-    out, pb!! = Mooncake.__call_rule(rule, fx_fwds)
+    out, pb!! = _call_built_rule(rule, fx_fwds)
     function native_pb!!(y_rdata)
         _, u0_rdata, p_rdata = pb!!(y_rdata)
         return u0_rdata, p_rdata
@@ -290,11 +300,11 @@ function _solve_up_mooncake_native(
     return Mooncake.primal(out), Mooncake.tangent(out), native_pb!!
 end
 
-function Mooncake.rrule!!(
-        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
-        sensealg::Mooncake.CoDual{<:MooncakeAdjoint},
-        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+function rrule!!(
+        f::CoDual{typeof(DiffEqBase.solve_up)},
+        prob::CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::CoDual{<:MooncakeAdjoint},
+        u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
     fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
     primals = Mooncake.tuple_map(Mooncake.primal, fargs)
@@ -315,16 +325,16 @@ function Mooncake.rrule!!(
         )
     end
 
-    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+    return CoDual(y_primal, y_fdata), pb!!
 end
 
-function Mooncake.rrule!!(
-        ::Mooncake.CoDual{typeof(Core.kwcall)},
-        kwargs::Mooncake.CoDual{<:NamedTuple},
-        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:DiffEqBase.AbstractDEProblem},
-        sensealg::Mooncake.CoDual{<:MooncakeAdjoint},
-        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+function rrule!!(
+        ::CoDual{typeof(Core.kwcall)},
+        kwargs::CoDual{<:NamedTuple},
+        f::CoDual{typeof(DiffEqBase.solve_up)},
+        prob::CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::CoDual{<:MooncakeAdjoint},
+        u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
     fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
     primals = Mooncake.tuple_map(Mooncake.primal, fargs)
@@ -348,26 +358,23 @@ function Mooncake.rrule!!(
         return Mooncake.NoRData(), kwargs_rdata, args_rdata...
     end
 
-    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+    return CoDual(y_primal, y_fdata), pb!!
 end
 
 # Mooncake stacked over ReverseDiffAdjoint/TrackerAdjoint/ForwardSensitivity
-# (SciML/SciMLSensitivity.jl#1510, chalk-lab/Mooncake.jl#1208). `solve`
-# reports which AD is active via `set_mooncakeoriginator_if_mooncake`, a
-# `@mooncake_overlay` meant to swap in `MooncakeOriginator()`. That never
-# fires here: `ChainRulesOriginator`/`MooncakeOriginator` are zero-field
-# structs, which Julia's compiler treats as compile-time constants regardless
-# of runtime provenance, so the whole overlaid call gets folded away before
-# any rule dispatch happens. These hand-written `solve_up` rules sidestep
-# detection entirely -- they only ever run under Mooncake, so they construct
-# `MooncakeOriginator()` directly and dispatch into the existing
-# `MooncakeOriginator` methods added in #1420 (src/concrete_solve.jl), which
-# re-solve with a plain `Float64` primal Mooncake can build a `CoDual` for.
-# Being more specific than the generic rule's `Union{Nothing,
-# AbstractSensitivityAlgorithm}` signature, dispatch prefers these three
-# sensealgs and falls back to the generic rule for everything else.
+# (SciML/SciMLSensitivity.jl#1510, chalk-lab/Mooncake.jl#1208).
+#
+# These sensealgs need to know which AD is driving them (`originator`), normally
+# auto-detected via a `@mooncake_overlay`. That detection never fires under Mooncake:
+# `MooncakeOriginator`/`ChainRulesOriginator` are zero-field structs, which Julia constant-
+# folds away before any rule dispatch happens. So these rules skip detection and construct
+# `MooncakeOriginator()` directly, dispatching into the existing `MooncakeOriginator`
+# methods (#1420, src/concrete_solve.jl) that re-solve with a plain primal Mooncake can wrap
+# in a `CoDual`. More specific than the generic rule's `Union{Nothing,
+# AbstractSensitivityAlgorithm}` signature, so dispatch prefers these three sensealgs and
+# falls back to the generic rule for everything else.
 const _MooncakeOverAnotherADSensealg = Union{
-    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity, EnzymeAdjoint,
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity,
 }
 
 function _solve_up_mooncake_over_another_ad(prob, sensealg, u0, p, alg_and_kwargs...; kwargs...)
@@ -376,13 +383,11 @@ function _solve_up_mooncake_over_another_ad(prob, sensealg, u0, p, alg_and_kwarg
     )
 end
 
-# `cr_dfargs` is shaped like `_concrete_solve_adjoint`'s own arg list
-# (`prob̄, alḡ, sensealḡ, ū0, p̄, originator̄, tail̄...`), not `solve_up`'s --
-# `_solve_adjoint` takes the same no-tail branch whether `alg` arrived
-# explicitly or was extracted from kwargs, so `alg_and_rest` can be empty here
-# even though `_concrete_solve_adjoint` always has an `alg` slot. Reorder/pad
-# to `fargs = (f, prob, sensealg, u0, p, alg_and_rest...)`, dropping
-# `originator` (a zero-field marker, never differentiable).
+# `cr_dfargs` is shaped like `_concrete_solve_adjoint`'s arg list
+# (`prob̄, alḡ, sensealḡ, ū0, p̄, originator̄, tail̄...`), not `solve_up`'s. Reorders/pads it to
+# `fargs = (f, prob, sensealg, u0, p, alg_and_rest...)`, dropping `originator` (a zero-field
+# marker, never differentiable). `alg_and_rest` can be empty even though `_concrete_solve_adjoint`
+# always has an `alg` slot -- `_solve_adjoint` takes the same no-tail branch either way.
 function _match_fargs_cotangents(cr_dfargs, alg_and_rest)
     alg_and_rest_cotangents = isempty(alg_and_rest) ? () : (cr_dfargs[2], cr_dfargs[7:end]...)
     return (
@@ -391,13 +396,12 @@ function _match_fargs_cotangents(cr_dfargs, alg_and_rest)
     )
 end
 
-function Mooncake.rrule!!(
-        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:SciMLBase.AbstractDEProblem},
-        sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
-        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+function rrule!!(
+        f::CoDual{typeof(DiffEqBase.solve_up)},
+        prob::CoDual{<:SciMLBase.AbstractDEProblem},
+        sensealg::CoDual{<:_MooncakeOverAnotherADSensealg},
+        u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
-    sensealg isa EnzymeAdjoint && error("EnzymeAdjoint currently is not supported inside of Mooncake autodiff")
     fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
     primals = Mooncake.tuple_map(Mooncake.primal, fargs)
     lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
@@ -414,16 +418,16 @@ function Mooncake.rrule!!(
         end
     end
 
-    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+    return CoDual(y_primal, y_fdata), pb!!
 end
 
-function Mooncake.rrule!!(
-        ::Mooncake.CoDual{typeof(Core.kwcall)},
-        kwargs::Mooncake.CoDual{<:NamedTuple},
-        f::Mooncake.CoDual{typeof(DiffEqBase.solve_up)},
-        prob::Mooncake.CoDual{<:SciMLBase.AbstractDEProblem},
-        sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
-        u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
+function rrule!!(
+        ::CoDual{typeof(Core.kwcall)},
+        kwargs::CoDual{<:NamedTuple},
+        f::CoDual{typeof(DiffEqBase.solve_up)},
+        prob::CoDual{<:SciMLBase.AbstractDEProblem},
+        sensealg::CoDual{<:_MooncakeOverAnotherADSensealg},
+        u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
     fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
     primals = Mooncake.tuple_map(Mooncake.primal, fargs)
@@ -447,7 +451,162 @@ function Mooncake.rrule!!(
         return Mooncake.NoRData(), kwargs_rdata, args_rdata...
     end
 
-    return Mooncake.CoDual(y_primal, y_fdata), pb!!
+    return CoDual(y_primal, y_fdata), pb!!
+end
+
+# `EnzymeAdjoint`/`ZygoteAdjoint` under Mooncake: confirmed broken by direct testing, for
+# two different reasons. `ZygoteAdjoint` fails inside Zygote's own tracing of solve()'s
+# internals (a mutating-array operation Zygote can't differentiate, unrelated to Mooncake).
+# `EnzymeAdjoint` fails on a type mismatch inside Mooncake's own rule machinery. Neither
+# currently reaches this extension at all -- both fall through to the generic
+# `@from_rrule`-based solve_up primitive and crash with a confusing, deep stacktrace.
+# Erroring here instead, before any of that runs, gives a clear message up front.
+const _MooncakeUnsupportedAnotherADSensealg = Union{EnzymeAdjoint, ZygoteAdjoint}
+
+function _mooncake_another_ad_backend_unsupported(sensealg)
+    error(
+        "solve() with $(typeof(sensealg)) is not currently supported under Mooncake " *
+            "(confirmed broken by direct testing -- not just untested). Use " *
+            "MooncakeAdjoint() instead."
+    )
+end
+
+function rrule!!(
+        ::CoDual{typeof(DiffEqBase.solve_up)},
+        ::CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
+        ::CoDual, ::CoDual, ::CoDual...,
+    )
+    _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
+end
+
+function rrule!!(
+        ::CoDual{typeof(Core.kwcall)},
+        ::CoDual{<:NamedTuple},
+        ::CoDual{typeof(DiffEqBase.solve_up)},
+        ::CoDual{<:DiffEqBase.AbstractDEProblem},
+        sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
+        ::CoDual, ::CoDual, ::CoDual...,
+    )
+    _mooncake_another_ad_backend_unsupported(Mooncake.primal(sensealg))
+end
+
+# Forward-mode primitive for `DiffEqBase._solve_adjoint` under ReverseDiffAdjoint and
+# TrackerAdjoint (SciML/SciMLSensitivity.jl#1427) -- just an explicit error, see the
+# message below for why. Registered on `_solve_adjoint` rather than `solve_up`, since the
+# rrule above calls `_solve_adjoint` directly and `solve_up` is never reached on this
+# path. Deliberately narrower than `_MooncakeOverAnotherADSensealg` (excludes
+# ForwardSensitivity, which gets its own error below for a different reason).
+const _MooncakeDelegatesToAnotherAD = Union{ReverseDiffAdjoint, TrackerAdjoint}
+
+function _mooncake_solve_adjoint_forward_mode_unsupported(sensealg)
+    error(
+        "value_and_hvp!! can't compute a Hessian-vector product for solve() with " *
+            "$(typeof(sensealg)) under Mooncake. $(typeof(sensealg)) gets its gradient by " *
+            "calling ReverseDiff.jl or Tracker.jl, and Mooncake can't safely forward-mode " *
+            "differentiate through another AD package's internals " *
+            "(SciML/SciMLSensitivity.jl#1427). Use MooncakeAdjoint() if you need an HVP " *
+            "today. A real fix means writing a Mooncake-native adjoint rule for " *
+            "$(typeof(sensealg)) (a continuous adjoint method using only " *
+            "Mooncake.value_and_gradient!!/value_and_hvp!! on the ODE right-hand side), so " *
+            "Mooncake's forward-over-reverse machinery can differentiate it the way it " *
+            "already does for MooncakeAdjoint."
+    )
+end
+
+@is_primitive(
+    MinimalCtx, ForwardMode,
+    Tuple{
+        typeof(DiffEqBase._solve_adjoint), SciMLBase.AbstractDEProblem,
+        _MooncakeDelegatesToAnotherAD, Any, Any, SciMLBase.MooncakeOriginator, Vararg,
+    },
+)
+function frule!!(
+        ::Dual{typeof(DiffEqBase._solve_adjoint)},
+        ::Dual{<:SciMLBase.AbstractDEProblem},
+        sensealg::Dual{<:_MooncakeDelegatesToAnotherAD},
+        ::Dual, ::Dual,
+        ::Dual{<:SciMLBase.MooncakeOriginator},
+        ::Dual...,
+    )
+    _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
+end
+
+@is_primitive(
+    MinimalCtx, ForwardMode,
+    Tuple{
+        typeof(Core.kwcall), NamedTuple, typeof(DiffEqBase._solve_adjoint),
+        SciMLBase.AbstractDEProblem, _MooncakeDelegatesToAnotherAD, Any, Any,
+        SciMLBase.MooncakeOriginator, Vararg,
+    },
+)
+function frule!!(
+        ::Dual{typeof(Core.kwcall)},
+        ::Dual{<:NamedTuple},
+        ::Dual{typeof(DiffEqBase._solve_adjoint)},
+        ::Dual{<:SciMLBase.AbstractDEProblem},
+        sensealg::Dual{<:_MooncakeDelegatesToAnotherAD},
+        ::Dual, ::Dual,
+        ::Dual{<:SciMLBase.MooncakeOriginator},
+        ::Dual...,
+    )
+    _mooncake_solve_adjoint_forward_mode_unsupported(Mooncake.primal(sensealg))
+end
+
+# ForwardSensitivity's HVP is also unsupported, but not for the ReverseDiff/Tracker
+# reason above -- it doesn't delegate to another AD package at all. Plain Mooncake
+# tracing here hits a missing rule for FunctionWrapper's .obj access first, and past
+# that, a deeper wall: tracing into ForwardSensitivity's own ForwardDiff.jl Jacobian
+# machinery inside solve_call hits the same type-prediction mismatch as
+# chalk-lab/Mooncake.jl#1209.
+function _mooncake_forward_sensitivity_hvp_unsupported()
+    error(
+        "value_and_hvp!! can't compute a Hessian-vector product for solve() with " *
+            "ForwardSensitivity() under Mooncake. ForwardSensitivity computes its " *
+            "gradient using ForwardDiff.jl internally, and forward-mode-differentiating " *
+            "that with Mooncake hits a type-prediction mismatch deep in solve_call " *
+            "(the same class of issue as chalk-lab/Mooncake.jl#1209). Use MooncakeAdjoint() " *
+            "if you need an HVP today. See SciML/SciMLSensitivity.jl#1427 for what was tried."
+    )
+end
+
+@is_primitive(
+    MinimalCtx, ForwardMode,
+    Tuple{
+        typeof(DiffEqBase._solve_adjoint), SciMLBase.AbstractDEProblem,
+        ForwardSensitivity, Any, Any, SciMLBase.MooncakeOriginator, Vararg,
+    },
+)
+function frule!!(
+        ::Dual{typeof(DiffEqBase._solve_adjoint)},
+        ::Dual{<:SciMLBase.AbstractDEProblem},
+        ::Dual{<:ForwardSensitivity},
+        ::Dual, ::Dual,
+        ::Dual{<:SciMLBase.MooncakeOriginator},
+        ::Dual...,
+    )
+    _mooncake_forward_sensitivity_hvp_unsupported()
+end
+
+@is_primitive(
+    MinimalCtx, ForwardMode,
+    Tuple{
+        typeof(Core.kwcall), NamedTuple, typeof(DiffEqBase._solve_adjoint),
+        SciMLBase.AbstractDEProblem, ForwardSensitivity, Any, Any,
+        SciMLBase.MooncakeOriginator, Vararg,
+    },
+)
+function frule!!(
+        ::Dual{typeof(Core.kwcall)},
+        ::Dual{<:NamedTuple},
+        ::Dual{typeof(DiffEqBase._solve_adjoint)},
+        ::Dual{<:SciMLBase.AbstractDEProblem},
+        ::Dual{<:ForwardSensitivity},
+        ::Dual, ::Dual,
+        ::Dual{<:SciMLBase.MooncakeOriginator},
+        ::Dual...,
+    )
+    _mooncake_forward_sensitivity_hvp_unsupported()
 end
 
 end

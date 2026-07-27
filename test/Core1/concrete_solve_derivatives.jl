@@ -28,6 +28,11 @@ function gradient_mooncake(f, x)
     return Mooncake.value_and_gradient!!(Mooncake.build_rrule(f, x), f, x)[2][2]
 end
 
+function hvp_mooncake(f, x)
+    cache = Mooncake.prepare_hvp_cache(f, x)
+    return Mooncake.value_and_hvp!!(cache, f, ones(length(x)), x)
+end
+
 function gradient_forwarddiff(f, x)
     return ForwardDiff.gradient(f, x)
 end
@@ -443,21 +448,46 @@ Tests callable structs with different AD backends
         end
     end
 
-    # Mooncake over another AD's adjoint (`ReverseDiffAdjoint`/`TrackerAdjoint`,
-    # and `ForwardSensitivity` below) previously hit a typeassert (or hung
-    # under coverage instrumentation): `set_mooncakeoriginator_if_mooncake`
-    # gets constant-folded away, so `solve_up` never saw `MooncakeOriginator()`
-    # here. Fixed with hand-written `Mooncake.rrule!!`s for `solve_up` in
-    # SciMLSensitivityMooncakeExt.jl that construct it directly. See #1510,
-    # chalk-lab/Mooncake.jl#1208.
+    # Mooncake over another AD's adjoint (`ReverseDiffAdjoint`/`TrackerAdjoint`, and
+    # `ForwardSensitivity` below) via the dedicated `MooncakeOriginator` dispatch added
+    # in #1420: the plain gradient re-solves with a `MooncakeOriginator()` originator so
+    # the delegated ReverseDiff/Tracker pullback never has to round-trip through
+    # Mooncake's own tangent conversion. See #1510 for the history here.
     @testset "Mooncake with ReverseDiffAdjoint" begin
-        result = gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p)
-        @test result ≈ ref_grad_senseloss
+        @test gradient_mooncake(senseloss(ReverseDiffAdjoint()), u0p) ≈
+            ref_grad_senseloss
+        # HVP is a separate story from the plain gradient above: it needs Mooncake to
+        # forward-mode differentiate through ReverseDiff's own internals, which isn't
+        # safe, so this errors clearly instead (SciML/SciMLSensitivity.jl#1427).
+        @test_throws "can't compute a Hessian-vector product" hvp_mooncake(
+            senseloss(ReverseDiffAdjoint()), u0p
+        )
     end
 
     @testset "Mooncake with TrackerAdjoint" begin
-        result = gradient_mooncake(senseloss(TrackerAdjoint()), u0p)
-        @test result ≈ ref_grad_senseloss
+        @test gradient_mooncake(senseloss(TrackerAdjoint()), u0p) ≈
+            ref_grad_senseloss
+        @test_throws "can't compute a Hessian-vector product" hvp_mooncake(
+            senseloss(TrackerAdjoint()), u0p
+        )
+    end
+
+    @testset "Mooncake with EnzymeAdjoint" begin
+        # Unlike ReverseDiffAdjoint/TrackerAdjoint above, this fails even for a plain
+        # gradient -- a type mismatch inside Mooncake's own rule machinery, unrelated to
+        # the HVP-specific reason those two error for.
+        @test_throws "not currently supported under Mooncake" gradient_mooncake(
+            senseloss(EnzymeAdjoint()), u0p
+        )
+    end
+
+    @testset "Mooncake with ZygoteAdjoint" begin
+        # Also fails even for a plain gradient, but for a third, different reason: Zygote
+        # can't differentiate through a mutating array operation inside solve()'s own
+        # internals, unrelated to anything in this extension.
+        @test_throws "not currently supported under Mooncake" gradient_mooncake(
+            senseloss(ZygoteAdjoint()), u0p
+        )
     end
 
     # Test with p-only differentiation (senseloss3 and senseloss4 from alternative_ad_frontend.jl)
@@ -497,6 +527,14 @@ Tests callable structs with different AD backends
             result = gradient_mooncake(senseloss_p(sensealg), p_only)
             @test result ≈ ref_grad_p
         end
+        # ForwardSensitivity's HVP fails for a third reason, different from
+        # ReverseDiffAdjoint/TrackerAdjoint above: it doesn't delegate to another AD
+        # package at all, but forward-mode tracing into its own ForwardDiff.jl-based
+        # Jacobian machinery hits a Mooncake type-prediction limitation
+        # (chalk-lab/Mooncake.jl#1209). See SciML/SciMLSensitivity.jl#1427.
+        @test_throws "can't compute a Hessian-vector product" hvp_mooncake(
+            senseloss_p(ForwardSensitivity()), p_only
+        )
     end
 end
 
