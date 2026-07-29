@@ -1332,14 +1332,17 @@ function Base.showerror(io::IO, e::ForwardDiffSensitivityParameterCompatibilityE
     return print(io, FORWARDDIFF_SENSITIVITY_PARAMETER_COMPATIBILITY_MESSAGE)
 end
 
-# Pull the real array data out of a wrapper type's tangent (e.g. ComponentVector's
-# `data`/`axes`), without assuming a fixed field name. Structural fields like axes
-# differentiate to zero, so the one non-zero field is the data we want.
-function _tangent_array_data(v::Tangent)
-    live = Iterators.filter(x -> !(x isa AbstractZero), values(getfield(v, :backing)))
-    return _tangent_array_data(only(live))
+# Pull the real array data out of a wrapper tangent (e.g. ComponentVector's `data`/`axes`).
+# Gated on `u0`, not `v`'s own primal type: Mooncake/ChainRules erase that type to `Any`
+# before it reaches here, but `u0` is never wrapped, so its type stays intact. Structural
+# fields like `axes` differentiate to zero, so the one non-zero field is the real data.
+function _tangent_array_data(v::Tangent, u0::AbstractArray)
+    live = collect(Iterators.filter(x -> !(x isa AbstractZero), values(getfield(v, :backing))))
+    length(live) == 1 || return v
+    return _tangent_array_data(only(live), u0)
 end
-_tangent_array_data(v) = v
+# Fallback dispatch; add a more specific `u0` method above for other specific initial state types.
+_tangent_array_data(v, u0) = v
 
 # Generic Fallback for ForwardDiff
 function SciMLBase._concrete_solve_adjoint(
@@ -1552,7 +1555,7 @@ function SciMLBase._concrete_solve_adjoint(
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
                             elseif v isa Tangent
-                                ForwardDiff.value.(J'vec(_tangent_array_data(v)))
+                                ForwardDiff.value.(J'vec(_tangent_array_data(v, u0)))
                             else
                                 ForwardDiff.value.(J'vec(v))
                             end
@@ -1753,7 +1756,7 @@ function SciMLBase._concrete_solve_adjoint(
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
                         elseif v isa Tangent
-                            ForwardDiff.value.(J'vec(_tangent_array_data(v)))
+                            ForwardDiff.value.(J'vec(_tangent_array_data(v, u0)))
                         else
                             ForwardDiff.value.(J'vec(v))
                         end
