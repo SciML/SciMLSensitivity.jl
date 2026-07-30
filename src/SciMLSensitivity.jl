@@ -39,7 +39,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
     ContinuousCallback, AbstractTimeseriesSolution, NonlinearFunction, NonlinearProblem,
     DiscreteCallback, LinearProblem, ODEFunction, ODEProblem, DAEFunction, DAEProblem,
     RODEFunction, RODEProblem, ReturnCode, SDEFunction,
-    SDEProblem, VectorContinuousCallback, deleteat!,
+    SDEProblem, VectorContinuousCallback,
     get_tmp_cache, isinplace, reinit!, remake,
     solve, derivative_discontinuity!, LinearAliasSpecifier, OverrideInit, AbstractOptimizationProblem
 using SciMLOperators: has_adjoint
