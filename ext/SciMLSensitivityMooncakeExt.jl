@@ -5,7 +5,7 @@ using Mooncake: Mooncake
 import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_run_ad,
     MooncakeVJP, MooncakeLoaded,
     DiffEqBase, MooncakeAdjoint, _init_originator_gradient,
-    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
