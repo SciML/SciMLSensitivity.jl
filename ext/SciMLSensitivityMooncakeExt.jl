@@ -5,7 +5,8 @@ using Mooncake: Mooncake
 import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_run_ad,
     MooncakeVJP, MooncakeLoaded,
     DiffEqBase, MooncakeAdjoint, _init_originator_gradient,
-    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity,
+    EnzymeAdjoint
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
@@ -256,7 +257,7 @@ end
 # AbstractSensitivityAlgorithm}` signature, dispatch prefers these three
 # sensealgs and falls back to the generic rule for everything else.
 const _MooncakeOverAnotherADSensealg = Union{
-    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity,
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity, EnzymeAdjoint
 }
 
 function _solve_up_mooncake_over_another_ad(prob, sensealg, u0, p, alg_and_kwargs...; kwargs...)
