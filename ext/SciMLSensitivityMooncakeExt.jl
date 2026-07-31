@@ -256,7 +256,7 @@ end
 # AbstractSensitivityAlgorithm}` signature, dispatch prefers these three
 # sensealgs and falls back to the generic rule for everything else.
 const _MooncakeOverAnotherADSensealg = Union{
-    ReverseDiffAdjoint, TrackerAdjoint, ForwardSensitivity,
+    ReverseDiffAdjoint, TrackerAdjoint, ForwardDiffSensitivity,
 }
 
 function _solve_up_mooncake_over_another_ad(prob, sensealg, u0, p, alg_and_kwargs...; kwargs...)
