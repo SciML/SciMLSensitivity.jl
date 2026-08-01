@@ -287,6 +287,7 @@ function Mooncake.rrule!!(
         sensealg::Mooncake.CoDual{<:_MooncakeOverAnotherADSensealg},
         u0::Mooncake.CoDual, p::Mooncake.CoDual, alg_and_rest::Mooncake.CoDual...,
     )
+    sensealg isa EnzymeAdjoint && error("EnzymeAdjoint currently is not supported inside of Mooncake autodiff")
     fargs = (f, prob, sensealg, u0, p, alg_and_rest...)
     primals = Mooncake.tuple_map(Mooncake.primal, fargs)
     lazy_rdata = Mooncake.tuple_map(Mooncake.lazy_zero_rdata, primals)
