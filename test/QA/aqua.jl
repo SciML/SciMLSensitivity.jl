@@ -23,7 +23,7 @@ run_qa(
                 # SciMLSensitivityMooncakeExt: re-imported through the parent module
                 :DiffEqBase, :FunctionWrappersWrappers, :ODEFunction, :SciMLBase,
                 :SciMLStructures, :Tunable, :canonicalize, :current_time,
-                :isscimlstructure, :state_values, :unwrapped_f,
+                :isscimlstructure, :remake, :solve, :state_values, :unwrapped_f,
             ),
         ),
         # Non-public names of upstream deps imported explicitly here; ignore until
@@ -53,7 +53,7 @@ run_qa(
                 :SciMLStructuresCompatibilityError, :_init_originator_gradient,
                 :convert_tspan, :current_time, :get_cb_paramjac_config,
                 :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
-                :state_values,
+                :remake, :solve, :state_values,
             ),
         ),
         # Non-public names of upstream deps accessed qualified in the source; ignore
@@ -91,9 +91,9 @@ run_qa(
                 :needs_concrete_A,
                 # Mooncake (internal tangent/rrule API used by SciMLSensitivityMooncakeExt)
                 :CoDual, :NoFData, :NoRData, :Tangent, :build_rrule, :fdata,
-                :increment_and_get_rdata!, :instantiate, :lazy_zero_rdata, :primal,
-                :rdata, :rrule!!, :tangent, :tangent_to_primal!!, :to_cr_tangent,
-                :tuple_map, :zero_rdata, :zero_tangent,
+                :increment!!, :increment_and_get_rdata!, :instantiate, :lazy_zero_rdata,
+                :primal, :rdata, :rrule!!, :tangent, :tangent_to_primal!!, :to_cr_tangent,
+                :to_fwds, :tuple_map, :zero_rdata, :zero_tangent,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff
