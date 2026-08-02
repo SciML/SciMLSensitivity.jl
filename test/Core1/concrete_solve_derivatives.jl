@@ -493,8 +493,10 @@ Tests callable structs with different AD backends
     # `MooncakeOriginator` dispatch added in #1420 replaces that cotangent
     # with `NoTangent()`. Same Mooncake-over-another-AD fix as above. See #1510.
     @testset "Mooncake with ForwardSensitivity (p-only)" begin
-        result = gradient_mooncake(senseloss_p(ForwardSensitivity()), p_only)
-        @test result ≈ ref_grad_p
+        for sensealg in (ForwardSensitivity(), ForwardSensitivity(autodiff = false))
+            result = gradient_mooncake(senseloss_p(sensealg), p_only)
+            @test result ≈ ref_grad_p
+        end
     end
 end
 
