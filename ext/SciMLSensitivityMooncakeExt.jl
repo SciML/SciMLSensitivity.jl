@@ -10,8 +10,7 @@ import SciMLSensitivity: get_paramjac_config, get_cb_paramjac_config, mooncake_r
 using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, isscimlstructure,
     SciMLStructuresCompatibilityError, convert_tspan,
     has_continuous_callback,
-    unwrapped_f, state_values, current_time
-using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
+    state_values, current_time, remake, solve
 using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
 using Accessors: @reset
 
@@ -149,6 +148,11 @@ function SciMLBase._concrete_solve_adjoint(
         tunables, repack, _ = canonicalize(Tunable(), p)
     end
 
+    # Hoisted out of the closure: differentiating `filter` over the kwargs Dict fails once
+    # any kwarg value is a float, e.g. abstol/reltol.
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
+
+    local sol
     function mooncake_adjoint_forwardpass(_u0, _p)
         if (
                 convert_tspan(sensealg) === nothing &&
@@ -160,19 +164,11 @@ function SciMLBase._concrete_solve_adjoint(
             _tspan = prob.tspan
         end
 
+        # No FullSpecialize remake, unlike the Tracker/Enzyme paths: Mooncake handles the
+        # original `prob.f`, and remaking leaves a type in `sol.interp` that disagrees with
+        # the one inferred for `solve_up`, tripping the derived rule's typeassert.
         if DiffEqBase.isinplace(prob)
-            if prob.f isa ODEFunction &&
-                    (
-                    prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
-                        SciMLBase.specialization(prob.f) === SciMLBase.AutoSpecialize
-                )
-                f = ODEFunction{isinplace(prob), SciMLBase.FullSpecialize}(unwrapped_f(prob.f))
-                _prob = remake(
-                    prob, f = f, u0 = _u0, p = _p, tspan = _tspan, callback = nothing
-                )
-            else
-                _prob = remake(prob, u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
-            end
+            _prob = remake(prob, u0 = _u0, p = _p, tspan = _tspan, callback = nothing)
         else
             _prob = remake(
                 prob, u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
@@ -180,22 +176,33 @@ function SciMLBase._concrete_solve_adjoint(
             )
         end
 
-        kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(
             _prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             kwargs_filtered...
         )
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
         @reset sol.prob = prob
-        return sol
+        return Array(sol)  # matches the matrix cotangent the backpass assembles
     end
 
-    out,
-        pullback = Mooncake.value_and_pullback!!(
-        Mooncake.CoDual(mooncake_adjoint_forwardpass, Mooncake.NoFData()),
-        Mooncake.CoDual(u0, Mooncake.zero_rdata(u0)),
-        Mooncake.CoDual(tunables, Mooncake.zero_rdata(tunables))
+    # `value_and_pullback!!` wants the cotangent up front, which we only have in the
+    # backpass, so drive the rule directly. `fx` is retained to read out accumulated fdata.
+    fx = (
+        Mooncake.CoDual(
+            mooncake_adjoint_forwardpass,
+            Mooncake.zero_tangent(mooncake_adjoint_forwardpass),
+        ),
+        Mooncake.CoDual(u0, Mooncake.zero_tangent(u0)),
+        Mooncake.CoDual(tunables, Mooncake.zero_tangent(tunables)),
     )
+    rule = Mooncake.build_rrule(map(Mooncake.primal, fx)...)
+    out, pb!! = rule(map(Mooncake.to_fwds, fx)...)
+    function pullback(ȳ)
+        Mooncake.increment!!(Mooncake.tangent(out), Mooncake.fdata(ȳ))
+        return map(fx, pb!!(Mooncake.rdata(ȳ))) do x, r
+            Mooncake.tangent(Mooncake.fdata(Mooncake.tangent(x)), r)
+        end
+    end
 
     function mooncake_adjoint_backpass(ybar)
         tmp = if eltype(ybar) <: Number && u0 isa Array
@@ -236,9 +243,7 @@ function SciMLBase._concrete_solve_adjoint(
         end
     end
 
-    u = state_values(out)
-    return SciMLBase.sensitivity_solution(out, u, current_time(out)),
-        mooncake_adjoint_backpass
+    return sol, mooncake_adjoint_backpass
 end
 
 # Mooncake stacked over ReverseDiffAdjoint/TrackerAdjoint/ForwardSensitivity
