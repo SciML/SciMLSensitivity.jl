@@ -27,6 +27,7 @@ run_tests(;
                 @time @safetestset "SciMLStructures Interface" include("Core1/scimlstructures_interface.jl")
                 @time @safetestset "Functor Parameters" include("Core1/functor_params.jl")
                 @time @safetestset "Sensitivity Verbosity" include("Core1/sensitivity_verbosity.jl")
+                @time @safetestset "sensealg ADTypes autodiff" include("Core1/sensealg_adtypes.jl")
             end
         end,
         "Core2" => function ()
