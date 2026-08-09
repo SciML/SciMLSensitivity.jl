@@ -608,7 +608,15 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         pf = nothing
         pJ = nothing
     else
-        pf = SciMLBase.ParamJacobianWrapper((du, u, p, t) -> unwrappedf(du, u, repack(p), t), tspan[1], y)
+        _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        _pjac_f = if _needs_repack && SciMLBase.isinplace(sol.prob.f)
+            (du, u, p, t) -> unwrappedf(du, u, repack(p), t)
+        elseif _needs_repack
+            (u, p, t) -> unwrappedf(u, repack(p), t)
+        else
+            unwrappedf
+        end
+        pf = SciMLBase.ParamJacobianWrapper(_pjac_f, tspan[1], y)
         pJ = similar(u0, length(u0), numparams)
         paramjac_config = build_param_jac_config(sensealg, pf, y, tunables)
     end
