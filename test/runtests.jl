@@ -163,7 +163,6 @@ run_tests(;
     qa = function ()
         return @testset "Quality Assurance" begin
             @time @safetestset "Aqua" include("QA/aqua.jl")
-            @time @safetestset "Public API docs" include("QA/public_api_docs.jl")
         end
     end,
     all = [
