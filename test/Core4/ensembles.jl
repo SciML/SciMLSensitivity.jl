@@ -1,5 +1,6 @@
 using SciMLSensitivity, OrdinaryDiffEq, Optimization, OptimizationOptimisers, Test
 using ADTypes
+using SciMLBase: EnsembleSerial, EnsembleThreads
 
 # These tests differentiate through ensemble solves. Zygote segfaults on Julia
 # 1.12+ (#1325), so use Enzyme, which differentiates the ODE `EnsembleProblem`

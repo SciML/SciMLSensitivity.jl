@@ -1,4 +1,5 @@
 using Test, Distributed
+using SciMLBase: EnsembleDistributed
 
 # These tests require AD differentiation through distributed ensemble solves
 # Mooncake doesn't have the necessary rules yet, and Zygote has compatibility
