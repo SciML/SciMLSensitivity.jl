@@ -53,11 +53,7 @@ run_qa(
                 :convert_tspan, :current_time, :get_cb_paramjac_config,
                 :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
                 :state_values,
-                # SciMLSensitivityMooncakeExt: Mooncake's rule-writing API, explicitly
-                # imported (`import Mooncake: ...`) for the native `MooncakeAdjoint`
-                # `solve_up` rule. There is no public spelling for writing a Mooncake
-                # rule (see the matching comment in all_qualified_accesses_are_public
-                # below); ignore until Mooncake marks its rule API public.
+                # Mooncake
                 :(var"@is_primitive"), :(var"@zero_derivative"), :CoDual, :ForwardMode,
                 :MinimalCtx, Symbol("frule!!"), Symbol("rrule!!"),
             ),
