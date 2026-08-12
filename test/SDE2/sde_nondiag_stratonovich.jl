@@ -120,6 +120,19 @@ end
         soloop, EulerHeun(), t = Array(t),
         dgdu_discrete = dg!,
         dt = dtnd, adaptive = false,
+        sensealg = BacksolveAdjoint(autojacvec = EnzymeVJP())
+    )
+
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol = 1.0e-6)
+    @test isapprox(res_sde_pa, res_sde_p, rtol = 1.0e-6)
+
+    @info res_sde_pa
+
+    res_sde_u0a,
+        res_sde_pa = adjoint_sensitivities(
+        soloop, EulerHeun(), t = Array(t),
+        dgdu_discrete = dg!,
+        dt = dtnd, adaptive = false,
         sensealg = BacksolveAdjoint(autojacvec = false)
     )
 
@@ -147,6 +160,19 @@ end
         dgdu_discrete = dg!,
         dt = dtnd, adaptive = false,
         sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+    )
+
+    @test isapprox(res_sde_u0a, res_sde_u0, rtol = 1.0e-5)
+    @test isapprox(res_sde_pa, res_sde_p, rtol = 1.0e-4)
+
+    @info res_sde_pa
+
+    res_sde_u0a,
+        res_sde_pa = adjoint_sensitivities(
+        soloop, EulerHeun(), t = Array(t),
+        dgdu_discrete = dg!,
+        dt = dtnd, adaptive = false,
+        sensealg = InterpolatingAdjoint(autojacvec = EnzymeVJP())
     )
 
     @test isapprox(res_sde_u0a, res_sde_u0, rtol = 1.0e-5)

@@ -13,7 +13,7 @@ jobs:
       matrix:
         package:
           - {user: SciML, repo: DiffEqFlux.jl, group: All}
-          - {user: SciML, repo: DeepEquilibriumNetworks.jl, group: CPU}
+          - {user: SciML, repo: DeepEquilibriumNetworks.jl, group: Core}
     uses: "SciML/.github/.github/workflows/downstream.yml@v1"
     with:
       owner: "${{ matrix.package.user }}"

@@ -39,9 +39,10 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
     ContinuousCallback, AbstractTimeseriesSolution, NonlinearFunction, NonlinearProblem,
     DiscreteCallback, LinearProblem, ODEFunction, ODEProblem, DAEFunction, DAEProblem,
     RODEFunction, RODEProblem, ReturnCode, SDEFunction,
-    SDEProblem, VectorContinuousCallback, deleteat!,
-    get_tmp_cache, has_adjoint, isinplace, reinit!, remake,
+    SDEProblem, VectorContinuousCallback,
+    get_tmp_cache, isinplace, reinit!, remake,
     solve, derivative_discontinuity!, LinearAliasSpecifier, OverrideInit, AbstractOptimizationProblem
+using SciMLOperators: has_adjoint
 
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
     default_nlsolve, has_autodiff

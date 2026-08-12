@@ -445,6 +445,45 @@ function adjointdiffcache(
                     end
                 end
             end
+        elseif autojacvec isa EnzymeVJP
+            # Cache the reusable buffers so `_jacNoise!(::EnzymeVJP)` allocates
+            # nothing per reverse-solver step (mirrors the drift `_vecjacobian!`).
+            jac_noise_config = nothing
+            noise_rate_prototype = prob.noise_rate_prototype
+            _diag = SciMLBase.is_diagonal_noise(prob)
+            # Output-shaped buffers (state-shaped for diagonal noise, matrix-shaped
+            # for non-diagonal), plus the state-shaped primal/shadow.
+            _du_out = _diag ? zero(y) : zero(noise_rate_prototype)
+            _du_seed = _diag ? zero(y) : zero(noise_rate_prototype)
+            _u_buf = zero(y)
+            _du_u = zero(y)
+            _pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
+            _func_shadow = Enzyme.make_zero(_pf)
+            # Dense parameter-gradient shadow (used directly for plain-array and
+            # view-backed `p`).
+            _dp_dense = zero(_p)
+            # #1470-safe parameter shadow: for a SciMLStructures (non-array) `p` the
+            # shadow must be a fully disjoint `make_zero(p)` (NOT
+            # `repack(zero(tunables))`, which aliases `p`'s non-tunable arrays);
+            # re-zeroing a cached aliasing shadow would corrupt the user's `p`.
+            _needs_shadow = !(p isa SciMLBase.NullParameters) &&
+                isscimlstructure(p) && !(p isa AbstractArray)
+            _shadow_p = if _needs_shadow
+                Enzyme.make_zero(p)
+            elseif !(p isa SciMLBase.NullParameters) && p isa AbstractArray &&
+                    typeof(tunables) !== typeof(zero(tunables))
+                # view-backed tunables (e.g. ComponentArray with SubArray data):
+                # pre-allocate a dense primal buffer to match the dense shadow type.
+                EnzymeViewPrimalBuffer(copy(tunables))
+            else
+                nothing
+            end
+            paramjac_noise_config = (
+                du_out = _du_out, du_seed = _du_seed,
+                u_buf = _u_buf, du_u = _du_u,
+                func_shadow = _func_shadow, dp_dense = _dp_dense,
+                shadow_p = _shadow_p,
+            )
         elseif autojacvec isa Bool
             if isinplace
                 if SciMLBase.is_diagonal_noise(prob)

@@ -1716,6 +1716,119 @@ function _jacNoise!(
     return
 end
 
+function _jacNoise!(
+        λ, y, p, t, S::TS, isnoise::EnzymeVJP, dgrad, dλ,
+        dy
+    ) where {TS <: SensitivityFunction}
+    prob = getprob(S)
+    f = unwrapped_f(S.f)
+    enzyme_mode = isnoise.mode
+    inplace = inplace_sensitivity(S)
+
+    noise_rate_prototype = prob.noise_rate_prototype
+    diag = SciMLBase.is_diagonal_noise(prob)
+    # number of Wiener processes / noise columns
+    m = noise_rate_prototype === nothing ? length(y) : size(noise_rate_prototype, 2)
+
+    # The Gauss/Quadrature-style adjoint rhs may call with `dgrad === nothing`; in
+    # that case skip the parameter-gradient accumulation entirely (Const `p`).
+    want_pgrad = dgrad !== nothing && !(p === nothing || p isa SciMLBase.NullParameters)
+
+    _p_scimlstruct = false
+    if want_pgrad
+        _p_scimlstruct = isscimlstructure(p) && !(p isa AbstractArray)
+    end
+
+    # Buffers pre-allocated once in the diffcache (see the EnzymeVJP branch in
+    # `adjointdiffcache`), reused and re-zeroed per reverse-solver step × column.
+    cfg = S.diffcache.paramjac_noise_config
+    du_out = cfg.du_out
+    du_seed = cfg.du_seed
+    u_buf = cfg.u_buf
+    du_u = cfg.du_u
+    func_shadow = cfg.func_shadow
+    dp_dense = cfg.dp_dense
+    cached_shadow = cfg.shadow_p
+
+    func = SciMLBase.Void(f)
+
+    for i in 1:m
+        # Zero the reused output buffer and its cotangent seed, then seed column
+        # `i` with `λ`: computes the vjp of the `i`-th Wiener column of the noise
+        # term. For diagonal noise a single scalar `λ[i]` at component `i`
+        # computes the vjp of the `i`-th diagonal noise component.
+        Enzyme.remake_zero!(du_out)
+        Enzyme.remake_zero!(du_seed)
+        if diag
+            du_seed[i] = λ[i]
+        else
+            @views du_seed[:, i] .= λ
+        end
+
+        vec(u_buf) .= vec(y)
+        Enzyme.remake_zero!(du_u)
+
+        _shadow_p = nothing
+        dup_p = if want_pgrad
+            if cached_shadow isa EnzymeViewPrimalBuffer
+                # view-backed p: dense primal buffer + dense shadow, both re-zeroed.
+                copyto!(cached_shadow.buf, p)
+                Enzyme.remake_zero!(dp_dense)
+                _shadow_p = dp_dense
+                Enzyme.Duplicated(cached_shadow.buf, dp_dense)
+            elseif cached_shadow !== nothing
+                # SciMLStructures p: disjoint `make_zero(p)` shadow (see #1470).
+                Enzyme.remake_zero!(cached_shadow)
+                _shadow_p = cached_shadow
+                Enzyme.Duplicated(p, cached_shadow)
+            else
+                # plain-array p: the dense shadow buffer is the gradient.
+                Enzyme.remake_zero!(dp_dense)
+                _shadow_p = dp_dense
+                Enzyme.Duplicated(p, dp_dense)
+            end
+        else
+            Enzyme.Const(p)
+        end
+
+        Enzyme.remake_zero!(func_shadow)
+        if inplace
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Duplicated(func, func_shadow), Enzyme.Const,
+                Enzyme.Duplicated(du_out, du_seed),
+                Enzyme.Duplicated(u_buf, du_u),
+                dup_p, Enzyme.Const(t)
+            )
+        else
+            Enzyme.autodiff(
+                enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
+                Enzyme.Duplicated(f, func_shadow),
+                Enzyme.Duplicated(du_out, du_seed),
+                Enzyme.Duplicated(u_buf, du_u),
+                dup_p, Enzyme.Const(t)
+            )
+        end
+
+        dλ !== nothing && (dλ[:, i] .= vec(du_u))
+        if want_pgrad && !isempty(dgrad)
+            if _p_scimlstruct
+                grad_tunables, _, _ = canonicalize(Tunable(), _shadow_p)
+                dgrad[:, i] .= vec(grad_tunables)
+            else
+                dgrad[:, i] .= vec(_shadow_p)
+            end
+        end
+        if dy !== nothing
+            if diag
+                dy[i] = du_out[i]
+            else
+                @views dy[:, i] .= vec(du_out[:, i])
+            end
+        end
+    end
+    return
+end
+
 function accumulate_cost!(
         dλ, y, p, t, S::TS,
         dgrad = nothing

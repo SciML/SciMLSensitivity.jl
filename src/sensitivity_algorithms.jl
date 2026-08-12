@@ -13,6 +13,34 @@ function SensitivityAlg(args...; kwargs...)
 end
 
 """
+    sensealg_autodiff_as_bool(autodiff) -> Bool
+
+Normalize a sensealg `autodiff` keyword to the Bool type parameter still used
+internally by SciMLSensitivity.
+
+Accepts:
+- `Bool` (`true`/`false`) — historical API
+- `AutoForwardDiff` — maps to `true` (build Jacobians via AD)
+- `AutoFiniteDiff` — maps to `false` (build Jacobians via finite differences)
+
+Other ADTypes backends are rejected because sensealg Jacobian construction is
+either ForwardDiff chunked AD or FiniteDiff; there is no Enzyme/Zygote path for
+the dense Jacobian (`autojacvec=false`) branch.
+"""
+@inline sensealg_autodiff_as_bool(autodiff::Bool) = autodiff
+@inline sensealg_autodiff_as_bool(::AutoForwardDiff) = true
+@inline sensealg_autodiff_as_bool(::Type{<:AutoForwardDiff}) = true
+@inline sensealg_autodiff_as_bool(::AutoFiniteDiff) = false
+@inline sensealg_autodiff_as_bool(::Type{<:AutoFiniteDiff}) = false
+function sensealg_autodiff_as_bool(autodiff)
+    throw(ArgumentError(
+        "sensealg autodiff must be a Bool, AutoForwardDiff, or AutoFiniteDiff; got $(typeof(autodiff)). " *
+        "Use `autodiff=AutoForwardDiff()` (or `true`) for AD Jacobians and " *
+        "`autodiff=AutoFiniteDiff()` (or `false`) for finite-difference Jacobians."))
+end
+
+
+"""
 ```julia
 ForwardSensitivity{CS, AD, FDT} <: AbstractForwardSensitivityAlgorithm{CS, AD, FDT}
 ```
@@ -35,7 +63,8 @@ ForwardSensitivity(;
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation in the internal sensitivity algorithm
-    computations. Default is `true`.
+    computations. Accepts `Bool` (`true`/`false`), `AutoForwardDiff()`, or
+    `AutoFiniteDiff()`. Default is `true`.
   - `chunk_size`: Chunk size for forward mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
     choice of chunk size.
@@ -68,13 +97,15 @@ end
 function ForwardSensitivity(;
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
-        autojacvec = autodiff,
+        autojacvec = nothing,
         autojacmat = false
     )
-    autojacvec && autojacmat &&
+    ad = sensealg_autodiff_as_bool(autodiff)
+    ajv = autojacvec === nothing ? ad : autojacvec
+    ajv && autojacmat &&
         error("Choose either Jacobian matrix products or Jacobian vector products,
                 autojacmat and autojacvec cannot both be true")
-    return ForwardSensitivity{chunk_size, autodiff, diff_type}(autojacvec, autojacmat)
+    return ForwardSensitivity{chunk_size, ad, diff_type}(ajv, autojacmat)
 end
 
 """
@@ -135,7 +166,8 @@ BacksolveAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -273,7 +305,8 @@ Base.@pure function BacksolveAdjoint(;
         autojacvec = nothing,
         checkpointing = true, noisemixing = false
     )
-    BacksolveAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    BacksolveAdjoint{chunk_size, ad, diff_type, typeof(autojacvec)}(
         autojacvec,
         checkpointing,
         noisemixing
@@ -310,7 +343,8 @@ InterpolatingAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -403,7 +437,8 @@ Base.@pure function InterpolatingAdjoint(;
         autojacvec = nothing,
         checkpointing = false, noisemixing = false
     )
-    InterpolatingAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    InterpolatingAdjoint{chunk_size, ad, diff_type, typeof(autojacvec)}(
         autojacvec,
         checkpointing,
         noisemixing
@@ -448,7 +483,8 @@ QuadratureAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -515,7 +551,8 @@ Base.@pure function QuadratureAdjoint(;
         autojacvec = nothing, abstol = 1.0e-6,
         reltol = 1.0e-3, diff_tunables = Val(true)
     )
-    QuadratureAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    QuadratureAdjoint{chunk_size, ad, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
         autojacvec,
         abstol, reltol, diff_tunables
     )
@@ -556,7 +593,8 @@ GaussAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -623,7 +661,8 @@ Base.@pure function GaussAdjoint(;
         checkpointing = false,
         diff_tunables = Val(true)
     )
-    GaussAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    GaussAdjoint{chunk_size, ad, diff_type, typeof(autojacvec), typeof(diff_tunables)}(
         autojacvec, checkpointing, diff_tunables
     )
 end
@@ -657,7 +696,8 @@ GaussKronrodAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -722,7 +762,8 @@ Base.@pure function GaussKronrodAdjoint(;
         autojacvec = nothing,
         checkpointing = false
     )
-    GaussKronrodAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    GaussKronrodAdjoint{chunk_size, ad, diff_type, typeof(autojacvec)}(
         autojacvec, checkpointing
     )
 end
@@ -865,7 +906,8 @@ Base.@pure function SundialsAdjoint(;
     )
     interp in (:hermite, :polynomial) ||
         error("SundialsAdjoint `interp` must be `:hermite` or `:polynomial`, got `$(interp)`.")
-    SundialsAdjoint{chunk_size, autodiff, diff_type, typeof(autojacvec)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    SundialsAdjoint{chunk_size, ad, diff_type, typeof(autojacvec)}(
         autojacvec, steps, interp, quad_error_control
     )
 end
@@ -1040,7 +1082,8 @@ ForwardLSS(;
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -1088,7 +1131,8 @@ Base.@pure function ForwardLSS(;
         LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
         g = nothing
     )
-    ForwardLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    ForwardLSS{chunk_size, ad, diff_type, typeof(LSSregularizer), typeof(g)}(
         LSSregularizer,
         g
     )
@@ -1121,7 +1165,8 @@ AdjointLSS(;
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -1161,7 +1206,8 @@ Base.@pure function AdjointLSS(;
         LSSregularizer = TimeDilation(10.0, 0.0, 0.0),
         g = nothing
     )
-    AdjointLSS{chunk_size, autodiff, diff_type, typeof(LSSregularizer), typeof(g)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    AdjointLSS{chunk_size, ad, diff_type, typeof(LSSregularizer), typeof(g)}(
         LSSregularizer,
         g
     )
@@ -1279,13 +1325,15 @@ Base.@pure function NILSS(
         rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
         chunk_size = 0, autodiff = true,
         diff_type = Val{:central},
-        autojacvec = autodiff,
+        autojacvec = nothing,
         g = nothing
     )
-    NILSS{chunk_size, autodiff, diff_type, typeof(rng), typeof(nus), typeof(g)}(
+    ad = sensealg_autodiff_as_bool(autodiff)
+    ajv = autojacvec === nothing ? ad : autojacvec
+    NILSS{chunk_size, ad, diff_type, typeof(rng), typeof(nus), typeof(g)}(
         rng, nseg,
         nstep, nus,
-        autojacvec,
+        ajv,
         g
     )
 end
@@ -1349,7 +1397,8 @@ NILSAS(nseg, nstep, M = nothing; rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
             is a boolean for whether to precompile the tape, which should only be done
             if there are no branches (`if` or `while` statements) in the `f` function.
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
     choice of chunk size.
@@ -1393,9 +1442,10 @@ Base.@pure function NILSAS(
     M === nothing &&
         error("Please provide an `M` with `M >= nus + 1`, where nus is the number of unstable covariant Lyapunov vectors.")
 
+    ad = sensealg_autodiff_as_bool(autodiff)
     NILSAS{
         chunk_size,
-        autodiff,
+        ad,
         diff_type,
         typeof(rng),
         typeof(adjoint_sensealg),
@@ -1426,7 +1476,8 @@ SteadyStateAdjoint(; chunk_size = 0, autodiff = true,
 ## Keyword Arguments
 
   - `autodiff`: Use automatic differentiation for constructing the Jacobian
-    if the Jacobian needs to be constructed.  Defaults to `true`.
+    if the Jacobian needs to be constructed. Accepts `Bool`, `AutoForwardDiff()`,
+    or `AutoFiniteDiff()`. Defaults to `true`.
 
   - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
     built (`autojacvec=false` and `autodiff=true`). Default is `0` for automatic
@@ -1485,8 +1536,9 @@ Base.@pure function SteadyStateAdjoint(;
         diff_type = Val{:central}, autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;), diff_tunables = Val(true)
     )
+    ad = sensealg_autodiff_as_bool(autodiff)
     return SteadyStateAdjoint{
-        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        chunk_size, ad, diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(diff_tunables),
     }(autojacvec, linsolve, linsolve_kwargs, diff_tunables)
 end
@@ -1572,8 +1624,9 @@ function UnconstrainedOptimizationAdjoint(;
         diff_type = Val{:central}, objective_ad = true, autojacvec = nothing, linsolve = nothing,
         linsolve_kwargs = (;)
     )
+    ad = sensealg_autodiff_as_bool(autodiff)
     return UnconstrainedOptimizationAdjoint{
-        chunk_size, autodiff, diff_type, typeof(autojacvec),
+        chunk_size, ad, diff_type, typeof(autojacvec),
         typeof(linsolve), typeof(linsolve_kwargs), typeof(objective_ad),
     }(autojacvec, linsolve, linsolve_kwargs, objective_ad)
 end

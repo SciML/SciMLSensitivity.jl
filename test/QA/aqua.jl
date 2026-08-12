@@ -63,9 +63,14 @@ run_qa(
                 # ArrayInterface
                 :parameterless_type,
                 # Base
-                :(var"@pure"), :_nt_names, :diff_names,
+                :(var"@pure"), :_nt_names, :diff_names, :structdiff,
                 # ChainRulesCore
                 :backing,
+                # Core
+                :kwcall,
+                # DiffEqBase (internal `solve_up`/`_solve_adjoint` rrule plumbing
+                # used by SciMLSensitivityMooncakeExt)
+                :_solve_adjoint, :solve_up,
                 # DiffEqCallbacks
                 :PeriodicCallbackAffect,
                 # DiffEqNoiseProcess
@@ -87,8 +92,10 @@ run_qa(
                 # LinearSolve
                 :needs_concrete_A,
                 # Mooncake (internal tangent/rrule API used by SciMLSensitivityMooncakeExt)
-                :CoDual, :NoFData, :Tangent, :build_rrule, :tangent_to_primal!!,
-                :zero_rdata,
+                :CoDual, :NoFData, :NoRData, :Tangent, :build_rrule, :fdata,
+                :increment_and_get_rdata!, :instantiate, :lazy_zero_rdata, :primal,
+                :rdata, :rrule!!, :tangent, :tangent_to_primal!!, :to_cr_tangent,
+                :tuple_map, :zero_rdata, :zero_tangent,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff

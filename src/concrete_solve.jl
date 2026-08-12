@@ -427,7 +427,7 @@ function _init_originator_gradient(::SciMLBase.ADOriginator, f, tunables)
 end
 
 # Init-path gradient for the `EnzymeOriginator` (outer-Enzyme) case, routed
-# through a Zygote pullback (the #1467 workaround).
+# through a Zygote pullback (the #1467/#1515 workaround).
 #
 # This runs in the adjoint backpass of the `solve` rrule — ordinary primal code
 # inside the outer Enzyme reverse pass that is NOT itself differentiated by
@@ -435,15 +435,15 @@ end
 # generic `ADOriginator` fallback above. (The init sub-VJP it calls may still be
 # `EnzymeVJP`; only the outer init differentiation is moved off Enzyme.)
 #
-# It deliberately does NOT use a nested `Enzyme.gradient`. #1498 restored an
+# It deliberately does NOT use a nested `Enzyme.gradient`. #1498/#1569 restored an
 # Enzyme-native init gradient after the #1469 nesting bug (EnzymeAD/Enzyme.jl#3139)
-# was fixed, but that nested `Enzyme.gradient` now crashes reverse-differentiating
-# MTK's `__apply_copy_template` parameter-template copy — an undersized shadow
-# `Memory{Float64}` `BoundsError` (and a TypeAnalysis blowup on cold compile) that
-# fails the Core8 `mtk.jl` `DefaultInit` setup. That is upstream
-# EnzymeAD/Enzyme.jl#3259; until it is fixed, route the init gradient through
-# Zygote so repeated/multi-problem outer-Enzyme differentiation through MTK DAE
-# init works. See #1514, #1467, #1469, #1415.
+# and the #1514 `__apply_copy_template` crash (EnzymeAD/Enzyme.jl#3259/#3350) were
+# reported fixed, but the nested `Enzyme.gradient` still crashes the full Core8
+# `mtk.jl` "MTK Forward Mode" sweep under its compile ordering — an undersized
+# shadow `Memory{Float64}` `BoundsError` at `__apply_copy_template` — even on
+# Enzyme 0.13.190. So route the init gradient through Zygote until Enzyme fully
+# fixes it; repeated/multi-problem outer-Enzyme differentiation through MTK DAE
+# init then works. See #1514, #1569, #1515, #1467, #1469, #1415.
 function _init_originator_gradient(::SciMLBase.EnzymeOriginator, f, tunables)
     iy, back = Zygote.pullback(f, tunables)
     return back(one(iy))[1]
@@ -1695,11 +1695,25 @@ function SciMLBase._concrete_solve_adjoint(
                 end
 
                 # use the callback from kwargs, not prob
-                _prob = remake(
-                    prob, f = _f, u0 = u0dual,
-                    p = _p,
-                    tspan = tspandual, callback = nothing
-                )
+                # When the problem carries initialization data, `u0` is a derived
+                # quantity: a single `remake(prob; u0, p)` runs initialization and
+                # recomputes `u0` from `p`, discarding the seeded duals and leaving
+                # this chunk of `du0` identically zero. Setting `p` first and `u0`
+                # second keeps the seed, because the `u0`-only `remake` is what
+                # writes it back into the parameter object (for MTK, into the
+                # `Initial(x)` parameters that initialization reads).
+                _prob = if SciMLBase.has_initialization_data(prob.f)
+                    _pprob = remake(
+                        prob, f = _f, p = _p, tspan = tspandual, callback = nothing
+                    )
+                    remake(_pprob, u0 = u0dual)
+                else
+                    remake(
+                        prob, f = _f, u0 = u0dual,
+                        p = _p,
+                        tspan = tspandual, callback = nothing
+                    )
+                end
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (
