@@ -9,6 +9,8 @@ using SciMLSensitivity
 using OrdinaryDiffEq
 using Tracker
 using Enzyme
+using ForwardDiff
+using Zygote
 import SciMLBase
 using Test
 
@@ -117,5 +119,52 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             )
             any(!iszero, dtunables)
         end
+    end
+end
+
+# https://github.com/SciML/SciMLSensitivity.jl/issues/1582
+# `ForwardDiffSensitivity` (the default here: length(u0) + length(tunables) <= 100)
+# seeds `u0` duals, but a problem carrying initialization data re-derives `u0`
+# from `p` during `remake`. If the seed is discarded the whole `du0` is zero, and
+# every `Initial(x)` gradient silently vanishes.
+@testset "Gradients w.r.t. `Initial` parameters (#1582)" begin
+    @parameters m2 = 1.5 d2 = 9.0
+    @variables s2(t) = 1.0 v2(t) = 1.0
+    initsys = mtkcompile(
+        System([D(s2) ~ v2, m2 * D(v2) ~ 1 - d2 * v2], t; name = :initmodel)
+    )
+    initprob = ODEProblem(initsys, [], (0.0, 1.0))
+    set_v0 = SII.setp_oop(initprob, [Initial(initsys.v2)])
+    get_s = SII.getsym(initprob, initsys.s2)
+
+    initloss = function (x)
+        sol = solve(remake(initprob; p = set_v0(initprob, x)), Tsit5(); saveat = 0.02)
+        return sum(abs2, get_s(sol))
+    end
+
+    x0 = [1.1]
+    @test SciMLSensitivity.automatic_sensealg_choice(
+        initprob, state_values(initprob), parameter_values(initprob), false, nothing
+    ) isa ForwardDiffSensitivity
+
+    reference = ForwardDiff.gradient(initloss, x0)
+    @test !iszero(only(reference))
+    @test Zygote.gradient(initloss, x0)[1] ≈ reference rtol = 1.0e-5
+
+    # The true adjoints reach the same value through `du0`.
+    for sensealg in (InterpolatingAdjoint(), GaussAdjoint(), QuadratureAdjoint())
+        g = Zygote.gradient(
+            x -> sum(
+                abs2,
+                get_s(
+                    solve(
+                        remake(initprob; p = set_v0(initprob, x)), Tsit5();
+                        saveat = 0.02, sensealg
+                    )
+                )
+            ),
+            x0
+        )[1]
+        @test g ≈ reference rtol = 1.0e-5
     end
 end

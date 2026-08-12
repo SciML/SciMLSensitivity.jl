@@ -1675,11 +1675,25 @@ function SciMLBase._concrete_solve_adjoint(
                 end
 
                 # use the callback from kwargs, not prob
-                _prob = remake(
-                    prob, f = _f, u0 = u0dual,
-                    p = _p,
-                    tspan = tspandual, callback = nothing
-                )
+                # When the problem carries initialization data, `u0` is a derived
+                # quantity: a single `remake(prob; u0, p)` runs initialization and
+                # recomputes `u0` from `p`, discarding the seeded duals and leaving
+                # this chunk of `du0` identically zero. Setting `p` first and `u0`
+                # second keeps the seed, because the `u0`-only `remake` is what
+                # writes it back into the parameter object (for MTK, into the
+                # `Initial(x)` parameters that initialization reads).
+                _prob = if SciMLBase.has_initialization_data(prob.f)
+                    _pprob = remake(
+                        prob, f = _f, p = _p, tspan = tspandual, callback = nothing
+                    )
+                    remake(_pprob, u0 = u0dual)
+                else
+                    remake(
+                        prob, f = _f, u0 = u0dual,
+                        p = _p,
+                        tspan = tspandual, callback = nothing
+                    )
+                end
 
                 if _prob isa SDEProblem
                     _prob.noise_rate_prototype !== nothing && (
