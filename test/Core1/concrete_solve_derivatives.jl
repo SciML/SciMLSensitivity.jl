@@ -448,6 +448,19 @@ Tests callable structs with different AD backends
         end
     end
 
+    @testset "Mooncake with MooncakeAdjoint" begin
+        @test gradient_mooncake(senseloss(MooncakeAdjoint()), u0p) ≈
+            ref_grad_senseloss
+        # Independent HVP ground truth: nested ForwardDiff over the whole loss, not
+        # going through any adjoint sensealg at all.
+        ref_hvp = ForwardDiff.gradient(
+            uu -> sum(ForwardDiff.gradient(senseloss(InterpolatingAdjoint()), uu)),
+            u0p
+        )
+        _, _, hvp = hvp_mooncake(senseloss(MooncakeAdjoint()), u0p)
+        @test hvp ≈ ref_hvp
+    end
+
     # Mooncake over another AD's adjoint (`ReverseDiffAdjoint`/`TrackerAdjoint`, and
     # `ForwardSensitivity` below) via the dedicated `MooncakeOriginator` dispatch added
     # in #1420: the plain gradient re-solves with a `MooncakeOriginator()` originator so

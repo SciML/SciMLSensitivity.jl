@@ -53,6 +53,13 @@ run_qa(
                 :convert_tspan, :current_time, :get_cb_paramjac_config,
                 :get_paramjac_config, :has_continuous_callback, :mooncake_run_ad,
                 :state_values,
+                # SciMLSensitivityMooncakeExt: Mooncake's rule-writing API, explicitly
+                # imported (`import Mooncake: ...`) for the native `MooncakeAdjoint`
+                # `solve_up` rule. There is no public spelling for writing a Mooncake
+                # rule (see the matching comment in all_qualified_accesses_are_public
+                # below); ignore until Mooncake marks its rule API public.
+                :(var"@is_primitive"), :(var"@zero_derivative"), :CoDual, :ForwardMode,
+                :MinimalCtx, Symbol("frule!!"), Symbol("rrule!!"),
             ),
         ),
         # Non-public names of upstream deps accessed qualified in the source; ignore
@@ -62,12 +69,12 @@ run_qa(
                 # ArrayInterface
                 :parameterless_type,
                 # Base
-                :(var"@pure"), :_nt_names, :diff_names, :structdiff,
+                :(var"@pure"), :_nt_names, :diff_names, :inferencebarrier, :structdiff,
                 # Core
                 :kwcall,
                 # DiffEqBase (internal `solve_up`/`_solve_adjoint` rrule plumbing
                 # used by SciMLSensitivityMooncakeExt)
-                :_solve_adjoint, :solve_up,
+                :AbstractDEProblem, :_solve_adjoint, :solve_up,
                 # DiffEqCallbacks
                 :PeriodicCallbackAffect,
                 # DiffEqNoiseProcess
@@ -89,10 +96,10 @@ run_qa(
                 # LinearSolve
                 :needs_concrete_A,
                 # Mooncake (internal tangent/rrule API used by SciMLSensitivityMooncakeExt)
-                :CoDual, :NoFData, :NoRData, :Tangent, :build_rrule, :fdata,
-                :increment_and_get_rdata!, :instantiate, :lazy_zero_rdata, :primal,
-                :rdata, :rrule!!, :tangent, :tangent_to_primal!!, :to_cr_tangent,
-                :tuple_map, :zero_rdata, :zero_tangent,
+                :CoDual, :NoRData, :Tangent, :build_rrule, :fdata,
+                :increment_and_get_rdata!, :instantiate, :lazy_zero_rdata,
+                :mooncake_tangent, :primal, :rdata, :rrule!!, :tangent,
+                :tangent_to_primal!!, :to_cr_tangent, :to_fwds, :tuple_map, :zero_tangent,
                 # OrdinaryDiffEqCore
                 :alg_autodiff, :default_linear_interpolation,
                 # ReverseDiff
@@ -110,6 +117,8 @@ run_qa(
                 :enable_interpolation_sensitivitymode,
                 :has_initialization_data, :has_observed, :has_paramjac, :has_vjp_p,
                 :initialization_status, :sensitivity_solution, :specialization,
+                # SciMLSensitivity (own internal, accessed qualified from the extension)
+                :automatic_sensealg_choice,
                 # SciMLStructures
                 :replace,
                 # SparseArrays
