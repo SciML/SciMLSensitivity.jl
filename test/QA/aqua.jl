@@ -64,6 +64,8 @@ run_qa(
                 :parameterless_type,
                 # Base
                 :(var"@pure"), :_nt_names, :diff_names,
+                # ChainRulesCore
+                :backing,
                 # DiffEqCallbacks
                 :PeriodicCallbackAffect,
                 # DiffEqNoiseProcess
