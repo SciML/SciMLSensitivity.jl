@@ -1337,13 +1337,9 @@ end
 # before it reaches here, but `u0` is never wrapped, so its type stays intact. Structural
 # fields like `axes` differentiate to zero, so the one non-zero field is the real data.
 #
-# Uses `ChainRulesCore.backing(v)`, not `getfield(v, :backing)`: `backing` dispatches on
-# `v`'s type (handling `Tangent`/`MutableTangent`/`Tuple`/`NamedTuple` correctly, including
-# `MutableTangent`'s extra `getindex` unwrap) instead of hardcoding that the field is named
-# `:backing`. Plain property access (`v.backing`) is unsafe here for an unrelated reason:
-# `Tangent` overloads `getproperty` to mirror the primal's fields, so `v.backing` would
-# return `ZeroTangent()` (the overload's fallback for a missing property), not the actual
-# backing data.
+# `ChainRulesCore.backing(v)` dispatches on `v`'s type instead of hardcoding the field
+# name. Plain `v.backing` doesn't work: `Tangent` overloads `getproperty` to mirror the
+# primal's fields, so it returns `ZeroTangent()`, not the actual backing data.
 function _tangent_array_data(v::Tangent, u0::AbstractArray)
     live = collect(Iterators.filter(x -> !(x isa AbstractZero), values(ChainRulesCore.backing(v))))
     length(live) == 1 || return v
