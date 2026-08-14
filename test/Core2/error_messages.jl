@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, Zygote
+using SciMLBase: SteadyStateProblem
 using Test, ForwardDiff, SteadyStateDiffEq
 import Tracker, ReverseDiff, ChainRulesCore
 
