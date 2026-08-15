@@ -52,6 +52,7 @@ run_tests(;
                 @time @safetestset "automatic sensealg choice" include("Core3/automatic_sensealg_choice.jl")
                 @time @safetestset "GaussAdjoint ZygoteVJP In-Place" include("Core3/gauss_zygote_inplace.jl")
                 @time @safetestset "Adjoint Allocation Regression" include("Core3/allocation_regression.jl")
+                @time @safetestset "SensitivityFunction developer interface" include("Core3/sensitivity_interface.jl")
                 @time @safetestset "User-provided VJP" include("Core3/user_vjp.jl")
             end
         end,

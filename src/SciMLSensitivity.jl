@@ -70,15 +70,63 @@ using Statistics: Statistics, mean
 """
     SensitivityFunction
 
-Abstract supertype for the internal right-hand-side functions used by
+Developer interface for the internal right-hand-side functions used by
 SciMLSensitivity adjoint and callback sensitivity problems.
 
-Concrete subtypes carry the forward solution, cost-function derivatives,
-algorithm choice, and derivative caches needed by the generated sensitivity
-`ODEProblem`, `SDEProblem`, or `RODEProblem`. This is developer API for
-SciMLSensitivity and SciML solver integrations; users normally select a
-`sensealg` through `solve` or construct one of the documented sensitivity
-problem wrappers instead.
+`SensitivityFunction` has no fields of its own. A concrete subtype owns the
+forward solution or problem, cost-function derivatives, algorithm choice, and
+derivative caches needed by its generated differential equation. Concrete
+subtypes are created by SciMLSensitivity's problem constructors; users should
+normally select a `sensealg` through `solve` or use one of the documented
+sensitivity problem wrappers instead.
+
+# Interface
+
+A concrete subtype must be callable in the form required by the differential
+equation problem that consumes it. For an ODE or DAE this is normally the
+in-place call
+`(du, u, p, t) -> nothing`; an out-of-place call `(u, p, t) -> du` may also be
+provided when the consuming problem supports it. SDE and RODE subtypes may
+add a noise argument, `(du, u, p, t, W) -> nothing`, for the reverse noise
+path. The call must write or return the complete sensitivity state derivative,
+including adjoint, parameter-gradient, and any quadrature components owned by
+the subtype.
+
+The subtype must also retain the originating problem in one of the layouts
+used by the generic sensitivity machinery:
+
+  - `prob`: the originating problem, for backsolve sensitivity functions;
+  - `sol.prob`: the originating problem reachable through the forward solution,
+    for the other adjoint sensitivity functions.
+
+This lets `getprob` recover the problem and lets
+`inplace_sensitivity` select the matching derivative-wrapper path. The
+problem's in-place convention must agree with the callable method supplied by
+the subtype.
+
+# Example
+
+The following minimal subtype demonstrates the generic contract. Real
+implementations should use the package constructors so that derivative caches,
+callbacks, and solver-specific state are initialized consistently.
+
+```julia
+struct ExampleSensitivityFunction <: SensitivityFunction
+    sol
+end
+
+function (S::ExampleSensitivityFunction)(du, u, p, t)
+    du .= -u
+    return nothing
+end
+```
+
+# API status
+
+This is developer API for SciMLSensitivity and SciML solver integrations. It is
+versioned and tested for extension authors, but it is not a user-facing
+modeling interface. Users should not subtype it merely to differentiate an
+ODE; use the documented sensitivity algorithms and problem wrappers instead.
 """
 abstract type SensitivityFunction end
 
