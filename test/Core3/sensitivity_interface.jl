@@ -1,5 +1,5 @@
 using SciMLSensitivity
-using SciMLBase: ODEProblem
+using SciMLBase: ODEProblem, isinplace
 using Test
 
 function fiip(du, u, p, t)
@@ -57,8 +57,12 @@ oop_sense = GenericOutOfPlaceSensitivityFunction(GenericSensitivitySolution(prob
     sense(du, prob.u0, prob.p, first(prob.tspan))
     custom_sense(du, prob.u0, prob.p, first(prob.tspan))
 
+    generated_prob = ODEProblem(sense, prob.u0, prob.tspan, prob.p)
+    generated_prob.f(du, prob.u0, prob.p, first(prob.tspan))
+
     @test sense isa SensitivityFunction
     @test du == [-1.0]
+    @test isinplace(generated_prob.f)
     @test SciMLSensitivity.getprob(sense) === prob
     @test SciMLSensitivity.inplace_sensitivity(sense)
     @test SciMLSensitivity.getprob(custom_sense) === prob

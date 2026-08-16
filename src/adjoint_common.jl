@@ -858,6 +858,16 @@ The default method handles the built-in backsolve layout, which stores the
 problem in `S.prob`, and the other built-in layouts, which store it in
 `S.sol.prob`.
 
+# Arguments
+
+  - `S::SensitivityFunction`: Sensitivity-function subtype whose originating
+    problem should be returned.
+
+# Returns
+
+  - The originating SciML problem used to determine model metadata and calling
+    conventions.
+
 # Extension Rules
 
 A developer-defined subtype with a different storage layout must add a method
@@ -880,6 +890,16 @@ only when a developer-defined subtype intentionally uses a calling convention
 different from that of its originating problem. An in-place subtype must accept
 `(du, u, p, t)` and return `nothing`; an out-of-place subtype must accept
 `(u, p, t)` and return the complete derivative.
+
+# Arguments
+
+  - `S::SensitivityFunction`: Sensitivity-function subtype whose calling
+    convention should be reported.
+
+# Returns
+
+  - `Bool`: `true` for an in-place sensitivity function and `false` for an
+    out-of-place sensitivity function.
 """
 inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
