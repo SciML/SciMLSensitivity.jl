@@ -2,7 +2,6 @@ using SciMLTesting, SciMLSensitivity, SciMLBase, Test
 
 run_qa(
     SciMLSensitivity;
-    explicit_imports = true,
     aqua_kwargs = (;
         ambiguities = (; recursive = false),
         piracies = (;

@@ -75,14 +75,36 @@ SciMLSensitivity adjoint and callback sensitivity problems. This is a
 versioned extension interface for sensitivity and solver packages, not a
 user-facing modeling interface.
 
-`SensitivityFunction` declares no fields. Concrete subtypes normally retain the
-original differential-equation function in `f`, a forward solution in `sol`,
-the originating problem in `prob` or `sol.prob`, and the algorithm and
-derivative-cache state needed by the sensitivity calculation. The constructors
-in SciMLSensitivity create these objects; users should select a `sensealg`
-through `solve` or use a documented sensitivity problem wrapper instead.
+`SensitivityFunction` has no fields or public constructor. The package
+constructors create concrete subtypes with the forward solution, originating
+problem, sensitivity algorithm, and derivative workspaces needed by a specific
+algorithm. Application code should select a `sensealg` through `solve` or use a
+documented sensitivity problem wrapper instead.
 
-# Interface
+# Fields
+
+  - `SensitivityFunction`: no fields; this is an abstract interface only.
+  - Concrete subtypes choose their own fields. The originating problem must be
+    available through `prob`, `sol.prob`, or a `getprob` method. Fields such as
+    `f`, `sensealg`, and `diffcache` are required only by derivative-wrapper
+    integrations that access them.
+
+# Arguments
+
+The required positional arguments are determined by the generated problem and
+the callable convention below. In-place methods receive a destination first;
+out-of-place methods return the complete derivative. The arguments `u`, `p`,
+and `t` are the generated state, parameters, and time. The optional `W` is the
+noise process supplied by a RODE or SDE problem.
+
+# Keywords
+
+No keyword arguments are required by the `SensitivityFunction` interface. A
+solver or extension may pass additional keywords to a wrapper it owns, but a
+new sensitivity function must support the positional convention selected by
+its generated problem.
+
+# Callable Interface
 
 The subtype is passed as the differential-equation function of a generated
 problem. A sensitivity right-hand-side subtype must implement one of the
@@ -90,62 +112,53 @@ following call conventions:
 
   - in-place ODE or SDE drift: `(S)(du, u, p, t) -> nothing`;
   - out-of-place ODE or SDE drift: `(S)(u, p, t) -> du`;
-  - reverse RODE/SDE noise path: `(S)(du, u, p, t, W) -> nothing` when the
-    generated problem supplies `W`;
+  - in-place RODE or SDE noise path: `(S)(du, u, p, t, W) -> nothing`;
   - augmented DAE sensitivity state: `(S)(dz, z, p, t) -> nothing`.
 
-`DAEAdjointResidual` is a built-in wrapper around an augmented DAE sensitivity
-function. It adds the derivative argument and implements the fully implicit
-residual convention `(R)(res, dz, z, p, t) -> nothing` for a `DAEProblem`.
-Developer-defined sensitivity functions should implement the four-argument
-augmented-state convention and wrap it in their own residual type when a DAE
-solver requires a residual.
+`DAEAdjointResidual` is a built-in wrapper for a fully implicit DAE residual
+with the convention `(R)(res, dz, z, p, t) -> nothing`; a custom DAE residual
+wrapper must preserve that convention.
 
-The call must fill or return the complete sensitivity state derivative required
-by the generated problem, including adjoint, parameter-gradient, quadrature,
-or residual components. The original model function is available as `S.f` to
-the derivative-wrapper machinery and must use the same in-place convention as
-the sensitivity call unless the subtype supplies the corresponding wrapper
-methods.
+The callable must fill or return the complete sensitivity state derivative
+required by the generated problem, including adjoint, parameter-gradient,
+quadrature, and residual components when present. The five-argument form is
+required only when the generated problem supplies a noise process.
 
-# Properties
+# Required Properties
 
-The generic derivative wrappers access the following properties on a
-sensitivity-function subtype:
+A concrete subtype must retain the originating SciML problem. Store it in
+`prob` or `sol.prob` when the default [`getprob`](@ref) method applies; otherwise
+implement `SciMLSensitivity.getprob(S::MySensitivityFunction)` and return the
+exact problem used to create the sensitivity function.
 
-  - `f`: Original differential-equation function used for state and parameter
-    derivatives. It must be accepted by the derivative-wrapper utilities.
-  - `sensealg`: Sensitivity algorithm whose derivative backend is selected by
-    the wrapper.
-  - `diffcache`: Derivative workspaces with the fields required by the selected
-    backend and sensitivity calculation.
-  - `prob` or `sol.prob`, or another package-defined storage location returned
-    by [`getprob`](@ref): the originating SciML problem.
-  - Additional state such as the forward solution, checkpoint solution, cost
-    derivatives, and callback data required by the subtype.
+The default [`inplace_sensitivity`](@ref) method obtains the calling convention
+from `SciMLBase.isinplace(getprob(S))`. Override it when the callable method
+intentionally uses a different convention, and ensure the reported value and
+call signature agree. For example, a subtype whose originating problem is
+out-of-place but whose sensitivity callable mutates `du` must return `true`.
 
-The concrete field types and the remaining field set are implementation details.
-They should be kept concrete so that the generated sensitivity problem remains
-type stable. Extensions should expose these properties through fields or
-`getproperty` only as needed; they must not depend on the fields of another
-concrete sensitivity-function subtype.
+For use with SciMLSensitivity's derivative-wrapper machinery, also expose:
+
+  - `f`: the original differential-equation function used for state and
+    parameter derivatives;
+  - `sensealg`: the sensitivity algorithm, including the selected derivative
+    backend;
+  - `diffcache`: the backend-specific derivative workspaces and caches;
+  - any additional state required by the selected algorithm, such as `sol`,
+    checkpoint data, cost derivatives, or callback data.
+
+The `f`, `sensealg`, and `diffcache` properties are requirements for using the
+derivative wrappers, not for the minimal callable/trait contract alone. Keep
+their types concrete and do not depend on the fields of another concrete
+sensitivity-function subtype.
 
 # Extension Rules
 
-Use the package constructors when possible. An extension that defines a new
-subtype must provide a callable method with the appropriate signature, retain
-the originating problem, and implement
-`SciMLSensitivity.getprob(S::MySensitivityFunction)` when the problem is not
-available as `S.sol.prob`. The default `getprob` method supports the built-in
-backsolve layout and the `sol.prob` layout used by the other built-in
-subtypes.
-
-The default [`inplace_sensitivity`](@ref) method delegates to
-`SciMLBase.isinplace(getprob(S))`. Override it only when the callable method
-deliberately uses a different convention. A subtype that supports reverse
-noise must also implement the five-argument call; a subtype that supports
-fully implicit DAE residuals must follow the DAE residual convention above.
-Do not rely on the fields of another concrete sensitivity-function subtype.
+Use the package constructors when possible. Add methods to the generic
+`getprob` and `inplace_sensitivity` functions rather than relying on a concrete
+SciMLSensitivity subtype's fields. A new subtype may use any storage layout if
+it satisfies the callable convention, retains the originating problem, and
+provides the derivative-wrapper properties when it calls those wrappers.
 
 # Examples
 
@@ -276,6 +289,10 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("enzyme_rules.jl")
+
+@static if VERSION >= v"1.11.0-DEV.469"
+    eval(Expr(:public, :getprob, :inplace_sensitivity))
+end
 
 export extract_local_sensitivities
 
