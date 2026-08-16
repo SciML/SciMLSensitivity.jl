@@ -849,9 +849,38 @@ function get_cb_paramjac_config(::Any, ::MooncakeVJP, raw_affect, event_idx, y, 
     error(msg)
 end
 
+"""
+    getprob(S::SensitivityFunction)
+
+Return the originating SciML problem used to construct `S`.
+
+The default method handles the built-in backsolve layout, which stores the
+problem in `S.prob`, and the other built-in layouts, which store it in
+`S.sol.prob`.
+
+# Extension Rules
+
+A developer-defined subtype with a different storage layout must add a method
+of the form `SciMLSensitivity.getprob(S::MySensitivityFunction)`. The method
+must return the exact originating problem, because derivative wrappers use its
+in-place convention and problem metadata.
+"""
 function getprob(S::SensitivityFunction)
     return (S isa ODEBacksolveSensitivityFunction) ? S.prob : S.sol.prob
 end
+
+"""
+    inplace_sensitivity(S::SensitivityFunction) -> Bool
+
+Return whether the sensitivity function uses the in-place differential-equation
+calling convention.
+
+The default delegates to `SciMLBase.isinplace(getprob(S))`. Override this method
+only when a developer-defined subtype intentionally uses a calling convention
+different from that of its originating problem. An in-place subtype must accept
+`(du, u, p, t)` and return `nothing`; an out-of-place subtype must accept
+`(u, p, t)` and return the complete derivative.
+"""
 inplace_sensitivity(S::SensitivityFunction) = isinplace(getprob(S))
 
 """

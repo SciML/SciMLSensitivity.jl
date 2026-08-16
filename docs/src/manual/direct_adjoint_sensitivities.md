@@ -10,6 +10,8 @@ RODEAdjointProblem
 DAEAdjointProblem
 AdjointSensitivityIntegrand
 SensitivityFunction
+SciMLSensitivity.getprob
+SciMLSensitivity.inplace_sensitivity
 StochasticTransformedFunction
 ```
 
