@@ -33,10 +33,13 @@ the dense Jacobian (`autojacvec=false`) branch.
 @inline sensealg_autodiff_as_bool(::AutoFiniteDiff) = false
 @inline sensealg_autodiff_as_bool(::Type{<:AutoFiniteDiff}) = false
 function sensealg_autodiff_as_bool(autodiff)
-    throw(ArgumentError(
-        "sensealg autodiff must be a Bool, AutoForwardDiff, or AutoFiniteDiff; got $(typeof(autodiff)). " *
-        "Use `autodiff=AutoForwardDiff()` (or `true`) for AD Jacobians and " *
-        "`autodiff=AutoFiniteDiff()` (or `false`) for finite-difference Jacobians."))
+    throw(
+        ArgumentError(
+            "sensealg autodiff must be a Bool, AutoForwardDiff, or AutoFiniteDiff; got $(typeof(autodiff)). " *
+                "Use `autodiff=AutoForwardDiff()` (or `true`) for AD Jacobians and " *
+                "`autodiff=AutoFiniteDiff()` (or `false`) for finite-difference Jacobians."
+        )
+    )
 end
 
 
