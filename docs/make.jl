@@ -13,8 +13,7 @@ makedocs(;
     sitename = "SciMLSensitivity.jl",
     authors = "Chris Rackauckas et al.",
     modules = [SciMLSensitivity],
-    clean = true, doctest = false, linkcheck = true,
-    warnonly = [:missing_docs],
+    clean = true, linkcheck = true,
     format = Documenter.HTML(
         assets = ["assets/favicon.ico"],
         canonical = "https://docs.sciml.ai/SciMLSensitivity/stable/"

@@ -70,15 +70,128 @@ using Statistics: Statistics, mean
 """
     SensitivityFunction
 
-Abstract supertype for the internal right-hand-side functions used by
-SciMLSensitivity adjoint and callback sensitivity problems.
+Developer interface for the right-hand-side functions used by
+SciMLSensitivity adjoint and callback sensitivity problems. This is a
+versioned extension interface for sensitivity and solver packages, not a
+user-facing modeling interface.
 
-Concrete subtypes carry the forward solution, cost-function derivatives,
-algorithm choice, and derivative caches needed by the generated sensitivity
-`ODEProblem`, `SDEProblem`, or `RODEProblem`. This is developer API for
-SciMLSensitivity and SciML solver integrations; users normally select a
-`sensealg` through `solve` or construct one of the documented sensitivity
-problem wrappers instead.
+`SensitivityFunction` has no fields or public constructor. The package
+constructors create concrete subtypes with the forward solution, originating
+problem, sensitivity algorithm, and derivative workspaces needed by a specific
+algorithm. Application code should select a `sensealg` through `solve` or use a
+documented sensitivity problem wrapper instead.
+
+# Fields
+
+  - `SensitivityFunction`: no fields; this is an abstract interface only.
+  - Concrete subtypes choose their own fields. The originating problem must be
+    available through `prob`, `sol.prob`, or a `getprob` method. Fields such as
+    `f`, `sensealg`, and `diffcache` are required only by derivative-wrapper
+    integrations that access them.
+
+# Arguments
+
+The required positional arguments are determined by the generated problem and
+the callable convention below. In-place methods receive a destination first;
+out-of-place methods return the complete derivative. The arguments `u`, `p`,
+and `t` are the generated state, parameters, and time. The optional `W` is the
+noise process supplied by a RODE or SDE problem.
+
+# Keywords
+
+No keyword arguments are required by the `SensitivityFunction` interface. A
+solver or extension may pass additional keywords to a wrapper it owns, but a
+new sensitivity function must support the positional convention selected by
+its generated problem.
+
+# Callable Interface
+
+The subtype is passed as the differential-equation function of a generated
+problem. A sensitivity right-hand-side subtype must implement one of the
+following call conventions:
+
+  - in-place ODE or SDE drift: `(S)(du, u, p, t) -> nothing`;
+  - out-of-place ODE or SDE drift: `(S)(u, p, t) -> du`;
+  - in-place RODE or SDE noise path: `(S)(du, u, p, t, W) -> nothing`;
+  - augmented DAE sensitivity state: `(S)(dz, z, p, t) -> nothing`.
+
+`DAEAdjointResidual` is a built-in wrapper for a fully implicit DAE residual
+with the convention `(R)(res, dz, z, p, t) -> nothing`; a custom DAE residual
+wrapper must preserve that convention.
+
+The callable must fill or return the complete sensitivity state derivative
+required by the generated problem, including adjoint, parameter-gradient,
+quadrature, and residual components when present. The five-argument form is
+required only when the generated problem supplies a noise process.
+
+# Required Properties
+
+A concrete subtype must retain the originating SciML problem. Store it in
+`prob` or `sol.prob` when the default [`getprob`](@ref) method applies; otherwise
+implement `SciMLSensitivity.getprob(S::MySensitivityFunction)` and return the
+exact problem used to create the sensitivity function.
+
+The default [`inplace_sensitivity`](@ref) method obtains the calling convention
+from `SciMLBase.isinplace(getprob(S))`. Override it when the callable method
+intentionally uses a different convention, and ensure the reported value and
+call signature agree. For example, a subtype whose originating problem is
+out-of-place but whose sensitivity callable mutates `du` must return `true`.
+
+For use with SciMLSensitivity's derivative-wrapper machinery, also expose:
+
+  - `f`: the original differential-equation function used for state and
+    parameter derivatives;
+  - `sensealg`: the sensitivity algorithm, including the selected derivative
+    backend;
+  - `diffcache`: the backend-specific derivative workspaces and caches;
+  - any additional state required by the selected algorithm, such as `sol`,
+    checkpoint data, cost derivatives, or callback data.
+
+The `f`, `sensealg`, and `diffcache` properties are requirements for using the
+derivative wrappers, not for the minimal callable/trait contract alone. Keep
+their types concrete and do not depend on the fields of another concrete
+sensitivity-function subtype.
+
+# Extension Rules
+
+Use the package constructors when possible. Add methods to the generic
+`getprob` and `inplace_sensitivity` functions rather than relying on a concrete
+SciMLSensitivity subtype's fields. A new subtype may use any storage layout if
+it satisfies the callable convention, retains the originating problem, and
+provides the derivative-wrapper properties when it calls those wrappers.
+
+# Examples
+
+The following minimal subtype demonstrates the generic in-place contract and a
+custom problem-storage method. Real implementations should use the package
+constructors so that derivative caches, callbacks, and solver-specific state
+are initialized consistently.
+
+```julia
+using SciMLBase: ODEProblem
+
+struct ExampleSensitivityFunction{P, F} <: SensitivityFunction
+    prob::P
+    f::F
+end
+
+SciMLSensitivity.getprob(S::ExampleSensitivityFunction) = S.prob
+
+function (S::ExampleSensitivityFunction)(du, u, p, t)
+    du .= -u
+    return nothing
+end
+
+prob = ODEProblem((du, u, p, t) -> du .= u, [1.0], (0.0, 1.0))
+sense = ExampleSensitivityFunction(prob, prob.f)
+du = similar(prob.u0)
+sense(du, prob.u0, prob.p, first(prob.tspan))
+```
+
+This is developer API for SciMLSensitivity and SciML solver integrations. It is
+versioned and tested for extension authors. Users should not subtype it merely
+to differentiate an ODE; use the documented sensitivity algorithms and problem
+wrappers instead.
 """
 abstract type SensitivityFunction end
 
@@ -176,6 +289,10 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("enzyme_rules.jl")
+
+@static if VERSION >= v"1.11.0-DEV.469"
+    eval(Expr(:public, :getprob, :inplace_sensitivity))
+end
 
 export extract_local_sensitivities
 
