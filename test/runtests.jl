@@ -28,6 +28,7 @@ run_tests(;
                 @time @safetestset "Functor Parameters" include("Core1/functor_params.jl")
                 @time @safetestset "Sensitivity Verbosity" include("Core1/sensitivity_verbosity.jl")
                 @time @safetestset "sensealg ADTypes autodiff" include("Core1/sensealg_adtypes.jl")
+                @time @safetestset "Precompile workload" include("Core1/precompile_workload.jl")
             end
         end,
         "Core2" => function ()
