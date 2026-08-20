@@ -28,7 +28,7 @@ prob = SMS.ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
 This generates a problem which the ODE solvers can solve:
 
 ```@example directsense
-sol = ODE.solve(prob, ODE.DP8())
+sol = ODE.solve(prob, ODE.Vern9())
 ```
 
 Note that the solution is the standard ODE system and the sensitivity system combined.
