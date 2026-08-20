@@ -215,6 +215,14 @@ function automatic_sensealg_choice(
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
+    elseif repack !== nothing
+        # The caller has already canonicalized: `p` is the tunables and `repack`
+        # reconstructs the original parameter object. Canonicalizing again would
+        # replace the caller's repack with an identity-like one (e.g.
+        # `SciMLStructures.ArrayRepack` for `MTKParameters`), making every VJP
+        # probe call the RHS with the bare tunables vector instead of the
+        # parameter object it will actually receive. See #1605.
+        tunables = p
     elseif isscimlstructure(p)
         tunables, repack, _ = canonicalize(Tunable(), p)
     elseif isfunctor(p)
@@ -350,7 +358,7 @@ function automatic_sensealg_choice(
             end
         end
     else
-        vjp = inplace_vjp(prob, u0, p, verbose, repack)
+        vjp = inplace_vjp(prob, u0, tunables, verbose, repack)
         if _diff_tunables isa Val{false} && !supports_structured_vjp(vjp)
             vjp = ZygoteVJP()
         end
