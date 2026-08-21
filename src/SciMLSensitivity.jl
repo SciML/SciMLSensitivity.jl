@@ -20,6 +20,7 @@ using IntervalSets: IntervalSets, var".."
 using LinearSolve: LinearSolve
 using PreallocationTools: PreallocationTools, get_tmp, DiffCache,
     LazyBufferCache
+using PrecompileTools: @compile_workload
 using RandomNumbers: Xorshifts
 using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
     AbstractVectorOfArray, ArrayPartition, DiffEqArray,
@@ -289,6 +290,7 @@ include("second_order.jl")
 include("steadystate_adjoint.jl")
 include("sde_tools.jl")
 include("enzyme_rules.jl")
+include("precompilation.jl")
 
 @static if VERSION >= v"1.11.0-DEV.469"
     eval(Expr(:public, :getprob, :inplace_sensitivity))
