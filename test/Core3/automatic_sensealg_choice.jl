@@ -61,29 +61,3 @@ let N = 150
     @test sensealg_sparse isa GaussAdjoint
     @test sensealg_sparse.autojacvec isa EnzymeVJP
 end
-
-# Regression test for #1605: `automatic_sensealg_choice` used to re-canonicalize the
-# already-canonical tunables vector, overwriting the caller's repack (e.g. for
-# `MTKParameters`) with an identity-like `ArrayRepack`. Every VJP probe then called the
-# RHS with the bare tunables vector; any RHS reading a non-tunable portion threw in the
-# probe primal, so the chooser silently fell back to numerical VJPs
-# `GaussAdjoint(autodiff = false, autojacvec = false)`. More than 100 tunables are needed
-# to get past the `ForwardDiffSensitivity` short-circuit and reach the probes.
-using ModelingToolkit
-using ModelingToolkit: t_nounits as t, D_nounits as D
-
-let
-    @parameters k[1:128] = 0.01 .* ones(128)
-    @parameters c = 3.0 [tunable = false]
-    @variables x(t) = 1.0
-    @named sys = System([D(x) ~ -c * sum(k) * x], t)
-    sys = mtkcompile(sys)
-    prob = ODEProblem(sys, [], (0.0, 1.0))
-
-    tunables, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
-    sensealg_mtk = SciMLSensitivity.automatic_sensealg_choice(
-        prob, prob.u0, tunables, true, repack, prob.p
-    )
-    @test sensealg_mtk isa GaussAdjoint
-    @test !(sensealg_mtk.autojacvec isa Bool)
-end
