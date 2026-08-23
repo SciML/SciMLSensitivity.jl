@@ -122,6 +122,29 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     end
 end
 
+function autodespecialized_rhs!(du, u, p, t)
+    du[1] = -p[1] * u[1]
+    return nothing
+end
+
+@testset "Adjoint with despecialized parameters" begin
+    function loss(p)
+        prob = ODEProblem{true, SciMLBase.AutoDespecialize}(
+            autodespecialized_rhs!, [1.0], (0.0, 1.0), p
+        )
+        sol = solve(
+            prob, Tsit5();
+            sensealg = GaussAdjoint(autojacvec = EnzymeVJP()),
+            abstol = 1.0e-10, reltol = 1.0e-10,
+            saveat = [0.0, 1.0], save_everystep = false,
+        )
+        return sum(sol)
+    end
+
+    grad = only(Zygote.gradient(loss, [0.5]))
+    @test only(grad) ≈ -exp(-0.5) rtol = 1.0e-6
+end
+
 # https://github.com/SciML/SciMLSensitivity.jl/issues/1582
 # `ForwardDiffSensitivity` (the default here: length(u0) + length(tunables) <= 100)
 # seeds `u0` duals, but a problem carrying initialization data re-derives `u0`

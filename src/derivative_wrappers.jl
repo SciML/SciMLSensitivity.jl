@@ -253,6 +253,10 @@ function _f_has_vjp(f)
     return f isa SciMLBase.AbstractSciMLFunction && SciMLBase.has_vjp(f)
 end
 
+_adjoint_parameters(p, ::SciMLBase.DespecializedParameters) =
+    SciMLBase.DespecializedParameters(p)
+_adjoint_parameters(p, _) = p
+
 # `du`/`ddu` are set only for fully implicit DAE residuals F(du, u, p, t): `du` is
 # the derivative evaluation point and `ddu` receives the vjp with respect to it.
 # They thread through the same per-backend `_vecjacobian!` methods as the ODE
@@ -264,6 +268,7 @@ function vecjacobian!(
         dgrad = nothing, dy = nothing,
         W = nothing, du = nothing, ddu = nothing
     ) where {TS <: SensitivityFunction}
+    p = _adjoint_parameters(p, parameter_values(getprob(S)))
     if du === nothing && _f_has_vjp(S.f)
         _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
     else
@@ -285,6 +290,7 @@ function vecjacobian(
         dgrad = nothing, dy = nothing,
         W = nothing
     ) where {TS <: SensitivityFunction}
+    p = _adjoint_parameters(p, parameter_values(getprob(S)))
     if _f_has_vjp(S.f)
         return _vecjacobian_vjp(y, λ, p, t, S, dgrad, dy, W)
     else
