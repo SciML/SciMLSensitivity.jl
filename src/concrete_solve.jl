@@ -2785,10 +2785,45 @@ function SciMLBase._concrete_solve_adjoint(
         u0, p, originator::SciMLBase.ADOriginator,
         args...; kwargs...
     )
+    # Auto-select the optimization adjoint: use the constrained KKT adjoint
+    # (`OptimizationAdjoint`) when the problem carries constraints — general constraints
+    # (`cons`) or variable bounds (`lb`/`ub`), both of which enter the KKT system — otherwise
+    # the stationarity-only `UnconstrainedOptimizationAdjoint`. Bounds matter: at an active
+    # bound the stationarity premise ∇f(u*) = 0 fails, so the unconstrained adjoint would
+    # silently return wrong sensitivities.
+    unconstrained = prob.f.cons === nothing && prob.lb === nothing && prob.ub === nothing
+    default_sensealg = unconstrained ?
+        UnconstrainedOptimizationAdjoint() : OptimizationAdjoint()
     return SciMLBase._concrete_solve_adjoint(
-        prob, alg, UnconstrainedOptimizationAdjoint(),
+        prob, alg, default_sensealg,
         u0, p, originator, args...; kwargs...
     )
+end
+
+# Read one field of a structural tangent, tolerating any tangent shape. A `Tangent` is lenient
+# (returns `ZeroTangent()` for an absent field); a raw `NamedTuple` is not, so guard it; an
+# `AbstractZero` (or anything else) has no fields, so it contributes nothing.
+_opt_tangent_field(::Union{ZeroTangent, NoTangent}, ::Symbol) = ZeroTangent()
+_opt_tangent_field(t::Tangent, f::Symbol) = getproperty(t, f)
+_opt_tangent_field(t::NamedTuple, f::Symbol) = haskey(t, f) ? getfield(t, f) : ZeroTangent()
+_opt_tangent_field(::Any, ::Symbol) = ZeroTangent()
+
+# Extract an explicit parameter cotangent carried on an `OptimizationSolution` tangent `Δ`.
+#
+# The optimization backpasses were adapted from the NonlinearSolution one, which reads
+# `Δ.prob.p`. `OptimizationSolution` has no `prob` field — its parameters live in the cache. And
+# `cache.p` is only a `getproperty` alias on the *primal* `OptimizationCache` (which has no real
+# `p` field, only `reinit_cache::ReInitCache` holding `(u0, p)`); that alias does not apply to a
+# `Tangent`, which is keyed by real struct fields. So the parameter cotangent is at
+# `cache.reinit_cache.p` for an `OptimizationCache`, or `cache.p` for a `DefaultOptimizationCache`
+# (where `p` *is* a real field). Navigate both defensively: a solution tangent carrying no
+# parameter contribution — the common case, including the Zygote flow that unwraps to a
+# `u`-cotangent before this branch — yields `ZeroTangent()`.
+function _optsol_param_cotangent(Δ)
+    cache_t = _opt_tangent_field(Δ, :cache)
+    p_t = _opt_tangent_field(_opt_tangent_field(cache_t, :reinit_cache), :p)
+    (p_t isa ZeroTangent || p_t isa NoTangent) || return p_t
+    return _opt_tangent_field(cache_t, :p)
 end
 
 function SciMLBase._concrete_solve_adjoint(
@@ -2885,22 +2920,36 @@ function SciMLBase._concrete_solve_adjoint(
                 dp, nothing
             end
         else
-            dp, Δtunables = if isscimlstructure(p)
-                if (Δ.prob.p == ZeroTangent() || Δ.prob.p == NoTangent())
-                    dp, _, _ = canonicalize(Tunable(), dp)
-                    dp, nothing
+            # Structural tangent. Pull any explicit parameter cotangent from the solution
+            # tangent's cache (`_optsol_param_cotangent`), then combine it with the KKT `dp`.
+            Δsolp = _optsol_param_cotangent(Δ)
+            dp, Δtunables = if Δsolp isa ZeroTangent || Δsolp isa NoTangent
+                # No explicit parameter contribution (the common case): reduce `dp` to tunable
+                # space and add nothing extra.
+                dp = if isscimlstructure(p) && !(p isa AbstractArray)
+                    canonicalize(Tunable(), dp)[1]
+                elseif isfunctor(p)
+                    Functors.functor(dp)[1]
                 else
-                    Δp = setproperties(dp, to_nt(Δ.prob.p))
-                    Δtunables, _, _ = canonicalize(Tunable(), Δp)
-                    dp, _, _ = canonicalize(Tunable(), dp)
-                    dp, Δtunables
+                    dp
                 end
+                dp, nothing
+            elseif isscimlstructure(p) && !(p isa AbstractArray)
+                # Genuinely structured (non-array) params: the cotangent is a structured tangent
+                # whose tunable fields we splice into `dp`'s structure before canonicalizing.
+                Δp = setproperties(dp, to_nt(Δsolp))
+                Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, Δtunables
             elseif isfunctor(p)
                 dp, _ = Functors.functor(dp)
-                Δtunables, _ = Functors.functor(Δ.prob.p)
+                Δtunables, _ = Functors.functor(Δsolp)
                 dp, Δtunables
             else
-                dp, Δ.prob.p
+                # Plain-array params: the cotangent is already in tunable space; add it directly.
+                # (Routing it through `to_nt` would collapse to an empty NamedTuple, leaving
+                # `Δtunables == dp` and thus doubling the gradient.)
+                dp, Δsolp
             end
         end
 
@@ -2926,6 +2975,117 @@ function SciMLBase._concrete_solve_adjoint(
     return out, steadystatebackpass
 end
 
+function SciMLBase._concrete_solve_adjoint(
+        prob::AbstractOptimizationProblem,
+        alg, sensealg::OptimizationAdjoint{CS, AD, FDT},
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; save_idxs = nothing, kwargs...
+    ) where {CS, AD, FDT}
+
+    _prob = remake(prob, u0 = u0, p = p)
+    opt_sol = solve(_prob, alg, args...; kwargs...)
+
+    _save_idxs = save_idxs === nothing ? Colon() : save_idxs
+    out = if save_idxs === nothing
+        opt_sol
+    else
+        SciMLBase.sensitivity_solution(opt_sol, opt_sol[_save_idxs])
+    end
+
+    _, repack_adjoint = if isscimlstructure(p)
+        Zygote.pullback(p) do p
+            t, _, _ = canonicalize(Tunable(), p)
+            t
+        end
+    elseif isfunctor(p)
+        ps, re = Functors.functor(p)
+        ps, x -> (re(x),)
+    else
+        nothing, x -> (x,)
+    end
+
+    function optimizationbackpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+        function df(_out, _u, _p, _t, _i)
+            return if _save_idxs isa Number
+                _out[_save_idxs] = Δ isa AbstractArray ? Δ[_save_idxs] : Δ.u[_save_idxs]
+            elseif Δ isa Number
+                @. _out[_save_idxs] = Δ
+            elseif Δ isa AbstractArray
+                @. _out[_save_idxs] = Δ[_save_idxs]
+            elseif isnothing(_out)
+                _out
+            else
+                @. _out[_save_idxs] = Δ.u[_save_idxs]
+            end
+        end
+        dp = adjoint_sensitivities(opt_sol, nothing; sensealg = sensealg, dgdu = df)
+
+        dp, Δtunables = if Δ isa AbstractArray || Δ isa Number
+            dp, Δtunables = if isscimlstructure(dp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, nothing
+            elseif isfunctor(dp)
+                dp, _ = Functors.functor(dp)
+                dp, nothing
+            else
+                dp, nothing
+            end
+        else
+            # Structural tangent. Pull any explicit parameter cotangent from the solution
+            # tangent's cache (`_optsol_param_cotangent`), then combine it with the KKT `dp`.
+            Δsolp = _optsol_param_cotangent(Δ)
+            dp, Δtunables = if Δsolp isa ZeroTangent || Δsolp isa NoTangent
+                # No explicit parameter contribution (the common case): reduce `dp` to tunable
+                # space and add nothing extra.
+                dp = if isscimlstructure(p) && !(p isa AbstractArray)
+                    canonicalize(Tunable(), dp)[1]
+                elseif isfunctor(p)
+                    Functors.functor(dp)[1]
+                else
+                    dp
+                end
+                dp, nothing
+            elseif isscimlstructure(p) && !(p isa AbstractArray)
+                # Genuinely structured (non-array) params: the cotangent is a structured tangent
+                # whose tunable fields we splice into `dp`'s structure before canonicalizing.
+                Δp = setproperties(dp, to_nt(Δsolp))
+                Δtunables, _, _ = canonicalize(Tunable(), Δp)
+                dp, _, _ = canonicalize(Tunable(), dp)
+                dp, Δtunables
+            elseif isfunctor(p)
+                dp, _ = Functors.functor(dp)
+                Δtunables, _ = Functors.functor(Δsolp)
+                dp, Δtunables
+            else
+                # Plain-array params: the cotangent is already in tunable space; add it directly.
+                # (Routing it through `to_nt` would collapse to an empty NamedTuple, leaving
+                # `Δtunables == dp` and thus doubling the gradient.)
+                dp, Δsolp
+            end
+        end
+
+        dp = Zygote.accum(
+            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables
+        )
+
+        return if originator isa SciMLBase.TrackerOriginator ||
+                originator isa SciMLBase.ReverseDiffOriginator
+            (
+                NoTangent(), NoTangent(), NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        else
+            (
+                NoTangent(), NoTangent(), NoTangent(),
+                NoTangent(), repack_adjoint(dp)[1], NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        end
+    end
+
+    return out, optimizationbackpass
+end
 
 function fix_endpoints(sensealg, sol, ts)
     @warn "Endpoints do not match. Return code: $(sol.retcode). Likely your time range is not a multiple of `saveat`. sol.t[end]: $(last(current_time(sol))), ts[end]: $(ts[end])"

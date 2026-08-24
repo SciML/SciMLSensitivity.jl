@@ -703,10 +703,11 @@ function _vecjacobian!(
         (; tunables, repack) = S.diffcache
     end
 
-    u0 = state_values(prob)
-    if prob isa AbstractNonlinearProblem ||
+    if prob isa AbstractNonlinearProblem || prob isa SciMLBase.AbstractOptimizationCache ||
             (
-            eltype(λ) <: eltype(u0) && t isa eltype(u0) &&
+            let u0 = state_values(prob)
+                eltype(λ) <: eltype(u0) && t isa eltype(u0)
+            end &&
                 compile_tape(sensealg.autojacvec)
         )
         tape = S.diffcache.paramjac_config
@@ -757,7 +758,8 @@ function _vecjacobian!(
         end
     end
 
-    if prob isa AbstractNonlinearProblem
+    _no_time = prob isa AbstractNonlinearProblem || prob isa SciMLBase.AbstractOptimizationCache
+    if _no_time
         tu, tp = ReverseDiff.input_hook(tape)
     else
         if W === nothing
@@ -769,13 +771,13 @@ function _vecjacobian!(
     output = ReverseDiff.output_hook(tape)
     ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls
     ReverseDiff.unseed!(tp)
-    if !(prob isa AbstractNonlinearProblem)
+    if !_no_time
         ReverseDiff.unseed!(tt)
     end
     W !== nothing && ReverseDiff.unseed!(tW)
     ReverseDiff.value!(tu, y)
     p isa SciMLBase.NullParameters || ReverseDiff.value!(tp, tunables)
-    if !(prob isa AbstractNonlinearProblem)
+    if !_no_time
         ReverseDiff.value!(tt, [t])
     end
     W !== nothing && ReverseDiff.value!(tW, W)

@@ -1644,6 +1644,155 @@ function setvjp(
     )
 end
 
+"""
+```julia
+OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <: AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+```
+
+An implementation of adjoint differentiation for constrained optimization problems.
+Uses implicit differentiation of the KKT first-order optimality conditions to compute
+derivatives of the optimal solution u* with respect to parameters p, given a cotangent
+`dgdu = dG/du*` for some downstream loss `G`.
+
+Handles equality constraints (`lcons == ucons`), two-sided inequality constraints
+(`lcons ≤ cons(u, p) ≤ ucons`), and variable box bounds (`lb ≤ u ≤ ub`). The active
+inequality set is detected by proximity at the optimum and refined by multiplier-sign
+checks (KKT requires inequality multipliers to be non-negative).
+
+Given the cotangent `Δu`, the algorithm solves the symmetric KKT system
+
+```
+[ L_xx   J_g'   J_h' ]   [ λ_x   ]   [ Δu ]
+[ J_g    0      0    ] · [ λ_y   ] = [ 0  ]
+[ J_h    0      0    ]   [ λ_z   ]   [ 0  ]
+```
+
+once, then computes `dG/dp = -λ' · ∂F/∂p` as a single VJP through the KKT residual
+`F(p) = [∇_x L(u*, p); g(u*, p); h_I(u*, p)]`. No re-optimization is required.
+
+## Constructor
+
+```julia
+OptimizationAdjoint(; chunk_size = 0, autodiff = true,
+    diff_type = Val{:forward},
+    autojacvec = nothing,
+    linsolve = nothing, linsolve_kwargs = (;),
+    active_tol = nothing)
+```
+
+## Keyword Arguments
+
+  - `autodiff`: the **forward-mode** backend for the one derivative the adjoint computes
+    itself — the Lagrangian Hessian `L_xx` (the `∂²ₓ` block of the KKT matrix), and only as a
+    *fallback*: when the `OptimizationFunction` exposes no second-order information (no `lag_h`,
+    and not both `hess` and `cons_h`), e.g. for gradient-only solvers like SLSQP. When
+    second-order info is present it is used directly and this backend is never invoked, so
+    `autodiff` has **no effect for second-order solvers**. The residual's first-order
+    stationarity terms are *not* affected by this setting — they reuse the stored (dual-tolerant)
+    `grad`/`cons_j` directly. The fallback differentiates the *raw* Lagrangian (raw objective +
+    prep-free constraints), keeping DI preparation out of the differentiated path. Defaults to
+    `nothing`, meaning *use the `OptimizationFunction`'s own ADType*. Pass an `ADTypes` backend
+    to override: `AutoForwardDiff()`, `AutoFiniteDiff()`, or `AutoEnzyme()` (always run in
+    forward mode). **Reverse-mode backends** (`AutoReverseDiff`, `AutoZygote`, `AutoTracker`,
+    `AutoMooncake`) are rejected, since the fallback nests forward-over-forward. For backward
+    compatibility a `Bool` is also accepted: `true` → `AutoForwardDiff()`,
+    `false` → `AutoFiniteDiff()`. Validated *lazily* — an irrelevant setting on a second-order
+    solver does not error. Independent of `autojacvec`, which controls the *outer* VJP.
+  - `chunk_size`: Chunk size for forward-mode differentiation if full Jacobians are
+    built. Default is `0` for automatic choice of chunk size.
+  - `diff_type`: The FiniteDiff.jl method used for the `L_xx` Hessian fallback when
+    `autodiff = false`. Defaults to `Val{:forward}`. Ignored when `autodiff` is an
+    explicit `ADTypes` backend.
+  - `autojacvec`: Calculate the vector-Jacobian product (`λ' · ∂F/∂p`) through the
+    KKT residual via automatic differentiation with special seeding. Choices:
+
+      + `nothing`: chooses an automatic algorithm. Defaults to `true` (ForwardDiff
+        via materialized Jacobian) and is recommended for most users.
+      + `false`: the Jacobian is constructed via FiniteDiff.jl.
+      + `true`: the Jacobian is constructed via ForwardDiff.jl. This requires the
+        OptimizationFunction's stored `grad`/`cons_j` to be dual-tolerant (built with a
+        ForwardDiff/Enzyme backend); for a non-dual-tolerant function use `false`. Independent of
+        `autodiff`, which only backs the `Lxx` fallback and never enters the outer VJP.
+      + `ZygoteVJP`: Uses Zygote.jl for the vjp.
+      + `EnzymeVJP`: Uses Enzyme.jl for the vjp.
+      + `ReverseDiffVJP(compile=false)`: Uses ReverseDiff.jl for the vjp. `compile`
+        is a boolean for whether to precompile the tape, which should only be done
+        if there are no branches (`if` or `while` statements) in the `f` function.
+      + `MooncakeVJP`: Uses Mooncake.jl for the vjp.
+  - `linsolve`: the linear solver used in the KKT solve. Defaults to `nothing`,
+    which uses a polyalgorithm to choose an efficient algorithm automatically.
+  - `linsolve_kwargs`: keyword arguments to be passed to the linear solver.
+  - `active_tol`: proximity tolerance for active inequality / variable-bound
+    detection. A constraint or bound is considered active at `u*` when
+    `|c(u*) - bound| ≤ active_tol`. Defaults to `sqrt(eps(eltype(u*)))` when
+    `nothing`.
+
+For more details on the vjp choices, please consult the sensitivity algorithms
+documentation page or the docstrings of the vjp types.
+
+## References
+
+Gould, S., Fernando, B., Cherian, A., Anderson, P., Cruz, R. S., & Guo, E.,
+On Differentiating Parameterized Argmin and Argmax Problems with Application to
+Bi-level Optimization (2016), https://arxiv.org/abs/1607.05447
+"""
+struct OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT} <:
+    AbstractAdjointSensitivityAlgorithm{CS, AD, FDT}
+    autojacvec::VJP
+    linsolve::LS
+    linsolve_kwargs::LK
+    active_tol::AT  # tolerance for active inequality constraint detection; nothing = sqrt(eps(eltype(x*)))
+    autodiff::AD    # forward-mode ADTypes backend for the Lxx Hessian fallback (grad-only solvers)
+end
+
+function OptimizationAdjoint(;
+        chunk_size = 0, autodiff = nothing, diff_type = Val{:forward},
+        autojacvec = nothing,
+        linsolve = nothing, linsolve_kwargs = (;), active_tol = nothing
+    )
+    # `autodiff` selects the forward-mode backend for the `Lxx` Hessian fallback (used only when
+    # the OptimizationFunction stores no second-order info; the residual reuses `grad`/`cons_j`
+    # and is unaffected). `nothing` (the default) means "use the OptimizationFunction's own
+    # ADType". An explicit `ADTypes` backend overrides it; reverse-mode backends are rejected
+    # (lazily, only if the fallback is taken). The `Bool` forms are kept for backward
+    # compatibility: `true` → `AutoForwardDiff()`, `false` → `AutoFiniteDiff()`.
+    adtype = if autodiff isa Bool
+        autodiff ? AutoForwardDiff() : AutoFiniteDiff()
+    else
+        autodiff
+    end
+    return OptimizationAdjoint{
+        chunk_size, typeof(adtype), diff_type, typeof(autojacvec),
+        typeof(linsolve), typeof(linsolve_kwargs), typeof(active_tol),
+    }(autojacvec, linsolve, linsolve_kwargs, active_tol, adtype)
+end
+
+function setvjp(
+        sensealg::OptimizationAdjoint{CS, AD, FDT, VJP, LS, LK, AT},
+        vjp
+    ) where {CS, AD, FDT, VJP, LS, LK, AT}
+    return OptimizationAdjoint{CS, AD, FDT, typeof(vjp), LS, LK, AT}(
+        vjp, sensealg.linsolve, sensealg.linsolve_kwargs,
+        sensealg.active_tol, sensealg.autodiff
+    )
+end
+
+# `alg_autodiff` selects ForwardDiff (true) vs FiniteDiff (false) for the *outer* materialized
+# parameter-Jacobian (the Bool-`autojacvec` path). OptimizationAdjoint stores an ADTypes
+# backend in the AD type-parameter slot, so the generic definition would return that object and
+# fail in a boolean context; this override maps it to the Bool the wrappers expect.
+#
+# It keys purely on `autojacvec`, NOT on `autodiff` — the two are independent here. `autodiff`
+# only backs the `Lxx` Hessian fallback, which feeds the *concrete* KKT solve for the constant
+# multipliers `λ` *before* the outer VJP runs. The outer VJP then differentiates the KKT residual
+# `Φ(q) = λ · F(x*, q)` w.r.t. `q`, nesting over the stored (dual-tolerant) `grad`/`cons_j` — it
+# never touches the `Lxx` fallback. So a ForwardDiff outer works over a FiniteDiff `Lxx`, and the
+# user's `autojacvec` choice is honored directly: `true`/`nothing` → ForwardDiff, `false` →
+# FiniteDiff. (Whether a ForwardDiff outer is *admissible* depends on the OptimizationFunction's
+# own AD backend making `grad`/`cons_j` dual-tolerant, not on `autodiff`; a non-dual-tolerant
+# function should pass `autojacvec = false`.)
+@inline alg_autodiff(alg::OptimizationAdjoint) = !(alg.autojacvec === false)
+
 abstract type VJPChoice end
 
 """
