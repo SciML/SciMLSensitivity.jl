@@ -16,7 +16,7 @@ using SciMLSensitivity: SciMLBase, SciMLStructures, canonicalize, Tunable, issci
     unwrapped_f, state_values, current_time
 using SciMLSensitivity: FunctionWrappersWrappers, ODEFunction
 using SciMLBase: remake, solve
-using ChainRulesCore: NoTangent, ZeroTangent, Tangent, unthunk
+using ChainRulesCore: NoTangent
 using Accessors: @reset
 
 # Mirrors `Mooncake.__call_rule` (src/utils.jl) instead of depending on it directly: that's
@@ -303,7 +303,7 @@ end
 
 function rrule!!(
         f::CoDual{typeof(DiffEqBase.solve_up)},
-        prob::CoDual{<:DiffEqBase.AbstractDEProblem},
+        prob::CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::CoDual{<:MooncakeAdjoint},
         u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
@@ -333,7 +333,7 @@ function rrule!!(
         ::CoDual{typeof(Core.kwcall)},
         kwargs::CoDual{<:NamedTuple},
         f::CoDual{typeof(DiffEqBase.solve_up)},
-        prob::CoDual{<:DiffEqBase.AbstractDEProblem},
+        prob::CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::CoDual{<:MooncakeAdjoint},
         u0::CoDual, p::CoDual, alg_and_rest::CoDual...,
     )
@@ -474,7 +474,7 @@ end
 
 function rrule!!(
         ::CoDual{typeof(DiffEqBase.solve_up)},
-        ::CoDual{<:DiffEqBase.AbstractDEProblem},
+        ::CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
         ::CoDual, ::CoDual, ::CoDual...,
     )
@@ -485,7 +485,7 @@ function rrule!!(
         ::CoDual{typeof(Core.kwcall)},
         ::CoDual{<:NamedTuple},
         ::CoDual{typeof(DiffEqBase.solve_up)},
-        ::CoDual{<:DiffEqBase.AbstractDEProblem},
+        ::CoDual{<:SciMLBase.AbstractDEProblem},
         sensealg::CoDual{<:_MooncakeUnsupportedAnotherADSensealg},
         ::CoDual, ::CoDual, ::CoDual...,
     )
