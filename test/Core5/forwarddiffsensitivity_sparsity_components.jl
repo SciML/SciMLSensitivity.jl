@@ -1,6 +1,7 @@
 using OrdinaryDiffEq, SciMLSensitivity, ADTypes
 using OrdinaryDiffEqRosenbrock: Rodas4P
 using ComponentArrays, LinearAlgebra, Optimization, OptimizationOptimisers, Test
+using Optimisers: Adam
 
 const nknots = 10
 const h = 1.0 / (nknots + 1)

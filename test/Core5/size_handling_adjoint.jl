@@ -1,6 +1,7 @@
 using SciMLSensitivity, Zygote, OrdinaryDiffEq, Test, Reactant
 using OrdinaryDiffEqLowOrderRK: Midpoint
 using Optimization, OptimizationOptimisers
+using Optimisers: Adam
 
 p = [1.5 1.0; 3.0 1.0]
 function lotka_volterra(du, u, p, t)

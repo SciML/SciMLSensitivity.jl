@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, Optimization, OptimizationOptimisers, Test
+using Optimisers: Adam
 using ADTypes
 using SciMLBase: EnsembleSerial, EnsembleThreads
 
