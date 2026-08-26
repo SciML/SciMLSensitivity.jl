@@ -68,9 +68,9 @@ _opt_eval_mat(fn, _, _, x, _, ::Val{false}, ::Val{false}) = fn(x)
 
 # Element type for an in-place derivative buffer that must hold values combining `S`- and `T`-typed
 # numbers — Float64 normally, or a ForwardDiff.Dual / ReverseDiff.TrackedReal when the outer VJP
-# (residual, ∂/∂q) or the inner AD (Lxx, ∂/∂x) pushes an AD type through. Public, inferrable
+# (residual, ∂/∂q) or the inner AD (Lxx, ∂/∂x) pushes an AD type through. Public, inferable
 # equivalent of `Base.promote_op(+, S, T)`: evaluating the actual `+` reproduces ForwardDiff's
-# @define_binary_dual_op nesting (e.g. Dual-over-TrackedReal, which `promote_type` mis-orders) and
+# @define_binary_dual_op nesting (e.g. Dual-over-TrackedReal, which `promote_type` misorders) and
 # folds to a compile-time `Type` constant, while staying within the public API. Both `S` and `T` are
 # promoted so we pick up the dual whether it rides in on the state (Lxx) or the parameters (residual).
 _opt_bufel(S::Type, T::Type) = typeof(oneunit(S) + oneunit(T))
@@ -192,7 +192,7 @@ end
 #     ZygoteVJP (can't order nested ForwardDiff tags); the forward-mode `Bool`/ForwardDiff path
 #     nests fine. ReverseDiffVJP/MooncakeVJP nest fine *unconstrained*, but on a constrained
 #     problem they run a reverse tape over the inner forward-mode `cons_j`, whose nested-AD output
-#     buffer OptimizationBase currently mis-types (its `_cons_out_eltype` uses `promote_type`,
+#     buffer OptimizationBase currently mistypes (its `_cons_out_eltype` uses `promote_type`,
 #     which orders nested AD element types backwards — Dual-over-TrackedReal ↔ TrackedReal-over-Dual).
 #     So they are rejected when `has_cons`; use the forward-mode VJP (or an Enzyme function) instead.
 function _opt_validate_outer_vjp(autojacvec, adtype, has_cons)
@@ -312,7 +312,7 @@ end
 #         :: :enzyme_backend — EnzymeVJP over a non-Enzyme function (Enzyme can't nest over ForwardDiff)
 #         :: :enzyme_inner   — an Enzyme-built function needs EnzymeVJP (others can't nest over Enzyme)
 #         :: :reverse_constrained — a reverse-mode outer VJP (ReverseDiffVJP/MooncakeVJP) on a
-#                                   constrained problem (mis-typed nested-AD buffer in cons_j)
+#                                   constrained problem (mistyped nested-AD buffer in cons_j)
 #   adtype = the OptimizationFunction's ADType; autojacvec = the chosen outer VJP.
 struct OptimizationAdjointUnsupportedVJPError <: Exception
     kind::Symbol
@@ -345,7 +345,7 @@ function Base.showerror(io::IO, e::OptimizationAdjointUnsupportedVJPError)
             "OptimizationAdjoint does not support reverse-mode outer VJPs " *
                 "(`autojacvec = $(e.autojacvec)`) for constrained problems: the parameter VJP nests a " *
                 "reverse-mode tape over the forward-mode constraint Jacobian, and OptimizationBase's " *
-                "`cons_j` currently mis-types the resulting nested-AD buffer (a known limitation). Use the " *
+                "`cons_j` currently mistypes the resulting nested-AD buffer (a known limitation). Use the " *
                 "default forward-mode VJP (`autojacvec = true`), or build the OptimizationFunction with " *
                 "`AutoEnzyme()` and pass `autojacvec = EnzymeVJP()`."
         )
