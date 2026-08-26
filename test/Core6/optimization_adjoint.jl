@@ -233,7 +233,7 @@ end
             @test dp2[1] ≈ 0.5 rtol = 1.0e-4   # du2*/dp[1]
 
             # Reverse-mode outer VJPs nest a reverse tape over the forward-mode cons_j, whose
-            # nested-AD buffer OptimizationBase currently mis-types. Rejected with a clear error
+            # nested-AD buffer OptimizationBase currently mistypes. Rejected with a clear error
             # for constrained problems (rather than a deep AD crash); allowed unconstrained.
             @test_throws SciMLSensitivity.OptimizationAdjointUnsupportedVJPError adjoint_sensitivities(
                 opt_sol, nothing;
