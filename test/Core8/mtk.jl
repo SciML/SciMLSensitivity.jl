@@ -273,7 +273,7 @@ let
     sys = mtkcompile(sys)
     prob = ODEProblem(sys, [], (0.0, 1.0))
 
-    tunables, repack, _ = SciMLStructures.canonicalize(SciMLStructures.Tunable(), prob.p)
+    tunables, repack, _ = SS.canonicalize(SS.Tunable(), prob.p)
     sensealg_mtk = SciMLSensitivity.automatic_sensealg_choice(
         prob, prob.u0, tunables, true, repack, prob.p
     )
