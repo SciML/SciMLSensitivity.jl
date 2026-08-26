@@ -1,6 +1,7 @@
 using SciMLSensitivity,
     OrdinaryDiffEq, LinearAlgebra, Test, Zygote, Optimization,
     OptimizationOptimisers
+using Optimisers: Adam
 
 GDP = [
     11394358246872.6,

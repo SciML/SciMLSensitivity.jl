@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, Test, Optimization, OptimizationOptimisers
+using Optimisers: Adam
 using ADTypes
 using Zygote
 const AD_BACKEND = AutoZygote()
