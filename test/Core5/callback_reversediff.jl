@@ -1,5 +1,6 @@
 using OrdinaryDiffEq, Lux, ComponentArrays, SciMLSensitivity, DiffEqCallbacks, Test
 using Optimization, OptimizationOptimisers, Zygote
+using Optimisers: Adam
 using Random
 
 Random.seed!(1234)

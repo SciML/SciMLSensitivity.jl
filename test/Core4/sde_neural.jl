@@ -2,6 +2,7 @@ using SciMLSensitivity, Lux, ComponentArrays, LinearAlgebra, DiffEqNoiseProcess,
 using StochasticDiffEq, Statistics, SciMLSensitivity
 using DiffEqBase.EnsembleAnalysis
 using Optimization, OptimizationOptimisers
+using Optimisers: Adam
 
 using Random
 Random.seed!(238248735)
