@@ -47,7 +47,9 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     # Get time value - NonlinearProblems don't have tspan
     t0 = prob isa AbstractNonlinearProblem ? nothing : prob.tspan[1]
 
-    ez = try
+    # Mixed-precision adjoints can require runtime activity even when this probe succeeds.
+    same_eltype = eltype(u0) === eltype(p)
+    ez = same_eltype && try
         f = unwrapped_f(prob.f)
 
         # Skip Enzyme autodiff for NonlinearProblems since they don't have tspan

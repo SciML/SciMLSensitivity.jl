@@ -1,4 +1,4 @@
-using Lux, ComponentArrays, OrdinaryDiffEq, SciMLSensitivity, Random, Test
+using Lux, ComponentArrays, Enzyme, OrdinaryDiffEq, SciMLSensitivity, Random, Test
 using SciMLStructures
 
 # Only import Zygote on Julia <= 1.11
@@ -30,6 +30,16 @@ sensealg = SciMLSensitivity.automatic_sensealg_choice(prob, x0, θ, true, repack
 
 @test sensealg isa GaussAdjoint
 @test sensealg.autojacvec isa EnzymeVJP
+@test sensealg.autojacvec.mode == Enzyme.Reverse
+
+mixed_x0 = Float64.(x0)
+mixed_prob = ODEProblem(dxdt_, mixed_x0, tspan, θ)
+mixed_sensealg = SciMLSensitivity.automatic_sensealg_choice(
+    mixed_prob, mixed_x0, θ, true, repack
+)
+@test mixed_sensealg isa GaussAdjoint
+@test mixed_sensealg.autojacvec isa EnzymeVJP
+@test mixed_sensealg.autojacvec.mode == Enzyme.set_runtime_activity(Enzyme.Reverse)
 
 # Regression test: an in-place RHS that is a struct holding `SparseMatrixCSC` fields must
 # still select EnzymeVJP. The availability probe used to capture the RHS in a closure, which
