@@ -717,7 +717,7 @@ function update_integrand_and_dgrad(
     end
     for cb in callbacks.continuous_callbacks
         is_tracked_callback(cb) || continue
-        if ti ∈ cb.affect!.event_times ||
+        if ti ∈ tracked_event_times(cb.affect!) ||
                 ti ∈ tracked_event_times(cb.affect_neg!)
             integrand = _update_integrand_and_dgrad(
                 res, sensealg, cb,

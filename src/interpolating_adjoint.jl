@@ -776,18 +776,19 @@ function reset_p(CBS, interval, default_p)
 
     if !isempty(CBS.continuous_callbacks)
         ts2 = map(CBS.continuous_callbacks) do cb
+            pos_event_times = tracked_event_times(cb.affect!)
             neg_event_times = tracked_event_times(cb.affect_neg!)
-            if !isempty(cb.affect!.event_times) && isempty(neg_event_times)
-                indx = searchsortedfirst(cb.affect!.event_times, interval[1])
-                return (indx, cb.affect!.event_times[indx], 0) # zero for affect!
-            elseif isempty(cb.affect!.event_times) && !isempty(neg_event_times)
+            if !isempty(pos_event_times) && isempty(neg_event_times)
+                indx = searchsortedfirst(pos_event_times, interval[1])
+                return (indx, pos_event_times[indx], 0) # zero for affect!
+            elseif isempty(pos_event_times) && !isempty(neg_event_times)
                 indx = searchsortedfirst(neg_event_times, interval[1])
                 return (indx, neg_event_times[indx], 1) # one for affect_neg!
-            elseif !isempty(cb.affect!.event_times) && !isempty(neg_event_times)
-                indx1 = searchsortedfirst(cb.affect!.event_times, interval[1])
+            elseif !isempty(pos_event_times) && !isempty(neg_event_times)
+                indx1 = searchsortedfirst(pos_event_times, interval[1])
                 indx2 = searchsortedfirst(neg_event_times, interval[1])
-                if cb.affect!.event_times[indx1] < neg_event_times[indx2]
-                    return (indx1, cb.affect!.event_times[indx1], 0)
+                if pos_event_times[indx1] < neg_event_times[indx2]
+                    return (indx1, pos_event_times[indx1], 0)
                 else
                     return (indx2, neg_event_times[indx2], 1)
                 end
