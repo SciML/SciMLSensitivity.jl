@@ -1,8 +1,22 @@
 """
+    track_callbacks(cb, t, u, p, sensealg)
+
 Appends a tracking process to determine the time of the callback to be used in
 the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/SciMLSensitivity.jl/issues/4
+
+Differentiating through `solve` does this automatically. Call it directly to run
+a forward solve whose events a later [`adjoint_sensitivities`](@ref) can account
+for:
+
+```julia
+cb = SciMLSensitivity.track_callbacks(
+    prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg)
+sol = solve(remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb))), alg;
+    save_everystep = true)
+du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
+```
 """
 track_callbacks(cb, t, u, p, sensealg) = track_callbacks(CallbackSet(cb), t, u, p, sensealg)
 function track_callbacks(cb::CallbackSet, t, u, p, sensealg)
@@ -141,6 +155,92 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     end
 end
 
+# A `ContinuousCallback` may be built with `affect_neg! = nothing`, in which case
+# tracking leaves the negative-crossing affect `nothing` and no event is ever
+# recorded for it.
+const NO_EVENT_TIMES = Float64[]
+tracked_event_times(affect) = affect.event_times
+tracked_event_times(::Nothing) = NO_EVENT_TIMES
+
+is_tracked_affect(::TrackedAffect) = true
+is_tracked_affect(::Nothing) = true
+is_tracked_affect(affect) = false
+
+function is_tracked_callback(cb::ContinuousCallback)
+    return is_tracked_affect(cb.affect!) && is_tracked_affect(cb.affect_neg!)
+end
+is_tracked_callback(cb::Union{DiscreteCallback, VectorContinuousCallback}) = is_tracked_affect(cb.affect!)
+
+"""
+    all_callbacks_tracked(cb)
+
+Whether every affect in `cb` is a [`TrackedAffect`](@ref) (or `nothing`), i.e. the
+callbacks were run through [`track_callbacks`](@ref) on the forward pass and hence
+carry the event times, left limits and event-time correction the adjoint needs.
+"""
+function all_callbacks_tracked(cb)
+    cbs = CallbackSet(cb)
+    return all(is_tracked_callback, cbs.continuous_callbacks) &&
+        all(is_tracked_callback, cbs.discrete_callbacks)
+end
+
+"""
+    problem_callback(prob)
+
+The callback attached to the problem itself (`prob.kwargs[:callback]`), or
+`nothing` when there is none.
+"""
+function problem_callback(prob)
+    hasproperty(prob, :kwargs) || return nothing
+    return get(prob.kwargs, :callback, nothing)
+end
+
+function is_empty_callback(cb)
+    cb === nothing && return true
+    cb isa CallbackSet || return false
+    return isempty(cb.continuous_callbacks) && isempty(cb.discrete_callbacks)
+end
+
+const UNTRACKED_CALLBACK_MESSAGE = """
+The forward solution was computed with callbacks that were not tracked, so the adjoint cannot account for the events: the event times and the state and parameter values just before each event are not recorded anywhere in the solution, and ignoring them would silently give a wrong gradient.
+
+Two routes are supported:
+
+  1. Differentiate through `solve` with Zygote (or any other ChainRules-based AD), which tracks the callbacks automatically:
+
+         Zygote.gradient(u0 -> loss(solve(remake(prob; u0), alg; sensealg)), u0)
+
+  2. Run the forward solve with tracked callbacks, and hand the resulting solution to `adjoint_sensitivities`:
+
+         cb = SciMLSensitivity.track_callbacks(
+             prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg)
+         _prob = remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb)))
+         sol = solve(_prob, alg; save_everystep = true)
+         du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
+
+     Equivalently, keep the problem as it is and pass the tracked set to both calls:
+     `solve(prob, alg; callback = cb, merge_callbacks = false)` and
+     `adjoint_sensitivities(sol, alg; callback = cb, ...)`.
+
+To run the adjoint without any event correction anyway, pass `callback` explicitly.
+"""
+
+"""
+    adjoint_callbacks(sol, callback)
+
+The callbacks the adjoint pass should use. When the caller did not pass any, the
+callbacks attached to the forward problem are used, provided they were tracked;
+untracked ones throw, because the reverse pass would otherwise drop the event
+correction silently.
+"""
+function adjoint_callbacks(sol, callback)
+    is_empty_callback(callback) || return callback
+    cb = problem_callback(sol.prob)
+    is_empty_callback(cb) && return callback
+    all_callbacks_tracked(cb) || throw(ArgumentError(UNTRACKED_CALLBACK_MESSAGE))
+    return CallbackSet(cb)
+end
+
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
     return DiscreteCallback(
@@ -148,7 +248,9 @@ function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
         TrackedAffect(t, u, p, cb.affect!, correction),
         cb.initialize,
         cb.finalize,
-        cb.save_positions
+        cb.save_positions,
+        cb.initializealg, cb.saved_clock_partitions,
+        cb.initialize_save_discretes
     )
 end
 
@@ -163,7 +265,9 @@ function _track_callback(cb::ContinuousCallback, t, u, p, sensealg)
         cb.idxs,
         cb.rootfind, cb.interp_points,
         cb.save_positions,
-        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge
+        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge,
+        cb.initializealg, cb.saved_clock_partitions,
+        cb.maybe_discontinuity, cb.initialize_save_discretes
     )
 end
 
@@ -194,6 +298,113 @@ end
 function Base.getproperty(fi::FakeIntegrator, s::Symbol)
     s === :tdir && return sign(fi.t - fi.tprev)
     return getfield(fi, s)
+end
+
+# SymbolicIndexingInterface surface. Affects that are compiled from a symbolic
+# description (e.g. ModelingToolkit's imperative and functional affects, and the
+# `setu`/`setp` setters they build) reach the integrator through this interface
+# rather than through the `.u`/`.p` fields, so the fake integrator has to answer
+# it too. `getfield` is used throughout because `getproperty` is overloaded above.
+# The `set_state!`/`set_parameter!` defaults would already do the right thing;
+# they are spelled out because they are the mutating half of the contract.
+SymbolicIndexingInterface.state_values(fi::FakeIntegrator) = getfield(fi, :u)
+SymbolicIndexingInterface.parameter_values(fi::FakeIntegrator) = getfield(fi, :p)
+SymbolicIndexingInterface.current_time(fi::FakeIntegrator) = getfield(fi, :t)
+function SymbolicIndexingInterface.set_state!(fi::FakeIntegrator, val, idx)
+    return getfield(fi, :u)[idx] = val
+end
+function SymbolicIndexingInterface.set_parameter!(fi::FakeIntegrator, val, idx)
+    return SymbolicIndexingInterface.set_parameter!(getfield(fi, :p), val, idx)
+end
+
+"""
+    is_structured_p(p)
+
+Whether `p` is a SciMLStructure that is not itself an `AbstractArray`, i.e. a
+parameter object whose tunable values have to be reached through
+`SciMLStructures.canonicalize`. Plain arrays are already canonical and must not be
+canonicalized a second time (see SciMLSensitivity#1605), and `nothing` /
+`NullParameters` are not SciMLStructures at all.
+"""
+is_structured_p(p) = isscimlstructure(p) && !(p isa AbstractArray)
+
+"""
+    canonical_tunables(p)
+
+The flat tunable portion of `p`, or `p` unchanged when it is already flat.
+"""
+function canonical_tunables(p)
+    is_structured_p(p) || return p
+    return canonicalize(Tunable(), p)[1]
+end
+
+# Portions of a SciMLStructure a callback affect may legitimately write to.
+# `Caches` is deliberately absent: it is scratch space, not parameter state.
+const CALLBACK_P_PORTIONS = (
+    SciMLStructures.Tunable(), SciMLStructures.Initials(),
+    SciMLStructures.Discrete(), SciMLStructures.Constants(),
+)
+
+"""
+    portion_values(portion, p)
+
+The canonicalized values of `portion` in `p`, or `nothing` when `p` has no such
+portion. A structure signals an absent portion either by not defining
+`canonicalize` for it or by returning `nothing` from it.
+"""
+function portion_values(portion, p)
+    applicable(SciMLStructures.canonicalize, portion, p) || return nothing
+    return first(SciMLStructures.canonicalize(portion, p))
+end
+
+"""
+    p_isequal(p, pleft)
+
+Whether two parameter objects hold the same values. `==` covers plain arrays as
+well as parameter structures that define it (such as ModelingToolkit's).
+"""
+p_isequal(p, pleft) = p == pleft
+
+"""
+    copy_p!(p, pleft)
+
+Copy the parameter values of `pleft` into `p` in place. Plain arrays are copied
+with `copyto!`. A mutable SciMLStructure is copied portion by portion, because an
+affect may change discrete or otherwise non-tunable parameters as well as tunable
+ones.
+"""
+function copy_p!(p, pleft)
+    is_structured_p(p) || return copyto!(p, pleft)
+    SciMLStructures.ismutablescimlstructure(p) ||
+        error("The callback changes the parameters, but $(typeof(p)) is not a mutable SciMLStructure so the adjoint pass cannot restore them. Implement `SciMLStructures.replace!` for it.")
+    for portion in CALLBACK_P_PORTIONS
+        vals = portion_values(portion, pleft)
+        (vals === nothing || isempty(vals)) && continue
+        SciMLStructures.replace!(portion, p, vals)
+    end
+    return p
+end
+
+"""
+    detached_p(p, tunables)
+
+The structured parameter object `p` with `tunables` as its tunable portion and
+every other numeric portion detached from `p`'s storage. The callback affect
+wrappers hand this to the affect, which is free to mutate it; without the detach
+an affect that writes a non-tunable parameter would corrupt the recorded left
+limit it was built from, and that recording is replayed on every tape evaluation.
+"""
+function detached_p(p, tunables)
+    q = SciMLStructures.replace(Tunable(), p, tunables)
+    for portion in (
+            SciMLStructures.Initials(), SciMLStructures.Discrete(),
+            SciMLStructures.Constants(),
+        )
+        vals = portion_values(portion, q)
+        (vals === nothing || isempty(vals)) && continue
+        q = SciMLStructures.replace(portion, q, copy(vals))
+    end
+    return q
 end
 
 struct CallbackSensitivityFunction{
@@ -514,7 +725,9 @@ function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     else
         _affect!(fakeinteg)
     end
-    dp .= fakeinteg.p
+    # `dp` is tunables-sized (see `_get_wp_paramjac_config`), so a structured `p`
+    # has to be canonicalized before it can be written back.
+    dp .= canonical_tunables(fakeinteg.p)
     return nothing
 end
 
@@ -530,14 +743,27 @@ function setup_w_wp(
 end
 
 function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
-    return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
+    return FakeIntegrator([x for x in u], fake_integrator_p(p), t, tprev)
+end
+
+# The comprehension turns a ReverseDiff `TrackedArray` into a `Vector{TrackedReal}`,
+# which is what makes the affect's `setindex!` of a tracked scalar work. For a
+# structured `p` the tunables get the same treatment and are repacked, so the
+# affect still sees the parameter object it expects.
+fake_integrator_p(p) = is_structured_p(p) ? fake_integrator_structured_p(p) : [x for x in p]
+function fake_integrator_structured_p(p)
+    tunables = canonicalize(Tunable(), p)[1]
+    return detached_p(p, [x for x in tunables])
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
-    return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))
+    # The shadow, the `wp` output and the seed are all tunables-sized; the
+    # structured object itself is rebuilt by `repack` in `_vecjacobian!`.
+    _pt = canonical_tunables(_p)
+    return (zero(y), zero(_pt), zero(_pt), zero(_pt), zero(y))
 end
 
 function _get_wp_paramjac_config(autojacvec::ReverseDiffVJP, _p, wp, y, __p, _t)
@@ -571,7 +797,7 @@ function get_cb_diffcaches(
     vcc = cb isa VectorContinuousCallback
     cc = cb isa ContinuousCallback
     has_affect = !isempty(cb.affect!.event_times)
-    has_affect_neg = cc && !isempty(cb.affect_neg!.event_times)
+    has_affect_neg = cc && !isempty(tracked_event_times(cb.affect_neg!))
     pos_negs = cc ? (true, false) : (true,)
     event_idxs = vcc ? eachindex(cb.affect!.event_times) : (nothing,)
     for event_idx in event_idxs
@@ -660,8 +886,13 @@ function get_cb_diffcaches(
                 else
                     w, wp = setup_w_wp(cb, autojacvec, pos_neg, cache_event_idx, _t)
 
+                    # The tape (or Enzyme shadow) is built over the *tunables*,
+                    # while `_p` stays the full parameter object so that the
+                    # config derives the matching `repack` from it.
+                    _pt = canonical_tunables(_p)
+
                     paramjac_config = get_paramjac_config(
-                        autojacvec, _p, w, y, _p, _t;
+                        autojacvec, _p, w, y, _pt, _t;
                         numindvar = length(y), alg = nothing,
                         isinplace = true, isRODE = false,
                         _W = nothing
@@ -681,7 +912,7 @@ function get_cb_diffcaches(
                     )
 
                     paramjac_config = _get_wp_paramjac_config(
-                        autojacvec, _p, wp, y, _p, _t
+                        autojacvec, _p, wp, y, _pt, _t
                     )
                     pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
                     if autojacvec isa EnzymeVJP
@@ -712,20 +943,15 @@ function get_indx(cb::VectorContinuousCallback, t)
     return (searchsortedfirst(cb.affect!.event_times, t), true)
 end
 function get_indx(cb::ContinuousCallback, t)
-    return if !isempty(cb.affect!.event_times) || !isempty(cb.affect_neg!.event_times)
+    neg_event_times = tracked_event_times(cb.affect_neg!)
+    return if !isempty(cb.affect!.event_times) || !isempty(neg_event_times)
         indx = searchsortedfirst(cb.affect!.event_times, t)
-        indx_neg = searchsortedfirst(cb.affect_neg!.event_times, t)
+        indx_neg = searchsortedfirst(neg_event_times, t)
         if !isempty(cb.affect!.event_times) &&
                 cb.affect!.event_times[min(indx, length(cb.affect!.event_times))] == t
             return indx, true
-        elseif !isempty(cb.affect_neg!.event_times) &&
-                cb.affect_neg!.event_times[
-                min(
-                    indx_neg,
-                    length(cb.affect_neg!.event_times)
-                ),
-            ] ==
-                t
+        elseif !isempty(neg_event_times) &&
+                neg_event_times[min(indx_neg, length(neg_event_times))] == t
             return indx_neg, false
         else
             error("Event was triggered but no corresponding event in ContinuousCallback was found. Please report this error.")
@@ -751,27 +977,27 @@ function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
     # For BacksolveAdjoint, y is a view to the integrator state;
     # for the other methods, it's the S.y cache
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = (p != cb.affect!.pleft[indx])
-    update_p && copyto!(p, cb.affect!.pleft[indx])
+    update_p = !p_isequal(p, cb.affect!.pleft[indx])
+    update_p && copy_p!(p, cb.affect!.pleft[indx])
     return update_p
 end
 
 function copy_to_integrator!(cb::VectorContinuousCallback, y, p, indx, bool)
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = (p != cb.affect!.pleft[indx])
-    update_p && copyto!(p, cb.affect!.pleft[indx])
+    update_p = !p_isequal(p, cb.affect!.pleft[indx])
+    update_p && copy_p!(p, cb.affect!.pleft[indx])
     return update_p
 end
 
 function copy_to_integrator!(cb::ContinuousCallback, y, p, indx, bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
-        update_p = (p != cb.affect!.pleft[indx])
-        update_p && copyto!(p, cb.affect!.pleft[indx])
+        update_p = !p_isequal(p, cb.affect!.pleft[indx])
+        update_p && copy_p!(p, cb.affect!.pleft[indx])
     else
         copyto!(y, cb.affect_neg!.uleft[indx])
-        update_p = (p != cb.affect_neg!.pleft[indx])
-        update_p && copyto!(p, cb.affect_neg!.pleft[indx])
+        update_p = !p_isequal(p, cb.affect_neg!.pleft[indx])
+        update_p && copy_p!(p, cb.affect_neg!.pleft[indx])
     end
     return update_p
 end

@@ -546,6 +546,7 @@ function _adjoint_sensitivities(
         callback = CallbackSet(),
         kwargs...
     )
+    callback = adjoint_callbacks(sol, callback)
     adj_prob,
         rcb = if sol.prob isa SciMLBase.AbstractDAEProblem
         DAEAdjointProblem(
@@ -701,7 +702,9 @@ function update_integrand_and_dgrad(
         adj_prob, sol, dgdu_discrete, dgdp_discrete, dλ, dgrad,
         ti, cur_time
     )
+    callbacks = CallbackSet(callbacks)
     for cb in callbacks.discrete_callbacks
+        is_tracked_callback(cb) || continue
         if ti ∈ cb.affect!.event_times
             integrand = _update_integrand_and_dgrad(
                 res, sensealg, cb,
@@ -713,8 +716,9 @@ function update_integrand_and_dgrad(
         end
     end
     for cb in callbacks.continuous_callbacks
+        is_tracked_callback(cb) || continue
         if ti ∈ cb.affect!.event_times ||
-                ti ∈ cb.affect_neg!.event_times
+                ti ∈ tracked_event_times(cb.affect_neg!)
             integrand = _update_integrand_and_dgrad(
                 res, sensealg, cb,
                 integrand, adj_prob, sol,
@@ -741,11 +745,13 @@ function _update_integrand_and_dgrad(
 
     wp = CallbackAffectPWrapper(cb, cb_autojacvec, pos_neg, nothing, tprev)
 
-    _p = similar(integrand.p, size(integrand.p))
-    _p .= false
-    wp(_p, integrand.y, integrand.p, t)
+    # `wp` writes the tunable portion of the post-event parameters; the integrand
+    # is rebuilt from the full parameter object, so repack before comparing.
+    _pt = similar(integrand.tunables, size(integrand.tunables))
+    _pt .= false
+    wp(_pt, integrand.y, integrand.p, t)
 
-    if _p != integrand.p
+    if _pt != integrand.tunables
         paramjac_config = _get_wp_paramjac_config(
             cb_autojacvec, integrand.p, wp, integrand.y, integrand.p, t
         )
@@ -769,7 +775,7 @@ function _update_integrand_and_dgrad(
             nothing, integrand.y, res, integrand.p, t, fakeSp;
             dgrad = res, dy = nothing
         )
-        integrand = update_p_integrand(integrand, _p)
+        integrand = update_p_integrand(integrand, integrand.repack(_pt))
     end
 
     w = CallbackAffectWrapper(cb, cb_autojacvec, pos_neg, nothing, tprev)
