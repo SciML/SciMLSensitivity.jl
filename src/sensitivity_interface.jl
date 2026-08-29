@@ -406,7 +406,7 @@ function adjoint_sensitivities(
         # A callback attached to the problem itself counts too: `_adjoint_sensitivities`
         # picks it up when the caller passes none.
         has_cb = !is_empty_callback(get(kwargs, :callback, nothing)) ||
-            !is_empty_callback(problem_callback(prob))
+            !is_empty_callback(get(prob.kwargs, :callback, nothing))
 
         _sensealg = if isinplace(sol.prob)
             setvjp(

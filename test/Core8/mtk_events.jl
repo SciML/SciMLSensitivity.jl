@@ -361,4 +361,41 @@ const CONTINUOUS_SENSEALGS = [
             @test gFD ≈ Zygote.gradient(p -> loss(p, sensealg), p)[1] rtol = 1.0e-10
         end
     end
+
+    @testset "affect_neg!-only ContinuousCallback" begin
+        # A `ContinuousCallback` may be built with `affect! = nothing`, so that only
+        # the negative crossing fires and only it records events.
+        u0 = [1.0, 0.0]
+        p = [9.81, 0.7]
+        tspan = (0.0, 0.8)
+
+        function ball!(du, u, p, t)
+            du[1] = u[2]
+            du[2] = -p[1]
+            return nothing
+        end
+        condition(u, t, integrator) = u[1]
+        bounce!(integrator) = (integrator.u[2] = -integrator.p[2] * integrator.u[2])
+        cb = ContinuousCallback(
+            condition, nothing, bounce!, save_positions = (false, false)
+        )
+        prob = ODEProblem(ball!, u0, tspan, p)
+
+        function loss(u0, p, sensealg)
+            _sol = solve(
+                remake(prob; u0, p), Tsit5(); callback = cb,
+                abstol = 1.0e-12, reltol = 1.0e-12, sensealg
+            )
+            return sum(abs2, _sol.u[end])
+        end
+
+        # The reverse pass now runs the tracked negative-crossing affect (before,
+        # a callback without `affect!` was silently dropped from the reverse
+        # pass), but the event-time correction for this case is still wrong.
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+        @test_broken ForwardDiff.gradient(x -> loss(x, p, nothing), u0) ≈
+            Zygote.gradient(x -> loss(x, p, sensealg), u0)[1] rtol = 1.0e-6
+        @test_broken ForwardDiff.gradient(x -> loss(u0, x, nothing), p) ≈
+            Zygote.gradient(x -> loss(u0, x, sensealg), p)[1] rtol = 1.0e-6
+    end
 end

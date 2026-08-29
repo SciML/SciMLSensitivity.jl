@@ -76,7 +76,7 @@ function ODEGaussAdjointSensitivityFunction(
         else
             if maximum(interval[1] .< tstops .< interval[2])
                 # callback might have changed p
-                _p = Gaussreset_p(
+                _p = reset_p(
                     get(sol.prob.kwargs, :callback, nothing), interval,
                     parameter_values(sol.prob)
                 )
@@ -419,9 +419,6 @@ end
         return ODEProblem(odefun, z0, tspan, p, callback = cb), cb, rcb
     end
 end
-
-# `Gaussreset_p` was a verbatim copy of `reset_p`; keep the name for callers.
-const Gaussreset_p = reset_p
 
 function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
     prob = sol.prob

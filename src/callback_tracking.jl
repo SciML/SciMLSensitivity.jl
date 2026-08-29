@@ -155,12 +155,24 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     end
 end
 
-# A `ContinuousCallback` may be built with `affect_neg! = nothing`, in which case
-# tracking leaves the negative-crossing affect `nothing` and no event is ever
+# A `ContinuousCallback` may be built with only one of `affect!` / `affect_neg!`,
+# in which case tracking leaves the other side `nothing` and no event is ever
 # recorded for it.
 const NO_EVENT_TIMES = Float64[]
 tracked_event_times(affect) = affect.event_times
 tracked_event_times(::Nothing) = NO_EVENT_TIMES
+
+"""
+    tracked_correction(cb)
+
+The [`ImplicitCorrection`](@ref) of a tracked callback. Both sides of a
+`ContinuousCallback` share the same correction, so it is read from whichever of
+them was tracked.
+"""
+function tracked_correction(cb::ContinuousCallback)
+    return cb.affect! === nothing ? cb.affect_neg!.correction : cb.affect!.correction
+end
+tracked_correction(cb) = cb.affect!.correction
 
 is_tracked_affect(::TrackedAffect) = true
 is_tracked_affect(::Nothing) = true
@@ -182,17 +194,6 @@ function all_callbacks_tracked(cb)
     cbs = CallbackSet(cb)
     return all(is_tracked_callback, cbs.continuous_callbacks) &&
         all(is_tracked_callback, cbs.discrete_callbacks)
-end
-
-"""
-    problem_callback(prob)
-
-The callback attached to the problem itself (`prob.kwargs[:callback]`), or
-`nothing` when there is none.
-"""
-function problem_callback(prob)
-    hasproperty(prob, :kwargs) || return nothing
-    return get(prob.kwargs, :callback, nothing)
 end
 
 function is_empty_callback(cb)
@@ -235,7 +236,7 @@ correction silently.
 """
 function adjoint_callbacks(sol, callback)
     is_empty_callback(callback) || return callback
-    cb = problem_callback(sol.prob)
+    cb = get(sol.prob.kwargs, :callback, nothing)
     is_empty_callback(cb) && return callback
     all_callbacks_tracked(cb) || throw(ArgumentError(UNTRACKED_CALLBACK_MESSAGE))
     return CallbackSet(cb)
@@ -479,6 +480,15 @@ function _setup_reverse_callbacks(
     return _setup_reverse_callbacks(cb, cb.affect!, sensealg, dgdu, dgdp, loss_ref, terminated)
 end
 
+# A `ContinuousCallback` may have been tracked on the negative crossing only, in
+# which case the tracked affect to dispatch on is `affect_neg!`.
+function _setup_reverse_callbacks(
+        cb::ContinuousCallback, sensealg, dgdu, dgdp, loss_ref, terminated
+    )
+    affect = cb.affect! === nothing ? cb.affect_neg! : cb.affect!
+    return _setup_reverse_callbacks(cb, affect, sensealg, dgdu, dgdp, loss_ref, terminated)
+end
+
 function _setup_reverse_callbacks(
         cb::Union{
             ContinuousCallback, DiscreteCallback,
@@ -488,9 +498,10 @@ function _setup_reverse_callbacks(
         dgdp,
         loss_ref, terminated
     )
-    if cb isa Union{ContinuousCallback, VectorContinuousCallback} && cb.affect! !== nothing
-        cb.affect!.correction.cur_time = loss_ref # set cur_time
-        cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
+    if cb isa Union{ContinuousCallback, VectorContinuousCallback}
+        _correction = tracked_correction(cb)
+        _correction.cur_time = loss_ref # set cur_time
+        _correction.terminated = terminated # flag if time evolution was terminated by callback
     end
 
     dgdp !== nothing &&
@@ -519,7 +530,7 @@ function _setup_reverse_callbacks(
 
     # event times
     times = if cb isa ContinuousCallback
-        [cb.affect!.event_times; cb.affect_neg!.event_times]
+        [tracked_event_times(cb.affect!); tracked_event_times(cb.affect_neg!)]
     else
         cb.affect!.event_times
     end
@@ -567,7 +578,7 @@ function _setup_reverse_callbacks(
             # wrt dependence of event time t on parameters and initial state.
             # Must be handled here because otherwise it is unclear if continuous or
             # discrete callback was triggered.
-            (; correction) = cb.affect!
+            correction = tracked_correction(cb)
             (; dy_right, Lu_right) = correction
             # compute #f(xτ_right,p_right,τ(x₀,p))
             compute_f!(dy_right, S, y, integrator)
@@ -796,7 +807,7 @@ function get_cb_diffcaches(
     _dc = []
     vcc = cb isa VectorContinuousCallback
     cc = cb isa ContinuousCallback
-    has_affect = !isempty(cb.affect!.event_times)
+    has_affect = !isempty(tracked_event_times(cb.affect!))
     has_affect_neg = cc && !isempty(tracked_event_times(cb.affect_neg!))
     pos_negs = cc ? (true, false) : (true,)
     event_idxs = vcc ? eachindex(cb.affect!.event_times) : (nothing,)
@@ -943,12 +954,13 @@ function get_indx(cb::VectorContinuousCallback, t)
     return (searchsortedfirst(cb.affect!.event_times, t), true)
 end
 function get_indx(cb::ContinuousCallback, t)
+    pos_event_times = tracked_event_times(cb.affect!)
     neg_event_times = tracked_event_times(cb.affect_neg!)
-    return if !isempty(cb.affect!.event_times) || !isempty(neg_event_times)
-        indx = searchsortedfirst(cb.affect!.event_times, t)
+    return if !isempty(pos_event_times) || !isempty(neg_event_times)
+        indx = searchsortedfirst(pos_event_times, t)
         indx_neg = searchsortedfirst(neg_event_times, t)
-        if !isempty(cb.affect!.event_times) &&
-                cb.affect!.event_times[min(indx, length(cb.affect!.event_times))] == t
+        if !isempty(pos_event_times) &&
+                pos_event_times[min(indx, length(pos_event_times))] == t
             return indx, true
         elseif !isempty(neg_event_times) &&
                 neg_event_times[min(indx_neg, length(neg_event_times))] == t

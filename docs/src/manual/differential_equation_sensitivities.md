@@ -179,29 +179,13 @@ and DDEs. The continuous adjoint sensitivities `BacksolveAdjoint`, `Interpolatin
 the event terminates the time evolution and several states are saved. Currently,
 the continuous adjoint sensitivities do not support multiple events per time point.
 
-#### Structured parameters and events
-
-Events are supported for problems whose parameter object is a
-[SciMLStructure](https://github.com/SciML/SciMLStructures.jl) rather than a plain
-vector — most notably the parameter object of a
-[ModelingToolkit.jl](https://docs.sciml.ai/ModelingToolkit/stable/) system with
-`continuous_events` or `discrete_events`. The gradient is taken with respect to
-the tunable portion of the parameters, and an affect that assigns to a parameter
-is handled as long as the parameter object is a mutable SciMLStructure.
-
 #### Events with `adjoint_sensitivities`
 
 The adjoint of a hybrid system needs the event times and the state and parameter
 values just before each event. Differentiating through `solve` records them
-automatically:
-
-```julia
-Zygote.gradient(u0 -> loss(solve(remake(prob; u0), alg; sensealg)), u0)
-```
-
-When calling [`adjoint_sensitivities`](@ref) directly, the forward solve has to be
-run with a *tracked* callback set, which `SciMLSensitivity.track_callbacks` builds
-from the callbacks of the problem:
+automatically; when calling [`adjoint_sensitivities`](@ref) directly, the forward
+solve has to be run with a *tracked* callback set, which
+`SciMLSensitivity.track_callbacks` builds from the callbacks of the problem:
 
 ```julia
 cb = SciMLSensitivity.track_callbacks(
@@ -211,11 +195,9 @@ sol = solve(_prob, alg; save_everystep = true)
 du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
 ```
 
-`adjoint_sensitivities` picks the tracked callbacks up from the problem, so
-passing `callback = cb` to it as well is optional. Handing it a solution whose
-callbacks were not tracked throws, because the events would otherwise be ignored
-silently; pass `callback` explicitly to run the adjoint without any event
-correction anyway.
+Handing `adjoint_sensitivities` a solution whose callbacks were not tracked
+throws, because the events would otherwise be ignored silently; pass `callback`
+explicitly to run the adjoint without any event correction anyway.
 
 Give the forward solve a dense (or `save_everystep = true`) solution: a
 `saveat`-only solution makes `InterpolatingAdjoint` and `GaussAdjoint` fall back
