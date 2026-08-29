@@ -93,7 +93,10 @@ function ODEInterpolatingAdjointSensitivityFunction(
             else
                 if maximum(interval[1] .< tstops .< interval[2])
                     # callback might have changed p
-                    _p = reset_p(sol.prob.kwargs[:callback], interval)
+                    _p = reset_p(
+                        get(sol.prob.kwargs, :callback, nothing), interval,
+                        parameter_values(sol.prob)
+                    )
                     cpsol = solve(
                         remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
                         tstops, p = _p, sol.alg, tols...
@@ -252,7 +255,10 @@ function split_states(
                     else
                         if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                             # callback might have changed p
-                            _p = reset_p(prob.kwargs[:callback], interval)
+                            _p = reset_p(
+                                get(prob.kwargs, :callback, nothing), interval,
+                                parameter_values(prob)
+                            )
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(
                                 prob′, sol.alg;
@@ -745,7 +751,20 @@ end
     )
 end
 
-function reset_p(CBS, interval)
+"""
+    reset_p(CBS, interval, default_p)
+
+The parameter values in force at the start of `interval`, read back from the left
+limits recorded by the tracked callbacks in `CBS` (a callback may have changed the
+parameters inside the checkpointing interval). Falls back to `default_p` when the
+forward callbacks were not tracked, in which case no such record exists.
+"""
+function reset_p(CBS, interval, default_p)
+    CBS = CallbackSet(CBS)
+    isempty(CBS.discrete_callbacks) && isempty(CBS.continuous_callbacks) &&
+        return default_p
+    all_callbacks_tracked(CBS) || return default_p
+
     # check which events are close to tspan[1]
     if !isempty(CBS.discrete_callbacks)
         ts = map(CBS.discrete_callbacks) do cb
@@ -757,19 +776,20 @@ function reset_p(CBS, interval)
 
     if !isempty(CBS.continuous_callbacks)
         ts2 = map(CBS.continuous_callbacks) do cb
-            if !isempty(cb.affect!.event_times) && isempty(cb.affect_neg!.event_times)
+            neg_event_times = tracked_event_times(cb.affect_neg!)
+            if !isempty(cb.affect!.event_times) && isempty(neg_event_times)
                 indx = searchsortedfirst(cb.affect!.event_times, interval[1])
                 return (indx, cb.affect!.event_times[indx], 0) # zero for affect!
-            elseif isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
-                indx = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
-                return (indx, cb.affect_neg!.event_times[indx], 1) # one for affect_neg!
-            elseif !isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
+            elseif isempty(cb.affect!.event_times) && !isempty(neg_event_times)
+                indx = searchsortedfirst(neg_event_times, interval[1])
+                return (indx, neg_event_times[indx], 1) # one for affect_neg!
+            elseif !isempty(cb.affect!.event_times) && !isempty(neg_event_times)
                 indx1 = searchsortedfirst(cb.affect!.event_times, interval[1])
-                indx2 = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
-                if cb.affect!.event_times[indx1] < cb.affect_neg!.event_times[indx2]
+                indx2 = searchsortedfirst(neg_event_times, interval[1])
+                if cb.affect!.event_times[indx1] < neg_event_times[indx2]
                     return (indx1, cb.affect!.event_times[indx1], 0)
                 else
-                    return (indx2, cb.affect_neg!.event_times[indx2], 1)
+                    return (indx2, neg_event_times[indx2], 1)
                 end
             else
                 error("Expected event but reset_p couldn't find event time. Please report this error.")

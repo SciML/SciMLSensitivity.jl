@@ -403,11 +403,10 @@ function adjoint_sensitivities(
     end
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
-        if haskey(kwargs, :callback)
-            has_cb = kwargs[:callback] !== nothing
-        else
-            has_cb = false
-        end
+        # A callback attached to the problem itself counts too: `_adjoint_sensitivities`
+        # picks it up when the caller passes none.
+        has_cb = !is_empty_callback(get(kwargs, :callback, nothing)) ||
+            !is_empty_callback(problem_callback(prob))
 
         _sensealg = if isinplace(sol.prob)
             setvjp(
@@ -470,6 +469,7 @@ function _adjoint_sensitivities(
         callback = nothing,
         kwargs...
     )
+    callback = adjoint_callbacks(sol, callback)
     mtkp = SymbolicIndexingInterface.parameter_values(sol)
     if !(mtkp isa Union{Nothing, SciMLBase.NullParameters, AbstractArray}) &&
             !isscimlstructure(mtkp) ||

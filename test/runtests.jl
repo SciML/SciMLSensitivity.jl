@@ -109,6 +109,7 @@ run_tests(;
                 @time @safetestset "Adjoints through NonlinearProblem" include("Core8/parameter_initialization.jl")
                 @time @safetestset "Initialization with MTK" include("Core8/desauty_dae_mwe.jl")
                 @time @safetestset "MTK Forward Mode" include("Core8/mtk.jl")
+                @time @safetestset "MTK Events Adjoint" include("Core8/mtk_events.jl")
                 @time @safetestset "SCCNonlinearProblem" include("Core8/scc_nonlinearsolve.jl")
                 @time @safetestset "EnzymeVJP Repeated Adjoint" include("Core8/enzyme_vjp_repeated_adjoint.jl")
             end
