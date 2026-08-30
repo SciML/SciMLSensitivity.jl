@@ -179,30 +179,6 @@ and DDEs. The continuous adjoint sensitivities `BacksolveAdjoint`, `Interpolatin
 the event terminates the time evolution and several states are saved. Currently,
 the continuous adjoint sensitivities do not support multiple events per time point.
 
-#### Events with `adjoint_sensitivities`
-
-The adjoint of a hybrid system needs the event times and the state and parameter
-values just before each event. Differentiating through `solve` records them
-automatically; when calling [`adjoint_sensitivities`](@ref) directly, the forward
-solve has to be run with a *tracked* callback set, which
-`SciMLSensitivity.track_callbacks` builds from the callbacks of the problem:
-
-```julia
-cb = SciMLSensitivity.track_callbacks(
-    prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg)
-_prob = remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb)))
-sol = solve(_prob, alg; save_everystep = true)
-du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
-```
-
-Handing `adjoint_sensitivities` a solution whose callbacks were not tracked
-throws, because the events would otherwise be ignored silently; pass `callback`
-explicitly to run the adjoint without any event correction anyway.
-
-Give the forward solve a dense (or `save_everystep = true`) solution: a
-`saveat`-only solution makes `InterpolatingAdjoint` and `GaussAdjoint` fall back
-to checkpointing, whose event handling is currently inaccurate.
-
 ## Manual VJPs
 
 Note that when defining your differential equation, the vjp can be

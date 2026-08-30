@@ -751,94 +751,37 @@ end
     )
 end
 
-"""
-    reset_p(CBS, interval, default_p)
+next_tracked_event(::Nothing, t) = nothing
+function next_tracked_event(affect, t)
+    indx = searchsortedfirst(affect.event_times, t)
+    indx > length(affect.event_times) && return nothing
+    return affect.event_times[indx], affect.pleft[indx]
+end
 
-The parameter values in force at the start of `interval`, read back from the left
-limits recorded by the tracked callbacks in `CBS` (a callback may have changed the
-parameters inside the checkpointing interval). Falls back to `default_p` when the
-forward callbacks were not tracked, in which case no such record exists.
-"""
+next_tracked_event(cb::DiscreteCallback, t) = next_tracked_event(cb.affect!, t)
+next_tracked_event(cb::VectorContinuousCallback, t) = next_tracked_event(cb.affect!, t)
+function next_tracked_event(cb::ContinuousCallback, t)
+    positive = next_tracked_event(cb.affect!, t)
+    negative = next_tracked_event(cb.affect_neg!, t)
+    positive === nothing && return negative
+    negative === nothing && return positive
+    return first(positive) < first(negative) ? positive : negative
+end
+
 function reset_p(CBS, interval, default_p)
     CBS = CallbackSet(CBS)
     isempty(CBS.discrete_callbacks) && isempty(CBS.continuous_callbacks) &&
         return default_p
-    all_callbacks_tracked(CBS) || return default_p
 
-    # check which events are close to tspan[1]
-    if !isempty(CBS.discrete_callbacks)
-        ts = map(CBS.discrete_callbacks) do cb
-            indx = searchsortedfirst(cb.affect!.event_times, interval[1])
-            (indx, cb.affect!.event_times[indx])
+    event = nothing
+    for callbacks in (CBS.discrete_callbacks, CBS.continuous_callbacks), cb in callbacks
+        candidate = next_tracked_event(cb, interval[1])
+        candidate === nothing && continue
+        if event === nothing || first(candidate) < first(event)
+            event = candidate
         end
-        perm = minimum(sortperm([t for t in getindex.(ts, 2)]))
     end
-
-    if !isempty(CBS.continuous_callbacks)
-        ts2 = map(CBS.continuous_callbacks) do cb
-            pos_event_times = tracked_event_times(cb.affect!)
-            neg_event_times = tracked_event_times(cb.affect_neg!)
-            if !isempty(pos_event_times) && isempty(neg_event_times)
-                indx = searchsortedfirst(pos_event_times, interval[1])
-                return (indx, pos_event_times[indx], 0) # zero for affect!
-            elseif isempty(pos_event_times) && !isempty(neg_event_times)
-                indx = searchsortedfirst(neg_event_times, interval[1])
-                return (indx, neg_event_times[indx], 1) # one for affect_neg!
-            elseif !isempty(pos_event_times) && !isempty(neg_event_times)
-                indx1 = searchsortedfirst(pos_event_times, interval[1])
-                indx2 = searchsortedfirst(neg_event_times, interval[1])
-                if pos_event_times[indx1] < neg_event_times[indx2]
-                    return (indx1, pos_event_times[indx1], 0)
-                else
-                    return (indx2, neg_event_times[indx2], 1)
-                end
-            else
-                error("Expected event but reset_p couldn't find event time. Please report this error.")
-            end
-        end
-        perm2 = minimum(sortperm([t for t in getindex.(ts2, 2)]))
-        # check if continuous or discrete callback was applied first if both occur in interval
-        if isempty(CBS.discrete_callbacks)
-            if ts2[perm2][3] == 0
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
-            else
-                p = deepcopy(
-                    CBS.continuous_callbacks[perm2].affect_neg!.pleft[
-                        getindex.(
-                            ts2,
-                            1
-                        )[perm2],
-                    ]
-                )
-            end
-        else
-            if ts[perm][2] < ts2[perm2][2]
-                p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
-            else
-                if ts2[perm2][3] == 0
-                    p = deepcopy(
-                        CBS.continuous_callbacks[perm2].affect!.pleft[
-                            getindex.(
-                                ts2,
-                                1
-                            )[perm2],
-                        ]
-                    )
-                else
-                    p = deepcopy(
-                        CBS.continuous_callbacks[perm2].affect_neg!.pleft[
-                            getindex.(
-                                ts2,
-                                1
-                            )[perm2],
-                        ]
-                    )
-                end
-            end
-        end
-    else
-        p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
-    end
-
-    return p
+    event === nothing &&
+        error("Expected event but reset_p couldn't find event time. Please report this error.")
+    return deepcopy(last(event))
 end

@@ -6,12 +6,6 @@ import SciMLStructures as SS
 using SymbolicIndexingInterface
 using Test
 
-# Reverse-mode adjoints for ModelingToolkit systems with events. The parameter
-# object of such a system is a SciMLStructure rather than a plain vector, which
-# the callback VJP path has to canonicalize. See SciML/ModelingToolkit.jl#5018.
-
-# Bouncing ball in the shape of the Reference-FMU model: h(0) = 1, v(0) = 0,
-# g = 9.81, restitution e = 0.7.
 const H0 = 1.0
 const V0 = 0.0
 const G0 = 9.81
@@ -21,11 +15,6 @@ const ABSTOL = 1.0e-10
 const RELTOL = 1.0e-10
 const SAVEAT = 0.0:0.25:2.0
 
-"""
-Gradients of `sum(abs2, u[idx](t))` over `SAVEAT` with respect to `u0` and to the
-tunable parameters, computed with each of `sensealgs` and compared against finite
-differences.
-"""
 function test_event_gradients(prob, idx; sensealgs, rtol = 1.0e-4, name = "")
     tunables, repack, _ = SS.canonicalize(SS.Tunable(), prob.p)
     tunables = collect(tunables)
@@ -89,7 +78,6 @@ const CONTINUOUS_SENSEALGS = [
         )
         idx = variable_index(ball, h)
 
-        # The event has to fire, otherwise the test is vacuous.
         sol = solve(prob, Tsit5(); saveat = SAVEAT, abstol = ABSTOL, reltol = RELTOL)
         @test length(sol.t) > length(SAVEAT)
 
@@ -158,10 +146,6 @@ const CONTINUOUS_SENSEALGS = [
     end
 
     @testset "Affect that changes a parameter" begin
-        # Reference-FMU style: every bounce also damps the restitution. A
-        # parameter written by an affect has to be a discrete parameter, so it
-        # lives in the `Discrete` portion of the parameter object rather than in
-        # the tunable one.
         @parameters g
         @discretes e(t) = E0
         @variables h(t) v(t)
@@ -182,22 +166,12 @@ const CONTINUOUS_SENSEALGS = [
 
         sol = solve(prob, Tsit5(); saveat = SAVEAT, abstol = ABSTOL, reltol = RELTOL)
         @test length(sol.t) > length(SAVEAT)
-        # `e` is discrete and hence not part of the tunables, but the affect
-        # changing it exercises the non-tunable portions of the parameter object;
-        # the gradients with respect to `u0` and to the tunable `g` must still be
-        # right.
         fd_u0, _ = test_event_gradients(
             prob, idx;
             sensealgs = CONTINUOUS_SENSEALGS[[1, 3]], name = "parameter affect"
         )
 
         @testset "parameter affect compiled tape" begin
-            # `ReverseDiffVJP(true)` records the affect tape once, from the last
-            # event. Only the tunables are tape inputs, so the discrete parameter
-            # of that event is baked into the tape as a constant and the earlier
-            # events replay the wrong value. The uncompiled path rebuilds the tape
-            # at every event and is unaffected. Plain-vector parameters are
-            # unaffected too, since there the whole of `p` is a tape input.
             sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true))
             du0 = Zygote.gradient(
                 u0 -> sum(
@@ -211,13 +185,11 @@ const CONTINUOUS_SENSEALGS = [
                 ),
                 prob.u0
             )[1]
-            @test_broken du0 ≈ fd_u0 rtol = 1.0e-4
+            @test du0 ≈ fd_u0 rtol = 1.0e-4
         end
     end
 
     @testset "Two events (VectorContinuousCallback)" begin
-        # A ball bouncing between a floor and a ceiling: two continuous events
-        # with the same options compile into one VectorContinuousCallback.
         @parameters g e
         @variables h(t) v(t)
         eqs = [D(h) ~ v, D(v) ~ -g]
@@ -260,76 +232,7 @@ const CONTINUOUS_SENSEALGS = [
         )
     end
 
-    @testset "adjoint_sensitivities" begin
-        @parameters g e
-        @variables h(t) v(t)
-        eqs = [D(h) ~ v, D(v) ~ -g]
-        @mtkcompile ball = System(
-            eqs, t, [h, v], [g, e];
-            continuous_events = [[h ~ 0] => [v ~ -e * Pre(v)]]
-        )
-        prob = ODEProblem{true, SciMLBase.FullSpecialize}(
-            ball, [h => H0, v => V0, g => G0, e => E0], (0.0, 2.0)
-        )
-        idx = variable_index(ball, h)
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
-        ts = collect(SAVEAT)
-        dgdu = (out, u, p, tt, i) -> (out .= 0; out[idx] = 2u[idx]; nothing)
-
-        @testset "untracked callbacks are rejected" begin
-            sol = solve(
-                prob, Tsit5(); saveat = SAVEAT, abstol = ABSTOL, reltol = RELTOL
-            )
-            @test_throws ArgumentError adjoint_sensitivities(
-                sol, Tsit5(); t = ts, sensealg, dgdu_discrete = dgdu
-            )
-        end
-
-        @testset "tracked callbacks are picked up from the problem" begin
-            cb = SciMLSensitivity.track_callbacks(
-                prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg
-            )
-            _prob = remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb)))
-            # A dense forward solution: a `saveat`-only one makes the adjoint fall
-            # back to checkpointing, whose event handling is inaccurate for plain
-            # vectors as well.
-            sol = solve(
-                _prob, Tsit5(); save_everystep = true, abstol = ABSTOL, reltol = RELTOL
-            )
-            du0, dp = adjoint_sensitivities(
-                sol, Tsit5(); t = ts, sensealg, dgdu_discrete = dgdu
-            )
-
-            lossu0(u0) = sum(
-                abs2,
-                Array(
-                    solve(
-                        remake(prob; u0), Tsit5();
-                        saveat = SAVEAT, abstol = ABSTOL, reltol = RELTOL
-                    )
-                )[idx, :]
-            )
-            @test du0 ≈ FiniteDiff.finite_difference_gradient(lossu0, prob.u0) rtol = 1.0e-4
-
-            zy = Zygote.gradient(
-                u0 -> sum(
-                    abs2,
-                    Array(
-                        solve(
-                            remake(prob; u0), Tsit5(); saveat = SAVEAT,
-                            abstol = ABSTOL, reltol = RELTOL, sensealg
-                        )
-                    )[idx, :]
-                ),
-                prob.u0
-            )[1]
-            @test du0 ≈ zy rtol = 1.0e-6
-        end
-    end
-
     @testset "Plain vector parameters are unchanged" begin
-        # Regression guard for the array fast paths, adapted from
-        # test/Callbacks2/continuous_callbacks.jl.
         N0 = [0.0]
         p = [100.0, 50.0]
         tspan = (0.0, 10.0)
@@ -360,42 +263,5 @@ const CONTINUOUS_SENSEALGS = [
             )
             @test gFD ≈ Zygote.gradient(p -> loss(p, sensealg), p)[1] rtol = 1.0e-10
         end
-    end
-
-    @testset "affect_neg!-only ContinuousCallback" begin
-        # A `ContinuousCallback` may be built with `affect! = nothing`, so that only
-        # the negative crossing fires and only it records events.
-        u0 = [1.0, 0.0]
-        p = [9.81, 0.7]
-        tspan = (0.0, 0.8)
-
-        function ball!(du, u, p, t)
-            du[1] = u[2]
-            du[2] = -p[1]
-            return nothing
-        end
-        condition(u, t, integrator) = u[1]
-        bounce!(integrator) = (integrator.u[2] = -integrator.p[2] * integrator.u[2])
-        cb = ContinuousCallback(
-            condition, nothing, bounce!, save_positions = (false, false)
-        )
-        prob = ODEProblem(ball!, u0, tspan, p)
-
-        function loss(u0, p, sensealg)
-            _sol = solve(
-                remake(prob; u0, p), Tsit5(); callback = cb,
-                abstol = 1.0e-12, reltol = 1.0e-12, sensealg
-            )
-            return sum(abs2, _sol.u[end])
-        end
-
-        # The reverse pass now runs the tracked negative-crossing affect (before,
-        # a callback without `affect!` was silently dropped from the reverse
-        # pass), but the event-time correction for this case is still wrong.
-        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
-        @test_broken ForwardDiff.gradient(x -> loss(x, p, nothing), u0) ≈
-            Zygote.gradient(x -> loss(x, p, sensealg), u0)[1] rtol = 1.0e-6
-        @test_broken ForwardDiff.gradient(x -> loss(u0, x, nothing), p) ≈
-            Zygote.gradient(x -> loss(u0, x, sensealg), p)[1] rtol = 1.0e-6
     end
 end

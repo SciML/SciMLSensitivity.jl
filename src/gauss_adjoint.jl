@@ -721,7 +721,6 @@ function _adjoint_sensitivities(
         callback = CallbackSet(), no_start = false,
         kwargs...
     )
-    callback = adjoint_callbacks(sol, callback)
     p = SymbolicIndexingInterface.parameter_values(sol)
     if !isscimlstructure(p) && !isfunctor(p) &&
             !(p isa Union{Nothing, SciMLBase.NullParameters, AbstractArray})

@@ -1,22 +1,8 @@
 """
-    track_callbacks(cb, t, u, p, sensealg)
-
 Appends a tracking process to determine the time of the callback to be used in
 the reverse pass. The rationale is explain in:
 
 https://github.com/SciML/SciMLSensitivity.jl/issues/4
-
-Differentiating through `solve` does this automatically. Call it directly to run
-a forward solve whose events a later [`adjoint_sensitivities`](@ref) can account
-for:
-
-```julia
-cb = SciMLSensitivity.track_callbacks(
-    prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg)
-sol = solve(remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb))), alg;
-    save_everystep = true)
-du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
-```
 """
 track_callbacks(cb, t, u, p, sensealg) = track_callbacks(CallbackSet(cb), t, u, p, sensealg)
 function track_callbacks(cb::CallbackSet, t, u, p, sensealg)
@@ -155,91 +141,13 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     end
 end
 
-# A `ContinuousCallback` may be built with only one of `affect!` / `affect_neg!`,
-# in which case tracking leaves the other side `nothing` and no event is ever
-# recorded for it.
-const NO_EVENT_TIMES = Float64[]
 tracked_event_times(affect) = affect.event_times
-tracked_event_times(::Nothing) = NO_EVENT_TIMES
+tracked_event_times(::Nothing) = ()
 
-"""
-    tracked_correction(cb)
-
-The [`ImplicitCorrection`](@ref) of a tracked callback. Both sides of a
-`ContinuousCallback` share the same correction, so it is read from whichever of
-them was tracked.
-"""
-function tracked_correction(cb::ContinuousCallback)
-    return cb.affect! === nothing ? cb.affect_neg!.correction : cb.affect!.correction
-end
-tracked_correction(cb) = cb.affect!.correction
-
-is_tracked_affect(::TrackedAffect) = true
-is_tracked_affect(::Nothing) = true
-is_tracked_affect(affect) = false
-
-function is_tracked_callback(cb::ContinuousCallback)
-    return is_tracked_affect(cb.affect!) && is_tracked_affect(cb.affect_neg!)
-end
-is_tracked_callback(cb::Union{DiscreteCallback, VectorContinuousCallback}) = is_tracked_affect(cb.affect!)
-
-"""
-    all_callbacks_tracked(cb)
-
-Whether every affect in `cb` is a [`TrackedAffect`](@ref) (or `nothing`), i.e. the
-callbacks were run through [`track_callbacks`](@ref) on the forward pass and hence
-carry the event times, left limits and event-time correction the adjoint needs.
-"""
-function all_callbacks_tracked(cb)
-    cbs = CallbackSet(cb)
-    return all(is_tracked_callback, cbs.continuous_callbacks) &&
-        all(is_tracked_callback, cbs.discrete_callbacks)
-end
-
-function is_empty_callback(cb)
-    cb === nothing && return true
-    cb isa CallbackSet || return false
-    return isempty(cb.continuous_callbacks) && isempty(cb.discrete_callbacks)
-end
-
-const UNTRACKED_CALLBACK_MESSAGE = """
-The forward solution was computed with callbacks that were not tracked, so the adjoint cannot account for the events: the event times and the state and parameter values just before each event are not recorded anywhere in the solution, and ignoring them would silently give a wrong gradient.
-
-Two routes are supported:
-
-  1. Differentiate through `solve` with Zygote (or any other ChainRules-based AD), which tracks the callbacks automatically:
-
-         Zygote.gradient(u0 -> loss(solve(remake(prob; u0), alg; sensealg)), u0)
-
-  2. Run the forward solve with tracked callbacks, and hand the resulting solution to `adjoint_sensitivities`:
-
-         cb = SciMLSensitivity.track_callbacks(
-             prob.kwargs[:callback], prob.tspan[1], prob.u0, prob.p, sensealg)
-         _prob = remake(prob; kwargs = merge(values(prob.kwargs), (; callback = cb)))
-         sol = solve(_prob, alg; save_everystep = true)
-         du0, dp = adjoint_sensitivities(sol, alg; t = ts, sensealg, dgdu_discrete)
-
-     Equivalently, keep the problem as it is and pass the tracked set to both calls:
-     `solve(prob, alg; callback = cb, merge_callbacks = false)` and
-     `adjoint_sensitivities(sol, alg; callback = cb, ...)`.
-
-To run the adjoint without any event correction anyway, pass `callback` explicitly.
-"""
-
-"""
-    adjoint_callbacks(sol, callback)
-
-The callbacks the adjoint pass should use. When the caller did not pass any, the
-callbacks attached to the forward problem are used, provided they were tracked;
-untracked ones throw, because the reverse pass would otherwise drop the event
-correction silently.
-"""
-function adjoint_callbacks(sol, callback)
-    is_empty_callback(callback) || return callback
-    cb = get(sol.prob.kwargs, :callback, nothing)
-    is_empty_callback(cb) && return callback
-    all_callbacks_tracked(cb) || throw(ArgumentError(UNTRACKED_CALLBACK_MESSAGE))
-    return CallbackSet(cb)
+function tracked_event_times(cb::ContinuousCallback)
+    cb.affect! === nothing && return cb.affect_neg!.event_times
+    cb.affect_neg! === nothing && return cb.affect!.event_times
+    return [cb.affect!.event_times; cb.affect_neg!.event_times]
 end
 
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
@@ -301,13 +209,6 @@ function Base.getproperty(fi::FakeIntegrator, s::Symbol)
     return getfield(fi, s)
 end
 
-# SymbolicIndexingInterface surface. Affects that are compiled from a symbolic
-# description (e.g. ModelingToolkit's imperative and functional affects, and the
-# `setu`/`setp` setters they build) reach the integrator through this interface
-# rather than through the `.u`/`.p` fields, so the fake integrator has to answer
-# it too. `getfield` is used throughout because `getproperty` is overloaded above.
-# The `set_state!`/`set_parameter!` defaults would already do the right thing;
-# they are spelled out because they are the mutating half of the contract.
 SymbolicIndexingInterface.state_values(fi::FakeIntegrator) = getfield(fi, :u)
 SymbolicIndexingInterface.parameter_values(fi::FakeIntegrator) = getfield(fi, :p)
 SymbolicIndexingInterface.current_time(fi::FakeIntegrator) = getfield(fi, :t)
@@ -318,94 +219,66 @@ function SymbolicIndexingInterface.set_parameter!(fi::FakeIntegrator, val, idx)
     return SymbolicIndexingInterface.set_parameter!(getfield(fi, :p), val, idx)
 end
 
-"""
-    is_structured_p(p)
-
-Whether `p` is a SciMLStructure that is not itself an `AbstractArray`, i.e. a
-parameter object whose tunable values have to be reached through
-`SciMLStructures.canonicalize`. Plain arrays are already canonical and must not be
-canonicalized a second time (see SciMLSensitivity#1605), and `nothing` /
-`NullParameters` are not SciMLStructures at all.
-"""
 is_structured_p(p) = isscimlstructure(p) && !(p isa AbstractArray)
 
-"""
-    canonical_tunables(p)
-
-The flat tunable portion of `p`, or `p` unchanged when it is already flat.
-"""
 function canonical_tunables(p)
     is_structured_p(p) || return p
     return canonicalize(Tunable(), p)[1]
 end
 
-# Portions of a SciMLStructure a callback affect may legitimately write to.
-# `Caches` is deliberately absent: it is scratch space, not parameter state.
 const CALLBACK_P_PORTIONS = (
     SciMLStructures.Tunable(), SciMLStructures.Initials(),
     SciMLStructures.Discrete(), SciMLStructures.Constants(),
 )
+const CALLBACK_P_DETACHED_PORTIONS = (
+    SciMLStructures.Initials(), SciMLStructures.Discrete(), SciMLStructures.Constants(),
+)
 
-"""
-    portion_values(portion, p)
-
-The canonicalized values of `portion` in `p`, or `nothing` when `p` has no such
-portion. A structure signals an absent portion either by not defining
-`canonicalize` for it or by returning `nothing` from it.
-"""
 function portion_values(portion, p)
     applicable(SciMLStructures.canonicalize, portion, p) || return nothing
     return first(SciMLStructures.canonicalize(portion, p))
 end
 
-"""
-    p_isequal(p, pleft)
+function restore_p!(p, pleft)
+    if !is_structured_p(p)
+        update_p = !isequal(p, pleft)
+        update_p && copyto!(p, pleft)
+        return update_p
+    end
 
-Whether two parameter objects hold the same values. `==` covers plain arrays as
-well as parameter structures that define it (such as ModelingToolkit's).
-"""
-p_isequal(p, pleft) = p == pleft
-
-"""
-    copy_p!(p, pleft)
-
-Copy the parameter values of `pleft` into `p` in place. Plain arrays are copied
-with `copyto!`. A mutable SciMLStructure is copied portion by portion, because an
-affect may change discrete or otherwise non-tunable parameters as well as tunable
-ones.
-"""
-function copy_p!(p, pleft)
-    is_structured_p(p) || return copyto!(p, pleft)
-    SciMLStructures.ismutablescimlstructure(p) ||
-        error("The callback changes the parameters, but $(typeof(p)) is not a mutable SciMLStructure so the adjoint pass cannot restore them. Implement `SciMLStructures.replace!` for it.")
+    update_p = false
     for portion in CALLBACK_P_PORTIONS
         vals = portion_values(portion, pleft)
         (vals === nothing || isempty(vals)) && continue
+        isequal(portion_values(portion, p), vals) && continue
+        SciMLStructures.ismutablescimlstructure(p) ||
+            error("The callback changes the parameters, but $(typeof(p)) is not a mutable SciMLStructure so the adjoint pass cannot restore them. Implement `SciMLStructures.replace!` for it.")
         SciMLStructures.replace!(portion, p, vals)
+        update_p = true
     end
-    return p
+    return update_p
 end
 
-"""
-    detached_p(p, tunables)
-
-The structured parameter object `p` with `tunables` as its tunable portion and
-every other numeric portion detached from `p`'s storage. The callback affect
-wrappers hand this to the affect, which is free to mutate it; without the detach
-an affect that writes a non-tunable parameter would corrupt the recorded left
-limit it was built from, and that recording is replayed on every tape evaluation.
-"""
 function detached_p(p, tunables)
     q = SciMLStructures.replace(Tunable(), p, tunables)
-    for portion in (
-            SciMLStructures.Initials(), SciMLStructures.Discrete(),
-            SciMLStructures.Constants(),
-        )
+    for portion in CALLBACK_P_DETACHED_PORTIONS
         vals = portion_values(portion, q)
         (vals === nothing || isempty(vals)) && continue
         q = SciMLStructures.replace(portion, q, copy(vals))
     end
     return q
+end
+
+needs_event_diffcache(::Nothing, autojacvec) = false
+function needs_event_diffcache(affect, autojacvec)
+    autojacvec isa ReverseDiffVJP && compile_tape(autojacvec) || return false
+    length(affect.pleft) > 1 && is_structured_p(affect.pleft[1]) || return false
+    reference = affect.pleft[1]
+    for i in 2:length(affect.pleft), portion in CALLBACK_P_DETACHED_PORTIONS
+        isequal(portion_values(portion, reference), portion_values(portion, affect.pleft[i])) ||
+            return true
+    end
+    return false
 end
 
 struct CallbackSensitivityFunction{
@@ -477,15 +350,8 @@ function _setup_reverse_callbacks(
         dgdp,
         loss_ref, terminated
     )
-    return _setup_reverse_callbacks(cb, cb.affect!, sensealg, dgdu, dgdp, loss_ref, terminated)
-end
-
-# A `ContinuousCallback` may have been tracked on the negative crossing only, in
-# which case the tracked affect to dispatch on is `affect_neg!`.
-function _setup_reverse_callbacks(
-        cb::ContinuousCallback, sensealg, dgdu, dgdp, loss_ref, terminated
-    )
-    affect = cb.affect! === nothing ? cb.affect_neg! : cb.affect!
+    affect = cb isa ContinuousCallback && cb.affect! === nothing ?
+        cb.affect_neg! : cb.affect!
     return _setup_reverse_callbacks(cb, affect, sensealg, dgdu, dgdp, loss_ref, terminated)
 end
 
@@ -499,9 +365,8 @@ function _setup_reverse_callbacks(
         loss_ref, terminated
     )
     if cb isa Union{ContinuousCallback, VectorContinuousCallback}
-        _correction = tracked_correction(cb)
-        _correction.cur_time = loss_ref # set cur_time
-        _correction.terminated = terminated # flag if time evolution was terminated by callback
+        affect.correction.cur_time = loss_ref # set cur_time
+        affect.correction.terminated = terminated # flag if time evolution was terminated by callback
     end
 
     dgdp !== nothing &&
@@ -530,21 +395,27 @@ function _setup_reverse_callbacks(
 
     # event times
     times = if cb isa ContinuousCallback
-        [tracked_event_times(cb.affect!); tracked_event_times(cb.affect_neg!)]
+        tracked_event_times(cb)
     else
         cb.affect!.event_times
     end
 
     # precompute w and wp to generate a tape
-    cb_diffcaches = get_cb_diffcaches(cb, cb_autojacvec)
+    event_diffcache = (
+        positive = cb isa VectorContinuousCallback ||
+            needs_event_diffcache(cb.affect!, cb_autojacvec),
+        negative = cb isa ContinuousCallback &&
+            needs_event_diffcache(cb.affect_neg!, cb_autojacvec),
+    )
+    cb_diffcaches = get_cb_diffcaches(cb, cb_autojacvec, event_diffcache)
 
     function affect!(integrator)
         indx, pos_neg = get_indx(cb, integrator.t)
         tprev = get_tprev(cb, indx, pos_neg)
         event_idxs = cb isa VectorContinuousCallback ?
             get_event_idx(cb, indx, pos_neg) : nothing
-        cache_key = cb isa VectorContinuousCallback ? (pos_neg, indx) :
-            (pos_neg, nothing)
+        event_specific = pos_neg ? event_diffcache.positive : event_diffcache.negative
+        cache_key = (pos_neg, event_specific ? indx : nothing)
 
         # update diffcache here to use the correct precompiled callback tape
         w, wp = setup_w_wp(cb, cb_autojacvec, pos_neg, event_idxs, tprev)
@@ -578,7 +449,7 @@ function _setup_reverse_callbacks(
             # wrt dependence of event time t on parameters and initial state.
             # Must be handled here because otherwise it is unclear if continuous or
             # discrete callback was triggered.
-            correction = tracked_correction(cb)
+            (; correction) = affect
             (; dy_right, Lu_right) = correction
             # compute #f(xτ_right,p_right,τ(x₀,p))
             compute_f!(dy_right, S, y, integrator)
@@ -736,8 +607,6 @@ function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     else
         _affect!(fakeinteg)
     end
-    # `dp` is tunables-sized (see `_get_wp_paramjac_config`), so a structured `p`
-    # has to be canonicalized before it can be written back.
     dp .= canonical_tunables(fakeinteg.p)
     return nothing
 end
@@ -757,10 +626,6 @@ function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
     return FakeIntegrator([x for x in u], fake_integrator_p(p), t, tprev)
 end
 
-# The comprehension turns a ReverseDiff `TrackedArray` into a `Vector{TrackedReal}`,
-# which is what makes the affect's `setindex!` of a tracked scalar work. For a
-# structured `p` the tunables get the same treatment and are repacked, so the
-# affect still sees the parameter object it expects.
 fake_integrator_p(p) = is_structured_p(p) ? fake_integrator_structured_p(p) : [x for x in p]
 function fake_integrator_structured_p(p)
     tunables = canonicalize(Tunable(), p)[1]
@@ -771,8 +636,6 @@ get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, 
 get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
-    # The shadow, the `wp` output and the seed are all tunables-sized; the
-    # structured object itself is rebuilt by `repack` in `_vecjacobian!`.
     _pt = canonical_tunables(_p)
     return (zero(y), zero(_pt), zero(_pt), zero(_pt), zero(y))
 end
@@ -802,146 +665,125 @@ function get_cb_diffcaches(
             DiscreteCallback, ContinuousCallback,
             VectorContinuousCallback,
         },
-        autojacvec
+        autojacvec, event_diffcache
     )
     _dc = []
     vcc = cb isa VectorContinuousCallback
     cc = cb isa ContinuousCallback
-    has_affect = !isempty(tracked_event_times(cb.affect!))
-    has_affect_neg = cc && !isempty(tracked_event_times(cb.affect_neg!))
     pos_negs = cc ? (true, false) : (true,)
-    event_idxs = vcc ? eachindex(cb.affect!.event_times) : (nothing,)
-    for event_idx in event_idxs
-        for pos_neg in pos_negs
-            should_build = (pos_neg && has_affect) ||
-                (!pos_neg && has_affect_neg)
-            if should_build
-                if pos_neg
-                    y = cb.affect!.uleft[end]
-                    _p = cb.affect!.pleft[end]
-                    _t = cb.affect!.tprev[end]
-                    cache_event_idx = vcc ? cb.affect!.event_idx[event_idx] : event_idx
-                else
-                    y = cb.affect_neg!.uleft[end]
-                    _p = cb.affect_neg!.pleft[end]
-                    _t = cb.affect_neg!.tprev[end]
-                    cache_event_idx = event_idx
+    for pos_neg in pos_negs
+        affect = pos_neg || !cc ? cb.affect! : cb.affect_neg!
+        isempty(tracked_event_times(affect)) && continue
+        event_specific = pos_neg ? event_diffcache.positive : event_diffcache.negative
+        event_idxs = event_specific ? eachindex(affect.event_times) : (nothing,)
+        for event_idx in event_idxs
+            source_idx = event_idx === nothing ? lastindex(affect.event_times) : event_idx
+            y = affect.uleft[source_idx]
+            _p = affect.pleft[source_idx]
+            _t = affect.tprev[source_idx]
+            cache_event_idx = vcc ? affect.event_idx[source_idx] : nothing
+
+            if autojacvec isa ReactantVJP
+                raw_affect = get_affect!(cb, pos_neg)
+
+                w_paramjac = get_cb_paramjac_config(
+                    ReactantLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :state
+                )
+                diffcache_w = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, w_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+
+                wp_paramjac = get_cb_paramjac_config(
+                    ReactantLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :param
+                )
+                diffcache_wp = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, wp_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+            elseif autojacvec isa MooncakeVJP
+                # Avoid tracing the recursive TrackedAffect dispatch.
+                raw_affect = get_affect!(cb, pos_neg)
+
+                w_paramjac = get_cb_paramjac_config(
+                    MooncakeLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :state
+                )
+                diffcache_w = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, w_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+
+                wp_paramjac = get_cb_paramjac_config(
+                    MooncakeLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :param
+                )
+                diffcache_wp = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, wp_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+            else
+                w, wp = setup_w_wp(cb, autojacvec, pos_neg, cache_event_idx, _t)
+
+                _pt = canonical_tunables(_p)
+
+                paramjac_config = get_paramjac_config(
+                    autojacvec, _p, w, y, _pt, _t;
+                    numindvar = length(y), alg = nothing,
+                    isinplace = true, isRODE = false,
+                    _W = nothing
+                )
+                pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
+                if autojacvec isa EnzymeVJP
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
-                if autojacvec isa ReactantVJP
-                    # ReactantVJP: compile callback affect functions through Reactant
-                    raw_affect = get_affect!(cb, pos_neg)
+                diffcache_w = AdjointDiffCache(
+                    nothing, pf, nothing, nothing, nothing,
+                    nothing, nothing, nothing, paramjac_config,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
 
-                    w_paramjac = get_cb_paramjac_config(
-                        ReactantLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :state
-                    )
-                    diffcache_w = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, w_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    wp_paramjac = get_cb_paramjac_config(
-                        ReactantLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :param
-                    )
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, wp_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-                elseif autojacvec isa MooncakeVJP
-                    # MooncakeVJP: build Mooncake pullback caches for the
-                    # state-affect and parameter-affect callback wrappers via
-                    # `get_cb_paramjac_config` in the Mooncake extension, mirroring
-                    # the ReactantVJP branch above. Mooncake can't trace through
-                    # the recursive TrackedAffect unwrapping in
-                    # `CallbackAffectWrapper` (it trips on the
-                    # `Base.argument_datatype` ccall surfaced by that dispatch),
-                    # so the extension hoists `raw_affect` out and bakes it into
-                    # a flat (out, u, p, t) closure before preparing the cache.
-                    raw_affect = get_affect!(cb, pos_neg)
-
-                    w_paramjac = get_cb_paramjac_config(
-                        MooncakeLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :state
-                    )
-                    diffcache_w = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, w_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    wp_paramjac = get_cb_paramjac_config(
-                        MooncakeLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :param
-                    )
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, wp_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-                else
-                    w, wp = setup_w_wp(cb, autojacvec, pos_neg, cache_event_idx, _t)
-
-                    # The tape (or Enzyme shadow) is built over the *tunables*,
-                    # while `_p` stays the full parameter object so that the
-                    # config derives the matching `repack` from it.
-                    _pt = canonical_tunables(_p)
-
-                    paramjac_config = get_paramjac_config(
-                        autojacvec, _p, w, y, _pt, _t;
-                        numindvar = length(y), alg = nothing,
-                        isinplace = true, isRODE = false,
-                        _W = nothing
-                    )
-                    pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
-                    if autojacvec isa EnzymeVJP
-                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
-                    end
-
-                    diffcache_w = AdjointDiffCache(
-                        nothing, pf, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    paramjac_config = _get_wp_paramjac_config(
-                        autojacvec, _p, wp, y, _pt, _t
-                    )
-                    pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
-                    if autojacvec isa EnzymeVJP
-                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
-                    end
-
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, pf, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
+                paramjac_config = _get_wp_paramjac_config(
+                    autojacvec, _p, wp, y, _pt, _t
+                )
+                pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
+                if autojacvec isa EnzymeVJP
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
-                push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
+                diffcache_wp = AdjointDiffCache(
+                    nothing, pf, nothing, nothing, nothing,
+                    nothing, nothing, nothing, paramjac_config,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
             end
+
+            push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
         end
     end
     return Dict(_dc)
@@ -954,13 +796,12 @@ function get_indx(cb::VectorContinuousCallback, t)
     return (searchsortedfirst(cb.affect!.event_times, t), true)
 end
 function get_indx(cb::ContinuousCallback, t)
-    pos_event_times = tracked_event_times(cb.affect!)
+    event_times = tracked_event_times(cb.affect!)
     neg_event_times = tracked_event_times(cb.affect_neg!)
-    return if !isempty(pos_event_times) || !isempty(neg_event_times)
-        indx = searchsortedfirst(pos_event_times, t)
-        indx_neg = searchsortedfirst(neg_event_times, t)
-        if !isempty(pos_event_times) &&
-                pos_event_times[min(indx, length(pos_event_times))] == t
+    return if !isempty(event_times) || !isempty(neg_event_times)
+        indx = isempty(event_times) ? 0 : searchsortedfirst(event_times, t)
+        indx_neg = isempty(neg_event_times) ? 0 : searchsortedfirst(neg_event_times, t)
+        if !isempty(event_times) && event_times[min(indx, length(event_times))] == t
             return indx, true
         elseif !isempty(neg_event_times) &&
                 neg_event_times[min(indx_neg, length(neg_event_times))] == t
@@ -989,27 +830,21 @@ function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
     # For BacksolveAdjoint, y is a view to the integrator state;
     # for the other methods, it's the S.y cache
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = !p_isequal(p, cb.affect!.pleft[indx])
-    update_p && copy_p!(p, cb.affect!.pleft[indx])
-    return update_p
+    return restore_p!(p, cb.affect!.pleft[indx])
 end
 
 function copy_to_integrator!(cb::VectorContinuousCallback, y, p, indx, bool)
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = !p_isequal(p, cb.affect!.pleft[indx])
-    update_p && copy_p!(p, cb.affect!.pleft[indx])
-    return update_p
+    return restore_p!(p, cb.affect!.pleft[indx])
 end
 
 function copy_to_integrator!(cb::ContinuousCallback, y, p, indx, bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
-        update_p = !p_isequal(p, cb.affect!.pleft[indx])
-        update_p && copy_p!(p, cb.affect!.pleft[indx])
+        update_p = restore_p!(p, cb.affect!.pleft[indx])
     else
         copyto!(y, cb.affect_neg!.uleft[indx])
-        update_p = !p_isequal(p, cb.affect_neg!.pleft[indx])
-        update_p && copy_p!(p, cb.affect_neg!.pleft[indx])
+        update_p = restore_p!(p, cb.affect_neg!.pleft[indx])
     end
     return update_p
 end
