@@ -2203,7 +2203,13 @@ function SciMLBase._concrete_solve_adjoint(
     out, pullback = Tracker.forward(tracker_adjoint_forwardpass, u0, tunables)
     function tracker_adjoint_backpass(ybar)
         ybar = ybar isa AbstractThunk ? unthunk(ybar) : ybar
-        tmp = if eltype(ybar) <: Number && u0 isa Array
+        tmp = if ybar isa AbstractDiffEqArray
+            if state_values(ybar, 1) isa Array
+                Array(ybar)
+            else
+                reshape(reduce(hcat, vec.(state_values(ybar))), size(ybar))
+            end
+        elseif eltype(ybar) <: Number && u0 isa Array
             Array(ybar) # can also be a ODESolution
         elseif eltype(ybar) <: Number # CuArray{Floats}
             ybar
