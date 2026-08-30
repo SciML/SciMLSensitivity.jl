@@ -847,6 +847,8 @@ function _vecjacobian!(
         else
             tunables, repack = p, identity
         end
+    elseif p isa AbstractArray
+        tunables, repack = p, identity
     else
         (; tunables, repack) = S.diffcache
     end

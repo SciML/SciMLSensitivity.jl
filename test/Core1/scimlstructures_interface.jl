@@ -1,5 +1,5 @@
 # taken from https://github.com/SciML/SciMLStructures.jl/pull/28
-using OrdinaryDiffEq, SciMLSensitivity, Zygote
+using OrdinaryDiffEq, SciMLSensitivity, Zygote, ForwardDiff
 using LinearAlgebra
 import SciMLStructures as SS
 
@@ -246,3 +246,20 @@ end
         QuadratureAdjoint(autojacvec = MooncakeVJP())
     )[1].ps
 )
+
+@testset "Matrix parameter ZygoteVJP" begin
+    p_matrix = [0.1 0.2; -0.3 0.4]
+    matrix_prob = ODEProblem((u, p, t) -> p * u, [1.0, -1.0], (0.0, 0.5), p_matrix)
+    function matrix_loss(p, sensealg = nothing)
+        sol = solve(matrix_prob, Tsit5(); p, sensealg, saveat = 0.5)
+        return sum(abs2, sol.u[end])
+    end
+
+    grad = Zygote.gradient(
+        p -> matrix_loss(p, BacksolveAdjoint(autojacvec = ZygoteVJP())), p_matrix
+    )[1]
+    reference = ForwardDiff.gradient(
+        p -> matrix_loss(reshape(p, size(p_matrix))), vec(p_matrix)
+    )
+    @test vec(grad) ≈ reference rtol = 1.0e-6
+end
