@@ -2045,6 +2045,8 @@ function SciMLBase._concrete_solve_adjoint(
 
     if p === nothing || p isa SciMLBase.NullParameters
         tunables, repack = p, identity
+    elseif p isa AbstractArray
+        tunables, repack = p, identity
     else
         tunables, repack, _ = canonicalize(Tunable(), p)
     end
@@ -2117,7 +2119,7 @@ function SciMLBase._concrete_solve_adjoint(
                             _g
                         ),
                         g = _g,
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        u0 = _u0, p = repack(_p),
                         tspan = _tspan, callback = nothing
                     )
                 else
@@ -2127,7 +2129,7 @@ function SciMLBase._concrete_solve_adjoint(
                             false,
                             SciMLBase.FullSpecialize,
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        u0 = _u0, p = repack(_p),
                         tspan = _tspan, callback = nothing
                     )
                 end
@@ -2160,7 +2162,7 @@ function SciMLBase._concrete_solve_adjoint(
                             _g
                         ),
                         g = _g,
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        u0 = _u0, p = repack(_p),
                         tspan = _tspan, callback = nothing
                     )
                 else
@@ -2170,7 +2172,7 @@ function SciMLBase._concrete_solve_adjoint(
                             false,
                             SciMLBase.FullSpecialize,
                         }(_f),
-                        u0 = _u0, p = SciMLStructures.replace(Tunable(), p, _p),
+                        u0 = _u0, p = repack(_p),
                         tspan = _tspan, callback = nothing
                     )
                 end
