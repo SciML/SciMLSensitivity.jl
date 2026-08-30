@@ -158,6 +158,7 @@ run_tests(;
                 return @testset "GPU" begin
                     @time @safetestset "Standard DiffEqFlux GPU" include("GPU/diffeqflux_standard_gpu.jl")
                     @time @safetestset "Mixed GPU/CPU" include("GPU/mixed_gpu_cpu_adjoint.jl")
+                    @time @safetestset "TrackerAdjoint DiffEqArray" include("GPU/tracker_adjoint_diffeqarray.jl")
                 end
             end,
         ),
