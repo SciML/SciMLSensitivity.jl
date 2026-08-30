@@ -204,6 +204,12 @@ struct FakeIntegrator{uType, P, tType, tprevType}
     tprev::tprevType
 end
 
+struct FakeCallbackProblem end
+const FAKE_CALLBACK_SOLUTION = (; prob = FakeCallbackProblem())
+
+SciMLBase.isinplace(::FakeCallbackProblem) = false
+SciMLBase.get_sol(::FakeIntegrator) = FAKE_CALLBACK_SOLUTION
+
 function Base.getproperty(fi::FakeIntegrator, s::Symbol)
     s === :tdir && return sign(fi.t - fi.tprev)
     return getfield(fi, s)
@@ -957,13 +963,16 @@ mutable struct ConditionTimeWrapper{F, uType, Integrator} <: Function
     u::uType
     integrator::Integrator
 end
-(ff::ConditionTimeWrapper)(t) = [ff.f(ff.u, t, ff.integrator)]
+_scalar_condition_value(x) = x
+_scalar_condition_value(x::AbstractVector) = first(x)
+
+(ff::ConditionTimeWrapper)(t) = [_scalar_condition_value(ff.f(ff.u, t, ff.integrator))]
 mutable struct ConditionUWrapper{F, tType, Integrator} <: Function
     f::F
     t::tType
     integrator::Integrator
 end
-(ff::ConditionUWrapper)(u) = ff.f(u, ff.t, ff.integrator)
+(ff::ConditionUWrapper)(u) = _scalar_condition_value(ff.f(u, ff.t, ff.integrator))
 mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Function
     f::F
     u::uType
