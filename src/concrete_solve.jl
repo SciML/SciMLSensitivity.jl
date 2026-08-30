@@ -28,11 +28,28 @@ const STACKTRACE_WITH_VJPWARN = Ref(false)
 # `SparseMatrixCSC` field — as closure data, which Enzyme cannot prove read-only, so the
 # probe spuriously throws `EnzymeMutabilityException` and falls back to ReverseDiff even
 # though EnzymeVJP works for such RHS. `f` is given a shadow (`Duplicated`, not `Const`) to
-# match how `_vecjacobian!` actually invokes Enzyme on the in-place RHS
+# match how the state and parameter VJPs invoke Enzyme on the in-place RHS
 # (`Duplicated(SciMLBase.Void(f), …)`), so an `f` that mutates internal caches or embeds
-# parameters is probed the same way it is used.
+# parameters is probed with the same activity patterns it will use.
 function _enzyme_vjp_probe(f, repack, out, u, _p, t)
     f(out, u, repack(_p), t)
+    return nothing
+end
+
+function _probe_enzyme_vjp(mode, f, repack, u, p, t)
+    Enzyme.autodiff(
+        mode, _enzyme_vjp_probe,
+        Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
+        Enzyme.Duplicated(zero(u), copy(u)),
+        Enzyme.Duplicated(copy(u), zero(u)), Enzyme.Duplicated(copy(p), zero(p)),
+        Enzyme.Const(t)
+    )
+    Enzyme.autodiff(
+        mode, _enzyme_vjp_probe,
+        Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
+        Enzyme.Duplicated(zero(u), copy(u)),
+        Enzyme.Const(copy(u)), Enzyme.Duplicated(copy(p), zero(p)), Enzyme.Const(t)
+    )
     return nothing
 end
 
@@ -41,7 +58,6 @@ function inplace_vjp(prob, u0, p, verbose, repack)
     # residuals `f(res, du, u, p, t)`; the DAE residual vjp machinery
     # (the SundialsAdjoint/IDA path) is ReverseDiff-tape based.
     prob isa SciMLBase.AbstractDAEProblem && return ReverseDiffVJP()
-    du = zero(u0)
     # Get verbosity for sensitivity VJP choice warnings
     _verbose = _get_sensitivity_vjp_verbose(verbose)
     # Get time value - NonlinearProblems don't have tspan
@@ -54,13 +70,7 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         if prob isa AbstractNonlinearProblem
             false
         else
-            Enzyme.autodiff(
-                Enzyme.Reverse, _enzyme_vjp_probe,
-                Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
-                Enzyme.Duplicated(du, copy(u0)),
-                Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
-                Enzyme.Const(t0)
-            )
+            _probe_enzyme_vjp(Enzyme.Reverse, f, repack, u0, p, t0)
             true
         end
     catch e
@@ -77,12 +87,8 @@ function inplace_vjp(prob, u0, p, verbose, repack)
         if prob isa AbstractNonlinearProblem
             false
         else
-            Enzyme.autodiff(
-                Enzyme.set_runtime_activity(Enzyme.Reverse), _enzyme_vjp_probe,
-                Enzyme.Duplicated(f, Enzyme.make_zero(f)), Enzyme.Const(repack),
-                Enzyme.Duplicated(du, copy(u0)),
-                Enzyme.Duplicated(copy(u0), zero(u0)), Enzyme.Duplicated(copy(p), zero(p)),
-                Enzyme.Const(t0)
+            _probe_enzyme_vjp(
+                Enzyme.set_runtime_activity(Enzyme.Reverse), f, repack, u0, p, t0
             )
             true
         end
