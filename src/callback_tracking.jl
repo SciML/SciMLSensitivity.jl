@@ -141,6 +141,15 @@ function (f::TrackedAffect)(integrator, event_idx = nothing)
     end
 end
 
+tracked_event_times(affect) = affect.event_times
+tracked_event_times(::Nothing) = ()
+
+function tracked_event_times(cb::ContinuousCallback)
+    cb.affect! === nothing && return cb.affect_neg!.event_times
+    cb.affect_neg! === nothing && return cb.affect!.event_times
+    return [cb.affect!.event_times; cb.affect_neg!.event_times]
+end
+
 function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
     correction = ImplicitCorrection(cb, t, u, p, sensealg)
     return DiscreteCallback(
@@ -148,7 +157,9 @@ function _track_callback(cb::DiscreteCallback, t, u, p, sensealg)
         TrackedAffect(t, u, p, cb.affect!, correction),
         cb.initialize,
         cb.finalize,
-        cb.save_positions
+        cb.save_positions,
+        cb.initializealg, cb.saved_clock_partitions,
+        cb.initialize_save_discretes
     )
 end
 
@@ -163,7 +174,9 @@ function _track_callback(cb::ContinuousCallback, t, u, p, sensealg)
         cb.idxs,
         cb.rootfind, cb.interp_points,
         cb.save_positions,
-        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge
+        cb.dtrelax, cb.abstol, cb.reltol, cb.repeat_nudge,
+        cb.initializealg, cb.saved_clock_partitions,
+        cb.maybe_discontinuity, cb.initialize_save_discretes
     )
 end
 
@@ -191,9 +204,87 @@ struct FakeIntegrator{uType, P, tType, tprevType}
     tprev::tprevType
 end
 
+struct FakeCallbackProblem end
+const FAKE_CALLBACK_SOLUTION = (; prob = FakeCallbackProblem())
+
+SciMLBase.isinplace(::FakeCallbackProblem) = false
+SciMLBase.get_sol(::FakeIntegrator) = FAKE_CALLBACK_SOLUTION
+
 function Base.getproperty(fi::FakeIntegrator, s::Symbol)
     s === :tdir && return sign(fi.t - fi.tprev)
     return getfield(fi, s)
+end
+
+SymbolicIndexingInterface.state_values(fi::FakeIntegrator) = getfield(fi, :u)
+SymbolicIndexingInterface.parameter_values(fi::FakeIntegrator) = getfield(fi, :p)
+SymbolicIndexingInterface.current_time(fi::FakeIntegrator) = getfield(fi, :t)
+function SymbolicIndexingInterface.set_state!(fi::FakeIntegrator, val, idx)
+    return getfield(fi, :u)[idx] = val
+end
+function SymbolicIndexingInterface.set_parameter!(fi::FakeIntegrator, val, idx)
+    return SymbolicIndexingInterface.set_parameter!(getfield(fi, :p), val, idx)
+end
+
+is_structured_p(p) = isscimlstructure(p) && !(p isa AbstractArray)
+
+function canonical_tunables(p)
+    is_structured_p(p) || return p
+    return canonicalize(Tunable(), p)[1]
+end
+
+const CALLBACK_P_PORTIONS = (
+    SciMLStructures.Tunable(), SciMLStructures.Initials(),
+    SciMLStructures.Discrete(), SciMLStructures.Constants(),
+)
+const CALLBACK_P_DETACHED_PORTIONS = (
+    SciMLStructures.Initials(), SciMLStructures.Discrete(), SciMLStructures.Constants(),
+)
+
+function portion_values(portion, p)
+    applicable(SciMLStructures.canonicalize, portion, p) || return nothing
+    return first(SciMLStructures.canonicalize(portion, p))
+end
+
+function restore_p!(p, pleft)
+    if !is_structured_p(p)
+        update_p = !isequal(p, pleft)
+        update_p && copyto!(p, pleft)
+        return update_p
+    end
+
+    update_p = false
+    for portion in CALLBACK_P_PORTIONS
+        vals = portion_values(portion, pleft)
+        (vals === nothing || isempty(vals)) && continue
+        isequal(portion_values(portion, p), vals) && continue
+        SciMLStructures.ismutablescimlstructure(p) ||
+            error("The callback changes the parameters, but $(typeof(p)) is not a mutable SciMLStructure so the adjoint pass cannot restore them. Implement `SciMLStructures.replace!` for it.")
+        SciMLStructures.replace!(portion, p, vals)
+        update_p = true
+    end
+    return update_p
+end
+
+function detached_p(p, tunables)
+    q = SciMLStructures.replace(Tunable(), p, tunables)
+    for portion in CALLBACK_P_DETACHED_PORTIONS
+        vals = portion_values(portion, q)
+        (vals === nothing || isempty(vals)) && continue
+        q = SciMLStructures.replace(portion, q, copy(vals))
+    end
+    return q
+end
+
+needs_event_diffcache(::Nothing, autojacvec) = false
+function needs_event_diffcache(affect, autojacvec)
+    autojacvec isa ReverseDiffVJP && compile_tape(autojacvec) || return false
+    length(affect.pleft) > 1 && is_structured_p(affect.pleft[1]) || return false
+    reference = affect.pleft[1]
+    for i in 2:length(affect.pleft), portion in CALLBACK_P_DETACHED_PORTIONS
+        isequal(portion_values(portion, reference), portion_values(portion, affect.pleft[i])) ||
+            return true
+    end
+    return false
 end
 
 struct CallbackSensitivityFunction{
@@ -265,7 +356,9 @@ function _setup_reverse_callbacks(
         dgdp,
         loss_ref, terminated
     )
-    return _setup_reverse_callbacks(cb, cb.affect!, sensealg, dgdu, dgdp, loss_ref, terminated)
+    affect = cb isa ContinuousCallback && cb.affect! === nothing ?
+        cb.affect_neg! : cb.affect!
+    return _setup_reverse_callbacks(cb, affect, sensealg, dgdu, dgdp, loss_ref, terminated)
 end
 
 function _setup_reverse_callbacks(
@@ -277,9 +370,9 @@ function _setup_reverse_callbacks(
         dgdp,
         loss_ref, terminated
     )
-    if cb isa Union{ContinuousCallback, VectorContinuousCallback} && cb.affect! !== nothing
-        cb.affect!.correction.cur_time = loss_ref # set cur_time
-        cb.affect!.correction.terminated = terminated # flag if time evolution was terminated by callback
+    if cb isa Union{ContinuousCallback, VectorContinuousCallback}
+        affect.correction.cur_time = loss_ref # set cur_time
+        affect.correction.terminated = terminated # flag if time evolution was terminated by callback
     end
 
     dgdp !== nothing &&
@@ -308,21 +401,27 @@ function _setup_reverse_callbacks(
 
     # event times
     times = if cb isa ContinuousCallback
-        [cb.affect!.event_times; cb.affect_neg!.event_times]
+        tracked_event_times(cb)
     else
         cb.affect!.event_times
     end
 
     # precompute w and wp to generate a tape
-    cb_diffcaches = get_cb_diffcaches(cb, cb_autojacvec)
+    event_diffcache = (
+        positive = cb isa VectorContinuousCallback ||
+            needs_event_diffcache(cb.affect!, cb_autojacvec),
+        negative = cb isa ContinuousCallback &&
+            needs_event_diffcache(cb.affect_neg!, cb_autojacvec),
+    )
+    cb_diffcaches = get_cb_diffcaches(cb, cb_autojacvec, event_diffcache)
 
     function affect!(integrator)
         indx, pos_neg = get_indx(cb, integrator.t)
         tprev = get_tprev(cb, indx, pos_neg)
         event_idxs = cb isa VectorContinuousCallback ?
             get_event_idx(cb, indx, pos_neg) : nothing
-        cache_key = cb isa VectorContinuousCallback ? (pos_neg, indx) :
-            (pos_neg, nothing)
+        event_specific = pos_neg ? event_diffcache.positive : event_diffcache.negative
+        cache_key = (pos_neg, event_specific ? indx : nothing)
 
         # update diffcache here to use the correct precompiled callback tape
         w, wp = setup_w_wp(cb, cb_autojacvec, pos_neg, event_idxs, tprev)
@@ -356,7 +455,7 @@ function _setup_reverse_callbacks(
             # wrt dependence of event time t on parameters and initial state.
             # Must be handled here because otherwise it is unclear if continuous or
             # discrete callback was triggered.
-            (; correction) = cb.affect!
+            (; correction) = affect
             (; dy_right, Lu_right) = correction
             # compute #f(xτ_right,p_right,τ(x₀,p))
             compute_f!(dy_right, S, y, integrator)
@@ -514,7 +613,7 @@ function (ff::CallbackAffectPWrapper)(dp, u, p, t)
     else
         _affect!(fakeinteg)
     end
-    dp .= fakeinteg.p
+    dp .= canonical_tunables(fakeinteg.p)
     return nothing
 end
 
@@ -530,14 +629,21 @@ function setup_w_wp(
 end
 
 function get_FakeIntegrator(autojacvec::ReverseDiffVJP, u, p, t, tprev)
-    return FakeIntegrator([x for x in u], [x for x in p], t, tprev)
+    return FakeIntegrator([x for x in u], fake_integrator_p(p), t, tprev)
+end
+
+fake_integrator_p(p) = is_structured_p(p) ? fake_integrator_structured_p(p) : [x for x in p]
+function fake_integrator_structured_p(p)
+    tunables = canonicalize(Tunable(), p)[1]
+    return detached_p(p, [x for x in tunables])
 end
 get_FakeIntegrator(autojacvec::EnzymeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::ReactantVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 get_FakeIntegrator(autojacvec::MooncakeVJP, u, p, t, tprev) = FakeIntegrator(u, p, t, tprev)
 
 function _get_wp_paramjac_config(autojacvec::EnzymeVJP, _p, wp, y, __p, _t)
-    return (zero(y), zero(_p), zero(_p), zero(_p), zero(y))
+    _pt = canonical_tunables(_p)
+    return (zero(y), zero(_pt), zero(_pt), zero(_pt), zero(y))
 end
 
 function _get_wp_paramjac_config(autojacvec::ReverseDiffVJP, _p, wp, y, __p, _t)
@@ -565,141 +671,125 @@ function get_cb_diffcaches(
             DiscreteCallback, ContinuousCallback,
             VectorContinuousCallback,
         },
-        autojacvec
+        autojacvec, event_diffcache
     )
     _dc = []
     vcc = cb isa VectorContinuousCallback
     cc = cb isa ContinuousCallback
-    has_affect = !isempty(cb.affect!.event_times)
-    has_affect_neg = cc && !isempty(cb.affect_neg!.event_times)
     pos_negs = cc ? (true, false) : (true,)
-    event_idxs = vcc ? eachindex(cb.affect!.event_times) : (nothing,)
-    for event_idx in event_idxs
-        for pos_neg in pos_negs
-            should_build = (pos_neg && has_affect) ||
-                (!pos_neg && has_affect_neg)
-            if should_build
-                if pos_neg
-                    y = cb.affect!.uleft[end]
-                    _p = cb.affect!.pleft[end]
-                    _t = cb.affect!.tprev[end]
-                    cache_event_idx = vcc ? cb.affect!.event_idx[event_idx] : event_idx
-                else
-                    y = cb.affect_neg!.uleft[end]
-                    _p = cb.affect_neg!.pleft[end]
-                    _t = cb.affect_neg!.tprev[end]
-                    cache_event_idx = event_idx
+    for pos_neg in pos_negs
+        affect = pos_neg || !cc ? cb.affect! : cb.affect_neg!
+        isempty(tracked_event_times(affect)) && continue
+        event_specific = pos_neg ? event_diffcache.positive : event_diffcache.negative
+        event_idxs = event_specific ? eachindex(affect.event_times) : (nothing,)
+        for event_idx in event_idxs
+            source_idx = event_idx === nothing ? lastindex(affect.event_times) : event_idx
+            y = affect.uleft[source_idx]
+            _p = affect.pleft[source_idx]
+            _t = affect.tprev[source_idx]
+            cache_event_idx = vcc ? affect.event_idx[source_idx] : nothing
+
+            if autojacvec isa ReactantVJP
+                raw_affect = get_affect!(cb, pos_neg)
+
+                w_paramjac = get_cb_paramjac_config(
+                    ReactantLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :state
+                )
+                diffcache_w = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, w_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+
+                wp_paramjac = get_cb_paramjac_config(
+                    ReactantLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :param
+                )
+                diffcache_wp = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, wp_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+            elseif autojacvec isa MooncakeVJP
+                # Avoid tracing the recursive TrackedAffect dispatch.
+                raw_affect = get_affect!(cb, pos_neg)
+
+                w_paramjac = get_cb_paramjac_config(
+                    MooncakeLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :state
+                )
+                diffcache_w = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, w_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+
+                wp_paramjac = get_cb_paramjac_config(
+                    MooncakeLoaded(), autojacvec, raw_affect,
+                    cache_event_idx, y, _p, _t, :param
+                )
+                diffcache_wp = AdjointDiffCache(
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, wp_paramjac,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
+            else
+                w, wp = setup_w_wp(cb, autojacvec, pos_neg, cache_event_idx, _t)
+
+                _pt = canonical_tunables(_p)
+
+                paramjac_config = get_paramjac_config(
+                    autojacvec, _p, w, y, _pt, _t;
+                    numindvar = length(y), alg = nothing,
+                    isinplace = true, isRODE = false,
+                    _W = nothing
+                )
+                pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
+                if autojacvec isa EnzymeVJP
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
-                if autojacvec isa ReactantVJP
-                    # ReactantVJP: compile callback affect functions through Reactant
-                    raw_affect = get_affect!(cb, pos_neg)
+                diffcache_w = AdjointDiffCache(
+                    nothing, pf, nothing, nothing, nothing,
+                    nothing, nothing, nothing, paramjac_config,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
 
-                    w_paramjac = get_cb_paramjac_config(
-                        ReactantLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :state
-                    )
-                    diffcache_w = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, w_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    wp_paramjac = get_cb_paramjac_config(
-                        ReactantLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :param
-                    )
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, wp_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-                elseif autojacvec isa MooncakeVJP
-                    # MooncakeVJP: build Mooncake pullback caches for the
-                    # state-affect and parameter-affect callback wrappers via
-                    # `get_cb_paramjac_config` in the Mooncake extension, mirroring
-                    # the ReactantVJP branch above. Mooncake can't trace through
-                    # the recursive TrackedAffect unwrapping in
-                    # `CallbackAffectWrapper` (it trips on the
-                    # `Base.argument_datatype` ccall surfaced by that dispatch),
-                    # so the extension hoists `raw_affect` out and bakes it into
-                    # a flat (out, u, p, t) closure before preparing the cache.
-                    raw_affect = get_affect!(cb, pos_neg)
-
-                    w_paramjac = get_cb_paramjac_config(
-                        MooncakeLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :state
-                    )
-                    diffcache_w = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, w_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    wp_paramjac = get_cb_paramjac_config(
-                        MooncakeLoaded(), autojacvec, raw_affect,
-                        cache_event_idx, y, _p, _t, :param
-                    )
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, wp_paramjac,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-                else
-                    w, wp = setup_w_wp(cb, autojacvec, pos_neg, cache_event_idx, _t)
-
-                    paramjac_config = get_paramjac_config(
-                        autojacvec, _p, w, y, _p, _t;
-                        numindvar = length(y), alg = nothing,
-                        isinplace = true, isRODE = false,
-                        _W = nothing
-                    )
-                    pf = get_pf(autojacvec; _f = w, isinplace = true, isRODE = false)
-                    if autojacvec isa EnzymeVJP
-                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
-                    end
-
-                    diffcache_w = AdjointDiffCache(
-                        nothing, pf, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
-
-                    paramjac_config = _get_wp_paramjac_config(
-                        autojacvec, _p, wp, y, _p, _t
-                    )
-                    pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
-                    if autojacvec isa EnzymeVJP
-                        paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
-                    end
-
-                    diffcache_wp = AdjointDiffCache(
-                        nothing, pf, nothing, nothing, nothing,
-                        nothing, nothing, nothing, paramjac_config,
-                        nothing, nothing, nothing, nothing, nothing,
-                        nothing, nothing, nothing, false,
-                        nothing, identity,
-                        nothing, nothing, false, false
-                    )
+                paramjac_config = _get_wp_paramjac_config(
+                    autojacvec, _p, wp, y, _pt, _t
+                )
+                pf = get_pf(autojacvec; _f = wp, isinplace = true, isRODE = false)
+                if autojacvec isa EnzymeVJP
+                    paramjac_config = (paramjac_config..., Enzyme.make_zero(pf), nothing)
                 end
 
-                push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
+                diffcache_wp = AdjointDiffCache(
+                    nothing, pf, nothing, nothing, nothing,
+                    nothing, nothing, nothing, paramjac_config,
+                    nothing, nothing, nothing, nothing, nothing,
+                    nothing, nothing, nothing, false,
+                    nothing, identity,
+                    nothing, nothing, false, false
+                )
             end
+
+            push!(_dc, (pos_neg, event_idx) => (diffcache_w, diffcache_wp))
         end
     end
     return Dict(_dc)
@@ -712,20 +802,15 @@ function get_indx(cb::VectorContinuousCallback, t)
     return (searchsortedfirst(cb.affect!.event_times, t), true)
 end
 function get_indx(cb::ContinuousCallback, t)
-    return if !isempty(cb.affect!.event_times) || !isempty(cb.affect_neg!.event_times)
-        indx = searchsortedfirst(cb.affect!.event_times, t)
-        indx_neg = searchsortedfirst(cb.affect_neg!.event_times, t)
-        if !isempty(cb.affect!.event_times) &&
-                cb.affect!.event_times[min(indx, length(cb.affect!.event_times))] == t
+    event_times = tracked_event_times(cb.affect!)
+    neg_event_times = tracked_event_times(cb.affect_neg!)
+    return if !isempty(event_times) || !isempty(neg_event_times)
+        indx = isempty(event_times) ? 0 : searchsortedfirst(event_times, t)
+        indx_neg = isempty(neg_event_times) ? 0 : searchsortedfirst(neg_event_times, t)
+        if !isempty(event_times) && event_times[min(indx, length(event_times))] == t
             return indx, true
-        elseif !isempty(cb.affect_neg!.event_times) &&
-                cb.affect_neg!.event_times[
-                min(
-                    indx_neg,
-                    length(cb.affect_neg!.event_times)
-                ),
-            ] ==
-                t
+        elseif !isempty(neg_event_times) &&
+                neg_event_times[min(indx_neg, length(neg_event_times))] == t
             return indx_neg, false
         else
             error("Event was triggered but no corresponding event in ContinuousCallback was found. Please report this error.")
@@ -751,27 +836,21 @@ function copy_to_integrator!(cb::DiscreteCallback, y, p, indx, bool)
     # For BacksolveAdjoint, y is a view to the integrator state;
     # for the other methods, it's the S.y cache
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = (p != cb.affect!.pleft[indx])
-    update_p && copyto!(p, cb.affect!.pleft[indx])
-    return update_p
+    return restore_p!(p, cb.affect!.pleft[indx])
 end
 
 function copy_to_integrator!(cb::VectorContinuousCallback, y, p, indx, bool)
     copyto!(y, cb.affect!.uleft[indx])
-    update_p = (p != cb.affect!.pleft[indx])
-    update_p && copyto!(p, cb.affect!.pleft[indx])
-    return update_p
+    return restore_p!(p, cb.affect!.pleft[indx])
 end
 
 function copy_to_integrator!(cb::ContinuousCallback, y, p, indx, bool)
     if bool
         copyto!(y, cb.affect!.uleft[indx])
-        update_p = (p != cb.affect!.pleft[indx])
-        update_p && copyto!(p, cb.affect!.pleft[indx])
+        update_p = restore_p!(p, cb.affect!.pleft[indx])
     else
         copyto!(y, cb.affect_neg!.uleft[indx])
-        update_p = (p != cb.affect_neg!.pleft[indx])
-        update_p && copyto!(p, cb.affect_neg!.pleft[indx])
+        update_p = restore_p!(p, cb.affect_neg!.pleft[indx])
     end
     return update_p
 end
@@ -884,13 +963,16 @@ mutable struct ConditionTimeWrapper{F, uType, Integrator} <: Function
     u::uType
     integrator::Integrator
 end
-(ff::ConditionTimeWrapper)(t) = [ff.f(ff.u, t, ff.integrator)]
+_scalar_condition_value(x) = x
+_scalar_condition_value(x::AbstractVector) = first(x)
+
+(ff::ConditionTimeWrapper)(t) = [_scalar_condition_value(ff.f(ff.u, t, ff.integrator))]
 mutable struct ConditionUWrapper{F, tType, Integrator} <: Function
     f::F
     t::tType
     integrator::Integrator
 end
-(ff::ConditionUWrapper)(u) = ff.f(u, ff.t, ff.integrator)
+(ff::ConditionUWrapper)(u) = _scalar_condition_value(ff.f(u, ff.t, ff.integrator))
 mutable struct VectorConditionTimeWrapper{F, uType, Integrator, outType} <: Function
     f::F
     u::uType

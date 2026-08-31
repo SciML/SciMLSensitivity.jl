@@ -93,7 +93,10 @@ function ODEInterpolatingAdjointSensitivityFunction(
             else
                 if maximum(interval[1] .< tstops .< interval[2])
                     # callback might have changed p
-                    _p = reset_p(sol.prob.kwargs[:callback], interval)
+                    _p = reset_p(
+                        get(sol.prob.kwargs, :callback, nothing), interval,
+                        parameter_values(sol.prob)
+                    )
                     cpsol = solve(
                         remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
                         tstops, p = _p, sol.alg, tols...
@@ -252,7 +255,10 @@ function split_states(
                     else
                         if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                             # callback might have changed p
-                            _p = reset_p(prob.kwargs[:callback], interval)
+                            _p = reset_p(
+                                get(prob.kwargs, :callback, nothing), interval,
+                                parameter_values(prob)
+                            )
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(
                                 prob′, sol.alg;
@@ -745,79 +751,37 @@ end
     )
 end
 
-function reset_p(CBS, interval)
-    # check which events are close to tspan[1]
-    if !isempty(CBS.discrete_callbacks)
-        ts = map(CBS.discrete_callbacks) do cb
-            indx = searchsortedfirst(cb.affect!.event_times, interval[1])
-            (indx, cb.affect!.event_times[indx])
-        end
-        perm = minimum(sortperm([t for t in getindex.(ts, 2)]))
-    end
+next_tracked_event(::Nothing, t) = nothing
+function next_tracked_event(affect, t)
+    indx = searchsortedfirst(affect.event_times, t)
+    indx > length(affect.event_times) && return nothing
+    return affect.event_times[indx], affect.pleft[indx]
+end
 
-    if !isempty(CBS.continuous_callbacks)
-        ts2 = map(CBS.continuous_callbacks) do cb
-            if !isempty(cb.affect!.event_times) && isempty(cb.affect_neg!.event_times)
-                indx = searchsortedfirst(cb.affect!.event_times, interval[1])
-                return (indx, cb.affect!.event_times[indx], 0) # zero for affect!
-            elseif isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
-                indx = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
-                return (indx, cb.affect_neg!.event_times[indx], 1) # one for affect_neg!
-            elseif !isempty(cb.affect!.event_times) && !isempty(cb.affect_neg!.event_times)
-                indx1 = searchsortedfirst(cb.affect!.event_times, interval[1])
-                indx2 = searchsortedfirst(cb.affect_neg!.event_times, interval[1])
-                if cb.affect!.event_times[indx1] < cb.affect_neg!.event_times[indx2]
-                    return (indx1, cb.affect!.event_times[indx1], 0)
-                else
-                    return (indx2, cb.affect_neg!.event_times[indx2], 1)
-                end
-            else
-                error("Expected event but reset_p couldn't find event time. Please report this error.")
-            end
-        end
-        perm2 = minimum(sortperm([t for t in getindex.(ts2, 2)]))
-        # check if continuous or discrete callback was applied first if both occur in interval
-        if isempty(CBS.discrete_callbacks)
-            if ts2[perm2][3] == 0
-                p = deepcopy(CBS.continuous_callbacks[perm2].affect!.pleft[getindex.(ts2, 1)[perm2]])
-            else
-                p = deepcopy(
-                    CBS.continuous_callbacks[perm2].affect_neg!.pleft[
-                        getindex.(
-                            ts2,
-                            1
-                        )[perm2],
-                    ]
-                )
-            end
-        else
-            if ts[perm][2] < ts2[perm2][2]
-                p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
-            else
-                if ts2[perm2][3] == 0
-                    p = deepcopy(
-                        CBS.continuous_callbacks[perm2].affect!.pleft[
-                            getindex.(
-                                ts2,
-                                1
-                            )[perm2],
-                        ]
-                    )
-                else
-                    p = deepcopy(
-                        CBS.continuous_callbacks[perm2].affect_neg!.pleft[
-                            getindex.(
-                                ts2,
-                                1
-                            )[perm2],
-                        ]
-                    )
-                end
-            end
-        end
-    else
-        p = deepcopy(CBS.discrete_callbacks[perm].affect!.pleft[getindex.(ts, 1)[perm]])
-    end
+next_tracked_event(cb::DiscreteCallback, t) = next_tracked_event(cb.affect!, t)
+next_tracked_event(cb::VectorContinuousCallback, t) = next_tracked_event(cb.affect!, t)
+function next_tracked_event(cb::ContinuousCallback, t)
+    positive = next_tracked_event(cb.affect!, t)
+    negative = next_tracked_event(cb.affect_neg!, t)
+    positive === nothing && return negative
+    negative === nothing && return positive
+    return first(positive) < first(negative) ? positive : negative
+end
 
-    return p
+function reset_p(CBS, interval, default_p)
+    CBS = CallbackSet(CBS)
+    isempty(CBS.discrete_callbacks) && isempty(CBS.continuous_callbacks) &&
+        return default_p
+
+    event = nothing
+    for callbacks in (CBS.discrete_callbacks, CBS.continuous_callbacks), cb in callbacks
+        candidate = next_tracked_event(cb, interval[1])
+        candidate === nothing && continue
+        if event === nothing || first(candidate) < first(event)
+            event = candidate
+        end
+    end
+    event === nothing &&
+        error("Expected event but reset_p couldn't find event time. Please report this error.")
+    return deepcopy(last(event))
 end

@@ -314,6 +314,24 @@ println("Continuous Callbacks")
         @test du01 ≈ dstuff[1:2]
         @test dp1 ≈ dstuff[3:4]
     end
+    @testset "negative affect only" begin
+        f(du, u, p, t) = (du[1] = -p[1])
+        condition(u, t, integrator) = u[1] - 0.5
+        affect_neg!(integrator) = (integrator.u[1] += integrator.p[1])
+        cb = ContinuousCallback(
+            condition, nothing, affect_neg!; save_positions = (false, false)
+        )
+
+        function loss(θ, sensealg)
+            prob = ODEProblem(f, [θ[1]], (0.0, 0.75), [θ[2]])
+            sol = solve(prob, Tsit5(); callback = cb, abstol, reltol, sensealg)
+            return only(sol.u[end])
+        end
+
+        θ = [1.0, 1.0]
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+        @test Zygote.gradient(θ -> loss(θ, sensealg), θ)[1] ≈ [1.0, 0.25]
+    end
     @testset "Re-compile tape in ReverseDiffVJP" begin
         N0 = [0.0] # initial population
         p = [100.0, 50.0] # steady-state pop., M
