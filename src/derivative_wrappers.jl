@@ -1016,7 +1016,8 @@ function _vecjacobian!(
     du === nothing ||
         return _dae_vecjacobian!(dλ, y, λ, p, t, S, isautojacvec, dgrad, dy, W, du, ddu)
     (; sensealg) = S
-    f = unwrapped_f(S.f)
+    # the bare rhs, matching the shadow built in `adjointdiffcache` (see `enzyme_rhs`)
+    f = enzyme_rhs(unwrapped_f(S.f))
 
     prob = getprob(S)
 
@@ -1113,11 +1114,22 @@ function _vecjacobian!(
     enzyme_mode = isautojacvec.mode
 
     if inplace_sensitivity(S)
-        Enzyme.remake_zero!(_tmp6)
+        vf = SciMLBase.Void(f)
+        # `make_zero` hands the primal itself back when the function carries no
+        # differentiable state (a singleton, or e.g. an MTK generated-function
+        # wrapper once the `ODEFunction` container is peeled off by `enzyme_rhs`).
+        # Enzyme then needs no shadow at all, so pass the function `Const` and skip
+        # the per-call `remake_zero!`; only genuinely stateful closures pay for it.
+        fdup = if _tmp6 === vf || Base.issingletontype(typeof(vf))
+            Enzyme.Const(vf)
+        else
+            Enzyme.remake_zero!(_tmp6)
+            Enzyme.Duplicated(vf, _tmp6)
+        end
 
         if W === nothing
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, fdup,
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,
@@ -1125,7 +1137,7 @@ function _vecjacobian!(
             )
         else
             Enzyme.autodiff(
-                enzyme_mode, Enzyme.Duplicated(SciMLBase.Void(f), _tmp6),
+                enzyme_mode, fdup,
                 Enzyme.Const, Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup,

@@ -501,13 +501,17 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         # `p` (e.g. MTKParameters) and a flat-vector shadow `out`, which has no
         # matching `Enzyme.Duplicated` constructor.
         _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        # Differentiate the bare rhs (see `enzyme_rhs`): with the `ODEFunction`
+        # container captured here, `make_zero(pf)` shadows `sys`/`observed`/
+        # `initialization_data` too and `vec_pjac!` re-zeroes all of it on every
+        # quadrature node.
         pf = if SciMLBase.isinplace(sol.prob.f)
             if _needs_repack
-                let _f = unwrappedf, repack = repack
+                let _f = enzyme_rhs(unwrappedf), repack = repack
                     SciMLBase.Void((du, u, tunables, t) -> _f(du, u, repack(tunables), t))
                 end
             else
-                SciMLBase.Void(unwrappedf)
+                SciMLBase.Void(enzyme_rhs(unwrappedf))
             end
         else
             unwrappedf
