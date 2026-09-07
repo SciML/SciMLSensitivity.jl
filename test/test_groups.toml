@@ -1,6 +1,12 @@
 [Core1]
 versions = ["1", "1.11", "lts"]
 
+["Core1 32-bit"]
+group = "Core1"
+versions = ["1"]
+os = ["ubuntu-latest"]
+arch = "x86"
+
 [Core2]
 versions = ["1", "1.11", "lts"]
 
