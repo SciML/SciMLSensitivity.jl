@@ -305,7 +305,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     elseif sensealg.autojacvec isa EnzymeVJP
         # bare rhs, see `enzyme_rhs`; must match the primal in `vec_pjac!`
         pf = SciMLBase.isinplace(sol.prob.f) ? SciMLBase.Void(enzyme_rhs(unwrappedf)) :
-             unwrappedf
+             enzyme_rhs(unwrappedf)
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP
@@ -489,10 +489,25 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
                     Enzyme.Const(y), dup, Enzyme.Const(t)
                 )
             else
-                tmp6 = Enzyme.make_zero(f)
+                # out-of-place: same shadow handling as `_vecjacobian!` — reuse the
+                # cached shadow when it was built for this rhs, `Const` when the
+                # rhs carries no differentiable state (Enzyme rejects `Duplicated`
+                # for ghost types)
+                rhs = enzyme_rhs(f)
+                shadow = if tmp6 !== rhs && typeof(tmp6) === typeof(rhs)
+                    Enzyme.remake_zero!(tmp6)
+                    tmp6
+                else
+                    Enzyme.make_zero(rhs)
+                end
+                fdup = if shadow === rhs || Base.issingletontype(typeof(rhs))
+                    Enzyme.Const(rhs)
+                else
+                    Enzyme.Duplicated(rhs, shadow)
+                end
                 Enzyme.autodiff(
                     sensealg.autojacvec.mode, Enzyme.Const(gclosure4), Enzyme.Const,
-                    Enzyme.Duplicated(f, tmp6),
+                    fdup,
                     Enzyme.Duplicated(tmp3, tmp4),
                     Enzyme.Const(y), dup, Enzyme.Const(t)
                 )

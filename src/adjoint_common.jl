@@ -766,9 +766,20 @@ allocating a shadow of all of that and `remake_zero!`-ing it on every VJP call:
 for an MTK-generated 32-state linear ODE ~190 µs per call against a ~5 ns rhs,
 making `GaussAdjoint(EnzymeVJP)` gradients ~8x slower than necessary.
 `DAEFunction`s already get this treatment through `dae_unwrapped_f`.
+
+An `ODEFunction` whose `f.f` is an `AbstractSciMLOperator` is kept whole: its call
+`f(du, u, p, t)` forwards as `f.f(du, u, u, p, t)`, which the bare operator would not.
+
+Contract: the shadow is built at configuration time and the primal at call time,
+in different places (`adjointdiffcache`/`_vecjacobian!`, the Gauss and Quadrature
+integrands). Both sides must go through `enzyme_rhs` so `Duplicated(primal, shadow)`
+sees matching types; any new method here has to be audited against every such pair.
 """
-enzyme_rhs(f) = f
-enzyme_rhs(f::ODEFunction) = unwrapped_f(f.f)
+enzyme_rhs(f) = unwrapped_f(f)
+function enzyme_rhs(f::ODEFunction)
+    f.f isa SciMLBase.AbstractSciMLOperator && return unwrapped_f(f)
+    return unwrapped_f(f.f)
+end
 
 function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
     return isinplace ? SciMLBase.Void(_f) : _f

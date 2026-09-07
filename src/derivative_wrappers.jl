@@ -1016,8 +1016,9 @@ function _vecjacobian!(
     du === nothing ||
         return _dae_vecjacobian!(dλ, y, λ, p, t, S, isautojacvec, dgrad, dy, W, du, ddu)
     (; sensealg) = S
-    # the bare rhs, matching the shadow built in `adjointdiffcache` (see `enzyme_rhs`)
-    f = enzyme_rhs(unwrapped_f(S.f))
+    # the bare rhs, matching the shadow built in `adjointdiffcache` (see `enzyme_rhs`);
+    # `enzyme_rhs` unwraps itself, so no per-call container rebuild here
+    f = enzyme_rhs(S.f)
 
     prob = getprob(S)
 
@@ -1155,20 +1156,35 @@ function _vecjacobian!(
         end
         dy !== nothing && recursive_copyto!(dy, tmp3)
     else
+        # Out-of-place. Reuse the shadow cached in `adjointdiffcache` when it was
+        # built for this very function (both sides go through `enzyme_rhs`), else
+        # fall back to a fresh `make_zero`. A function without differentiable
+        # state — a ghost/singleton, or one for which `make_zero` hands back the
+        # primal (e.g. a bare MTK rhs once the container is peeled) — must be
+        # passed `Const`: Enzyme rejects `Duplicated` for ghost types.
+        shadow = if _tmp6 !== f && typeof(_tmp6) === typeof(f)
+            Enzyme.remake_zero!(_tmp6)
+            _tmp6
+        else
+            Enzyme.make_zero(f)
+        end
+        fdup = if shadow === f || Base.issingletontype(typeof(f))
+            Enzyme.Const(f)
+        else
+            Enzyme.Duplicated(f, shadow)
+        end
         if W === nothing
-            _tmp6 = Enzyme.make_zero(f)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure1), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                fdup,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t)
             )
         else
-            _tmp6 = Enzyme.make_zero(f)
             Enzyme.autodiff(
                 enzyme_mode, Enzyme.Const(gclosure2), Enzyme.Const,
-                Enzyme.Duplicated(f, _tmp6),
+                fdup,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Duplicated(ytmp, tmp1),
                 dup, Enzyme.Const(t), Enzyme.Const(W)
