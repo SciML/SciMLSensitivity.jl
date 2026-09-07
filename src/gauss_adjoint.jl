@@ -70,7 +70,7 @@ function ODEGaussAdjointSensitivityFunction(
         if tstops === nothing
             cpsol = solve(
                 remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                sol.alg; dense = true, tols...
+                sol.alg; dense = true, wrap = Val(false), tols...
             )
             gaussint.sol = cpsol
         else
@@ -86,7 +86,7 @@ function ODEGaussAdjointSensitivityFunction(
                 cpsol = solve(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     dense = true,
-                    p = _p, sol.alg; tols...
+                    p = _p, sol.alg; wrap = Val(false), tols...
                 )
                 gaussint.sol = cpsol
             else
@@ -94,7 +94,7 @@ function ODEGaussAdjointSensitivityFunction(
                 #    tstops, sol.alg; tols...)
                 cpsol = solve(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    sol.alg; dense = true, tols...
+                    sol.alg; dense = true, wrap = Val(false), tols...
                 )
                 gaussint.sol = cpsol
             end
@@ -191,7 +191,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                     cpsol′ = solve(
                         prob′, sol.alg;
                         dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                        checkpoint_sol.tols...
+                        wrap = Val(false), checkpoint_sol.tols...
                     )
                 else
                     if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
@@ -205,7 +205,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                             tstops = checkpoint_sol.tstops,
-                            checkpoint_sol.tols...
+                            wrap = Val(false), checkpoint_sol.tols...
                         )
                     else
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
@@ -213,7 +213,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                             tstops = checkpoint_sol.tstops,
-                            checkpoint_sol.tols...
+                            wrap = Val(false), checkpoint_sol.tols...
                         )
                     end
                 end
@@ -243,7 +243,7 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
         dt = abs(cpsol_t[end] - cpsol_t[end - 1])
         if checkpoint_sol.tstops === nothing
             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
-            cpsol′ = solve(prob′, sol.alg; dt, checkpoint_sol.tols...)
+            cpsol′ = solve(prob′, sol.alg; dt, wrap = Val(false), checkpoint_sol.tols...)
         else
             if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                 # callback might have changed p
@@ -254,13 +254,13 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀, p = _p)
                 cpsol′ = solve(
                     prob′, sol.alg; dt,
-                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                    tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
                 )
             else
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
                 cpsol′ = solve(
                     prob′, sol.alg; dt,
-                    tstops = checkpoint_sol.tstops, checkpoint_sol.tols...
+                    tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
                 )
             end
         end

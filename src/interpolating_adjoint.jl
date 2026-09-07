@@ -82,13 +82,13 @@ function ODEInterpolatingAdjointSensitivityFunction(
                     noise = forwardnoise
                 ),
                 sol.alg, save_noise = false; dt, tstops = _ts[idx1:end],
-                tols...
+                wrap = Val(false), tols...
             )
         else
             if tstops === nothing
                 cpsol = solve(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    sol.alg; tols...
+                    sol.alg; wrap = Val(false), tols...
                 )
             else
                 if maximum(interval[1] .< tstops .< interval[2])
@@ -99,12 +99,12 @@ function ODEInterpolatingAdjointSensitivityFunction(
                     )
                     cpsol = solve(
                         remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, p = _p, sol.alg, tols...
+                        tstops, p = _p, sol.alg, wrap = Val(false), tols...
                     )
                 else
                     cpsol = solve(
                         remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, sol.alg, tols...
+                        tstops, sol.alg, wrap = Val(false), tols...
                     )
                 end
             end
@@ -242,7 +242,7 @@ function split_states(
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
                     cpsol′ = solve(
                         prob′, sol.alg, save_noise = false; dt,
-                        tstops = _ts[idx1:idx2], checkpoint_sol.tols...
+                        tstops = _ts[idx1:idx2], wrap = Val(false), checkpoint_sol.tols...
                     )
                 else
                     if checkpoint_sol.tstops === nothing
@@ -250,7 +250,7 @@ function split_states(
                         cpsol′ = solve(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                            checkpoint_sol.tols...
+                            wrap = Val(false), checkpoint_sol.tols...
                         )
                     else
                         if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
@@ -264,7 +264,7 @@ function split_states(
                                 prob′, sol.alg;
                                 dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                                 tstops = checkpoint_sol.tstops,
-                                checkpoint_sol.tols...
+                                wrap = Val(false), checkpoint_sol.tols...
                             )
                         else
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
@@ -272,7 +272,7 @@ function split_states(
                                 prob′, sol.alg;
                                 dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                                 tstops = checkpoint_sol.tstops,
-                                checkpoint_sol.tols...
+                                wrap = Val(false), checkpoint_sol.tols...
                             )
                         end
                     end
