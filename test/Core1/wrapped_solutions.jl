@@ -5,7 +5,7 @@ using OrdinaryDiffEq, SciMLSensitivity, SciMLBase, Zygote, ForwardDiff, Test
 # this). Sensitivity code must see the solver's solution, so the forward solves inside the
 # sensitivity rules pass `wrap = Val(false)`. The wrapper here is opaque on purpose: it is not a
 # time series, and any code that receives it instead of the solution fails.
-struct WrapMeta <: SciMLBase.AbstractDiscretizationMetadata{Val{true}} end
+struct WrapMeta <: SciMLBase.AbstractDiscretizationMetadata{Val(true)} end
 struct Wrapped{S}
     sol::S
 end
