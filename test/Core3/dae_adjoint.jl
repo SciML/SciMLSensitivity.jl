@@ -339,16 +339,15 @@ end
 end
 
 @testset "no algorithm: adjoint in residual form" begin
-    # The heat equation on a grid with the Dirichlet values as algebraic rows, the layout a PDE
+    # Diffusion with decay on a grid, the Dirichlet values as algebraic rows: the layout a PDE
     # discretization produces. Solved without an algorithm, the adjoint must stay in residual
-    # form: its mass-matrix form under the default ODE algorithm does not finish at this size.
+    # form; its mass-matrix form under the default ODE algorithm does not finish at this size.
     n = 26
     h = 1 / (n - 1)
     function heat_dae!(res, du, u, p, t)
-        a = p[1] + p[2]
         res[1] = u[1] - exp(-t)
         for i in 2:(n - 1)
-            res[i] = a * (u[i - 1] - 2u[i] + u[i + 1]) / h^2 - du[i]
+            res[i] = p[1] * (u[i - 1] - 2u[i] + u[i + 1]) / h^2 - p[2] * u[i] - du[i]
         end
         res[n] = u[n] - exp(-t) * cos(1)
         return nothing
