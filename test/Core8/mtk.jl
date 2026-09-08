@@ -306,13 +306,21 @@ end
 
     tunables, repack, _ = SS.canonicalize(SS.Tunable(), prob.p)
     g = Zygote.gradient(tunables) do tunables
-        sum(solve(prob, Tsit5(); p = repack(tunables), saveat = 0.1,
-            abstol = 1e-8, reltol = 1e-8,
-            sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())))
+        sum(
+            solve(
+                prob, Tsit5(); p = repack(tunables), saveat = 0.1,
+                abstol = 1.0e-8, reltol = 1.0e-8,
+                sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
+            )
+        )
     end[1]
     g_fwd = Zygote.gradient(tunables) do tunables
-        sum(solve(prob, Tsit5(); p = repack(tunables), saveat = 0.1,
-            abstol = 1e-8, reltol = 1e-8, sensealg = ForwardDiffSensitivity()))
+        sum(
+            solve(
+                prob, Tsit5(); p = repack(tunables), saveat = 0.1,
+                abstol = 1.0e-8, reltol = 1.0e-8, sensealg = ForwardDiffSensitivity()
+            )
+        )
     end[1]
-    @test g ≈ g_fwd rtol = 1e-5
+    @test g ≈ g_fwd rtol = 1.0e-5
 end

@@ -305,7 +305,7 @@ function AdjointSensitivityIntegrand(sol, adj_sol, sensealg, dgdp = nothing)
     elseif sensealg.autojacvec isa EnzymeVJP
         # bare rhs, see `enzyme_rhs`; must match the primal in `vec_pjac!`
         pf = SciMLBase.isinplace(sol.prob.f) ? SciMLBase.Void(enzyme_rhs(unwrappedf)) :
-             enzyme_rhs(unwrappedf)
+            enzyme_rhs(unwrappedf)
         paramjac_config = zero(y), zero(y), Enzyme.make_zero(pf)
         pJ = nothing
     elseif sensealg.autojacvec isa MooncakeVJP

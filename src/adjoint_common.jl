@@ -777,7 +777,7 @@ sees matching types; any new method here has to be audited against every such pa
 """
 enzyme_rhs(f) = unwrapped_f(f)
 function enzyme_rhs(f::ODEFunction)
-    f.f isa SciMLBase.AbstractSciMLOperator && return unwrapped_f(f)
+    f.f isa SciMLOperators.AbstractSciMLOperator && return unwrapped_f(f)
     return unwrapped_f(f.f)
 end
 
