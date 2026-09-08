@@ -8,6 +8,7 @@ using SciMLSensitivity
 using Enzyme
 using Mooncake
 using Tracker
+using Zygote
 import SciMLStructures as SS
 using SymbolicIndexingInterface
 using Test
@@ -279,4 +280,47 @@ let
     )
     @test sensealg_mtk isa GaussAdjoint
     @test !(sensealg_mtk.autojacvec isa Bool)
+end
+
+@testset "EnzymeVJP differentiates the bare rhs, not the ODEFunction container" begin
+    # The `ODEFunction` container drags `sys`, `observed` and `initialization_data`
+    # into Enzyme's shadow, which then has to be re-zeroed on every VJP call
+    # (~190 µs per call for a 32-state MTK system). The VJP only calls the rhs.
+    @parameters k = 2.0
+    @variables x(t) = 1.0
+    @named sys = System([D(x) ~ -k * x], t)
+    sys = mtkcompile(sys)
+    prob = ODEProblem(sys, [], (0.0, 1.0))
+    rhs = SciMLSensitivity.enzyme_rhs(prob.f)
+    @test rhs === prob.f.f
+    # no differentiable state left: Enzyme needs no shadow, so `_vecjacobian!`
+    # passes the function `Const` instead of `Duplicated`
+    vf = SciMLBase.Void(rhs)
+    @test Enzyme.make_zero(vf) === vf
+    # and the peeled function must still be the same rhs
+    du = zero(prob.u0)
+    rhs(du, prob.u0, prob.p, 0.0)
+    du_ref = zero(prob.u0)
+    prob.f(du_ref, prob.u0, prob.p, 0.0)
+    @test du == du_ref
+
+    tunables, repack, _ = SS.canonicalize(SS.Tunable(), prob.p)
+    g = Zygote.gradient(tunables) do tunables
+        sum(
+            solve(
+                prob, Tsit5(); p = repack(tunables), saveat = 0.1,
+                abstol = 1.0e-8, reltol = 1.0e-8,
+                sensealg = GaussAdjoint(; autojacvec = SciMLSensitivity.EnzymeVJP())
+            )
+        )
+    end[1]
+    g_fwd = Zygote.gradient(tunables) do tunables
+        sum(
+            solve(
+                prob, Tsit5(); p = repack(tunables), saveat = 0.1,
+                abstol = 1.0e-8, reltol = 1.0e-8, sensealg = ForwardDiffSensitivity()
+            )
+        )
+    end[1]
+    @test g ≈ g_fwd rtol = 1.0e-5
 end

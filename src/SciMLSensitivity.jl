@@ -43,7 +43,7 @@ using SciMLBase: SciMLBase, AbstractOverloadingSensitivityAlgorithm,
     SDEProblem, VectorContinuousCallback,
     get_tmp_cache, isinplace, reinit!, remake,
     solve, derivative_discontinuity!, LinearAliasSpecifier, OverrideInit, AbstractOptimizationProblem
-using SciMLOperators: has_adjoint
+using SciMLOperators: SciMLOperators, has_adjoint
 
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
     default_nlsolve, has_autodiff

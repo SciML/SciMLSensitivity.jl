@@ -501,13 +501,17 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         # `p` (e.g. MTKParameters) and a flat-vector shadow `out`, which has no
         # matching `Enzyme.Duplicated` constructor.
         _needs_repack = isscimlstructure(p) && !(p isa AbstractArray)
+        # Differentiate the bare rhs (see `enzyme_rhs`): with the `ODEFunction`
+        # container captured here, `make_zero(pf)` shadows `sys`/`observed`/
+        # `initialization_data` too and `vec_pjac!` re-zeroes all of it on every
+        # quadrature node.
         pf = if SciMLBase.isinplace(sol.prob.f)
             if _needs_repack
-                let _f = unwrappedf, repack = repack
+                let _f = enzyme_rhs(unwrappedf), repack = repack
                     SciMLBase.Void((du, u, tunables, t) -> _f(du, u, repack(tunables), t))
                 end
             else
-                SciMLBase.Void(unwrappedf)
+                SciMLBase.Void(enzyme_rhs(unwrappedf))
             end
         else
             unwrappedf
@@ -641,10 +645,17 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
             vtmp4 .= λ
             Enzyme.remake_zero!(tmp3)
             Enzyme.remake_zero!(out)
-            Enzyme.remake_zero!(tmp6)
+            # same fast path as `_vecjacobian!`: no differentiable state in `pf`
+            # (`make_zero` returned the primal) ⇒ `Const`, no shadow to re-zero
+            fdup = if tmp6 === pf || Base.issingletontype(typeof(pf))
+                Enzyme.Const(pf)
+            else
+                Enzyme.remake_zero!(tmp6)
+                Enzyme.Duplicated(pf, tmp6)
+            end
 
             Enzyme.autodiff(
-                sensealg.autojacvec.mode, Enzyme.Duplicated(pf, tmp6), Enzyme.Const,
+                sensealg.autojacvec.mode, fdup, Enzyme.Const,
                 Enzyme.Duplicated(tmp3, tmp4),
                 Enzyme.Const(y), Enzyme.Duplicated(tunables, out), Enzyme.Const(t)
             )

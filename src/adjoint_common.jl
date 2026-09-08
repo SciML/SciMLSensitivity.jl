@@ -286,7 +286,8 @@ function adjointdiffcache(
         pf = nothing
     elseif autojacvec isa EnzymeVJP
         paramjac_config = get_paramjac_config(autojacvec, p, f, y, _p, _t; numindvar, alg)
-        pf = get_pf(autojacvec; _f = unwrappedf, isinplace, isRODE)
+        # must match the primal `_vecjacobian!(::EnzymeVJP)` differentiates
+        pf = get_pf(autojacvec; _f = enzyme_rhs(unwrappedf), isinplace, isRODE)
         if isDAE
             # The residual takes `du` as an extra differentiated argument; append
             # its primal and shadow buffers to the standard Enzyme config.
@@ -751,6 +752,33 @@ function get_pf(
         isRODE = nothing
     )
     return nothing
+end
+
+"""
+    enzyme_rhs(f)
+
+The function the Enzyme VJPs differentiate. They only ever *call* the right-hand
+side, so for an `ODEFunction` this is the bare user function rather than the
+container. The container also carries `sys`, `observed`, `initialization_data`,
+... which Enzyme cannot prove derivative-free (e.g. the `Dict{SymbolicT, SymbolicT}`
+maps in ModelingToolkit's `InitializationMetadata`), so differentiating it means
+allocating a shadow of all of that and `remake_zero!`-ing it on every VJP call:
+for an MTK-generated 32-state linear ODE ~190 µs per call against a ~5 ns rhs,
+making `GaussAdjoint(EnzymeVJP)` gradients ~8x slower than necessary.
+`DAEFunction`s already get this treatment through `dae_unwrapped_f`.
+
+An `ODEFunction` whose `f.f` is an `AbstractSciMLOperator` is kept whole: its call
+`f(du, u, p, t)` forwards as `f.f(du, u, u, p, t)`, which the bare operator would not.
+
+Contract: the shadow is built at configuration time and the primal at call time,
+in different places (`adjointdiffcache`/`_vecjacobian!`, the Gauss and Quadrature
+integrands). Both sides must go through `enzyme_rhs` so `Duplicated(primal, shadow)`
+sees matching types; any new method here has to be audited against every such pair.
+"""
+enzyme_rhs(f) = unwrapped_f(f)
+function enzyme_rhs(f::ODEFunction)
+    f.f isa SciMLOperators.AbstractSciMLOperator && return unwrapped_f(f)
+    return unwrapped_f(f.f)
 end
 
 function get_pf(autojacvec::EnzymeVJP; _f, isinplace, isRODE)
