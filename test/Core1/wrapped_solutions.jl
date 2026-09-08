@@ -1,4 +1,5 @@
 using OrdinaryDiffEq, SciMLSensitivity, SciMLBase, Zygote, ForwardDiff, Test
+using OrdinaryDiffEqBDF: DFBDF
 
 # A problem can carry discretization metadata as its `problem_type`; `solve` then passes the
 # solver's solution through `wrap_sol`, which returns a higher-level object (PDE discretizers do
@@ -12,15 +13,12 @@ end
 SciMLBase.wrap_sol(sol, ::WrapMeta) = Wrapped(sol)
 
 f(u, p, t) = [p[1] * u[1] - p[2] * u[1] * u[2], p[2] * u[1] * u[2] - p[3] * u[2]]
-f!(du, u, p, t) = (du .= f(u, p, t); nothing)
 u0 = [1.0, 1.0]
 p = [1.5, 1.0, 3.0]
 tspan = (0.0, 1.0)
 ts = 0.0:0.1:1.0
 plain = ODEProblem{false}(ODEFunction{false}(f), u0, tspan, p)
 wrapped = ODEProblem{false}(ODEFunction{false}(f), u0, tspan, p, WrapMeta())
-plain! = ODEProblem{true}(ODEFunction{true}(f!), u0, tspan, p)
-wrapped! = ODEProblem{true}(ODEFunction{true}(f!), u0, tspan, p, WrapMeta())
 
 @test solve(wrapped, Tsit5()) isa Wrapped
 @test solve(wrapped, Tsit5(); wrap = Val(false)) isa ODESolution
@@ -38,28 +36,26 @@ label(sensealg) = string(
     hasproperty(sensealg, :checkpointing) && sensealg.checkpointing ? " checkpointing" : ""
 )
 
-# `ForwardSensitivity` needs an in-place function; the rest run on the out-of-place problem.
-@testset "$(label(sensealg))" for (sensealg, prob, wprob) in (
-        (ForwardDiffSensitivity(), plain, wrapped),
-        (ForwardSensitivity(), plain!, wrapped!),
-        (InterpolatingAdjoint(), plain, wrapped),
-        (InterpolatingAdjoint(checkpointing = true), plain, wrapped),
-        (QuadratureAdjoint(), plain, wrapped),
-        (GaussAdjoint(), plain, wrapped),
-        (GaussAdjoint(checkpointing = true), plain, wrapped),
-        (BacksolveAdjoint(), plain, wrapped),
-        (ReverseDiffAdjoint(), plain, wrapped),
-        (TrackerAdjoint(), plain, wrapped),
+# Absent: `ForwardSensitivity` solves a problem of its own, which carries no metadata;
+# `ZygoteAdjoint` and `MooncakeAdjoint` do not run under Zygote (see concrete_solve_derivatives.jl).
+@testset "$(label(sensealg))" for sensealg in (
+        ForwardDiffSensitivity(),
+        InterpolatingAdjoint(),
+        InterpolatingAdjoint(checkpointing = true),
+        QuadratureAdjoint(),
+        GaussAdjoint(),
+        GaussAdjoint(checkpointing = true),
+        BacksolveAdjoint(),
+        ReverseDiffAdjoint(),
+        TrackerAdjoint(),
     )
-    g_plain = Zygote.gradient(p -> loss(prob, p, sensealg), p)[1]
-    g_wrapped = Zygote.gradient(p -> loss(wprob, p, sensealg), p)[1]
+    g_plain = Zygote.gradient(p -> loss(plain, p, sensealg), p)[1]
+    g_wrapped = Zygote.gradient(p -> loss(wrapped, p, sensealg), p)[1]
     @test g_plain ≈ reference rtol = 1.0e-5
     @test g_wrapped == g_plain
 end
 
 # The same for a fully implicit DAE, whose adjoint interpolates the forward solution.
-using OrdinaryDiffEqBDF: DFBDF
-
 function rober!(res, du, u, p, t)
     y₁, y₂, y₃ = u
     k₁, k₂, k₃ = p

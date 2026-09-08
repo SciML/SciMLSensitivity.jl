@@ -1180,7 +1180,7 @@ function SciMLBase._concrete_solve_adjoint(
     _prob = ODEForwardSensitivityProblem(
         _f, u0, prob.tspan, p; sensealg, callback = nothing
     )
-    sol = solve(_prob, alg, args...; wrap = Val(false), kwargs...)
+    sol = solve(_prob, alg, args...; kwargs...)
     _, du = extract_local_sensitivities(sol, sensealg, Val(true))
     ts = current_time(sol)
 
@@ -1307,7 +1307,7 @@ function SciMLBase._concrete_solve_forward(
     _prob = ODEForwardSensitivityProblem(
         prob.f, u0, prob.tspan, p; sensealg, callback = nothing
     )
-    sol = solve(_prob, args...; wrap = Val(false), kwargs...)
+    sol = solve(_prob, args...; kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
         @reset sol.prob = prob
@@ -1379,7 +1379,7 @@ function SciMLBase._concrete_solve_adjoint(
     # use the callback in kwargs, not prob
     kwargs_prob = NamedTuple(filter(x -> x[1] != :callback, prob.kwargs))
     _prob = remake(prob; p, u0, kwargs = kwargs_prob)
-    sol = solve(_prob, alg, args...; wrap = Val(false), saveat = _saveat, kwargs...)
+    sol = solve(_prob, alg, args...; saveat = _saveat, wrap = Val(false), kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
         @reset sol.prob = prob
@@ -1512,7 +1512,7 @@ function SciMLBase._concrete_solve_adjoint(
                         _saveat = saveat
                     end
 
-                    _sol = solve(_prob, alg, args...; wrap = Val(false), saveat = ts, kwargs...)
+                    _sol = solve(_prob, alg, args...; saveat = ts, wrap = Val(false), kwargs...)
                     _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                     if haskey(kwargs, :callback)
@@ -1727,7 +1727,7 @@ function SciMLBase._concrete_solve_adjoint(
                     _saveat = saveat
                 end
 
-                _sol = solve(_prob, alg, args...; wrap = Val(false), saveat = ts, kwargs...)
+                _sol = solve(_prob, alg, args...; saveat = ts, wrap = Val(false), kwargs...)
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                 if haskey(kwargs, :callback)
@@ -2543,7 +2543,7 @@ function SciMLBase._concrete_solve_adjoint(
         _prob = remake(prob; f = unwrapped_f(prob.f), u0, p)
     end
 
-    sol = solve(_prob, alg, args...; wrap = Val(false), save_start, save_end, saveat, kwargs...)
+    sol = solve(_prob, alg, args...; save_start, save_end, saveat, wrap = Val(false), kwargs...)
 
     if saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
