@@ -740,7 +740,7 @@ function SciMLBase._concrete_solve_adjoint(
                     initializealg = initializealg, nlsolve_alg = nlsolve_alg,
                     sensealg = sensealg, kwargs_init = kwargs_init
                 function (t)
-                    new_prob_t = remake(_prob, p = repack(t))
+                    new_prob_t = remake(_prob, p = repack(t), lazy_initialization = true)
                     nu0, _,
                         _ = SciMLBase.get_initial_values(
                         new_prob_t, new_prob_t, new_prob_t.f, initializealg,
