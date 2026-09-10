@@ -6,10 +6,10 @@ From our [recent papers](https://arxiv.org/abs/1812.01892), it's clear that `Enz
 especially when the program is set up to be fully non-allocating mutating functions. Thus for all benchmarking,
 especially with PDEs, this should be done. Neural network libraries don't make use of mutation effectively
 [except for SimpleChains.jl](https://julialang.org/blog/2022/04/simple-chains/), so we recommend creating a
-neural ODE / universal ODE with `ZygoteVJP` and Lux first, but then check the correctness by moving the
-implementation over to SimpleChains and if possible `EnzymeVJP`. This can be an order of magnitude improvement
-(or more) in many situations over all the previous benchmarks using Zygote and Lux, and thus it's
-highly recommended in scenarios that require performance.
+neural ODE / universal ODE with Lux and an out-of-place VJP (`MooncakeVJP` or `ReverseDiffVJP`) first, then
+checking correctness by moving the implementation over to SimpleChains and if possible `EnzymeVJP`. This can
+be an order of magnitude improvement (or more) in many situations, and thus it's highly recommended in
+scenarios that require performance.
 
 ## Vs Torchdiffeq 1 million and less ODEs
 
@@ -33,13 +33,15 @@ at this time.
 Quick summary:
 
   - `BacksolveAdjoint` can be the fastest (but use with caution!); about 25% faster
-  - Using `ZygoteVJP` is faster than other vjp choices for larger neural networks
+  - `EnzymeVJP` is typically the fastest VJP for mutating / SimpleChains-style networks
+  - `MooncakeVJP` is a strong reverse-mode choice for out-of-place Lux networks
   - `ReverseDiffVJP(compile = true)` works well for small Lux neural networks
 
 ```julia
 import OrdinaryDiffEq as ODE
 import Lux
 import SciMLSensitivity as SMS
+import Enzyme
 import Mooncake
 import DifferentiationInterface as DI
 import BenchmarkTools
@@ -62,10 +64,12 @@ ode_data = Array(ODE.solve(prob_trueode, ODE.Tsit5(), saveat = tsteps))
 dudt2 = Lux.Chain(x -> x .^ 3, Lux.Dense(2, 50, tanh), Lux.Dense(50, 2))
 Random.seed!(100)
 
-for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
+for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.EnzymeVJP()),
+    SMS.InterpolatingAdjoint(autojacvec = SMS.MooncakeVJP()),
     SMS.InterpolatingAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
     SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
-    SMS.BacksolveAdjoint(autojacvec = SMS.ZygoteVJP()),
+    SMS.BacksolveAdjoint(autojacvec = SMS.EnzymeVJP()),
+    SMS.BacksolveAdjoint(autojacvec = SMS.MooncakeVJP()),
     SMS.BacksolveAdjoint(autojacvec = SMS.ReverseDiffVJP(false)),
     SMS.BacksolveAdjoint(autojacvec = SMS.TrackerVJP()),
     SMS.QuadratureAdjoint(autojacvec = SMS.ReverseDiffVJP(true)),
@@ -86,13 +90,4 @@ for sensealg in (SMS.InterpolatingAdjoint(autojacvec = SMS.ZygoteVJP()),
     t = BenchmarkTools.@belapsed DI.gradient($loss_ps, $backend, $ps)
     println("$(sensealg) took $(t)s")
 end
-
-# InterpolatingAdjoint{0, true, Val{:central}, ZygoteVJP}(ZygoteVJP(false), false, false) took 0.029134224s
-# InterpolatingAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}(ReverseDiffVJP{true}(), false, false) took 0.001657377s
-# BacksolveAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}(ReverseDiffVJP{true}(), true, false) took 0.002477057s
-# BacksolveAdjoint{0, true, Val{:central}, ZygoteVJP}(ZygoteVJP(false), true, false) took 0.031533335s
-# BacksolveAdjoint{0, true, Val{:central}, ReverseDiffVJP{false}}(ReverseDiffVJP{false}(), true, false) took 0.004605386s
-# BacksolveAdjoint{0, true, Val{:central}, TrackerVJP}(TrackerVJP(false), true, false) took 0.044568018s
-# QuadratureAdjoint{0, true, Val{:central}, ReverseDiffVJP{true}}(ReverseDiffVJP{true}(), 1.0e-6, 0.001) took 0.002489559s
-# TrackerAdjoint() took 0.003759097s
 ```
