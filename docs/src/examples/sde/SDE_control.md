@@ -23,7 +23,7 @@ follow a full explanation of the definition and training process:
 # load packages
 import SciMLSensitivity as SMS, Optimization as OPT, OptimizationOptimisers as OPO
 import StochasticDiffEq as SDE, DiffEqCallbacks as DEC, DiffEqNoiseProcess as DNP
-import Zygote, Statistics, LinearAlgebra as LA, Random
+import Statistics, LinearAlgebra as LA, Random
 import Lux, Random, ComponentArrays as CA
 import Plots
 
@@ -152,9 +152,6 @@ function affect!(integrator)
     integrator.u .= integrator.u / LA.norm(integrator.u)
 end
 callback = DEC.DiscreteCallback(condition, affect!, save_positions = (false, false))
-
-CreateGrid(t, W1) = DNP.NoiseGrid(t, W1)
-Zygote.@nograd CreateGrid #avoid taking grads of this function
 
 # set scalar random process
 W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
@@ -302,7 +299,7 @@ visualization_callback(res, loss(res.u); doplot = true)
 
 ```@example sdecontrol
 import SciMLSensitivity as SMS
-import Optimization as OPT, OptimizationOptimisers as OPO, Zygote
+import Optimization as OPT, OptimizationOptimisers as OPO
 import StochasticDiffEq as SDE, DiffEqCallbacks as DEC, DiffEqNoiseProcess as DNP
 import Statistics, LinearAlgebra as LA
 import Lux, Random, ComponentArrays as CA
@@ -481,9 +478,6 @@ function affect!(integrator)
     integrator.u .= integrator.u / LA.norm(integrator.u)
 end
 callback = DEC.DiscreteCallback(condition, affect!, save_positions = (false, false))
-
-CreateGrid(t, W1) = DNP.NoiseGrid(t, W1)
-Zygote.@nograd CreateGrid #avoid taking grads of this function
 
 # set scalar random process
 W = sqrt(myparameters.dt) * randn(typeof(myparameters.dt), size(myparameters.ts)) #for 1 trajectory
