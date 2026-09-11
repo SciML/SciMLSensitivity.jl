@@ -60,9 +60,10 @@ using Zygote: Zygote
 using ConstructionBase: ConstructionBase, setproperties
 
 # Std Libs
-using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, adjoint, axpy!,
-    convert, copyto!, dot, issuccess, ldiv!, lmul!, lu, lu!, mul!,
-    norm, normalize!, qr, transpose, transpose!
+using Base: adjoint, copyto!, transpose
+using LinearAlgebra: LinearAlgebra, Diagonal, I, UniformScaling, axpy!,
+    convert, dot, issuccess, ldiv!, lmul!, lu, lu!, mul!,
+    norm, normalize!, qr, transpose!
 using Markdown: Markdown, @doc_str
 using Random: Random, rand!
 using SparseArrays: SparseArrays
