@@ -395,7 +395,24 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         # Use pJ' * λ instead of out' = λ' * pJ to avoid GPU scalar indexing
         mul!(vec(out), pJ', λ)
     elseif sensealg.autojacvec isa ReverseDiffVJP
-        tape = paramjac_config
+        # Re-trace for `compile=false`: a cached tape freezes `t`-branching
+        # (e.g. RHS closing over a solution interpolant).
+        tape = if compile_tape(sensealg.autojacvec)
+            paramjac_config
+        else
+            if DiffEqBase.isinplace(sol.prob)
+                ReverseDiff.GradientTape((y, tunables, [t])) do u_, p_, t_
+                    du1 = similar(p_, size(u_))
+                    du1 .= false
+                    f(du1, u_, repack(p_), first(t_))
+                    return vec(du1)
+                end
+            else
+                ReverseDiff.GradientTape((y, tunables, [t])) do u_, p_, t_
+                    vec(f(u_, repack(p_), first(t_)))
+                end
+            end
+        end
         tu, tp, tt = ReverseDiff.input_hook(tape)
         output = ReverseDiff.output_hook(tape)
         ReverseDiff.unseed!(tu) # clear any "leftover" derivatives from previous calls

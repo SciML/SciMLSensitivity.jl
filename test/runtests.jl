@@ -55,6 +55,7 @@ run_tests(;
                 @time @safetestset "Adjoint Allocation Regression" include("Core3/allocation_regression.jl")
                 @time @safetestset "SensitivityFunction developer interface" include("Core3/sensitivity_interface.jl")
                 @time @safetestset "User-provided VJP" include("Core3/user_vjp.jl")
+                @time @safetestset "ReverseDiff interpolant forcing" include("Core3/reversediff_interpolant_forcing.jl")
             end
         end,
         "Core4" => function ()
