@@ -768,19 +768,19 @@ function SciMLBase._concrete_solve_adjoint(
         sol = solve(
             _prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start, save_end,
-            saveat, kwargs_fwd...
+            saveat, wrap = Val(false), kwargs_fwd...
         )
     elseif ischeckpointing(sensealg)
         sol = solve(
             _prob, alg, args...; initializealg = new_initializealg, save_noise = true,
             save_start = true, save_end = true,
-            saveat, kwargs_fwd...
+            saveat, wrap = Val(false), kwargs_fwd...
         )
     else
         sol = solve(
             _prob, alg, args...; initializealg = new_initializealg,
             save_noise = true, save_start = true,
-            save_end = true, kwargs_fwd...
+            save_end = true, wrap = Val(false), kwargs_fwd...
         )
     end
 
@@ -1291,7 +1291,7 @@ function SciMLBase._concrete_solve_adjoint(
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
     primal = solve(
         remake(prob; u0, p), alg, args...;
-        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        sensealg = DiffEqBase.SensitivityADPassThrough(), wrap = Val(false),
         kwargs_filtered...
     )
     return primal, mooncake_forward_sensitivity_backpass
@@ -1379,7 +1379,7 @@ function SciMLBase._concrete_solve_adjoint(
     # use the callback in kwargs, not prob
     kwargs_prob = NamedTuple(filter(x -> x[1] != :callback, prob.kwargs))
     _prob = remake(prob; p, u0, kwargs = kwargs_prob)
-    sol = solve(_prob, alg, args...; saveat = _saveat, kwargs...)
+    sol = solve(_prob, alg, args...; saveat = _saveat, wrap = Val(false), kwargs...)
 
     if originator isa SciMLBase.EnzymeOriginator
         @reset sol.prob = prob
@@ -1489,7 +1489,7 @@ function SciMLBase._concrete_solve_adjoint(
                         _saveat = saveat
                     end
 
-                    _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
+                    _sol = solve(_prob, alg, args...; saveat = ts, wrap = Val(false), kwargs...)
                     _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                     if haskey(kwargs, :callback)
@@ -1676,7 +1676,7 @@ function SciMLBase._concrete_solve_adjoint(
                     _saveat = saveat
                 end
 
-                _sol = solve(_prob, alg, args...; saveat = ts, kwargs...)
+                _sol = solve(_prob, alg, args...; saveat = ts, wrap = Val(false), kwargs...)
                 _, du = extract_local_sensitivities(_sol, sensealg, Val(true))
 
                 if haskey(kwargs, :callback)
@@ -1794,7 +1794,7 @@ function SciMLBase._concrete_solve_adjoint(
             p,
         ) -> solve(
             prob, alg, args...; u0, p,
-            sensealg = SensitivityADPassThrough(),
+            sensealg = SensitivityADPassThrough(), wrap = Val(false),
             kwargs_filtered...
         ),
         u0,
@@ -1815,7 +1815,7 @@ function SciMLBase._concrete_solve_adjoint(
             p,
         ) -> solve(
             prob, alg, args...; u0, p,
-            sensealg = SensitivityADPassThrough(),
+            sensealg = SensitivityADPassThrough(), wrap = Val(false),
             kwargs_filtered...
         ),
         u0,
@@ -1850,7 +1850,7 @@ function SciMLBase._concrete_solve_adjoint(
         p,
     ) -> solve(
         _prob, alg, args...; u0, p,
-        sensealg = SensitivityADPassThrough(),
+        sensealg = SensitivityADPassThrough(), wrap = Val(false),
         kwargs_filtered...
     )
 
@@ -1916,7 +1916,7 @@ function SciMLBase._concrete_solve_adjoint(
         p,
     ) -> solve(
         prob, alg, args...; u0, p,
-        sensealg = SensitivityADPassThrough(),
+        sensealg = SensitivityADPassThrough(), wrap = Val(false),
         kwargs_filtered...
     )
 
@@ -2131,7 +2131,7 @@ function SciMLBase._concrete_solve_adjoint(
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(
             _prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
-            kwargs_filtered...
+            wrap = Val(false), kwargs_filtered...
         )
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
         @reset sol.prob = prob
@@ -2230,7 +2230,7 @@ function SciMLBase._concrete_solve_adjoint(
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
     primal = solve(
         remake(prob; u0, p), alg, args...;
-        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        sensealg = DiffEqBase.SensitivityADPassThrough(), wrap = Val(false),
         kwargs_filtered...
     )
     return primal, backpass
@@ -2361,7 +2361,7 @@ function SciMLBase._concrete_solve_adjoint(
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(
             _prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
-            kwargs_filtered...
+            wrap = Val(false), kwargs_filtered...
         )
         t = current_time(sol)
         if DiffEqBase.isinplace(prob)
@@ -2471,7 +2471,7 @@ function SciMLBase._concrete_solve_adjoint(
     kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
     primal = solve(
         remake(prob; u0, p), alg, args...;
-        sensealg = DiffEqBase.SensitivityADPassThrough(),
+        sensealg = DiffEqBase.SensitivityADPassThrough(), wrap = Val(false),
         kwargs_filtered...
     )
     return primal, backpass
@@ -2492,7 +2492,7 @@ function SciMLBase._concrete_solve_adjoint(
         _prob = remake(prob; f = unwrapped_f(prob.f), u0, p)
     end
 
-    sol = solve(_prob, alg, args...; save_start, save_end, saveat, kwargs...)
+    sol = solve(_prob, alg, args...; save_start, save_end, saveat, wrap = Val(false), kwargs...)
 
     if saveat isa Number
         if _prob.tspan[2] > _prob.tspan[1]
@@ -2635,7 +2635,7 @@ function SciMLBase._concrete_solve_adjoint(
     )
     _prob = remake(prob; u0, p)
 
-    sol = solve(_prob, alg, args...; kwargs...)
+    sol = solve(_prob, alg, args...; wrap = Val(false), kwargs...)
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     if save_idxs === nothing

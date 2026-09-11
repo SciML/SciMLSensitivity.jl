@@ -21,6 +21,7 @@ run_tests(;
                 @time @safetestset "ReverseDiffAdjoint Output Type" include("Core1/reversediff_output_types.jl")
                 @time @safetestset "Forward Remake" include("Core1/forward_remake.jl")
                 @time @safetestset "Prob Kwargs" include("Core1/prob_kwargs.jl")
+                @time @safetestset "Wrapped Solutions" include("Core1/wrapped_solutions.jl")
                 @time @safetestset "Mooncake VJP Prob Kwargs" include("Core1/mooncake_vjp_prob_kwargs.jl")
                 @time @safetestset "DiscreteProblem Adjoints" include("Core1/discrete.jl")
                 @time @safetestset "Time Type Mixing Adjoints" include("Core1/time_type_mixing.jl")

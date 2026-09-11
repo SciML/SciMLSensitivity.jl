@@ -207,7 +207,7 @@ function SciMLBase._concrete_solve_adjoint(
         kwargs_filtered = NamedTuple(filter(x -> x[1] != :sensealg, kwargs))
         sol = solve(
             _prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
-            kwargs_filtered...
+            wrap = Val(false), kwargs_filtered...
         )
         sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
         @reset sol.prob = prob
@@ -277,7 +277,8 @@ end
 function _solve_up_mooncake_native_forwardpass(prob, alg_and_rest, kwargs, _u0, _p)
     _prob = remake(prob; u0 = _u0, p = _p)
     sol = solve(
-        _prob, alg_and_rest...; sensealg = DiffEqBase.SensitivityADPassThrough(), kwargs...
+        _prob, alg_and_rest...; sensealg = DiffEqBase.SensitivityADPassThrough(),
+        wrap = Val(false), kwargs...
     )
     return SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
 end
