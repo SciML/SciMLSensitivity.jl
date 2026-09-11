@@ -42,6 +42,62 @@ struct AdjointDiffCache{
     index2::Bool
 end
 
+# `promote_f` wraps `f`/`g` of `ODEFunction`/`SDEFunction` in fixed-signature
+# FunctionWrappers under AutoSpecialize; sensitivity evaluation calls them with
+# SubArray/Dual arguments that the wrapper rejects, so strip the wrapper here.
+function _despecialized_f(f::ODEFunction)
+    if f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
+        return ODEFunction{isinplace(f), true}(unwrapped_f(f))
+    end
+    return f
+end
+function _despecialized_f(f::SDEFunction)
+    if f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper ||
+            f.g isa FunctionWrappersWrappers.FunctionWrappersWrapper
+        _uf = unwrapped_f(f)
+        return SDEFunction{isinplace(f), true}(
+            _uf.f, _uf.g;
+            mass_matrix = _uf.mass_matrix, analytic = _uf.analytic,
+            tgrad = _uf.tgrad, jac = _uf.jac, jvp = _uf.jvp, vjp = _uf.vjp,
+            jac_prototype = _uf.jac_prototype, sparsity = _uf.sparsity,
+            Wfact = _uf.Wfact, Wfact_t = _uf.Wfact_t,
+            paramjac = _uf.paramjac, ggprime = _uf.ggprime,
+            observed = _uf.observed, colorvec = _uf.colorvec,
+            sys = _uf.sys, initialization_data = _uf.initialization_data
+        )
+    end
+    return f
+end
+_despecialized_f(f) = f
+
+# Build a FullSpecialize copy of the (possibly FunctionWrapper-wrapped) `f` for
+# ForwardDiffSensitivity solves whose u0/p carry Dual numbers; the wrapped
+# function only supports the signature `promote_f` compiled it for.
+function _dual_f(f::ODEFunction, elT)
+    _uf = unwrapped_f(f)
+    if f.jac_prototype !== nothing
+        return ODEFunction{isinplace(f), SciMLBase.FullSpecialize}(
+            _uf; jac_prototype = convert.(elT, f.jac_prototype)
+        )
+    end
+    return ODEFunction{isinplace(f), SciMLBase.FullSpecialize}(_uf)
+end
+function _dual_f(f::SDEFunction, elT)
+    _uf = unwrapped_f(f)
+    jp = f.jac_prototype === nothing ? nothing : convert.(elT, f.jac_prototype)
+    return SDEFunction{isinplace(f), SciMLBase.FullSpecialize}(
+        _uf.f, _uf.g;
+        mass_matrix = _uf.mass_matrix, analytic = _uf.analytic,
+        tgrad = _uf.tgrad, jac = _uf.jac, jvp = _uf.jvp, vjp = _uf.vjp,
+        jac_prototype = jp, sparsity = _uf.sparsity,
+        Wfact = _uf.Wfact, Wfact_t = _uf.Wfact_t,
+        paramjac = _uf.paramjac, ggprime = _uf.ggprime,
+        observed = _uf.observed, colorvec = _uf.colorvec,
+        sys = _uf.sys, initialization_data = _uf.initialization_data
+    )
+end
+_dual_f(f, elT) = f
+
 """
     adjointdiffcache(g,sensealg,discrete,sol,dg,alg;quad=false)
 
