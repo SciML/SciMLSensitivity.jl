@@ -154,12 +154,7 @@ end
     end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
-    f = if sol.prob.f isa ODEFunction &&
-            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
-        ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
-    else
-        sol.prob.f
-    end
+    f = _despecialized_f(sol.prob.f)
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -329,11 +324,11 @@ end
         sense_drift = ODEBacksolveSensitivityFunction(
             g, sensealg, discrete, sol,
             dgdu_continuous, dgdp_continuous,
-            sol.prob.f, alg
+            _despecialized_f(sol.prob.f), alg
         )
     else
         transformed_function = StochasticTransformedFunction(
-            sol, sol.prob.f, sol.prob.g,
+            sol, _despecialized_f(sol.prob.f), unwrapped_f(sol.prob.g),
             corfunc_analytical
         )
         drift_function = ODEFunction{false, true}(transformed_function)
@@ -345,7 +340,7 @@ end
     end
 
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(
-        sol.prob.g,
+        unwrapped_f(sol.prob.g),
         jac = diffusion_jac,
         paramjac = diffusion_paramjac
     )

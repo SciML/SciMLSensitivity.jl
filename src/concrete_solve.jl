@@ -1456,43 +1456,20 @@ function SciMLBase._concrete_solve_adjoint(
 
                     ## Force recompile mode because it won't handle the duals
                     ## Would require a manual tag to be applied
-                    if prob.f isa ODEFunction
-                        if prob.f.jac_prototype !== nothing
-                            _f = ODEFunction{
-                                SciMLBase.isinplace(prob.f),
-                                SciMLBase.FullSpecialize,
-                            }(
-                                unwrapped_f(prob.f),
-                                jac_prototype = convert.(
-                                    eltype(u0dual),
-                                    prob.f.jac_prototype
-                                )
-                            )
-                        else
-                            _f = ODEFunction{
-                                SciMLBase.isinplace(prob.f),
-                                SciMLBase.FullSpecialize,
-                            }(unwrapped_f(prob.f))
-                        end
-                    elseif prob.f isa SDEFunction && prob.f.jac_prototype !== nothing
-                        _f = SDEFunction{
-                            SciMLBase.isinplace(prob.f),
-                            SciMLBase.FullSpecialize,
-                        }(
-                            unwrapped_f(prob.f),
-                            jac_prototype = convert.(
-                                eltype(u0dual),
-                                prob.f.jac_prototype
-                            )
+                    _f = _dual_f(prob.f, eltype(u0dual))
+                    # use the callback from kwargs, not prob
+                    _prob = if prob isa SDEProblem
+                        remake(
+                            prob, f = _f, g = unwrapped_f(prob.g),
+                            u0 = u0dual, p = pdual,
+                            tspan = tspandual, callback = nothing
                         )
                     else
-                        _f = prob.f
+                        remake(
+                            prob, f = _f, u0 = u0dual, p = pdual,
+                            tspan = tspandual, callback = nothing
+                        )
                     end
-                    # use the callback from kwargs, not prob
-                    _prob = remake(
-                        prob, f = _f, u0 = u0dual, p = pdual,
-                        tspan = tspandual, callback = nothing
-                    )
 
                     if _prob isa SDEProblem
                         _prob.noise_rate_prototype !== nothing && (
@@ -1652,35 +1629,7 @@ function SciMLBase._concrete_solve_adjoint(
 
                 ## Force recompile mode because it won't handle the duals
                 ## Would require a manual tag to be applied
-                if prob.f isa ODEFunction
-                    if prob.f.jac_prototype !== nothing
-                        _f = ODEFunction{
-                            SciMLBase.isinplace(prob.f),
-                            SciMLBase.FullSpecialize,
-                        }(
-                            unwrapped_f(prob.f),
-                            jac_prototype = convert.(
-                                eltype(pdual),
-                                prob.f.jac_prototype
-                            )
-                        )
-                    else
-                        _f = ODEFunction{
-                            SciMLBase.isinplace(prob.f),
-                            SciMLBase.FullSpecialize,
-                        }(unwrapped_f(prob.f))
-                    end
-                elseif prob.f isa SDEFunction && prob.f.jac_prototype !== nothing
-                    _f = SDEFunction{SciMLBase.isinplace(prob.f), SciMLBase.FullSpecialize}(
-                        unwrapped_f(prob.f),
-                        jac_prototype = convert.(
-                            eltype(pdual),
-                            prob.f.jac_prototype
-                        )
-                    )
-                else
-                    _f = prob.f
-                end
+                _f = _dual_f(prob.f, eltype(pdual))
 
                 _p = if p isa SciMLBase.NullParameters
                     p
@@ -1710,14 +1659,14 @@ function SciMLBase._concrete_solve_adjoint(
                 end
 
                 if _prob isa SDEProblem
-                    _prob.noise_rate_prototype !== nothing && (
-                        _prob = remake(
-                            _prob,
-                            noise_rate_prototype = convert.(
-                                eltype(pdual),
-                                _prob.noise_rate_prototype
+                    _prob = remake(
+                        _prob;
+                        g = unwrapped_f(_prob.g),
+                        noise_rate_prototype = _prob.noise_rate_prototype === nothing ?
+                            nothing :
+                            convert.(
+                                eltype(pdual), _prob.noise_rate_prototype
                             )
-                        )
                     )
                 end
 

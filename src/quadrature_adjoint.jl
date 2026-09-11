@@ -22,12 +22,12 @@ function ODEQuadratureAdjointSensitivityFunction(
         isscimlstructure(p) && !(p isa AbstractArray)
     diffcache,
         y = adjointdiffcache(
-        g, sensealg, discrete, sol, dgdu, dgdp, sol.prob.f, alg;
+        g, sensealg, discrete, sol, dgdu, dgdp, _despecialized_f(sol.prob.f), alg;
         quad = true, use_full_p = _use_full_p
     )
     return ODEQuadratureAdjointSensitivityFunction(
         diffcache, sensealg, discrete,
-        y, sol, sol.prob.f
+        y, sol, _despecialized_f(sol.prob.f)
     )
 end
 
@@ -114,12 +114,7 @@ end
     (; p, u0, tspan) = sol.prob
 
     ## Force recompile mode until vjps are specialized to handle this!!!
-    f = if sol.prob.f isa ODEFunction &&
-            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
-        ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
-    else
-        sol.prob.f
-    end
+    f = _despecialized_f(sol.prob.f)
 
     terminated = false
     if hasfield(typeof(sol), :retcode)

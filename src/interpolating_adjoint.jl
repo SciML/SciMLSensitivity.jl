@@ -342,12 +342,7 @@ end
     end
 
     ## Force recompile mode until vjps are specialized to handle this!!!
-    f = if sol.prob.f isa ODEFunction &&
-            sol.prob.f.f isa FunctionWrappersWrappers.FunctionWrappersWrapper
-        ODEFunction{isinplace(sol.prob), true}(unwrapped_f(sol.prob.f))
-    else
-        sol.prob.f
-    end
+    f = _despecialized_f(sol.prob.f)
 
     # check if solution was terminated, then use reduced time span
     terminated = false
@@ -531,14 +526,14 @@ end
     sense_drift = ODEInterpolatingAdjointSensitivityFunction(
         g, sensealg, discrete, sol,
         dgdu_continuous,
-        dgdp_continuous, sol.prob.f,
+        dgdp_continuous, _despecialized_f(sol.prob.f),
         alg, checkpoints,
         (; reltol, abstol);
         tspan
     )
 
     diffusion_function = ODEFunction{isinplace(sol.prob), true}(
-        sol.prob.g,
+        unwrapped_f(sol.prob.g),
         jac = diffusion_jac,
         paramjac = diffusion_paramjac
     )
