@@ -1,5 +1,6 @@
 using OrdinaryDiffEq, SciMLSensitivity, ForwardDiff, Zygote, SciMLBase, Test
 using OrdinaryDiffEqBDF: DFBDF, DImplicitEuler
+using OrdinaryDiffEqNonlinearSolve: BrownFullBasicInit
 
 # Fully implicit DAEProblem adjoints via the augmented adjoint DAE
 # (Cao, Li, Petzold & Serban, SIAM Journal on Scientific Computing 24(3), 2003).
@@ -335,4 +336,41 @@ end
             autojacvec = ReverseDiffVJP(), checkpointing = true
         )
     )
+end
+
+@testset "no algorithm: adjoint in residual form" begin
+    # Diffusion with decay on a grid, the Dirichlet values as algebraic rows: the layout a PDE
+    # discretization produces. Solved without an algorithm, the adjoint must stay in residual
+    # form; its mass-matrix form under the default ODE algorithm does not finish at this size.
+    n = 26
+    h = 1 / (n - 1)
+    function heat_dae!(res, du, u, p, t)
+        res[1] = u[1] - exp(-t)
+        for i in 2:(n - 1)
+            res[i] = p[1] * (u[i - 1] - 2u[i] + u[i + 1]) / h^2 - p[2] * u[i] - du[i]
+        end
+        res[n] = u[n] - exp(-t) * cos(1)
+        return nothing
+    end
+    p = [1.2, 2.1]
+    u0 = cos.(range(0, 1; length = n))
+    prob = DAEProblem(
+        heat_dae!, zeros(n), u0, (0.0, 1.0), p;
+        differential_vars = [false; trues(n - 2); false]
+    )
+    kw = (; abstol = 1.0e-8, reltol = 1.0e-8, initializealg = BrownFullBasicInit())
+    sol = solve(prob; kw...)
+    @test sol.alg isa DFBDF
+    ts = collect(0.0:0.1:1.0)
+    sensealg = InterpolatingAdjoint(autojacvec = false)
+    @test SciMLSensitivity.DAEAdjointProblem(sol, sensealg, nothing, ts, sumsq_dg) isa DAEProblem
+    dp_default = adjoint_sensitivities(
+        sol, nothing; t = ts, dgdu_discrete = sumsq_dg, sensealg, abstol = 1.0e-8, reltol = 1.0e-8
+    )[2]
+    dp_dfbdf = adjoint_sensitivities(
+        sol, DFBDF(); t = ts, dgdu_discrete = sumsq_dg, sensealg, abstol = 1.0e-8, reltol = 1.0e-8
+    )[2]
+    @test dp_default ≈ dp_dfbdf rtol = 1.0e-6
+    loss(p) = sum(sum(abs2, u) / 2 for u in solve(remake(prob; p); saveat = ts, sensealg, kw...).u)
+    @test Zygote.gradient(loss, p)[1] ≈ ForwardDiff.gradient(loss, p) rtol = 1.0e-5
 end

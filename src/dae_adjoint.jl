@@ -266,7 +266,9 @@ adjoint state is `z = [w; λ]` with `w = (∂F/∂(du))' λ` (plus the parameter
 quadrature block for `InterpolatingAdjoint`). The returned problem is a
 singular-mass-matrix `ODEProblem` when `alg` is a mass-matrix-capable stiff ODE
 solver (e.g. `FBDF`, `Rodas5P`), or a fully implicit `DAEProblem` when `alg` is a
-DAE solver (e.g. `DFBDF`), solved backwards in time.
+DAE solver (e.g. `DFBDF`), solved backwards in time. When `alg` is `nothing`, the
+algorithm of the forward solution is used, so a forward solve with the default DAE
+algorithm gets a `DAEProblem`.
 
 The arguments mirror `ODEAdjointProblem`, with methods for `InterpolatingAdjoint`,
 `QuadratureAdjoint`, and `GaussAdjoint`/`GaussKronrodAdjoint` (which mirrors the
@@ -378,6 +380,10 @@ function _dae_adjoint_problem(
         )
         error("Callbacks are not currently supported for DAEProblem adjoints.")
     end
+    # With no algorithm given, take the one of the forward solve. This keeps the adjoint of a
+    # `solve(prob)` without an algorithm in residual form: its mass-matrix form under the default
+    # ODE algorithm rebuilds the Jacobian at every step and does not finish at a few dozen states.
+    alg === nothing && (alg = sol.alg)
 
     (; tspan) = sol.prob
     p = parameter_values(sol.prob)
