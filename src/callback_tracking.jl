@@ -445,8 +445,16 @@ function _setup_reverse_callbacks(
         # if save_positions[2] = false, then the right limit is not saved. Thus, for
         # the QuadratureAdjoint we would need to lift y from the left to the right limit.
         # However, one also needs to update dgrad later on.
-        if (sensealg isa QuadratureAdjoint && !cb.save_positions[2]) ||
-                (sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg))
+        if sensealg isa QuadratureAdjoint && !cb.save_positions[2]
+            w(y, y, integrator.p, integrator.t)
+        elseif sensealg isa InterpolatingAdjoint && ischeckpointing(sensealg)
+            # The checkpoint re-solve can locate the event a floating-point ulp
+            # away from the tracked event time, so `y` (from
+            # `cpsol(t, continuity = :right)`) may hold either limit. Rebuild the
+            # right limit from the recorded left limit so the event correction
+            # uses a consistent state either way.
+            _uleft = pos_neg ? cb.affect!.uleft[indx] : cb.affect_neg!.uleft[indx]
+            copyto!(y, _uleft)
             w(y, y, integrator.p, integrator.t)
         end
 
