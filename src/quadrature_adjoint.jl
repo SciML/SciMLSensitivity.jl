@@ -786,7 +786,7 @@ function _update_integrand_and_dgrad(
 
     # `wp` writes the tunable portion of the post-event parameters; the integrand
     # is rebuilt from the full parameter object, so repack before comparing.
-    _pt = similar(integrand.tunables, size(integrand.tunables))
+    _pt = similar(integrand.tunables)
     _pt .= false
     wp(_pt, integrand.y, integrand.p, t)
 
