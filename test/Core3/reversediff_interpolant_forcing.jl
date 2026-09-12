@@ -15,7 +15,7 @@ using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, Test
     base!(du, u, p, t) = (mul!(du, A, u); nothing)
     ref = solve(
         ODEProblem(base!, u0, tspan), Tsit5();
-        abstol = 1e-10, reltol = 1e-10, dense = true, save_everystep = true
+        abstol = 1.0e-10, reltol = 1.0e-10, dense = true, save_everystep = true
     )
 
     function forced!(du, u, eps, t)
@@ -29,15 +29,15 @@ using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, Test
     Gof(e) = begin
         s = solve(
             ODEProblem(forced!, u0, tspan, [e]), Tsit5();
-            abstol = 1e-11, reltol = 1e-11
+            abstol = 1.0e-11, reltol = 1.0e-11
         )
         dot(v, s.u[end])
     end
-    fd = (Gof(1e-6) - Gof(-1e-6)) / 2e-6
+    fd = (Gof(1.0e-6) - Gof(-1.0e-6)) / 2.0e-6
 
     sol = solve(
         ODEProblem(forced!, u0, tspan, [0.0]), Tsit5();
-        abstol = 1e-10, reltol = 1e-10, dense = true, save_everystep = true
+        abstol = 1.0e-10, reltol = 1.0e-10, dense = true, save_everystep = true
     )
     dgdu = (out, u, p, t, i) -> (copyto!(out, v); nothing)
 
@@ -49,8 +49,8 @@ using SciMLSensitivity, OrdinaryDiffEq, LinearAlgebra, Test
         ]
         _, dp = adjoint_sensitivities(
             sol, Tsit5(); sensealg = sa, t = [tspan[2]],
-            dgdu_discrete = dgdu, abstol = 1e-10, reltol = 1e-10
+            dgdu_discrete = dgdu, abstol = 1.0e-10, reltol = 1.0e-10
         )
-        @test only(dp) ≈ fd rtol = 1e-5
+        @test only(dp) ≈ fd rtol = 1.0e-5
     end
 end
