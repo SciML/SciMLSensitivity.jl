@@ -11,6 +11,7 @@ if VERSION >= v"1.12"
     end
 else
     using Optimization, OptimizationOptimisers
+    using Optimisers: Adam
     using ADTypes
 
     addprocs(2)

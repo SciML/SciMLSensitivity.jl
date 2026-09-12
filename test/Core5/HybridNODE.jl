@@ -1,5 +1,6 @@
 using SciMLSensitivity, OrdinaryDiffEq, DiffEqCallbacks, Lux, ComponentArrays
 using Optimization, OptimizationOptimisers, Random, Test, Zygote
+using Optimisers: Adam
 
 function test_hybridNODE(sensealg)
     Random.seed!(12345)

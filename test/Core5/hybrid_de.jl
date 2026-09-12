@@ -1,5 +1,6 @@
 using Lux, ComponentArrays, SciMLSensitivity, DiffEqCallbacks, OrdinaryDiffEq, Test # , Plots
 using Optimization, OptimizationOptimisers, Zygote, Random
+using Optimisers: Adam
 
 u0 = Float32[2.0; 0.0]
 datasize = 100

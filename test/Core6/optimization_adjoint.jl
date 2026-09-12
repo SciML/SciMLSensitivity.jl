@@ -1,5 +1,6 @@
 using Test, LinearAlgebra
 using SciMLSensitivity, Optimization, OptimizationOptimisers, OptimizationNLopt, SciMLBase
+using Optimisers: Descent
 using Mooncake, ForwardDiff, FiniteDiff
 using SciMLSensitivity: MooncakeVJP, alg_autodiff, diff_type
 
