@@ -47,10 +47,11 @@ using SciMLOperators: SciMLOperators, has_adjoint
 
 using OrdinaryDiffEqCore: OrdinaryDiffEqCore, BrownFullBasicInit, DefaultInit,
     default_nlsolve, has_autodiff
+using NonlinearSolveBase: NonlinearSolveBase
 
 # AD Backends
-using ChainRulesCore: unthunk, @thunk, NoTangent, @not_implemented, Tangent, ZeroTangent,
-    AbstractThunk, AbstractTangent
+using ChainRulesCore: ChainRulesCore, unthunk, @thunk, NoTangent, @not_implemented,
+    Tangent, ZeroTangent, AbstractThunk, AbstractTangent
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff

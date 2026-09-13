@@ -2740,6 +2740,91 @@ function SciMLBase._concrete_solve_adjoint(
     return out, steadystatebackpass
 end
 
+# The least-squares adjoint differentiates the (projected) stationarity
+# equation rather than the residual system: residuals are rectangular and need
+# not vanish at active bounds, so components pinned at a bound carry zero
+# sensitivity while free components satisfy the constrained stationarity
+# system. The adjoint solve itself lives in NonlinearSolveBase
+# (`nlls_solve_adjoint_dp`), which shares the `nlls_generate_vjp_function`
+# machinery used by the ForwardDiff sensitivity path.
+function SciMLBase._concrete_solve_adjoint(
+        prob::SciMLBase.NonlinearLeastSquaresProblem, alg,
+        sensealg::Union{Nothing, SciMLBase.AbstractSensitivityAlgorithm},
+        u0, p, originator::SciMLBase.ADOriginator,
+        args...; save_idxs = nothing, kwargs...
+    )
+    if !(sensealg === nothing || sensealg isa SteadyStateAdjoint)
+        throw(
+            ArgumentError(
+                "NonlinearLeastSquaresProblem only supports the default \
+                 stationarity adjoint (`SteadyStateAdjoint`). Got sensealg = \
+                 $(nameof(typeof(sensealg)))."
+            )
+        )
+    end
+    if p === nothing || p isa SciMLBase.NullParameters
+        error(
+            "Your model does not have parameters, and thus it is impossible to \
+             calculate the derivative of the solution with respect to the \
+             parameters."
+        )
+    end
+    p isa Union{Number, AbstractArray} || throw(
+        ArgumentError(
+            "Reverse-mode differentiation of a NonlinearLeastSquaresProblem \
+             currently supports only scalar or array parameters; got \
+             $(typeof(p))."
+        )
+    )
+
+    _prob = remake(prob; u0, p)
+    # `_prob` is already concrete, so call `solve_call` directly: re-entering
+    # `solve`/`solve_up` re-runs `get_concrete_problem`, which re-wraps `f.f` in
+    # `AutoSpecializeCallable`. On the Enzyme originator path `_prob.f.f` was
+    # deliberately unwrapped to match the callable used in the traced forward
+    # solve, and re-wrapping makes the returned `NonlinearSolution`'s type
+    # disagree with the rule's declared primal type.
+    kwargs_filtered = NamedTuple(filter(x -> x[1] != :originator, kwargs))
+    sol = if alg === nothing
+        NonlinearSolveBase.solve_call(_prob, args...; kwargs_filtered...)
+    else
+        NonlinearSolveBase.solve_call(_prob, alg, args...; kwargs_filtered...)
+    end
+    out = save_idxs === nothing ? sol :
+        SciMLBase.sensitivity_solution(sol, sol.u[save_idxs])
+
+    function nlls_solve_adjoint_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+        # `Tangent` forwards `getproperty` to its backing, so `Δ.u` also covers
+        # the `Tangent{<:NonlinearSolution}` case.
+        Δu = if Δ isa Union{Number, AbstractArray}
+            Δ
+        elseif hasproperty(Δ, :u)
+            Δ.u
+        else
+            Δ
+        end
+        Δu = Δu isa AbstractThunk ? unthunk(Δu) : Δu
+        Δu isa ChainRulesCore.AbstractZero && (Δu = zero(sol.u))
+        dp = NonlinearSolveBase.nlls_solve_adjoint_dp(_prob, sol, p, Δu, save_idxs)
+        return if originator isa Union{
+                SciMLBase.TrackerOriginator, SciMLBase.ReverseDiffOriginator,
+            }
+            (
+                NoTangent(), NoTangent(), NoTangent(), dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        else
+            (
+                NoTangent(), NoTangent(), NoTangent(),
+                NoTangent(), dp, NoTangent(),
+                ntuple(_ -> NoTangent(), length(args))...,
+            )
+        end
+    end
+    return out, nlls_solve_adjoint_backpass
+end
+
 function SciMLBase._concrete_solve_adjoint(
         prob::AbstractOptimizationProblem,
         alg, sensealg::Nothing,

@@ -109,6 +109,7 @@ run_tests(;
         "Core8" => function ()
             return @testset "Core 8" begin
                 @time @safetestset "Adjoints through NonlinearProblem" include("Core8/parameter_initialization.jl")
+                @time @safetestset "NLLS stationarity adjoint" include("Core8/nlls_adjoint.jl")
                 @time @safetestset "Initialization with MTK" include("Core8/desauty_dae_mwe.jl")
                 @time @safetestset "MTK Forward Mode" include("Core8/mtk.jl")
                 @time @safetestset "MTK Events Adjoint" include("Core8/mtk_events.jl")
