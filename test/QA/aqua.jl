@@ -76,7 +76,7 @@ run_qa(
                 # DiffEqNoiseProcess
                 :vec_NoiseProcess,
                 # Enzyme
-                :EnzymeCore,
+                :API, :EnzymeCore, :maxtypeoffset!,
                 # EnzymeCore
                 :Mode,
                 # EnzymeCore.EnzymeRules

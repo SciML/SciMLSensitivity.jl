@@ -327,4 +327,14 @@ export supports_functor_params
 
 export StochasticTransformedFunction
 
+function __init__()
+    # MTK init differentiation runs `mapreduce(Fix1(f, src), vcat, template)`
+    # where `src` is a ~552-byte `NonlinearSolution` captured by value in the
+    # Fix1 closure. Fields past Enzyme's 512-byte default type-analysis
+    # offset get empty type maps and the gradient errors, so raise the limit
+    # (EnzymeAD/Enzyme.jl#3576).
+    Enzyme.API.maxtypeoffset!(4096)
+    return nothing
+end
+
 end # module
