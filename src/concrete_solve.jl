@@ -1091,6 +1091,12 @@ function SciMLBase._concrete_solve_adjoint(
             originator isa SciMLBase.EnzymeOriginator ? accumulated : to_nt(accumulated)
         else
             dp = Zygote.accum(dp_full, igs)
+            # The loss may depend on `p` directly through the solution object, e.g. via an
+            # observed variable; that part arrives in `Δ.prob.p` rather than `Δ.u`.
+            Δtunables = tunable_cotangent(
+                p, solution_parameter_cotangent(Δ), tunables, repack
+            )
+            dp = Zygote.accum(dp, Δtunables)
 
             _,
                 repack_adjoint = if p === nothing || p === SciMLBase.NullParameters()
@@ -1758,17 +1764,22 @@ function SciMLBase._concrete_solve_adjoint(
             nothing, x -> (x,)
         end
 
+        dp = Zygote.accum(
+            unthunk(dp),
+            tunable_cotangent(p, solution_parameter_cotangent(Δ), tunables, repack)
+        )
+
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
                 NoTangent(), NoTangent(), unthunk(du0),
-                repack_adjoint(unthunk(dp))[1], NoTangent(),
+                repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                du0, repack_adjoint(unthunk(dp))[1], NoTangent(),
+                du0, repack_adjoint(dp)[1], NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
@@ -2849,14 +2860,6 @@ function SciMLBase._concrete_solve_adjoint(
     )
 end
 
-# Read one field of a structural tangent, tolerating any tangent shape. A `Tangent` is lenient
-# (returns `ZeroTangent()` for an absent field); a raw `NamedTuple` is not, so guard it; an
-# `AbstractZero` (or anything else) has no fields, so it contributes nothing.
-_opt_tangent_field(::Union{ZeroTangent, NoTangent}, ::Symbol) = ZeroTangent()
-_opt_tangent_field(t::Tangent, f::Symbol) = getproperty(t, f)
-_opt_tangent_field(t::NamedTuple, f::Symbol) = haskey(t, f) ? getfield(t, f) : ZeroTangent()
-_opt_tangent_field(::Any, ::Symbol) = ZeroTangent()
-
 # Extract an explicit parameter cotangent carried on an `OptimizationSolution` tangent `Δ`.
 #
 # The optimization backpasses were adapted from the NonlinearSolution one, which reads
@@ -2869,10 +2872,10 @@ _opt_tangent_field(::Any, ::Symbol) = ZeroTangent()
 # parameter contribution — the common case, including the Zygote flow that unwraps to a
 # `u`-cotangent before this branch — yields `ZeroTangent()`.
 function _optsol_param_cotangent(Δ)
-    cache_t = _opt_tangent_field(Δ, :cache)
-    p_t = _opt_tangent_field(_opt_tangent_field(cache_t, :reinit_cache), :p)
+    cache_t = tangent_field(Δ, :cache)
+    p_t = tangent_field(tangent_field(cache_t, :reinit_cache), :p)
     (p_t isa ZeroTangent || p_t isa NoTangent) || return p_t
-    return _opt_tangent_field(cache_t, :p)
+    return tangent_field(cache_t, :p)
 end
 
 function SciMLBase._concrete_solve_adjoint(

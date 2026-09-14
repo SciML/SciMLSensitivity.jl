@@ -51,7 +51,7 @@ using NonlinearSolveBase: NonlinearSolveBase
 
 # AD Backends
 using ChainRulesCore: ChainRulesCore, unthunk, @thunk, NoTangent, @not_implemented,
-    Tangent, ZeroTangent, AbstractThunk, AbstractTangent
+    Tangent, ZeroTangent, AbstractThunk, AbstractTangent, AbstractZero
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
