@@ -51,14 +51,14 @@ using NonlinearSolveBase: NonlinearSolveBase
 
 # AD Backends
 using ChainRulesCore: ChainRulesCore, unthunk, @thunk, NoTangent, @not_implemented,
-    Tangent, ZeroTangent, AbstractThunk, AbstractTangent
+    Tangent, ZeroTangent, AbstractThunk, AbstractTangent, AbstractZero
 using Enzyme: Enzyme
 using FiniteDiff: FiniteDiff
 using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
-using ConstructionBase: ConstructionBase, setproperties
+using ConstructionBase: ConstructionBase
 
 # Std Libs
 using Base: adjoint, copyto!, transpose
