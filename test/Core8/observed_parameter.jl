@@ -18,17 +18,28 @@ end
 # α enters only through the observed variable
 observed_loss(ps; kwargs...) = sum(solve_at(ps; kwargs...)[y])
 state_loss(ps; kwargs...) = sum(solve_at(ps; kwargs...)[x])
-g_observed = ForwardDiff.gradient(observed_loss, p0)
-g_state = ForwardDiff.gradient(state_loss, p0)
+# α through the observed variable, β through the state, in one gradient. The two
+# solves are needed: `sol[x]` and `sol[y]` pullbacks return differently-shaped
+# cotangents for the same solution object, which `Zygote.accum` cannot combine.
+function mixed_loss(ps; kwargs...)
+    return sum(solve_at(ps; kwargs...)[x]) + sum(solve_at(ps; kwargs...)[y])
+end
+# multi-symbol indexing also routes the observed part through `Δ.prob.p`
+pair_loss(ps; kwargs...) = sum(sum, solve_at(ps; kwargs...)[[x, y]])
+pair_loss_colon(ps; kwargs...) = sum(sum, solve_at(ps; kwargs...)[[x, y], :])
+
+losses = (observed_loss, state_loss, mixed_loss, pair_loss, pair_loss_colon)
+expected = map(loss -> ForwardDiff.gradient(loss, p0), losses)
 
 @testset "$(nameof(typeof(sensealg)))" for sensealg in (
-        nothing,
-        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
-        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
-        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
-        ForwardDiffSensitivity(),
-    )
+    nothing,
+    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+    QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+    ForwardDiffSensitivity()
+)
     kw = sensealg === nothing ? (;) : (; sensealg)
-    @test Zygote.gradient(ps -> observed_loss(ps; kw...), p0)[1] ≈ g_observed rtol = 1.0e-6
-    @test Zygote.gradient(ps -> state_loss(ps; kw...), p0)[1] ≈ g_state rtol = 1.0e-6
+    for (loss, g) in zip(losses, expected)
+        @test Zygote.gradient(ps -> loss(ps; kw...), p0)[1] ≈ g rtol = 1.0e-6
+    end
 end

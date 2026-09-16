@@ -18,28 +18,45 @@ function solution_parameter_cotangent(Δ)
     return Δp isa AbstractZero ? nothing : Δp
 end
 
-# Read one field of a structural tangent, tolerating any tangent shape. A `Tangent` is lenient
-# (returns `ZeroTangent()` for an absent field); a raw `NamedTuple` is not, so guard it; an
-# `AbstractZero` (or anything else) has no fields, so it contributes nothing. A solution-shaped
-# cotangent lands here too: its `p` is a parameter object rather than a gradient.
+# Read one field of a structural tangent, tolerating any tangent shape. The `::Any`
+# fallback is load-bearing: a solution-shaped cotangent (e.g. from `sol[x, j]`) carries a
+# `prob` that is a problem object, not a tangent — its `p` holds parameter values, which
+# must not be mistaken for a gradient.
 tangent_field(::Union{ZeroTangent, NoTangent}, ::Symbol) = ZeroTangent()
+tangent_field(t::AbstractThunk, f::Symbol) = tangent_field(unthunk(t), f)
 tangent_field(t::Tangent, f::Symbol) = getproperty(t, f)
 tangent_field(t::NamedTuple, f::Symbol) = haskey(t, f) ? getfield(t, f) : ZeroTangent()
 tangent_field(::Any, ::Symbol) = ZeroTangent()
 
 """
-    tunable_cotangent(p, Δp, tunables, repack)
+    tunable_cotangent(p, Δp)
 
 Project the structural parameter cotangent `Δp` (nested `Tangent`s or `NamedTuple`s
 mirroring `p`, or an array for array parameters) onto the tunable portion of `p`. Returns
-a cotangent aligned with `tunables = canonicalize(Tunable(), p)[1]`, or `nothing` when
-there is no contribution.
+a cotangent aligned with `canonicalize(Tunable(), p)[1]` — the children of `p` when `p` is
+only a `Functors` functor — or `nothing` when there is no contribution.
 """
-function tunable_cotangent(p, Δp, tunables, repack)
-    (Δp === nothing || p === nothing || p isa SciMLBase.NullParameters) && return nothing
-    isscimlstructure(p) || return nothing
-    Δfull = fill_cotangent(repack(zero(tunables)), Δp)
-    return canonicalize(Tunable(), Δfull)[1]
+function tunable_cotangent(p, Δp)
+    Δp = unthunk(Δp)
+    (Δp === nothing || Δp isa AbstractZero) && return nothing
+    (p === nothing || p isa SciMLBase.NullParameters) && return nothing
+    if isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+        (tunables === nothing || repack === nothing) && return nothing
+        Δfull = fill_cotangent(repack(zero(tunables)), Δp)
+        return canonicalize(Tunable(), Δfull)[1]
+    elseif isfunctor(p)
+        Δp = Δp isa Tangent{<:Any, <:NamedTuple} ? to_nt(Δp) : Δp
+        if Δp isa NamedTuple && length(Δp) == 1 && haskey(Δp, :params) &&
+                !(:params in propertynames(p))
+            # Cotangent taken through a `DespecializedParameters` wrapper: unwrap `params`.
+            Δp = unthunk(Δp.params)
+            Δp = Δp isa Tangent{<:Any, <:NamedTuple} ? to_nt(Δp) : Δp
+        end
+        return Δp
+    else
+        return nothing
+    end
 end
 
 # Write the entries of a structural cotangent into a copy of the parameter object whose

@@ -58,7 +58,7 @@ using ForwardDiff: ForwardDiff
 using Tracker: Tracker, TrackedArray
 using ReverseDiff: ReverseDiff
 using Zygote: Zygote
-using ConstructionBase: ConstructionBase, setproperties
+using ConstructionBase: ConstructionBase
 
 # Std Libs
 using Base: adjoint, copyto!, transpose
