@@ -110,6 +110,12 @@ function adjointdiffcache(
     ) where {G, DG1, DG2}
     prob = sol.prob
     u0 = state_values(prob)
+    if u0 === nothing
+        # MTK-generated nonlinear problems store the initial guess in the
+        # initialization data and leave `u0 === nothing`; the solved state is
+        # the only state-shaped value available for sizing adjoint caches.
+        u0 = prob isa AbstractNonlinearProblem ? state_values(sol) : state_values(sol)[end]
+    end
     p = parameter_values(prob)
     if use_full_p && p !== nothing && !(p isa SciMLBase.NullParameters)
         # Use full parameter object (including caches) for VJP computation.

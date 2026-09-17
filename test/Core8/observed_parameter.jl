@@ -32,12 +32,12 @@ losses = (observed_loss, state_loss, mixed_loss, pair_loss, pair_loss_colon)
 expected = map(loss -> ForwardDiff.gradient(loss, p0), losses)
 
 @testset "$(nameof(typeof(sensealg)))" for sensealg in (
-    nothing,
-    InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
-    QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
-    GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
-    ForwardDiffSensitivity()
-)
+        nothing,
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+        ForwardDiffSensitivity(),
+    )
     kw = sensealg === nothing ? (;) : (; sensealg)
     for (loss, g) in zip(losses, expected)
         @test Zygote.gradient(ps -> loss(ps; kw...), p0)[1] ≈ g rtol = 1.0e-6
