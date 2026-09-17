@@ -40,12 +40,7 @@ function tunable_cotangent(p, Δp)
     Δp = unthunk(Δp)
     (Δp === nothing || Δp isa AbstractZero) && return nothing
     (p === nothing || p isa SciMLBase.NullParameters) && return nothing
-    if isscimlstructure(p)
-        tunables, repack, _ = canonicalize(Tunable(), p)
-        (tunables === nothing || repack === nothing) && return nothing
-        Δfull = fill_cotangent(repack(zero(tunables)), Δp)
-        return canonicalize(Tunable(), Δfull)[1]
-    elseif isfunctor(p)
+    if !isscimlstructure(p)
         Δp = Δp isa Tangent{<:Any, <:NamedTuple} ? to_nt(Δp) : Δp
         if Δp isa NamedTuple && length(Δp) == 1 && haskey(Δp, :params) &&
                 !(:params in propertynames(p))
@@ -53,9 +48,25 @@ function tunable_cotangent(p, Δp)
             Δp = unthunk(Δp.params)
             Δp = Δp isa Tangent{<:Any, <:NamedTuple} ? to_nt(Δp) : Δp
         end
-        return Δp
+    end
+    out = if isscimlstructure(p)
+        tunables, repack, _ = canonicalize(Tunable(), p)
+        (tunables === nothing || repack === nothing) && return nothing
+        Δfull = fill_cotangent(repack(zero(tunables)), Δp)
+        canonicalize(Tunable(), Δfull)[1]
+    elseif p isa Number
+        Δp isa Number ? Δp : nothing
+    elseif isfunctor(p)
+        Δp
     else
+        nothing
+    end
+    if out === nothing || out isa AbstractZero
         return nothing
+    elseif out isa Union{AbstractArray, NamedTuple, Tuple} && isempty(out)
+        return nothing
+    else
+        return out
     end
 end
 

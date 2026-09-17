@@ -2674,17 +2674,32 @@ function SciMLBase._concrete_solve_adjoint(
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
+            # A `NonlinearSolution` indexing cotangent puts the parameter part in
+            # `Δ.prob.p` and leaves `Δ.u === nothing` — meaning the loss has no
+            # direct dependence on the state, so `df` contributes zeros.
+            Δu = if Δ isa Union{Number, AbstractArray}
+                Δ
+            elseif hasproperty(Δ, :u)
+                unthunk(Δ.u)
+            else
+                Δ
+            end
+            if Δu === nothing || Δu isa AbstractZero
+                isnothing(_out) && return _out
+                _out .= 0
+                return _out
+            end
             return if _save_idxs isa Number
-                _out[_save_idxs] = Δ[_save_idxs]
-            elseif Δ isa Number
-                @. _out[_save_idxs] = Δ
-            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
-                    Δ isa AbstractArray
-                @. _out[_save_idxs] = Δ[_save_idxs]
+                _out[_save_idxs] = Δu[_save_idxs]
+            elseif Δu isa Number
+                @. _out[_save_idxs] = Δu
+            elseif Δu isa AbstractArray{<:AbstractArray} || Δu isa AbstractVectorOfArray ||
+                    Δu isa AbstractArray
+                @. _out[_save_idxs] = Δu[_save_idxs]
             elseif isnothing(_out)
                 _out
             else
-                @. _out[_save_idxs] = Δ.u[_save_idxs]
+                @. _out[_save_idxs] = Δu.u[_save_idxs]
             end
         end
 
@@ -2708,12 +2723,7 @@ function SciMLBase._concrete_solve_adjoint(
                 dp_full
             end
 
-            Δtunables = tunable_cotangent(p, solution_parameter_cotangent(Δ))
-
-            dp = Zygote.accum(
-                dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
-                    Δtunables
-            )
+            dp = Zygote.accum(dp, tunable_cotangent(p, solution_parameter_cotangent(Δ)))
 
             # Repack the flat tunable cotangent `dp` into the parameter's
             # structural tangent (a NamedTuple for MTKParameters; identity for
@@ -2806,8 +2816,9 @@ function SciMLBase._concrete_solve_adjoint(
             Δ
         end
         Δu = Δu isa AbstractThunk ? unthunk(Δu) : Δu
-        Δu isa ChainRulesCore.AbstractZero && (Δu = zero(sol.u))
+        (Δu === nothing || Δu isa ChainRulesCore.AbstractZero) && (Δu = zero(sol.u))
         dp = NonlinearSolveBase.nlls_solve_adjoint_dp(_prob, sol, p, Δu, save_idxs)
+        dp = Zygote.accum(dp, tunable_cotangent(p, solution_parameter_cotangent(Δ)))
         return if originator isa Union{
                 SciMLBase.TrackerOriginator, SciMLBase.ReverseDiffOriginator,
             }
@@ -2923,17 +2934,29 @@ function SciMLBase._concrete_solve_adjoint(
         # Δ = dg/dx or diffcache.dg_val
         # del g/del p = 0
         function df(_out, u, p, t, i)
+            Δu = if Δ isa Union{Number, AbstractArray}
+                Δ
+            elseif hasproperty(Δ, :u)
+                unthunk(Δ.u)
+            else
+                Δ
+            end
+            if Δu === nothing || Δu isa AbstractZero
+                isnothing(_out) && return _out
+                _out .= 0
+                return _out
+            end
             return if _save_idxs isa Number
-                _out[_save_idxs] = Δ[_save_idxs]
-            elseif Δ isa Number
-                @. _out[_save_idxs] = Δ
-            elseif Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
-                    Δ isa AbstractArray
-                @. _out[_save_idxs] = Δ[_save_idxs]
+                _out[_save_idxs] = Δu[_save_idxs]
+            elseif Δu isa Number
+                @. _out[_save_idxs] = Δu
+            elseif Δu isa AbstractArray{<:AbstractArray} || Δu isa AbstractVectorOfArray ||
+                    Δu isa AbstractArray
+                @. _out[_save_idxs] = Δu[_save_idxs]
             elseif isnothing(_out)
                 _out
             else
-                @. _out[_save_idxs] = Δ.u[_save_idxs]
+                @. _out[_save_idxs] = Δu.u[_save_idxs]
             end
         end
         # Convert UnconstrainedOptimizationAdjoint to SteadyStateAdjoint for the adjoint computation
@@ -2968,10 +2991,7 @@ function SciMLBase._concrete_solve_adjoint(
             dp, tunable_cotangent(p, _optsol_param_cotangent(Δ))
         end
 
-        dp = Zygote.accum(
-            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing :
-                Δtunables
-        )
+        dp = Zygote.accum(dp, Δtunables)
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
@@ -3057,9 +3077,7 @@ function SciMLBase._concrete_solve_adjoint(
             dp, tunable_cotangent(p, _optsol_param_cotangent(Δ))
         end
 
-        dp = Zygote.accum(
-            dp, (isnothing(Δtunables) || isempty(Δtunables)) ? nothing : Δtunables
-        )
+        dp = Zygote.accum(dp, Δtunables)
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
