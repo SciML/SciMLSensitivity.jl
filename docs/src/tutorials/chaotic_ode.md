@@ -123,7 +123,7 @@ tspan_attractor = (30.0, 50.0)
 u0 = rand(3)
 prob_init = ODE.ODEProblem(lorenz!, u0, tspan_init, p)
 sol_init = ODE.solve(prob_init, ODE.Tsit5())
-prob_attractor = ODE.ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+prob_attractor = ODE.ODEProblem(lorenz!, copy(sol_init.u[end]), tspan_attractor, p)
 
 g(u, p, t) = u[end]
 
@@ -140,7 +140,7 @@ Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4)
+sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4, saveat = 0.01)
 lss_problem = SMS.ForwardLSSProblem(sol_attractor, SMS.ForwardLSS(; g))
 resfw = SMS.shadow_forward(lss_problem)
 ```

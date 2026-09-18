@@ -59,24 +59,16 @@ moment equations and use these as our loss against the original series. We
 then plot the evolution of the means and variances to verify the fit. For example:
 
 ```@example sde
-arrsol = sol
-currp = rand(length(p))
 function predict(p)
-    if p == currp
-        return arrsol
-    end
-    global currp = p
     tmp_prob = SDE.remake(prob; p)
     ensembleprob = SDE.EnsembleProblem(tmp_prob)
-    tmp_sol = SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 1000)
-    global arrsol = Array(tmp_sol)
-    return arrsol
+    return Array(SDE.solve(ensembleprob, SDE.SOSRI(), saveat = 0.1, trajectories = 1000))
 end
 
 function loss(p)
     pred = predict(p)
-    sum(abs2, truemean - Statistics.mean(arrsol, dims = 3)) +
-    0.1sum(abs2, truevar - Statistics.var(arrsol, dims = 3))
+    sum(abs2, truemean - Statistics.mean(pred, dims = 3)) +
+    0.1sum(abs2, truevar - Statistics.var(pred, dims = 3))
 end
 
 function cb2(st, l)
@@ -98,9 +90,9 @@ We can then use `Optimization.solve` to fit the SDE.
 
 
 ```@example sde
-import Optimization as OPT, Enzyme, OptimizationOptimisers as OPO
+import Optimization as OPT, ForwardDiff, OptimizationOptimisers as OPO
 pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
-adtype = OPT.AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse))
+adtype = OPT.AutoForwardDiff()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, pinit)
 @time res = OPT.solve(optprob, OPO.Adam(0.05), callback = cb2, maxiters = 100)
