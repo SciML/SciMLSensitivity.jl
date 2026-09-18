@@ -25,3 +25,9 @@ jobs:
     name: "Documentation"
     uses: "SciML/.github/.github/workflows/documentation.yml@v1"
     secrets: "inherit"
+    with:
+      # This package's docs build is dominated by cold-depot precompilation and
+      # by executing the example blocks; a no-cache, coverage-instrumented run
+      # exceeded GitHub's 6-hour job limit.
+      cache: true
+      coverage: false
