@@ -45,7 +45,10 @@ ff(du, u, p, t) = model(u, p)
 prob = ODE.SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
 
 function predict(p)
-    Array(ODE.solve(prob, ODE.Tsit5(); p, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(); p, saveat = t,
+        sensealg = SMS.GaussAdjoint(
+            autojacvec = SMS.EnzymeVJP(
+                mode = Enzyme.set_runtime_activity(Enzyme.Reverse)))))
 end
 
 correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:1)[2:end])))

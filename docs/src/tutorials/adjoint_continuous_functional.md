@@ -47,7 +47,7 @@ end
 
 p = [1.5, 1.0, 3.0]
 prob = SMS.ODEForwardSensitivityProblem(f, [1.0; 1.0], (0.0, 10.0), p)
-sol = ODE.solve(prob, ODE.DP8())
+sol = ODE.solve(prob, ODE.Vern9())
 ```
 
 gives a continuous solution `sol(t)` with the derivative at each time point. This
@@ -84,7 +84,7 @@ To get the adjoint sensitivities, we call:
 
 ```@example continuousadjoint
 prob = ODE.ODEProblem(f, [1.0; 1.0], (0.0, 10.0), p)
-sol = ODE.solve(prob, ODE.DP8())
+sol = ODE.solve(prob, ODE.Vern9())
 res = SMS.adjoint_sensitivities(
     sol, ODE.Vern9(); dgdu_continuous = dg, g, abstol = 1e-8, reltol = 1e-8)
 ```

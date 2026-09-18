@@ -23,7 +23,7 @@ can be seen, for instance, when solving the [Lorenz system](https://en.wikipedia
 ```@example chaosode
 import OrdinaryDiffEq as ODE
 import SciMLSensitivity as SMS
-import Enzyme
+import Zygote
 import DifferentiationInterface as DI
 import Plots
 
@@ -120,10 +120,10 @@ p = [10.0, 28.0, 8 / 3]
 
 tspan_init = (0.0, 30.0)
 tspan_attractor = (30.0, 50.0)
-u0 = rand(3)
+u0 = [1.0, 0.0, 0.0]
 prob_init = ODE.ODEProblem(lorenz!, u0, tspan_init, p)
 sol_init = ODE.solve(prob_init, ODE.Tsit5())
-prob_attractor = ODE.ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+prob_attractor = ODE.ODEProblem(lorenz!, copy(sol_init.u[end]), tspan_attractor, p)
 
 g(u, p, t) = u[end]
 
@@ -133,14 +133,14 @@ function G(p)
         sensealg = SMS.ForwardLSS(; g))
     sum(getindex.(_sol.u, 3))
 end
-dp1 = DI.gradient(p -> G(p), DI.AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse)), p)
+dp1 = DI.gradient(p -> G(p), DI.AutoZygote(), p)
 ```
 
 Alternatively, we can define the `ForwardLSSProblem` and solve it
 via `shadow_forward` as follows:
 
 ```@example chaosode
-sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4)
+sol_attractor = ODE.solve(prob_attractor, ODE.Tsit5(), abstol = 1e-6, reltol = 1e-4, saveat = 0.01)
 lss_problem = SMS.ForwardLSSProblem(sol_attractor, SMS.ForwardLSS(; g))
 resfw = SMS.shadow_forward(lss_problem)
 ```
