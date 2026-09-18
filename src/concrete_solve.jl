@@ -2499,7 +2499,14 @@ function SciMLBase._concrete_solve_adjoint(
         save_idxs = nothing,
         kwargs...
     )
-    if haskey(kwargs, :callback)
+    _cb = haskey(kwargs, :callback) ? kwargs[:callback] : nothing
+    # `DiffEqBase.merge_problem_kwargs` inserts an empty `CallbackSet()` on Julia 1.12+
+    # during callback type erasure, so only treat a non-empty callback as user-supplied.
+    _has_callback = _cb !== nothing && !(
+        _cb isa SciMLBase.CallbackSet &&
+            isempty(_cb.continuous_callbacks) && isempty(_cb.discrete_callbacks)
+    )
+    if _has_callback
         error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
     else
         _prob = remake(prob; f = unwrapped_f(prob.f), u0, p)
