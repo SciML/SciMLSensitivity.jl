@@ -31,3 +31,8 @@ jobs:
       # exceeded GitHub's 6-hour job limit.
       cache: true
       coverage: false
+      # `chaotic_ode.md` diverges to Infs/NaNs under Julia 1.13 (`matrix
+      # contains Infs or NaNs` from the shadowing adjoint), which does not
+      # reproduce on 1.12. Pin the docs build to the version the examples are
+      # verified on; the 1.13 divergence is a separate issue.
+      julia-version: "1.12"
