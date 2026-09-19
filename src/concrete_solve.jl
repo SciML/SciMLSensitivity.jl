@@ -856,11 +856,30 @@ function SciMLBase._concrete_solve_adjoint(
 
     function adjoint_sensitivity_backpass(Δ)
         Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
+        Δu = Δ isa Union{Tangent, NamedTuple} ? unthunk.(tangent_field(Δ, :u)) : Δ
+        Δt = unthunk(tangent_field(Δ, :t))
+        # Saved time points that coincide with an event time move with the
+        # event time under parameter perturbation; the event correction in
+        # the reverse callbacks turns their cotangents into λ jumps.
+        dgdt_discrete = if Δt isa AbstractVector
+            function (t_event)
+                w = nothing
+                for i in eachindex(ts)
+                    ts[i] == t_event || continue
+                    x = unthunk(Δt[i])
+                    x isa Number || continue
+                    w = w === nothing ? x : w + x
+                end
+                return w
+            end
+        else
+            nothing
+        end
         function df_iip(_out, u, p, t, i)
             outtype = _out isa SubArray ?
                 ArrayInterface.parameterless_type(_out.parent) :
                 ArrayInterface.parameterless_type(_out)
-            Δu = Δ isa Tangent ? unthunk.(Δ.u) : Δ
+            (Δu === nothing || Δu isa AbstractZero) && return
             return if only_end
                 eltype(Δu) <: NoTangent && return
                 if (
@@ -897,9 +916,9 @@ function SciMLBase._concrete_solve_adjoint(
                 !Base.isconcretetype(eltype(Δ)) &&
                     ((Δu isa AbstractVectorOfArray ? Δu.u[i] : Δu[i]) isa NoTangent || eltype(Δu) <: NoTangent) && return
                 if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
-                        Δ isa Tangent
+                        Δ isa Union{Tangent, NamedTuple}
                     x = Δ isa AbstractVectorOfArray ? Δu.u[i] :
-                        (Δ isa Tangent ? Δu[i] : Δ[i])
+                        (Δ isa Union{Tangent, NamedTuple} ? Δu[i] : Δ[i])
                     if _save_idxs isa Number
                         _out[_save_idxs] = x[_save_idxs]
                     elseif _save_idxs isa Colon
@@ -950,12 +969,13 @@ function SciMLBase._concrete_solve_adjoint(
         end
 
         function df_oop(u, p, t, i; outtype = nothing)
+            (Δu === nothing || Δu isa AbstractZero) && return zero(u)
             if only_end
-                eltype(Δ) <: NoTangent && return
-                if (Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray) &&
-                        (Δ isa AbstractVectorOfArray ? length(Δ.u) : length(Δ)) == 1 && i == 1
+                eltype(Δu) <: NoTangent && return
+                if (Δu isa AbstractArray{<:AbstractArray} || Δu isa AbstractVectorOfArray) &&
+                        (Δu isa AbstractVectorOfArray ? length(Δu.u) : length(Δu)) == 1 && i == 1
                     # user did sol[end] on only_end
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[1] : Δ[1]
+                    x = Δu isa AbstractVectorOfArray ? Δu.u[1] : Δu[1]
                     if _save_idxs isa Number
                         vx = vec(x)
                         _out = adapt(outtype, @view(vx[_save_idxs]))
@@ -967,24 +987,25 @@ function SciMLBase._concrete_solve_adjoint(
                 else
                     Δ isa NoTangent && return
                     if _save_idxs isa Number
-                        x = vec(Δ)
+                        x = vec(Δu)
                         _out = adapt(outtype, @view(x[_save_idxs]))
                     elseif _save_idxs isa Colon
-                        _out = adapt(outtype, vec(Δ))
+                        _out = adapt(outtype, vec(Δu))
                     else
-                        x = vec(Δ)
+                        x = vec(Δu)
                         _out = adapt(outtype, @view(x[_save_idxs]))
                     end
                 end
             else
                 !Base.isconcretetype(eltype(Δ)) &&
-                    ((Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]) isa NoTangent || eltype(Δ) <: NoTangent) && return
-                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray
-                    x = Δ isa AbstractVectorOfArray ? Δ.u[i] : Δ[i]
+                    ((Δu isa AbstractVectorOfArray ? Δu.u[i] : Δu[i]) isa NoTangent || eltype(Δu) <: NoTangent) && return
+                if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
+                        Δ isa Union{Tangent, NamedTuple}
+                    x = Δu isa AbstractVectorOfArray ? Δu.u[i] : Δu[i]
                     if _save_idxs isa Number
                         _out = @view(x[_save_idxs])
                     elseif _save_idxs isa Colon
-                        _out = vec(x)
+                        _out = (x isa NoTangent || x isa ZeroTangent) ? vec(zero(u)) : vec(x)
                     else
                         _out = vec(@view(x[_save_idxs]))
                     end
@@ -1042,6 +1063,7 @@ function SciMLBase._concrete_solve_adjoint(
                 sol, alg, args...; t = ts,
                 dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ?
                     df_iip : df_oop,
+                dgdt_discrete,
                 sensealg,
                 callback = cb2, no_start = !save_start && _prob.tspan[1] ∈ ts,
                 kwargs_init...
@@ -1052,6 +1074,7 @@ function SciMLBase._concrete_solve_adjoint(
                 sol, alg, args...; t = ts,
                 dgdu_discrete = ArrayInterface.ismutable(eltype(state_values(sol))) ?
                     df_iip : df_oop,
+                dgdt_discrete,
                 sensealg,
                 callback = cb2, no_start = !save_start && _prob.tspan[1] ∈ ts,
                 initializealg = BrownFullBasicInit(),

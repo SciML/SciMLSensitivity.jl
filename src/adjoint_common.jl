@@ -1213,7 +1213,7 @@ end
 # handle discrete loss contributions
 function generate_callbacks(
         sensefun, dgdu, dgdp, λ, t, t0, callback, init_cb,
-        terminated = false, no_start = false
+        terminated = false, no_start = false; dgdt_discrete = nothing
     )
     if sensefun isa NILSASSensitivityFunction
         (; sensealg) = sensefun.S
@@ -1228,7 +1228,7 @@ function generate_callbacks(
     end
 
     reverse_cbs = setup_reverse_callbacks(
-        callback, sensealg, dgdu, dgdp, cur_time,
+        callback, sensealg, dgdu, dgdp, dgdt_discrete, cur_time,
         terminated
     )
 
