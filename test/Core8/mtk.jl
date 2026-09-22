@@ -282,6 +282,34 @@ let
     @test !(sensealg_mtk.autojacvec isa Bool)
 end
 
+# Same bug class on the `adjoint_sensitivities` entry point: it canonicalized `p` into
+# `tunables`/`repack` but handed the FULL parameter object to `inplace_vjp`, whose probes
+# call `zero(p)` / `similar(p)`. Neither exists for `MTKParameters`, so both the Enzyme and
+# the ReverseDiff probe failed before touching the rhs (with a "Potential performance
+# improvement omitted" warning per call) and every MTK adjoint without an explicit
+# `autojacvec` ran on the numerical VJP.
+let
+    @parameters k[1:128] = 0.01 .* ones(128)
+    @parameters c = 3.0 [tunable = false]
+    @variables x(t) = 1.0
+    @named sys = System([D(x) ~ -c * sum(k) * x], t)
+    sys = mtkcompile(sys)
+    prob = ODEProblem(sys, [], (0.0, 1.0))
+    sol = solve(prob, Tsit5(); abstol = 1.0e-8, reltol = 1.0e-8)
+    dg = (out, u, p, t, i) -> (out .= 1)
+
+    # the probes must succeed silently (the ReverseDiff probe warns on every failure)
+    du0, dp = @test_nowarn adjoint_sensitivities(
+        sol, Tsit5(); t = [1.0], dgdu_discrete = dg, sensealg = InterpolatingAdjoint()
+    )
+    du0_e, dp_e = adjoint_sensitivities(
+        sol, Tsit5(); t = [1.0], dgdu_discrete = dg,
+        sensealg = InterpolatingAdjoint(; autojacvec = EnzymeVJP())
+    )
+    @test du0 ≈ du0_e rtol = 1.0e-6
+    @test dp ≈ dp_e rtol = 1.0e-6
+end
+
 @testset "EnzymeVJP differentiates the bare rhs, not the ODEFunction container" begin
     # The `ODEFunction` container drags `sys`, `observed` and `initialization_data`
     # into Enzyme's shadow, which then has to be re-zeroed on every VJP call
