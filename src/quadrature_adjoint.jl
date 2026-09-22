@@ -99,7 +99,7 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false); no_start = false,
-        callback = CallbackSet()
+        callback = CallbackSet(), dgdt_discrete = nothing
     ) where {
         DG1, DG2, DG3, DG4, G,
         RetCB,
@@ -151,7 +151,8 @@ end
         _ = generate_callbacks(
         sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated, no_start
+        callback, init_cb, terminated, no_start;
+        dgdt_discrete
     )
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -578,6 +579,7 @@ function _adjoint_sensitivities(
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
         dgdp_continuous = nothing,
+        dgdt_discrete = nothing,
         g = nothing, no_start = false,
         abstol = sensealg.abstol, reltol = sensealg.reltol,
         callback = CallbackSet(),
@@ -588,13 +590,13 @@ function _adjoint_sensitivities(
         DAEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
-            callback, no_start
+            callback, no_start, dgdt_discrete
         )
     else
         ODEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
-            callback, no_start
+            callback, no_start, dgdt_discrete
         )
     end
     adj_sol = solve(

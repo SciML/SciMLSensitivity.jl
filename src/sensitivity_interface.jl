@@ -463,6 +463,7 @@ function _adjoint_sensitivities(
         t = nothing,
         dgdu_discrete = nothing, dgdp_discrete = nothing,
         dgdu_continuous = nothing, dgdp_continuous = nothing,
+        dgdt_discrete = nothing,
         g = nothing, no_start = false,
         abstol = 1.0e-6, reltol = 1.0e-3,
         checkpoints = current_time(sol),
@@ -484,7 +485,7 @@ function _adjoint_sensitivities(
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints,
-            callback, no_start,
+            callback, no_start, dgdt_discrete,
             abstol, reltol, kwargs...
         )
 
@@ -513,7 +514,7 @@ function _adjoint_sensitivities(
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints,
-            callback, no_start,
+            callback, no_start, dgdt_discrete,
             abstol, reltol, kwargs...
         )
     else

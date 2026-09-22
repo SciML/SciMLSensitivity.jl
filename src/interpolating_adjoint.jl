@@ -321,6 +321,7 @@ end
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
         callback = CallbackSet(), no_start = false,
+        dgdt_discrete = nothing,
         reltol = nothing, abstol = nothing,
         kwargs...
     ) where {DG1, DG2, DG3, DG4, G, RetCB}
@@ -408,7 +409,8 @@ end
         sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated, no_start
+        callback, init_cb, terminated, no_start;
+        dgdt_discrete
     )
     z0 = vec(zero(λ))
     original_mm = sol.prob.f.mass_matrix

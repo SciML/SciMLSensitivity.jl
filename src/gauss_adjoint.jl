@@ -300,6 +300,7 @@ end
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
         callback = CallbackSet(), no_start = false,
+        dgdt_discrete = nothing,
         reltol = nothing, abstol = nothing, kwargs...
     ) where {
         DG1, DG2, DG3, DG4, G,
@@ -376,7 +377,8 @@ end
         _ = generate_callbacks(
         sense, dgdu_discrete, dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated, no_start
+        callback, init_cb, terminated, no_start;
+        dgdt_discrete
     )
 
     jac_prototype = sol.prob.f.jac_prototype
@@ -736,6 +738,7 @@ function _adjoint_sensitivities(
         dgdp_discrete = nothing,
         dgdu_continuous = nothing,
         dgdp_continuous = nothing,
+        dgdt_discrete = nothing,
         g = nothing,
         abstol = 1.0e-6, reltol = 1.0e-3,
         checkpoints = current_time(sol),
@@ -802,7 +805,7 @@ function _adjoint_sensitivities(
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints,
-            callback, no_start,
+            callback, no_start, dgdt_discrete,
             abstol, reltol, kwargs...
         )
     elseif sol.prob isa SciMLBase.AbstractDAEProblem
@@ -813,7 +816,7 @@ function _adjoint_sensitivities(
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
             checkpoints,
-            callback, no_start,
+            callback, no_start, dgdt_discrete,
             abstol, reltol, kwargs...
         )
     else

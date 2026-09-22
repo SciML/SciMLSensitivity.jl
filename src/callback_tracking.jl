@@ -320,11 +320,17 @@ vjps as described in https://arxiv.org/pdf/1905.10403.pdf Equation 13.
 
 For more information, see https://github.com/SciML/SciMLSensitivity.jl/issues/4
 """
-function setup_reverse_callbacks(cb, sensealg, dgdu, dgdp, cur_time, terminated)
-    return setup_reverse_callbacks(CallbackSet(cb), sensealg, dgdu, dgdp, cur_time, terminated)
+function setup_reverse_callbacks(
+        cb, sensealg, dgdu, dgdp, dgdt_discrete, cur_time,
+        terminated
+    )
+    return setup_reverse_callbacks(
+        CallbackSet(cb), sensealg, dgdu, dgdp, dgdt_discrete,
+        cur_time, terminated
+    )
 end
 function setup_reverse_callbacks(
-        cb::CallbackSet, sensealg, dgdu, dgdp, cur_time,
+        cb::CallbackSet, sensealg, dgdu, dgdp, dgdt_discrete, cur_time,
         terminated
     )
     cb = CallbackSet(
@@ -333,6 +339,7 @@ function setup_reverse_callbacks(
             (sensealg,),
             (dgdu,),
             (dgdp,),
+            (dgdt_discrete,),
             (cur_time,), (terminated,)
         )...,
         reverse(
@@ -340,7 +347,7 @@ function setup_reverse_callbacks(
                 cb.discrete_callbacks,
                 (sensealg,),
                 (dgdu,),
-                (dgdp,), (cur_time,), (terminated,)
+                (dgdp,), (dgdt_discrete,), (cur_time,), (terminated,)
             )
         )...
     )
@@ -354,11 +361,15 @@ function _setup_reverse_callbacks(
         }, sensealg,
         dgdu,
         dgdp,
+        dgdt_discrete,
         loss_ref, terminated
     )
     affect = cb isa ContinuousCallback && cb.affect! === nothing ?
         cb.affect_neg! : cb.affect!
-    return _setup_reverse_callbacks(cb, affect, sensealg, dgdu, dgdp, loss_ref, terminated)
+    return _setup_reverse_callbacks(
+        cb, affect, sensealg, dgdu, dgdp, dgdt_discrete,
+        loss_ref, terminated
+    )
 end
 
 function _setup_reverse_callbacks(
@@ -368,6 +379,7 @@ function _setup_reverse_callbacks(
         },
         affect::TrackedAffect, sensealg, dgdu,
         dgdp,
+        dgdt_discrete,
         loss_ref, terminated
     )
     if cb isa Union{ContinuousCallback, VectorContinuousCallback}
@@ -540,6 +552,14 @@ function _setup_reverse_callbacks(
             implicit_correction!(Lu_left, dλ, dy_left, correction)
             dλ .+= Lu_left - Lu_right
 
+            if dgdt_discrete !== nothing
+                # explicit ∂L/∂t_event contributions (e.g. losses through
+                # sol.t[end]) move with the event time under parameter
+                # perturbation: dλ += (∂L/∂t_event) * dτ/du_left.
+                w = dgdt_discrete(integrator.t)
+                w === nothing || (dλ .+= w .* correction.gu_val)
+            end
+
             if cb.save_positions[1] == true
                 # if the callback saved the first position, we need to implicitly correct this value as well
                 loss_indx = correction.cur_time[]
@@ -579,6 +599,7 @@ function _setup_reverse_callbacks(
         affect, sensealg,
         dgdu,
         dgdp,
+        dgdt_discrete,
         loss_ref, terminated
     )
     # return cb if affect is not a TrackedAffect

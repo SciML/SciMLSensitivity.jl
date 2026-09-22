@@ -1,7 +1,8 @@
 using OrdinaryDiffEq, Zygote, Reactant, Mooncake
 using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
 using SciMLSensitivity: MooncakeVJP
-using SciMLBase: terminate!
+using SciMLBase: terminate!, EnsembleProblem, EnsembleSerial, EnsembleThreads
+import RecursiveArrayTools
 
 abstol = 1.0e-12
 reltol = 1.0e-12
@@ -391,5 +392,72 @@ println("Continuous Callbacks")
         sensealg = GaussAdjoint(autojacvec = MooncakeVJP())
         gZy = Zygote.gradient(p -> loss(p, cb, sensealg), p)[1]
         @test gFD ≈ gZy rtol = 1.0e-10
+    end
+    @testset "termination time loss" begin
+        # A saved time point coinciding with an event moves with the event time
+        # under parameter perturbation (DifferentialEquations.jl#1149).
+        foop(u, p, t) = [p[1] * u[1], u[1]^2 + 1]
+        u0 = [1.0, 0.0]
+        tspan = (0.0, 1.0)
+        p = [1.0]
+        cb = ContinuousCallback(
+            (u, t, integrator) -> 0.5 - u[2], terminate!;
+            save_positions = (false, true)
+        )
+        prob = ODEProblem(foop, u0, tspan, p)
+
+        function loss_tend(p; sensealg)
+            sol = solve(
+                remake(prob; p), Tsit5();
+                callback = cb, abstol, reltol, sensealg
+            )
+            return sol.t[end]
+        end
+
+        dstuff = ForwardDiff.gradient(p -> loss_tend(p; sensealg = nothing), p)
+        @info dstuff
+
+        for sensealg in (
+                InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
+                GaussAdjoint(autojacvec = ReverseDiffVJP()),
+                BacksolveAdjoint(autojacvec = ReverseDiffVJP()),
+                QuadratureAdjoint(autojacvec = ReverseDiffVJP()),
+            )
+            @test Zygote.gradient(p -> loss_tend(p; sensealg), p)[1] ≈ dstuff rtol = 1.0e-5
+        end
+
+        # EnsembleSolution: per-trajectory cotangents arrive as NamedTuples
+        # (DifferentialEquations.jl#1149). Zygote segfaults differentiating
+        # ensemble solves on Julia 1.12+ (#1325), and the NamedTuple cotangent
+        # path in `vofa_u_adjoint` needs a RecursiveArrayTools release carrying
+        # the structural-tangent fix.
+        ext = Base.get_extension(RecursiveArrayTools, :RecursiveArrayToolsZygoteExt)
+        rat_nt_tangents = try
+            ext.vofa_u_adjoint(
+                Any[(; u = Float64[1.0])],
+                RecursiveArrayTools.VectorOfArray([Float64[1.0]])
+            ) isa NamedTuple
+        catch
+            false
+        end
+        if VERSION < v"1.12" && rat_nt_tangents
+            prob_func(prob, ctx) = remake(prob; u0 = (1 + ctx.sim_id / 10) .* prob.u0)
+            for ensemblealg in (EnsembleSerial(), EnsembleThreads())
+                function loss_ensemble(p)
+                    eprob = EnsembleProblem(remake(prob; p); prob_func)
+                    esol = solve(
+                        eprob, Tsit5(), ensemblealg;
+                        callback = cb, abstol, reltol,
+                        sensealg = GaussAdjoint(autojacvec = ReverseDiffVJP()),
+                        trajectories = 3
+                    )
+                    return sum(s -> s.t[end], esol.u)
+                end
+
+                gFD = ForwardDiff.gradient(loss_ensemble, p)
+                gZy = Zygote.gradient(loss_ensemble, p)[1]
+                @test gZy ≈ gFD rtol = 1.0e-5
+            end
+        end
     end
 end

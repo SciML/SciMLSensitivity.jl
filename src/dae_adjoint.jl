@@ -296,6 +296,7 @@ supported) and its interpolant must support first-derivative evaluation
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
         callback = CallbackSet(), no_start = false,
+        dgdt_discrete = nothing,
         reltol = nothing, abstol = nothing,
         kwargs...
     ) where {DG1, DG2, DG3, DG4, G, RetCB}
@@ -304,7 +305,8 @@ supported) and its interpolant must support first-derivative evaluation
     adj_prob, cb, rcb = _dae_adjoint_problem(
         sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g;
-        withgrad = true, attach_callback = true, callback, no_start
+        withgrad = true, attach_callback = true, callback, no_start,
+        dgdt_discrete
     )
     if RetCB
         return adj_prob, rcb
@@ -322,12 +324,13 @@ end
         dgdp_continuous::DG4 = nothing,
         g::G = nothing,
         ::Val{RetCB} = Val(false); no_start = false,
-        callback = CallbackSet()
+        callback = CallbackSet(), dgdt_discrete = nothing
     ) where {DG1, DG2, DG3, DG4, G, RetCB}
     adj_prob, cb, rcb = _dae_adjoint_problem(
         sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g;
-        withgrad = false, attach_callback = true, callback, no_start
+        withgrad = false, attach_callback = true, callback, no_start,
+        dgdt_discrete
     )
     if RetCB
         return adj_prob, rcb
@@ -348,6 +351,7 @@ end
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
         callback = CallbackSet(), no_start = false,
+        dgdt_discrete = nothing,
         reltol = nothing, abstol = nothing, kwargs...
     ) where {DG1, DG2, DG3, DG4, G, RetCB}
     ischeckpointing(sensealg, sol) &&
@@ -357,7 +361,8 @@ end
     adj_prob, cb, rcb = _dae_adjoint_problem(
         sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g;
-        withgrad = false, attach_callback = !RetCB, callback, no_start
+        withgrad = false, attach_callback = !RetCB, callback, no_start,
+        dgdt_discrete
     )
     return adj_prob, cb, rcb
 end
@@ -365,7 +370,7 @@ end
 function _dae_adjoint_problem(
         sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
         dgdu_continuous, dgdp_continuous, g;
-        withgrad, attach_callback, callback, no_start
+        withgrad, attach_callback, callback, no_start, dgdt_discrete = nothing
     )
     dgdu_discrete === nothing && dgdu_continuous === nothing && g === nothing &&
         error("Either `dgdu_discrete`, `dgdu_continuous`, or `g` must be specified.")
@@ -443,7 +448,8 @@ function _dae_adjoint_problem(
     init_cb = (discrete || dgdu_discrete !== nothing)
     cb, rcb, _ = generate_callbacks(
         sense, dgdu_discrete, dgdp_discrete,
-        λ, t, tspan[2], callback, init_cb, terminated, no_start
+        λ, t, tspan[2], callback, init_cb, terminated, no_start;
+        dgdt_discrete
     )
 
     len = withgrad ? 2 * numstates + numparams : 2 * numstates

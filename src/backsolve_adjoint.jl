@@ -131,6 +131,7 @@ end
         ::Val{RetCB} = Val(false);
         checkpoints = current_time(sol),
         callback = CallbackSet(),
+        dgdt_discrete = nothing,
         z0 = nothing,
         M = nothing,
         nilss = nothing,
@@ -211,7 +212,8 @@ end
         sense, dgdu_discrete,
         dgdp_discrete,
         λ, t, tspan[2],
-        callback, init_cb, terminated
+        callback, init_cb, terminated;
+        dgdt_discrete
     )
     checkpoints = ischeckpointing(sensealg, sol) ? checkpoints : nothing
     if checkpoints !== nothing
