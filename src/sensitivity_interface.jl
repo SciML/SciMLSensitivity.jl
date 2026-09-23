@@ -410,8 +410,12 @@ function adjoint_sensitivities(
         end
 
         _sensealg = if isinplace(sol.prob)
+            # probe with the canonical tunables (as the `solve` rule does), not the full
+            # parameter object: the probes call `zero(p)` / `similar(p)`, which structured
+            # parameters such as `MTKParameters` do not support, and would otherwise always
+            # fall back to the numerical VJP
             setvjp(
-                sensealg, inplace_vjp(prob, state_values(prob), p, verbose, repack)
+                sensealg, inplace_vjp(prob, state_values(prob), tunables, verbose, repack)
             )
         elseif has_cb
             setvjp(sensealg, ReverseDiffVJP())
