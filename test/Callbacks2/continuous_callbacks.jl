@@ -3,6 +3,7 @@ using SciMLSensitivity, Test, ForwardDiff, FiniteDiff
 using SciMLSensitivity: MooncakeVJP
 using SciMLBase: terminate!, EnsembleProblem, EnsembleSerial, EnsembleThreads
 import RecursiveArrayTools
+using StaticArrays: MVector
 
 abstol = 1.0e-12
 reltol = 1.0e-12
@@ -459,5 +460,25 @@ println("Continuous Callbacks")
                 @test gZy ≈ gFD rtol = 1.0e-5
             end
         end
+    end
+
+    @testset "static mutable state" begin
+        function ball!(du, u, p, t)
+            du[1] = u[2]
+            du[2] = -p[1]
+            return nothing
+        end
+        cb = ContinuousCallback(
+            (u, t, integrator) -> u[1],
+            integrator -> (integrator.u[2] = -integrator.p[2] * integrator.u[2])
+        )
+        prob = ODEProblem(ball!, MVector(1.0, 0.0), (0.0, 2.0), [9.81, 0.7]; callback = cb)
+        function loss_static(u0; sensealg)
+            sol = solve(remake(prob; u0), Tsit5(); saveat = 0.25, abstol, reltol, sensealg)
+            return sum(abs2, Array(sol)[1, :])
+        end
+        fd = FiniteDiff.finite_difference_gradient(u -> loss_static(u; sensealg = nothing), prob.u0)
+        sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP())
+        @test Zygote.gradient(u -> loss_static(u; sensealg), prob.u0)[1] ≈ fd rtol = 1.0e-4
     end
 end
