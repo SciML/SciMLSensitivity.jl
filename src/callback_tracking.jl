@@ -902,7 +902,7 @@ function dgdt(dy, correction, sensealg, y, integrator, tprev, event_idxs)
 
     p, t = integrator.p, integrator.t
 
-    fakeinteg = FakeIntegrator([x for x in y], p, t, tprev)
+    fakeinteg = FakeIntegrator(copy(y), p, t, tprev)
 
     # derivative and gradient of condition with respect to time and state, respectively
     gt.u = y
