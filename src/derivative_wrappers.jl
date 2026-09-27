@@ -175,6 +175,17 @@ function jacobian!(
     return nothing
 end
 
+function _adjoint_param_jacobian(S, y, t)
+    (; pJ, pf, tunables, f_cache, sensealg, paramjac_config, sol) = S
+    pf.t = t
+    pf.u = y
+    if DiffEqBase.isinplace(sol.prob)
+        jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+        return pJ
+    end
+    return jacobian(pf, tunables, sensealg)
+end
+
 function derivative!(
         df::AbstractArray{<:Number}, f,
         x::Number,
@@ -573,6 +584,15 @@ function _vecjacobian!(
         end
     end
     return
+end
+
+function _vecjacobian(
+        y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
+    ) where {TS <: SensitivityFunction}
+    dλ = similar(y, promote_type(eltype(y), eltype(λ)))
+    _vecjacobian!(dλ, y, λ, p, t, S, isautojacvec, dgrad, dy, W)
+    # Preserve immutable state containers after using a mutable Jacobian product buffer.
+    return dy, map((_, value) -> value, y, dλ), dgrad
 end
 
 const TRACKERVJP_NOTHING_MESSAGE = """

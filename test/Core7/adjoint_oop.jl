@@ -282,6 +282,7 @@ for galg in (
         GaussAdjoint(autojacvec = ZygoteVJP()),
         GaussAdjoint(autojacvec = false),
         GaussKronrodAdjoint(autojacvec = EnzymeVJP()),
+        QuadratureAdjoint(abstol = 1.0e-12, reltol = 1.0e-12, autojacvec = false),
     )
     du0_g, dp_g = adjoint_sensitivities(
         sol_dense, Tsit5(); t = collect(tsteps), dgdu_discrete = dg_disc_oop,
