@@ -1,4 +1,5 @@
 using SciMLSensitivity, OrdinaryDiffEq, StaticArrays, QuadGK, ForwardDiff, Zygote
+using SciMLBase
 using Test
 
 ##StaticArrays rrule
@@ -337,3 +338,74 @@ du0_q, dp_q = Zygote.gradient(
 )
 @test du0_g ≈ du0_q rtol = 1.0e-6
 @test dp_g ≈ dp_q rtol = 1.0e-6
+
+## Dense finite-difference parameter Jacobians must honor `diff_type` and the
+## RHS element type (PR #1686 review). Analytical terminal derivatives are exact.
+
+@testset "Respect central parameter differences" begin
+    # At p = 1 the forward difference of p + 1e8*(p-1)^2 is catastrophically wrong,
+    # while the default central scheme recovers the exact derivative 1.
+    f_central(u, p, t) = [p[1] + 1.0e8 * (p[1] - 1)^2]
+    dg_central(out, u, p, t, i) = fill!(out, 1.0)
+    sol_central = solve(
+        ODEProblem(f_central, [0.0], (0.0, 1.0), [1.0]), Tsit5();
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    for A in (GaussAdjoint, QuadratureAdjoint)
+        alg = A(autojacvec = false, autodiff = false, diff_type = Val{:central})
+        du, dp = adjoint_sensitivities(
+            sol_central, Tsit5(); sensealg = alg, t = [1.0],
+            dgdu_discrete = dg_central, abstol = 1.0e-10, reltol = 1.0e-10
+        )
+        @test only(dp) ≈ 1.0 rtol = 1.0e-6
+    end
+end
+
+@testset "Dense FD param Jacobian with complex state" begin
+    # Loss imag(u(1)[1]) for f = [im*p[1]] has exact parameter derivative 1.
+    f_cplx(u, p, t) = [im * p[1]]
+    dg_cplx(out, u, p, t, i) = fill!(out, im)
+    sol_cplx = solve(
+        ODEProblem(f_cplx, ComplexF64[0], (0.0, 1.0), [0.3]), Tsit5();
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    for A in (GaussAdjoint, QuadratureAdjoint)
+        du, dp = adjoint_sensitivities(
+            sol_cplx, Tsit5();
+            sensealg = A(autojacvec = false, autodiff = false),
+            t = [1.0], dgdu_discrete = dg_cplx, abstol = 1.0e-10, reltol = 1.0e-10
+        )
+        @test only(dp) ≈ 1.0 rtol = 1.0e-6
+    end
+end
+
+@testset "Dense FD param Jacobian with mixed real precision" begin
+    # Float64 state / Float32 parameters; exact terminal parameter derivative is 1.
+    f_mixed(u, p, t) = [Float64(p[1])]
+    dg_mixed(out, u, p, t, i) = fill!(out, 1.0)
+    sol_mixed = solve(
+        ODEProblem(f_mixed, Float64[0], (0.0, 1.0), Float32[0.3]), Tsit5();
+        abstol = 1.0e-12, reltol = 1.0e-12
+    )
+    for A in (GaussAdjoint, QuadratureAdjoint)
+        du, dp = adjoint_sensitivities(
+            sol_mixed, Tsit5();
+            sensealg = A(autojacvec = false, autodiff = false),
+            t = [1.0], dgdu_discrete = dg_mixed, abstol = 1.0e-10, reltol = 1.0e-10
+        )
+        @test only(dp) ≈ 1 rtol = 1.0e-5
+    end
+end
+
+@testset "Allocating out-of-place param Jacobian honors diff_type" begin
+    # Immutable states take the allocating `jacobian` path in
+    # `_adjoint_param_jacobian`. That helper must not hard-code forward differences.
+    f_alloc(u, p, t) = @SVector [p[1] + 1.0e8 * (p[1] - 1)^2]
+    pf = SciMLBase.ParamJacobianWrapper(f_alloc, 0.0, @SVector [0.0])
+    p_alloc = @SVector [1.0]
+    for A in (GaussAdjoint, QuadratureAdjoint)
+        alg = A(autojacvec = false, autodiff = false, diff_type = Val{:central})
+        J = SciMLSensitivity.jacobian(pf, p_alloc, alg)
+        @test only(J) ≈ 1.0 rtol = 1.0e-6
+    end
+end
