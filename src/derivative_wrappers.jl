@@ -134,14 +134,21 @@ function jacobian(
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
-        T = if f isa ParamGradientWrapper
+        # Match the RHS / state element type for parameter Jacobians. Using only
+        # `eltype(x)` rejects complex states with real parameters and mixed real
+        # precisions that the cached FiniteDiff path already supports.
+        T = if f isa Union{
+                ParamGradientWrapper,
+                SciMLBase.ParamJacobianWrapper,
+                RODEParamJacobianWrapper,
+            }
             promote_type(eltype(f.u), eltype(x))
         elseif f isa UGradientWrapper
             promote_type(eltype(f.p), eltype(x))
         else
-            T = eltype(x)
+            eltype(x)
         end
-        J = FiniteDiff.finite_difference_jacobian(f, x, Val(:forward), T)
+        J = FiniteDiff.finite_difference_jacobian(f, x, diff_type(alg), T)
     end
     return J
 end
@@ -179,7 +186,7 @@ function _adjoint_param_jacobian(S, y, t)
     (; pJ, pf, tunables, f_cache, sensealg, paramjac_config, sol) = S
     pf.t = t
     pf.u = y
-    if DiffEqBase.isinplace(sol.prob) || ismutabletype(typeof(f_cache))
+    if SciMLBase.isinplace(sol.prob) || ismutabletype(typeof(f_cache))
         jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
         return pJ
     end
