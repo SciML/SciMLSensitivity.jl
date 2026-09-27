@@ -280,6 +280,7 @@ sol_dense = solve(prob, Tsit5(), abstol = 1.0e-14, reltol = 1.0e-14)
 for galg in (
         GaussAdjoint(autojacvec = EnzymeVJP()),
         GaussAdjoint(autojacvec = ZygoteVJP()),
+        GaussAdjoint(autojacvec = false),
         GaussKronrodAdjoint(autojacvec = EnzymeVJP()),
     )
     du0_g, dp_g = adjoint_sensitivities(
