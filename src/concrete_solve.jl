@@ -476,11 +476,8 @@ function SciMLBase._concrete_solve_adjoint(
         originator::SciMLBase.ADOriginator, args...;
         verbose = SciMLLogging.Standard(), kwargs...
     )
-    if haskey(kwargs, :callback)
-        has_cb = kwargs[:callback] !== nothing
-    else
-        has_cb = false
-    end
+    callback = get(kwargs, :callback, nothing)
+    has_cb = callback !== nothing && !(callback isa CallbackSet && isempty(callback))
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
