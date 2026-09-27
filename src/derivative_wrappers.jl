@@ -179,7 +179,7 @@ function _adjoint_param_jacobian(S, y, t)
     (; pJ, pf, tunables, f_cache, sensealg, paramjac_config, sol) = S
     pf.t = t
     pf.u = y
-    if DiffEqBase.isinplace(sol.prob)
+    if DiffEqBase.isinplace(sol.prob) || ismutabletype(typeof(f_cache))
         jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
         return pJ
     end
