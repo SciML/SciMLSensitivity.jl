@@ -730,34 +730,16 @@ function SciMLBase._concrete_solve_adjoint(
             kwargs_init...
         )
 
-        # Reverse: gradient of `sum(new_u0)` w.r.t. tunables, treating the
-        # initialization map `tunables -> new_u0` as a function. The
-        # OVERDETERMINED case has no contribution. The non-OVERDETERMINED
-        # case dispatches to the AD backend that triggered this rrule via
-        # `_init_originator_gradient`, so Mooncake-driven AD does not pull
-        # in Zygote at this point.
+        # Do not accumulate a separate initialization-map VJP into `dp`.
+        # Continuous adjoints already return `du0` (λ at t0); outer AD composes
+        # that through remake / `u0(p)` (see #1582 for `Initial` parameters).
+        # The previous `init_loss = sum(nu0)` seed added an extra `∂sum(u0)/∂p`
+        # on top of that path and double-counted (#1663). OVERDETERMINED still
+        # contributes zero so `Zygote.accum` stays well-typed.
         igs = if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
             zero(tunables)
         else
-            init_loss = let _prob = _prob, repack = repack,
-                    initializealg = initializealg, nlsolve_alg = nlsolve_alg,
-                    sensealg = sensealg, kwargs_init = kwargs_init
-                function (t)
-                    new_prob_t = remake(_prob, p = repack(t), lazy_initialization = true)
-                    nu0, _,
-                        _ = SciMLBase.get_initial_values(
-                        new_prob_t, new_prob_t, new_prob_t.f, initializealg,
-                        Val(isinplace(new_prob_t));
-                        sensealg = SteadyStateAdjoint(
-                            autojacvec = sensealg.autojacvec,
-                        ),
-                        nlsolve_alg,
-                        kwargs_init...,
-                    )
-                    return sum(nu0)
-                end
-            end
-            _init_originator_gradient(originator, init_loss, tunables)
+            nothing
         end
 
         igs, new_u0, new_p, SciMLBase.CheckInit()

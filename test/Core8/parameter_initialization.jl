@@ -122,6 +122,46 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     end
 end
 
+@testset "Continuous adjoint initialization cotangents #1663" begin
+    @parameters α1663 β1663
+    @variables y1_1663(t) y2_1663(t) y3_1663(t)
+    eqs1663 = [
+        D(y1_1663) ~ -(α1663 + β1663) * y1_1663 + y2_1663,
+        D(y2_1663) ~ -(α1663 + β1663) * y2_1663 + y3_1663,
+        D(y3_1663) ~ -(α1663 + β1663) * y3_1663,
+    ]
+    sys1663 = mtkcompile(
+        System(
+            eqs1663, t; name = :sys1663,
+            initial_conditions = [
+                y1_1663 => α1663 * cos(0.1), y2_1663 => α1663 * cos(0.2),
+                y3_1663 => α1663 * cos(0.3), α1663 => 1.2, β1663 => 2.1,
+            ],
+        )
+    )
+    prob1663 = ODEProblem(sys1663, nothing, (0.0, 1.0))
+    set_p1663 = SII.setp_oop(prob1663, [α1663, β1663])
+    p1663 = [1.2, 2.1]
+    sensealgs1663 = (
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs1663
+        loss = ps -> sum(
+            Array(
+                solve(
+                    remake(prob1663; p = set_p1663(prob1663, ps)), Tsit5();
+                    saveat = 0.1, abstol = 1.0e-8, reltol = 1.0e-8, sensealg,
+                )
+            )[:, 1]
+        )
+        fd = ForwardDiff.gradient(loss, p1663)
+        zg = only(Zygote.gradient(loss, p1663))
+        @test zg ≈ fd rtol = 1.0e-3
+    end
+end
+
 function autodespecialized_rhs!(du, u, p, t)
     du[1] = -p[1] * u[1]
     return nothing
