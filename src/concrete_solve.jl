@@ -438,30 +438,37 @@ function _initialization_is_dae(prob)
 end
 
 """
-    _discrete_observation_cotangent(Δu, ts, t0, u0)
+    _differential_init_seed(prob, du0)
 
-Cotangent of `u` at the discrete observation that lands on `t0`, or `nothing`
-if `t0` is not among the saved times / has no finite cotangent. Used to cancel
-the spurious `(∂u0_init/∂p)ᵀ g_u(t0)` term that mass-matrix DAE continuous
-adjoints put into `dp`.
+Init-map VJP seed for continuous adjoints. For ODEs this is `du0 = λ(t0)`.
+For semi-explicit / mass-matrix DAEs the algebraic IC dependence `z0(p)` is
+already accounted for by the discrete observation jump into `dp`
+(`adjoint_common.jl`), so only the differential components of `du0` must seed
+the init VJP: `(∂x0_init/∂p)ᵀ λ_x(t0)`. Algebraic entries of the seed are
+zeroed (via zero mass-matrix columns, or `differential_vars` on a
+`DAEProblem`).
 """
-function _discrete_observation_cotangent(Δu, ts, t0, u0)
-    (Δu === nothing || Δu isa AbstractZero) && return nothing
-    for i in eachindex(ts)
-        ts[i] == t0 || continue
-        x = if Δu isa AbstractVectorOfArray
-            Δu.u[i]
-        elseif Δu isa AbstractArray{<:AbstractArray}
-            Δu[i]
-        elseif Δu isa AbstractArray && ndims(Δu) >= 2
-            adapt(ArrayInterface.parameterless_type(u0), selectdim(Δu, ndims(Δu), i))
-        else
-            return nothing
+function _differential_init_seed(prob, du0)
+    _initialization_is_dae(prob) || return du0
+    seed = copy(du0)
+    if prob isa SciMLBase.AbstractDAEProblem
+        dvars = prob.differential_vars
+        if dvars !== nothing
+            for i in eachindex(seed)
+                dvars[i] || (seed[i] = zero(eltype(seed)))
+            end
+            return seed
         end
-        (x isa AbstractZero || x isa NoTangent) && return nothing
-        return reshape(vec(x), size(u0))
     end
-    return nothing
+    mm = prob.f.mass_matrix
+    if mm isa AbstractMatrix && !(mm isa UniformScaling) && !(mm isa Tuple)
+        for j in axes(mm, 2)
+            if all(iszero, @view(mm[:, j]))
+                seed[j] = zero(eltype(seed))
+            end
+        end
+    end
+    return seed
 end
 
 """
@@ -780,8 +787,9 @@ function SciMLBase._concrete_solve_adjoint(
         # and Initials), not a ones-seeded `sum(u0)` VJP. That VJP is deferred
         # into the reverse pass where `du0` is known; the returned `u0` cotangent
         # is then zeroed so remake does not count the same dependency twice
-        # (#1663). Mass-matrix DAEs instead seed with `-g_u(t0)` to cancel a
-        # spurious `(∂u0_init/∂p)ᵀ g_u(t0)` term in `dp`. OVERDETERMINED keeps
+        # (#1663). For semi-explicit DAEs, algebraic `z0(p)` already enters `dp`
+        # via the observation jump, so the seed is `du0` with algebraic
+        # components zeroed (`λ_x(t0)ᵀ·∂x0/∂p` only). OVERDETERMINED keeps
         # `zero(tunables)` for `Zygote.accum`.
         init_vjp = if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
             (; mode = :overdetermined, igs = zero(tunables))
@@ -1130,94 +1138,83 @@ function SciMLBase._concrete_solve_adjoint(
         igs = nothing
         igs_initials = nothing
 
-        # Deferred initialization VJP: dL/dp += (∂u0_init/∂p)ᵀ du0 over the full
+        # Deferred initialization VJP: dL/dp += (∂u0_init/∂p)ᵀ seed over the full
         # parameter object (Tunable + Initials). Zero the returned u0 cotangent so
-        # outer remake does not count the same u0(p) path again.
+        # outer remake does not count the same u0(p) path again — but only when
+        # this VJP actually ran.
         if init_vjp.mode === :overdetermined
             igs = init_vjp.igs
         elseif init_vjp.mode === :du0_seeded
             cfg = init_vjp
-            # Seed for the init-map VJP:
-            # - ODEs: `du0 = λ(t0)` (the correct `(∂u0_init/∂p)ᵀ λ` term).
-            # - Mass-matrix / fully-implicit DAEs: the continuous adjoint already
-            #   propagates algebraic constraints into `dp`, but overcounts by
-            #   `(∂u0_init/∂p)ᵀ g_u(t0)` when t0 is observed. Seed with
-            #   `-g_u(t0)` to cancel that spurious term.
-            seed = if _initialization_is_dae(cfg._prob)
-                gu0 = _discrete_observation_cotangent(
-                    Δu, ts, cfg._prob.tspan[1], u0
-                )
-                gu0 === nothing ? nothing : .-gu0
+            # ODEs: seed = du0 = λ(t0). Semi-explicit DAEs: seed = du0 with
+            # algebraic components zeroed so only λ_x(t0)ᵀ·∂x0/∂p is added;
+            # algebraic z0(p) already enters dp through the observation jump.
+            seed = _differential_init_seed(cfg._prob, du0)
+            p_init = cfg.p
+            tun_init, trepack_init, _ = if p_init === nothing ||
+                    p_init isa SciMLBase.NullParameters
+                p_init, identity, nothing
+            elseif isscimlstructure(p_init)
+                canonicalize(Tunable(), p_init)
+            elseif isfunctor(p_init)
+                Functors.functor(p_init)
             else
-                du0
+                p_init, identity, nothing
             end
-            if seed !== nothing
-                p_init = cfg.p
-                tun_init, trepack_init, _ = if p_init === nothing ||
-                        p_init isa SciMLBase.NullParameters
-                    p_init, identity, nothing
-                elseif isscimlstructure(p_init)
-                    canonicalize(Tunable(), p_init)
-                elseif isfunctor(p_init)
-                    Functors.functor(p_init)
-                else
-                    p_init, identity, nothing
-                end
-                init_vals, _, _ = if isscimlstructure(p_init)
-                    canonicalize(Initials(), p_init)
-                else
-                    nothing, nothing, nothing
-                end
-                has_initials = init_vals !== nothing &&
-                    !(init_vals isa AbstractArray && isempty(init_vals))
+            init_vals, _, _ = if isscimlstructure(p_init)
+                canonicalize(Initials(), p_init)
+            else
+                nothing, nothing, nothing
+            end
+            has_initials = init_vals !== nothing &&
+                !(init_vals isa AbstractArray && isempty(init_vals))
 
-                # Differentiate w.r.t. Tunable ∪ Initials so #1582 Initials flow
-                # when the returned u0 cotangent is zeroed.
-                θ_init, repack_init = if has_initials
-                    n_tun = length(tun_init)
-                    θ0 = vcat(vec(tun_init), vec(init_vals))
-                    θ0,
-                        let trepack_init = trepack_init, n_tun = n_tun,
-                            tsize = size(tun_init), isize = size(init_vals)
-                            function (θ)
-                                p1 = trepack_init(reshape(θ[1:n_tun], tsize))
-                                _, ir, _ = canonicalize(Initials(), p1)
-                                return ir(reshape(θ[(n_tun + 1):end], isize))
-                        end
-                    end
-                else
-                    tun_init, trepack_init
-                end
-
-                init_loss = let _prob = cfg._prob, repack_init = repack_init,
-                        initializealg = cfg.initializealg, nlsolve_alg = cfg.nlsolve_alg,
-                        sensealg = cfg.sensealg, kwargs_init = cfg.kwargs_init, seed = seed
-                    function (θ)
-                        new_prob_t = remake(
-                            _prob, p = repack_init(θ), lazy_initialization = true
-                        )
-                        nu0, _,
-                            _ = SciMLBase.get_initial_values(
-                            new_prob_t, new_prob_t, new_prob_t.f, initializealg,
-                            Val(isinplace(new_prob_t));
-                            sensealg = SteadyStateAdjoint(
-                                autojacvec = sensealg.autojacvec,
-                            ),
-                            nlsolve_alg,
-                            kwargs_init...,
-                        )
-                        return dot(vec(nu0), vec(seed))
+            # Differentiate w.r.t. Tunable ∪ Initials so #1582 Initials flow
+            # when the returned u0 cotangent is zeroed.
+            θ_init, repack_init = if has_initials
+                n_tun = length(tun_init)
+                θ0 = vcat(vec(tun_init), vec(init_vals))
+                θ0,
+                    let trepack_init = trepack_init, n_tun = n_tun,
+                        tsize = size(tun_init), isize = size(init_vals)
+                        function (θ)
+                            p1 = trepack_init(reshape(θ[1:n_tun], tsize))
+                            _, ir, _ = canonicalize(Initials(), p1)
+                            return ir(reshape(θ[(n_tun + 1):end], isize))
                     end
                 end
-                gθ = _init_originator_gradient(cfg.originator, init_loss, θ_init)
+            else
+                tun_init, trepack_init
+            end
 
-                if has_initials
-                    n_tun = length(tun_init)
-                    igs = reshape(gθ[1:n_tun], size(tun_init))
-                    igs_initials = reshape(gθ[(n_tun + 1):end], size(init_vals))
-                else
-                    igs = gθ isa AbstractArray ? reshape(gθ, size(tun_init)) : gθ
+            init_loss = let _prob = cfg._prob, repack_init = repack_init,
+                    initializealg = cfg.initializealg, nlsolve_alg = cfg.nlsolve_alg,
+                    sensealg = cfg.sensealg, kwargs_init = cfg.kwargs_init, seed = seed
+                function (θ)
+                    new_prob_t = remake(
+                        _prob, p = repack_init(θ), lazy_initialization = true
+                    )
+                    nu0, _,
+                        _ = SciMLBase.get_initial_values(
+                        new_prob_t, new_prob_t, new_prob_t.f, initializealg,
+                        Val(isinplace(new_prob_t));
+                        sensealg = SteadyStateAdjoint(
+                            autojacvec = sensealg.autojacvec,
+                        ),
+                        nlsolve_alg,
+                        kwargs_init...,
+                    )
+                    return dot(vec(nu0), vec(seed))
                 end
+            end
+            gθ = _init_originator_gradient(cfg.originator, init_loss, θ_init)
+
+            if has_initials
+                n_tun = length(tun_init)
+                igs = reshape(gθ[1:n_tun], size(tun_init))
+                igs_initials = reshape(gθ[(n_tun + 1):end], size(init_vals))
+            else
+                igs = gθ isa AbstractArray ? reshape(gθ, size(tun_init)) : gθ
             end
             du0_out = zero(du0)
         end

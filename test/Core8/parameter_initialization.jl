@@ -10,6 +10,7 @@ using OrdinaryDiffEq
 using Tracker
 using Enzyme
 using ForwardDiff
+using FiniteDiff
 using Zygote
 import SciMLBase
 using Test
@@ -244,9 +245,74 @@ end
                 )
             ),
         )
-        fd = ForwardDiff.gradient(loss, p_dae)
+        fd = FiniteDiff.finite_difference_gradient(loss, p_dae)
         zg = only(Zygote.gradient(loss, p_dae))
         @test zg ≈ fd rtol = 1.0e-3
+    end
+end
+
+# F: differential IC depends on p (xc0 = 0.5c); algebraic z from init.
+# Seed must be λ with algebraic components zeroed — not -g_u(t0).
+@testset "DAE differential x0(p) continuous adjoint cotangents" begin
+    @parameters c_f k_f
+    @variables xc_f(t) z_f(t)
+    sys_f = mtkcompile(
+        System(
+            [D(xc_f) ~ -k_f * xc_f + z_f, 0 ~ z_f^3 + z_f - c_f * xc_f],
+            t; name = :sys_f,
+            initial_conditions = [xc_f => 0.5 * c_f, c_f => 2.0, k_f => 0.5],
+            guesses = [z_f => 0.5],
+        )
+    )
+    prob_f = ODEProblem(sys_f, nothing, (0.0, 1.0))
+    set_f = SII.setp_oop(prob_f, [c_f, k_f])
+    get_z_f = SII.getsym(prob_f, z_f)
+    p_f = [2.0, 0.5]
+    W = [1.0 0.3; -0.7 2.0]
+    lossW(A) = sum((W * A) .^ 2) + sum(sin, A)
+    sensealgs_f = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_f
+        # t0 observed, weighted nonlinear traj loss
+        loss_t0 = ps -> lossW(
+            Array(
+                solve(
+                    remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                    saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+                )
+            ),
+        )
+        fd_t0 = FiniteDiff.finite_difference_gradient(loss_t0, p_f)
+        zg_t0 = only(Zygote.gradient(loss_t0, p_f))
+        @test zg_t0 ≈ fd_t0 rtol = 1.0e-3
+
+        # t0 not observed
+        loss_no = ps -> lossW(
+            Array(
+                solve(
+                    remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                    saveat = 0.1:0.1:1.0, abstol = 1.0e-10, reltol = 1.0e-10,
+                    sensealg,
+                )
+            ),
+        )
+        fd_no = FiniteDiff.finite_difference_gradient(loss_no, p_f)
+        zg_no = only(Zygote.gradient(loss_no, p_f))
+        @test zg_no ≈ fd_no rtol = 1.0e-3
+
+        # loss on algebraic state only at t=1
+        loss_z = ps -> get_z_f(
+            solve(
+                remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                saveat = [1.0], abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+            )
+        )[end]^2
+        fd_z = FiniteDiff.finite_difference_gradient(loss_z, p_f)
+        zg_z = only(Zygote.gradient(loss_z, p_f))
+        @test zg_z ≈ fd_z rtol = 1.0e-3
     end
 end
 
