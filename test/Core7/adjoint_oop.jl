@@ -340,7 +340,7 @@ du0_q, dp_q = Zygote.gradient(
 @test dp_g ≈ dp_q rtol = 1.0e-6
 
 ## Dense finite-difference parameter Jacobians must honor `diff_type` and the
-## RHS element type (PR #1686 review). Analytical terminal derivatives are exact.
+## RHS element type. Analytical terminal derivatives are exact.
 
 @testset "Respect central parameter differences" begin
     # At p = 1 the forward difference of p + 1e8*(p-1)^2 is catastrophically wrong,
@@ -351,7 +351,7 @@ du0_q, dp_q = Zygote.gradient(
         ODEProblem(f_central, [0.0], (0.0, 1.0), [1.0]), Tsit5();
         abstol = 1.0e-12, reltol = 1.0e-12
     )
-    for A in (GaussAdjoint, QuadratureAdjoint)
+    for A in (GaussAdjoint, QuadratureAdjoint, InterpolatingAdjoint)
         alg = A(autojacvec = false, autodiff = false, diff_type = Val{:central})
         du, dp = adjoint_sensitivities(
             sol_central, Tsit5(); sensealg = alg, t = [1.0],
@@ -362,36 +362,38 @@ du0_q, dp_q = Zygote.gradient(
 end
 
 @testset "Dense FD param Jacobian with complex state" begin
-    # Loss imag(u(1)[1]) for f = [im*p[1]] has exact parameter derivative 1.
-    f_cplx(u, p, t) = [im * p[1]]
-    dg_cplx(out, u, p, t, i) = fill!(out, im)
+    # Immutable SVector state takes the allocating `jacobian` path. Loss
+    # imag(u(1)[1]) for f = [im*p[1]] has exact parameter derivative 1.
+    f_cplx(u, p, t) = @SVector [im * p[1]]
+    dg_cplx(u, p, t, i; outtype = nothing) = @SVector [im]
     sol_cplx = solve(
-        ODEProblem(f_cplx, ComplexF64[0], (0.0, 1.0), [0.3]), Tsit5();
-        abstol = 1.0e-12, reltol = 1.0e-12
+        ODEProblem(f_cplx, @SVector[ComplexF64(0)], (0.0, 1.0), @SVector[0.3]),
+        Tsit5(); abstol = 1.0e-12, reltol = 1.0e-12
     )
     for A in (GaussAdjoint, QuadratureAdjoint)
         du, dp = adjoint_sensitivities(
             sol_cplx, Tsit5();
             sensealg = A(autojacvec = false, autodiff = false),
-            t = [1.0], dgdu_discrete = dg_cplx, abstol = 1.0e-10, reltol = 1.0e-10
+            t = [0.0, 1.0], dgdu_discrete = dg_cplx, abstol = 1.0e-10, reltol = 1.0e-10
         )
         @test only(dp) ≈ 1.0 rtol = 1.0e-6
     end
 end
 
 @testset "Dense FD param Jacobian with mixed real precision" begin
-    # Float64 state / Float32 parameters; exact terminal parameter derivative is 1.
-    f_mixed(u, p, t) = [Float64(p[1])]
-    dg_mixed(out, u, p, t, i) = fill!(out, 1.0)
+    # Immutable SVector Float64 state / Float32 parameters; exact terminal
+    # parameter derivative is 1. Uses the allocating `jacobian` path.
+    f_mixed(u, p, t) = @SVector [Float64(p[1])]
+    dg_mixed(u, p, t, i; outtype = nothing) = @SVector [1.0]
     sol_mixed = solve(
-        ODEProblem(f_mixed, Float64[0], (0.0, 1.0), Float32[0.3]), Tsit5();
-        abstol = 1.0e-12, reltol = 1.0e-12
+        ODEProblem(f_mixed, @SVector[0.0], (0.0, 1.0), @SVector[0.3f0]),
+        Tsit5(); abstol = 1.0e-12, reltol = 1.0e-12
     )
     for A in (GaussAdjoint, QuadratureAdjoint)
         du, dp = adjoint_sensitivities(
             sol_mixed, Tsit5();
             sensealg = A(autojacvec = false, autodiff = false),
-            t = [1.0], dgdu_discrete = dg_mixed, abstol = 1.0e-10, reltol = 1.0e-10
+            t = [0.0, 1.0], dgdu_discrete = dg_mixed, abstol = 1.0e-10, reltol = 1.0e-10
         )
         @test only(dp) ≈ 1 rtol = 1.0e-5
     end

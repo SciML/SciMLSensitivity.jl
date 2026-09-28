@@ -134,9 +134,8 @@ function jacobian(
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
-        # Match the RHS / state element type for parameter Jacobians. Using only
-        # `eltype(x)` rejects complex states with real parameters and mixed real
-        # precisions that the cached FiniteDiff path already supports.
+        # FiniteDiff's return type must match the RHS/state element type, not only
+        # `eltype(x)` (e.g. complex state with real parameters, mixed precisions).
         T = if f isa Union{
                 ParamGradientWrapper,
                 SciMLBase.ParamJacobianWrapper,
