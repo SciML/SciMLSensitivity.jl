@@ -476,11 +476,7 @@ function SciMLBase._concrete_solve_adjoint(
         originator::SciMLBase.ADOriginator, args...;
         verbose = SciMLLogging.Standard(), kwargs...
     )
-    if haskey(kwargs, :callback)
-        has_cb = kwargs[:callback] !== nothing
-    else
-        has_cb = false
-    end
+    has_cb = _has_effective_callback(get(kwargs, :callback, nothing))
 
     if !(p === nothing || p isa SciMLBase.NullParameters)
         if !isscimlstructure(p) && !isfunctor(p)
@@ -653,12 +649,13 @@ function SciMLBase._concrete_solve_adjoint(
     kwargs_prob = NamedTuple(
         filter(
             x -> x[1] != :saveat && x[1] != :save_start &&
-                x[1] != :save_end && x[1] != :save_idxs,
+                x[1] != :save_end && x[1] != :save_idxs &&
+                (x[1] != :callback || _has_effective_callback(x[2])),
             prob.kwargs
         )
     )
 
-    if haskey(kwargs, :callback)
+    if _has_effective_callback(get(kwargs, :callback, nothing))
         cb = track_callbacks(
             CallbackSet(kwargs[:callback]), current_time(prob),
             state_values(prob), parameter_values(prob),
@@ -2522,7 +2519,7 @@ function SciMLBase._concrete_solve_adjoint(
         save_idxs = nothing,
         kwargs...
     )
-    if haskey(kwargs, :callback)
+    if _has_effective_callback(get(kwargs, :callback, nothing))
         error("Sensitivity analysis based on Least Squares Shadowing is not compatible with callbacks. Please select another `sensealg`.")
     else
         _prob = remake(prob; f = unwrapped_f(prob.f), u0, p)

@@ -21,9 +21,9 @@ end
 tspan = (0.0, T)
 prob_ode = ODEProblem(f_nn, u0, tspan, ComponentArray(ip));
 
-function loss_adjoint(p; sensealg = nothing)
+function loss_adjoint(p; sensealg = nothing, kwargs...)
     local prediction = solve(
-        prob_ode, BS5(); p, abstol = 1.0e-13, reltol = 1.0e-13, sensealg
+        prob_ode, BS5(); p, abstol = 1.0e-13, reltol = 1.0e-13, sensealg, kwargs...
     )
     local usol = prediction.u[end]
     local loss = abs(1.0 - abs(tr(usol * utarget') / 2))
@@ -39,5 +39,16 @@ dp3 = Zygote.gradient(
     ComponentArray(ip)
 )
 
+# An empty CallbackSet behaves identically to passing no callback. On Julia >=
+# 1.12 DiffEqBase injects `callback = CallbackSet(Any[], Any[])` into solve
+# kwargs; it must not force the callback-only ReverseDiffVJP path.
+dp4 = Zygote.gradient(
+    x -> loss_adjoint(
+        x, callback = CallbackSet(Any[], Any[])
+    ),
+    ComponentArray(ip)
+)
+
 @test dp1[1] ≈ dp2 atol = 1.0e-2
 @test dp1[1] ≈ dp3[1] atol = 5.0e-2
+@test dp1[1] ≈ dp4[1] atol = 1.0e-2
