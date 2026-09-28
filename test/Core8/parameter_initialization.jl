@@ -146,9 +146,10 @@ end
         BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
         InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
         QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
     )
     for sensealg in sensealgs1663
-        loss = ps -> sum(
+        loss_u0 = ps -> sum(
             Array(
                 solve(
                     remake(prob1663; p = set_p1663(prob1663, ps)), Tsit5();
@@ -156,8 +157,95 @@ end
                 )
             )[:, 1]
         )
-        fd = ForwardDiff.gradient(loss, p1663)
-        zg = only(Zygote.gradient(loss, p1663))
+        fd_u0 = ForwardDiff.gradient(loss_u0, p1663)
+        zg_u0 = only(Zygote.gradient(loss_u0, p1663))
+        @test zg_u0 ≈ fd_u0 rtol = 1.0e-3
+
+        loss_traj = ps -> sum(
+            abs2,
+            Array(
+                solve(
+                    remake(prob1663; p = set_p1663(prob1663, ps)), Tsit5();
+                    saveat = 0.1, abstol = 1.0e-8, reltol = 1.0e-8, sensealg,
+                )
+            ),
+        )
+        fd_traj = ForwardDiff.gradient(loss_traj, p1663)
+        zg_traj = only(Zygote.gradient(loss_traj, p1663))
+        @test zg_traj ≈ fd_traj rtol = 1.0e-3
+    end
+end
+
+# u0 depends on parameters only through `initialization_eqs` (no remake u0(p) path).
+@testset "Init-equation continuous adjoint cotangents" begin
+    @parameters a_ie b_ie
+    @variables x_ie(t) q_ie(t)
+    sys_ie = mtkcompile(
+        System(
+            [D(x_ie) ~ -b_ie * x_ie + q_ie, D(q_ie) ~ -q_ie], t; name = :sys_ie,
+            initial_conditions = [q_ie => 1.0, a_ie => 2.0, b_ie => 0.7],
+            initialization_eqs = [x_ie^2 ~ a_ie], guesses = [x_ie => 1.0],
+        )
+    )
+    prob_ie = ODEProblem(sys_ie, nothing, (0.0, 1.0))
+    set_ie = SII.setp_oop(prob_ie, [a_ie, b_ie])
+    get_x_ie = SII.getsym(prob_ie, x_ie)
+    p_ie = [2.0, 0.7]
+    sensealgs_ie = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_ie
+        sol_ie = ps -> solve(
+            remake(prob_ie; p = set_ie(prob_ie, ps)), Tsit5();
+            saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+        )
+        loss_x0 = ps -> get_x_ie(sol_ie(ps))[1]
+        fd_x0 = ForwardDiff.gradient(loss_x0, p_ie)
+        zg_x0 = only(Zygote.gradient(loss_x0, p_ie))
+        @test zg_x0 ≈ fd_x0 rtol = 1.0e-3
+
+        loss_traj = ps -> sum(abs2, Array(sol_ie(ps)))
+        fd_traj = ForwardDiff.gradient(loss_traj, p_ie)
+        zg_traj = only(Zygote.gradient(loss_traj, p_ie))
+        @test zg_traj ≈ fd_traj rtol = 1.0e-3
+    end
+end
+
+# Algebraic variable fixed by initialization (DAE).
+@testset "DAE init algebraic continuous adjoint cotangents" begin
+    @parameters c_dae k_dae
+    @variables xc_dae(t) z_dae(t)
+    sys_dae = mtkcompile(
+        System(
+            [D(xc_dae) ~ -k_dae * xc_dae + z_dae, 0 ~ z_dae^3 + z_dae - c_dae * xc_dae],
+            t; name = :sys_dae,
+            initial_conditions = [xc_dae => 1.0, c_dae => 2.0, k_dae => 0.5],
+            guesses = [z_dae => 0.5],
+        )
+    )
+    prob_dae = ODEProblem(sys_dae, nothing, (0.0, 1.0))
+    set_dae = SII.setp_oop(prob_dae, [c_dae, k_dae])
+    p_dae = [2.0, 0.5]
+    sensealgs_dae = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_dae
+        loss = ps -> sum(
+            abs2,
+            Array(
+                solve(
+                    remake(prob_dae; p = set_dae(prob_dae, ps)), Rodas5P();
+                    saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+                )
+            ),
+        )
+        fd = ForwardDiff.gradient(loss, p_dae)
+        zg = only(Zygote.gradient(loss, p_dae))
         @test zg ≈ fd rtol = 1.0e-3
     end
 end
