@@ -2578,6 +2578,7 @@ function SciMLBase._concrete_solve_adjoint(
     _save_idxs = save_idxs === nothing ? Colon() : save_idxs
 
     function adjoint_sensitivity_backpass(Δ)
+        Δ = Δ isa AbstractThunk ? unthunk(Δ) : Δ
         function df(_out, u, p, t, i)
             return if Δ isa AbstractArray{<:AbstractArray} || Δ isa AbstractVectorOfArray ||
                     (
