@@ -98,9 +98,10 @@ We can then use `Optimization.solve` to fit the SDE.
 
 
 ```@example sde
-import Optimization as OPT, Enzyme, OptimizationOptimisers as OPO
+import Optimization as OPT, OptimizationOptimisers as OPO
 pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
-adtype = OPT.AutoEnzyme(; mode = Enzyme.set_runtime_activity(Enzyme.Reverse))
+# Ensemble SDE + AutoEnzyme hits EnzymeInternalError; 6 params → forward-mode (see page intro).
+adtype = OPT.AutoForwardDiff()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, pinit)
 @time res = OPT.solve(optprob, OPO.Adam(0.05), callback = cb2, maxiters = 100)
