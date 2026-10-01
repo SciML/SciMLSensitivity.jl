@@ -17,6 +17,7 @@ run_tests(;
                 @time @safetestset "Derivative Shapes" include("Core1/derivative_shapes.jl")
                 @time @safetestset "save_idxs" include("Core1/save_idxs.jl")
                 @time @safetestset "ArrayPartitions" include("Core1/array_partitions.jl")
+                @time @safetestset "NoIndex CustomArray Zygote" include("Core1/noindex_tests.jl")
                 @time @safetestset "Complex Adjoints" include("Core1/complex_adjoints.jl")
                 @time @safetestset "ReverseDiffAdjoint Output Type" include("Core1/reversediff_output_types.jl")
                 @time @safetestset "Forward Remake" include("Core1/forward_remake.jl")
