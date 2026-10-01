@@ -44,8 +44,11 @@ model = Lux.StatefulLuxLayer{true}(model, ps, st)
 ff(du, u, p, t) = model(u, p)
 prob = ODE.SecondOrderODEProblem{false}(ff, du0, u0, tspan, ps)
 
+# ArrayPartition state is IndexCartesian (RecursiveArrayTools 4+); ReverseDiffVJP needs IndexLinear.
+sensealg = SMS.GaussAdjoint(autojacvec = SMS.ZygoteVJP())
+
 function predict(p)
-    Array(ODE.solve(prob, ODE.Tsit5(); p, saveat = t))
+    Array(ODE.solve(prob, ODE.Tsit5(); p, saveat = t, sensealg))
 end
 
 correct_pos = Float32.(transpose(hcat(collect(0:0.05:1)[2:end], collect(2:-0.05:1)[2:end])))
