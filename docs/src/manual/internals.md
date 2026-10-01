@@ -1,9 +1,10 @@
 # [Developer Internals](@id sensitivity_internals)
 
-These symbols are developer API used by SciMLSensitivity adjoint, callback,
-shadowing, and optimization integrations. Application code should select a
-documented sensitivity algorithm through `solve` or use the documented problem
-wrappers rather than calling these helpers directly.
+These names are **internal, not public API, and may change without notice**.
+They are used by SciMLSensitivity adjoint, callback, shadowing, and optimization
+integrations. Application code should select a documented sensitivity algorithm
+through `solve` or use the documented problem wrappers rather than calling these
+helpers directly.
 
 ## Adjoint and Optimization Internals
 
