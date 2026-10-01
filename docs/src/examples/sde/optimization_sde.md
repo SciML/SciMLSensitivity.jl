@@ -100,7 +100,7 @@ We can then use `Optimization.solve` to fit the SDE.
 ```@example sde
 import Optimization as OPT, OptimizationOptimisers as OPO
 pinit = [1.2, 0.8, 2.5, 0.8, 0.1, 0.1]
-# Ensemble SDE + AutoEnzyme hits EnzymeInternalError; 6 params → forward-mode (see page intro).
+# AutoEnzyme over EnsembleProblem{SDEProblem} hits EnzymeInternalError (#1696); 6 params → forward-mode (see page intro). Switch back to AutoEnzyme when #1696 is fixed.
 adtype = OPT.AutoForwardDiff()
 optf = OPT.OptimizationFunction((x, p) -> loss(x), adtype)
 optprob = OPT.OptimizationProblem(optf, pinit)
