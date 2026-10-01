@@ -251,8 +251,33 @@ end
     end
 end
 
+# Fully-implicit DAEProblem without differential_vars cannot classify algebraic
+# components for the init VJP seed (DAEFunction has no mass_matrix).
+@testset "DAEProblem init seed requires differential_vars" begin
+    function daeres!(out, du, u, p, t)
+        out[1] = du[1] - u[2]
+        out[2] = u[1] + u[2] - 1
+        return nothing
+    end
+    daeprob = DAEProblem(daeres!, [0.0, 0.0], [1.0, 0.0], (0.0, 1.0))
+    @test daeprob.differential_vars === nothing
+    err = try
+        SciMLSensitivity._differential_init_seed(daeprob, [1.0, 1.0])
+        nothing
+    catch e
+        e
+    end
+    @test err isa ErrorException
+    @test occursin("differential_vars", sprint(showerror, err))
+
+    daeprob_dv = DAEProblem(
+        daeres!, [0.0, 0.0], [1.0, 0.0], (0.0, 1.0);
+        differential_vars = [true, false],
+    )
+    @test SciMLSensitivity._differential_init_seed(daeprob_dv, [1.0, 1.0]) == [1.0, 0.0]
+end
+
 # F: differential IC depends on p (xc0 = 0.5c); algebraic z from init.
-# Seed must be λ with algebraic components zeroed — not -g_u(t0).
 @testset "DAE differential x0(p) continuous adjoint cotangents" begin
     @parameters c_f k_f
     @variables xc_f(t) z_f(t)
