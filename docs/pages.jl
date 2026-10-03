@@ -49,6 +49,7 @@ pages = [
         "manual/optimization_sensitivities.md",
         "manual/direct_forward_sensitivity.md",
         "manual/direct_adjoint_sensitivities.md",
+        "manual/internals.md",
     ],
     "Benchmarks" => "Benchmark.md",
     "Sensitivity Math Details" => "sensitivity_math.md",
