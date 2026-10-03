@@ -108,7 +108,14 @@ using FiniteDiff
     )
     @test fd_grad ≈ 6.0 atol = 1.0e-6
 
-    for callback in (nothing, CallbackSet(), CallbackSet(Any[], Any[]))
+    empty_callbacks = Any[nothing, CallbackSet()]
+    # `CallbackSet(::Vector{Any}, ::Vector{Any})` — the shape DiffEqBase's
+    # callback type-erasure injects — only exists where the fields are vectors.
+    if hasmethod(CallbackSet, Tuple{Vector{Any}, Vector{Any}})
+        push!(empty_callbacks, CallbackSet(Any[], Any[]))
+    end
+
+    for callback in empty_callbacks
         value, grad = Zygote.withgradient(p -> suppressed_loss(p, callback), [2.0])
         @test value ≈ 9.0 atol = 1.0e-8
         @test only(grad[1]) ≈ fd_grad atol = 1.0e-6
