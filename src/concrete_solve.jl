@@ -655,7 +655,7 @@ function SciMLBase._concrete_solve_adjoint(
         )
     )
 
-    if _has_effective_callback(get(kwargs, :callback, nothing))
+    if haskey(kwargs, :callback)
         cb = track_callbacks(
             CallbackSet(kwargs[:callback]), current_time(prob),
             state_values(prob), parameter_values(prob),
