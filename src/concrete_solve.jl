@@ -420,6 +420,83 @@ function automatic_sensealg_choice(
 end
 
 """
+    _initialization_is_dae(prob)
+
+Return `true` when `prob` is a fully-implicit `DAEProblem` or a mass-matrix
+ODE whose mass matrix has algebraic (all-zero) rows — the same convention as
+`adjoint_common.jl` (which classifies on columns of `M'`).
+"""
+_initialization_is_dae(prob::SciMLBase.AbstractDAEProblem) = true
+function _initialization_is_dae(prob)
+    mm = prob.f.mass_matrix
+    if mm isa UniformScaling || mm isa Tuple
+        return false
+    elseif mm isa AbstractMatrix
+        return any(i -> all(iszero, @view(mm[i, :])), axes(mm, 1))
+    else
+        return false
+    end
+end
+
+"""
+    _differential_init_seed(prob, du0)
+
+Init-map VJP seed for continuous adjoints. For ODEs this is `du0 = λ(t0)`.
+For semi-explicit / mass-matrix DAEs the algebraic IC dependence `z0(p)` is
+already accounted for by the discrete observation jump into `dp`, so only the
+differential components of `du0` must seed the init VJP:
+`(∂x0_init/∂p)ᵀ λ_x(t0)`. Algebraic entries are zeroed using all-zero rows of
+the mass matrix (matching `adjoint_common.jl`), or `differential_vars` on a
+`DAEProblem`.
+"""
+function _differential_init_seed(prob, du0)
+    _initialization_is_dae(prob) || return du0
+    seed = copy(du0)
+    if prob isa SciMLBase.AbstractDAEProblem
+        dvars = prob.differential_vars
+        if dvars === nothing
+            error(
+                "Continuous adjoint initialization VJP on a DAEProblem requires " *
+                    "`differential_vars` to distinguish algebraic from differential " *
+                    "components of `du0`. Pass `differential_vars` when constructing " *
+                    "the `DAEProblem`, or use a mass-matrix `ODEProblem`.",
+            )
+        end
+        for i in eachindex(seed)
+            dvars[i] || (seed[i] = zero(eltype(seed)))
+        end
+        return seed
+    end
+    mm = prob.f.mass_matrix
+    if mm isa AbstractMatrix && !(mm isa UniformScaling) && !(mm isa Tuple)
+        # Zero rows of M ↔ algebraic equations/variables (adjoint_common.jl
+        # classifies on columns of M', i.e. rows of M).
+        for i in axes(mm, 1)
+            if all(iszero, @view(mm[i, :]))
+                seed[i] = zero(eltype(seed))
+            end
+        end
+    end
+    return seed
+end
+
+"""
+    _accum_initials_cotangent(p, igs_initials, accumulated)
+
+Accumulate an Initials-partition cotangent into a SciMLStructures parameter
+tangent via `canonicalize(Initials, ·)`.
+"""
+function _accum_initials_cotangent(p, igs_initials, accumulated)
+    (igs_initials === nothing || !isscimlstructure(p)) && return accumulated
+    _,
+        initials_adjoint = Zygote.pullback(p) do p_
+        i, _, _ = canonicalize(Initials(), p_)
+        i
+    end
+    return Zygote.accum(accumulated, initials_adjoint(igs_initials)[1])
+end
+
+"""
     _init_originator_gradient(originator, f, tunables)
 
 Compute `∂(f(tunables))/∂tunables` for a *scalar-valued* `f`, dispatched on
@@ -697,7 +774,7 @@ function SciMLBase._concrete_solve_adjoint(
     end
 
     default_inits = Union{OverrideInit, Nothing, DefaultInit}
-    igs, new_u0,
+    init_vjp, new_u0,
         new_p,
         new_initializealg = if (
             SciMLBase.has_initialization_data(_prob.f) &&
@@ -730,39 +807,24 @@ function SciMLBase._concrete_solve_adjoint(
             kwargs_init...
         )
 
-        # Reverse: gradient of `sum(new_u0)` w.r.t. tunables, treating the
-        # initialization map `tunables -> new_u0` as a function. The
-        # OVERDETERMINED case has no contribution. The non-OVERDETERMINED
-        # case dispatches to the AD backend that triggered this rrule via
-        # `_init_originator_gradient`, so Mooncake-driven AD does not pull
-        # in Zygote at this point.
-        igs = if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
-            zero(tunables)
+        # Continuous adjoints return `du0 = λ(t0)`. Defer `(∂u0_init/∂p)ᵀ seed`
+        # over Tunable∪Initials into the reverse pass (seed = `du0`, or `du0`
+        # with algebraic components zeroed for semi-explicit DAEs) and zero the
+        # returned `u0` cotangent so remake does not recount `u0(p)`.
+        # OVERDETERMINED keeps `zero(tunables)` for `Zygote.accum`.
+        init_vjp = if SciMLBase.initialization_status(_prob) == SciMLBase.OVERDETERMINED
+            (; mode = :overdetermined, igs = zero(tunables))
         else
-            init_loss = let _prob = _prob, repack = repack,
-                    initializealg = initializealg, nlsolve_alg = nlsolve_alg,
-                    sensealg = sensealg, kwargs_init = kwargs_init
-                function (t)
-                    new_prob_t = remake(_prob, p = repack(t), lazy_initialization = true)
-                    nu0, _,
-                        _ = SciMLBase.get_initial_values(
-                        new_prob_t, new_prob_t, new_prob_t.f, initializealg,
-                        Val(isinplace(new_prob_t));
-                        sensealg = SteadyStateAdjoint(
-                            autojacvec = sensealg.autojacvec,
-                        ),
-                        nlsolve_alg,
-                        kwargs_init...,
-                    )
-                    return sum(nu0)
-                end
-            end
-            _init_originator_gradient(originator, init_loss, tunables)
+            (;
+                mode = :du0_seeded, _prob = _prob, initializealg = initializealg,
+                nlsolve_alg = nlsolve_alg, sensealg = sensealg,
+                kwargs_init = kwargs_init, originator = originator, p = p,
+            )
         end
 
-        igs, new_u0, new_p, SciMLBase.CheckInit()
+        init_vjp, new_u0, new_p, SciMLBase.CheckInit()
     else
-        nothing, u0, p, initializealg
+        (; mode = :none), u0, p, initializealg
     end
 
     _prob = remake(_prob, u0 = new_u0, p = new_p)
@@ -1093,6 +1155,87 @@ function SciMLBase._concrete_solve_adjoint(
         end
 
         du0 = reshape(du0, size(u0))
+        du0_out = du0
+        igs = nothing
+        igs_initials = nothing
+
+        # Deferred init VJP into `dp`; zero `du0_out` only when it ran so remake
+        # does not recount `u0(p)`.
+        if init_vjp.mode === :overdetermined
+            igs = init_vjp.igs
+        elseif init_vjp.mode === :du0_seeded
+            cfg = init_vjp
+            # ODEs: seed = λ(t0). Semi-explicit DAEs: algebraic z0(p) already
+            # enters dp through the observation jump, so zero those seed entries.
+            seed = _differential_init_seed(cfg._prob, du0)
+            p_init = cfg.p
+            tun_init, trepack_init, _ = if p_init === nothing ||
+                    p_init isa SciMLBase.NullParameters
+                p_init, identity, nothing
+            elseif isscimlstructure(p_init)
+                canonicalize(Tunable(), p_init)
+            elseif isfunctor(p_init)
+                Functors.functor(p_init)
+            else
+                p_init, identity, nothing
+            end
+            init_vals, _, _ = if isscimlstructure(p_init)
+                canonicalize(Initials(), p_init)
+            else
+                nothing, nothing, nothing
+            end
+            has_initials = init_vals !== nothing &&
+                !(init_vals isa AbstractArray && isempty(init_vals))
+
+            # Differentiate Tunable∪Initials together: Initials still need a
+            # path once the returned u0 cotangent is zeroed.
+            θ_init, repack_init = if has_initials
+                n_tun = length(tun_init)
+                θ0 = vcat(vec(tun_init), vec(init_vals))
+                θ0,
+                    let trepack_init = trepack_init, n_tun = n_tun,
+                        tsize = size(tun_init), isize = size(init_vals)
+                        function (θ)
+                            p1 = trepack_init(reshape(θ[1:n_tun], tsize))
+                            _, ir, _ = canonicalize(Initials(), p1)
+                            return ir(reshape(θ[(n_tun + 1):end], isize))
+                    end
+                end
+            else
+                tun_init, trepack_init
+            end
+
+            init_loss = let _prob = cfg._prob, repack_init = repack_init,
+                    initializealg = cfg.initializealg, nlsolve_alg = cfg.nlsolve_alg,
+                    sensealg = cfg.sensealg, kwargs_init = cfg.kwargs_init, seed = seed
+                function (θ)
+                    new_prob_t = remake(
+                        _prob, p = repack_init(θ), lazy_initialization = true
+                    )
+                    nu0, _,
+                        _ = SciMLBase.get_initial_values(
+                        new_prob_t, new_prob_t, new_prob_t.f, initializealg,
+                        Val(isinplace(new_prob_t));
+                        sensealg = SteadyStateAdjoint(
+                            autojacvec = sensealg.autojacvec,
+                        ),
+                        nlsolve_alg,
+                        kwargs_init...,
+                    )
+                    return dot(vec(nu0), vec(seed))
+                end
+            end
+            gθ = _init_originator_gradient(cfg.originator, init_loss, θ_init)
+
+            if has_initials
+                n_tun = length(tun_init)
+                igs = reshape(gθ[1:n_tun], size(tun_init))
+                igs_initials = reshape(gθ[(n_tun + 1):end], size(init_vals))
+            else
+                igs = gθ isa AbstractArray ? reshape(gθ, size(tun_init)) : gθ
+            end
+            du0_out = zero(du0)
+        end
 
         dp_full = if p === nothing || p === SciMLBase.NullParameters()
             nothing
@@ -1111,6 +1254,7 @@ function SciMLBase._concrete_solve_adjoint(
             sensealg.diff_tunables isa Val{false}
         dp_tangent = if _use_full_p && isscimlstructure(dp_full)
             accumulated = Zygote.accum(dp_full, igs)
+            accumulated = _accum_initials_cotangent(p, igs_initials, accumulated)
             originator isa SciMLBase.EnzymeOriginator ? accumulated : to_nt(accumulated)
         else
             dp = Zygote.accum(dp_full, igs)
@@ -1143,19 +1287,20 @@ function SciMLBase._concrete_solve_adjoint(
             # accumulates structural tangents field-wise, so returning a flat
             # vector here broadcasts against the structured shadow (e.g. an
             # `MTKParameters`) and errors.
-            repack_adjoint(dp)[1]
+            dp_tan = repack_adjoint(dp)[1]
+            _accum_initials_cotangent(p, igs_initials, dp_tan)
         end
 
         return if originator isa SciMLBase.TrackerOriginator ||
                 originator isa SciMLBase.ReverseDiffOriginator
             (
-                NoTangent(), NoTangent(), du0, dp_tangent, NoTangent(),
+                NoTangent(), NoTangent(), du0_out, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         else
             (
                 NoTangent(), NoTangent(), NoTangent(),
-                du0, dp_tangent, NoTangent(),
+                du0_out, dp_tangent, NoTangent(),
                 ntuple(_ -> NoTangent(), length(args))...,
             )
         end
