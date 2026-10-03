@@ -403,11 +403,7 @@ function adjoint_sensitivities(
     end
 
     if hasfield(typeof(sensealg), :autojacvec) && sensealg.autojacvec === nothing
-        if haskey(kwargs, :callback)
-            has_cb = kwargs[:callback] !== nothing
-        else
-            has_cb = false
-        end
+        has_cb = _has_effective_callback(get(kwargs, :callback, nothing))
 
         _sensealg = if isinplace(sol.prob)
             # probe with the canonical tunables (as the `solve` rule does), not the full
