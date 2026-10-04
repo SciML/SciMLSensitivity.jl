@@ -39,12 +39,11 @@ dp3 = Zygote.gradient(
     ComponentArray(ip)
 )
 
-# An empty CallbackSet behaves identically to passing no callback. On Julia >=
-# 1.12 DiffEqBase injects `callback = CallbackSet(Any[], Any[])` into solve
-# kwargs; it must not force the callback-only ReverseDiffVJP path.
+# An empty CallbackSet behaves identically to passing no callback; it must
+# not force the callback-only ReverseDiffVJP path.
 dp4 = Zygote.gradient(
     x -> loss_adjoint(
-        x, callback = CallbackSet(Any[], Any[])
+        x, callback = CallbackSet()
     ),
     ComponentArray(ip)
 )
@@ -52,3 +51,16 @@ dp4 = Zygote.gradient(
 @test dp1[1] ≈ dp2 atol = 1.0e-2
 @test dp1[1] ≈ dp3[1] atol = 5.0e-2
 @test dp1[1] ≈ dp4[1] atol = 1.0e-2
+
+# On Julia >= 1.12 DiffEqBase injects the type-erased
+# `callback = CallbackSet(Any[], Any[])` into solve kwargs. The
+# vector-backed fields only exist in newer SciMLBase.
+if hasmethod(CallbackSet, Tuple{Vector{Any}, Vector{Any}})
+    dp5 = Zygote.gradient(
+        x -> loss_adjoint(
+            x, callback = CallbackSet(Any[], Any[])
+        ),
+        ComponentArray(ip)
+    )
+    @test dp1[1] ≈ dp5[1] atol = 1.0e-2
+end
