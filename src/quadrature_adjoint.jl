@@ -384,9 +384,7 @@ function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
         if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
-            pf.t = t
-            pf.u = y
-            jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+            pJ = _adjoint_param_jacobian(S, y, t)
         end
         # Use pJ' * λ instead of out' = λ' * pJ to avoid GPU scalar indexing
         mul!(vec(out), pJ', λ)
