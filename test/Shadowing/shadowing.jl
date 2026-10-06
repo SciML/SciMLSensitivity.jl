@@ -95,6 +95,23 @@ using Zygote
         @test res3 ≈ res4 atol = 1.0e-10
         @test res3 ≈ res4a atol = 1.0e-10
 
+        # A short segment keeps `E` in the GC pool; dirtying same-size blocks
+        # with NaN makes an uninitialized `E` non-finite.
+        sol_short = solve(
+            prob_attractor, Vern9(), abstol = 1.0e-14, reltol = 1.0e-14,
+            saveat = 0.02, tspan = (30.0, 31.0)
+        )
+        Ndt_short = length(sol_short.t) - 1
+        for _ in 1:16
+            fill!(Matrix{Float64}(undef, 3 * Ndt_short, Ndt_short), NaN)
+        end
+        GC.gc()
+        lss_poisoned = ForwardLSSProblem(
+            sol_short,
+            ForwardLSS(; LSSregularizer = SciMLSensitivity.TimeDilation(10.0), g)
+        )
+        @test all(isfinite, lss_poisoned.S.E)
+
         # discrete API with explicit time grid
         lss_problem1 = ForwardLSSProblem(
             sol_attractor, ForwardLSS(; g),

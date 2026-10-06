@@ -21,6 +21,7 @@ SciMLSensitivity._init_originator_gradient
 ```@docs
 SciMLSensitivity.track_callbacks
 SciMLSensitivity.setup_reverse_callbacks
+SciMLSensitivity._has_effective_callback
 ```
 
 ## Derivative Wrappers and VJP Traits
