@@ -76,3 +76,48 @@ if VERSION < v"1.12"
 else
     @info "Skipping callback duplication check on Julia 1.12+ due to Zygote compatibility issues"
 end
+
+# An explicitly passed callback argument — including `nothing` or an empty
+# `CallbackSet` — replaces the callback stored in `prob.kwargs` under
+# `merge_callbacks = false`, both in the primal solve and in the rebuilt
+# problem used by the adjoint pass.
+using FiniteDiff
+@testset "Empty solve callback suppresses problem callback" begin
+    lin(u, p, t) = [p[1]]
+    cb = DiscreteCallback((u, t, i) -> t == 0.5, i -> (i.u .*= 2))
+    prob_cb = ODEProblem(lin, [1.0], (0.0, 1.0), [2.0]; callback = cb)
+
+    function suppressed_loss(p, callback)
+        sol = solve(
+            prob_cb, Tsit5(); p, callback, merge_callbacks = false,
+            sensealg = InterpolatingAdjoint(autojacvec = ReverseDiffVJP()),
+            tstops = [0.5], abstol = 1.0e-10, reltol = 1.0e-10
+        )
+        return only(sol.u[end])^2
+    end
+
+    # The suppressed-callback primal is du = p, so u(1) = 1 + p, loss = (1+p)^2.
+    prob_nocb = ODEProblem(lin, [1.0], (0.0, 1.0), [2.0])
+    fd_grad = only(
+        FiniteDiff.finite_difference_gradient(
+            p -> only(
+                solve(prob_nocb, Tsit5(); p, abstol = 1.0e-10, reltol = 1.0e-10).u[end]
+            )^2,
+            [2.0]
+        )
+    )
+    @test fd_grad ≈ 6.0 atol = 1.0e-6
+
+    empty_callbacks = Any[nothing, CallbackSet()]
+    # `CallbackSet(::Vector{Any}, ::Vector{Any})` — the shape DiffEqBase's
+    # callback type-erasure injects — only exists where the fields are vectors.
+    if hasmethod(CallbackSet, Tuple{Vector{Any}, Vector{Any}})
+        push!(empty_callbacks, CallbackSet(Any[], Any[]))
+    end
+
+    for callback in empty_callbacks
+        value, grad = Zygote.withgradient(p -> suppressed_loss(p, callback), [2.0])
+        @test value ≈ 9.0 atol = 1.0e-8
+        @test only(grad[1]) ≈ fd_grad atol = 1.0e-6
+    end
+end
