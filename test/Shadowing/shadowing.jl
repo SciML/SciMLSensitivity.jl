@@ -185,6 +185,17 @@ using Zygote
         dp1 = Zygote.gradient((p) -> G(p), p)
         @test res1 ≈ dp1[1] atol = 1.0e-10
 
+        # Indexing the solution hands the backpass a thunk.
+        dp1 = Zygote.gradient(
+            p -> sum(
+                solve(
+                    remake(prob_attractor; p), Vern9(); abstol = 1.0e-14, reltol = 1.0e-14,
+                    saveat = 0.01, sensealg = ForwardLSS(; g)
+                )[3, :]
+            ), p
+        )
+        @test res1 ≈ dp1[1] atol = 1.0e-10
+
         dp1 = Zygote.gradient(
             (p) -> G(
                 p,
