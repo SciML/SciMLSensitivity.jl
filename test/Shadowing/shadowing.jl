@@ -95,6 +95,33 @@ using Zygote
         @test res3 ≈ res4 atol = 1.0e-10
         @test res3 ≈ res4a atol = 1.0e-10
 
+        # `E` is block-diagonal: `E!` writes only the diagonal blocks while
+        # `SchurLU` consumes the whole matrix, so off-diagonal entries must be
+        # exactly zero. Filling same-size blocks with NaN makes it likely that
+        # `E`'s allocation reuses a dirty GC-pool block; leftover garbage may
+        # be non-finite or merely nonzero, so check the exact structure.
+        sol_short = solve(
+            prob_attractor, Vern9(), abstol = 1.0e-14, reltol = 1.0e-14,
+            saveat = 0.02, tspan = (30.0, 31.0)
+        )
+        Ndt_short = length(sol_short.t) - 1
+        for _ in 1:16
+            fill!(Matrix{Float64}(undef, 3 * Ndt_short, Ndt_short), NaN)
+        end
+        GC.gc()
+        lss_poisoned = ForwardLSSProblem(
+            sol_short,
+            ForwardLSS(; LSSregularizer = SciMLSensitivity.TimeDilation(10.0), g)
+        )
+        E_poisoned = lss_poisoned.S.E
+        n_short = size(sol_short, 1)
+        @test all(isfinite, E_poisoned)
+        for i in 1:Ndt_short
+            rows = ((i - 1) * n_short + 1):(i * n_short)
+            @test all(iszero, @view E_poisoned[setdiff(axes(E_poisoned, 1), rows), i])
+            @test @view(E_poisoned[rows, i]) == @view(lss_poisoned.dudt[:, i])
+        end
+
         # discrete API with explicit time grid
         lss_problem1 = ForwardLSSProblem(
             sol_attractor, ForwardLSS(; g),

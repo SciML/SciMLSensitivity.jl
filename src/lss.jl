@@ -263,7 +263,8 @@ end
 function LSSSchur(dt, u0, numindvar, Nt, Ndt, LSSregularizer::TimeDilation)
     wBinv = similar(dt, numindvar * Nt)
     wEinv = similar(dt, Ndt)
-    E = Matrix{eltype(u0)}(undef, numindvar * Ndt, Ndt)
+    # E is block-diagonal: E! only writes the diagonal blocks.
+    E = zeros(eltype(u0), numindvar * Ndt, Ndt)
     B = Matrix{eltype(u0)}(undef, numindvar * Ndt, numindvar * Nt)
 
     return LSSSchur(wBinv, wEinv, B, E)
