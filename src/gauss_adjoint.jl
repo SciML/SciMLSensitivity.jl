@@ -121,7 +121,7 @@ end
 function Gaussfindcursor(intervals, t)
     # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
     lt(x, t) = <(x[2], t)
-    return searchsortedfirst(intervals, t; lt)
+    return searchsortedfirst(intervals, SciMLBase.value(t); lt)
 end
 
 # u = λ'
@@ -177,7 +177,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
         else
             intervals = checkpoint_sol.intervals
             interval = intervals[checkpoint_sol.cursor]
-            if !(interval[1] <= t <= interval[2])
+            if !(interval[1] <= SciMLBase.value(t) <= interval[2])
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
@@ -221,7 +221,11 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                 checkpoint_sol.cursor = cursor′
                 GaussInt.sol = cpsol′
             end
-            checkpoint_sol.cpsol(y, t, continuity = :right)
+            if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
+                y = checkpoint_sol.cpsol(t, continuity = :right)
+            else
+                checkpoint_sol.cpsol(y, t, continuity = :right)
+            end
         end
     end
     λ = u
@@ -235,7 +239,7 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
     (; sol, checkpoint_sol, prob, GaussInt) = S
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
-    if !(interval[1] <= t <= interval[2])
+    if !(interval[1] <= SciMLBase.value(t) <= interval[2])
         cursor′ = Gaussfindcursor(intervals, t)
         interval = intervals[cursor′]
         cpsol_t = current_time(checkpoint_sol.cpsol)
