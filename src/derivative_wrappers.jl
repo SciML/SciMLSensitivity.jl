@@ -134,14 +134,20 @@ function jacobian(
         uf = unwrapped_f(f)
         J = ForwardDiff.jacobian(uf, x)
     else
-        T = if f isa ParamGradientWrapper
+        # FiniteDiff's return type must match the RHS/state element type, not only
+        # `eltype(x)` (e.g. complex state with real parameters, mixed precisions).
+        T = if f isa Union{
+                ParamGradientWrapper,
+                SciMLBase.ParamJacobianWrapper,
+                RODEParamJacobianWrapper,
+            }
             promote_type(eltype(f.u), eltype(x))
         elseif f isa UGradientWrapper
             promote_type(eltype(f.p), eltype(x))
         else
-            T = eltype(x)
+            eltype(x)
         end
-        J = FiniteDiff.finite_difference_jacobian(f, x, Val(:forward), T)
+        J = FiniteDiff.finite_difference_jacobian(f, x, diff_type(alg), T)
     end
     return J
 end
@@ -173,6 +179,17 @@ function jacobian!(
         FiniteDiff.finite_difference_jacobian!(J, f, x, jac_config)
     end
     return nothing
+end
+
+function _adjoint_param_jacobian(S, y, t)
+    (; pJ, pf, tunables, f_cache, sensealg, paramjac_config, sol) = S
+    pf.t = t
+    pf.u = y
+    if SciMLBase.isinplace(sol.prob) || ismutabletype(typeof(f_cache))
+        jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+        return pJ
+    end
+    return jacobian(pf, tunables, sensealg)
 end
 
 function derivative!(
@@ -573,6 +590,15 @@ function _vecjacobian!(
         end
     end
     return
+end
+
+function _vecjacobian(
+        y, λ, p, t, S::TS, isautojacvec::Bool, dgrad, dy, W
+    ) where {TS <: SensitivityFunction}
+    dλ = similar(y, promote_type(eltype(y), eltype(λ)))
+    _vecjacobian!(dλ, y, λ, p, t, S, isautojacvec, dgrad, dy, W)
+    # Preserve immutable state containers after using a mutable Jacobian product buffer.
+    return dy, map((_, value) -> value, y, dλ), dgrad
 end
 
 const TRACKERVJP_NOTHING_MESSAGE = """

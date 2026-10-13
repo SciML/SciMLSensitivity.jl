@@ -45,7 +45,7 @@ the value 20:
 function loss(θ)
     sol = ODE.solve(prob, ODE.Tsit5(), p = [9.8, θ[1]]; callback)
     target = 20.0
-    abs2(sol[end][1] - target)
+    abs2(sol.u[end][1] - target)
 end
 
 loss([0.8])

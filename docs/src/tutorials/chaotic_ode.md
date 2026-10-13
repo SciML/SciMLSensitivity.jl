@@ -123,7 +123,7 @@ tspan_attractor = (30.0, 50.0)
 u0 = rand(3)
 prob_init = ODE.ODEProblem(lorenz!, u0, tspan_init, p)
 sol_init = ODE.solve(prob_init, ODE.Tsit5())
-prob_attractor = ODE.ODEProblem(lorenz!, sol_init[end], tspan_attractor, p)
+prob_attractor = ODE.ODEProblem(lorenz!, sol_init.u[end], tspan_attractor, p)
 
 g(u, p, t) = u[end]
 

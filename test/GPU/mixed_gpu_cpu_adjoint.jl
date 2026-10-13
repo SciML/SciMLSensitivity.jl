@@ -1,7 +1,7 @@
 using SciMLSensitivity, OrdinaryDiffEq
 using Lux, LuxCUDA, Test, Zygote, Random, LinearAlgebra, ComponentArrays
 
-const gdev = gpu_device()
+const gdev = CUDADevice()
 
 CUDA.allowscalar(false)
 
