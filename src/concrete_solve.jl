@@ -655,6 +655,12 @@ function SciMLBase._concrete_solve_adjoint(
         )
     )
 
+    # Checkpoint re-solves read the forward timestep settings from sol.prob.
+    kwargs_prob = merge(
+        kwargs_prob,
+        (; (key => kwargs[key] for key in (:dt, :adaptive) if haskey(kwargs, key))...)
+    )
+
     if haskey(kwargs, :callback)
         cb = track_callbacks(
             CallbackSet(kwargs[:callback]), current_time(prob),
