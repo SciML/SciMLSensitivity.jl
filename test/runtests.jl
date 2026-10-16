@@ -19,7 +19,6 @@ run_tests(;
                 @time @safetestset "Sparse Adjoint Sensitivity" include("Core1/sparse_adjoint.jl")
                 @time @safetestset "Adjoint Shapes" include("Core1/adjoint_shapes.jl")
                 @time @safetestset "Second Order Sensitivity" include("Core1/second_order.jl")
-                @time @safetestset "Concrete Solve Derivatives" include("Core1/concrete_solve_derivatives.jl")
                 @time @safetestset "Branching Derivatives" include("Core1/branching_derivatives.jl")
                 @time @safetestset "Derivative Shapes" include("Core1/derivative_shapes.jl")
                 @time @safetestset "save_idxs" include("Core1/save_idxs.jl")
@@ -27,16 +26,25 @@ run_tests(;
                 @time @safetestset "Complex Adjoints" include("Core1/complex_adjoints.jl")
                 @time @safetestset "ReverseDiffAdjoint Output Type" include("Core1/reversediff_output_types.jl")
                 @time @safetestset "Forward Remake" include("Core1/forward_remake.jl")
-                @time @safetestset "Prob Kwargs" include("Core1/prob_kwargs.jl")
-                @time @safetestset "Wrapped Solutions" include("Core1/wrapped_solutions.jl")
-                @time @safetestset "Mooncake VJP Prob Kwargs" include("Core1/mooncake_vjp_prob_kwargs.jl")
-                @time @safetestset "DiscreteProblem Adjoints" include("Core1/discrete.jl")
-                @time @safetestset "Time Type Mixing Adjoints" include("Core1/time_type_mixing.jl")
-                @time @safetestset "SciMLStructures Interface" include("Core1/scimlstructures_interface.jl")
-                @time @safetestset "Functor Parameters" include("Core1/functor_params.jl")
-                @time @safetestset "Sensitivity Verbosity" include("Core1/sensitivity_verbosity.jl")
-                @time @safetestset "sensealg ADTypes autodiff" include("Core1/sensealg_adtypes.jl")
-                @time @safetestset "Precompile workload" include("Core1/precompile_workload.jl")
+            end
+        end,
+        "Core9" => function ()
+            return @testset "Core 9" begin
+                @time @safetestset "Concrete Solve Derivatives" include("Core9/concrete_solve_derivatives.jl")
+            end
+        end,
+        "Core10" => function ()
+            return @testset "Core 10" begin
+                @time @safetestset "Prob Kwargs" include("Core10/prob_kwargs.jl")
+                @time @safetestset "Wrapped Solutions" include("Core10/wrapped_solutions.jl")
+                @time @safetestset "Mooncake VJP Prob Kwargs" include("Core10/mooncake_vjp_prob_kwargs.jl")
+                @time @safetestset "DiscreteProblem Adjoints" include("Core10/discrete.jl")
+                @time @safetestset "Time Type Mixing Adjoints" include("Core10/time_type_mixing.jl")
+                @time @safetestset "SciMLStructures Interface" include("Core10/scimlstructures_interface.jl")
+                @time @safetestset "Functor Parameters" include("Core10/functor_params.jl")
+                @time @safetestset "Sensitivity Verbosity" include("Core10/sensitivity_verbosity.jl")
+                @time @safetestset "sensealg ADTypes autodiff" include("Core10/sensealg_adtypes.jl")
+                @time @safetestset "Precompile workload" include("Core10/precompile_workload.jl")
             end
         end,
         "Core2" => function ()
@@ -183,7 +191,7 @@ run_tests(;
     end,
     all = [
         "Core1", "Core2", "Core3", "Core4", "Core5", "Core6", "Core7", "Core8",
-        "SDE1", "SDE2", "SDE3",
+        "Core9", "Core10", "SDE1", "SDE2", "SDE3",
     ],
-    umbrellas = Dict("Downstream" => ["Core1", "Core3"]),
+    umbrellas = Dict("Downstream" => ["Core1", "Core9", "Core10", "Core3"]),
 )
