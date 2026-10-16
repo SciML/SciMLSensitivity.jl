@@ -12,7 +12,7 @@ x = ones(Float32, 2, 3)
 
 nlprob(u, p) = first(model_nls(u, p, st_nls)) .- u
 
-prob = NonlinearProblem(nlprob, zeros(2, 3), ca)
+prob = NonlinearProblem(nlprob, zeros(Float32, 2, 3), ca)
 
 @test_nowarn solve(prob, NewtonRaphson())
 
@@ -40,13 +40,13 @@ x = ones(Float32, 2, 3)
 
 odeprob(u, p, t) = first(model_ga(u, p, st_ga))
 
-prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ca)
+prob = ODEProblem(odeprob, ones(Float32, 2, 3), (0.0f0, 1.0f0), ca)
 
 @test_nowarn solve(prob, Tsit5())
 
 gs = only(
     Zygote.gradient(ca) do ca
-        prob = ODEProblem(odeprob, ones(2, 3), (0.0f0, 1.0f0), ca)
+        prob = ODEProblem(odeprob, ones(Float32, 2, 3), (0.0f0, 1.0f0), ca)
         sol = solve(prob, Tsit5(); sensealg = GaussAdjoint(; autojacvec = ZygoteVJP()))
         return sum(last(sol.u))
     end

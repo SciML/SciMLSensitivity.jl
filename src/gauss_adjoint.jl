@@ -504,7 +504,10 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         # quadrature node.
         pf = if SciMLBase.isinplace(sol.prob.f)
             if _needs_repack
-                let _f = enzyme_rhs(unwrappedf), repack = repack
+                # concrete parameters: a `DespecializedParameters` call needs runtime activity
+                _repack = p isa SciMLBase.DespecializedParameters ?
+                    canonicalize(Tunable(), SciMLBase.unwrap_parameters(p))[2] : repack
+                let _f = enzyme_rhs(unwrappedf), repack = _repack
                     SciMLBase.Void((du, u, tunables, t) -> _f(du, u, repack(tunables), t))
                 end
             else
@@ -595,9 +598,7 @@ function vec_pjac!(out, λ, y, t, S::GaussIntegrand)
         if SciMLBase.has_paramjac(f)
             f.paramjac(pJ, y, p, t) # Calculate the parameter Jacobian into pJ
         else
-            pf.t = t
-            pf.u = y
-            jacobian!(pJ, pf, tunables, f_cache, sensealg, paramjac_config)
+            pJ = _adjoint_param_jacobian(S, y, t)
         end
         # Use pJ' * λ instead of out' = λ' * pJ to avoid GPU scalar indexing
         mul!(vec(out), pJ', λ)

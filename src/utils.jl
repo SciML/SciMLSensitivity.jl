@@ -118,3 +118,15 @@ function _get_sensitivity_vjp_verbose(verbose)
     end
     return true
 end
+
+"""
+    _has_effective_callback(cb)
+
+Whether a `callback` keyword argument actually carries callbacks. An empty
+`CallbackSet` — e.g. the `CallbackSet{Vector{Any}, Vector{Any}}` that
+DiffEqBase's callback type-erasure injects into solve kwargs on Julia >= 1.12 —
+must behave like `callback = nothing`.
+"""
+_has_effective_callback(::Nothing) = false
+_has_effective_callback(cb::CallbackSet) = !isempty(cb)
+_has_effective_callback(cb) = true
