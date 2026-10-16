@@ -1,7 +1,14 @@
-using SciMLSensitivity, SafeTestsets
+using SafeTestsets
 using Test
 using SciMLTesting
-import Mooncake
+
+# The GPU group runs in its own environment, activated in this process. Loading
+# SciMLSensitivity from the base test env first would pin its dependencies (e.g.
+# GPUCompiler) to versions the GPU env's CUDA cannot use.
+if current_group() != "GPU"
+    using SciMLSensitivity
+    import Mooncake
+end
 
 run_tests(;
     core = () -> nothing,
