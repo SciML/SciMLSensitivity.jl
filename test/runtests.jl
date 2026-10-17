@@ -57,6 +57,7 @@ run_tests(;
             return @testset "Core 3" begin
                 @time @safetestset "Default DiffEq Alg" include("Core3/default_alg_diff.jl")
                 @time @safetestset "Adjoint Sensitivity" include("Core3/adjoint.jl")
+                @time @safetestset "Checkpointing" include("Core3/checkpointing.jl")
                 @time @safetestset "DAEProblem Adjoint Sensitivity" include("Core3/dae_adjoint.jl")
                 @time @safetestset "automatic sensealg choice" include("Core3/automatic_sensealg_choice.jl")
                 @time @safetestset "GaussAdjoint ZygoteVJP In-Place" include("Core3/gauss_zygote_inplace.jl")
