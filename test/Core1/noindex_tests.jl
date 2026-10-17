@@ -6,6 +6,7 @@ struct CustomArray{T, N}
     x::Array{T, N}
 end
 Base.size(x::CustomArray) = size(x.x)
+Base.size(x::CustomArray, d::Integer) = size(x.x, d)
 Base.axes(x::CustomArray) = axes(x.x)
 Base.ndims(x::CustomArray) = ndims(x.x)
 Base.ndims(::Type{<:CustomArray{T, N}}) where {T, N} = N
@@ -19,7 +20,6 @@ Base.copy(x::CustomArray) = CustomArray(copy(x.x))
 Base.length(x::CustomArray) = length(x.x)
 Base.isempty(x::CustomArray) = isempty(x.x)
 Base.eltype(x::CustomArray) = eltype(x.x)
-Base.zero(x::CustomArray) = CustomArray(zero(x.x))
 Base.fill!(x::CustomArray, y) = CustomArray(fill!(x.x, y))
 Base.getindex(x::CustomArray, i) = getindex(x.x, i)
 Base.setindex!(x::CustomArray, v, idx) = setindex!(x.x, v, idx)
@@ -31,11 +31,15 @@ Base.any(f::Function, x::CustomArray; kwargs...) = any(f, x.x; kwargs...)
 Base.all(f::Function, x::CustomArray; kwargs...) = all(f, x.x; kwargs...)
 Base.similar(x::CustomArray, t) = CustomArray(similar(x.x, t))
 Base.:(+)(x::CustomArray, y::CustomArray) = CustomArray(x.x + y.x)
+Base.:(+)(x::CustomArray, y::AbstractArray) = CustomArray(x.x + y)
+Base.:(+)(x::AbstractArray, y::CustomArray) = CustomArray(x + y.x)
 Base.:(==)(x::CustomArray, y::CustomArray) = x.x == y.x
 Base.:(*)(x::Number, y::CustomArray) = CustomArray(x * y.x)
+Base.:(*)(x::CustomArray, y::Number) = CustomArray(x.x * y)
 Base.:(/)(x::CustomArray, y::Number) = CustomArray(x.x / y)
 LinearAlgebra.norm(x::CustomArray) = norm(x.x)
-LinearAlgebra.vec(x::CustomArray) = CustomArray(vec(x.x))
+# Sensitivity / LinearAlgebra paths expect a plain 1-d array from `vec`, not a re-wrapped CustomArray.
+LinearAlgebra.vec(x::CustomArray) = vec(x.x)
 
 struct CustomStyle{N} <: Broadcast.BroadcastStyle where {N} end
 CustomStyle(::Val{N}) where {N} = CustomStyle{N}()
