@@ -457,12 +457,8 @@ Tests callable structs with different AD backends
             uu -> sum(ForwardDiff.gradient(senseloss(InterpolatingAdjoint()), uu)),
             u0p
         )
-        hvp_matches() = hvp_mooncake(senseloss(MooncakeAdjoint()), u0p)[3] ≈ ref_hvp
-        if VERSION >= v"1.12"
-            @test_broken hvp_matches()  # https://github.com/chalk-lab/Mooncake.jl/issues/1360
-        else
-            @test hvp_matches()
-        end
+        _, _, hvp = hvp_mooncake(senseloss(MooncakeAdjoint()), u0p)
+        @test hvp ≈ ref_hvp
     end
 
     # Mooncake over another AD's adjoint (`ReverseDiffAdjoint`/`TrackerAdjoint`, and
