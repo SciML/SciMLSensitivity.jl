@@ -110,13 +110,32 @@ par = [rand(), rand()]
 algs = [Tsit5(), BS3(), Vern9(), DP5()]
 
 for alg in algs
-    function cost(p)
+    function cost(p, u0 = ca0; kwargs...)
         prob = ODEProblem(
             (du, u, p, t) -> (du[1] = p[1] * u[1] + p[2] * u[2]; du[2] = p[2] * u[1]),
-            ca0, tspan, p
+            u0, tspan, p
         )
-        sol = solve(prob, alg; save_everystep = false)
+        sol = solve(prob, alg; save_everystep = false, kwargs...)
         return 1 - norm(sol.u[end])^2
     end
     @test_nowarn Zygote.gradient(cost, par)
+    for p in ([0.2, 0.7], [-0.7, 0.4], [0.2, 0.7])
+        initial = copy(ca0)
+        parameters = copy(p)
+        dp, du0 = Zygote.gradient(p, initial) do q, x
+            cost(q, x; abstol = 1.0e-11, reltol = 1.0e-11)
+        end
+        A = [p[1] p[2]; p[2] 0.0]
+        y = exp(A) * initial.x
+        directions = ([1.0 0.0; 0.0 0.0], [0.0 1.0; 1.0 0.0])
+        expected_dp = map(directions) do E
+            # The upper-right block is the Frechet derivative of exp(A) along E.
+            dy = exp([A E; zeros(2, 2) A])[1:2, 3:4] * initial.x
+            -2dot(y, dy)
+        end
+        @test dp ≈ collect(expected_dp) rtol = 1.0e-7 atol = 1.0e-8
+        @test du0.x ≈ -2exp(A)' * y rtol = 1.0e-7 atol = 1.0e-8
+        @test initial.x == ca0.x == ones(2)
+        @test p == parameters
+    end
 end
