@@ -504,7 +504,10 @@ function GaussIntegrand(sol, sensealg, checkpoints, dgdp = nothing)
         # quadrature node.
         pf = if SciMLBase.isinplace(sol.prob.f)
             if _needs_repack
-                let _f = enzyme_rhs(unwrappedf), repack = repack
+                # concrete parameters: a `DespecializedParameters` call needs runtime activity
+                _repack = p isa SciMLBase.DespecializedParameters ?
+                    canonicalize(Tunable(), SciMLBase.unwrap_parameters(p))[2] : repack
+                let _f = enzyme_rhs(unwrappedf), repack = _repack
                     SciMLBase.Void((du, u, tunables, t) -> _f(du, u, repack(tunables), t))
                 end
             else

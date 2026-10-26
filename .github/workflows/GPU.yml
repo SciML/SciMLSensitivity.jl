@@ -74,8 +74,8 @@ jobs:
             using Pkg
             Pkg.instantiate()
             Pkg.activate("docs")
+            Pkg.develop(PackageSpec(path = pwd()))
             Pkg.instantiate()
-            push!(LOAD_PATH, @__DIR__)
             println("+++ Building documentation")
             include("docs/make.jl")'
         env:
