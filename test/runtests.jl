@@ -119,6 +119,7 @@ run_tests(;
                 @time @safetestset "NLLS stationarity adjoint" include("Core8/nlls_adjoint.jl")
                 @time @safetestset "Initialization with MTK" include("Core8/desauty_dae_mwe.jl")
                 @time @safetestset "MTK Forward Mode" include("Core8/mtk.jl")
+                @time @safetestset "Gauss checkpoint cursor" include("Core8/gauss_checkpoint_cursor.jl")
                 @time @safetestset "Observed parameter cotangent" include("Core8/observed_parameter.jl")
                 @time @safetestset "Nonlinear observed parameter cotangent" include("Core8/nonlinear_observed_parameter.jl")
                 @time @safetestset "MTK Events Adjoint" include("Core8/mtk_events.jl")
