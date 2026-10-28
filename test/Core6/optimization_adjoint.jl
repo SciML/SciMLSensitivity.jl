@@ -7,7 +7,7 @@ using SciMLSensitivity: MooncakeVJP, alg_autodiff, diff_type
 # A minimal custom SciMLStructure parameter type (a tunable vector + a non-tunable array),
 # mimicking MTKParameters without pulling in ModelingToolkit. Used by the structured-parameter
 # testset below. Structs must be defined at top level, so it lives here rather than in the
-# testset. (Interface pattern taken from test/Core1/scimlstructures_interface.jl.)
+# testset. (Interface pattern taken from test/Core10/scimlstructures_interface.jl.)
 const SSTRUCT = SciMLSensitivity.SciMLStructures
 mutable struct StructParams{T, C}
     tunable::Vector{T}
