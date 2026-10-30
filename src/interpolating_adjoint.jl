@@ -129,9 +129,9 @@ function ODEInterpolatingAdjointSensitivityFunction(
 end
 
 function findcursor(intervals, t)
-    # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
+    # RK stage times outside the checkpoint span use the nearest interval.
     lt(x, t) = <(x[2], t)
-    return searchsortedfirst(intervals, t; lt)
+    return min(searchsortedfirst(intervals, t; lt), lastindex(intervals))
 end
 
 function choose_dt(dt, ts, interval)
@@ -209,8 +209,9 @@ function split_states(
         else
             intervals = checkpoint_sol.intervals
             interval = intervals[checkpoint_sol.cursor]
-            if !(interval[1] <= t <= interval[2])
-                cursor′ = findcursor(intervals, t)
+            cursor′ = interval[1] <= t <= interval[2] ? checkpoint_sol.cursor :
+                findcursor(intervals, t)
+            if cursor′ != checkpoint_sol.cursor
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
@@ -249,7 +250,7 @@ function split_states(
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(
                             prob′, sol.alg;
-                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            dt = get(prob.kwargs, :dt, abs(cpsol_t[end] - cpsol_t[end - 1])),
                             wrap = Val(false), checkpoint_sol.tols...
                         )
                     else
@@ -262,7 +263,7 @@ function split_states(
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                             cpsol′ = solve(
                                 prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                dt = get(prob.kwargs, :dt, abs(cpsol_t[end] - cpsol_t[end - 1])),
                                 tstops = checkpoint_sol.tstops,
                                 wrap = Val(false), checkpoint_sol.tols...
                             )
@@ -270,7 +271,7 @@ function split_states(
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                             cpsol′ = solve(
                                 prob′, sol.alg;
-                                dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                                dt = get(prob.kwargs, :dt, abs(cpsol_t[end] - cpsol_t[end - 1])),
                                 tstops = checkpoint_sol.tstops,
                                 wrap = Val(false), checkpoint_sol.tols...
                             )
@@ -280,7 +281,9 @@ function split_states(
                 checkpoint_sol.cpsol = cpsol′
                 checkpoint_sol.cursor = cursor′
             end
-            checkpoint_sol.cpsol(y, t, continuity = :right)
+            checkpoint_sol.cpsol(
+                y, t, continuity = t > interval[2] ? :left : :right
+            )
         end
     end
 
