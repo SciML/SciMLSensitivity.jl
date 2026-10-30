@@ -1561,8 +1561,8 @@ function SciMLBase._concrete_solve_adjoint(
                         if !(Δ isa NoTangent || v isa ZeroTangent)
                             if u0 isa Number
                                 ForwardDiff.value.(J'v)
-                            elseif v isa Tangent
-                                ForwardDiff.value.(J'vec(v.x))
+                            elseif v isa Union{Tangent, NamedTuple}
+                                ForwardDiff.value.(J'vec(unthunk(v.x)))
                             else
                                 ForwardDiff.value.(J'vec(v))
                             end
@@ -1748,8 +1748,8 @@ function SciMLBase._concrete_solve_adjoint(
                     if !(Δ isa NoTangent || v isa ZeroTangent)
                         if u0 isa Number
                             ForwardDiff.value.(J'v)
-                        elseif v isa Tangent
-                            ForwardDiff.value.(J'vec(v.x))
+                        elseif v isa Union{Tangent, NamedTuple}
+                            ForwardDiff.value.(J'vec(unthunk(v.x)))
                         else
                             ForwardDiff.value.(J'vec(v))
                         end

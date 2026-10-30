@@ -6,6 +6,7 @@ struct CustomArray{T, N}
     x::Array{T, N}
 end
 Base.size(x::CustomArray) = size(x.x)
+Base.size(x::CustomArray, d::Integer) = size(x.x, d)
 Base.axes(x::CustomArray) = axes(x.x)
 Base.ndims(x::CustomArray) = ndims(x.x)
 Base.ndims(::Type{<:CustomArray{T, N}}) where {T, N} = N
@@ -19,7 +20,6 @@ Base.copy(x::CustomArray) = CustomArray(copy(x.x))
 Base.length(x::CustomArray) = length(x.x)
 Base.isempty(x::CustomArray) = isempty(x.x)
 Base.eltype(x::CustomArray) = eltype(x.x)
-Base.zero(x::CustomArray) = CustomArray(zero(x.x))
 Base.fill!(x::CustomArray, y) = CustomArray(fill!(x.x, y))
 Base.getindex(x::CustomArray, i) = getindex(x.x, i)
 Base.setindex!(x::CustomArray, v, idx) = setindex!(x.x, v, idx)
@@ -31,11 +31,15 @@ Base.any(f::Function, x::CustomArray; kwargs...) = any(f, x.x; kwargs...)
 Base.all(f::Function, x::CustomArray; kwargs...) = all(f, x.x; kwargs...)
 Base.similar(x::CustomArray, t) = CustomArray(similar(x.x, t))
 Base.:(+)(x::CustomArray, y::CustomArray) = CustomArray(x.x + y.x)
+Base.:(+)(x::CustomArray, y::AbstractArray) = CustomArray(x.x + y)
+Base.:(+)(x::AbstractArray, y::CustomArray) = CustomArray(x + y.x)
 Base.:(==)(x::CustomArray, y::CustomArray) = x.x == y.x
 Base.:(*)(x::Number, y::CustomArray) = CustomArray(x * y.x)
+Base.:(*)(x::CustomArray, y::Number) = CustomArray(x.x * y)
 Base.:(/)(x::CustomArray, y::Number) = CustomArray(x.x / y)
 LinearAlgebra.norm(x::CustomArray) = norm(x.x)
-LinearAlgebra.vec(x::CustomArray) = CustomArray(vec(x.x))
+# Sensitivity / LinearAlgebra paths expect a plain 1-d array from `vec`, not a re-wrapped CustomArray.
+LinearAlgebra.vec(x::CustomArray) = vec(x.x)
 
 struct CustomStyle{N} <: Broadcast.BroadcastStyle where {N} end
 CustomStyle(::Val{N}) where {N} = CustomStyle{N}()
@@ -106,13 +110,32 @@ par = [rand(), rand()]
 algs = [Tsit5(), BS3(), Vern9(), DP5()]
 
 for alg in algs
-    function cost(p)
+    function cost(p, u0 = ca0; kwargs...)
         prob = ODEProblem(
             (du, u, p, t) -> (du[1] = p[1] * u[1] + p[2] * u[2]; du[2] = p[2] * u[1]),
-            ca0, tspan, p
+            u0, tspan, p
         )
-        sol = solve(prob, alg; save_everystep = false)
+        sol = solve(prob, alg; save_everystep = false, kwargs...)
         return 1 - norm(sol.u[end])^2
     end
     @test_nowarn Zygote.gradient(cost, par)
+    for p in ([0.2, 0.7], [-0.7, 0.4], [0.2, 0.7])
+        initial = copy(ca0)
+        parameters = copy(p)
+        dp, du0 = Zygote.gradient(p, initial) do q, x
+            cost(q, x; abstol = 1.0e-11, reltol = 1.0e-11)
+        end
+        A = [p[1] p[2]; p[2] 0.0]
+        y = exp(A) * initial.x
+        directions = ([1.0 0.0; 0.0 0.0], [0.0 1.0; 1.0 0.0])
+        expected_dp = map(directions) do E
+            # The upper-right block is the Frechet derivative of exp(A) along E.
+            dy = exp([A E; zeros(2, 2) A])[1:2, 3:4] * initial.x
+            -2dot(y, dy)
+        end
+        @test dp ≈ collect(expected_dp) rtol = 1.0e-7 atol = 1.0e-8
+        @test du0.x ≈ -2exp(A)' * y rtol = 1.0e-7 atol = 1.0e-8
+        @test initial.x == ca0.x == ones(2)
+        @test p == parameters
+    end
 end
