@@ -1710,3 +1710,32 @@ for salg in [
     @show salg
     @test res' ≈ reference_sol rtol = 1.0e-6
 end
+
+@testset "Checkpointed adjoints with a Dual time argument (#1075)" begin
+    function f_ckpt_dual(du, u, p, t)
+        du .= u .* p
+        return nothing
+    end
+    p_ckpt_dual = [1.1, 1.2, 1.3]
+    prob_ckpt_dual = ODEProblem(f_ckpt_dual, [1.0, 2.0, 3.0], (0.0, 1.0), p_ckpt_dual)
+    function ckpt_dual_loss(p, sensealg)
+        return sum(
+            abs2,
+            Array(
+                solve(
+                    prob_ckpt_dual, Rodas4(); p, saveat = 0.1,
+                    abstol = 1.0e-5, reltol = 1.0e-5, sensealg
+                )
+            )
+        )
+    end
+
+    reference = ForwardDiff.gradient(p -> ckpt_dual_loss(p, nothing), p_ckpt_dual)
+    for sensealg in [
+            InterpolatingAdjoint(checkpointing = true),
+            GaussAdjoint(checkpointing = true),
+        ]
+        grad = Zygote.gradient(p -> ckpt_dual_loss(p, sensealg), p_ckpt_dual)[1]
+        @test grad ≈ reference rtol = 1.0e-5
+    end
+end
