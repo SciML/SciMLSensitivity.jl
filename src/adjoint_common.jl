@@ -1067,7 +1067,7 @@ function build_adjoint_jac(sol, sensealg, alg, f, tspan)
     end
 end
 
-struct ReverseLossCallback{
+mutable struct ReverseLossCallback{
         λType, timeType, yType, RefType, FMType, AlgType, dg1Type,
         dg2Type,
         cacheType, fType, solType, ΔλasType,
@@ -1093,19 +1093,21 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
     (; sensealg, y) = sensefun
     isq = (sensealg isa QuadratureAdjoint) || (sensealg isa AbstractGAdjoint)
 
-    (; factorized_mass_matrix, isdae) = sensefun.diffcache
+    (; factorized_mass_matrix) = sensefun.diffcache
     prob = getprob(sensefun)
     idx = length(state_values(prob))
     Δλas = Tuple{typeof(λ), eltype(t)}[]
-    if ArrayInterface.ismutable(y) && !isdae
+    # Check `prob isa AbstractDAEProblem` rather than runtime `isdae::Bool` so
+    # the return type is concrete without embedding `sol` for ordinary ODEs.
+    if ArrayInterface.ismutable(y) && !(prob isa SciMLBase.AbstractDAEProblem)
         return ReverseLossCallback(
             isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
             sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
             nothing, Δλas, no_start
         )
     else
-        # The DAE jump corrections interpolate the forward solution (and its
-        # derivative) at the jump time, so keep `sol` around.
+        # The DAE jump corrections (and immutable-state adjoints) interpolate the
+        # forward solution at the jump time, so keep `sol` around.
         return ReverseLossCallback(
             isq, λ, t, y, cur_time, idx, factorized_mass_matrix,
             sensealg, dgdu, dgdp, sensefun.diffcache, sensefun.f,
@@ -1115,12 +1117,15 @@ function ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
 end
 
 function (f::ReverseLossCallback)(integrator)
-    (; isq, λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol, no_start) = f
+    (; λ, t, y, cur_time, idx, F, sensealg, dgdu, dgdp, sol, no_start) = f
     (;
         diffvar_idxs, algevar_idxs, issemiexplicitdae,
         J, uf, f_cache, jac_config,
         algeeq_idxs, diffeq_idxs, isdae, index2,
     ) = f.diffcache
+    # Derive `isq` from `sensealg`'s type rather than the runtime `f.isq::Bool`
+    # field so `gᵤ` has a single concrete type (`Vector` vs `SubArray`).
+    isq = (sensealg isa QuadratureAdjoint) || (sensealg isa AbstractGAdjoint)
 
     no_start && !(sensealg isa BacksolveAdjoint) && cur_time[] == 1 && return nothing
 
@@ -1133,7 +1138,9 @@ function (f::ReverseLossCallback)(integrator)
 
     # For implicit DAEs the shared `y` buffer holds the last rhs evaluation
     # point, so interpolate the forward solution at the jump time instead.
-    isdae && sol(y, ti)
+    if sol !== nothing && isdae
+        sol(y, ti)
+    end
 
     if ArrayInterface.ismutable(u)
         # Warning: alias here! Be careful with λ
@@ -1143,7 +1150,7 @@ function (f::ReverseLossCallback)(integrator)
             # add discrete dgdp contribution; for the DAE adjoint the parameter
             # gradient block sits behind both the w and λ blocks
             if dgdp !== nothing && !isq
-                poff = isdae ? 2 * idx : idx
+                poff = (sol !== nothing && isdae) ? 2 * idx : idx
                 gp = @view(λ[(idx + 1):end])
                 dgdp(gp, y, p, ti, cur_time[])
                 u[(poff + 1):(poff + length(gp))] .+= gp
@@ -1158,8 +1165,14 @@ function (f::ReverseLossCallback)(integrator)
         gᵤ = dgdu(y, p, ti, cur_time[]; outtype)
     end
 
-    if issemiexplicitdae || (isdae && !isempty(algevar_idxs))
-        if isdae
+    # When `F` is a `UniformScaling` (all standard ODEs), `issemiexplicitdae` and
+    # `isdae` are guaranteed false; gating on `!(F isa UniformScaling ...)` keeps
+    # the algebraic-variable jump correction compile-time dead for standard ODEs,
+    # and applying the update inside each branch avoids merging `Vector` and
+    # `SubArray` into a `Union`.
+    if !(F isa UniformScaling || F isa Tuple{UniformScaling, UniformScaling}) &&
+            (issemiexplicitdae || (sol !== nothing && isdae && !isempty(algevar_idxs)))
+        if sol !== nothing && isdae
             # ∂F/∂u of the residual at the interpolated (du, u); the shared
             # Jacobian machinery is bypassed since the residual signature differs.
             dy = sol(ti, Val{1})
@@ -1177,7 +1190,7 @@ function (f::ReverseLossCallback)(integrator)
             J_u = J
         end
         dhdd = J_u[algeeq_idxs, diffvar_idxs]
-        if isdae && index2
+        if sol !== nothing && isdae && index2
             all(iszero, @view(gᵤ[algevar_idxs])) ||
                 error("Discrete cost contributions on the algebraic variables of an index-2 DAE are not supported: they correspond to derivatives of delta distributions in the adjoint. Reformulate the cost in terms of the differential variables.")
             dy = sol(ti, Val{1})
@@ -1191,19 +1204,36 @@ function (f::ReverseLossCallback)(integrator)
         end
         Δλd = dhdd'Δλa + gᵤ[diffvar_idxs]
         push!(f.Δλas, (Δλa, ti))
+        if F !== nothing
+            F !== I && F !== (I, I) && ldiv!(F, Δλd)
+        end
+        if ArrayInterface.ismutable(u)
+            u[diffvar_idxs] .+= Δλd
+        else
+            @assert isq
+            integrator.u += Δλd
+        end
+    elseif sol !== nothing && isdae
+        Δλd_dae = gᵤ[diffvar_idxs]
+        if F !== nothing
+            F !== I && F !== (I, I) && ldiv!(F, Δλd_dae)
+        end
+        if ArrayInterface.ismutable(u)
+            u[diffvar_idxs] .+= Δλd_dae
+        else
+            @assert isq
+            integrator.u += Δλd_dae
+        end
     else
-        Δλd = isdae ? gᵤ[diffvar_idxs] : gᵤ
-    end
-
-    if F !== nothing
-        F !== I && F !== (I, I) && ldiv!(F, Δλd)
-    end
-
-    if ArrayInterface.ismutable(u)
-        u[diffvar_idxs] .+= Δλd
-    else
-        @assert isq
-        integrator.u += Δλd
+        if F !== nothing
+            F !== I && F !== (I, I) && ldiv!(F, gᵤ)
+        end
+        if ArrayInterface.ismutable(u)
+            u[diffvar_idxs] .+= gᵤ
+        else
+            @assert isq
+            integrator.u += gᵤ
+        end
     end
     derivative_discontinuity!(integrator, true)
     cur_time[] -= 1
@@ -1232,34 +1262,44 @@ function generate_callbacks(
         terminated
     )
 
-    init_cb || return reverse_cbs, nothing, nothing
+    t === nothing && return reverse_cbs, nothing, Vector{Vector{typeof(t0)}}()
 
-    # callbacks can lead to non-unique time points
-    _t, duplicate_iterator_times = separate_nonunique(t)
+    # callbacks can lead to non-unique time points; keep callback tuple concrete
+    # across runtime `init_cb` and duplicate-time branches for Enzyme FoR.
+    if init_cb
+        _t_raw, duplicate_iterator_times = separate_nonunique(t)
+        _t = eltype(_t_raw) === typeof(t0) ? _t_raw : convert.(typeof(t0), _t_raw)
+        _dupl_t = if isempty(duplicate_iterator_times)
+            Vector{typeof(t0)}()
+        else
+            eltype(duplicate_iterator_times[1]) === typeof(t0) ?
+                duplicate_iterator_times[1] :
+                convert.(typeof(t0), duplicate_iterator_times[1])
+        end
+    else
+        duplicate_iterator_times = Vector{Vector{eltype(t)}}()
+        _t = Vector{typeof(t0)}()
+        _dupl_t = Vector{typeof(t0)}()
+    end
 
     rlcb = ReverseLossCallback(sensefun, λ, t, dgdu, dgdp, cur_time, no_start)
-
-    if eltype(_t) !== typeof(t0)
-        _t = convert.(typeof(t0), _t)
-    end
     cb = PresetTimeCallback(_t, rlcb)
 
-    # handle duplicates (currently only for double occurrences)
-    if duplicate_iterator_times !== nothing
-        # use same ref for cur_time to cope with concrete_solve
-        cbrev_dupl_affect = ReverseLossCallback(
-            sensefun, λ, t, dgdu, dgdp, cur_time, no_start
-        )
-        cb_dupl = PresetTimeCallback(duplicate_iterator_times[1], cbrev_dupl_affect)
-        return CallbackSet(cb, reverse_cbs, cb_dupl), rlcb, duplicate_iterator_times
-    else
-        return CallbackSet(cb, reverse_cbs), rlcb, duplicate_iterator_times
-    end
+    # handle duplicates (currently only for double occurrences); empty `_dupl_t` is a no-op
+    cbrev_dupl_affect = ReverseLossCallback(
+        sensefun, λ, t, dgdu, dgdp, cur_time, no_start
+    )
+    cb_dupl = PresetTimeCallback(_dupl_t, cbrev_dupl_affect)
+    return CallbackSet(cb, reverse_cbs, cb_dupl), rlcb, duplicate_iterator_times
 end
 
 function separate_nonunique(t)
     # t is already sorted
     _t = unique(t)
+    T = eltype(_t)
+    if length(_t) == length(t)
+        return _t, Vector{Vector{T}}()
+    end
     ts_with_occurrences = [(i, count(==(i), t)) for i in _t]
 
     # duplicates (only those values which occur > 1 times)
@@ -1269,20 +1309,20 @@ function separate_nonunique(t)
     occurrences = last.(dupl)
 
     if isempty(occurrences)
-        itrs = nothing
+        itrs = Vector{Vector{T}}()
     else
         maxoc = maximum(occurrences)
         maxoc > 2 &&
             error("More than two occurrences of the same time point. Please report this.")
         # handle also more than two occurrences
-        itrs = [ts[occurrences .>= i] for i in 2:maxoc]
+        itrs = Vector{T}[ts[occurrences .>= i] for i in 2:maxoc]
     end
 
     return _t, itrs
 end
 
 function out_and_ts(_ts, duplicate_iterator_times, sol)
-    if duplicate_iterator_times === nothing
+    if duplicate_iterator_times === nothing || isempty(duplicate_iterator_times)
         ts = _ts
         out = sol(ts)
     else

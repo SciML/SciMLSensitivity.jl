@@ -778,7 +778,7 @@ function setvjp(sensealg::GaussKronrodAdjoint{CS, AD, FDT}, vjp) where {
 end
 
 # Supertype of gauss methods, internal
-AbstractGAdjoint = Union{GaussAdjoint, GaussKronrodAdjoint}
+const AbstractGAdjoint = Union{GaussAdjoint, GaussKronrodAdjoint}
 
 """
 ```julia

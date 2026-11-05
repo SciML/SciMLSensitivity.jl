@@ -522,7 +522,7 @@ function backsolve_checkpoint_callbacks(
         duplicate_iterator_times = nothing
     )
     prob = sol.prob
-    if duplicate_iterator_times !== nothing
+    if duplicate_iterator_times !== nothing && !isempty(duplicate_iterator_times)
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)
     else
         _checkpoints = checkpoints
@@ -548,7 +548,7 @@ function backsolve_checkpoint_callbacks(
         duplicate_iterator_times = nothing
     )
     prob = sol.prob
-    if duplicate_iterator_times !== nothing
+    if duplicate_iterator_times !== nothing && !isempty(duplicate_iterator_times)
         _checkpoints = filter(x -> x ∉ duplicate_iterator_times[1], checkpoints)
     else
         _checkpoints = checkpoints

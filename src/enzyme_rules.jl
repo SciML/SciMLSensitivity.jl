@@ -20,3 +20,4 @@ EnzymeRules.inactive_type(::Type{<:VJPChoice}) = true
 # Enzyme), where the outer forward pass would otherwise type-analyze the
 # Union-typed probing code and fail with an IllegalTypeAnalysisException.
 EnzymeRules.inactive(::typeof(automatic_sensealg_choice), args...) = nothing
+EnzymeRules.inactive(::typeof(_enzyme_originator_vjp), args...) = nothing
