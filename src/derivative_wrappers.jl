@@ -983,12 +983,25 @@ function _vecjacobian(
     return dy, dλ, dgrad
 end
 
+# Pure-Julia inner product used by `_enzyme_vecjac_dot` and `_enzyme_vecpjac_dot`
+# instead of `LinearAlgebra.dot`. On `BlasFloat` `Vector`s, `LinearAlgebra.dot`
+# dispatches to `BLAS.dot` (`cblas_ddot64_`), whose reverse derivative emits
+# `cblas_daxpy64_`; under forward-over-reverse (HVPs/Hessians), Enzyme's fallback
+# BLAS forward wrapper for `cblas_daxpy64_` segfaults in `libopenblas64_`.
+@inline function _enzyme_inner_dot(a, b)
+    s = zero(promote_type(eltype(a), eltype(b)))
+    @inbounds @simd for i in eachindex(a, b)
+        s += conj(a[i]) * b[i]
+    end
+    return s
+end
+
 # `λ ⋅ f(u, p, t)`, differentiated by Enzyme with respect to `u` and `p` while
 # holding `f`, `t`, `λ` (and `W`) constant. Kept as top-level methods so the
 # out-of-place EnzymeVJP path can call `Enzyme.gradient` without a capturing
 # closure.
-_enzyme_vecjac_dot(f, u, p, t, λ) = dot(vec(f(u, p, t)), vec(λ))
-_enzyme_vecjac_dot(f, u, p, t, λ, W) = dot(vec(f(u, p, t, W)), vec(λ))
+_enzyme_vecjac_dot(f, u, p, t, λ) = _enzyme_inner_dot(vec(f(u, p, t)), vec(λ))
+_enzyme_vecjac_dot(f, u, p, t, λ, W) = _enzyme_inner_dot(vec(f(u, p, t, W)), vec(λ))
 
 function _vecjacobian(
         y, λ, p, t, S::TS, isautojacvec::EnzymeVJP, dgrad, dy,
@@ -1896,6 +1909,7 @@ function accumulate_cost!(
         dgrad = nothing
     ) where {TS <: SensitivityFunction}
     (; dgdu, dgdp, dg_val, g, g_grad_config) = S.diffcache
+    (dgdu === nothing && g === nothing) && return nothing
 
     if dgdu !== nothing
         if dgdp === nothing
@@ -1929,6 +1943,7 @@ function accumulate_cost(
         dgrad = nothing
     ) where {TS <: SensitivityFunction}
     (; dgdu, dgdp) = S.diffcache
+    dgdu === nothing && return dλ, dgrad
 
     dλ -= dgdu(y, p, t)
     if dgdp !== nothing

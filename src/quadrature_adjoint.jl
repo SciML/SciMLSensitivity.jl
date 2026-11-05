@@ -353,7 +353,9 @@ end
 # `λ ⋅ f(y, repack(tunables), t)`, differentiated by Enzyme with respect to
 # `tunables` only (everything else held constant). Top-level so the out-of-place
 # immutable-state parameter vjp can call `Enzyme.gradient` without a closure.
-_enzyme_vecpjac_dot(f, repack, y, tunables, t, λ) = dot(vec(f(y, repack(tunables), t)), vec(λ))
+function _enzyme_vecpjac_dot(f, repack, y, tunables, t, λ)
+    return _enzyme_inner_dot(vec(f(y, repack(tunables), t)), vec(λ))
+end
 
 # out = λ df(u, p, t)/dp at u=y, p=p, t=t
 function vec_pjac!(out, λ, y, t, S::AdjointSensitivityIntegrand)
