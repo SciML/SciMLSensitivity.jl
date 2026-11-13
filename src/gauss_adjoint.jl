@@ -181,6 +181,12 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
+                # A one-point checkpoint has no previous step to copy.
+                stepkw = if length(cpsol_t) > 1
+                    (; dt = abs(cpsol_t[end] - cpsol_t[end - 1]))
+                else
+                    (;)
+                end
                 if t isa ForwardDiff.Dual && eltype(S.y) <: AbstractFloat
                     y = sol(interval[1])
                 else
@@ -190,8 +196,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                     prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                     cpsol′ = solve(
                         prob′, sol.alg;
-                        dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
-                        wrap = Val(false), checkpoint_sol.tols...
+                        stepkw..., wrap = Val(false), checkpoint_sol.tols...
                     )
                 else
                     if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
@@ -202,16 +207,14 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                         )
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
                         cpsol′ = solve(
-                            prob′, sol.alg;
-                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            prob′, sol.alg; stepkw...,
                             tstops = checkpoint_sol.tstops,
                             wrap = Val(false), checkpoint_sol.tols...
                         )
                     else
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
                         cpsol′ = solve(
-                            prob′, sol.alg;
-                            dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
+                            prob′, sol.alg; stepkw...,
                             tstops = checkpoint_sol.tstops,
                             wrap = Val(false), checkpoint_sol.tols...
                         )
@@ -244,10 +247,17 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
         interval = intervals[cursor′]
         cpsol_t = current_time(checkpoint_sol.cpsol)
         y₀ = sol(interval[1])
-        dt = abs(cpsol_t[end] - cpsol_t[end - 1])
+        # A one-point checkpoint has no previous step to copy.
+        stepkw = if length(cpsol_t) > 1
+            (; dt = abs(cpsol_t[end] - cpsol_t[end - 1]))
+        else
+            (;)
+        end
         if checkpoint_sol.tstops === nothing
             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
-            cpsol′ = solve(prob′, sol.alg; dt, wrap = Val(false), checkpoint_sol.tols...)
+            cpsol′ = solve(
+                prob′, sol.alg; stepkw..., wrap = Val(false), checkpoint_sol.tols...,
+            )
         else
             if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                 # callback might have changed p
@@ -257,13 +267,13 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
                 )
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀, p = _p)
                 cpsol′ = solve(
-                    prob′, sol.alg; dt,
-                    tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
+                    prob′, sol.alg; stepkw...,
+                    tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...,
                 )
             else
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
                 cpsol′ = solve(
-                    prob′, sol.alg; dt,
+                    prob′, sol.alg; stepkw...,
                     tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
                 )
             end
