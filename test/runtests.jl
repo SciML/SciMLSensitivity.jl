@@ -31,6 +31,7 @@ run_tests(;
                 @time @safetestset "Prob Kwargs" include("Core1/prob_kwargs.jl")
                 @time @safetestset "Wrapped Solutions" include("Core1/wrapped_solutions.jl")
                 @time @safetestset "Mooncake VJP Prob Kwargs" include("Core1/mooncake_vjp_prob_kwargs.jl")
+                @time @safetestset "Matrix State Adjoints" include("Core1/matrix_state_adjoints.jl")
                 @time @safetestset "DiscreteProblem Adjoints" include("Core1/discrete.jl")
                 @time @safetestset "Time Type Mixing Adjoints" include("Core1/time_type_mixing.jl")
                 @time @safetestset "SciMLStructures Interface" include("Core1/scimlstructures_interface.jl")
