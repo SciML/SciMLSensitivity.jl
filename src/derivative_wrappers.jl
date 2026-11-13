@@ -376,17 +376,17 @@ function _vecjacobian_vjp!(dλ, y, λ, p, t, S, dgrad, dy, W)
         end
     end
 
-    # Forward evaluation
+    # Forward evaluation (dy is a vector also for matrix states)
     if dy !== nothing
         if W === nothing
             if inplace_sensitivity(S)
-                f(dy, y, p, t)
+                f(reshape(dy, axes(y)), y, p, t)
             else
                 recursive_copyto!(dy, vec(f(y, p, t)))
             end
         else
             if inplace_sensitivity(S)
-                f(dy, y, p, t, W)
+                f(reshape(dy, axes(y)), y, p, t, W)
             else
                 recursive_copyto!(dy, vec(f(y, p, t, W)))
             end
@@ -574,16 +574,17 @@ function _vecjacobian!(
         # with Adjoint wrappers on vectors
         mul!(vec(dgrad), pJ', λ)
     end
+    # dy is a vector also for matrix states
     if dy !== nothing
         if W === nothing
             if inplace_sensitivity(S)
-                f(dy, y, p, t)
+                f(reshape(dy, axes(y)), y, p, t)
             else
                 recursive_copyto!(dy, vec(f(y, p, t)))
             end
         else
             if inplace_sensitivity(S)
-                f(dy, y, p, t, W)
+                f(reshape(dy, axes(y)), y, p, t, W)
             else
                 recursive_copyto!(dy, vec(f(y, p, t, W)))
             end
