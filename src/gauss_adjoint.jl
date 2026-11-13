@@ -120,11 +120,8 @@ end
 
 function Gaussfindcursor(intervals, t)
     # equivalent with `findfirst(x->x[1] <= t <= x[2], intervals)`
-    # A ForwardDiff.Dual with a positive partial compares greater than an equal
-    # Float64, so the partial must not enter this ordering.
-    t = ForwardDiff.value(t)
     lt(x, t) = <(x[2], t)
-    return searchsortedfirst(intervals, t; lt)
+    return searchsortedfirst(intervals, SciMLBase.value(t); lt)
 end
 
 # u = λ'
@@ -180,7 +177,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
         else
             intervals = checkpoint_sol.intervals
             interval = intervals[checkpoint_sol.cursor]
-            if !(interval[1] <= ForwardDiff.value(t) <= interval[2])
+            if !(interval[1] <= SciMLBase.value(t) <= interval[2])
                 cursor′ = Gaussfindcursor(intervals, t)
                 interval = intervals[cursor′]
                 cpsol_t = current_time(checkpoint_sol.cpsol)
@@ -245,7 +242,7 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
     (; sol, checkpoint_sol, prob, GaussInt) = S
     intervals = checkpoint_sol.intervals
     interval = intervals[checkpoint_sol.cursor]
-    if !(interval[1] <= ForwardDiff.value(t) <= interval[2])
+    if !(interval[1] <= SciMLBase.value(t) <= interval[2])
         cursor′ = Gaussfindcursor(intervals, t)
         interval = intervals[cursor′]
         cpsol_t = current_time(checkpoint_sol.cpsol)
