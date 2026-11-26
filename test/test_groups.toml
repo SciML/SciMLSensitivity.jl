@@ -28,6 +28,24 @@ versions = ["1", "1.11", "lts"]
 [Core8]
 versions = ["1", "1.11", "lts"]
 
+[Core9]
+versions = ["1", "1.11", "lts"]
+
+["Core9 32-bit"]
+group = "Core9"
+versions = ["1"]
+os = ["ubuntu-latest"]
+arch = "x86"
+
+[Core10]
+versions = ["1", "1.11", "lts"]
+
+["Core10 32-bit"]
+group = "Core10"
+versions = ["1"]
+os = ["ubuntu-latest"]
+arch = "x86"
+
 [QA]
 versions = ["lts", "1"]
 
