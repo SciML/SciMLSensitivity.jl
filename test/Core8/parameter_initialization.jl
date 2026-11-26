@@ -82,19 +82,11 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
     # `set_runtime_activity(Reverse)` tolerates runtime-activity
     # transitions through MTK's `remake` path.
     #
-    # Residual blocker: `Enzyme.autodiff` enters the `GaussAdjoint`
-    # `_concrete_solve_adjoint` rule, which calls
-    # `_init_originator_gradient` to differentiate the parameter-init
-    # `tunables -> new_u0` mapping. That helper currently invokes
-    # `Enzyme.gradient(Enzyme.Reverse, Const(init_loss), tunables)`
-    # without `set_runtime_activity`, so the inner Enzyme call still
-    # raises `EnzymeRuntimeActivityError` at the MTK init `remake`. The
-    # outer-call activity setting doesn't propagate into that nested
-    # gradient. Fixing this requires teaching
-    # `_init_originator_gradient(::EnzymeOriginator, ...)` to wrap with
-    # `set_runtime_activity(Reverse)` (or use `autodiff` + `Duplicated`
-    # itself); both are outside this test file's scope. When that lifts,
-    # flipping `@test_broken` → `@test` is the only change needed here.
+    # Residual upstream blocker: on Julia 1.11.9, Enzyme 0.13.220 and 0.13.221
+    # can abort with "GC error (probable corruption)" while compiling this
+    # nested set_runtime_activity(Reverse) call. Plain Reverse instead raises
+    # EnzymeRuntimeActivityError in MTK's remake path. The reduced reproducer
+    # and Enzyme owner routing are tracked in #1725.
     @testset "Adjoint through Prob (Enzyme)" begin
         function enzyme_loss(t, prob_)
             _, repack_, _ = SS.canonicalize(
