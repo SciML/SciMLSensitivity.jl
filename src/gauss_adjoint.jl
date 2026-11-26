@@ -68,7 +68,7 @@ function ODEGaussAdjointSensitivityFunction(
         cursor = lastindex(intervals)
         interval = intervals[cursor]
         if tstops === nothing
-            cpsol = solve(
+            cpsol = _solve_checkpoint(
                 remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                 sol.alg; dense = true, wrap = Val(false), tols...
             )
@@ -83,16 +83,16 @@ function ODEGaussAdjointSensitivityFunction(
                 #cpsol = solve(remake(sol.prob; tspan = interval, u0 = sol(interval[1])),
                 #    tstops, p = _p, sol.alg; tols...)
 
-                cpsol = solve(
+                cpsol = _solve_checkpoint(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
-                    dense = true,
-                    p = _p, sol.alg; wrap = Val(false), tols...
+                    sol.alg; dense = true,
+                    p = _p, wrap = Val(false), tols...
                 )
                 gaussint.sol = cpsol
             else
                 #cpsol = solve(remake(sol.prob; tspan = interval, u0 = sol(interval[1])),
                 #    tstops, sol.alg; tols...)
-                cpsol = solve(
+                cpsol = _solve_checkpoint(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     sol.alg; dense = true, wrap = Val(false), tols...
                 )
@@ -188,7 +188,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                 end
                 if checkpoint_sol.tstops === nothing
                     prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
-                    cpsol′ = solve(
+                    cpsol′ = _solve_checkpoint(
                         prob′, sol.alg;
                         dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                         wrap = Val(false), checkpoint_sol.tols...
@@ -201,7 +201,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                             parameter_values(prob)
                         )
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
-                        cpsol′ = solve(
+                        cpsol′ = _solve_checkpoint(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                             tstops = checkpoint_sol.tstops,
@@ -209,7 +209,7 @@ function split_states(du, u, t, S::ODEGaussAdjointSensitivityFunction; update = 
                         )
                     else
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
-                        cpsol′ = solve(
+                        cpsol′ = _solve_checkpoint(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                             tstops = checkpoint_sol.tstops,
@@ -247,7 +247,7 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
         dt = abs(cpsol_t[end] - cpsol_t[end - 1])
         if checkpoint_sol.tstops === nothing
             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
-            cpsol′ = solve(prob′, sol.alg; dt, wrap = Val(false), checkpoint_sol.tols...)
+            cpsol′ = _solve_checkpoint(prob′, sol.alg; dt, wrap = Val(false), checkpoint_sol.tols...)
         else
             if maximum(interval[1] .< checkpoint_sol.tstops .< interval[2])
                 # callback might have changed p
@@ -256,13 +256,13 @@ function Gaussupdate_checkpoint_sol!(S::ODEGaussAdjointSensitivityFunction, t)
                     parameter_values(prob)
                 )
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀, p = _p)
-                cpsol′ = solve(
+                cpsol′ = _solve_checkpoint(
                     prob′, sol.alg; dt,
                     tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
                 )
             else
                 prob′ = remake(prob, tspan = intervals[cursor′], u0 = y₀)
-                cpsol′ = solve(
+                cpsol′ = _solve_checkpoint(
                     prob′, sol.alg; dt,
                     tstops = checkpoint_sol.tstops, wrap = Val(false), checkpoint_sol.tols...
                 )
@@ -760,12 +760,13 @@ function _adjoint_sensitivities(
     _use_full_p = hasproperty(sensealg, :diff_tunables) &&
         sensealg.diff_tunables isa Val{false} &&
         isscimlstructure(p) && !(p isa AbstractArray)
-    if _use_full_p
-        tunables, repack = p, identity
+    tunables, repack = if _use_full_p
+        p, identity
     elseif p === nothing || p isa SciMLBase.NullParameters
-        tunables, repack = p, identity
+        p, identity
     elseif isscimlstructure(p)
-        tunables, repack, _ = canonicalize(Tunable(), p)
+        t_val, repack_fn, _ = canonicalize(Tunable(), p)
+        t_val, repack_fn
     elseif isfunctor(p)
         if !supports_structured_vjp(sensealg.autojacvec)
             error(
@@ -774,9 +775,9 @@ function _adjoint_sensitivities(
                     "or make `p` a SciMLStructure. See SciMLStructures.jl."
             )
         end
-        tunables, repack = Functors.functor(p)
+        Functors.functor(p)
     else
-        tunables, repack = p, identity
+        p, identity
     end
     integrand = GaussIntegrand(sol, sensealg, checkpoints, dgdp_continuous)
     # The integrating callbacks mutate their accumulation buffers, so immutable
@@ -787,25 +788,22 @@ function _adjoint_sensitivities(
     # rather than the allocating one the callbacks default to for out-of-place
     # adjoint problems.
     integrand_func = (out, u, t, integrator) -> integrand(out, t, u)
-    if sensealg isa GaussAdjoint
-        cb = IntegratingSumCallback(
+    cb_init = if sensealg isa GaussAdjoint
+        IntegratingSumCallback(
             integrand_func, integrand_values, mutable_zeros(tunables);
             integrand_inplace = true
         )
     elseif sensealg isa GaussKronrodAdjoint
-        cb = IntegratingGKSumCallback(
+        IntegratingGKSumCallback(
             integrand_func, integrand_values, mutable_zeros(tunables);
             integrand_inplace = true
         )
     end
-    rcb = nothing
-    cb2 = nothing
-    adj_prob = nothing
 
-    if sol.prob isa ODEProblem
-        adj_prob, cb2,
-            rcb = ODEAdjointProblem(
-            sol, sensealg, alg, integrand, cb,
+    adj_prob, cb2,
+        rcb = if sol.prob isa ODEProblem
+        ODEAdjointProblem(
+            sol, sensealg, alg, integrand, cb_init,
             t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
@@ -814,9 +812,8 @@ function _adjoint_sensitivities(
             abstol, reltol, kwargs...
         )
     elseif sol.prob isa SciMLBase.AbstractDAEProblem
-        adj_prob, cb2,
-            rcb = DAEAdjointProblem(
-            sol, sensealg, alg, integrand, cb,
+        DAEAdjointProblem(
+            sol, sensealg, alg, integrand, cb_init,
             t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
@@ -830,7 +827,7 @@ function _adjoint_sensitivities(
 
     tstops = ischeckpointing(sensealg, sol) ? checkpoints : similar(current_time(sol), 0)
 
-    if sol.prob isa SciMLBase.AbstractDAEProblem
+    cb = if sol.prob isa SciMLBase.AbstractDAEProblem
         # The DAE adjoint state is z = [w; λ]: the integrating callback must read
         # the λ block.
         numstates = length(state_values(sol.prob))
@@ -840,21 +837,23 @@ function _adjoint_sensitivities(
             )
         end
         if sensealg isa GaussAdjoint
-            cb = IntegratingSumCallback(
+            IntegratingSumCallback(
                 _integrand_func, integrand_values, mutable_zeros(tunables);
                 integrand_inplace = true
             )
         elseif sensealg isa GaussKronrodAdjoint
-            cb = IntegratingGKSumCallback(
+            IntegratingGKSumCallback(
                 _integrand_func, integrand_values, mutable_zeros(tunables);
                 integrand_inplace = true
             )
         end
+    else
+        cb_init
     end
 
     adj_sol = solve(
         adj_prob, alg; abstol, reltol, save_everystep = false,
-        save_start = false, save_end = true, saveat = eltype(state_values(sol, 1))[], tstops,
+        save_start = false, save_end = true, saveat = eltype(eltype(state_values(sol)))[], tstops,
         callback = CallbackSet(cb, cb2), kwargs...
     )
     res = integrand_values.integrand

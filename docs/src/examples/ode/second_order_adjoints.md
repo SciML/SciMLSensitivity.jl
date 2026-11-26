@@ -90,8 +90,7 @@ optf1 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype1)
 optprob1 = OPT.OptimizationProblem(optf1, ps)
 pstart = OPT.solve(optprob1, OPO.Adam(0.01); callback, maxiters = 100).u
 
-adtype2 = OPT.AutoZygote()
-optf2 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype2)
+optf2 = OPT.OptimizationFunction((x, p) -> loss_neuralode(x), adtype1)
 optprob2 = OPT.OptimizationProblem(optf2, pstart)
 pmin = OPT.solve(optprob2, OOJ.NewtonTrustRegion(); callback, maxiters = 200)
 ```

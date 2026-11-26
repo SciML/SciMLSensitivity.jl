@@ -477,10 +477,9 @@ function _adjoint_sensitivities(
             (mtkp isa AbstractArray && !Base.isconcretetype(eltype(mtkp)))
         throw(AdjointSensitivityParameterCompatibilityError())
     end
-    rcb = nothing
-    if sol.prob isa ODEProblem
-        adj_prob,
-            rcb = ODEAdjointProblem(
+    adj_prob,
+        rcb = if sol.prob isa ODEProblem
+        ODEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
@@ -488,28 +487,28 @@ function _adjoint_sensitivities(
             callback, no_start, dgdt_discrete,
             abstol, reltol, kwargs...
         )
-
     elseif sol.prob isa SDEProblem
-        adj_prob = SDEAdjointProblem(
-            sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-            dgdu_continuous, dgdp_continuous, g;
-            checkpoints,
-            callback,
-            abstol, reltol,
-            corfunc_analytical
-        )
+        SDEAdjointProblem(
+                sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+                dgdu_continuous, dgdp_continuous, g;
+                checkpoints,
+                callback,
+                abstol, reltol,
+                corfunc_analytical
+            ),
+            nothing
     elseif sol.prob isa RODEProblem
-        adj_prob = RODEAdjointProblem(
-            sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
-            dgdu_continuous, dgdp_continuous, g;
-            checkpoints,
-            callback,
-            abstol, reltol,
-            corfunc_analytical
-        )
+        RODEAdjointProblem(
+                sol, sensealg, alg, t, dgdu_discrete, dgdp_discrete,
+                dgdu_continuous, dgdp_continuous, g;
+                checkpoints,
+                callback,
+                abstol, reltol,
+                corfunc_analytical
+            ),
+            nothing
     elseif sol.prob isa SciMLBase.AbstractDAEProblem
-        adj_prob,
-            rcb = DAEAdjointProblem(
+        DAEAdjointProblem(
             sol, sensealg, alg, t, dgdu_discrete,
             dgdp_discrete,
             dgdu_continuous, dgdp_continuous, g, Val(true);
@@ -532,7 +531,7 @@ function _adjoint_sensitivities(
     tstops = needs_grid_tstops ? checkpoints : similar(current_time(sol), 0)
     adj_sol = solve(
         adj_prob, alg;
-        save_everystep = false, save_start = false, saveat = eltype(state_values(sol, 1))[],
+        save_everystep = false, save_start = false, saveat = eltype(eltype(state_values(sol)))[],
         tstops, abstol, reltol, kwargs...
     )
 
@@ -596,7 +595,7 @@ function _adjoint_sensitivities(
 
     if rcb !== nothing && !isempty(rcb.Δλas)
         S = adj_prob.f.f
-        iλ = similar(rcb.λ, length(state_values(sol, 1)))
+        iλ = similar(rcb.λ, length(state_values(sol.prob)))
         out = zero(dp')
         yy = similar(rcb.y)
         for (Δλa, tt) in rcb.Δλas

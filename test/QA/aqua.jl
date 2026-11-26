@@ -69,8 +69,9 @@ run_qa(
                 # Core
                 :kwcall,
                 # DiffEqBase (internal `solve_up`/`_solve_adjoint` rrule plumbing
-                # used by SciMLSensitivityMooncakeExt)
-                :AbstractDEProblem, :_solve_adjoint, :solve_up,
+                # used by SciMLSensitivityMooncakeExt and `_solve_primal_for_adjoint`)
+                :AbstractDEProblem, :_solve_adjoint, :build_null_solution,
+                :checkkwargs_allowing_limiter_kwargs, :get_concrete_problem, :solve_up,
                 # DiffEqCallbacks
                 :PeriodicCallbackAffect,
                 # DiffEqNoiseProcess
@@ -109,7 +110,8 @@ run_qa(
                 :FullSpecialize, :ImmutableNonlinearProblem, :MooncakeOriginator,
                 :OVERDETERMINED, :ParamJacobianWrapper, :ReverseDiffOriginator,
                 :TrackerOriginator, :UDerivativeWrapper, :UJacobianWrapper, :Void,
-                :_concrete_solve_adjoint, :_concrete_solve_forward, :alg_interpretation,
+                :__solve, :_concrete_solve_adjoint, :_concrete_solve_forward,
+                :alg_interpretation,
                 :enable_interpolation_sensitivitymode,
                 :has_initialization_data, :has_observed, :has_paramjac, :has_vjp_p,
                 :initialization_status, :sensitivity_solution, :specialization,

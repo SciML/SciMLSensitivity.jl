@@ -76,17 +76,17 @@ function ODEInterpolatingAdjointSensitivityFunction(
             )
 
             _ts = current_time(sol)
-            cpsol = solve(
+            cpsol = _solve_checkpoint(
                 remake(
                     sol.prob, tspan = interval, u0 = sol(interval[1]),
                     noise = forwardnoise
                 ),
-                sol.alg, save_noise = false; dt, tstops = _ts[idx1:end],
+                sol.alg; save_noise = false, dt, tstops = _ts[idx1:end],
                 wrap = Val(false), tols...
             )
         else
             if tstops === nothing
-                cpsol = solve(
+                cpsol = _solve_checkpoint(
                     remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
                     sol.alg; wrap = Val(false), tols...
                 )
@@ -97,14 +97,14 @@ function ODEInterpolatingAdjointSensitivityFunction(
                         get(sol.prob.kwargs, :callback, nothing), interval,
                         parameter_values(sol.prob)
                     )
-                    cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, p = _p, sol.alg, wrap = Val(false), tols...
+                    cpsol = _solve_checkpoint(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                        sol.alg; tstops, p = _p, wrap = Val(false), tols...
                     )
                 else
-                    cpsol = solve(
-                        remake(sol.prob, tspan = interval, u0 = sol(interval[1]));
-                        tstops, sol.alg, wrap = Val(false), tols...
+                    cpsol = _solve_checkpoint(
+                        remake(sol.prob, tspan = interval, u0 = sol(interval[1])),
+                        sol.alg; tstops, wrap = Val(false), tols...
                     )
                 end
             end
@@ -240,14 +240,14 @@ function split_states(
                         noise = forwardnoise
                     )
                     dt = choose_dt(abs(cpsol_t[1] - cpsol_t[2]), cpsol_t, interval)
-                    cpsol′ = solve(
-                        prob′, sol.alg, save_noise = false; dt,
+                    cpsol′ = _solve_checkpoint(
+                        prob′, sol.alg; save_noise = false, dt,
                         tstops = _ts[idx1:idx2], wrap = Val(false), checkpoint_sol.tols...
                     )
                 else
                     if checkpoint_sol.tstops === nothing
                         prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
-                        cpsol′ = solve(
+                        cpsol′ = _solve_checkpoint(
                             prob′, sol.alg;
                             dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                             wrap = Val(false), checkpoint_sol.tols...
@@ -260,7 +260,7 @@ function split_states(
                                 parameter_values(prob)
                             )
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y, p = _p)
-                            cpsol′ = solve(
+                            cpsol′ = _solve_checkpoint(
                                 prob′, sol.alg;
                                 dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                                 tstops = checkpoint_sol.tstops,
@@ -268,7 +268,7 @@ function split_states(
                             )
                         else
                             prob′ = remake(prob, tspan = intervals[cursor′], u0 = y)
-                            cpsol′ = solve(
+                            cpsol′ = _solve_checkpoint(
                                 prob′, sol.alg;
                                 dt = abs(cpsol_t[end] - cpsol_t[end - 1]),
                                 tstops = checkpoint_sol.tstops,
