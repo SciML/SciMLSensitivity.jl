@@ -27,7 +27,8 @@ using RecursiveArrayTools: RecursiveArrayTools, AbstractDiffEqArray,
     VectorOfArray
 using SciMLJacobianOperators: VecJacOperator, StatefulJacobianOperator
 using SciMLLogging: SciMLLogging, verbosity_to_bool, @SciMLMessage
-using SciMLStructures: SciMLStructures, canonicalize, Tunable, isscimlstructure
+using SciMLStructures: SciMLStructures, canonicalize, Tunable, Initials,
+    isscimlstructure
 using SymbolicIndexingInterface: SymbolicIndexingInterface, current_time, getu,
     parameter_values, state_values
 using QuadGK: quadgk

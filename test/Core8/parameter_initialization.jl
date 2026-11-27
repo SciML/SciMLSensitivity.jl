@@ -10,6 +10,7 @@ using OrdinaryDiffEq
 using Tracker
 using Enzyme
 using ForwardDiff
+using FiniteDiff
 using Zygote
 import SciMLBase
 using Test
@@ -119,6 +120,224 @@ tunables, repack, _ = SS.canonicalize(SS.Tunable(), parameter_values(prob))
             )
             any(!iszero, dtunables)
         end
+    end
+end
+
+@testset "Continuous adjoint initialization cotangents #1663" begin
+    @parameters α1663 β1663
+    @variables y1_1663(t) y2_1663(t) y3_1663(t)
+    eqs1663 = [
+        D(y1_1663) ~ -(α1663 + β1663) * y1_1663 + y2_1663,
+        D(y2_1663) ~ -(α1663 + β1663) * y2_1663 + y3_1663,
+        D(y3_1663) ~ -(α1663 + β1663) * y3_1663,
+    ]
+    sys1663 = mtkcompile(
+        System(
+            eqs1663, t; name = :sys1663,
+            initial_conditions = [
+                y1_1663 => α1663 * cos(0.1), y2_1663 => α1663 * cos(0.2),
+                y3_1663 => α1663 * cos(0.3), α1663 => 1.2, β1663 => 2.1,
+            ],
+        )
+    )
+    prob1663 = ODEProblem(sys1663, nothing, (0.0, 1.0))
+    set_p1663 = SII.setp_oop(prob1663, [α1663, β1663])
+    p1663 = [1.2, 2.1]
+    sensealgs1663 = (
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs1663
+        loss_u0 = ps -> sum(
+            Array(
+                solve(
+                    remake(prob1663; p = set_p1663(prob1663, ps)), Tsit5();
+                    saveat = 0.1, abstol = 1.0e-8, reltol = 1.0e-8, sensealg,
+                )
+            )[:, 1]
+        )
+        fd_u0 = ForwardDiff.gradient(loss_u0, p1663)
+        zg_u0 = only(Zygote.gradient(loss_u0, p1663))
+        @test zg_u0 ≈ fd_u0 rtol = 1.0e-3
+
+        loss_traj = ps -> sum(
+            abs2,
+            Array(
+                solve(
+                    remake(prob1663; p = set_p1663(prob1663, ps)), Tsit5();
+                    saveat = 0.1, abstol = 1.0e-8, reltol = 1.0e-8, sensealg,
+                )
+            ),
+        )
+        fd_traj = ForwardDiff.gradient(loss_traj, p1663)
+        zg_traj = only(Zygote.gradient(loss_traj, p1663))
+        @test zg_traj ≈ fd_traj rtol = 1.0e-3
+    end
+end
+
+# u0 depends on parameters only through `initialization_eqs` (no remake u0(p) path).
+@testset "Init-equation continuous adjoint cotangents" begin
+    @parameters a_ie b_ie
+    @variables x_ie(t) q_ie(t)
+    sys_ie = mtkcompile(
+        System(
+            [D(x_ie) ~ -b_ie * x_ie + q_ie, D(q_ie) ~ -q_ie], t; name = :sys_ie,
+            initial_conditions = [q_ie => 1.0, a_ie => 2.0, b_ie => 0.7],
+            initialization_eqs = [x_ie^2 ~ a_ie], guesses = [x_ie => 1.0],
+        )
+    )
+    prob_ie = ODEProblem(sys_ie, nothing, (0.0, 1.0))
+    set_ie = SII.setp_oop(prob_ie, [a_ie, b_ie])
+    get_x_ie = SII.getsym(prob_ie, x_ie)
+    p_ie = [2.0, 0.7]
+    sensealgs_ie = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        BacksolveAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_ie
+        sol_ie = ps -> solve(
+            remake(prob_ie; p = set_ie(prob_ie, ps)), Tsit5();
+            saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+        )
+        loss_x0 = ps -> get_x_ie(sol_ie(ps))[1]
+        fd_x0 = ForwardDiff.gradient(loss_x0, p_ie)
+        zg_x0 = only(Zygote.gradient(loss_x0, p_ie))
+        @test zg_x0 ≈ fd_x0 rtol = 1.0e-3
+
+        loss_traj = ps -> sum(abs2, Array(sol_ie(ps)))
+        fd_traj = ForwardDiff.gradient(loss_traj, p_ie)
+        zg_traj = only(Zygote.gradient(loss_traj, p_ie))
+        @test zg_traj ≈ fd_traj rtol = 1.0e-3
+    end
+end
+
+# Algebraic variable fixed by initialization (DAE).
+@testset "DAE init algebraic continuous adjoint cotangents" begin
+    @parameters c_dae k_dae
+    @variables xc_dae(t) z_dae(t)
+    sys_dae = mtkcompile(
+        System(
+            [D(xc_dae) ~ -k_dae * xc_dae + z_dae, 0 ~ z_dae^3 + z_dae - c_dae * xc_dae],
+            t; name = :sys_dae,
+            initial_conditions = [xc_dae => 1.0, c_dae => 2.0, k_dae => 0.5],
+            guesses = [z_dae => 0.5],
+        )
+    )
+    prob_dae = ODEProblem(sys_dae, nothing, (0.0, 1.0))
+    set_dae = SII.setp_oop(prob_dae, [c_dae, k_dae])
+    p_dae = [2.0, 0.5]
+    sensealgs_dae = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_dae
+        loss = ps -> sum(
+            abs2,
+            Array(
+                solve(
+                    remake(prob_dae; p = set_dae(prob_dae, ps)), Rodas5P();
+                    saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+                )
+            ),
+        )
+        fd = FiniteDiff.finite_difference_gradient(loss, p_dae)
+        zg = only(Zygote.gradient(loss, p_dae))
+        @test zg ≈ fd rtol = 1.0e-3
+    end
+end
+
+# Fully-implicit DAEProblem without differential_vars cannot classify algebraic
+# components for the init VJP seed (DAEFunction has no mass_matrix).
+@testset "DAEProblem init seed requires differential_vars" begin
+    function daeres!(out, du, u, p, t)
+        out[1] = du[1] - u[2]
+        out[2] = u[1] + u[2] - 1
+        return nothing
+    end
+    daeprob = DAEProblem(daeres!, [0.0, 0.0], [1.0, 0.0], (0.0, 1.0))
+    @test daeprob.differential_vars === nothing
+    err = try
+        SciMLSensitivity._differential_init_seed(daeprob, [1.0, 1.0])
+        nothing
+    catch e
+        e
+    end
+    @test err isa ErrorException
+    @test occursin("differential_vars", sprint(showerror, err))
+
+    daeprob_dv = DAEProblem(
+        daeres!, [0.0, 0.0], [1.0, 0.0], (0.0, 1.0);
+        differential_vars = [true, false],
+    )
+    @test SciMLSensitivity._differential_init_seed(daeprob_dv, [1.0, 1.0]) == [1.0, 0.0]
+end
+
+# F: differential IC depends on p (xc0 = 0.5c); algebraic z from init.
+@testset "DAE differential x0(p) continuous adjoint cotangents" begin
+    @parameters c_f k_f
+    @variables xc_f(t) z_f(t)
+    sys_f = mtkcompile(
+        System(
+            [D(xc_f) ~ -k_f * xc_f + z_f, 0 ~ z_f^3 + z_f - c_f * xc_f],
+            t; name = :sys_f,
+            initial_conditions = [xc_f => 0.5 * c_f, c_f => 2.0, k_f => 0.5],
+            guesses = [z_f => 0.5],
+        )
+    )
+    prob_f = ODEProblem(sys_f, nothing, (0.0, 1.0))
+    set_f = SII.setp_oop(prob_f, [c_f, k_f])
+    get_z_f = SII.getsym(prob_f, z_f)
+    p_f = [2.0, 0.5]
+    W = [1.0 0.3; -0.7 2.0]
+    lossW(A) = sum((W * A) .^ 2) + sum(sin, A)
+    sensealgs_f = (
+        InterpolatingAdjoint(autojacvec = ReverseDiffVJP(true)),
+        GaussAdjoint(autojacvec = ReverseDiffVJP(true)),
+        QuadratureAdjoint(autojacvec = ReverseDiffVJP(true)),
+    )
+    for sensealg in sensealgs_f
+        # t0 observed, weighted nonlinear traj loss
+        loss_t0 = ps -> lossW(
+            Array(
+                solve(
+                    remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                    saveat = 0.1, abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+                )
+            ),
+        )
+        fd_t0 = FiniteDiff.finite_difference_gradient(loss_t0, p_f)
+        zg_t0 = only(Zygote.gradient(loss_t0, p_f))
+        @test zg_t0 ≈ fd_t0 rtol = 1.0e-3
+
+        # t0 not observed
+        loss_no = ps -> lossW(
+            Array(
+                solve(
+                    remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                    saveat = 0.1:0.1:1.0, abstol = 1.0e-10, reltol = 1.0e-10,
+                    sensealg,
+                )
+            ),
+        )
+        fd_no = FiniteDiff.finite_difference_gradient(loss_no, p_f)
+        zg_no = only(Zygote.gradient(loss_no, p_f))
+        @test zg_no ≈ fd_no rtol = 1.0e-3
+
+        # loss on algebraic state only at t=1
+        loss_z = ps -> get_z_f(
+            solve(
+                remake(prob_f; p = set_f(prob_f, ps)), Rodas5P();
+                saveat = [1.0], abstol = 1.0e-10, reltol = 1.0e-10, sensealg,
+            )
+        )[end]^2
+        fd_z = FiniteDiff.finite_difference_gradient(loss_z, p_f)
+        zg_z = only(Zygote.gradient(loss_z, p_f))
+        @test zg_z ≈ fd_z rtol = 1.0e-3
     end
 end
 
