@@ -185,6 +185,27 @@ end
 
 println("Continuous Callbacks")
 @testset "Continuous callbacks" begin
+    @testset "ReverseDiffAdjoint with saved event times" begin
+        function drift!(du, u, p, t)
+            du[1] = only(p)
+            du[2] = 0
+            return nothing
+        end
+        prob = ODEProblem(drift!, [1.0, 2.0], (0.0, 1.0), [1.0])
+        condition(u, t, integrator) = u[1] - 1.5
+        reset!(integrator) = (integrator.u[1] = 0.0)
+        cb = ContinuousCallback(condition, reset!; save_positions = (true, true))
+        function solve_with_event(u0)
+            return solve(
+                prob, Tsit5(); u0, callback = cb, sensealg = ReverseDiffAdjoint(),
+                save_everystep = false
+            )
+        end
+        terminal_value(u0) = last(last(solve_with_event(u0).u))
+        @test last(solve_with_event(prob.u0).u) ≈ [0.5, 2.0]
+        @test only(Zygote.gradient(terminal_value, prob.u0)) ≈ [0.0, 1.0]
+    end
+
     @testset "simple loss function bouncing ball" begin
         g(sol) = sum(Array(sol))
         function dg!(out, u, p, t, i)

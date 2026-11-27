@@ -2324,9 +2324,6 @@ function SciMLBase._concrete_solve_adjoint(
         throw(EnzymeTrackedRealError())
     end
 
-    t = eltype(prob.tspan)[]
-    u = typeof(u0)[]
-
     local sol
 
     function reversediff_adjoint_forwardpass(_u0, _p)
@@ -2396,13 +2393,7 @@ function SciMLBase._concrete_solve_adjoint(
             _prob, alg, args...; sensealg = DiffEqBase.SensitivityADPassThrough(),
             wrap = Val(false), kwargs_filtered...
         )
-        t = current_time(sol)
-        if DiffEqBase.isinplace(prob)
-            u = map.(ReverseDiff.value, state_values(sol))
-        else
-            u = map(ReverseDiff.value, state_values(sol))
-        end
-        sol = SciMLBase.sensitivity_solution(sol, state_values(sol), t)
+        sol = SciMLBase.sensitivity_solution(sol, state_values(sol), current_time(sol))
         return Array(sol)
     end
 
@@ -2444,10 +2435,10 @@ function SciMLBase._concrete_solve_adjoint(
             )
         end
     end
-    u = u0 isa ReverseDiff.TrackedArray ? ReverseDiff.value(state_values(sol)) :
-        ReverseDiff.value.(state_values(sol))
-    return SciMLBase.sensitivity_solution(sol, u, ReverseDiff.value.(current_time(sol))),
-        reversediff_adjoint_backpass
+    # Broadcasting over tracked values can try to record on the finished tape.
+    u = map(ReverseDiff.value, state_values(sol))
+    t = map(ReverseDiff.value, current_time(sol))
+    return SciMLBase.sensitivity_solution(sol, u, t), reversediff_adjoint_backpass
 end
 
 # Mooncake-specific `ReverseDiffAdjoint` path. The main `ReverseDiffAdjoint`
