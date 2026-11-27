@@ -27,6 +27,7 @@ run_tests(;
                 @time @safetestset "Complex Adjoints" include("Core1/complex_adjoints.jl")
                 @time @safetestset "ReverseDiffAdjoint Output Type" include("Core1/reversediff_output_types.jl")
                 @time @safetestset "Forward Remake" include("Core1/forward_remake.jl")
+                @time @safetestset "Matrix State Adjoints" include("Core1/matrix_state_adjoints.jl")
             end
         end,
         "Core9" => function ()

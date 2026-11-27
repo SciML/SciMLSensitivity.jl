@@ -126,7 +126,8 @@ end
 
 function mooncake_run_ad(paramjac_config::Tuple, y, p, t, λ)
     cache, pf, λ_mem, dy_mem, p_grad_buf = paramjac_config
-    λ_mem .= λ
+    # λ is a vector also for matrix states, while λ_mem has the shape of the state
+    copyto!(λ_mem, λ)
     # The Mooncake cache is built with flat tunables (Vector), but callers like
     # _vecjacobian! and vec_pjac! may pass the full structured parameter object.
     # Extract flat tunables when p is a structured type to match the cache.
