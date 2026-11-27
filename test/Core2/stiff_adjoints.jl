@@ -2,6 +2,7 @@ using Zygote, SciMLSensitivity
 println("Starting tests")
 using OrdinaryDiffEq, ForwardDiff, Test, Reactant
 using SciMLBase
+import ReverseDiff
 using OrdinaryDiffEqFIRK: RadauIIA5
 using OrdinaryDiffEqRosenbrock: Rodas3, Rodas4, Rodas5, Rosenbrock23, ROS34PW3
 using OrdinaryDiffEqStabilizedRK: ROCK2, ROCK4
@@ -235,8 +236,15 @@ if VERSION >= v"1.7-"
             @test Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = ReactantVJP())), p
             )[1] isa Vector
-            @test_broken Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1] isa
-                Vector
+            if solver isa Union{TRBDF2, KenCarp4} && pkgversion(ReverseDiff) >= v"1.18.6"
+                dp1 = Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
+                @test dp1 isa Vector
+                @test dp ≈ dp1 rtol = 1.0e-2
+            else
+                @test_broken let dp1 = Zygote.gradient(p -> loss(p, ReverseDiffAdjoint()), p)[1]
+                    dp1 isa Vector && isapprox(dp, dp1; rtol = 1.0e-2)
+                end
+            end
         else
             dp1 = Zygote.gradient(
                 p -> loss(p, QuadratureAdjoint(autojacvec = EnzymeVJP())), p
